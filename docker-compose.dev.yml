@@ -1,0 +1,130 @@
+services:
+  postgres:
+    image: ankane/pgvector:latest
+    container_name: ultrasound-postgres
+    environment:
+      POSTGRES_DB: ultrasound_db
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-supersecret}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init_db.sql:/docker-entrypoint-initdb.d/init_db.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d ultrasound_db"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - ultrasound-network
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: ultrasound-redis
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - ultrasound-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.2'
+          memory: 128M
+    command: ["redis-server", "--appendonly", "yes", "--save", "60", "1"]
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: ultrasound-api
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://admin:${POSTGRES_PASSWORD:-supersecret}@postgres:5432/ultrasound_db
+      - REDIS_URL=redis://redis:6379/0
+      - ENV=development
+    volumes:
+      - .:/app
+      - /app/__pycache__
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - ultrasound-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/api/v1/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'
+          memory: 4G
+        reservations:
+          cpus: '1.0'
+          memory: 1G
+
+  safety-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile.safety-gateway.dev
+    container_name: ultrasound-safety-gateway
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://admin:${POSTGRES_PASSWORD:-supersecret}@postgres:5432/ultrasound_db
+      - REDIS_URL=redis://redis:6379/1
+      - ENV=development
+    volumes:
+      - .:/app
+      - /app/__pycache__
+    ports:
+      - "8001:8001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - ultrasound-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8001/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  ultrasound-network:
+    driver: bridge
