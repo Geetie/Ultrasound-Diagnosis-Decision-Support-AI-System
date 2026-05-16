@@ -1,0 +1,28 @@
+rules:
+  - name: sg_passport_number
+    pattern: "(?:护照号|护照编号)[：:]\\s*[A-Za-z0-9]{6,12}"
+    replacement: "[REDACTED:PASSPORT]"
+    description: "异构：主规则集未覆盖护照号，本补丁规则补充护照号脱敏（SafetyGateway补充规则）"
+    priority: 9
+    enabled: true
+
+  - name: sg_insurance_number
+    pattern: "(?:医保号|社保号|保险号)[：:]\\s*[A-Za-z0-9\\-_]{4,20}"
+    replacement: "[REDACTED:INSURANCE]"
+    description: "异构：主规则集未覆盖医保号/社保号，本补丁规则补充医保号脱敏（SafetyGateway补充规则）"
+    priority: 10
+    enabled: true
+
+  - name: sg_license_plate
+    pattern: "(?:车牌号|车牌)[：:]\\s*[京津沪渝冀豫云辽黑湘皖鲁新苏浙赣鄂桂甘晋蒙陕吉闽贵粤川青藏琼宁][A-Z][A-Z0-9]{5}"
+    replacement: "[REDACTED:LICENSE_PLATE]"
+    description: "异构：主规则集未覆盖车牌号，本补丁规则补充车牌号脱敏（SafetyGateway补充规则）"
+    priority: 11
+    enabled: true
+
+  - name: sg_bank_card
+    pattern: "(?:银行卡|卡号|账号)[：:]\\s*\\d{13,19}"
+    replacement: "[REDACTED:BANK_CARD]"
+    description: "异构：主规则集未覆盖银行卡号，本补丁规则补充银行卡号脱敏（SafetyGateway补充规则）"
+    priority: 12
+    enabled: true

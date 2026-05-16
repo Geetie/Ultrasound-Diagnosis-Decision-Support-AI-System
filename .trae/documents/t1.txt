@@ -1,0 +1,109 @@
+# SafetyGateway轨道系统性审查报告
+审查日期 : 2026-05-15
+ 审查范围 : safety_gateway/ 全部源代码、测试、配置、部署文件
+ 审查方法 : 静态代码分析 + 设计文档一致性比对 + 测试覆盖率审计
+ 参考文档 : 01-系统架构设计、04-安全合规、06-开发环境与进度规划、02-核心流程与知识库、00b-统一配置参考手册
+
+## 一、总体评估
+维度 评分 说明 进程隔离 ★★★★★ 独立uvicorn实例、独立Docker容器、depends_on+健康检查完整 核心校验 ★★★★☆ 5阶段校验完整，但ContraindicationThresholdPhase与ThresholdPhase存在职责重叠 降级路径 ★★★★★ 15种DegradedReason全覆盖，E4005A/B/C子码拆分完整 OOM保护 ★★★★★ docker-compose oom_score_adj=-1000，健康检查含OOM状态检测 延迟基准 ★★★★☆ P99阈值配置4ms/5ms，e2e阈值40ms/50ms，但缺少端到端延迟验证测试 测试覆盖 ★★★★☆ 359个测试用例，7种降级场景覆盖，但集成测试深度不足 代码风格 ★★★★☆ structlog规范一致，但部分函数过长（threshold.py 493行）
+
+## 二、设计文档一致性审查
+### 2.1 ✅ 符合设计文档的项
+审查点 设计要求 实现状态 独立进程 独立uvicorn实例，HTTP localhost通信 ✅ main.py uvicorn.run("safety_gateway.main:app") 端口9001 SAFETY_GATEWAY_PORT=9001 ✅ sg_config.py 默认9001 健康检查端点 /health 端点 ✅ main.py @app.get("/health") OOM保护 oom_score_adj=-1000 ✅ docker-compose.dev.yml L145 内存预算 ≤512MB ✅ docker-compose memory limit 512M + sg_memory_budget_mb=512 A级安全标准 先校验后输出，零容忍 ✅ orchestrator.py 5阶段串行校验 直查PG 不使用Redis缓存 ✅ consent_checker.py 直查PostgreSQL PG不可用→E4005B 拒绝所有诊断输出 ✅ errors.py DatabaseUnavailableError code=E4005B 组合故障→E4005C SG+融合层同时不可用 ✅ CombinedUnavailableError code=E4005C Redis独立DB db=1与主服务隔离 ✅ redis_pool.py URL路径替换为/1 规则异构冗余 不同执行引擎 ✅ desensitization.py 纯正则 vs 主规则ML NER 补丁规则独立 safety_patch.yaml独立编写 ✅ desensitization_rules_safety_patch.yaml 护照号/医保号/车牌号/银行卡 Docker depends_on SG先于主服务就绪 ✅ docker-compose api depends_on safety-gateway condition:service_healthy 健康检查间隔 4s间隔，1s超时，3次重试 ✅ docker-compose healthcheck interval:4s timeout:1s retries:3 降级输出白名单 observations+7个enum字段 ✅ DEFAULT_WHITELIST_FIELDS含organ_name等8个字段 E4005A子码拆分 A1(脱敏降级+敏感数据) A2(SG不可用+同意撤回) ✅ DesensitizationSafetyViolationError=E4005A1, ConsentSafetyViolationError=E4005A2 排队超时 >5s(看门狗重启) 且 <15s(持续不可用) ✅ sg_config model_validator校验5.0 < queue_timeout < 15.0 健康检查不可用阈值 3×(interval+timeout)≈15s ✅ sg_config model_validator校验abs(3×(interval+timeout)-15)≤1
+
+### 2.2 ⚠️ 与设计文档的偏差
+# 偏差项 设计要求 实际实现 严重度 说明 D-01 代码量 约4000-4500行 4593行 低 略超上限约2%，在可接受范围 D-02 测试用例数 约200-250个 359个 低 超出预期，为正向偏差 D-03 健康检查间隔 主服务每4秒探测SG SG自身healthcheck interval=4s 低 Docker healthcheck配置正确，但主服务侧探测逻辑在client中实现，需确认探测间隔 D-04 脱敏规则来源 01-架构设计说"从同一主规则源自动生成" 04-安全合规说"独立编写，不直接复制" 中 两个文档表述矛盾；代码实现采用独立编写+异构差异标注，更严格，属于"比原设计更好的编码实现" D-05 DB_POOL_SIZE 00b配置手册默认20 sg_config默认5 低 代码默认值偏保守，但可通过环境变量覆盖
+
+## 三、SafetyGateway轨道修复项清单
+### 🔴 P0 修复项（必须修复）
+# 修复项 位置 问题描述 影响 FIX-P0-01 ContraindicationThresholdPhase与ThresholdPhase职责重叠 contraindication_threshold_phase.py L68-87 + threshold_phase.py ContraindicationThresholdPhase内部也执行阈值校验（L68-87），ThresholdPhase也独立执行阈值校验。同一条conclusion会被两次check，threshold_results被重复追加到context.threshold_results 阈值校验结果重复记录，可能导致降级判定逻辑错误（同一结论被计算两次失败） FIX-P0-02 FusionProbe每次check()创建新httpx.AsyncClient fusion_probe.py L35-36 check() 方法每次调用都判断 self._client is None or self._client.is_closed ，但未在 aclose() 后重置 self._client=None 的完整清理；更关键的是，如果check()被高频调用，每次都创建新client实例 连接泄漏风险，影响P99延迟 FIX-P0-03 HealthChecker.check_all()融合层状态不参与健康判定但返回给调用方 checker.py L30-40 设计决策注释正确（融合层不可用时SG仍可提供降级输出），但 /health 端点在degraded状态返回503，可能导致主服务误判SG不可用 主服务可能因SG返回503(degraded)而错误触发E4005
+
+### 🟡 P1 修复项（应当修复）
+# 修复项 位置 问题描述 影响 FIX-P1-01 threshold.py文件过长(493行) threshold.py 单文件493行，包含ThresholdEngine类+Redis订阅+持久化+热更新+辅助函数，职责过多 可维护性差 FIX-P1-02 缺少端到端P99延迟验证测试 tests/benchmark/ benchmark测试仅7个，缺少模拟真实HTTP请求的端到端延迟验证 无法验证P99<5ms的设计要求 FIX-P1-03 CircuitBreaker._update_state()同步修改状态与async方法并发风险 circuit_breaker.py L62-80 _update_state() 是同步方法，直接修改 self._state 等可变状态。虽然注释说明了uvicorn单worker约束，但 state / is_available 属性是同步property，可从非async上下文调用 多worker部署时存在TOCTOU竞态（当前单worker安全） FIX-P1-04 sg_db.py全局变量_async_engine/_async_session_local sg_db.py L9-10 使用模块级全局变量管理engine和session， close_db() 中 async with _init_lock 但 _init_lock 是asyncio.Lock，在shutdown时可能event loop已关闭 进程关闭时可能抛出RuntimeError FIX-P1-05 SafetyCheckResponse.all_passed语义与04-安全合规不完全对齐 main.py L76 all_passed=True 条件为 status==PASSED and not degraded_mode ，但04-安全合规要求"第1/2层modified=True属正常脱敏不影响all_passed"，当前实现未区分第1/2层modified与第3层failed 前端可能错误展示安全校验状态 FIX-P1-06 缺少PostgreSQL直查同意状态P99<10ms的Gate 0验证测试 tests/ Gate 0要求验证PG直查P99<10ms，但无对应基准测试 Gate 0验证项缺失
+
+### 🟢 P2 修复项（建议修复）
+# 修复项 位置 问题描述 影响 FIX-P2-01 desensitization.py文件过长(482行) desensitization.py 包含引擎类+规则加载+补丁加载+人名匹配+验证+热更新，建议拆分 可维护性 FIX-P2-02 RedisSubscriber仅使用Pub/Sub，关键消息无持久化保障 redis_subscriber.py 已定义RedisStreamConsumer但未在main.py中使用；脱敏规则同步通知使用Pub/Sub，离线期间的消息会丢失 规则更新可能丢失（非关键，因有定时刷新兜底） FIX-P2-03 MemoryMonitor._over_budget是类变量，多实例共享状态 memory_monitor.py L14 _over_budget: bool = False 是类变量，所有实例共享 单例模式下无影响，但设计不够健壮 FIX-P2-04 集成测试依赖外部服务 tests/integration/sg/ 集成测试需要真实Redis/PG，CI环境可能不稳定 CI可靠性 FIX-P2-05 sg_types.py作为兼容层仍存在 sg_types.py 标注为废弃但测试中仍大量使用 from safety_gateway.sg_types import ... 技术债务 FIX-P2-06 Dockerfile.safety-gateway.dev未审查 Dockerfile.safety-gateway.dev 未能读取该文件内容，无法确认uvicorn --workers 1配置 熔断器线程安全依赖单worker
+
+## 四、代码质量评估
+### 4.1 架构设计
+优点 ：
+
+- 5阶段校验管线 设计清晰：同意→边缘连接→脱敏→禁忌+阈值→一致性，每阶段可短路返回
+- CheckContext跨阶段共享状态 设计优雅，避免了每阶段自定义签名
+- SGComponentRegistry统一单例管理 ，支持延迟初始化、override、reset，便于测试隔离
+- 降级输出系统 设计完善：15种DegradedReason、白名单过滤、禁忌术语过滤、degradation_warning
+问题 ：
+
+- ContraindicationThresholdPhase同时处理禁忌和阈值，而ThresholdPhase又独立处理阈值，存在 双重阈值校验 （FIX-P0-01）
+### 4.2 安全性
+优点 ：
+
+- A级安全标准严格执行：SG不可用→拒绝所有输出（E4005）
+- 直查PG策略正确实现，无Redis缓存降级路径
+- E4005A/B/C子码拆分清晰，前端可精确识别故障类型
+- 脱敏规则热更新有回滚机制（reload失败恢复旧规则）
+问题 ：
+
+- FusionProbe的httpx.AsyncClient生命周期管理需加强（FIX-P0-02）
+### 4.3 性能
+优点 ：
+
+- P99延迟阈值配置完整：SG通信4ms/5ms，端到端40ms/50ms
+- LatencyTracker独立采样+百分位统计，支持throttling自动降频
+- MemoryMonitor跨平台适配（psutil/proc/Windows ctypes）
+- 并发控制：asyncio.Semaphore(100)限制并发请求
+问题 ：
+
+- 缺少端到端P99延迟验证测试（FIX-P1-02）
+- 缺少PG直查P99<10ms的Gate 0验证（FIX-P1-06）
+## 五、测试逻辑审查
+### 5.1 测试覆盖统计
+测试类别 文件数 测试用例数 单元测试(unit/sg) 5 322 集成测试(integration/sg) 2 20 性能基准(benchmark/sg) 1 7 API层测试 1 10 合计 9 359
+
+### 5.2 7种降级场景覆盖
+# 降级场景 测试覆盖 测试位置 1 PG直查成功 ✅ test_pg_query_success 2 融合层不可用→SG降级输出 ✅ test_fusion_unavailable_sg_degraded_output 3 SG不可用→全部输出拒绝(E4005) ✅ test_sg_unavailable_reject_all_output 4 边缘后端断连→本地降级 ✅ test_edge_disconnected_local_degradation 5 组合故障(禁忌+阈值+融合不可用) ✅ test_combined_failure_degradation 6 融合层不可用+敏感数据→E4005A1 ✅ test_fusion_unavailable_sensitive_detected_e4005a 7 SG不可用+患者撤回同意→E4005A2 ✅ test_sg_unavailable_consent_withdrawn_e4005a
+
+### 5.3 测试缺陷
+# 缺陷 严重度 说明 T-01 集成测试深度不足 P1 integration/sg仅20个用例，缺少真实PG/Redis环境的端到端校验流程测试 T-02 缺少进程隔离实测 P1 Gate 0要求"主服务崩溃时独立返回E4005"，但无真实进程崩溃测试 T-03 缺少P99延迟基准测试 P1 无模拟真实HTTP请求的延迟基准验证 T-04 测试中大量使用sg_types兼容层 P2 应迁移至直接从validation_result/errors导入 T-05 OOM保护测试在Windows跳过 P2 test_oom_score_adj_read_from_proc在Windows跳过，需Docker环境验证
+
+## 六、代码风格合规性
+检查项 状态 说明 structlog日志规范 ✅ 全模块统一使用 structlog.get_logger() ，日志事件名采用snake_case 命名约定 ✅ 类名PascalCase、函数/变量snake_case、常量UPPER_SNAKE_CASE Pydantic模型 ✅ 统一使用Pydantic BaseModel，配置项使用pydantic-settings 类型注解 ✅ 全面使用Python 3.10+类型语法（ str | None 、 dict[str, Any] ） 异常层次 ✅ SafetyGatewayError基类→子类层次清晰，含内部码→外部码映射 文件过长 ⚠️ threshold.py(493行)、desensitization.py(482行)偏长 注释语言 ✅ 模块docstring使用中文（对齐项目规范），代码注释简洁
+
+## 七、修复优先级路线图
+```
+P0（必须修复，阻塞发布）:
+  FIX-P0-01: 
+  ContraindicationThresholdPhase
+  与ThresholdPhase双重阈值校验
+  FIX-P0-02: FusionProbe httpx.
+  AsyncClient生命周期管理
+  FIX-P0-03: /health端点degraded
+  状态返回503可能导致主服务误判
+
+P1（应当修复，Gate 1前完成）:
+  FIX-P1-01: threshold.py拆分（阈
+  值引擎/订阅/持久化/热更新）
+  FIX-P1-02: 补充端到端P99延迟验证
+  测试
+  FIX-P1-03: CircuitBreaker同步/
+  异步状态访问文档化约束
+  FIX-P1-04: sg_db.py shutdown时
+  event loop安全
+  FIX-P1-05: all_passed语义对齐
+  04-安全合规三层防线定义
+  FIX-P1-06: 补充PG直查P99<10ms 
+  Gate 0验证测试
+
+P2（建议修复，迭代优化）:
+  FIX-P2-01~P2-06: 文件拆分、
+  StreamConsumer启用、技术债务清理
+  等
+```
+## 八、结论
+SafetyGateway轨道的实现质量 总体优秀 ，核心安全逻辑（进程隔离、A级安全标准、直查PG、降级路径、OOM保护）均严格对齐设计文档。7种降级场景测试全覆盖，E4005A/B/C子码拆分完整，Docker Compose配置规范。
+
+关键风险点 ：
+
+1. FIX-P0-01 （双重阈值校验）是最紧迫的修复项，可能导致降级判定逻辑错误
+2. FIX-P0-03 （/health返回503）可能导致主服务在SG仍可提供降级输出时错误触发E4005
+3. FIX-P1-02/P1-06 （延迟验证测试缺失）是Gate 0验收的阻塞项

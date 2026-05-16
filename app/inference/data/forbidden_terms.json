@@ -1,0 +1,68 @@
+{
+  "version": "1.0",
+  "organ_terms": {
+    "thyroid": [
+      { "term": "肺癌", "variants": ["肺恶性肿瘤", "肺腺癌", "肺鳞癌", "小细胞肺癌"], "severity": 2, "description": "与甲状腺检查无关的肺部肿瘤术语" },
+      { "term": "胃癌", "variants": ["胃恶性肿瘤", "胃腺癌"], "severity": 2, "description": "与甲状腺检查无关的胃部肿瘤术语" },
+      { "term": "肠癌", "variants": ["结直肠癌", "结肠癌", "直肠癌", "肠恶性肿瘤"], "severity": 2, "description": "与甲状腺检查无关的肠道肿瘤术语" },
+      { "term": "骨折", "variants": ["骨裂", "粉碎性骨折"], "severity": 1, "description": "与甲状腺检查无关的骨科术语" },
+      { "term": "脑梗", "variants": ["脑梗死", "脑卒中", "脑血管意外"], "severity": 2, "description": "与甲状腺检查无关的脑血管术语" },
+      { "term": "肾癌", "variants": ["肾恶性肿瘤", "肾细胞癌"], "severity": 2, "description": "与甲状腺检查无关的肾脏肿瘤术语" },
+      { "term": "胰腺癌", "variants": ["胰腺恶性肿瘤", "胰腺导管腺癌"], "severity": 2, "description": "与甲状腺检查无关的胰腺肿瘤术语" },
+      { "term": "骨转移", "variants": ["骨转移瘤", "骨继发恶性肿瘤"], "severity": 3, "description": "骨转移术语（甲状腺癌骨转移为已知转移途径）", "allow_if_context": "甲状腺" },
+      { "term": "肝转移", "variants": ["肝转移瘤", "肝继发恶性肿瘤"], "severity": 3, "description": "肝转移术语（甲状腺癌肝转移虽少见但存在）", "allow_if_context": "甲状腺" },
+      { "term": "脑转移", "variants": ["脑转移瘤", "脑继发恶性肿瘤"], "severity": 3, "description": "脑转移术语（甲状腺癌脑转移虽少见但存在）", "allow_if_context": "甲状腺" },
+      { "term": "前列腺", "variants": ["前列腺癌", "前列腺增生"], "severity": 1, "description": "与甲状腺检查无关的前列腺术语" },
+      { "term": "卵巢", "variants": ["卵巢癌", "卵巢囊肿"], "severity": 1, "description": "与甲状腺检查无关的卵巢术语" },
+      { "term": "子宫", "variants": ["子宫癌", "子宫肌瘤"], "severity": 1, "description": "与甲状腺检查无关的子宫术语" },
+      { "term": "黑色素瘤", "variants": ["恶性黑色素瘤", "皮肤黑色素瘤"], "severity": 2, "description": "与甲状腺检查无关的皮肤科肿瘤术语" },
+      { "term": "白血病", "variants": ["急性白血病", "慢性白血病", "急性髓系白血病", "急性淋巴细胞白血病"], "severity": 2, "description": "与甲状腺检查无关的血液科术语" },
+      { "term": "淋巴瘤", "variants": ["霍奇金淋巴瘤", "非霍奇金淋巴瘤"], "severity": 2, "description": "与甲状腺检查无关的血液科术语" },
+      { "term": "宫颈癌", "variants": ["子宫颈癌", "宫颈恶性肿瘤"], "severity": 2, "description": "与甲状腺检查无关的妇科肿瘤术语" },
+      { "term": "膀胱癌", "variants": ["膀胱恶性肿瘤", "膀胱尿路上皮癌"], "severity": 2, "description": "与甲状腺检查无关的泌尿科肿瘤术语" }
+    ],
+    "liver": [
+      { "term": "肺癌", "variants": ["肺恶性肿瘤", "肺腺癌", "肺鳞癌"], "severity": 2, "description": "与肝脏检查无关的肺部肿瘤术语" },
+      { "term": "甲状腺癌", "variants": ["甲状腺恶性肿瘤"], "severity": 2, "description": "与肝脏检查无关的甲状腺肿瘤术语" },
+      { "term": "骨折", "variants": ["骨裂"], "severity": 1, "description": "与肝脏检查无关的骨科术语" },
+      { "term": "脑梗", "variants": ["脑梗死", "脑卒中"], "severity": 2, "description": "与肝脏检查无关的脑血管术语" },
+      { "term": "肾癌", "variants": ["肾恶性肿瘤"], "severity": 2, "description": "与肝脏检查无关的肾脏肿瘤术语" },
+      { "term": "骨转移", "variants": ["骨转移瘤"], "severity": 3, "description": "骨转移术语（肝癌骨转移常见）", "allow_if_context": "肝脏" },
+      { "term": "脑转移", "variants": ["脑转移瘤"], "severity": 3, "description": "与肝脏检查无关的脑转移术语" },
+      { "term": "前列腺", "variants": ["前列腺癌"], "severity": 1, "description": "与肝脏检查无关的前列腺术语" },
+      { "term": "卵巢", "variants": ["卵巢癌"], "severity": 1, "description": "与肝脏检查无关的卵巢术语" },
+      { "term": "白血病", "variants": ["急性白血病", "慢性白血病"], "severity": 2, "description": "与肝脏检查无关的血液科术语" },
+      { "term": "淋巴瘤", "variants": ["霍奇金淋巴瘤", "非霍奇金淋巴瘤"], "severity": 2, "description": "与肝脏检查无关的血液科术语" },
+      { "term": "黑色素瘤", "variants": ["恶性黑色素瘤"], "severity": 2, "description": "与肝脏检查无关的皮肤科肿瘤术语" },
+      { "term": "宫颈癌", "variants": ["子宫颈癌"], "severity": 2, "description": "与肝脏检查无关的妇科肿瘤术语" }
+    ],
+    "cardiac": [
+      { "term": "肺癌", "variants": ["肺恶性肿瘤", "肺腺癌"], "severity": 2, "description": "与心脏检查无关的肺部肿瘤术语" },
+      { "term": "肝癌", "variants": ["肝恶性肿瘤", "肝细胞癌"], "severity": 2, "description": "与心脏检查无关的肝脏肿瘤术语" },
+      { "term": "骨折", "variants": ["骨裂"], "severity": 1, "description": "与心脏检查无关的骨科术语" },
+      { "term": "胃穿孔", "variants": ["胃破裂"], "severity": 2, "description": "与心脏检查无关的胃部急症术语" },
+      { "term": "肠癌", "variants": ["结直肠癌"], "severity": 2, "description": "与心脏检查无关的肠道肿瘤术语" },
+      { "term": "骨转移", "variants": ["骨转移瘤"], "severity": 3, "description": "与心脏检查无关的骨转移术语" },
+      { "term": "肝转移", "variants": ["肝转移瘤"], "severity": 3, "description": "与心脏检查无关的肝转移术语" },
+      { "term": "甲状腺癌", "variants": ["甲状腺恶性肿瘤"], "severity": 2, "description": "与心脏检查无关的甲状腺肿瘤术语" },
+      { "term": "白血病", "variants": ["急性白血病", "慢性白血病"], "severity": 2, "description": "与心脏检查无关的血液科术语" },
+      { "term": "黑色素瘤", "variants": ["恶性黑色素瘤"], "severity": 2, "description": "与心脏检查无关的皮肤科肿瘤术语" },
+      { "term": "胰腺炎", "variants": ["急性胰腺炎", "慢性胰腺炎"], "severity": 2, "description": "与心脏检查无关的消化科术语" },
+      { "term": "胆囊炎", "variants": ["急性胆囊炎", "慢性胆囊炎"], "severity": 1, "description": "与心脏检查无关的消化科术语" }
+    ],
+    "breast": [
+      { "term": "肺癌", "variants": ["肺恶性肿瘤", "肺腺癌"], "severity": 2, "description": "与乳腺检查无关的肺部肿瘤术语" },
+      { "term": "肝癌", "variants": ["肝恶性肿瘤", "肝细胞癌"], "severity": 2, "description": "与乳腺检查无关的肝脏肿瘤术语" },
+      { "term": "胃癌", "variants": ["胃恶性肿瘤", "胃腺癌"], "severity": 2, "description": "与乳腺检查无关的胃部肿瘤术语" },
+      { "term": "骨折", "variants": ["骨裂", "粉碎性骨折"], "severity": 1, "description": "与乳腺检查无关的骨科术语" },
+      { "term": "脑梗", "variants": ["脑梗死", "脑卒中"], "severity": 2, "description": "与乳腺检查无关的脑血管术语" },
+      { "term": "肾癌", "variants": ["肾恶性肿瘤"], "severity": 2, "description": "与乳腺检查无关的肾脏肿瘤术语" },
+      { "term": "骨转移", "variants": ["骨转移瘤"], "severity": 3, "description": "与乳腺检查无关的骨转移术语（注：乳腺骨转移需特殊处理）", "allow_if_context": "乳腺" },
+      { "term": "前列腺", "variants": ["前列腺癌", "前列腺增生"], "severity": 1, "description": "与乳腺检查无关的前列腺术语" },
+      { "term": "白血病", "variants": ["急性白血病", "慢性白血病"], "severity": 2, "description": "与乳腺检查无关的血液科术语" },
+      { "term": "淋巴瘤", "variants": ["霍奇金淋巴瘤", "非霍奇金淋巴瘤"], "severity": 2, "description": "与乳腺检查无关的血液科术语" },
+      { "term": "黑色素瘤", "variants": ["恶性黑色素瘤"], "severity": 2, "description": "与乳腺检查无关的皮肤科肿瘤术语" },
+      { "term": "胰腺癌", "variants": ["胰腺恶性肿瘤"], "severity": 2, "description": "与乳腺检查无关的胰腺肿瘤术语" }
+    ]
+  }
+}

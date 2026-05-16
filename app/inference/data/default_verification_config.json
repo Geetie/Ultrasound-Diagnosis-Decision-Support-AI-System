@@ -1,0 +1,1255 @@
+{
+  "version": "1.0",
+  "boundary_config": {
+    "version": "1.0",
+    "organ_boundaries": {
+      "thyroid": [
+        {
+          "from_grade": "3",
+          "to_grade": "4",
+          "weight": 1.0,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "4",
+          "to_grade": "3",
+          "weight": 1.0,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "4a",
+          "to_grade": "4b",
+          "weight": 1.5,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "4b",
+          "to_grade": "4a",
+          "weight": 1.5,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "4a",
+          "to_grade": "3",
+          "weight": 1.0,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "3",
+          "to_grade": "4a",
+          "weight": 1.0,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "4",
+          "to_grade": "5",
+          "weight": 2.0,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "5",
+          "to_grade": "4",
+          "weight": 2.0,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "4a",
+          "to_grade": "4c",
+          "weight": 1.5,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "4c",
+          "to_grade": "4a",
+          "weight": 1.5,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "4b",
+          "to_grade": "4c",
+          "weight": 1.0,
+          "is_critical": false,
+          "is_directional": true
+        },
+        {
+          "from_grade": "4c",
+          "to_grade": "4b",
+          "weight": 1.0,
+          "is_critical": false,
+          "is_directional": true
+        },
+        {
+          "from_grade": "3",
+          "to_grade": "4b",
+          "weight": 1.5,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "4b",
+          "to_grade": "3",
+          "weight": 1.5,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "3",
+          "to_grade": "5",
+          "weight": 3.0,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "5",
+          "to_grade": "3",
+          "weight": 3.0,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "4a",
+          "to_grade": "5",
+          "weight": 2.0,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "5",
+          "to_grade": "4a",
+          "weight": 2.0,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "4b",
+          "to_grade": "5",
+          "weight": 2.0,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "5",
+          "to_grade": "4b",
+          "weight": 2.0,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "4c",
+          "to_grade": "5",
+          "weight": 1.5,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "5",
+          "to_grade": "4c",
+          "weight": 1.5,
+          "is_critical": true,
+          "is_directional": true
+        }
+      ],
+      "liver": [
+        {
+          "from_grade": "3",
+          "to_grade": "4",
+          "weight": 1.0,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "4",
+          "to_grade": "3",
+          "weight": 1.0,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "4",
+          "to_grade": "5",
+          "weight": 2.0,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "5",
+          "to_grade": "4",
+          "weight": 2.0,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "3",
+          "to_grade": "5",
+          "weight": 3.0,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "5",
+          "to_grade": "3",
+          "weight": 3.0,
+          "is_critical": true,
+          "is_directional": true
+        }
+      ],
+      "cardiac": [
+        {
+          "from_grade": "normal",
+          "to_grade": "mild",
+          "weight": 1.5,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "mild",
+          "to_grade": "normal",
+          "weight": 1.5,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "mild",
+          "to_grade": "moderate",
+          "weight": 1.5,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "moderate",
+          "to_grade": "mild",
+          "weight": 1.5,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "moderate",
+          "to_grade": "severe",
+          "weight": 2.0,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "severe",
+          "to_grade": "moderate",
+          "weight": 2.0,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "normal",
+          "to_grade": "moderate",
+          "weight": 2.0,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "moderate",
+          "to_grade": "normal",
+          "weight": 2.0,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "normal",
+          "to_grade": "severe",
+          "weight": 3.0,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "severe",
+          "to_grade": "normal",
+          "weight": 3.0,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "mild",
+          "to_grade": "severe",
+          "weight": 2.5,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "severe",
+          "to_grade": "mild",
+          "weight": 2.5,
+          "is_critical": true,
+          "is_directional": true
+        }
+      ],
+      "breast": [
+        {
+          "from_grade": "0",
+          "to_grade": "3",
+          "weight": 1.5,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "3",
+          "to_grade": "0",
+          "weight": 1.5,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "0",
+          "to_grade": "4",
+          "weight": 2.0,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "4",
+          "to_grade": "0",
+          "weight": 2.0,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "0",
+          "to_grade": "5",
+          "weight": 3.0,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "5",
+          "to_grade": "0",
+          "weight": 3.0,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "3",
+          "to_grade": "4",
+          "weight": 1.0,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "4",
+          "to_grade": "3",
+          "weight": 1.0,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "3",
+          "to_grade": "4a",
+          "weight": 1.0,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "4a",
+          "to_grade": "3",
+          "weight": 1.0,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "3",
+          "to_grade": "4b",
+          "weight": 1.5,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "4b",
+          "to_grade": "3",
+          "weight": 1.5,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "3",
+          "to_grade": "4c",
+          "weight": 1.5,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "4c",
+          "to_grade": "3",
+          "weight": 1.5,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "4a",
+          "to_grade": "4b",
+          "weight": 1.5,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "4b",
+          "to_grade": "4a",
+          "weight": 1.5,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "4a",
+          "to_grade": "4c",
+          "weight": 1.5,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "4c",
+          "to_grade": "4a",
+          "weight": 1.5,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "4b",
+          "to_grade": "4c",
+          "weight": 1.0,
+          "is_critical": false,
+          "is_directional": true
+        },
+        {
+          "from_grade": "4c",
+          "to_grade": "4b",
+          "weight": 1.0,
+          "is_critical": false,
+          "is_directional": true
+        },
+        {
+          "from_grade": "4",
+          "to_grade": "5",
+          "weight": 2.0,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "5",
+          "to_grade": "4",
+          "weight": 2.0,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "4a",
+          "to_grade": "5",
+          "weight": 2.0,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "5",
+          "to_grade": "4a",
+          "weight": 2.0,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "4b",
+          "to_grade": "5",
+          "weight": 2.0,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "5",
+          "to_grade": "4b",
+          "weight": 2.0,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "4c",
+          "to_grade": "5",
+          "weight": 1.5,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "5",
+          "to_grade": "4c",
+          "weight": 1.5,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "3",
+          "to_grade": "5",
+          "weight": 3.0,
+          "is_critical": true,
+          "is_directional": true
+        },
+        {
+          "from_grade": "5",
+          "to_grade": "3",
+          "weight": 3.0,
+          "is_critical": true,
+          "is_directional": true
+        }
+      ]
+    }
+  },
+  "forbidden_terms_config": {
+    "version": "1.0",
+    "organ_terms": {
+      "thyroid": [
+        {
+          "term": "肺癌",
+          "variants": [
+            "肺恶性肿瘤",
+            "肺腺癌",
+            "肺鳞癌",
+            "小细胞肺癌"
+          ],
+          "severity": 2,
+          "description": "与甲状腺检查无关的肺部肿瘤术语",
+          "allow_if_context": "",
+          "context_window_chars": 100
+        },
+        {
+          "term": "胃癌",
+          "variants": [
+            "胃恶性肿瘤",
+            "胃腺癌"
+          ],
+          "severity": 2,
+          "description": "与甲状腺检查无关的胃部肿瘤术语",
+          "allow_if_context": "",
+          "context_window_chars": 100
+        },
+        {
+          "term": "肠癌",
+          "variants": [
+            "结直肠癌",
+            "结肠癌",
+            "直肠癌",
+            "肠恶性肿瘤"
+          ],
+          "severity": 2,
+          "description": "与甲状腺检查无关的肠道肿瘤术语",
+          "allow_if_context": "",
+          "context_window_chars": 100
+        },
+        {
+          "term": "骨折",
+          "variants": [
+            "骨裂",
+            "粉碎性骨折"
+          ],
+          "severity": 1,
+          "description": "与甲状腺检查无关的骨科术语",
+          "allow_if_context": "",
+          "context_window_chars": 100
+        },
+        {
+          "term": "脑梗",
+          "variants": [
+            "脑梗死",
+            "脑卒中",
+            "脑血管意外"
+          ],
+          "severity": 2,
+          "description": "与甲状腺检查无关的脑血管术语",
+          "allow_if_context": "",
+          "context_window_chars": 100
+        },
+        {
+          "term": "肾癌",
+          "variants": [
+            "肾恶性肿瘤",
+            "肾细胞癌"
+          ],
+          "severity": 2,
+          "description": "与甲状腺检查无关的肾脏肿瘤术语",
+          "allow_if_context": "",
+          "context_window_chars": 100
+        },
+        {
+          "term": "胰腺癌",
+          "variants": [
+            "胰腺恶性肿瘤",
+            "胰腺导管腺癌"
+          ],
+          "severity": 2,
+          "description": "与甲状腺检查无关的胰腺肿瘤术语",
+          "allow_if_context": "",
+          "context_window_chars": 100
+        },
+        {
+          "term": "骨转移",
+          "variants": [
+            "骨转移瘤",
+            "骨继发恶性肿瘤"
+          ],
+          "severity": 3,
+          "description": "骨转移术语（甲状腺癌骨转移为已知转移途径）",
+          "allow_if_context": "甲状腺",
+          "context_window_chars": 100
+        },
+        {
+          "term": "肝转移",
+          "variants": [
+            "肝转移瘤",
+            "肝继发恶性肿瘤"
+          ],
+          "severity": 3,
+          "description": "肝转移术语（甲状腺癌肝转移虽少见但存在）",
+          "allow_if_context": "甲状腺",
+          "context_window_chars": 100
+        },
+        {
+          "term": "脑转移",
+          "variants": [
+            "脑转移瘤",
+            "脑继发恶性肿瘤"
+          ],
+          "severity": 3,
+          "description": "脑转移术语（甲状腺癌脑转移虽少见但存在）",
+          "allow_if_context": "甲状腺",
+          "context_window_chars": 100
+        },
+        {
+          "term": "前列腺",
+          "variants": [
+            "前列腺癌",
+            "前列腺增生"
+          ],
+          "severity": 1,
+          "description": "与甲状腺检查无关的前列腺术语",
+          "allow_if_context": "",
+          "context_window_chars": 100
+        },
+        {
+          "term": "卵巢",
+          "variants": [
+            "卵巢癌",
+            "卵巢囊肿"
+          ],
+          "severity": 1,
+          "description": "与甲状腺检查无关的卵巢术语",
+          "allow_if_context": "",
+          "context_window_chars": 100
+        },
+        {
+          "term": "子宫",
+          "variants": [
+            "子宫癌",
+            "子宫肌瘤"
+          ],
+          "severity": 1,
+          "description": "与甲状腺检查无关的子宫术语",
+          "allow_if_context": "",
+          "context_window_chars": 100
+        },
+        {
+          "term": "黑色素瘤",
+          "variants": [
+            "恶性黑色素瘤",
+            "皮肤黑色素瘤"
+          ],
+          "severity": 2,
+          "description": "与甲状腺检查无关的皮肤科肿瘤术语",
+          "allow_if_context": "",
+          "context_window_chars": 100
+        },
+        {
+          "term": "白血病",
+          "variants": [
+            "急性白血病",
+            "慢性白血病",
+            "急性髓系白血病",
+            "急性淋巴细胞白血病"
+          ],
+          "severity": 2,
+          "description": "与甲状腺检查无关的血液科术语",
+          "allow_if_context": "",
+          "context_window_chars": 100
+        },
+        {
+          "term": "淋巴瘤",
+          "variants": [
+            "霍奇金淋巴瘤",
+            "非霍奇金淋巴瘤"
+          ],
+          "severity": 2,
+          "description": "与甲状腺检查无关的血液科术语",
+          "allow_if_context": "",
+          "context_window_chars": 100
+        },
+        {
+          "term": "宫颈癌",
+          "variants": [
+            "子宫颈癌",
+            "宫颈恶性肿瘤"
+          ],
+          "severity": 2,
+          "description": "与甲状腺检查无关的妇科肿瘤术语",
+          "allow_if_context": "",
+          "context_window_chars": 100
+        },
+        {
+          "term": "膀胱癌",
+          "variants": [
+            "膀胱恶性肿瘤",
+            "膀胱尿路上皮癌"
+          ],
+          "severity": 2,
+          "description": "与甲状腺检查无关的泌尿科肿瘤术语",
+          "allow_if_context": "",
+          "context_window_chars": 100
+        }
+      ],
+      "liver": [
+        {
+          "term": "肺癌",
+          "variants": [
+            "肺恶性肿瘤",
+            "肺腺癌",
+            "肺鳞癌"
+          ],
+          "severity": 2,
+          "description": "与肝脏检查无关的肺部肿瘤术语",
+          "allow_if_context": "",
+          "context_window_chars": 100
+        },
+        {
+          "term": "甲状腺癌",
+          "variants": [
+            "甲状腺恶性肿瘤"
+          ],
+          "severity": 2,
+          "description": "与肝脏检查无关的甲状腺肿瘤术语",
+          "allow_if_context": "",
+          "context_window_chars": 100
+        },
+        {
+          "term": "骨折",
+          "variants": [
+            "骨裂"
+          ],
+          "severity": 1,
+          "description": "与肝脏检查无关的骨科术语",
+          "allow_if_context": "",
+          "context_window_chars": 100
+        },
+        {
+          "term": "脑梗",
+          "variants": [
+            "脑梗死",
+            "脑卒中"
+          ],
+          "severity": 2,
+          "description": "与肝脏检查无关的脑血管术语",
+          "allow_if_context": "",
+          "context_window_chars": 100
+        },
+        {
+          "term": "肾癌",
+          "variants": [
+            "肾恶性肿瘤"
+          ],
+          "severity": 2,
+          "description": "与肝脏检查无关的肾脏肿瘤术语",
+          "allow_if_context": "",
+          "context_window_chars": 100
+        },
+        {
+          "term": "骨转移",
+          "variants": [
+            "骨转移瘤"
+          ],
+          "severity": 3,
+          "description": "骨转移术语（肝癌骨转移常见）",
+          "allow_if_context": "肝脏",
+          "context_window_chars": 100
+        },
+        {
+          "term": "脑转移",
+          "variants": [
+            "脑转移瘤"
+          ],
+          "severity": 3,
+          "description": "与肝脏检查无关的脑转移术语",
+          "allow_if_context": "",
+          "context_window_chars": 100
+        },
+        {
+          "term": "前列腺",
+          "variants": [
+            "前列腺癌"
+          ],
+          "severity": 1,
+          "description": "与肝脏检查无关的前列腺术语",
+          "allow_if_context": "",
+          "context_window_chars": 100
+        },
+        {
+          "term": "卵巢",
+          "variants": [
+            "卵巢癌"
+          ],
+          "severity": 1,
+          "description": "与肝脏检查无关的卵巢术语",
+          "allow_if_context": "",
+          "context_window_chars": 100
+        },
+        {
+          "term": "白血病",
+          "variants": [
+            "急性白血病",
+            "慢性白血病"
+          ],
+          "severity": 2,
+          "description": "与肝脏检查无关的血液科术语",
+          "allow_if_context": "",
+          "context_window_chars": 100
+        },
+        {
+          "term": "淋巴瘤",
+          "variants": [
+            "霍奇金淋巴瘤",
+            "非霍奇金淋巴瘤"
+          ],
+          "severity": 2,
+          "description": "与肝脏检查无关的血液科术语",
+          "allow_if_context": "",
+          "context_window_chars": 100
+        },
+        {
+          "term": "黑色素瘤",
+          "variants": [
+            "恶性黑色素瘤"
+          ],
+          "severity": 2,
+          "description": "与肝脏检查无关的皮肤科肿瘤术语",
+          "allow_if_context": "",
+          "context_window_chars": 100
+        },
+        {
+          "term": "宫颈癌",
+          "variants": [
+            "子宫颈癌"
+          ],
+          "severity": 2,
+          "description": "与肝脏检查无关的妇科肿瘤术语",
+          "allow_if_context": "",
+          "context_window_chars": 100
+        }
+      ],
+      "cardiac": [
+        {
+          "term": "肺癌",
+          "variants": [
+            "肺恶性肿瘤",
+            "肺腺癌"
+          ],
+          "severity": 2,
+          "description": "与心脏检查无关的肺部肿瘤术语",
+          "allow_if_context": "",
+          "context_window_chars": 100
+        },
+        {
+          "term": "肝癌",
+          "variants": [
+            "肝恶性肿瘤",
+            "肝细胞癌"
+          ],
+          "severity": 2,
+          "description": "与心脏检查无关的肝脏肿瘤术语",
+          "allow_if_context": "",
+          "context_window_chars": 100
+        },
+        {
+          "term": "骨折",
+          "variants": [
+            "骨裂"
+          ],
+          "severity": 1,
+          "description": "与心脏检查无关的骨科术语",
+          "allow_if_context": "",
+          "context_window_chars": 100
+        },
+        {
+          "term": "胃穿孔",
+          "variants": [
+            "胃破裂"
+          ],
+          "severity": 2,
+          "description": "与心脏检查无关的胃部急症术语",
+          "allow_if_context": "",
+          "context_window_chars": 100
+        },
+        {
+          "term": "肠癌",
+          "variants": [
+            "结直肠癌"
+          ],
+          "severity": 2,
+          "description": "与心脏检查无关的肠道肿瘤术语",
+          "allow_if_context": "",
+          "context_window_chars": 100
+        },
+        {
+          "term": "骨转移",
+          "variants": [
+            "骨转移瘤"
+          ],
+          "severity": 3,
+          "description": "与心脏检查无关的骨转移术语",
+          "allow_if_context": "",
+          "context_window_chars": 100
+        },
+        {
+          "term": "肝转移",
+          "variants": [
+            "肝转移瘤"
+          ],
+          "severity": 3,
+          "description": "与心脏检查无关的肝转移术语",
+          "allow_if_context": "",
+          "context_window_chars": 100
+        },
+        {
+          "term": "甲状腺癌",
+          "variants": [
+            "甲状腺恶性肿瘤"
+          ],
+          "severity": 2,
+          "description": "与心脏检查无关的甲状腺肿瘤术语",
+          "allow_if_context": "",
+          "context_window_chars": 100
+        },
+        {
+          "term": "白血病",
+          "variants": [
+            "急性白血病",
+            "慢性白血病"
+          ],
+          "severity": 2,
+          "description": "与心脏检查无关的血液科术语",
+          "allow_if_context": "",
+          "context_window_chars": 100
+        },
+        {
+          "term": "黑色素瘤",
+          "variants": [
+            "恶性黑色素瘤"
+          ],
+          "severity": 2,
+          "description": "与心脏检查无关的皮肤科肿瘤术语",
+          "allow_if_context": "",
+          "context_window_chars": 100
+        },
+        {
+          "term": "胰腺炎",
+          "variants": [
+            "急性胰腺炎",
+            "慢性胰腺炎"
+          ],
+          "severity": 2,
+          "description": "与心脏检查无关的消化科术语",
+          "allow_if_context": "",
+          "context_window_chars": 100
+        },
+        {
+          "term": "胆囊炎",
+          "variants": [
+            "急性胆囊炎",
+            "慢性胆囊炎"
+          ],
+          "severity": 1,
+          "description": "与心脏检查无关的消化科术语",
+          "allow_if_context": "",
+          "context_window_chars": 100
+        }
+      ],
+      "breast": [
+        {
+          "term": "肺癌",
+          "variants": [
+            "肺恶性肿瘤",
+            "肺腺癌"
+          ],
+          "severity": 2,
+          "description": "与乳腺检查无关的肺部肿瘤术语",
+          "allow_if_context": "",
+          "context_window_chars": 100
+        },
+        {
+          "term": "肝癌",
+          "variants": [
+            "肝恶性肿瘤",
+            "肝细胞癌"
+          ],
+          "severity": 2,
+          "description": "与乳腺检查无关的肝脏肿瘤术语",
+          "allow_if_context": "",
+          "context_window_chars": 100
+        },
+        {
+          "term": "胃癌",
+          "variants": [
+            "胃恶性肿瘤",
+            "胃腺癌"
+          ],
+          "severity": 2,
+          "description": "与乳腺检查无关的胃部肿瘤术语",
+          "allow_if_context": "",
+          "context_window_chars": 100
+        },
+        {
+          "term": "骨折",
+          "variants": [
+            "骨裂",
+            "粉碎性骨折"
+          ],
+          "severity": 1,
+          "description": "与乳腺检查无关的骨科术语",
+          "allow_if_context": "",
+          "context_window_chars": 100
+        },
+        {
+          "term": "脑梗",
+          "variants": [
+            "脑梗死",
+            "脑卒中"
+          ],
+          "severity": 2,
+          "description": "与乳腺检查无关的脑血管术语",
+          "allow_if_context": "",
+          "context_window_chars": 100
+        },
+        {
+          "term": "肾癌",
+          "variants": [
+            "肾恶性肿瘤"
+          ],
+          "severity": 2,
+          "description": "与乳腺检查无关的肾脏肿瘤术语",
+          "allow_if_context": "",
+          "context_window_chars": 100
+        },
+        {
+          "term": "骨转移",
+          "variants": [
+            "骨转移瘤"
+          ],
+          "severity": 3,
+          "description": "与乳腺检查无关的骨转移术语（注：乳腺骨转移需特殊处理）",
+          "allow_if_context": "乳腺",
+          "context_window_chars": 100
+        },
+        {
+          "term": "前列腺",
+          "variants": [
+            "前列腺癌",
+            "前列腺增生"
+          ],
+          "severity": 1,
+          "description": "与乳腺检查无关的前列腺术语",
+          "allow_if_context": "",
+          "context_window_chars": 100
+        },
+        {
+          "term": "白血病",
+          "variants": [
+            "急性白血病",
+            "慢性白血病"
+          ],
+          "severity": 2,
+          "description": "与乳腺检查无关的血液科术语",
+          "allow_if_context": "",
+          "context_window_chars": 100
+        },
+        {
+          "term": "淋巴瘤",
+          "variants": [
+            "霍奇金淋巴瘤",
+            "非霍奇金淋巴瘤"
+          ],
+          "severity": 2,
+          "description": "与乳腺检查无关的血液科术语",
+          "allow_if_context": "",
+          "context_window_chars": 100
+        },
+        {
+          "term": "黑色素瘤",
+          "variants": [
+            "恶性黑色素瘤"
+          ],
+          "severity": 2,
+          "description": "与乳腺检查无关的皮肤科肿瘤术语",
+          "allow_if_context": "",
+          "context_window_chars": 100
+        },
+        {
+          "term": "胰腺癌",
+          "variants": [
+            "胰腺恶性肿瘤"
+          ],
+          "severity": 2,
+          "description": "与乳腺检查无关的胰腺肿瘤术语",
+          "allow_if_context": "",
+          "context_window_chars": 100
+        }
+      ]
+    }
+  },
+  "strategy_weights": {
+    "forbidden_terms": 1.0,
+    "contradictory_grading": 1.5,
+    "medical_common_sense": 2.0,
+    "numerical_validity": 1.0,
+    "context_aware": 1.5
+  },
+  "numerical_validation_config": {
+    "version": "1.0",
+    "organ_ranges": {
+      "thyroid": [
+        {
+          "parameter": "结节大小",
+          "min_value": 0.1,
+          "max_value": 10.0,
+          "unit": "cm",
+          "description": "甲状腺结节大小的合理范围"
+        }
+      ],
+      "liver": [
+        {
+          "parameter": "占位大小",
+          "min_value": 0.1,
+          "max_value": 20.0,
+          "unit": "cm",
+          "description": "肝脏占位大小的合理范围"
+        }
+      ],
+      "cardiac": [
+        {
+          "parameter": "LVEF",
+          "min_value": 20.0,
+          "max_value": 85.0,
+          "unit": "%",
+          "description": "左心室射血分数的合理范围"
+        }
+      ],
+      "breast": [
+        {
+          "parameter": "结节大小",
+          "min_value": 0.1,
+          "max_value": 10.0,
+          "unit": "cm",
+          "description": "乳腺结节大小的合理范围"
+        }
+      ]
+    }
+  },
+  "adaptive_thresholds": [
+    {
+      "metric_name": "grading_consistency_rate",
+      "base_threshold": 0.95,
+      "min_threshold": 0.9,
+      "max_threshold": 0.99,
+      "adjustment_factor": 0.1
+    },
+    {
+      "metric_name": "clinical_boundary_diff_rate",
+      "base_threshold": 0.01,
+      "min_threshold": 0.005,
+      "max_threshold": 0.02,
+      "adjustment_factor": 0.1
+    },
+    {
+      "metric_name": "hallucination_rate_diff",
+      "base_threshold": 0.005,
+      "min_threshold": 0.003,
+      "max_threshold": 0.01,
+      "adjustment_factor": 0.1
+    }
+  ],
+  "consistency_thresholds": {
+    "grading_consistency_rate": 0.95,
+    "semantic_grading_consistency_rate": 0.98,
+    "clinical_boundary_diff_rate": 0.01,
+    "phase1_clinical_boundary_diff_rate": 0.03,
+    "weighted_boundary_diff_rate": 0.01,
+    "critical_boundary_diff_rate": 0.005,
+    "hallucination_rate_diff": 0.005,
+    "latency_diff_pct": 20.0,
+    "latency_diff_abs_ms": 200.0,
+    "latency_diff_gate_logic": "or",
+    "lvef_conflict_rate_threshold": 0.02,
+    "text_consistency_rate": 0.9,
+    "text_exact_match_rate": 0.05,
+    "hallucination_rate_warning": 0.003,
+    "hallucination_rate_critical": 0.005,
+    "absolute_hallucination_rate_threshold": 0.05,
+    "conditional_grading_consistency_rate": 0.9,
+    "conditional_clinical_boundary_diff_rate": 0.02,
+    "conditional_text_consistency_rate": 0.8,
+    "conditional_hallucination_rate_diff_multiplier": 2.0,
+    "conditional_latency_diff_pct_multiplier": 1.5,
+    "verification_phase": "phase1",
+    "phase2_min_cases_per_organ": 300,
+    "phase2_boundary_ci_upper_threshold": 0.02,
+    "auto_upgrade_phase": true,
+    "phase2_min_cases_per_grading_category": 100,
+    "latency_p99_min_samples": 500,
+    "gpu_fragmentation_warning_threshold": 0.3,
+    "gpu_fragmentation_critical_threshold": 0.4,
+    "gpu_memory_monitor_duration_seconds": 14400.0
+  },
+  "text_similarity_config": {
+    "trigram_weight": 0.4,
+    "edit_ratio_weight": 0.4,
+    "bigram_weight": 0.2,
+    "head_chars": 300,
+    "tail_chars": 200,
+    "semantic_equivalent_threshold": 0.7,
+    "non_equivalent_threshold": 0.85,
+    "contradiction_similarity_threshold": 0.85
+  },
+  "benchmark_thresholds": {
+    "accuracy": 0.89,
+    "latency_p99_ms": 3000.0,
+    "latency_p99_concurrent_ms": 8000.0,
+    "hallucination_increment": 0.005,
+    "accuracy_sensitivity_thresholds": [
+      0.8,
+      0.85,
+      0.89,
+      0.9,
+      0.93,
+      0.95,
+      0.97
+    ],
+    "latency_sensitivity_thresholds_ms": [
+      1000,
+      2000,
+      3000,
+      4000,
+      5000
+    ],
+    "hallucination_sensitivity_thresholds": [
+      0.003,
+      0.005,
+      0.01,
+      0.02,
+      0.03
+    ]
+  },
+  "test_data_version": "2.0"
+}

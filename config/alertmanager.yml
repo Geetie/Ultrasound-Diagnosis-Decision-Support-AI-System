@@ -1,0 +1,75 @@
+global:
+  resolve_timeout: 5m
+
+route:
+  group_by: ['alertname', 'metric']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  receiver: 'webhook'
+  routes:
+    - match:
+        severity: warning
+      receiver: 'webhook'
+      continue: true
+    - match:
+        severity: warning
+      receiver: 'feishu'
+      continue: true
+    - match:
+        severity: critical
+      receiver: 'webhook'
+      continue: true
+    - match:
+        severity: critical
+      receiver: 'feishu'
+      continue: true
+    - match:
+        severity: critical
+      receiver: 'dingtalk'
+      continue: true
+    - match:
+        severity: critical
+      receiver: 'wecom'
+      continue: true
+    - match:
+        severity: safety_meltdown
+      receiver: 'webhook'
+      repeat_interval: 5m
+      continue: true
+    - match:
+        severity: safety_meltdown
+      receiver: 'feishu'
+      repeat_interval: 5m
+      continue: true
+    - match:
+        severity: safety_meltdown
+      receiver: 'dingtalk'
+      repeat_interval: 5m
+      continue: true
+    - match:
+        severity: safety_meltdown
+      receiver: 'wecom'
+      repeat_interval: 5m
+      continue: true
+
+receivers:
+  - name: 'webhook'
+    webhook_configs:
+      - url: 'http://api:8000/api/v1/internal/alerts/webhook'
+        send_resolved: true
+
+  - name: 'feishu'
+    webhook_configs:
+      - url: 'http://alertmanager-webhook-adapter:8080/feishu'
+        send_resolved: true
+
+  - name: 'dingtalk'
+    webhook_configs:
+      - url: 'http://alertmanager-webhook-adapter:8080/dingtalk'
+        send_resolved: true
+
+  - name: 'wecom'
+    webhook_configs:
+      - url: 'http://alertmanager-webhook-adapter:8080/wecom'
+        send_resolved: true

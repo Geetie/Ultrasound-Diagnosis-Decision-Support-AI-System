@@ -1,4 +1,5 @@
 import asyncio
+import os
 from logging.config import fileConfig
 
 from sqlalchemy import pool
@@ -9,6 +10,13 @@ from alembic import context
 from app.models.database import Base
 
 config = context.config
+
+_database_url = os.environ.get("DATABASE_URL", "")
+if _database_url:
+    if _database_url.startswith("postgresql+asyncpg://"):
+        config.set_main_option("sqlalchemy.url", _database_url)
+    else:
+        config.set_main_option("sqlalchemy.url", _database_url)
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)

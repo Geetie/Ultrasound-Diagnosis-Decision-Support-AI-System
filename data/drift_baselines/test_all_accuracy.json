@@ -1,0 +1,13 @@
+{
+  "model_name": "test",
+  "model_version": "",
+  "organ": "all",
+  "metric_type": "accuracy",
+  "mean": 0.9001164034478542,
+  "std_dev": 0.003457610091184598,
+  "sample_size": 30,
+  "warning_threshold": 0.7439310759028208,
+  "critical_threshold": 0.6808893471807754,
+  "created_at": "2026-05-10T21:27:53.183338",
+  "updated_at": "2026-05-10T21:27:53.183354"
+}

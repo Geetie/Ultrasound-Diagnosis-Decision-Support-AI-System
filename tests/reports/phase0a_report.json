@@ -1,0 +1,258 @@
+{
+  "engine_a": "llama.cpp",
+  "engine_b": "vLLM",
+  "total_cases": 6,
+  "grading_consistency_rate": "0.1667",
+  "grading_consistent_count": 1,
+  "clinical_boundary_diff_rate": "0.6667",
+  "clinical_boundary_diff_count": 4,
+  "clinical_boundary_diff_rate_ci_lower": "0.3000",
+  "clinical_boundary_diff_rate_ci_upper": "0.9032",
+  "total_boundary_weight": 3.0,
+  "critical_boundary_diff_count": 0,
+  "weighted_boundary_diff_rate": "0.1667",
+  "hallucination_rate_diff": "0.0000",
+  "text_consistency_rate": "0.1667",
+  "semantic_grading_consistency_rate": "0.1667",
+  "text_similarity_avg": "0.6019",
+  "latency_a_p50_ms": 12381.83,
+  "latency_a_p99_ms": 24294.02,
+  "latency_b_p50_ms": 11893.05,
+  "latency_b_p99_ms": 13344.3,
+  "latency_diff_pct": 45.07,
+  "organ_breakdown": {
+    "thyroid": {
+      "total": 6,
+      "grading_consistent": 1,
+      "grading_consistency_rate": 0.16666666666666666,
+      "clinical_boundary_diff": 4,
+      "clinical_boundary_diff_rate": 0.6666666666666666,
+      "hallucination_a_count": 4,
+      "hallucination_b_count": 4,
+      "hallucination_rate_a": 0.6666666666666666,
+      "hallucination_rate_b": 0.6666666666666666,
+      "hallucination_rate_diff": 0.0,
+      "text_consistency_rate": 0.16666666666666666,
+      "latency_a_p50_ms": 12381.83,
+      "latency_a_p99_ms": 24294.0165,
+      "latency_b_p50_ms": 11893.045,
+      "latency_b_p99_ms": 13344.2975
+    }
+  },
+  "boundary_cases_count": 4,
+  "inconsistent_cases_count": 5,
+  "false_stats": {
+    "false_positives": 8,
+    "false_negatives": 0,
+    "true_positives": 0,
+    "true_negatives": 4,
+    "cases_with_ground_truth": 6,
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1_score": 0.0
+  },
+  "failure_analysis": {
+    "summary": {
+      "total_failures": 5,
+      "grading_failures": 5,
+      "boundary_failures": 4,
+      "critical_boundary_failures": 0,
+      "extraction_failures": 0,
+      "hallucination_failures": 8
+    },
+    "by_organ": {
+      "thyroid": {
+        "total": 5,
+        "grading_failures": 5,
+        "boundary_failures": 0,
+        "critical_boundary_failures": 0
+      }
+    },
+    "top_failure_reasons": [],
+    "recommendations": [
+      "假阳性较高，建议优化禁忌词检测阈值或扩展训练数据",
+      "临床边界差异率偏高，建议针对边界病例进行专项优化"
+    ],
+    "trace_chain": [
+      {
+        "case_id": "THY-001",
+        "organ": "thyroid",
+        "input": "甲状腺超声检查：甲状腺左叶下极见1.7×1.3cm低回声结节，边界欠清晰，形态欠规则，可见微钙化，CDFI示内部血流信号。请给出TI-RADS分级。",
+        "engine_a_output": " 甲状腺超声检查结果显示，甲状腺左叶下极存在一个1.7×1.3cm的低回声结节，边界欠清晰，形态欠规则，可见微钙化，CDFI示内部血流信号。根据这些特征，可以给出以下TI-RADS分级：\n\n**TI-RADS 4a**\n\n**解释：**\n- **TI-RADS 4a**表示可疑恶性病变。\n- **低回声结节**：结节内部的回声低于周围正常组织，提示可能含有较多的液体或钙化。\n- **边界欠清晰，形态欠规则**：结节的边缘不清晰，形态不规则，这可能是由于结节内部的不均匀回声或钙化所致。\n- **可见微钙化**：结节内部可见微小的钙化点，这在甲状腺结节中较为常见，但并不一定意味着恶性。\n- **CDFI示内部血流信号**：结节内部的血流信号表明结节可能含有丰富的血液供应，这在甲状腺结节中较为常见，但并不一定意味着恶性。\n\n综合以上特征，该结节被归类为TI-RADS 4a，表示存在可疑恶性病变的风险。建议进一步的检查，如细针穿刺活检（FNAB），以明确结节的性质。",
+        "engine_b_output": "根据您提供的甲状腺超声检查结果，TI-RADS分级为3级。具体解释如下：\n\n1. **TI-RADS分级3级**：\n   - **TI-RADS 3级**：低度可疑（Low Suspicion）。这表示结节的形态和血流信号可能提示良性，但不足以排除恶性病变的可能性。\n\n2. **具体描述**：\n   - **低回声结节**：结节在超声图像上表现为低回声，这可能提示结节内有较多的液体成分。\n   - **边界欠清晰，形态欠规则**：结节的边缘不清晰，形态不规则，这可能提示结节内部结构复杂。\n   - **可见微钙化**：结节内可见微小钙化点，这在甲状腺结节中较为常见，可能提示恶性病变的可能性。\n   - **CDFI示内部血流信号**：结节内部有丰富的血流信号，这在良性结节中较为常见，但不一定是恶性病变的标志。\n\n综合以上信息，该结节的TI-RADS分级为3级，提示该结节可能为良性，但需要进一步的检查（如细针穿刺活检）来确认。",
+        "steps": [
+          {
+            "stage": "grading_check",
+            "rule": "grading_consistency",
+            "detail": "engine_a=4a, engine_b=3",
+            "severity": "high"
+          },
+          {
+            "stage": "boundary_check",
+            "rule": "boundary_weight=1.0",
+            "detail": "engine_a=4a, engine_b=3, severity=warning, is_critical=False",
+            "severity": "warning"
+          },
+          {
+            "stage": "expected_vs_actual_check",
+            "rule": "expected_vs_actual_boundary_crossing",
+            "detail": "expected=4a, engine_a=4a, engine_b=3",
+            "severity": "critical"
+          },
+          {
+            "stage": "hallucination_check",
+            "rule": "engine_b_hallucination",
+            "detail": "engine_b output flagged as hallucination",
+            "severity": "high"
+          }
+        ],
+        "recommendation": "预期vs实际边界跨越(4a→实际)，需紧急审查模型对thyroid的分级准确性"
+      },
+      {
+        "case_id": "THY-002",
+        "organ": "thyroid",
+        "input": "甲状腺超声检查：甲状腺左叶见4.0×3.5cm实性低回声结节，边界模糊，形态极不规则，可见大量微钙化，CDFI示血流信号异常丰富，颈部淋巴结肿大明显。请给出TI-RADS分级。",
+        "engine_a_output": " 根据您提供的超声检查结果，甲状腺左叶的实性低回声结节具有以下特征：\n\n1. **大小**：4.0×3.5cm\n2. **边界**：模糊，形态极不规则\n3. **钙化**：可见大量微钙化\n4. **血流信号**：异常丰富\n\n这些特征提示该结节可能为恶性（恶性肿瘤）的可能性较大。TI-RADS分级通常用于评估结节的恶性可能性，分为以下几级：\n\n- **TI-RADS 1**：良性结节\n- **TI-RADS 2**：可疑良性结节\n- **TI-RADS 3**：可疑恶性结节\n- **TI-RADS 4a**：高度可疑恶性结节\n- **TI-RADS 4b**：恶性结节\n\n根据您的描述，结节的大小、边界、钙化和血流信号都提示其恶性可能性较大。因此，最合适的TI-RADS分级是：\n\n**TI-RADS 4b**\n\n这表示该结节高度怀疑为恶性肿瘤。建议进一步进行细针穿刺活检（FNAB）以明确诊断，并根据结果制定治疗方案。",
+        "engine_b_output": "根据您提供的甲状腺超声检查结果，甲状腺左叶的实性低回声结节符合以下特征：\n\n1. **大小**：4.0×3.5cm\n2. **边界**：模糊，形态极不规则\n3. **钙化**：可见大量微钙化\n4. **血流信号**：CDFI示血流信号异常丰富\n5. **淋巴结**：颈部淋巴结肿大明显\n\n根据这些特征，结合TI-RADS分级标准，该结节的TI-RADS分级为**4**级。\n\n**TI-RADS 4级**表示：\n\n- **结节的大小**：4.0×3.5cm\n- **结节的形态**：边界模糊，形态极不规则\n- **结节的钙化**：可见大量微钙化\n- **结节的血流信号**：CDFI示血流信号异常丰富\n- **淋巴结**：颈部淋巴结肿大明显\n\n**TI-RADS 4级**通常表示结节具有较高的恶性可能性，需要进一步的检查和随访。建议进行细针穿刺活检（FNAB）以明确诊断。",
+        "steps": [
+          {
+            "stage": "grading_check",
+            "rule": "grading_consistency",
+            "detail": "engine_a=1, engine_b=4",
+            "severity": "medium"
+          },
+          {
+            "stage": "expected_vs_actual_check",
+            "rule": "expected_vs_actual_boundary_crossing",
+            "detail": "expected=5, engine_a=1, engine_b=4",
+            "severity": "critical"
+          },
+          {
+            "stage": "hallucination_check",
+            "rule": "engine_a_hallucination",
+            "detail": "engine_a output flagged as hallucination",
+            "severity": "high"
+          }
+        ],
+        "recommendation": "预期vs实际边界跨越(5→实际)，需紧急审查模型对thyroid的分级准确性"
+      },
+      {
+        "case_id": "THY-004",
+        "organ": "thyroid",
+        "input": "甲状腺超声检查：甲状腺右叶中下部见0.6×0.5cm低回声结节，边界清晰，形态规则，CDFI示未见血流信号。请给出TI-RADS分级。",
+        "engine_a_output": " 甲状腺超声检查结果显示，甲状腺右叶中下部有一个0.6×0.5cm的低回声结节，边界清晰，形态规则，CDFI（彩色多普勒血流成像）未见血流信号。根据这些信息，可以给出以下TI-RADS分级：\n\n**TI-RADS 4a**\n\n**解释：**\n- **TI-RADS 4a**表示良性结节，且没有恶性征象。\n- **低回声结节**：结节的回声低于周围甲状腺组织。\n- **边界清晰**：结节的边缘清晰，没有不规则或模糊的边缘。\n- **形态规则**：结节的形状规则，没有不规则或不规则的边缘。\n- **CDFI未见血流信号**：结节内部没有血流信号，这通常与良性结节相关。\n\n因此，根据上述信息，该结节被归类为TI-RADS 4a，表示这是一个良性的结节，没有恶性征象。",
+        "engine_b_output": "根据您提供的甲状腺超声检查结果，TI-RADS（Thyroid Imaging Reporting and Data System）分级为3级。具体解释如下：\n\n1. **TI-RADS 3级**：这表示甲状腺结节的性质是良性的，且没有明显的恶性征象。在您的检查中，甲状腺右叶中下部的低回声结节边界清晰、形态规则，CDFI（彩色多普勒血流成像）未见血流信号，这些都是良性结节的典型特征。\n\n2. **TI-RADS 3级**的进一步解释：\n   - **良性结节**：结节的边界清晰、形态规则，没有明显的恶性征象。\n   - **无血流信号**：结节内部没有血管供应，这通常与良性结节相关。\n\n因此，根据您的描述，这个结节可以被TI-RADS分级为3级，表示这是一个良性的结节，不需要特别的治疗，但需要定期复查以监测其变化。",
+        "steps": [
+          {
+            "stage": "grading_check",
+            "rule": "grading_consistency",
+            "detail": "engine_a=4a, engine_b=3",
+            "severity": "high"
+          },
+          {
+            "stage": "boundary_check",
+            "rule": "boundary_weight=0.0",
+            "detail": "engine_a=4a, engine_b=3, severity=low, is_critical=False",
+            "severity": "warning"
+          },
+          {
+            "stage": "hallucination_check",
+            "rule": "engine_a_hallucination",
+            "detail": "engine_a output flagged as hallucination",
+            "severity": "high"
+          },
+          {
+            "stage": "hallucination_check",
+            "rule": "engine_b_hallucination",
+            "detail": "engine_b output flagged as hallucination",
+            "severity": "high"
+          }
+        ],
+        "recommendation": "双引擎分级不一致(thyroid)，检查模型对同一输入的分级稳定性"
+      },
+      {
+        "case_id": "THY-005",
+        "organ": "thyroid",
+        "input": "甲状腺超声检查：甲状腺左叶中上部见1.9×1.5cm稍低回声结节，边界欠清晰，形态欠规则，可见点状钙化，CDFI示少量血流。请给出TI-RADS分级。",
+        "engine_a_output": " 甲状腺超声检查结果显示，甲状腺左叶中上部存在一个1.9×1.5cm的稍低回声结节，边界欠清晰，形态欠规则，可见点状钙化，CDFI示少量血流。根据这些特征，可以给出以下TI-RADS分级：\n\n**TI-RADS 4a**\n\n**解释：**\n- **TI-RADS 4a**表示结节的特征符合良性结节的描述，但存在一些不典型特征，提示需要进一步评估。\n- **稍低回声结节**：表示结节内部的回声低于周围正常甲状腺组织。\n- **边界欠清晰，形态欠规则**：表示结节的边界和形态不明确。\n- **可见点状钙化**：表示结节内有钙化。\n- **少量血流**：表示结节内有少量的血流信号。\n\n综合这些特征，TI-RADS 4a表示该结节可能是一个良性的结节，但需要进一步评估以排除恶性可能。建议进行进一步的检查，如细针穿刺活检（FNAB），以确定结节的性质。",
+        "engine_b_output": "根据您提供的甲状腺超声检查结果，TI-RADS（Thyroid Imaging Reporting and Data System）分级为3级。具体解释如下：\n\n- **TI-RADS 3级**：表示甲状腺结节的性质尚不能确定，需要进一步的检查或随访。这通常意味着结节的性质可能为良性，但也有可能是恶性的。\n\n具体来说，您的报告描述了以下特征：\n- **结节大小**：1.9×1.5cm\n- **回声**：稍低回声\n- **边界**：欠清晰，形态欠规则\n- **钙化**：可见点状钙化\n- **血流**：少量血流\n\n这些特征提示结节可能为良性，但需要进一步评估，如细针穿刺活检（FNAB）以确定结节的性质。因此，TI-RADS 3级表示需要进一步的检查或随访。",
+        "steps": [
+          {
+            "stage": "grading_check",
+            "rule": "grading_consistency",
+            "detail": "engine_a=4a, engine_b=3",
+            "severity": "high"
+          },
+          {
+            "stage": "boundary_check",
+            "rule": "boundary_weight=1.0",
+            "detail": "engine_a=4a, engine_b=3, severity=warning, is_critical=False",
+            "severity": "warning"
+          },
+          {
+            "stage": "expected_vs_actual_check",
+            "rule": "expected_vs_actual_boundary_crossing",
+            "detail": "expected=4a, engine_a=4a, engine_b=3",
+            "severity": "critical"
+          },
+          {
+            "stage": "hallucination_check",
+            "rule": "engine_a_hallucination",
+            "detail": "engine_a output flagged as hallucination",
+            "severity": "high"
+          },
+          {
+            "stage": "hallucination_check",
+            "rule": "engine_b_hallucination",
+            "detail": "engine_b output flagged as hallucination",
+            "severity": "high"
+          }
+        ],
+        "recommendation": "预期vs实际边界跨越(4a→实际)，需紧急审查模型对thyroid的分级准确性"
+      },
+      {
+        "case_id": "THY-006",
+        "organ": "thyroid",
+        "input": "甲状腺超声检查：甲状腺右叶下极见1.0×0.8cm等回声结节，边界尚清晰，形态尚规则，CDFI示周边少量血流。请给出TI-RADS分级。",
+        "engine_a_output": " 甲状腺超声检查结果显示，甲状腺右叶下极有一个大小为1.0×0.8cm的等回声结节，边界清晰，形态规则，CDFI（彩色多普勒血流成像）显示周边有少量血流。根据这些信息，可以给出以下TI-RADS分级：\n\n**TI-RADS 4a**\n\n**解释：**\n- **TI-RADS 4a**表示良性结节，但需要进一步评估。\n- **等回声结节**：结节的回声与周围甲状腺组织相似，这可能是良性的，但也可能提示存在微小钙化，需要进一步评估。\n- **边界清晰，形态规则**：这些特征通常与良性结节相符。\n- **CDFI显示周边少量血流**：这可能提示结节的血供较周围甲状腺组织丰富，但并不一定意味着恶性。\n\n**建议：**\n- 进行进一步的检查，如细针穿刺活检（FNAB），以确定结节的性质。\n- 定期复查，以监测结节的变化。\n\n**TI-RADS 4b**\n\n**解释：**\n- **TI-RADS 4b**表示良性结节，不需要进一步评估。\n- **等回声结节**：结节的回声与周围甲状腺组织相似，这可能是良性的。\n- **边界清晰，形态规则**：这些特征通常与良性结节相符。\n- **CDFI显示周边少量血流**：这可能提示结节的血供较周围甲状腺组织丰富，但并不一定意味着恶性。\n\n**建议：**\n- 无需进一步评估，定期复查。\n\n**TI-RADS 4c**\n\n**解释：**\n- **TI-RADS 4c**表示良性结节，但需要进一步评估。\n- **等回声结节**：结节的回声与周围甲状腺组织相似，这可能是良性的。\n- **边界清晰，形态规则**：这些特征通常与良性结节相符。\n- **CDFI显示周边少量血流**：这可能提示结节的血供较周围甲状腺组织丰富，但并不一定意味着恶性。\n\n**建议：**\n- 进行进一步的检查，如细针穿刺活检（FNAB），以确定结节的性质。\n\n**TI-RADS 4d**\n\n**解释：**\n- **TI-RADS 4d**表示良性结节，不需要进一步评估。\n- **等",
+        "engine_b_output": "根据您提供的甲状腺超声检查结果，TI-RADS分级为3级。具体解释如下：\n\n1. **TI-RADS分级3级**：\n   - **TI-RADS 3级**表示甲状腺结节的影像学特征提示良性可能性大，但不能完全排除恶性可能。这通常意味着结节的大小、形态、内部回声、血流情况等特征提示良性可能性大，但需要进一步的检查或随访来确认。\n\n2. **具体特征**：\n   - **结节大小**：1.0×0.8cm\n   - **边界**：尚清晰\n   - **形态**：尚规则\n   - **CDFI（彩色多普勒血流成像）**：周边少量血流\n\n这些特征提示结节可能是良性的，但需要进一步的检查（如细针穿刺活检）来确认。因此，3级TI-RADS分级适用于这种情况。",
+        "steps": [
+          {
+            "stage": "grading_check",
+            "rule": "grading_consistency",
+            "detail": "engine_a=4a, engine_b=3",
+            "severity": "high"
+          },
+          {
+            "stage": "boundary_check",
+            "rule": "boundary_weight=1.0",
+            "detail": "engine_a=4a, engine_b=3, severity=warning, is_critical=False",
+            "severity": "warning"
+          },
+          {
+            "stage": "expected_vs_actual_check",
+            "rule": "expected_vs_actual_boundary_crossing",
+            "detail": "expected=3, engine_a=4a, engine_b=3",
+            "severity": "critical"
+          },
+          {
+            "stage": "hallucination_check",
+            "rule": "engine_a_hallucination",
+            "detail": "engine_a output flagged as hallucination",
+            "severity": "high"
+          },
+          {
+            "stage": "hallucination_check",
+            "rule": "engine_b_hallucination",
+            "detail": "engine_b output flagged as hallucination",
+            "severity": "high"
+          }
+        ],
+        "recommendation": "预期vs实际边界跨越(3→实际)，需紧急审查模型对thyroid的分级准确性"
+      }
+    ]
+  },
+  "test_data_version": "2.0",
+  "passed": false,
+  "elapsed_seconds": 159.35
+}

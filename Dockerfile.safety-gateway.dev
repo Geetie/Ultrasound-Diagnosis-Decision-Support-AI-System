@@ -6,18 +6,29 @@ RUN apt-get update && apt-get install -y \
     gcc \
     libpq-dev \
     curl \
-    && rm -rf /var/lib/apt/lists/*
-
-RUN useradd -m -u 1001 appuser
+    gosu \
+    supervisor \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd -r sguser \
+    && useradd -r -g sguser -d /app -s /sbin/nologin sguser \
+    && mkdir -p /var/log/supervisor /var/run
 
 COPY requirements.txt .
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+COPY safety_gateway/ ./safety_gateway/
+COPY desensitization_rules_safety.yaml .
+COPY desensitization_rules_safety_patch.yaml .
+COPY contraindication_rules_safety.yaml .
+COPY medical_person_names.yaml .
 
-RUN chown -R appuser:appuser /app
+COPY scripts/start_safety_gateway.sh /app/scripts/start_safety_gateway.sh
+COPY deploy/supervisor/safety-gateway.conf /etc/supervisor/conf.d/safety-gateway.conf
+RUN chmod +x /app/scripts/start_safety_gateway.sh \
+    && chown -R sguser:sguser /app
 
-USER appuser
+HEALTHCHECK --interval=4s --timeout=1s --retries=3 --start-period=15s \
+    CMD curl -f http://localhost:9001/health || exit 1
 
-CMD ["uvicorn", "safety_gateway.main:app", "--host", "0.0.0.0", "--port", "8001", "--workers", "1"]
+CMD ["bash", "/app/scripts/start_safety_gateway.sh"]

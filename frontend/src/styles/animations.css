@@ -1,0 +1,139 @@
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 1;
+    box-shadow: 0 0 8px rgba(0, 212, 255, 0.4);
+  }
+  50% {
+    opacity: 0.6;
+    box-shadow: 0 0 16px rgba(0, 212, 255, 0.2);
+  }
+}
+
+@keyframes blink-warning {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+@keyframes blink-danger {
+  0%, 100% {
+    opacity: 1;
+    border-color: rgba(239, 68, 68, 0.8);
+  }
+  50% {
+    opacity: 0.5;
+    border-color: rgba(239, 68, 68, 0.3);
+  }
+}
+
+@keyframes slide-in-left {
+  0% {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slide-in-right {
+  0% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slide-in-up {
+  0% {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fade-in {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes flash-red {
+  0% {
+    background-color: rgba(239, 68, 68, 0.5);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+@keyframes annotation-pending-blink {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+@keyframes border-flow {
+  0% {
+    stroke-dashoffset: 0;
+  }
+  100% {
+    stroke-dashoffset: 20;
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.animate-blink-warning {
+  animation: blink-warning 1s ease-in-out infinite;
+}
+
+.animate-blink-danger {
+  animation: blink-danger 0.8s ease-in-out infinite;
+}
+
+.animate-slide-in-left {
+  animation: slide-in-left 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.animate-slide-in-up {
+  animation: slide-in-up 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.animate-fade-in {
+  animation: fade-in 500ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.animate-flash-red {
+  animation: flash-red 500ms ease-out;
+}
+
+.animate-annotation-pending {
+  animation: annotation-pending-blink 1.5s ease-in-out infinite;
+}
+
+.animate-border-flow {
+  animation: border-flow 1s linear infinite;
+}

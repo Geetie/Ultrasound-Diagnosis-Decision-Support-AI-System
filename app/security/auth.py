@@ -1,19 +1,18 @@
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any, List
 from jose import JWTError, jwt
-from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.backends import default_backend
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 import bcrypt
 from app.config.settings import settings
-import os
 import structlog
-import threading
 import secrets
+from cryptography.exceptions import InvalidKey
+from app.security.hsm import hsm_manager, KeySlot
 
 logger = structlog.get_logger()
+
+JWT_KEY_NAME = "jwt_signing_key"
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return bcrypt.checkpw(
@@ -28,140 +27,81 @@ def get_password_hash(password: str) -> str:
 
 oauth2_scheme: OAuth2PasswordBearer = OAuth2PasswordBearer(tokenUrl="api/v1/auth/token")
 
-PRIVATE_KEY_PATH: str = os.environ.get("JWT_PRIVATE_KEY_PATH", "keys/jwt_private.pem")
-PUBLIC_KEY_PATH: str = os.environ.get("JWT_PUBLIC_KEY_PATH", "keys/jwt_public.pem")
-
-private_key: Optional[rsa.RSAPrivateKey] = None
-public_key: Optional[rsa.RSAPublicKey] = None
-_key_lock: threading.RLock = threading.RLock()
-
-def _generate_rsa_key_pair(bits: int = 2048) -> tuple:
-    private_key = rsa.generate_private_key(
-        public_exponent=65537,
-        key_size=bits,
-        backend=default_backend()
-    )
-    public_key = private_key.public_key()
-    return private_key, public_key
-
-def _load_or_generate_keys() -> None:
-    global private_key, public_key
-
-    with _key_lock:
-        if private_key is not None and public_key is not None:
-            return
-
-        if os.path.exists(PRIVATE_KEY_PATH) and os.path.exists(PUBLIC_KEY_PATH):
-            try:
-                with open(PRIVATE_KEY_PATH, "rb") as f:
-                    private_key = serialization.load_pem_private_key(
-                        f.read(),
-                        password=None,
-                        backend=default_backend()
-                    )
-                with open(PUBLIC_KEY_PATH, "rb") as f:
-                    public_key = serialization.load_pem_public_key(
-                        f.read(),
-                        backend=default_backend()
-                    )
-                logger.info("jwt_keys_loaded_from_disk", private_path=PRIVATE_KEY_PATH)
-            except Exception as e:
-                logger.error("jwt_key_load_failed", error=str(e))
-                private_key, public_key = _generate_rsa_key_pair()
-                _save_keys_to_disk(private_key, public_key)
-        else:
-            private_key, public_key = _generate_rsa_key_pair()
-            _save_keys_to_disk(private_key, public_key)
-            logger.info("jwt_keys_generated_and_saved", private_path=PRIVATE_KEY_PATH)
-
-def load_or_generate_keys() -> None:
-    _load_or_generate_keys()
-
-
-def _save_keys_to_disk(private_key: rsa.RSAPrivateKey, public_key: rsa.RSAPublicKey) -> None:
-    try:
-        key_dir = os.path.dirname(PRIVATE_KEY_PATH)
-        if key_dir and not os.path.exists(key_dir):
-            os.makedirs(key_dir)
-
-        with open(PRIVATE_KEY_PATH, 'wb') as f:
-            f.write(private_key.private_bytes(
-                encoding=serialization.Encoding.PEM,
-                format=serialization.PrivateFormat.PKCS8,
-                encryption_algorithm=serialization.NoEncryption()
-            ))
-
-        with open(PUBLIC_KEY_PATH, 'wb') as f:
-            f.write(public_key.public_bytes(
-                encoding=serialization.Encoding.PEM,
-                format=serialization.PublicFormat.SubjectPublicKeyInfo
-            ))
-        logger.info("jwt_keys_saved_to_disk", private_path=PRIVATE_KEY_PATH)
-    except Exception as e:
-        logger.error("jwt_key_save_failed", error=str(e))
+def _ensure_jwt_key_exists() -> None:
+    keys = hsm_manager.list_keys()
+    if JWT_KEY_NAME not in keys:
+        logger.info("jwt_key_not_found_creating_new", key_name=JWT_KEY_NAME)
+        hsm_manager.generate_key_pair(JWT_KEY_NAME)
 
 def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
-    _load_or_generate_keys()
+    _ensure_jwt_key_exists()
 
-    with _key_lock:
-        to_encode: Dict[str, Any] = data.copy()
-        if expires_delta:
-            expire: datetime = datetime.now(timezone.utc) + expires_delta
-        else:
-            expire = datetime.now(timezone.utc) + timedelta(minutes=settings.jwt_expire_minutes)
+    to_encode: Dict[str, Any] = data.copy()
+    if expires_delta:
+        expire: datetime = datetime.now(timezone.utc) + expires_delta
+    else:
+        expire = datetime.now(timezone.utc) + timedelta(minutes=settings.jwt_expire_minutes)
 
-        now = datetime.now(timezone.utc)
-        to_encode.update({
-            "exp": expire,
-            "iat": now,
-            "jti": secrets.token_urlsafe(16)
-        })
+    now = datetime.now(timezone.utc)
+    to_encode.update({
+        "exp": int(expire.timestamp()),
+        "iat": int(now.timestamp()),
+        "jti": secrets.token_urlsafe(16)
+    })
 
-        if private_key is None:
-            raise ValueError("Private key not initialized")
-        
-        # Convert private key to PEM string
-        private_key_pem = private_key.private_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PrivateFormat.PKCS8,
-            encryption_algorithm=serialization.NoEncryption()
-        )
-
-        encoded_jwt: str = jwt.encode(
-            to_encode,
-            private_key_pem,
-            algorithm=settings.jwt_algorithm
-        )
+    header = {"alg": settings.jwt_algorithm, "typ": "JWT", "kid": JWT_KEY_NAME}
+    try:
+        encoded_jwt: str = hsm_manager.sign_jwt(JWT_KEY_NAME, header, to_encode, settings.jwt_algorithm)
         return encoded_jwt
+    except (InvalidKey, KeyError, ConnectionError, OSError) as e:
+        hsm_manager.set_degraded(f"jwt_signing_failed: {e}")
+        raise
+    except Exception as e:
+        logger.error("jwt_signing_error", error=str(e))
+        raise
 
 def decode_access_token(token: str) -> Dict[str, Any]:
-    _load_or_generate_keys()
+    public_key = hsm_manager.get_public_key(JWT_KEY_NAME)
+    if public_key is None:
+        hsm_manager.set_degraded("jwt_public_key_unavailable")
+        raise ValueError("JWT public key not available")
 
-    with _key_lock:
-        if public_key is None:
-            raise ValueError("Public key not initialized")
-        
-        # Convert public key to PEM string
-        public_key_pem = public_key.public_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PublicFormat.SubjectPublicKeyInfo
+    try:
+        payload: Dict[str, Any] = jwt.decode(
+            token,
+            public_key,
+            algorithms=["RS256"],
+            options={"verify_exp": True}
         )
+        return payload
+    except JWTError:
+        pass
 
+    all_keys = hsm_manager.list_keys_by_slot(KeySlot.JWT_SIGNING)
+    for key_name in all_keys:
+        if key_name == JWT_KEY_NAME or not key_name.startswith(f"{JWT_KEY_NAME}_v"):
+            continue
+        old_public_key = hsm_manager.get_public_key(key_name)
+        if old_public_key is None:
+            continue
         try:
-            payload: Dict[str, Any] = jwt.decode(
+            payload = jwt.decode(
                 token,
-                public_key_pem,
-                algorithms=[settings.jwt_algorithm],
+                old_public_key,
+                algorithms=["RS256"],
                 options={"verify_exp": True}
             )
+            logger.info("jwt_verified_with_rotated_key", key_name=key_name)
             return payload
-        except JWTError as e:
-            logger.warning("jwt_decode_failed", error=str(e))
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Could not validate credentials",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
+        except JWTError:
+            continue
+
+    logger.warning("jwt_decode_failed_all_keys_tried")
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
 
 def get_current_user(token: str = Depends(oauth2_scheme)) -> Dict[str, Any]:
     payload: Dict[str, Any] = decode_access_token(token)
@@ -180,21 +120,21 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> Dict[str, Any]:
 
 def get_current_active_user(current_user: Dict[str, Any] = Depends(get_current_user)) -> Dict[str, Any]:
     if current_user.get("disabled", False):
-        raise HTTPException(status_code=400, detail="Inactive user")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Inactive user")
     return current_user
 
 class RoleChecker:
     def __init__(self, allowed_roles: List[str]) -> None:
         self.allowed_roles: List[str] = allowed_roles
 
-    def __call__(self, user: Dict[str, Any] = Depends(get_current_active_user)) -> bool:
+    def __call__(self, user: Dict[str, Any] = Depends(get_current_active_user)) -> Dict[str, Any]:
         user_role: Optional[str] = user.get("role")
         if user_role not in self.allowed_roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You do not have permission to access this resource"
             )
-        return True
+        return user
 
 ROLES: Dict[str, str] = {
     "ULTRASOUND_DOCTOR": "超声科医生",

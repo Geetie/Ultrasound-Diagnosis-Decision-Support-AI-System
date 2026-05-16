@@ -1,4 +1,40 @@
 from app.inference.base import BaseHttpInferenceEngine
+from app.inference.benchmark import ModelBenchmark, ModelCandidate, BenchmarkResult, BenchmarkReport, SensitivityAnalysisResult
+from app.inference.consistency import (
+    ConsistencyVerifier,
+    ConsistencyReport,
+    ConsistencyPair,
+    GradingResult,
+    extract_grading,
+    FalseStats,
+    CrossValidationResult,
+)
+from app.inference.drift_detector import (
+    DriftDetector,
+    DriftReport,
+    DriftAlert,
+    DriftSeverity,
+    MetricType,
+    PerformanceBaseline,
+    MetricSnapshot,
+)
+from app.inference.factory import create_inference_engine, create_inference_engine_from_settings
+from app.inference.gpu_monitor import (
+    GPUMemoryMonitor,
+    GPUMemorySnapshot,
+    GPUScheduleStrategy,
+    SystemMemoryProfiler,
+    FragmentationReport,
+    MemoryProfileReport,
+)
+from app.inference.hallucination_detector import (
+    HallucinationDetector,
+    DetectionStrategy,
+    DetectionResult,
+    DetectionIssue,
+    get_default_detector,
+    detect_hallucination,
+)
 from app.inference.llama_cpp import LlamaCppEngine
 from app.inference.protocols import (
     InferenceEngine,
@@ -8,20 +44,70 @@ from app.inference.protocols import (
     InferenceResponse,
     ModelInfo,
     TokenUsage,
-    _DeprecatedErrorCode,
+    DeprecatedErrorCode,
 )
+from app.inference.verification_config import (
+    get_verification_config,
+    get_default_verification_config,
+    VerificationConfig,
+    BoundaryConfig,
+    ForbiddenTermsConfig,
+    StrategyWeightConfig,
+    NumericalValidationConfig,
+)
+from app.inference.utils import percentile
 from app.inference.vllm import VLLMEngine
 
 __all__ = [
     "BaseHttpInferenceEngine",
+    "BenchmarkReport",
+    "BenchmarkResult",
+    "ConsistencyPair",
+    "ConsistencyReport",
+    "ConsistencyVerifier",
+    "CrossValidationResult",
+    "DetectionIssue",
+    "DetectionResult",
+    "DetectionStrategy",
+    "DriftAlert",
+    "DriftDetector",
+    "DriftReport",
+    "DriftSeverity",
+    "FalseStats",
+    "ForbiddenTermsConfig",
+    "FragmentationReport",
+    "GPUMemoryMonitor",
+    "GPUMemorySnapshot",
+    "GPUScheduleStrategy",
+    "GradingResult",
+    "HallucinationDetector",
     "InferenceEngine",
     "InferenceError",
     "InferenceErrorCode",
     "InferenceRequest",
     "InferenceResponse",
     "LlamaCppEngine",
+    "MemoryProfileReport",
+    "MetricSnapshot",
+    "MetricType",
+    "ModelBenchmark",
+    "ModelCandidate",
     "ModelInfo",
+    "NumericalValidationConfig",
+    "PerformanceBaseline",
+    "SensitivityAnalysisResult",
+    "StrategyWeightConfig",
+    "SystemMemoryProfiler",
     "TokenUsage",
     "VLLMEngine",
-    "_DeprecatedErrorCode",
+    "VerificationConfig",
+    "DeprecatedErrorCode",
+    "create_inference_engine",
+    "create_inference_engine_from_settings",
+    "detect_hallucination",
+    "extract_grading",
+    "get_default_detector",
+    "get_default_verification_config",
+    "get_verification_config",
+    "percentile",
 ]

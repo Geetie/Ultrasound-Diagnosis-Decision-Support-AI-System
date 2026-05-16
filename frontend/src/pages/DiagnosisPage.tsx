@@ -1,0 +1,305 @@
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Card, Typography, Button, Spin, Empty } from 'antd';
+import { ReloadOutlined, ClockCircleOutlined } from '@ant-design/icons';
+import { tokens } from '@/styles/tokens';
+import { useSessionStore } from '@/stores/sessionStore';
+import { pollDiagnosisResult } from '@/services/diagnosisService';
+import type { DiagnosisResult } from '@/types/api';
+import DiagnosisConclusion from '@/components/diagnosis/DiagnosisConclusion';
+import EvidenceTrace from '@/components/diagnosis/EvidenceTrace';
+import HallucinationWarning from '@/components/diagnosis/HallucinationWarning';
+import QualityControlBadge from '@/components/diagnosis/QualityControlBadge';
+
+const { Text, Title } = Typography;
+
+type LoadingPhase = 'idle' | 'requesting' | 'polling' | 'completed' | 'timeout' | 'error';
+
+export default function DiagnosisPage() {
+  const sessionId = useSessionStore((s) => s.sessionId);
+  const [result, setResult] = useState<DiagnosisResult | null>(null);
+  const [phase, setPhase] = useState<LoadingPhase>('idle');
+  const [requestId] = useState<string | null>(null);
+  const [reviewAcknowledged, setReviewAcknowledged] = useState(false);
+  const [responseTier] = useState<'realtime' | 'standard' | 'full'>('standard');
+  const cancelRef = useRef<{ cancel: () => void } | null>(null);
+
+  useEffect(() => {
+    return () => {
+      cancelRef.current?.cancel();
+    };
+  }, []);
+
+  const handleResult = useCallback((diagnosisResult: DiagnosisResult) => {
+    setResult(diagnosisResult);
+    setPhase('completed');
+    setReviewAcknowledged(false);
+    cancelRef.current = null;
+  }, []);
+
+  const handleTimeout = useCallback(() => {
+    setPhase('timeout');
+    cancelRef.current = null;
+  }, []);
+
+  const startPolling = useCallback(
+    (id: string) => {
+      cancelRef.current?.cancel();
+      const controller = new AbortController();
+      const poller = pollDiagnosisResult(id, handleResult, handleTimeout, {
+        signal: controller.signal,
+        firstPollDelay: 800,
+        pollInterval: 1500,
+        maxWaitMs: 60000,
+      });
+      cancelRef.current = poller;
+      setPhase('polling');
+    },
+    [handleResult, handleTimeout],
+  );
+
+  const handleRetry = useCallback(() => {
+    if (!requestId) return;
+    setPhase('requesting');
+    startPolling(requestId);
+  }, [requestId, startPolling]);
+
+  const isSevere = result?.hallucination_severity === 'severe';
+  const needsReview = result?.requires_manual_review ?? false;
+
+  const renderLoadingState = () => {
+    const messages: Record<string, string> = {
+      requesting: '正在提交诊断请求...',
+      polling: 'AI 正在分析影像数据...',
+    };
+    const msg = messages[phase] ?? '处理中...';
+
+    return (
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: tokens.spacing.xl * 2,
+          gap: tokens.spacing.md,
+        }}
+      >
+        <Spin size="large" />
+        <Text style={{ color: tokens.color.text.secondary, fontSize: 14 }}>{msg}</Text>
+        <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacing.xs }}>
+          <ClockCircleOutlined style={{ color: tokens.color.text.muted, fontSize: 12 }} />
+          <Text style={{ color: tokens.color.text.muted, fontSize: 11, fontFamily: tokens.font.mono }}>
+            预计耗时 3-15 秒
+          </Text>
+        </div>
+      </div>
+    );
+  };
+
+  const renderTimeoutState = () => (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: tokens.spacing.xl * 2,
+        gap: tokens.spacing.md,
+      }}
+    >
+      <Empty
+        description={
+          <Text style={{ color: tokens.color.text.muted }}>诊断请求超时，请重试</Text>
+        }
+      />
+      <Button
+        icon={<ReloadOutlined />}
+        onClick={handleRetry}
+        style={{
+          background: tokens.color.accent.primaryAlpha20,
+          borderColor: `${tokens.color.accent.primary}40`,
+          color: tokens.color.accent.primary,
+        }}
+      >
+        重新获取结果
+      </Button>
+    </div>
+  );
+
+  const renderIdleState = () => (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: tokens.spacing.xl * 2,
+        gap: tokens.spacing.md,
+      }}
+    >
+      <Title
+        level={4}
+        style={{
+          fontFamily: tokens.font.display,
+          color: tokens.color.accent.secondary,
+          letterSpacing: '0.05em',
+          margin: 0,
+        }}
+      >
+        DIAGNOSIS
+      </Title>
+      <Text style={{ color: tokens.color.text.muted, fontSize: 13 }}>
+        {sessionId ? '请从检查页面发起诊断请求' : '请先创建检查会话'}
+      </Text>
+    </div>
+  );
+
+  const renderResult = () => {
+    if (!result) return null;
+
+    const evidence = result.evidence as Record<string, unknown>;
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacing.lg }}>
+        <HallucinationWarning
+          visible={isSevere}
+          reviewReason={result.review_reason}
+          onAcknowledgeReview={() => setReviewAcknowledged(true)}
+        />
+
+        <Card
+          size="small"
+          style={{
+            background: tokens.color.bg.secondary,
+            border: `1px solid ${tokens.color.border.default}`,
+            borderRadius: tokens.radius.md,
+          }}
+          styles={{ body: { padding: tokens.spacing.lg } }}
+        >
+          <DiagnosisConclusion result={result} responseTier={responseTier} />
+        </Card>
+
+        <Card
+          size="small"
+          style={{
+            background: tokens.color.bg.secondary,
+            border: `1px solid ${tokens.color.border.default}`,
+            borderRadius: tokens.radius.md,
+          }}
+          styles={{ body: { padding: tokens.spacing.md } }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: tokens.spacing.sm }}>
+            <Text
+              style={{
+                fontFamily: tokens.font.display,
+                color: tokens.color.accent.secondary,
+                fontSize: 12,
+                letterSpacing: '0.05em',
+              }}
+            >
+              QUALITY CONTROL
+            </Text>
+            {needsReview && !reviewAcknowledged && (
+              <Text style={{ color: tokens.color.accent.danger, fontSize: 11, fontFamily: tokens.font.mono }}>
+                ⚠ 需人工审核
+              </Text>
+            )}
+          </div>
+          <QualityControlBadge
+            hallucination_severity={result.hallucination_severity}
+            fusion_status={result.fusion_status}
+            desensitization_status={result.desensitization_status}
+          />
+        </Card>
+
+        <EvidenceTrace evidence={evidence as any} />
+
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: `${tokens.spacing.sm}px 0`,
+          }}
+        >
+          <Text style={{ color: tokens.color.text.muted, fontSize: 10, fontFamily: tokens.font.mono }}>
+            模型 {result.model_version} · 知识库 {result.knowledge_base_version} · 耗时 {result.processing_time_ms}ms
+          </Text>
+          <Text style={{ color: tokens.color.text.muted, fontSize: 10, fontFamily: tokens.font.mono }}>
+            {result.request_id.slice(0, 12)}...
+          </Text>
+        </div>
+      </div>
+    );
+  };
+
+  const renderContent = () => {
+    switch (phase) {
+      case 'idle':
+        return renderIdleState();
+      case 'requesting':
+      case 'polling':
+        return renderLoadingState();
+      case 'timeout':
+        return renderTimeoutState();
+      case 'completed':
+        return renderResult();
+      default:
+        return renderIdleState();
+    }
+  };
+
+  return (
+    <div
+      className="h-full animate-fade-in"
+      style={{
+        background: tokens.color.bg.primary,
+        overflowY: 'auto',
+        padding: tokens.spacing.lg,
+      }}
+    >
+      <div style={{ maxWidth: 800, margin: '0 auto' }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: tokens.spacing.lg,
+          }}
+        >
+          <Title
+            level={4}
+            style={{
+              fontFamily: tokens.font.display,
+              color: tokens.color.accent.primary,
+              letterSpacing: '0.08em',
+              margin: 0,
+            }}
+          >
+            DIAGNOSIS
+          </Title>
+          <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacing.sm }}>
+            {phase === 'completed' && (
+              <Button
+                size="small"
+                icon={<ReloadOutlined />}
+                onClick={handleRetry}
+                style={{
+                  background: tokens.color.accent.primaryAlpha20,
+                  borderColor: `${tokens.color.accent.primary}40`,
+                  color: tokens.color.accent.primary,
+                  fontFamily: tokens.font.mono,
+                  fontSize: 11,
+                }}
+              >
+                刷新
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {renderContent()}
+      </div>
+    </div>
+  );
+}

@@ -1,0 +1,11 @@
+from pydantic import BaseModel
+
+
+class SGDesensitizationRule(BaseModel):
+    name: str
+    pattern: str
+    replacement: str
+    description: str | None = None
+    enabled: bool = True
+    priority: int = 10
+    is_patch: bool = False

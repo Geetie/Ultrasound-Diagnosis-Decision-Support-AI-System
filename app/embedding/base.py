@@ -5,8 +5,8 @@ from typing import Any
 
 import httpx
 import numpy as np
-import structlog
 
+from app.common.http_client_base import BaseHttpClient
 from app.embedding.protocols import (
     EmbeddingError,
     EmbeddingErrorCode,
@@ -30,7 +30,23 @@ def get_mime_type(image_format: str) -> str:
     return _MIME_TYPE_MAP.get(image_format.lower(), f"application/{image_format}")
 
 
-class BaseHttpEmbeddingService(EmbeddingService, ABC):
+class BaseHttpEmbeddingService(BaseHttpClient, EmbeddingService, ABC):
+    """HTTP嵌入服务基类。
+
+    继承自BaseHttpClient，提供HTTP客户端的通用功能。
+    子类需要实现特定的业务逻辑。
+
+    Args:
+        base_url: 服务的基础URL
+        logger_name: 日志记录器名称
+        timeout_seconds: 请求超时时间（默认30秒）
+        connect_timeout_seconds: 连接超时时间（默认10秒）
+        health_check_timeout_seconds: 健康检查超时时间（默认5秒）
+        dimension: 嵌入向量维度（默认768）
+        max_connections: 连接池最大连接数（默认20）
+        max_keepalive_connections: 连接池最大保持连接数（默认5）
+    """
+
     def __init__(
         self,
         base_url: str,
@@ -42,43 +58,77 @@ class BaseHttpEmbeddingService(EmbeddingService, ABC):
         max_connections: int = 20,
         max_keepalive_connections: int = 5,
     ):
-        self._base_url = base_url.rstrip("/")
-        self._logger_name = logger_name
-        self._timeout_seconds = timeout_seconds
-        self._connect_timeout_seconds = connect_timeout_seconds
-        self._health_check_timeout_seconds = health_check_timeout_seconds
+        super().__init__(
+            base_url=base_url,
+            logger_name=logger_name,
+            timeout_seconds=timeout_seconds,
+            connect_timeout_seconds=connect_timeout_seconds,
+            health_check_timeout_seconds=health_check_timeout_seconds,
+            max_connections=max_connections,
+            max_keepalive_connections=max_keepalive_connections,
+            keepalive_expiry=300.0,
+        )
         self._dimension = dimension
-        self._max_connections = max_connections
-        self._max_keepalive_connections = max_keepalive_connections
-        self._client: httpx.AsyncClient | None = None
         self._model_info_cache: EmbeddingModelInfo | None = None
         self._model_info_cached_at: float = 0.0
-        self._closed = False
-        self._log = structlog.get_logger(logger_name)
 
-    async def _get_client(self) -> httpx.AsyncClient:
-        if self._closed:
-            raise EmbeddingError(
-                error_code=EmbeddingErrorCode.ENCODING_FAILED,
-                message="embedding service has been closed",
-                detail=f"service={self._logger_name}",
-                retryable=False,
-            )
-        if self._client is None or self._client.is_closed:
-            self._client = httpx.AsyncClient(
-                base_url=self._base_url,
-                timeout=httpx.Timeout(
-                    connect=self._connect_timeout_seconds,
-                    read=self._timeout_seconds,
-                    write=self._connect_timeout_seconds,
-                    pool=self._connect_timeout_seconds,
-                ),
-                limits=httpx.Limits(
-                    max_connections=self._max_connections,
-                    max_keepalive_connections=self._max_keepalive_connections,
-                ),
-            )
-        return self._client
+    def _create_closed_error(self) -> Exception:
+        return EmbeddingError(
+            error_code=EmbeddingErrorCode.ENCODING_FAILED,
+            message="embedding service has been closed",
+            detail=f"service={self._logger_name}",
+            retryable=False,
+        )
+
+    def _create_timeout_error(self, detail: str) -> Exception:
+        return EmbeddingError(
+            error_code=EmbeddingErrorCode.TIMEOUT,
+            message=f"{self._logger_name} request timed out",
+            detail=detail,
+            retryable=True,
+            retry_strategy="retry_after_5s",
+        )
+
+    def _create_connection_error(self, detail: str) -> Exception:
+        return EmbeddingError(
+            error_code=EmbeddingErrorCode.CONNECTION_FAILED,
+            message=f"Cannot connect to {self._logger_name} service",
+            detail=detail,
+            retryable=True,
+            retry_strategy="retry_after_5s",
+        )
+
+    def _create_http_error(
+        self,
+        status_code: int,
+        detail: str,
+        retryable: bool,
+    ) -> Exception:
+        return EmbeddingError(
+            error_code=EmbeddingErrorCode.ENCODING_FAILED,
+            message=f"{self._logger_name} returned HTTP {status_code}",
+            detail=detail,
+            retryable=retryable,
+            retry_strategy="retry_after_5s" if retryable else "no_retry",
+        )
+
+    def _create_json_decode_error(self, detail: str) -> Exception:
+        return EmbeddingError(
+            error_code=EmbeddingErrorCode.ENCODING_FAILED,
+            message="returned invalid JSON",
+            detail=detail,
+            retryable=True,
+            retry_strategy="retry_after_5s",
+        )
+
+    def _create_unexpected_error(self, detail: str) -> Exception:
+        return EmbeddingError(
+            error_code=EmbeddingErrorCode.ENCODING_FAILED,
+            message=f"Unexpected error during {self._logger_name} request",
+            detail=detail,
+            retryable=False,
+            retry_strategy="no_retry",
+        )
 
     def _parse_embeddings(self, data: dict[str, Any], expected_count: int | None = None) -> list[np.ndarray]:
         raw = data.get("dense_embeddings", data.get("embeddings", []))
@@ -129,225 +179,6 @@ class BaseHttpEmbeddingService(EmbeddingService, ABC):
             result.append(weights)
         return result
 
-    async def _do_post_json(
-        self,
-        endpoint: str,
-        payload: dict[str, Any],
-        request_id: str | None = None,
-        session_id: str | None = None,
-    ) -> dict[str, Any]:
-        start_time = time.monotonic()
-        client = await self._get_client()
-
-        try:
-            response = await client.post(endpoint, json=payload)
-            latency_ms = (time.monotonic() - start_time) * 1000
-
-            if response.status_code != 200:
-                error_body = response.text[:500]
-                self._log.error(
-                    "embedding_request_failed",
-                    engine=self._logger_name,
-                    endpoint=endpoint,
-                    status_code=response.status_code,
-                    error=error_body,
-                    request_id=request_id,
-                )
-                raise EmbeddingError(
-                    error_code=EmbeddingErrorCode.ENCODING_FAILED,
-                    message=f"{self._logger_name} returned HTTP {response.status_code}",
-                    detail=error_body,
-                    retryable=response.status_code >= 500,
-                    retry_strategy="retry_after_5s" if response.status_code >= 500 else "no_retry",
-                )
-
-            try:
-                data = response.json()
-            except json.JSONDecodeError as exc:
-                self._log.error(
-                    "json_decode_failed",
-                    engine=self._logger_name,
-                    request_id=request_id,
-                    error=str(exc),
-                )
-                raise EmbeddingError(
-                    error_code=EmbeddingErrorCode.ENCODING_FAILED,
-                    message="returned invalid JSON",
-                    detail=str(exc),
-                    retryable=True,
-                    retry_strategy="retry_after_5s",
-                ) from exc
-
-            return data
-
-        except EmbeddingError:
-            raise
-        except httpx.TimeoutException as exc:
-            latency_ms = (time.monotonic() - start_time) * 1000
-            self._log.error(
-                "timeout",
-                engine=self._logger_name,
-                endpoint=endpoint,
-                request_id=request_id,
-                latency_ms=round(latency_ms, 2),
-                error=str(exc),
-            )
-            raise EmbeddingError(
-                error_code=EmbeddingErrorCode.TIMEOUT,
-                message=f"{self._logger_name} request timed out",
-                detail=str(exc),
-                retryable=True,
-                retry_strategy="retry_after_5s",
-            ) from exc
-        except httpx.ConnectError as exc:
-            self._log.error(
-                "connection_failed",
-                engine=self._logger_name,
-                base_url=self._base_url,
-                error=str(exc),
-            )
-            raise EmbeddingError(
-                error_code=EmbeddingErrorCode.CONNECTION_FAILED,
-                message=f"Cannot connect to {self._logger_name} service",
-                detail=f"Connection to {self._base_url} failed: {exc}",
-                retryable=True,
-                retry_strategy="retry_after_5s",
-            ) from exc
-        except Exception as exc:
-            self._log.error(
-                "unexpected_error",
-                engine=self._logger_name,
-                request_id=request_id,
-                error=str(exc),
-            )
-            raise EmbeddingError(
-                error_code=EmbeddingErrorCode.ENCODING_FAILED,
-                message=f"Unexpected error during {self._logger_name} request",
-                detail=str(exc),
-                retryable=False,
-                retry_strategy="no_retry",
-            ) from exc
-
-    async def _do_post_multipart(
-        self,
-        endpoint: str,
-        files: list[tuple[str, tuple[str, bytes, str]]],
-        data: dict[str, Any],
-        request_id: str | None = None,
-        session_id: str | None = None,
-    ) -> dict[str, Any]:
-        start_time = time.monotonic()
-        client = await self._get_client()
-
-        try:
-            response = await client.post(endpoint, files=files, data=data)
-            latency_ms = (time.monotonic() - start_time) * 1000
-
-            if response.status_code != 200:
-                error_body = response.text[:500]
-                self._log.error(
-                    "embedding_multipart_failed",
-                    engine=self._logger_name,
-                    endpoint=endpoint,
-                    status_code=response.status_code,
-                    error=error_body,
-                    request_id=request_id,
-                    session_id=session_id,
-                )
-                raise EmbeddingError(
-                    error_code=EmbeddingErrorCode.ENCODING_FAILED,
-                    message=f"{self._logger_name} returned HTTP {response.status_code}",
-                    detail=error_body,
-                    retryable=response.status_code >= 500,
-                    retry_strategy="retry_after_5s" if response.status_code >= 500 else "no_retry",
-                )
-
-            try:
-                return response.json()
-            except json.JSONDecodeError as exc:
-                self._log.error(
-                    "json_decode_failed",
-                    engine=self._logger_name,
-                    request_id=request_id,
-                    session_id=session_id,
-                    error=str(exc),
-                )
-                raise EmbeddingError(
-                    error_code=EmbeddingErrorCode.ENCODING_FAILED,
-                    message="returned invalid JSON",
-                    detail=str(exc),
-                    retryable=True,
-                    retry_strategy="retry_after_5s",
-                ) from exc
-
-        except EmbeddingError:
-            raise
-        except httpx.TimeoutException as exc:
-            latency_ms = (time.monotonic() - start_time) * 1000
-            self._log.error(
-                "timeout",
-                engine=self._logger_name,
-                endpoint=endpoint,
-                request_id=request_id,
-                session_id=session_id,
-                latency_ms=round(latency_ms, 2),
-                error=str(exc),
-            )
-            raise EmbeddingError(
-                error_code=EmbeddingErrorCode.TIMEOUT,
-                message=f"{self._logger_name} request timed out",
-                detail=str(exc),
-                retryable=True,
-                retry_strategy="retry_after_5s",
-            ) from exc
-        except httpx.ConnectError as exc:
-            self._log.error(
-                "connection_failed",
-                engine=self._logger_name,
-                base_url=self._base_url,
-                request_id=request_id,
-                session_id=session_id,
-                error=str(exc),
-            )
-            raise EmbeddingError(
-                error_code=EmbeddingErrorCode.CONNECTION_FAILED,
-                message=f"Cannot connect to {self._logger_name} service",
-                detail=f"Connection to {self._base_url} failed: {exc}",
-                retryable=True,
-                retry_strategy="retry_after_5s",
-            ) from exc
-        except Exception as exc:
-            self._log.error(
-                "unexpected_error",
-                engine=self._logger_name,
-                request_id=request_id,
-                error=str(exc),
-            )
-            raise EmbeddingError(
-                error_code=EmbeddingErrorCode.ENCODING_FAILED,
-                message=f"Unexpected error during {self._logger_name} request",
-                detail=str(exc),
-                retryable=False,
-                retry_strategy="no_retry",
-            ) from exc
-
-    async def health_check(self) -> bool:
-        client = await self._get_client()
-        try:
-            response = await client.get(
-                "/health",
-                timeout=httpx.Timeout(
-                    connect=self._connect_timeout_seconds,
-                    read=self._health_check_timeout_seconds,
-                    write=self._health_check_timeout_seconds,
-                    pool=self._health_check_timeout_seconds,
-                ),
-            )
-            return response.status_code == 200
-        except (httpx.TimeoutException, httpx.ConnectError):
-            self._log.warning("health_check_failed", engine=self._logger_name, base_url=self._base_url)
-            return False
-
     async def get_model_info(self) -> EmbeddingModelInfo:
         now = time.monotonic()
         if self._model_info_cache is not None and (now - self._model_info_cached_at) < _MODEL_INFO_TTL_SECONDS:
@@ -397,10 +228,3 @@ class BaseHttpEmbeddingService(EmbeddingService, ABC):
     @abstractmethod
     def _build_model_info(self, data: dict[str, Any]) -> EmbeddingModelInfo:
         raise NotImplementedError
-
-    async def close(self) -> None:
-        self._closed = True
-        if self._client and not self._client.is_closed:
-            await self._client.aclose()
-            self._client = None
-            self._log.info("client_closed", engine=self._logger_name)

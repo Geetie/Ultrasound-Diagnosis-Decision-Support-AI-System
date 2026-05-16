@@ -1,0 +1,124 @@
+from app.inference.llama_cpp import LlamaCppEngine
+from app.inference.protocols import InferenceEngine, InferenceError, InferenceErrorCode
+from app.inference.vllm import VLLMEngine
+
+
+def create_inference_engine(
+    engine_type: str,
+    llama_cpp_host: str = "localhost",
+    llama_cpp_port: int = 8001,
+    vllm_host: str = "localhost",
+    vllm_port: int = 8002,
+    timeout_seconds: float = 30.0,
+    connect_timeout_seconds: float = 10.0,
+    health_check_timeout_seconds: float = 5.0,
+    max_tokens: int = 2048,
+    temperature: float = 0.1,
+    top_p: float = 0.95,
+    vllm_default_model: str = "",
+    vllm_require_model: bool = True,
+    llama_cpp_max_tokens: int = 1024,
+    max_retries: int = 3,
+    retry_delay_base: float = 1.0,
+    retry_delay_max: float = 10.0,
+    circuit_breaker_timeout: float = 30.0,
+    circuit_breaker_failure_threshold: int = 5,
+    circuit_breaker_success_threshold: int = 3,
+    pool_max_connections: int = 10,
+    pool_keepalive_expiry: float = 300.0,
+) -> InferenceEngine:
+    if engine_type == "llama.cpp":
+        return LlamaCppEngine(
+            base_url=f"http://{llama_cpp_host}:{llama_cpp_port}",
+            timeout_seconds=timeout_seconds,
+            connect_timeout_seconds=connect_timeout_seconds,
+            health_check_timeout_seconds=health_check_timeout_seconds,
+            default_max_tokens=min(max_tokens, llama_cpp_max_tokens),
+            default_temperature=temperature,
+            default_top_p=top_p,
+            max_retries=max_retries,
+            retry_delay_base=retry_delay_base,
+            retry_delay_max=retry_delay_max,
+            circuit_breaker_timeout=circuit_breaker_timeout,
+            circuit_breaker_failure_threshold=circuit_breaker_failure_threshold,
+            circuit_breaker_success_threshold=circuit_breaker_success_threshold,
+            pool_max_connections=pool_max_connections,
+            pool_keepalive_expiry=pool_keepalive_expiry,
+        )
+    elif engine_type == "vllm":
+        return VLLMEngine(
+            base_url=f"http://{vllm_host}:{vllm_port}",
+            timeout_seconds=timeout_seconds,
+            connect_timeout_seconds=connect_timeout_seconds,
+            health_check_timeout_seconds=health_check_timeout_seconds,
+            default_max_tokens=max_tokens,
+            default_temperature=temperature,
+            default_top_p=top_p,
+            default_model=vllm_default_model,
+            require_model=vllm_require_model,
+            max_retries=max_retries,
+            retry_delay_base=retry_delay_base,
+            retry_delay_max=retry_delay_max,
+            circuit_breaker_timeout=circuit_breaker_timeout,
+            circuit_breaker_failure_threshold=circuit_breaker_failure_threshold,
+            circuit_breaker_success_threshold=circuit_breaker_success_threshold,
+            pool_max_connections=pool_max_connections,
+            pool_keepalive_expiry=pool_keepalive_expiry,
+        )
+    else:
+        raise InferenceError(
+            error_code=InferenceErrorCode.GENERATION_FAILED,
+            message=f"unknown inference engine type: {engine_type}",
+            detail="supported types: llama.cpp, vllm",
+            retryable=False,
+        )
+
+
+def create_inference_engine_from_settings(
+    engine_type: str | None = None,
+    llama_cpp_host: str | None = None,
+    llama_cpp_port: int | None = None,
+    vllm_host: str | None = None,
+    vllm_port: int | None = None,
+    timeout_seconds: float | None = None,
+    max_tokens: int | None = None,
+    temperature: float | None = None,
+    top_p: float | None = None,
+    llama_cpp_max_tokens: int | None = None,
+    vllm_default_model: str | None = None,
+    vllm_require_model: bool | None = None,
+    max_retries: int | None = None,
+    retry_delay_base: float | None = None,
+    retry_delay_max: float | None = None,
+    circuit_breaker_timeout: float | None = None,
+    circuit_breaker_failure_threshold: int | None = None,
+    circuit_breaker_success_threshold: int | None = None,
+    pool_max_connections: int | None = None,
+    pool_keepalive_expiry: float | None = None,
+) -> InferenceEngine:
+    from app.config.settings import settings
+
+    return create_inference_engine(
+        engine_type=engine_type if engine_type is not None else settings.inference_engine,
+        llama_cpp_host=llama_cpp_host if llama_cpp_host is not None else settings.llama_cpp_host,
+        llama_cpp_port=llama_cpp_port if llama_cpp_port is not None else settings.llama_cpp_port,
+        vllm_host=vllm_host if vllm_host is not None else settings.vllm_host,
+        vllm_port=vllm_port if vllm_port is not None else settings.vllm_port,
+        timeout_seconds=timeout_seconds if timeout_seconds is not None else settings.inference_timeout_seconds,
+        connect_timeout_seconds=settings.inference_connect_timeout_seconds,
+        health_check_timeout_seconds=settings.inference_health_check_timeout_seconds,
+        max_tokens=max_tokens if max_tokens is not None else settings.effective_max_tokens,
+        temperature=temperature if temperature is not None else settings.temperature,
+        top_p=top_p if top_p is not None else settings.top_p,
+        llama_cpp_max_tokens=llama_cpp_max_tokens if llama_cpp_max_tokens is not None else settings.llama_cpp_default_max_tokens,
+        vllm_default_model=vllm_default_model if vllm_default_model is not None else settings.vllm_default_model,
+        vllm_require_model=vllm_require_model if vllm_require_model is not None else settings.vllm_require_model,
+        max_retries=max_retries if max_retries is not None else settings.inference_max_retries,
+        retry_delay_base=retry_delay_base if retry_delay_base is not None else settings.inference_retry_delay_base,
+        retry_delay_max=retry_delay_max if retry_delay_max is not None else settings.inference_retry_delay_max,
+        circuit_breaker_timeout=circuit_breaker_timeout if circuit_breaker_timeout is not None else settings.inference_circuit_breaker_timeout,
+        circuit_breaker_failure_threshold=circuit_breaker_failure_threshold if circuit_breaker_failure_threshold is not None else settings.inference_circuit_breaker_failure_threshold,
+        circuit_breaker_success_threshold=circuit_breaker_success_threshold if circuit_breaker_success_threshold is not None else settings.inference_circuit_breaker_success_threshold,
+        pool_max_connections=pool_max_connections if pool_max_connections is not None else settings.inference_pool_max_connections,
+        pool_keepalive_expiry=pool_keepalive_expiry if pool_keepalive_expiry is not None else settings.inference_pool_keepalive_expiry,
+    )

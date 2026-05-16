@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>超声诊疗AI系统 - 可观测性仪表盘</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh}
+.header{background:#1e293b;padding:12px 24px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #334155}
+.header h1{font-size:18px;font-weight:600;color:#f8fafc}
+.header .status{display:flex;align-items:center;gap:8px;font-size:13px}
+.header .dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.dot-ok{background:#22c55e}.dot-warn{background:#f59e0b}.dot-crit{background:#ef4444}.dot-unknown{background:#64748b}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;padding:16px 24px}
+.card{background:#1e293b;border-radius:8px;padding:16px;border:1px solid #334155}
+.card h2{font-size:13px;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px}
+.metric{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+.metric .label{font-size:13px;color:#cbd5e1}
+.metric .value{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums}
+.metric .unit{font-size:11px;color:#64748b;margin-left:4px}
+.val-ok{color:#22c55e}.val-warn{color:#f59e0b}.val-crit{color:#ef4444}.val-normal{color:#e2e8f0}
+.bar{height:4px;background:#334155;border-radius:2px;margin-top:4px;overflow:hidden}
+.bar-fill{height:100%;border-radius:2px;transition:width .5s}
+.fill-ok{background:#22c55e}.fill-warn{background:#f59e0b}.fill-crit{background:#ef4444}
+.footer{text-align:center;padding:12px;font-size:11px;color:#475569}
+.refresh-info{font-size:11px;color:#64748b}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>超声诊疗AI系统 - 可观测性仪表盘</h1>
+  <div class="status">
+    <span class="dot dot-unknown" id="sys-dot"></span>
+    <span id="sys-status">连接中...</span>
+    <span class="refresh-info" id="refresh-info"></span>
+  </div>
+</div>
+<div class="grid">
+  <div class="card">
+    <h2>GPU 健康</h2>
+    <div class="metric"><span class="label">显存利用率</span><span class="value val-normal" id="gpu-mem">--<span class="unit">%</span></span></div>
+    <div class="bar"><div class="bar-fill fill-ok" id="gpu-mem-bar" style="width:0"></div></div>
+    <div class="metric" style="margin-top:12px"><span class="label">碎片化率</span><span class="value val-normal" id="gpu-frag">--<span class="unit">%</span></span></div>
+    <div class="bar"><div class="bar-fill fill-ok" id="gpu-frag-bar" style="width:0"></div></div>
+    <div class="metric" style="margin-top:12px"><span class="label">温度</span><span class="value val-normal" id="gpu-temp">--<span class="unit">°C</span></span></div>
+  </div>
+  <div class="card">
+    <h2>幻觉率监控</h2>
+    <div class="metric"><span class="label">严重幻觉率</span><span class="value val-normal" id="hall-severe">--<span class="unit">%</span></span></div>
+    <div class="bar"><div class="bar-fill fill-ok" id="hall-severe-bar" style="width:0"></div></div>
+    <div class="metric" style="margin-top:12px"><span class="label">整体幻觉率</span><span class="value val-normal" id="hall-overall">--<span class="unit">%</span></span></div>
+    <div class="bar"><div class="bar-fill fill-ok" id="hall-overall-bar" style="width:0"></div></div>
+    <div class="metric" style="margin-top:12px"><span class="label">高风险病种幻觉率</span><span class="value val-normal" id="hall-highrisk">--<span class="unit">%</span></span></div>
+  </div>
+  <div class="card">
+    <h2>延迟 P99</h2>
+    <div class="metric"><span class="label">导航延迟</span><span class="value val-normal" id="lat-nav">--<span class="unit">ms</span></span></div>
+    <div class="metric" style="margin-top:8px"><span class="label">评估延迟</span><span class="value val-normal" id="lat-assess">--<span class="unit">ms</span></span></div>
+    <div class="metric" style="margin-top:8px"><span class="label">诊断延迟(不含重试)</span><span class="value val-normal" id="lat-diag">--<span class="unit">ms</span></span></div>
+    <div class="metric" style="margin-top:8px"><span class="label">多器官联合延迟</span><span class="value val-normal" id="lat-multi">--<span class="unit">ms</span></span></div>
+  </div>
+  <div class="card">
+    <h2>服务可用性</h2>
+    <div class="metric"><span class="label">服务健康率</span><span class="value val-normal" id="svc-health">--<span class="unit">%</span></span></div>
+    <div class="metric" style="margin-top:8px"><span class="label">SafetyGateway</span><span class="value val-normal" id="svc-sg">--</span></div>
+    <div class="metric" style="margin-top:8px"><span class="label">缓存命中率</span><span class="value val-normal" id="svc-cache">--<span class="unit">%</span></span></div>
+    <div class="metric" style="margin-top:8px"><span class="label">检索空结果率</span><span class="value val-normal" id="svc-empty">--<span class="unit">%</span></span></div>
+  </div>
+  <div class="card">
+    <h2>缓存防护</h2>
+    <div class="metric"><span class="label">布隆过滤器拦截率</span><span class="value val-normal" id="cache-bloom">--<span class="unit">%</span></span></div>
+    <div class="metric" style="margin-top:8px"><span class="label">DB穿透率</span><span class="value val-normal" id="cache-dbpen">--<span class="unit">%</span></span></div>
+    <div class="metric" style="margin-top:8px"><span class="label">互斥锁成功率</span><span class="value val-normal" id="cache-mutex">--<span class="unit">%</span></span></div>
+    <div class="metric" style="margin-top:8px"><span class="label">5min同时过期</span><span class="value val-normal" id="cache-expiry">--</span></div>
+  </div>
+  <div class="card">
+    <h2>AI安全断路器</h2>
+    <div class="metric"><span class="label">断路器状态</span><span class="value val-ok" id="breaker-state">--</span></div>
+    <div class="metric" style="margin-top:8px"><span class="label">CUSUM S+</span><span class="value val-normal" id="breaker-splus">--</span></div>
+    <div class="metric" style="margin-top:8px"><span class="label">活跃告警数</span><span class="value val-normal" id="breaker-alerts">--</span></div>
+  </div>
+</div>
+<div class="footer">compact模式轻量仪表盘 | 数据源: VictoriaMetrics Prometheus API | 自动刷新 15s</div>
+<script>
+const VM_URL = window.location.origin;
+const REFRESH_MS = 15000;
+function pct(v){return v==null?'--':(v*100).toFixed(2)}
+function ms(v){return v==null?'--':(v*1000).toFixed(0)}
+function cls(v,w,c){return v>w?c:'val-normal'}
+async function fetchMetrics(){
+  try{
+    const r=await fetch(VM_URL+'/api/v1/internal/obs/dashboard');
+    if(!r.ok)throw new Error(r.status);
+    const d=await r.json();
+    update(d);
+    document.getElementById('sys-dot').className='dot dot-ok';
+    document.getElementById('sys-status').textContent='运行中';
+  }catch(e){
+    document.getElementById('sys-dot').className='dot dot-crit';
+    document.getElementById('sys-status').textContent='连接失败';
+  }
+  document.getElementById('refresh-info').textContent='更新: '+new Date().toLocaleTimeString();
+}
+function update(d){
+  const g=d.gpu||{};
+  setV('gpu-mem',pct(g.memory_utilization)+'%',cls(g.memory_utilization,.9,'val-warn'));
+  setBar('gpu-mem-bar',(g.memory_utilization||0)*100,g.memory_utilization>.9?'fill-crit':'fill-ok');
+  setV('gpu-frag',pct(g.fragmentation_rate)+'%',cls(g.fragmentation_rate,.3,'val-warn'));
+  setBar('gpu-frag-bar',(g.fragmentation_rate||0)*100,g.fragmentation_rate>.3?'fill-warn':'fill-ok');
+  setV('gpu-temp',g.temperature==null?'--':g.temperature.toFixed(1)+'°C',cls(g.temperature,85,'val-warn'));
+  const h=d.hallucination||{};
+  setV('hall-severe',pct(h.severe_rate)+'%',h.severe_rate>.005?'val-crit':'val-ok');
+  setBar('hall-severe-bar',(h.severe_rate||0)*20000,h.severe_rate>.005?'fill-crit':'fill-ok');
+  setV('hall-overall',pct(h.overall_rate)+'%',h.overall_rate>.05?'val-crit':h.overall_rate>.03?'val-warn':'val-ok');
+  setBar('hall-overall-bar',(h.overall_rate||0)*2000,h.overall_rate>.05?'fill-crit':h.overall_rate>.03?'fill-warn':'fill-ok');
+  setV('hall-highrisk',pct(h.high_risk_rate)+'%',h.high_risk_rate>.01?'val-crit':'val-ok');
+  const l=d.latency||{};
+  setV('lat-nav',ms(l.nav_p99)+'ms',cls(l.nav_p99,.2,'val-warn'));
+  setV('lat-assess',ms(l.assess_p99)+'ms',cls(l.assess_p99,2,'val-warn'));
+  setV('lat-diag',ms(l.diag_p99)+'ms',cls(l.diag_p99,5,'val-warn'));
+  setV('lat-multi',ms(l.multi_p99)+'ms',cls(l.multi_p99,25,'val-warn'));
+  const s=d.service||{};
+  setV('svc-health',pct(s.health_rate)+'%',s.health_rate<.995?'val-warn':'val-ok');
+  setV('svc-sg',s.sg_healthy?'正常':'异常',s.sg_healthy?'val-ok':'val-crit');
+  setV('svc-cache',pct(s.cache_hit_rate)+'%',s.cache_hit_rate<.6?'val-warn':'val-ok');
+  setV('svc-empty',pct(s.retrieval_empty_rate)+'%',s.retrieval_empty_rate>.1?'val-warn':'val-ok');
+  const c=d.cache||{};
+  setV('cache-bloom',pct(c.bloom_interception_rate)+'%',c.bloom_interception_rate<.9?'val-warn':'val-ok');
+  setV('cache-dbpen',pct(c.db_penetration_rate)+'%',c.db_penetration_rate>.05?'val-warn':'val-ok');
+  setV('cache-mutex',pct(c.mutex_success_rate)+'%',c.mutex_success_rate<.95?'val-warn':'val-ok');
+  setV('cache-expiry',c.simultaneous_expiry_5min==null?'--':c.simultaneous_expiry_5min,c.simultaneous_expiry_5min>50?'val-warn':'val-normal');
+  const b=d.breaker||{};
+  const bState=b.state||'unknown';
+  setV('breaker-state',bState==='active'?'正常运行':bState==='pending_confirmation'?'待确认暂停':bState==='suspended'?'已暂停':bState,bState==='active'?'val-ok':bState==='suspended'?'val-crit':'val-warn');
+  setV('breaker-splus',b.cusum_s_plus==null?'--':b.cusum_s_plus.toFixed(2));
+  setV('breaker-alerts',b.active_alerts==null?'--':b.active_alerts);
+}
+function setV(id,v,c){const e=document.getElementById(id);e.textContent=v;if(c)e.className='value '+c}
+function setBar(id,p,c){const e=document.getElementById(id);e.style.width=Math.min(p,100)+'%';e.className='bar-fill '+c}
+fetchMetrics();setInterval(fetchMetrics,REFRESH_MS);
+</script>
+</body>
+</html>

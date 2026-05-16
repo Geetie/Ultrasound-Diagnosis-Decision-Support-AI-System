@@ -1,5 +1,4 @@
 from typing import List
-from pydantic import ValidationError
 from app.config.settings import settings
 
 
@@ -49,6 +48,15 @@ def validate_config() -> List[str]:
     
     if settings.max_queued_requests_per_user <= 0:
         errors.append("MAX_QUEUED_REQUESTS_PER_USER must be greater than 0")
+    
+    if settings.safety_gateway_p99_latency_warning_threshold_ms <= 0:
+        errors.append("SG_P99_LATENCY_WARNING_THRESHOLD_MS must be greater than 0")
+    
+    if settings.safety_gateway_p99_latency_critical_threshold_ms <= 0:
+        errors.append("SG_P99_LATENCY_CRITICAL_THRESHOLD_MS must be greater than 0")
+    
+    if settings.safety_gateway_p99_latency_warning_threshold_ms >= settings.safety_gateway_p99_latency_critical_threshold_ms:
+        errors.append("SG_P99_LATENCY_WARNING_THRESHOLD_MS must be less than SG_P99_LATENCY_CRITICAL_THRESHOLD_MS")
     
     return errors
 

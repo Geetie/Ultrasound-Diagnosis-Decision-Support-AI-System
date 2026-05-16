@@ -1,0 +1,111 @@
+# SafetyGateway禁忌规则配置
+#
+# 规则按器官分类，organ为"global"时表示全局禁忌规则。
+# severity: high=高严重度（必须拦截），medium=中等严重度（需警告）
+# enabled: 是否启用该规则
+
+rules:
+- id: thyroid_pregnancy_fna
+  organ: thyroid
+  condition: pregnancy
+  description: "妊娠期甲状腺结节FNA需谨慎评估"
+  severity: high
+  enabled: true
+
+- id: thyroid_anticoagulant_biopsy
+  organ: thyroid
+  condition: anticoagulant_therapy
+  description: "抗凝治疗期间穿刺活检出血风险增加"
+  severity: high
+  enabled: true
+
+- id: liver_coagulopathy_biopsy
+  organ: liver
+  condition: coagulopathy
+  description: "凝血功能障碍肝脏活检禁忌"
+  severity: high
+  enabled: true
+
+- id: liver_pregnancy_ct
+  organ: liver
+  condition: pregnancy_ct
+  description: "妊娠期肝脏CT增强扫描需谨慎"
+  severity: medium
+  enabled: true
+
+- id: cardiac_pregnancy_stress_echo
+  organ: cardiac
+  condition: pregnancy_stress_echo
+  description: "妊娠期负荷超声心动图需谨慎"
+  severity: medium
+  enabled: true
+
+- id: cardiac_severe_aortic_stenosis
+  organ: cardiac
+  condition: severe_aortic_stenosis
+  description: "严重主动脉瓣狭窄运动负荷禁忌"
+  severity: high
+  enabled: true
+
+- id: kidney_contrast_nephropathy
+  organ: kidney
+  condition: contrast_allergy
+  description: "造影剂过敏史患者肾脏超声造影禁忌"
+  severity: high
+  enabled: true
+
+- id: kidney_single_kidney_biopsy
+  organ: kidney
+  condition: coagulopathy
+  description: "凝血功能障碍肾脏穿刺活检出血风险增加"
+  severity: high
+  enabled: true
+
+- id: breast_pregnancy_radiation
+  organ: breast
+  condition: pregnancy_radiation
+  description: "妊娠期乳腺放射检查需谨慎评估"
+  severity: high
+  enabled: true
+
+- id: gallbladder_coagulopathy_puncture
+  organ: gallbladder
+  condition: coagulopathy
+  description: "凝血功能障碍胆囊穿刺禁忌"
+  severity: high
+  enabled: true
+
+- id: spleen_coagulopathy_puncture
+  organ: spleen
+  condition: coagulopathy
+  description: "凝血功能障碍脾脏穿刺禁忌"
+  severity: high
+  enabled: true
+
+- id: pancreas_coagulopathy_biopsy
+  organ: pancreas
+  condition: coagulopathy
+  description: "凝血功能障碍胰腺穿刺活检禁忌"
+  severity: high
+  enabled: true
+
+- id: vascular_contrast_allergy
+  organ: vascular
+  condition: contrast_allergy
+  description: "造影剂过敏史患者血管超声造影禁忌"
+  severity: high
+  enabled: true
+
+- id: global_pregnancy_radiation
+  organ: global
+  condition: pregnancy_radiation
+  description: "妊娠期放射性检查需严格评估风险收益比"
+  severity: high
+  enabled: true
+
+- id: global_contrast_allergy
+  organ: global
+  condition: contrast_allergy
+  description: "造影剂过敏史患者增强扫描禁忌"
+  severity: high
+  enabled: true
