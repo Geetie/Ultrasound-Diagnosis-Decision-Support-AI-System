@@ -99,6 +99,94 @@ async def lifespan(app: FastAPI):
     from app.api.websocket.nav import manager as nav_manager
     await nav_manager.start_redis_subscriber()
 
+    # RAG service (T-GA-RAG-01/02/03): query enhancement + multi-modal
+    # retrieval + cross-encoder reranking + BM25 fallback. Best-effort
+    # initialization — if any dependency is missing (vector store,
+    # embedding service, bge-reranker), the app keeps running without RAG
+    # and logs a warning. AGT-03 should check `app.state.rag_service`
+    # before calling.
+    if settings.rag_use_query_enhancement or settings.rag_use_reranking:
+        try:
+            from app.embedding.bge_m3 import BgeM3MedicalService
+            from app.embedding.index_factory import create_index_client_from_settings
+            from app.embedding.ultrasound_clip import UltrasoundClipService
+            from app.knowledge.udt_parser import UDTParser
+            from app.knowledge.vocabulary import UDAFVocabulary
+            from app.rag.bm25_fallback import BM25Fallback, BM25Index
+            from app.rag.llm_enhancer import AgnesLLMEnhancer
+            from app.rag.query_enhancer import QueryEnhancer
+            from app.rag.reranker import BgeRerankerService, HeuristicReranker
+            from app.rag.retriever import Retriever
+            from app.rag.service import RAGServiceImpl
+
+            llm_enhancer = None
+            if settings.rag_use_llm_enhancement and settings.agnes_api_key:
+                llm_enhancer = AgnesLLMEnhancer(
+                    api_key=settings.agnes_api_key,
+                    api_base=settings.agnes_api_base,
+                    model=settings.agnes_api_model,
+                    timeout_seconds=settings.agnes_timeout_seconds,
+                )
+
+            vector_client = await create_index_client_from_settings()
+            embedding_svc = BgeM3MedicalService(
+                host=settings.bge_m3_host,
+                port=settings.bge_m3_port,
+            )
+            clip_svc = UltrasoundClipService(
+                host=settings.ultrasound_clip_host,
+                port=settings.ultrasound_clip_port,
+            )
+            reranker_svc = BgeRerankerService(
+                base_url=f"http://{settings.bge_reranker_host}:{settings.bge_reranker_port}",
+                model=settings.bge_reranker_model,
+                timeout_seconds=settings.bge_reranker_timeout_seconds,
+                health_check_timeout_seconds=settings.bge_reranker_health_check_timeout_seconds,
+            )
+
+            rag_service = RAGServiceImpl(
+                query_enhancer=QueryEnhancer(
+                    vocabulary=UDAFVocabulary(),
+                    udt_parser=UDTParser(),
+                    llm_enhancer=llm_enhancer,
+                ),
+                retriever=Retriever(
+                    vector_client=vector_client,
+                    embedding_service=embedding_svc,
+                    ultrasound_clip=clip_svc,
+                    # BM25Index shares the sparse leg + fallback path; session_factory
+                    # is filled lazily on first request to avoid blocking startup.
+                    bm25_index=BM25Index(session_factory=None),
+                ),
+                reranker=reranker_svc,
+                heuristic_reranker=HeuristicReranker(),
+                bm25_fallback=BM25Fallback(
+                    BM25Index(session_factory=None),
+                    min_top1_score=settings.rag_bm25_min_top1_score,
+                    min_results=settings.rag_bm25_min_results,
+                ),
+            )
+            try:
+                healthy = await rag_service.health_check()
+                import logging
+                logging.getLogger(__name__).info(
+                    "rag_service_health_check", extra={"healthy": healthy}
+                )
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).warning(
+                    "rag_service_health_check_failed", extra={"error": str(e)}
+                )
+            app.state.rag_service = rag_service
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(
+                "rag_service_init_failed", extra={"error": str(e)}
+            )
+            app.state.rag_service = None
+    else:
+        app.state.rag_service = None
+
     yield
 
     from app.api.websocket.nav import manager as nav_manager
@@ -110,6 +198,14 @@ async def lifespan(app: FastAPI):
         await app.state.inference_engine.close()
     if hasattr(app.state, "speech_engine") and app.state.speech_engine:
         await app.state.speech_engine.close()
+    if hasattr(app.state, "rag_service") and app.state.rag_service:
+        try:
+            await app.state.rag_service.close()
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(
+                "rag_service_close_failed", extra={"error": str(e)}
+            )
     await RedisPool.close()
 
 

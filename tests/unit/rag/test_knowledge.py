@@ -452,16 +452,15 @@ class TestBaselineValidator:
         heart_cases = validator.get_cases_by_organ(Organ.HEART)
         assert len(heart_cases) >= 200
 
-    # NEW2-003: verify heart cases are SKIPPED (not falsely PASSED)
-    def test_heart_cases_skipped(self):
+    def test_heart_cases_validated(self):
         validator = BaselineValidator()
         parser = UDTParser()
         report = validator.validate_udt_parser(parser)
         heart_results = [r for r in report.results if r.case.organ == Organ.HEART]
         skipped = sum(1 for r in heart_results if r.status == ValidationStatus.SKIPPED)
-        assert skipped == len(heart_results), (
-            f"Expected all {len(heart_results)} heart cases to be SKIPPED, "
-            f"but only {skipped} were"
+        assert skipped == 0, (
+            f"Expected no heart cases to be SKIPPED (all have expected_attributes), "
+            f"but {skipped} were"
         )
 
     def test_case_id_matches_organ(self):
