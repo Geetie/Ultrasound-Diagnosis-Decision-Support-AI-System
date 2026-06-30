@@ -786,10 +786,29 @@ class ConsistencyChecker:
         responses: List[AgentResponse],
         request: FusionRequest,
     ) -> Tuple[ConsistencySeverity, str, List[Tuple[str, str]]]:
-        """与临床指南对比：通过 RAG 检索当前器官的指南条目。
+        """与临床指南对比（P2-4 修复：语义级比对）。
 
-        简化策略：仅当 RAG 返回空结果时报告 INFO（"no guideline chunks
-        retrieved"），不做语义级断言。真正基于指南条目的对比放 Phase 0B+。
+        实现：
+        1. 通过 RAG 检索当前器官的临床指南 chunks；
+        2. **P2-4 修复**：从 response.content 抽取「建议 / 分级 / 禁忌」概念，
+           从 guideline chunks 抽取同维度概念，做关键字级语义一致性比对：
+
+           a. **建议 vs 指南冲突**（CRITICAL）：response 给出某建议（如
+              "建议活检"），但同器官同分级的 guideline 明确反对
+              （"随访即可，避免活检"）；
+           b. **建议 vs 指南不匹配**（WARNING）：response 建议类型
+              （活检/随访/手术/消融）与 guideline 的推荐不一致；
+           c. **禁忌冲突**（CRITICAL）：response 计划触及 guideline
+              列出的禁忌（如 "建议抗凝" 但 guideline 提示 "出血风险，
+              慎用抗凝"）；
+           d. **分级升级异常**（WARNING）：response 自报分级与 guideline
+              描述的同特征分级差 ≥ 2。
+
+        设计取舍：
+        - 关键字级匹配而非 LLM 调用 — 保持 P99 < 5s 的延迟底线；
+        - 失败安全：抽取失败 / chunk 为空 → INFO（不视为错误）；
+        - 不会因指南对比引入新的 false positive（仅在有强证据冲突时
+          上调 severity）。
         """
         if not responses:
             return ConsistencySeverity.INFO, "", []
@@ -835,10 +854,31 @@ class ConsistencyChecker:
                     f"no_guideline_chunks[{organ_value}]: retrieval returned empty"
                 )
                 continue
-            # Phase 0A 占位：仅报告 "guideline chunks found"（不展开语义比对）
-            details.append(
-                f"guideline_chunks_found[{organ_value}]: {len(result.chunks)} chunk(s)"
+
+            # P2-4 修复：语义级比对
+            chunk_dicts = [
+                {
+                    "chunk_id": getattr(sc.chunk, "chunk_id", ""),
+                    "content": getattr(sc.chunk, "content", ""),
+                }
+                for sc in (result.chunks or [])
+            ]
+            sem_severity, sem_detail, sem_pairs = _semantic_compare(
+                response=resp,
+                guideline_chunks=chunk_dicts,
+                organ=organ_value,
             )
+            if sem_severity != ConsistencySeverity.INFO or sem_detail:
+                worst_severity = _max_severity(worst_severity, sem_severity)
+                if sem_detail:
+                    details.append(sem_detail)
+                pairs.extend(sem_pairs)
+            else:
+                # 语义比对无发现 → 仅报告 chunk 数（与旧占位兼容）
+                details.append(
+                    f"guideline_chunks_found[{organ_value}]: {len(result.chunks)} "
+                    f"chunk(s) (semantic match: no conflict)"
+                )
 
         detail_str = (
             "guideline comparison: " + "; ".join(details) if details else "guideline comparison skipped"
@@ -1001,6 +1041,275 @@ def _grade_diff(prior: str, current: str) -> Optional[int]:
         return abs(int(p) - int(c))
     except ValueError:
         return None
+
+
+# ----------------------------------------------------------------------
+# P2-4 修复：语义级指南比对（_compare_with_guidelines 内部使用）
+# ----------------------------------------------------------------------
+
+#: 建议类型 → 关键词集合（中文 + 英文）
+_RECOMMENDATION_KEYWORDS: Dict[str, Tuple[str, ...]] = {
+    "biopsy": ("活检", "FNA", "穿刺", "biopsy", "FNAB"),
+    "follow_up": ("随访", "复查", "观察", "follow-up", "followup", "monitor"),
+    "surgery": ("手术", "切除", "甲状腺全切", "surgery", "resection", "thyroidectomy"),
+    "ablation": ("消融", "ablation", "射频", "RFA"),
+    "medication": ("用药", "服药", "药物治疗", "medication", "drug therapy"),
+}
+
+#: 禁忌关键词（出现这些词 + 否定/避免语境 → 提示该建议为禁忌）
+_CONTRAINDICATION_KEYWORDS: Tuple[str, ...] = (
+    "禁忌", "禁忌症", "禁用", "慎用", "避免", "不宜", "不可",
+    "contraindication", "contraindicated", "avoid", "do not",
+)
+
+#: 抗凝 / 出血风险相关关键词（高风险操作）
+_ANTICOAGULANT_RISK_KEYWORDS: Tuple[str, ...] = (
+    "抗凝", "抗血小板", "阿司匹林", "华法林", "肝素",
+    "anticoagulation", "anticoagulant", "aspirin", "warfarin", "heparin",
+    "出血风险", "bleeding risk", "coagulopathy",
+)
+
+
+def _is_keyword_negated(
+    text: str, kw_start: int, kw_len: int, window: int = 10
+) -> bool:
+    """检查 text[kw_start:kw_start+kw_len] 附近 window 字符内是否被否定。
+
+    用于 ``_extract_recommendation`` 跳过"避免 X"/"X 禁忌"中的 X。
+    """
+    if kw_start < 0 or kw_len <= 0:
+        return False
+    start = max(0, kw_start - window)
+    end = min(len(text), kw_start + kw_len + window)
+    window_text = text[start:end]
+    return any(neg.lower() in window_text for neg in _CONTRAINDICATION_KEYWORDS)
+
+
+def _extract_recommendation(text: str) -> Optional[str]:
+    """从文本中抽取主要建议类型（否定感知）。
+
+    优先级：biopsy > surgery > ablation > medication > follow_up（前者更具
+    侵入性，匹配后立即返回）。若匹配到的关键词处于否定上下文（如
+    "避免活检"、"手术禁忌"），则跳过该关键词继续查找下一个非否定建议。
+    """
+    if not text:
+        return None
+    text_lower = text.lower()
+    for rec_type in ("biopsy", "surgery", "ablation", "medication", "follow_up"):
+        keywords = _RECOMMENDATION_KEYWORDS[rec_type]
+        for kw in keywords:
+            idx = text_lower.find(kw.lower())
+            if idx < 0:
+                continue
+            # 跳过被否定的关键词（如"避免活检"）
+            if _is_keyword_negated(text_lower, idx, len(kw), window=10):
+                continue
+            return rec_type
+    return None
+
+
+def _extract_grade_label(text: str) -> Optional[str]:
+    """从文本中抽取器官分级标签（归一化为短前缀）。
+
+    优先匹配器官特定分级（TI-RADS / TR / LI-RADS / LR / LVEF / EF），
+    归一化为 ``tr`` / ``lr`` / ``lvef`` 短前缀以便同体系内比较。
+    返回小写字符串便于比较。
+    """
+    if not text:
+        return None
+    text_lower = text.lower()
+    # 1) 器官特定分级（顺序重要：先匹配长前缀，再匹配短前缀）
+    for prefix, normalized in (
+        ("ti-rads", "tr"),
+        ("tr", "tr"),
+        ("li-rads", "lr"),
+        ("lr", "lr"),
+        ("lvef", "lvef"),
+        ("ef", "ef"),
+    ):
+        m = re.search(rf"\b{re.escape(prefix)}[\s-]*(\d+)", text_lower)
+        if m:
+            return f"{normalized}{m.group(1)}"
+    # 2) 数字形式（最后出现）
+    return _extract_simple_grade(text)
+
+
+def _extract_negation_window(text: str, keyword: str, window: int = 30) -> bool:
+    """检查 keyword 附近 window 字符内是否出现否定/禁忌表述。"""
+    if not text or not keyword:
+        return False
+    text_lower = text.lower()
+    kw_lower = keyword.lower()
+    idx = text_lower.find(kw_lower)
+    if idx < 0:
+        return False
+    start = max(0, idx - window)
+    end = min(len(text), idx + len(keyword) + window)
+    window_text = text_lower[start:end]
+    return any(neg.lower() in window_text for neg in _CONTRAINDICATION_KEYWORDS)
+
+
+def _has_anticoagulant_risk(text: str) -> bool:
+    """检查文本是否提及抗凝/出血风险。"""
+    if not text:
+        return False
+    text_lower = text.lower()
+    return any(kw.lower() in text_lower for kw in _ANTICOAGULANT_RISK_KEYWORDS)
+
+
+def _semantic_compare(
+    response: AgentResponse,
+    guideline_chunks: List[Dict[str, str]],
+    organ: str,
+) -> Tuple[ConsistencySeverity, str, List[Tuple[str, str]]]:
+    """对单条 response 与其 guideline chunks 做关键字级语义比对。
+
+    Args:
+        response: specialist 响应。
+        guideline_chunks: 从 RAG 检索到的指南 chunk 列表，每项含
+            ``chunk_id`` / ``content``。
+        organ: 器官值（thyroid / liver / cardiac）。
+
+    Returns:
+        ``(severity, detail, pairs)``。
+    """
+    if not guideline_chunks:
+        return ConsistencySeverity.INFO, "", []
+
+    resp_text = response.content or ""
+    resp_rec = _extract_recommendation(resp_text)
+    resp_grade = _extract_grade_label(resp_text)
+    # 抽取 resp 实际匹配到的关键词（用于禁忌窗口搜索，避免英文 category 在中文 chunk 中找不到）
+    resp_rec_keyword = _first_recommendation_keyword(resp_text, resp_rec) if resp_rec else None
+
+    worst_severity = ConsistencySeverity.INFO
+    details: List[str] = []
+    pairs: List[Tuple[str, str]] = []
+
+    for chunk in guideline_chunks:
+        chunk_text = chunk.get("content", "")
+        chunk_id = chunk.get("chunk_id", "")
+        if not chunk_text:
+            continue
+
+        chunk_rec = _extract_recommendation(chunk_text)
+        chunk_grade = _extract_grade_label(chunk_text)
+
+        # 1) 建议 vs 指南冲突检测
+        if resp_rec and chunk_rec and resp_rec != chunk_rec:
+            # 仅当 chunk 提及同器官分级（或 resp_grade 与 chunk_grade 一致）
+            # 时才视为针对同一临床场景的建议冲突
+            grade_match = (
+                resp_grade is not None
+                and chunk_grade is not None
+                and resp_grade == chunk_grade
+            )
+            # 若 chunk 中明确说"应 X" / "推荐 X" 且 resp 是 Y → 不匹配
+            if grade_match:
+                # 同一分级、不同建议 → 关键冲突
+                if _is_strong_recommendation_mismatch(resp_rec, chunk_rec):
+                    worst_severity = _max_severity(
+                        worst_severity, ConsistencySeverity.CRITICAL
+                    )
+                    details.append(
+                        f"guideline_recommendation_conflict[{organ}]: "
+                        f"resp={resp_rec}, guideline={chunk_rec} "
+                        f"(grade={resp_grade}, chunk_id={chunk_id})"
+                    )
+                    pairs.append((organ, organ))
+                else:
+                    # 一般不匹配（如 biopsy vs surgery）→ WARNING
+                    worst_severity = _max_severity(
+                        worst_severity, ConsistencySeverity.WARNING
+                    )
+                    details.append(
+                        f"guideline_recommendation_mismatch[{organ}]: "
+                        f"resp={resp_rec}, guideline={chunk_rec} "
+                        f"(grade={resp_grade}, chunk_id={chunk_id})"
+                    )
+
+        # 2) 禁忌冲突：response 建议触及 guideline 列出的禁忌
+        # 使用 resp 实际匹配到的中文/英文关键词搜索（避免英文 category 在中文 chunk 中漏检）
+        if resp_rec_keyword and _extract_negation_window(chunk_text, resp_rec_keyword):
+            worst_severity = _max_severity(
+                worst_severity, ConsistencySeverity.CRITICAL
+            )
+            details.append(
+                f"guideline_contraindication[{organ}]: "
+                f"resp_rec={resp_rec} flagged as contraindicated "
+                f"(chunk_id={chunk_id})"
+            )
+            pairs.append((organ, organ))
+
+        # 3) 抗凝风险 vs 活检冲突：response 建议活检但 chunk 提示抗凝/出血风险
+        if resp_rec == "biopsy" and _has_anticoagulant_risk(chunk_text):
+            worst_severity = _max_severity(
+                worst_severity, ConsistencySeverity.WARNING
+            )
+            details.append(
+                f"guideline_anticoagulant_risk[{organ}]: "
+                f"biopsy suggested but anticoagulant/bleeding risk noted "
+                f"(chunk_id={chunk_id})"
+            )
+            pairs.append((organ, organ))
+
+        # 4) 分级升级异常：response 分级与 chunk 描述的分级差 ≥ 2
+        if (
+            resp_grade
+            and chunk_grade
+            and _same_grade_family(resp_grade, chunk_grade)
+        ):
+            diff = _grade_diff(resp_grade, chunk_grade)
+            if diff is not None and diff >= 2:
+                worst_severity = _max_severity(
+                    worst_severity, ConsistencySeverity.WARNING
+                )
+                details.append(
+                    f"guideline_grade_escalation[{organ}]: "
+                    f"resp={resp_grade}, guideline={chunk_grade}, diff={diff} "
+                    f"(chunk_id={chunk_id})"
+                )
+                pairs.append((organ, organ))
+
+    detail_str = "; ".join(details) if details else ""
+    return worst_severity, detail_str, pairs
+
+
+def _first_recommendation_keyword(
+    text: str, rec_type: Optional[str]
+) -> Optional[str]:
+    """返回 text 中第一个属于 rec_type 的关键词（用于禁忌窗口搜索）。"""
+    if not text or not rec_type or rec_type not in _RECOMMENDATION_KEYWORDS:
+        return None
+    text_lower = text.lower()
+    for kw in _RECOMMENDATION_KEYWORDS[rec_type]:
+        idx = text_lower.find(kw.lower())
+        if idx >= 0 and not _is_keyword_negated(text_lower, idx, len(kw), window=10):
+            return kw
+    # 找不到非否定关键词 → 返回第一个关键词（让禁忌检测仍可触发）
+    return _RECOMMENDATION_KEYWORDS[rec_type][0]
+
+
+def _is_strong_recommendation_mismatch(resp_rec: str, chunk_rec: str) -> bool:
+    """判断两个建议类型是否属于「强冲突」（活检 vs 随访）。"""
+    strong_pairs = {
+        frozenset({"biopsy", "follow_up"}),
+        frozenset({"surgery", "follow_up"}),
+        frozenset({"biopsy", "medication"}),
+    }
+    return frozenset({resp_rec, chunk_rec}) in strong_pairs
+
+
+def _same_grade_family(grade_a: str, grade_b: str) -> bool:
+    """判断两个分级是否属于同一分级体系（同前缀）。"""
+    if not grade_a or not grade_b:
+        return False
+    # 提取字母前缀
+    prefix_a = re.match(r"([a-z]+)", grade_a)
+    prefix_b = re.match(r"([a-z]+)", grade_b)
+    if not prefix_a or not prefix_b:
+        return False
+    return prefix_a.group(1) == prefix_b.group(1)
 
 
 __all__ = [

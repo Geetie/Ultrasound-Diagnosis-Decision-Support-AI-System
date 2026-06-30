@@ -20,3 +20,22 @@ htmlcov/
 node_modules/
 dist/
 build/
+
+# === T-GA-INT-01 起新增：非生产/非测试文件 — 防止误提交 ===
+# 计划/审计/归档文档
+.trae/documents/
+.trae/*.log
+archive_of_achivement/
+docs-for-guiding generating docs/
+docs/reviews/
+harness_engineering_guide-main/
+
+# 敏感数据与模型
+dicom_storage/
+models/
+data/
+keys/
+secrets/
+*.pem
+*.key
+*.crt

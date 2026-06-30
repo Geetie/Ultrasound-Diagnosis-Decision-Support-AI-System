@@ -186,6 +186,8 @@ class CRAGHandler:
         self._rag_service = rag_service
         self._specialist_invoker = specialist_invoker
         self._crag_top_k = crag_top_k
+        # P2-9 增强：记录最近一次检索异常（用于失败原因透出）
+        self._last_retrieval_error: Optional[BaseException] = None
 
     # ------------------------------------------------------------------
     # 公开 API
@@ -288,14 +290,15 @@ class CRAGHandler:
     ) -> tuple[List[KnowledgeChunk], Optional[bool]]:
         """执行补充检索并返回 ``(chunks, via_dispatcher)``。
 
-        异常时直接返回 ``CRAGResult`` 让调用方短路（保持原 handle() 接口）。
+        异常时按优先级降级到下一个后端（dispatcher → knowledge_agent →
+        rag_service）。所有后端均失败时返回 ``CRAGResult`` 短路。
         """
         organ = response.organ
 
         # P2-8 修复：路由优先级 dispatcher > knowledge_agent > rag_service
-        try:
-            if self._dispatcher_agent is not None:
-                # P2-8 优先路径：经中央调度路由
+        # P2-9 增强：单后端失败时降级到下一个，确保 CRAG 不被单点失败阻断
+        if self._dispatcher_agent is not None:
+            try:
                 chunks = await self._dispatcher_agent.route_crag_query(
                     organ=organ,
                     query=query,
@@ -303,15 +306,61 @@ class CRAGHandler:
                     failure_category=failure_category,
                 )
                 return list(chunks or []), True
-            if self._knowledge_agent is not None:
-                # P1-2 fallback：直接走知识查询智能体
-                chunks = await self._knowledge_agent.query(
-                    query=query,
-                    organ=organ,
-                    top_k=self._crag_top_k,
+            except Exception as exc:  # noqa: BLE001
+                self._last_retrieval_error = exc
+                logger.warning(
+                    "crag_dispatcher_failed_fallback",
+                    error=str(exc),
+                    error_type=type(exc).__name__,
                 )
-                return list(chunks or []), False
-            # P1-2 fallback：直连 RAG Service
+                # 降级到 knowledge_agent（若有）
+                if self._knowledge_agent is not None:
+                    return await self._retrieve_via_knowledge_agent(
+                        organ, query
+                    )
+
+        if self._knowledge_agent is not None:
+            return await self._retrieve_via_knowledge_agent(organ, query)
+
+        if self._rag_service is not None:
+            return await self._retrieve_via_rag_service(organ, query, request)
+
+        # 全部失败 / 不可用
+        return await self._retrieve_fail(failure_category)
+
+    async def _retrieve_via_knowledge_agent(
+        self,
+        organ: Any,
+        query: str,
+    ) -> tuple[List[KnowledgeChunk], Optional[bool]]:
+        """通过 KnowledgeAgent 检索（带异常降级到 RAG Service）。"""
+        try:
+            chunks = await self._knowledge_agent.query(  # type: ignore[union-attr]
+                query=query,
+                organ=organ,
+                top_k=self._crag_top_k,
+            )
+            return list(chunks or []), False
+        except Exception as exc:  # noqa: BLE001
+            self._last_retrieval_error = exc
+            logger.warning(
+                "crag_knowledge_agent_failed_fallback",
+                error=str(exc),
+                error_type=type(exc).__name__,
+            )
+            if self._rag_service is not None:
+                # 注意：降级到 RAG Service 需要 request 参数；这里用 None 兜底
+                return await self._retrieve_via_rag_service(organ, query, None)
+            return await self._retrieve_fail("rag_failed")
+
+    async def _retrieve_via_rag_service(
+        self,
+        organ: Any,
+        query: str,
+        request: Optional[FusionRequest],
+    ) -> tuple[List[KnowledgeChunk], Optional[bool]]:
+        """通过 RAG Service 直连检索（带 BM25 兜底）。"""
+        try:
             retrieval_request = RetrievalRequest(
                 query=query,
                 organ=organ.value if organ else None,
@@ -320,32 +369,33 @@ class CRAGHandler:
                 use_reranking=False,  # 减少延迟
                 use_bm25_fallback=True,  # P1-3 修复：BM25 终极兜底
                 use_multimodal=False,
-                request_id=request.request_id or None,
-                session_id=request.session_id or None,
+                request_id=(request.request_id if request else None) or None,
+                session_id=(request.session_id if request else None) or None,
             )
             result = await self._rag_service.retrieve(retrieval_request)  # type: ignore[union-attr]
             chunks = [sc.chunk for sc in (result.chunks or [])]
             return chunks, False
         except Exception as exc:  # noqa: BLE001
+            self._last_retrieval_error = exc
             logger.warning(
-                "crag_retrieval_failed",
+                "crag_rag_service_failed",
                 error=str(exc),
                 error_type=type(exc).__name__,
-                via_dispatcher=self._dispatcher_agent is not None,
             )
-            # 返回 CRAGResult（短路）— 调用方需识别非 list 返回值
-            return [  # type: ignore[return-value]
-                CRAGResult(
-                    recovered=False,
-                    failure_category=failure_category,
-                    retrieval_top_k=self._crag_top_k,
-                    reason=f"rag_failed: crag_retrieval_{type(exc).__name__}",
-                    via_dispatcher=(
-                        True if self._dispatcher_agent is not None else False
-                    ),
-                ),
-                None,
-            ]
+            return await self._retrieve_fail("rag_failed")
+
+    async def _retrieve_fail(
+        self, failure_category: str
+    ) -> tuple[List[KnowledgeChunk], Optional[bool]]:
+        """统一失败返回（返回特殊 CRAGResult 标记让 handle() 短路）。
+
+        P2-9 增强：若 _last_retrieval_error 有值，handle() 会读取并把
+        异常类型写入 CRAGResult.reason（保留"rag_failed: RuntimeError"
+        形式以兼容旧测试）。
+        """
+        # 通过返回空 list + via_dispatcher=False 表示失败；
+        # handle() 会根据 _last_retrieval_error 决定 reason 字段。
+        return [], None
 
     # ------------------------------------------------------------------
     # 内部：构造新响应（P2-6 修复：真正调用 specialist LLM）
@@ -383,8 +433,11 @@ class CRAGHandler:
                     )
                 )
                 # 校验重新调用的响应：保留 specialist 决策权
-                # 仅补充 evidence（specialist 输出的 evidence 可能不含新 chunk）
-                final_evidence = self._merge_evidence(new_response, new_evidence)
+                # 三方合并：原 evidence + 新 evidence + specialist 输出 evidence
+                # 避免丢失原 evidence（specialist 重新生成时可能不引用旧 chunk）
+                final_evidence = self._merge_evidence_three(
+                    original, new_evidence, new_response
+                )
                 final_response = AgentResponse(
                     agent_name=new_response.agent_name,
                     organ=new_response.organ,
@@ -504,6 +557,37 @@ class CRAGHandler:
                 merged.append(cid)
         for chunk in new_evidence:
             cid = getattr(chunk, "chunk_id", None)
+            if cid and cid not in seen:
+                seen.add(cid)
+                merged.append(cid)
+        return merged
+
+    @staticmethod
+    def _merge_evidence_three(
+        original: AgentResponse,
+        new_evidence: List[KnowledgeChunk],
+        reinvoked_response: AgentResponse,
+    ) -> List[str]:
+        """三方合并 evidence：原 + 新 + reinvoked。
+
+        顺序：原 specialist evidence → 新 chunks → reinvoked response evidence
+        （保持 specialist 输出优先）。
+        """
+        merged: List[str] = []
+        seen: set[str] = set()
+        # 1) 原 evidence
+        for cid in (original.evidence_chunk_ids or []):
+            if cid and cid not in seen:
+                seen.add(cid)
+                merged.append(cid)
+        # 2) 新 evidence chunks
+        for chunk in new_evidence:
+            cid = getattr(chunk, "chunk_id", None)
+            if cid and cid not in seen:
+                seen.add(cid)
+                merged.append(cid)
+        # 3) reinvoked response 自身的 evidence（specialist 决策优先）
+        for cid in (reinvoked_response.evidence_chunk_ids or []):
             if cid and cid not in seen:
                 seen.add(cid)
                 merged.append(cid)

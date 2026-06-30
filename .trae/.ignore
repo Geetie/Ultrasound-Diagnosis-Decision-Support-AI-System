@@ -1,0 +1,51 @@
+# Trae IDE 索引排除规则
+# 与 .gitignore 保持同步：凡是非生产/非测试代码一律不索引
+
+# 1. 缓存与构建产物
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+htmlcov/
+*.egg-info/
+dist/
+build/
+node_modules/
+
+# 2. 日志与临时输出
+*.log
+.trae/*.log
+
+# 3. 计划/审计/归档文档（非代码，不索引）
+.trae/documents/
+archive_of_achivement/
+docs-for-guiding generating docs/
+docs/reviews/
+harness_engineering_guide-main/
+
+# 4. 数据/模型权重/密钥（非代码，敏感，禁上远程）
+dicom_storage/
+models/
+data/
+keys/
+.env
+.env.local
+.env.production
+.env.staging
+.env.development
+*.pem
+*.key
+*.crt
+secrets/
+
+# 5. IDE 与 OS 元数据
+.vscode/
+.idea/
+.DS_Store
+*.swp
+*.swo
+
+# 6. 派生分支（避免交叉污染）
+feature/*/archive_*/
