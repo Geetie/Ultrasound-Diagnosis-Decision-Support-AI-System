@@ -1,6 +1,7 @@
 import json
 from typing import Any
 
+from app.config.settings import settings
 from app.embedding.base import BaseHttpEmbeddingService, get_mime_type
 from app.embedding.protocols import (
     EmbeddingError,
@@ -15,7 +16,8 @@ from app.embedding.protocols import (
     TextEmbeddingRequest,
 )
 
-ULTRASOUND_CLIP_DIM = 768
+# E-4 fix: Read dimension from settings instead of hardcoding.
+ULTRASOUND_CLIP_DIM = settings.embedding_dim  # Default: 768
 
 
 class UltrasoundClipService(BaseHttpEmbeddingService):

@@ -1,0 +1,18 @@
+# EMB 轨道 GPU 专用依赖
+# 仅在 GPU 节点安装（pip install -r requirements-emb.txt）
+# 主 API 服务不依赖此文件，避免 Docker 镜像膨胀
+
+# 深度学习核心
+torch>=2.0.0
+transformers>=4.40.0
+Pillow>=10.0.0
+
+# 微调框架
+peft>=0.10.0
+accelerate>=0.27.0
+
+# 数据集加载
+datasets>=2.18.0
+
+# 可选：4bit 量化（仅 CUDA 支持）
+# bitsandbytes>=0.42.0
