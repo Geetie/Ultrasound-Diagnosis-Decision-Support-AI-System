@@ -107,6 +107,7 @@ async def lifespan(app: FastAPI):
     # before calling.
     if settings.rag_use_query_enhancement or settings.rag_use_reranking:
         try:
+            from app.config.database import AsyncSessionLocal
             from app.embedding.bge_m3 import BgeM3MedicalService
             from app.embedding.index_factory import create_index_client_from_settings
             from app.embedding.ultrasound_clip import UltrasoundClipService
@@ -144,6 +145,14 @@ async def lifespan(app: FastAPI):
                 health_check_timeout_seconds=settings.bge_reranker_health_check_timeout_seconds,
             )
 
+            # P0-RAG-01 fix: inject real AsyncSessionLocal + UDAFVocabulary.
+            # Shared singleton so the retriever's sparse leg and the BM25
+            # fallback path operate on the same in-memory index instance.
+            shared_bm25_index = BM25Index(
+                session_factory=AsyncSessionLocal,
+                vocabulary=UDAFVocabulary(),
+            )
+
             rag_service = RAGServiceImpl(
                 query_enhancer=QueryEnhancer(
                     vocabulary=UDAFVocabulary(),
@@ -154,14 +163,12 @@ async def lifespan(app: FastAPI):
                     vector_client=vector_client,
                     embedding_service=embedding_svc,
                     ultrasound_clip=clip_svc,
-                    # BM25Index shares the sparse leg + fallback path; session_factory
-                    # is filled lazily on first request to avoid blocking startup.
-                    bm25_index=BM25Index(session_factory=None),
+                    bm25_index=shared_bm25_index,
                 ),
                 reranker=reranker_svc,
                 heuristic_reranker=HeuristicReranker(),
                 bm25_fallback=BM25Fallback(
-                    BM25Index(session_factory=None),
+                    shared_bm25_index,
                     min_top1_score=settings.rag_bm25_min_top1_score,
                     min_results=settings.rag_bm25_min_results,
                 ),
@@ -186,6 +193,84 @@ async def lifespan(app: FastAPI):
             app.state.rag_service = None
     else:
         app.state.rag_service = None
+
+    # AGT 基础智能体（T-GA-AGT-01/02/03/07）：
+    # dispatcher / knowledge / monitor 三个智能体在 lifespan 启动期实例化，
+    # 并通过 app.state 暴露给上层 endpoint。dispatcher 当前用占位 specialist
+    # 注册（AGT-04/05/06 真实实现交付后替换）。knowledge_agent 依赖 RAG
+    # Service（见上文 app.state.rag_service），RAG 不可用时降级为「无 RAG」
+    # 的占位实现（query 会直接抛 RuntimeError）。任何初始化失败都被吞掉 —
+    # AGT 模块在 Phase 0A 是可选项，不应阻塞主服务启动。
+    import logging
+    _logger = logging.getLogger(__name__)
+    try:
+        from app.agents.dispatcher import DispatcherAgentImpl
+        from app.agents.knowledge import KnowledgeAgentImpl
+        from app.agents.monitor import MonitorAgentImpl
+        from app.agents.specialist import PlaceholderSpecialistAgent
+        from app.models.schemas import Organ
+
+        # dispatcher：用占位 specialist 注册三个器官
+        placeholder_specialists = {
+            Organ.THYROID: PlaceholderSpecialistAgent(Organ.THYROID),
+            Organ.LIVER: PlaceholderSpecialistAgent(Organ.LIVER),
+            Organ.CARDIAC: PlaceholderSpecialistAgent(Organ.CARDIAC),
+        }
+        dispatcher = DispatcherAgentImpl(specialists=placeholder_specialists)
+        app.state.dispatcher = dispatcher
+
+        # knowledge_agent：RAG 不可用时降级为「仅占位」实现（query 抛 RuntimeError）
+        if app.state.rag_service is not None:
+            knowledge_agent = KnowledgeAgentImpl(
+                rag_service=app.state.rag_service,
+                redis_client=RedisPool,
+            )
+        else:
+            class _KnowledgeUnavailable:
+                async def query(self, *args, **kwargs):  # noqa: ANN001
+                    raise RuntimeError(
+                        "knowledge_agent unavailable: RAG service not initialized"
+                    )
+
+                async def health_check(self) -> bool:
+                    return False
+
+            knowledge_agent = _KnowledgeUnavailable()
+        app.state.knowledge_agent = knowledge_agent
+
+        # monitor_agent：独立组件，无需外部依赖
+        monitor_agent = MonitorAgentImpl()
+        app.state.monitor_agent = monitor_agent
+
+        # 启动期健康检查（best-effort，不阻塞启动）
+        try:
+            dispatcher_ok = await dispatcher.health_check()
+        except Exception as e:
+            dispatcher_ok = False
+            _logger.warning("dispatcher_health_check_failed", extra={"error": str(e)})
+        try:
+            knowledge_ok = await knowledge_agent.health_check()
+        except Exception as e:
+            knowledge_ok = False
+            _logger.warning("knowledge_agent_health_check_failed", extra={"error": str(e)})
+        try:
+            monitor_ok = await monitor_agent.health_check()
+        except Exception as e:
+            monitor_ok = False
+            _logger.warning("monitor_agent_health_check_failed", extra={"error": str(e)})
+        _logger.info(
+            "agents_health_check",
+            extra={
+                "dispatcher": dispatcher_ok,
+                "knowledge_agent": knowledge_ok,
+                "monitor_agent": monitor_ok,
+            },
+        )
+    except Exception as e:
+        _logger.warning("agents_init_failed", extra={"error": str(e)})
+        app.state.dispatcher = None
+        app.state.knowledge_agent = None
+        app.state.monitor_agent = None
 
     yield
 
