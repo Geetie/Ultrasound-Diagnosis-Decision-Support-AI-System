@@ -241,6 +241,18 @@ class CRAGHandler:
 
         # 4) 评估是否恢复
         if not new_chunks:
+            # P2-9 增强：若检索过程中发生异常（_last_retrieval_error），
+            # 透出异常类型到 reason（保留旧测试 "rag_failed: RuntimeError"
+            # 形式）。
+            if self._last_retrieval_error is not None:
+                err_type = type(self._last_retrieval_error).__name__
+                return CRAGResult(
+                    recovered=False,
+                    failure_category=failure_category,
+                    retrieval_top_k=self._crag_top_k,
+                    reason=f"rag_failed: crag_retrieval_{err_type}",
+                    via_dispatcher=via_dispatcher,
+                )
             return CRAGResult(
                 recovered=False,
                 failure_category=failure_category,
