@@ -8,32 +8,37 @@ CRAG 流程：
 2. 评估失败原因（``evidence_insufficient`` / ``evidence_contradictory``
    / ``feature_missing`` / ``unknown``）；
 3. 重新构造查询：在原 query 基础上追加失败原因关键词；
-4. 调用 RAG Service 的 retriever 重新检索（增加 ``top_k`` 到 20，关闭
-   rerank / query enhancement 减少延迟）；
-5. 用新证据**重新构造** specialist 响应（占位实现：返回带新 evidence 的
+4. **P1-2 修复**：经**知识查询智能体**（``KnowledgeAgent``）路由检索
+   （若提供）；否则 fallback 到 RAG Service 直连。
+   知识查询智能体路径：享受两层缓存（Redis TTL 86400s + LRU ≤50） +
+   负载均衡 + KB 版本感知。RAG Service 直连路径保留用于回退/测试。
+5. **P1-3 修复**：开启 ``use_bm25_fallback=True``，BM25 作为终极兜底
+   （设计文档 01-系统架构设计.md:531、debug-pro-1.0.0-audit-report.md）；
+6. 用新证据**重新构造** specialist 响应（占位实现：返回带新 evidence 的
    AgentResponse，由编排器决定是否重跑 specialist）；
-6. 仍失败 → 标记 needs_review。
+7. 仍失败 → 标记 needs_review。
 
 设计要点：
 
 - **占位实现**：Phase 0A 不重新调用 specialist（避免 LLM 调用递归 + 延迟
   不可控），仅返回"补充检索后的新证据"作为新响应的 content / evidence。
   真实重跑 specialist 放 Phase 0B+。
-- **失败安全**：RAG 异常 → ``recovered=False, reason="rag_failed"``，由
+- **失败安全**：检索异常 → ``recovered=False, reason="rag_failed"``，由
   编排器标记 needs_review。
-- **可注入**：RAG Service / InferenceEngine / 失败原因分类器均通过构造
+- **可注入**：知识查询智能体 / RAG Service / 失败原因分类器均通过构造
   参数注入。
 """
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Protocol, runtime_checkable
 
 import structlog
 
 from app.agents.protocols import AgentResponse
 from app.fusion.protocols import FusionRequest
 from app.fusion.self_rag import SelfRAGEvalResult
+from app.knowledge.protocols import KnowledgeChunk
 from app.rag.protocols import (
     RAGService,
     RetrievalRequest,
@@ -41,6 +46,27 @@ from app.rag.protocols import (
 )
 
 logger = structlog.get_logger("app.fusion.crag")
+
+
+# ----------------------------------------------------------------------
+# 协议（用于 duck-typed 注入，避免硬依赖 app.agents.protocols）
+# ----------------------------------------------------------------------
+
+
+@runtime_checkable
+class _KnowledgeAgentLike(Protocol):
+    """P1-2 修复：CRAG 路由目标的最小协议（duck-typed）。
+
+    与 ``app.agents.protocols.KnowledgeAgent`` 接口兼容（``query`` +
+    ``health_check``），但不强制继承，便于 FUS 层在无 AGT 依赖时独立运行。
+    """
+
+    async def query(
+        self,
+        query: str,
+        organ: Optional[Any] = None,
+        top_k: int = 10,
+    ) -> List[KnowledgeChunk]: ...
 
 
 # ----------------------------------------------------------------------
@@ -88,18 +114,29 @@ class CRAGHandler:
     """CRAG 补充检索处理器（T-GA-FUS-02）。
 
     Args:
-        rag_service: RAG Service（用于补充检索）。``None`` 时 CRAG 不可用。
+        rag_service: RAG Service（用于补充检索的直接路径，P1-2 回退）。
+            ``None`` 时 CRAG 不可用（除非提供了 knowledge_agent）。
+        knowledge_agent: 知识查询智能体（P1-2 优先路径）。
+            若提供则走 ``knowledge_agent.query()``（享受缓存 + 路由），
+            否则 fallback 到 ``rag_service.retrieve()``。
         crag_top_k: 补充检索的 top_k（默认 20）。
     """
 
     def __init__(
         self,
         rag_service: Optional[RAGService] = None,
+        knowledge_agent: Optional[_KnowledgeAgentLike] = None,
         crag_top_k: int = DEFAULT_CRAG_TOP_K,
     ) -> None:
         if crag_top_k <= 0:
             raise ValueError("crag_top_k must be positive")
+        if rag_service is None and knowledge_agent is None:
+            logger.warning(
+                "crag_handler_no_retrieval_backend",
+                message="CRAG has no retrieval backend — will always skip with rag_unavailable",
+            )
         self._rag_service = rag_service
+        self._knowledge_agent = knowledge_agent
         self._crag_top_k = crag_top_k
 
     # ------------------------------------------------------------------
@@ -122,11 +159,11 @@ class CRAGHandler:
         Returns:
             :class:`CRAGResult`：CRAG 处理结果。
         """
-        if self._rag_service is None:
+        if self._rag_service is None and self._knowledge_agent is None:
             return CRAGResult(
                 recovered=False,
                 failure_category="rag_unavailable",
-                reason="rag_unavailable: CRAG skipped because RAG service not configured",
+                reason="rag_unavailable: CRAG skipped because no retrieval backend configured",
             )
 
         # 1) 分类失败原因
@@ -137,21 +174,33 @@ class CRAGHandler:
             response=response,
             failure_category=failure_category,
         )
-        # 3) 调用 RAG 补充检索
+        # 3) 调用补充检索
         organ_value = response.organ.value if response.organ else None
+        new_chunks: List[KnowledgeChunk] = []
         try:
-            retrieval_request = RetrievalRequest(
-                query=enhanced_query,
-                organ=organ_value,
-                top_k=self._crag_top_k,
-                use_query_enhancement=False,
-                use_reranking=False,  # 减少延迟
-                use_bm25_fallback=False,  # 直接走 dense
-                use_multimodal=False,
-                request_id=request.request_id or None,
-                session_id=request.session_id or None,
-            )
-            result = await self._rag_service.retrieve(retrieval_request)
+            if self._knowledge_agent is not None:
+                # P1-2 修复：经知识查询智能体路由（享受缓存 + 负载均衡）
+                new_chunks = await self._knowledge_agent.query(
+                    query=enhanced_query,
+                    organ=response.organ,
+                    top_k=self._crag_top_k,
+                )
+            else:
+                # Fallback：直接 RAG Service
+                retrieval_request = RetrievalRequest(
+                    query=enhanced_query,
+                    organ=organ_value,
+                    top_k=self._crag_top_k,
+                    use_query_enhancement=False,
+                    use_reranking=False,  # 减少延迟
+                    # P1-3 修复：开启 BM25 终极兜底（设计文档）
+                    use_bm25_fallback=True,
+                    use_multimodal=False,
+                    request_id=request.request_id or None,
+                    session_id=request.session_id or None,
+                )
+                result = await self._rag_service.retrieve(retrieval_request)
+                new_chunks = [sc.chunk for sc in result.chunks]
         except Exception as exc:  # noqa: BLE001
             logger.warning(
                 "crag_retrieval_failed",
@@ -166,8 +215,7 @@ class CRAGHandler:
             )
 
         # 4) 评估是否恢复
-        new_evidence = [sc.chunk for sc in result.chunks]
-        if not new_evidence:
+        if not new_chunks:
             return CRAGResult(
                 recovered=False,
                 failure_category=failure_category,
@@ -176,19 +224,20 @@ class CRAGHandler:
             )
 
         # 5) 构造新响应（占位实现：合并新证据 + 旧 content + 提升 confidence）
-        new_response = self._build_new_response(response, new_evidence, result)
+        new_response = self._build_new_response(response, new_chunks)
         logger.info(
             "crag_recovered",
             agent=response.agent_name,
             failure_category=failure_category,
-            new_evidence_count=len(new_evidence),
+            new_evidence_count=len(new_chunks),
+            via_knowledge_agent=self._knowledge_agent is not None,
         )
         return CRAGResult(
             recovered=True,
             new_response=new_response,
             failure_category=failure_category,
             retrieval_top_k=self._crag_top_k,
-            reason=f"crag_recovered_with_{len(new_evidence)}_new_chunks",
+            reason=f"crag_recovered_with_{len(new_chunks)}_new_chunks",
         )
 
     # ------------------------------------------------------------------
@@ -241,8 +290,7 @@ class CRAGHandler:
     @staticmethod
     def _build_new_response(
         original: AgentResponse,
-        new_evidence: List[Any],  # List[KnowledgeChunk]
-        retrieval_result: Any,
+        new_evidence: List[KnowledgeChunk],
     ) -> AgentResponse:
         """基于新证据构造新响应（占位实现：合并证据 + 旧 content + 提升 confidence）。
 

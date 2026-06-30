@@ -149,6 +149,9 @@ class FusionEngineImpl(FusionEngine):
                 review_reason=f"validation_failed: {type(exc).__name__}",
             )
 
+        # P0-2 修复：缓存 LayeredValidator 评估后的真实 Self-RAG 结果
+        self._last_self_rag_result = result.self_rag_result
+
         # 3) 选择 final_response（confidence 最高；并列时第一个）
         final = self._select_final_response(request.agent_responses)
         result.final_response = final
@@ -202,7 +205,8 @@ class FusionEngineImpl(FusionEngine):
         ):
             result.needs_review = True
             if not result.review_reason:
-                result.review_reason = "below_confidence_threshold"
+                # P0-1 修复：使用语义准确的 reason
+                result.review_reason = "specialist_flagged"
 
         result.total_latency_ms = (time.monotonic() - start) * 1000.0
         logger.info(
@@ -260,19 +264,26 @@ class FusionEngineImpl(FusionEngine):
         return best
 
     def _get_self_rag_result(self, response: AgentResponse) -> Any:
-        """构造一个轻量 SelfRAGEvalResult 供 CRAG 使用（避免重新评估）。"""
-        from app.fusion.self_rag import SelfRAGEvalResult
+        """获取 Self-RAG 评估结果供 CRAG 使用。
 
-        # 若 layered_validator 已评估过 → 复用（通过 evidence_chunk_ids 数量
-        # 启发式构造一个"已知失败"的 SelfRAGEvalResult）
-        # 简化：直接构造"evidence_insufficient"失败标记，触发 CRAG 重新检索
+        P0-2 修复：复用 LayeredValidator 已评估的真实结果，而非重新构造
+        伪造的"evidence_insufficient" 失败标记。这样 CRAG 的失败原因分类
+        （``_classify_failure``）才能反映真实的失败原因。
+        """
+        # 1) 优先使用 LayeredValidator 写入的完整结果
+        if self._last_self_rag_result is not None:
+            return self._last_self_rag_result
+
+        # 2) 回退：构造一个轻量占位（仅在 LayeredValidator 未执行 Self-RAG 时）
+        #    这种情况：result.self_rag_passed == None（未启用或异常）
+        from app.fusion.self_rag import SelfRAGEvalResult
         return SelfRAGEvalResult(
             passed=False,
             score=0.0,
             evidence_sufficiency=0.0,
             evidence_consistency=0.0,
             feature_completeness=0.0,
-            reason="self_rag_failed_in_layered_validator",
+            reason="self_rag_not_evaluated_in_layered_validator",
         )
 
 

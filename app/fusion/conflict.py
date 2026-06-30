@@ -359,61 +359,100 @@ class ConflictDetector:
         self,
         responses: List[AgentResponse],
     ) -> List[AgentResponse]:
-        """检测证据冲突（粗粒度，基于否定关系关键词集）。
+        """检测证据冲突（P0-3 修复：从 no-op 升级为真实检测）。
 
-        逻辑：抽取每条响应 ``content`` 中的"X 不是 Y" / "X not Y"等否定模式，
-        → 对同一被否定对象（归一化为 lowercase token）若 X 既被肯定又被
-        否定（来自不同响应）则视为证据冲突。
+        触发条件（满足任一即触发 EVIDENCE_CONFLICT）：
 
-        **保守策略**：仅在至少有 2 条响应 + 否定词集非空时生效；匹配失败
-        时返回空列表（不阻断融合）。
+        1. **共享证据 + 互斥建议**：≥2 条响应共享至少 1 个 evidence_chunk_id，
+           但所给的处置建议属于不同 recommendation group（活检 vs 随访 / 紧急）；
+        2. **共享证据 + 同器官分级冲突**：≥2 条响应共享 evidence_chunk_id 且
+           属于同一器官，给出的分级码不同（与 GRADING_CONFLICT 互补）；
+        3. **共享证据 + 否定关系冲突**：≥2 条响应共享 evidence_chunk_id 且
+           对同一被否定对象（"X 不是 Y"）出现自相矛盾（如 specialist A 说
+           "排除恶性"而 specialist B 说 "排除良性"）。
+
+        Returns:
+            参与证据冲突的响应列表（去重）。
+
+        Notes:
+            - **非共享证据的冲突不由 EVIDENCE_CONFLICT 兜底**：分属不同
+              互斥组的建议由 RECOMMENDATION_CONFLICT 捕获；同器官分级冲
+              突由 GRADING_CONFLICT 捕获。本方法专注于"引用同一 chunk 但
+              结论相反"的语义级证据矛盾。
+            - **保守策略**：仅在确有共享 evidence_chunk_id 时才触发，避免
+              误报（与原 no-op 实现的过度保守形成对照 — 现在保守的是"误
+              报率低"，而不是"全部漏报"）。
         """
         if len(responses) < 2:
             return []
 
-        # 收集每条响应的 (被否定对象, 响应)
-        negations_by_resp: List[Tuple[AgentResponse, Set[str]]] = []
-        for r in responses:
-            content = r.content or ""
-            negated: Set[str] = set()
-            for pattern in _NEGATION_PATTERNS:
-                try:
-                    for m in pattern.finditer(content):
-                        token = m.group(1).strip().lower()
-                        if 1 <= len(token) <= 20:
-                            negated.add(token)
-                except Exception:  # noqa: BLE001
-                    # 单个正则失败 → 跳过
+        conflict_responses: List[AgentResponse] = []
+        seen: Set[str] = set()  # 去重 by agent_name
+
+        # 对每对 (i, j) 响应进行配对检查
+        for i, ri in enumerate(responses):
+            for rj in responses[i + 1 :]:
+                evidence_i = set(ri.evidence_chunk_ids or [])
+                evidence_j = set(rj.evidence_chunk_ids or [])
+                shared = evidence_i & evidence_j
+                if not shared:
+                    continue  # 无共享证据 → 不属于 EVIDENCE_CONFLICT
+
+                # 条件 1: 共享证据 + 互斥建议
+                groups_i = _recommendation_groups_in(ri, self._recommendation_groups)
+                groups_j = _recommendation_groups_in(rj, self._recommendation_groups)
+                if groups_i and groups_j and groups_i.isdisjoint(groups_j):
+                    _add_unique(conflict_responses, seen, ri)
+                    _add_unique(conflict_responses, seen, rj)
+                    logger.info(
+                        "evidence_conflict_shared_evidence_contradicting_recommendations",
+                        shared_chunks=sorted(shared),
+                        resp_i=ri.agent_name,
+                        resp_j=rj.agent_name,
+                    )
                     continue
-            if negated:
-                negations_by_resp.append((r, negated))
 
-        if len(negations_by_resp) < 2:
-            return []
+                # 条件 2: 共享证据 + 同器官分级冲突
+                organ_i = ri.organ.value if ri.organ else None
+                organ_j = rj.organ.value if rj.organ else None
+                if organ_i and organ_i == organ_j and organ_i in self._grading_extractors:
+                    grade_i = _extract_grade(ri, organ_i, self._grading_extractors)
+                    grade_j = _extract_grade(rj, organ_j, self._grading_extractors)
+                    if (
+                        grade_i is not None
+                        and grade_j is not None
+                        and grade_i != grade_j
+                    ):
+                        _add_unique(conflict_responses, seen, ri)
+                        _add_unique(conflict_responses, seen, rj)
+                        logger.info(
+                            "evidence_conflict_shared_evidence_contradicting_grades",
+                            shared_chunks=sorted(shared),
+                            organ=organ_i,
+                            grades=[grade_i, grade_j],
+                        )
+                        continue
 
-        # 收集所有被否定对象 → 若同一对象出现在 ≥2 条响应中 → 证据冲突
-        token_counts: Dict[str, int] = defaultdict(int)
-        for _, neg_set in negations_by_resp:
-            for token in neg_set:
-                token_counts[token] += 1
-        # 必须同一否定词出现在 ≥2 条响应（说明多方都"否定"同一对象 → 一致，
-        # 不算冲突）。我们检测的是「同一对象在响应 A 中否定，在响应 B 中肯定」
-        # 的情形 — 但 LLM 输出不易可靠抽取「肯定」，简化为：
-        # 同一对象在 ≥2 条响应中均被否定但被不同否定词修饰 → 视为"反复强调
-        # 排除"，反而强化结论；不视作冲突。
-        # 真正的证据冲突依赖 RAG chunk 级别的语义比对（Phase 0B+），
-        # Phase 0A 留作占位：仅在否定集合完全重叠 + 完全不同器官时返回空。
-        # 简化：若 2 条响应涉及「同一否定对象」但 organ 不同，仍不视作冲突
-        # （器官不同 → 否定对象可能本来就不同）。
-        # 最终保守策略：仅当 ≥2 条响应**完全不重叠**否定集合时返回冲突。
-        all_negated: List[Set[str]] = [s for _, s in negations_by_resp]
-        # 找到共同否定对象
-        common: Set[str] = set.intersection(*all_negated) if all_negated else set()
-        if not common:
-            # 所有响应都"否定"不同对象 → 互不干扰，**不**判定为证据冲突
-            return []
-        # 共同否定对象 → 反而是"一致排除"，不是冲突
-        return []
+                # 条件 3: 共享证据 + 否定关系冲突（同一被否定对象互斥）
+                negated_i = _extract_negated_objects(ri.content or "")
+                negated_j = _extract_negated_objects(rj.content or "")
+                common_negated = negated_i & negated_j
+                # 同一对象都被否定 → 反而是"一致排除"，不算冲突；
+                # 真正的冲突是"否定对象完全不同" → 说明双方基于同一证据
+                # 得出截然不同的诊断排除。
+                if negated_i and negated_j and not common_negated and not negated_i.isdisjoint(
+                    {"恶性", "malignant", "良性", "benign"}
+                ):
+                    _add_unique(conflict_responses, seen, ri)
+                    _add_unique(conflict_responses, seen, rj)
+                    logger.info(
+                        "evidence_conflict_shared_evidence_contradicting_negations",
+                        shared_chunks=sorted(shared),
+                        negated_i=sorted(negated_i),
+                        negated_j=sorted(negated_j),
+                    )
+
+        return conflict_responses
 
 
 # ----------------------------------------------------------------------
@@ -459,6 +498,48 @@ def _extract_grade(
         return fmt.format(captured)
     except Exception:  # noqa: BLE001
         return None
+
+
+def _recommendation_groups_in(
+    response: AgentResponse,
+    recommendation_groups: List[Tuple[str, ...]],
+) -> Set[int]:
+    """返回 response.content 命中的 recommendation group 索引集合。"""
+    content_lower = (response.content or "").lower()
+    groups: Set[int] = set()
+    for idx, tokens in enumerate(recommendation_groups):
+        if any(tok.lower() in content_lower for tok in tokens):
+            groups.add(idx)
+    return groups
+
+
+def _extract_negated_objects(content: str) -> Set[str]:
+    """抽取 content 中被否定的对象 token 集合（小写化）。
+
+    用途：P0-3 EVIDENCE_CONFLICT 条件 3 — 检测"排除 X" vs "排除 Y"
+    的自相矛盾。
+    """
+    negated: Set[str] = set()
+    for pattern in _NEGATION_PATTERNS:
+        try:
+            for m in pattern.finditer(content):
+                token = m.group(1).strip().lower()
+                if 1 <= len(token) <= 20:
+                    negated.add(token)
+        except Exception:  # noqa: BLE001
+            continue
+    return negated
+
+
+def _add_unique(
+    acc: List[AgentResponse],
+    seen: Set[str],
+    response: AgentResponse,
+) -> None:
+    """去重添加到列表（按 agent_name）。"""
+    if response.agent_name not in seen:
+        seen.add(response.agent_name)
+        acc.append(response)
 
 
 __all__ = [

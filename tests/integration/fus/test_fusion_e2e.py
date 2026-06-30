@@ -330,7 +330,8 @@ async def test_fusion_e2e_specialist_needs_review_propagated(
     )
     result = await engine.fuse(request)
     assert result.needs_review is True
-    assert result.review_reason == "below_confidence_threshold"
+    # P0-1 修复：specialist 自带 needs_review=True → reason="specialist_flagged"
+    assert result.review_reason == "specialist_flagged"
 
 
 # ======================================================================

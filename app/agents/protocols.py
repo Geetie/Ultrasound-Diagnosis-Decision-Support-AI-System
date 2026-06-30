@@ -77,6 +77,20 @@ class AgentResponse(BaseModel):
         evidence_chunk_ids: 引用的知识 chunk ID 列表。
         reasoning_trace: 推理链路描述，用于审计和调试。
         latency_ms: 调用总耗时（毫秒）。
+        needs_review: 是否需要人工复核（specialist 自标，FUS 层不覆盖）。
+            该字段在 FUS 融合层 (T-GA-FUS-01) 设计契约中明确：specialist
+            标记 ``needs_review=True`` → 融合结果 ``FusionResult.needs_review``
+            必须为 True 且 ``review_reason="specialist_flagged"``，由
+            ``app.fusion.service.FusionEngineImpl.fuse`` 在第 5 步合并。
+        disease_code: UDT 病种编码（可选，跨器官关联校验使用）。
+            来自 ``00a-术语表.md`` UDT 编码体系（如
+            ``UDT-LIVER-HCC-ADVANCED``、``UDT-CARDIAC-HF-REDUCED``）；
+            specialist 未填时由 FUS 层基于 content 启发式推导。
+        used_evidence_ids: specialist 实际使用过的 evidence chunk ID
+            子集（KB safety_critical 精确撤销依据）。
+            区别于 ``evidence_chunk_ids``（所有引用），``used_evidence_ids``
+            仅记录最终结论实际依赖的 chunk，KB 升级时仅需重新评估
+            ``used_evidence_ids`` 命中的旧结论。
     """
     agent_name: str
     organ: Optional[Organ] = None
@@ -85,6 +99,12 @@ class AgentResponse(BaseModel):
     evidence_chunk_ids: List[str] = Field(default_factory=list)
     reasoning_trace: List[str] = Field(default_factory=list)
     latency_ms: float = 0.0
+    # P0-1 修复：补齐 FUS 透传契约
+    needs_review: bool = False
+    # P2-1 增强：跨器官关联规则使用
+    disease_code: Optional[str] = None
+    # P2-1 增强：KB safety_critical 精确撤销
+    used_evidence_ids: List[str] = Field(default_factory=list)
 
     @field_validator("confidence")
     @classmethod

@@ -51,8 +51,23 @@ def make_response(
     evidence: Optional[List[str]] = None,
     needs_review: bool = False,
     reasoning_trace: Optional[List[str]] = None,
+    disease_code: Optional[str] = None,
+    used_evidence_ids: Optional[List[str]] = None,
 ) -> AgentResponse:
-    """构造一个 AgentResponse（用于融合层测试）。"""
+    """构造一个 AgentResponse（用于融合层测试）。
+
+    Args:
+        agent_name: 智能体名称。
+        organ: 目标器官。
+        content: 诊断文本内容。
+        confidence: 置信度（0.0-1.0）。
+        evidence: 引用的 evidence chunk ID 列表。
+        needs_review: 是否需要人工复核（FUS 透传契约字段）。
+        reasoning_trace: 推理链路列表。
+        disease_code: UDT 病种编码（P2-1 增强，跨器官关联规则使用）。
+        used_evidence_ids: 实际使用过的 evidence chunk ID 子集
+            （P2-1 增强，KB safety_critical 精确撤销依据）。
+    """
     return AgentResponse(
         agent_name=agent_name,
         organ=organ,
@@ -61,6 +76,8 @@ def make_response(
         evidence_chunk_ids=list(evidence or []),
         needs_review=needs_review,
         reasoning_trace=list(reasoning_trace or []),
+        disease_code=disease_code,
+        used_evidence_ids=list(used_evidence_ids or []),
     )
 
 

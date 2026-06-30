@@ -89,6 +89,13 @@ DEFAULT_HEURISTIC_THRESHOLD = 0.7
 #: 单维度评分上限
 MAX_SCORE = 5.0
 
+#: 最大重试次数（2 = 最多 3 次生成机会；包含首次生成）
+#: P1-1 修复：实现 Self-RAG 重试机制（设计文档 02-核心流程与知识库.md §2.1）
+DEFAULT_MAX_RETRIES = 2
+
+#: 重试间隔（秒）— 防止 LLM 短时过载
+DEFAULT_RETRY_DELAY = 0.0
+
 #: self-evaluation prompt 模板
 _SELF_RAG_PROMPT = """你是一名严谨的超声诊断质检员。请对以下诊断结论做自我评估，按 3 个维度各打 0-5 分。
 
@@ -123,6 +130,8 @@ class SelfRAGEvaluator:
         heuristic_threshold: 启发式兜底阈值（仅在 ``inference_engine=None``
             时使用；confidence >= 阈值即 passed=True）。
         max_tokens: LLM 生成上限（默认 256）。
+        max_retries: 最大重试次数（P1-1，默认 2 = 3 次生成机会）。
+        retry_delay: 重试间隔秒数（默认 0）。
     """
 
     def __init__(
@@ -131,6 +140,8 @@ class SelfRAGEvaluator:
         pass_threshold: float = DEFAULT_PASS_THRESHOLD,
         heuristic_threshold: float = DEFAULT_HEURISTIC_THRESHOLD,
         max_tokens: int = 256,
+        max_retries: int = DEFAULT_MAX_RETRIES,
+        retry_delay: float = DEFAULT_RETRY_DELAY,
     ) -> None:
         if not (0.0 <= pass_threshold <= MAX_SCORE):
             raise ValueError(
@@ -142,73 +153,138 @@ class SelfRAGEvaluator:
             )
         if max_tokens <= 0:
             raise ValueError("max_tokens must be positive")
+        if max_retries < 0:
+            raise ValueError("max_retries must be >= 0")
+        if retry_delay < 0.0:
+            raise ValueError("retry_delay must be >= 0.0")
         self._inference = inference_engine
         self._pass_threshold = pass_threshold
         self._heuristic_threshold = heuristic_threshold
         self._max_tokens = max_tokens
+        self._max_retries = max_retries
+        self._retry_delay = retry_delay
 
     # ------------------------------------------------------------------
     # 公开 API
     # ------------------------------------------------------------------
 
     async def evaluate(self, response: AgentResponse) -> SelfRAGEvalResult:
-        """执行 Self-RAG 评估。
+        """执行 Self-RAG 评估（P1-1 修复：实现最多 max_retries 次重试）。
+
+        流程：
+        1) 启发式兜底：未配置 LLM → 单次启发式评估（不计重试）；
+        2) LLM 自我评估：循环尝试最多 ``max_retries+1`` 次：
+           - 单次成功（pass=True）→ 立即返回；
+           - 失败 → 若还有重试机会则重试（间隔 ``retry_delay`` 秒）；
+           - 全部失败 → 返回最后一次的评估结果，``reason`` 包含
+             ``retries_exhausted`` 标记，便于 CRAG 识别。
+        3) 失败安全：LLM 调用异常 → 单次回退到启发式评估（不重试 LLM）。
 
         Args:
             response: 待评估的 specialist 响应。
 
         Returns:
             :class:`SelfRAGEvalResult`：评估结果（passed / score / 维度分）。
+
+        Notes:
+            CRAG 补充检索不计入 Self-RAG 重试次数（设计文档 02-核心流程 §2.1）：
+            CRAG 是 Self-RAG 全部失败后的兜底链路，与重试是正交关系。
         """
-        # 1) 启发式兜底：未配置 LLM → 仅看 confidence + 证据数量
+        # 1) 启发式兜底：未配置 LLM → 单次启发式评估（不计重试）
         if self._inference is None:
             return self._heuristic_evaluate(response)
 
-        # 2) LLM 自我评估
+        # 2) LLM 自我评估（带重试）
         prompt = self._build_prompt(response)
-        try:
-            request = InferenceRequest(
-                prompt=prompt,
-                max_tokens=self._max_tokens,
-                request_id=f"self_rag_{response.agent_name}",
-            )
-            llm_response = await self._inference.generate(request)
-            text = llm_response.text or ""
-        except Exception as exc:  # noqa: BLE001
-            logger.warning(
-                "self_rag_llm_failed_falling_back_to_heuristic",
-                agent=response.agent_name,
-                error=str(exc),
-                error_type=type(exc).__name__,
-            )
-            return self._heuristic_evaluate(
-                response, reason=f"llm_failed: {type(exc).__name__}"
+        last_result: Optional[SelfRAGEvalResult] = None
+        max_attempts = self._max_retries + 1  # 包含首次生成
+        for attempt in range(1, max_attempts + 1):
+            try:
+                request = InferenceRequest(
+                    prompt=prompt,
+                    max_tokens=self._max_tokens,
+                    request_id=f"self_rag_{response.agent_name}_attempt{attempt}",
+                )
+                llm_response = await self._inference.generate(request)
+                text = llm_response.text or ""
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(
+                    "self_rag_llm_failed_falling_back_to_heuristic",
+                    agent=response.agent_name,
+                    attempt=attempt,
+                    error=str(exc),
+                    error_type=type(exc).__name__,
+                )
+                # LLM 调用异常 → 单次回退启发式，不重试 LLM
+                return self._heuristic_evaluate(
+                    response, reason=f"llm_failed: {type(exc).__name__}"
+                )
+
+            # 解析 LLM 输出
+            parsed = _parse_self_rag_output(text)
+            if parsed is None:
+                logger.warning(
+                    "self_rag_parse_failed",
+                    agent=response.agent_name,
+                    attempt=attempt,
+                    llm_text_preview=text[:100],
+                )
+                # 解析失败 → 启发式兜底（不重试 LLM；多次解析同样格式很可能同样失败）
+                return self._heuristic_evaluate(response, reason="llm_parse_failed")
+
+            # 评分
+            evidence_sufficiency, evidence_consistency, feature_completeness, missing = parsed
+            total = min(evidence_sufficiency, evidence_consistency, feature_completeness)
+            passed = total >= self._pass_threshold
+            reason = "" if passed else f"score={total:.2f} < {self._pass_threshold}"
+            if attempt > 1:
+                reason = f"retry#{attempt}: {reason}" if reason else f"retry#{attempt}: passed"
+            last_result = SelfRAGEvalResult(
+                passed=passed,
+                score=round(total, 2),
+                evidence_sufficiency=evidence_sufficiency,
+                evidence_consistency=evidence_consistency,
+                feature_completeness=feature_completeness,
+                missing_features=missing,
+                reason=reason,
             )
 
-        # 3) 解析 LLM 输出
-        parsed = _parse_self_rag_output(text)
-        if parsed is None:
-            logger.warning(
-                "self_rag_parse_failed",
-                agent=response.agent_name,
-                llm_text_preview=text[:100],
-            )
-            return self._heuristic_evaluate(response, reason="llm_parse_failed")
+            if passed:
+                if attempt > 1:
+                    logger.info(
+                        "self_rag_recovered_after_retry",
+                        agent=response.agent_name,
+                        attempt=attempt,
+                        score=total,
+                    )
+                return last_result
 
-        # 4) 评分
-        evidence_sufficiency, evidence_consistency, feature_completeness, missing = parsed
-        total = min(evidence_sufficiency, evidence_consistency, feature_completeness)
-        passed = total >= self._pass_threshold
-        reason = "" if passed else f"score={total:.2f} < {self._pass_threshold}"
-        return SelfRAGEvalResult(
-            passed=passed,
-            score=round(total, 2),
-            evidence_sufficiency=evidence_sufficiency,
-            evidence_consistency=evidence_consistency,
-            feature_completeness=feature_completeness,
-            missing_features=missing,
-            reason=reason,
+            # 未通过：是否还有重试机会？
+            if attempt < max_attempts:
+                logger.info(
+                    "self_rag_retry_scheduled",
+                    agent=response.agent_name,
+                    attempt=attempt,
+                    score=total,
+                    reason=reason,
+                    next_attempt=attempt + 1,
+                )
+                if self._retry_delay > 0:
+                    import asyncio
+                    await asyncio.sleep(self._retry_delay)
+
+        # 全部重试失败 → 返回最后一次结果 + 标记 retries_exhausted
+        assert last_result is not None  # 循环至少执行 1 次
+        last_result.reason = (
+            f"retries_exhausted ({max_attempts} attempts): {last_result.reason}"
         )
+        logger.warning(
+            "self_rag_retries_exhausted",
+            agent=response.agent_name,
+            attempts=max_attempts,
+            final_score=last_result.score,
+        )
+        return last_result
 
     # ------------------------------------------------------------------
     # 内部：prompt / 启发式 / 解析

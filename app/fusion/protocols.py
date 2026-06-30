@@ -195,19 +195,27 @@ class FusionResult(BaseModel):
         consistency_result: 一致性校验结果。
         self_rag_passed: Self-RAG 质检是否通过。``None`` 表示未启用。
         self_rag_score: Self-RAG 质检分数（0.0 - 5.0）。``None`` 表示未启用。
+        self_rag_result: 完整的 Self-RAG 评估结果（:class:`app.fusion.self_rag.SelfRAGEvalResult`）。
+            P0-2 修复：LayeredValidator 评估后写入，service.py 复用避免重新构造。
+            类型为 ``Optional[Any]``（dataclass 非 Pydantic 模型），调用方应做 isinstance 检查。
         crag_triggered: 是否触发了 CRAG 补充检索。
         crag_recovered: CRAG 是否成功恢复（仅在 ``crag_triggered=True`` 时有意义）。
         needs_review: 是否需要人工复核。
         review_reason: 复核原因（``conflict_detected`` / ``consistency_failed``
-            / ``self_rag_failed`` / ``no_specialist_responded`` 等）。
+            / ``self_rag_failed`` / ``no_specialist_responded`` / ``specialist_flagged`` 等）。
         total_latency_ms: 融合层总耗时（不含 Self-RAG LLM 调用）。
     """
+
+    # Pydantic 允许任意类型（SelfRAGEvalResult 是 dataclass）
+    model_config = {"arbitrary_types_allowed": True}
 
     final_response: Optional[AgentResponse] = None
     conflict_report: ConflictReport = Field(default_factory=ConflictReport)
     consistency_result: ConsistencyCheckResult = Field(default_factory=ConsistencyCheckResult)
     self_rag_passed: Optional[bool] = None
     self_rag_score: Optional[float] = None
+    # P0-2 修复：保存完整评估结果，service.py 复用而非伪造
+    self_rag_result: Optional[Any] = None
     crag_triggered: bool = False
     crag_recovered: bool = False
     needs_review: bool = False
@@ -239,6 +247,8 @@ _ALLOWED_REVIEW_REASONS = frozenset(
         "no_specialist_responded",
         "all_specialists_unavailable",
         "below_confidence_threshold",
+        # P2-3 修复：specialist 自带 needs_review=True 时的透传原因
+        "specialist_flagged",
     }
 )
 

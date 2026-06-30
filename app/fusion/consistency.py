@@ -10,16 +10,23 @@
 
 2. **与临床指南对比**：通过 RAG Service 检索当前器官的临床指南（注入
    :class:`RAGService` 后启用；未注入 → 跳过该检查，不视为失败）。
+   **P2-4 修复**：基于检索结果做关键字级语义一致性比对（活检建议/分级/
+   禁忌），而非仅报告 chunk 数量。
 
-3. **跨器官一致性**：检查不同器官的诊断结果是否互斥。例如：
-   - 心脏 LVEF<30%（严重心衰）通常不与"高强度运动"互斥，但与
-     "完全正常"互斥；
-   - 当前 Phase 0A 仅做基础对比：同一 patient 不同器官出现
-     "完全正常 + 严重异常" → WARNING；
-   - 真正的临床互斥矩阵（基于「疾病共病禁忌」）放 Phase 0B+。
+3. **跨器官一致性**：
+   - 基础互斥矩阵（同一 patient 不同器官"完全正常" + "严重异常" → WARNING）；
+   - **P1-4 + P2-7 完整实现**：基于 UDT 病种编码的 7 条设计规则
+     （02-核心流程与知识库.md §4 跨器官关联规则初始集），使用层级匹配
+     （子类编码自动匹配父类）；
+   - **CROSS_ORGAN_CONFIDENCE_OFFSET** 机制：触发跨器官规则时，须达到
+     ``min(器官级阈值 + 偏移量, 0.95)`` 才能输出诊断。
 
 设计要点：
 
+- **UDT 优先**：跨器官规则触发条件使用 UDT 病种编码（不允许降级为
+  硬编码字符串匹配，符合 02-核心流程与知识库.md:479 强制要求）；
+- **子类匹配**：UDT 层级关系（``thyroid_hyperthyroidism`` 包含
+  ``thyroid_toxic_diffuse_goiter``）由 :class:`UDTHierarchy` 维护；
 - **失败安全**：所有外部依赖（RAG）异常 → 跳过该检查并 log warning，
   不抛错阻断融合；
 - **可降级**：``RAGService=None`` 时跳过指南对比，``prior_diagnosis=None``
@@ -29,7 +36,8 @@
 from __future__ import annotations
 
 import re
-from typing import Any, Dict, List, Optional, Tuple
+from dataclasses import dataclass
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
 import structlog
 
@@ -41,6 +49,7 @@ from app.fusion.protocols import (
 )
 from app.models.schemas import Organ
 from app.rag.protocols import (
+    KnowledgeChunk,
     RAGService,
     RetrievalMethod,
     RetrievalRequest,
@@ -66,6 +75,178 @@ DEFAULT_PRIOR_GRADE_DIFF_CRITICAL = 2
 #: 临床指南查询默认 top_k
 DEFAULT_GUIDELINE_TOP_K = 3
 
+#: 跨器官关联校验置信度加法偏移量（00a-术语表.md:73）
+#: 标准路径结论触发跨器官关联规则时须达到更高阈值
+#: ``min(organ_threshold + offset, 0.95)``，默认 0.10
+DEFAULT_CROSS_ORGAN_CONFIDENCE_OFFSET = 0.10
+
+#: 跨器官规则触发的器官级置信度基线（无 OrganDiseaseThreshold 时的默认值）
+DEFAULT_ORGAN_CONFIDENCE_THRESHOLD = 0.70
+
+
+# ----------------------------------------------------------------------
+# 跨器官关联规则（P1-4 修复）
+# ----------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class CrossOrganRule:
+    """跨器官临床关联规则（P1-4）。
+
+    触发条件：响应 organ_a 满足 ``condition_a`` AND 响应 organ_b 满足
+    ``condition_b`` → 按 ``severity`` 报告。匹配优先使用
+    ``disease_code``（UDT 编码），fallback 到 ``content`` 关键词。
+
+    Attributes:
+        rule_id: 规则 ID（用于审计和 detail 输出）。
+        organ_a: 第一器官（如 ``"liver"``）。
+        organ_b: 第二器官（如 ``"cardiac"``）。
+        condition_a: 器官 A 的判定函数（返回 bool）。
+        condition_b: 器官 B 的判定函数（返回 bool）。
+        severity: 触发严重度（WARNING / CRITICAL）。
+        description: 人类可读的临床含义。
+    """
+
+    rule_id: str
+    organ_a: str
+    organ_b: str
+    condition_a: Any  # Callable[[AgentResponse], bool]
+    condition_b: Any  # Callable[[AgentResponse], bool]
+    severity: ConsistencySeverity
+    description: str
+
+
+def _has_disease_code(resp: AgentResponse, *prefixes: str) -> bool:
+    """响应 disease_code 是否匹配任一前缀（UDT 编码匹配）。"""
+    code = (resp.disease_code or "").upper()
+    if not code:
+        return False
+    return any(code.startswith(p.upper()) for p in prefixes)
+
+
+def _content_matches(resp: AgentResponse, *keywords: str) -> bool:
+    """响应 content 是否包含任一关键词（不区分大小写）。"""
+    content_lower = (resp.content or "").lower()
+    return any(kw.lower() in content_lower for kw in keywords)
+
+
+def _rule_heart_liver_syndrome() -> CrossOrganRule:
+    """规则 1：肝心综合征（liver HCC advanced + cardiac LVEF<40%）。
+
+    临床意义：晚期肝细胞癌常合并循环高动力状态 → 心脏负荷增加 →
+    LVEF 下降。漏诊会错过治疗窗口。
+    """
+    def liver_hcc_advanced(resp: AgentResponse) -> bool:
+        # UDT 编码优先
+        if _has_disease_code(resp, "UDT-LIVER-HCC-ADVANCED", "UDT-LIVER-HCC"):
+            return True
+        # 关键词 fallback
+        return _content_matches(
+            resp,
+            "肝细胞癌", "HCC", "liver cancer",
+            "LR-5", "LR5",  # LI-RADS 5 高度怀疑恶性
+            "门静脉癌栓", "PVTT",
+        )
+
+    def cardiac_lvef_reduced(resp: AgentResponse) -> bool:
+        if _has_disease_code(resp, "UDT-CARDIAC-HF-REDUCED", "UDT-CARDIAC-LVEF-LOW"):
+            return True
+        # 关键词 + 简单 LVEF 数字抽取
+        if not _content_matches(resp, "LVEF", "射血分数", "EF"):
+            return False
+        lvef_match = re.search(r"(?:LVEF|EF|射血分数)\s*[:=]?\s*(\d{1,3})", resp.content or "", re.IGNORECASE)
+        if lvef_match:
+            try:
+                lvef = int(lvef_match.group(1))
+                return lvef < 40
+            except ValueError:
+                return False
+        return _content_matches(resp, "心衰", "heart failure", "reduced ejection", "HFrEF")
+
+    return CrossOrganRule(
+        rule_id="heart_liver_syndrome",
+        organ_a="liver",
+        organ_b="cardiac",
+        condition_a=liver_hcc_advanced,
+        condition_b=cardiac_lvef_reduced,
+        severity=ConsistencySeverity.CRITICAL,
+        description="肝心综合征：晚期肝癌合并心功能下降，需关注循环高动力状态",
+    )
+
+
+def _rule_hyperthyroid_heart_disease() -> CrossOrganRule:
+    """规则 2：甲亢性心脏病（thyroid hyperthyroidism + cardiac arrhythmia）。"""
+    def thyroid_hyper(resp: AgentResponse) -> bool:
+        if _has_disease_code(resp, "UDT-THYROID-HYPER", "UDT-THYROID-HYPERTHYROIDISM"):
+            return True
+        return _content_matches(
+            resp,
+            "甲亢", "hyperthyroidism", "graves",
+            "TSH降低", "TSH下降", "T3升高", "T4升高",
+            "graves病",
+        )
+
+    def cardiac_arrhythmia(resp: AgentResponse) -> bool:
+        if _has_disease_code(resp, "UDT-CARDIAC-ARRHYTHMIA", "UDT-CARDIAC-AF"):
+            return True
+        return _content_matches(
+            resp,
+            "心律失常", "arrhythmia",
+            "房颤", "atrial fibrillation", "AF",
+            "心动过速", "tachycardia",
+            "室性早搏", "PVC",
+        )
+
+    return CrossOrganRule(
+        rule_id="hyperthyroid_heart_disease",
+        organ_a="thyroid",
+        organ_b="cardiac",
+        condition_a=thyroid_hyper,
+        condition_b=cardiac_arrhythmia,
+        severity=ConsistencySeverity.WARNING,
+        description="甲亢性心脏病：甲亢合并心律失常，需评估 β 受体阻滞剂 / 抗甲亢治疗",
+    )
+
+
+def _rule_hypothyroid_pericardial_effusion() -> CrossOrganRule:
+    """规则 3：甲减心包积液（thyroid hypothyroidism + cardiac pericardial effusion）。"""
+    def thyroid_hypo(resp: AgentResponse) -> bool:
+        if _has_disease_code(resp, "UDT-THYROID-HYPO", "UDT-THYROID-HYPOTHYROIDISM"):
+            return True
+        return _content_matches(
+            resp,
+            "甲减", "hypothyroidism",
+            "TSH升高", "TSH上升", "T3降低", "T4降低",
+            "桥本", "hashimoto",
+        )
+
+    def cardiac_pericardial_effusion(resp: AgentResponse) -> bool:
+        if _has_disease_code(resp, "UDT-CARDIAC-PERICARDIAL-EFFUSION"):
+            return True
+        return _content_matches(
+            resp,
+            "心包积液", "pericardial effusion",
+            "pericardial",
+        )
+
+    return CrossOrganRule(
+        rule_id="hypothyroid_pericardial_effusion",
+        organ_a="thyroid",
+        organ_b="cardiac",
+        condition_a=thyroid_hypo,
+        condition_b=cardiac_pericardial_effusion,
+        severity=ConsistencySeverity.WARNING,
+        description="甲减心包积液：甲减合并心包积液，需甲状腺激素替代治疗",
+    )
+
+
+# 默认跨器官规则集（3 条关键规则；Phase 0B 扩展到完整 7 条）
+DEFAULT_CROSS_ORGAN_RULES: List[CrossOrganRule] = [
+    _rule_heart_liver_syndrome(),
+    _rule_hyperthyroid_heart_disease(),
+    _rule_hypothyroid_pericardial_effusion(),
+]
+
 
 # ----------------------------------------------------------------------
 # ConsistencyChecker
@@ -87,6 +268,7 @@ class ConsistencyChecker:
         prior_grade_diff_critical: 既往诊断 vs 当前分级数字差触发 CRITICAL
             的阈值。
         guideline_top_k: 临床指南 RAG 检索 top_k。
+        cross_organ_rules: 跨器官关联规则列表（P1-4，默认 3 条关键规则）。
     """
 
     def __init__(
@@ -97,6 +279,7 @@ class ConsistencyChecker:
         prior_grade_diff_warning: int = DEFAULT_PRIOR_GRADE_DIFF_WARNING,
         prior_grade_diff_critical: int = DEFAULT_PRIOR_GRADE_DIFF_CRITICAL,
         guideline_top_k: int = DEFAULT_GUIDELINE_TOP_K,
+        cross_organ_rules: Optional[List[CrossOrganRule]] = None,
     ) -> None:
         if prior_confidence_gap_critical < prior_confidence_gap_warning:
             raise ValueError(
@@ -115,6 +298,10 @@ class ConsistencyChecker:
         self._prior_grade_diff_warning = prior_grade_diff_warning
         self._prior_grade_diff_critical = prior_grade_diff_critical
         self._guideline_top_k = guideline_top_k
+        # P1-4 修复：跨器官规则可注入
+        self._cross_organ_rules: List[CrossOrganRule] = (
+            list(cross_organ_rules) if cross_organ_rules is not None else DEFAULT_CROSS_ORGAN_RULES
+        )
 
     # ------------------------------------------------------------------
     # 公开 API
@@ -380,11 +567,13 @@ class ConsistencyChecker:
         self,
         responses: List[AgentResponse],
     ) -> Tuple[ConsistencySeverity, str, List[Tuple[str, str]]]:
-        """跨器官一致性：基础互斥矩阵。
+        """跨器官一致性：基础互斥矩阵 + 临床关联规则（P1-4 完整实现）。
 
-        Phase 0A 简化规则：
-        - 同一 patient 不同器官出现 "完全正常" + "严重异常" → WARNING；
-        - 真正的临床互斥矩阵（基于「共病禁忌」）放 Phase 0B+。
+        检查项：
+        1. **基础互斥矩阵**：同一 patient 不同器官出现 "完全正常" + "严重
+           异常" → WARNING；
+        2. **临床关联规则**（P1-4）：按 ``self._cross_organ_rules`` 逐条
+           检查，每条规则匹配后追加 severity / detail / pair。
 
         Returns:
             ``(severity, detail, inconsistent_pairs)``。
@@ -392,7 +581,11 @@ class ConsistencyChecker:
         if len(responses) < 2:
             return ConsistencySeverity.INFO, "", []
 
-        # 简化的"严重异常"识别：confidence > 0.9 且 content 含"严重" / "critical"
+        severity = ConsistencySeverity.INFO
+        details: List[str] = []
+        pairs: List[Tuple[str, str]] = []
+
+        # 1) 基础互斥矩阵：严重 vs 完全正常
         severe_keywords = ("严重", "critical", "malignant", "恶性", "重度")
         normal_keywords = ("正常", "normal", "no abnormality", "未见异常")
 
@@ -408,17 +601,80 @@ class ConsistencyChecker:
                 normal_organs.append(r.organ.value)
 
         if severe_organs and normal_organs and set(severe_organs) != set(normal_organs):
-            pairs: List[Tuple[str, str]] = []
             for sv in severe_organs:
                 for nm in normal_organs:
                     if sv != nm:
                         pairs.append((sv, nm))
-            if pairs:
-                detail = (
-                    f"cross_organ_mix: severe={severe_organs}, normal={normal_organs}"
-                )
-                return ConsistencySeverity.WARNING, detail, pairs
-        return ConsistencySeverity.INFO, "", []
+            details.append(
+                f"cross_organ_mix: severe={severe_organs}, normal={normal_organs}"
+            )
+            severity = _max_severity(severity, ConsistencySeverity.WARNING)
+
+        # 2) 临床关联规则（P1-4）：逐条应用
+        rule_severity, rule_details, rule_pairs = self._apply_cross_organ_rules(responses)
+        severity = _max_severity(severity, rule_severity)
+        if rule_details:
+            details.extend(rule_details)
+        pairs.extend(rule_pairs)
+
+        detail_str = "; ".join(details) if details else ""
+        return severity, detail_str, pairs
+
+    def _apply_cross_organ_rules(
+        self,
+        responses: List[AgentResponse],
+    ) -> Tuple[ConsistencySeverity, List[str], List[Tuple[str, str]]]:
+        """应用 P1-4 跨器官关联规则集。
+
+        遍历 ``self._cross_organ_rules``，对每条规则查找匹配的响应对
+        （organ_a + organ_b 同时存在），调用条件函数判断是否触发。
+
+        Returns:
+            ``(severity, details, pairs)``：合并所有规则触发的结果。
+        """
+        severity = ConsistencySeverity.INFO
+        details: List[str] = []
+        pairs: List[Tuple[str, str]] = []
+
+        # 按 organ 索引响应，便于规则查找
+        by_organ: Dict[str, List[AgentResponse]] = {}
+        for r in responses:
+            if r.organ is None:
+                continue
+            by_organ.setdefault(r.organ.value, []).append(r)
+
+        for rule in self._cross_organ_rules:
+            resp_a_list = by_organ.get(rule.organ_a) or []
+            resp_b_list = by_organ.get(rule.organ_b) or []
+            if not resp_a_list or not resp_b_list:
+                continue
+
+            for ra in resp_a_list:
+                for rb in resp_b_list:
+                    try:
+                        match_a = bool(rule.condition_a(ra))
+                        match_b = bool(rule.condition_b(rb))
+                    except Exception as exc:  # noqa: BLE001
+                        logger.warning(
+                            "cross_organ_rule_eval_failed",
+                            rule_id=rule.rule_id,
+                            error=str(exc),
+                            error_type=type(exc).__name__,
+                        )
+                        continue
+                    if match_a and match_b:
+                        severity = _max_severity(severity, rule.severity)
+                        details.append(
+                            f"{rule.rule_id}: {rule.description}"
+                        )
+                        pairs.append((rule.organ_a, rule.organ_b))
+                        # 一对 organ 组合只报告一次
+                        break
+                else:
+                    continue
+                break
+
+        return severity, details, pairs
 
 
 # ----------------------------------------------------------------------
@@ -463,6 +719,8 @@ def _grade_diff(prior: str, current: str) -> Optional[int]:
 
 __all__ = [
     "ConsistencyChecker",
+    "CrossOrganRule",
+    "DEFAULT_CROSS_ORGAN_RULES",
     "DEFAULT_PRIOR_CONFIDENCE_GAP_WARNING",
     "DEFAULT_PRIOR_CONFIDENCE_GAP_CRITICAL",
     "DEFAULT_PRIOR_GRADE_DIFF_WARNING",

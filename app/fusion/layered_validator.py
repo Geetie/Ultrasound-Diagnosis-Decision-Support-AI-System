@@ -146,6 +146,8 @@ class LayeredValidator:
                 self_rag_result = await self._self_rag_evaluator.evaluate(primary)
                 result.self_rag_passed = self_rag_result.passed
                 result.self_rag_score = self_rag_result.score
+                # P0-2 修复：写入完整评估结果，service.py 复用而非重新构造
+                result.self_rag_result = self_rag_result
                 if not self_rag_result.passed and not result.needs_review:
                     result.needs_review = True
                     result.review_reason = "self_rag_failed"
