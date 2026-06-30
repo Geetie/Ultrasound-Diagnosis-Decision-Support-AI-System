@@ -36,10 +36,19 @@ logger = structlog.get_logger("app.agents.dispatcher")
 
 
 # 路由表常量：Phase 0A 显式列出 3 个器官，避免隐式默认。
+#
+# 字段含义：``{Organ: "<class_name>"}``，class_name 解析为：
+# - 在 Wave 5+ 之后：``ThyroidSpecialistAgent`` / ``LiverSpecialistAgent`` /
+#   ``CardiacSpecialistAgent``（由 :func:`app.agents.specialist.build_dispatcher`
+#   注入依赖并实例化）；
+# - 在 Wave 1+2 阶段：``PlaceholderSpecialistAgent``（占位实现）。
+#
+# 注意：本映射仅用于日志/审计/能力发现，**不**用于运行时类型检查
+# （运行时通过 ``DispatcherAgentImpl._specialists`` 字典直接索引）。
 ORGAN_TO_SPECIALIST: Dict[Organ, str] = {
-    Organ.THYROID: "thyroid",
-    Organ.LIVER: "liver",
-    Organ.CARDIAC: "cardiac",
+    Organ.THYROID: "thyroid_specialist",
+    Organ.LIVER: "liver_specialist",
+    Organ.CARDIAC: "cardiac_specialist",
 }
 
 
@@ -66,6 +75,79 @@ class DispatcherAgentImpl(DispatcherAgent, Agent):
         self._name = name
 
     # ------------------------------------------------------------------
+    # 内部：单 specialist 调用的容错封装（消除 invoke / dispatch_all 重复）
+    # ------------------------------------------------------------------
+
+    async def _call_one_safe(
+        self,
+        organ: Organ,
+        context: AgentContext,
+        include_route_in_trace: bool = True,
+    ) -> AgentResponse:
+        """对单个 specialist 做容错调用，失败时返回 ``confidence=0.0`` 的占位响应。
+
+        这是 ``invoke()`` 和 ``dispatch_all()`` 共享的核心降级逻辑：
+        - specialist 缺失 → 返回 ``specialist_unavailable`` 占位响应；
+        - specialist 抛任何异常 → 捕获后返回 ``specialist_unavailable`` 占位响应；
+        - 正常调用 → 返回 specialist 的原始响应。
+
+        Args:
+            organ: 目标器官。
+            context: 调用上下文。
+            include_route_in_trace: 是否在 ``reasoning_trace`` 前面追加
+                ``"route -> {organ}"`` 行（``invoke()`` 需要；``dispatch_all``
+                的并行调用不需要重复写入）。
+        """
+        specialist = self._specialists.get(organ)
+        if specialist is None:
+            logger.warning(
+                "dispatcher_no_specialist_for_organ",
+                organ=organ.value,
+            )
+            return AgentResponse(
+                agent_name=f"unknown_{organ.value}",
+                organ=organ,
+                content=f"[{organ.value}] specialist_unavailable",
+                confidence=0.0,
+                reasoning_trace=self._make_degraded_trace(
+                    organ, "no registered specialist", include_route_in_trace
+                ),
+            )
+
+        try:
+            return await specialist.invoke(context)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "dispatcher_specialist_failed",
+                organ=organ.value,
+                error=str(exc),
+                error_type=type(exc).__name__,
+            )
+            return AgentResponse(
+                agent_name=f"failed_{specialist.__class__.__name__}",
+                organ=organ,
+                content=f"[{organ.value}] specialist_unavailable",
+                confidence=0.0,
+                reasoning_trace=self._make_degraded_trace(
+                    organ, type(exc).__name__, include_route_in_trace
+                ),
+            )
+
+    @staticmethod
+    def _make_degraded_trace(
+        organ: Organ,
+        reason: str,
+        include_route: bool,
+    ) -> List[str]:
+        """构造降级响应的 ``reasoning_trace``。"""
+        if include_route:
+            return [
+                f"route -> {organ.value}",
+                f"specialist_unavailable: {reason}",
+            ]
+        return [f"specialist_unavailable: {reason}"]
+
+    # ------------------------------------------------------------------
     # Agent protocol
     # ------------------------------------------------------------------
 
@@ -78,49 +160,8 @@ class DispatcherAgentImpl(DispatcherAgent, Agent):
         3. 聚合单条响应（与多 specialist 场景共用同一条聚合逻辑）。
         """
         start = time.monotonic()
-        responses: List[AgentResponse] = []
-        specialist = self._specialists.get(context.organ)
-        if specialist is None:
-            logger.warning(
-                "dispatcher_no_specialist_for_organ",
-                organ=context.organ.value,
-            )
-            responses.append(
-                AgentResponse(
-                    agent_name=f"unknown_{context.organ.value}",
-                    organ=context.organ,
-                    content=f"[{context.organ.value}] specialist_unavailable",
-                    confidence=0.0,
-                    reasoning_trace=[
-                        f"route -> {context.organ.value}",
-                        "specialist_unavailable: no registered specialist",
-                    ],
-                )
-            )
-        else:
-            try:
-                resp = await specialist.invoke(context)
-                responses.append(resp)
-            except Exception as exc:  # noqa: BLE001
-                logger.warning(
-                    "dispatcher_specialist_failed",
-                    organ=context.organ.value,
-                    error=str(exc),
-                    error_type=type(exc).__name__,
-                )
-                responses.append(
-                    AgentResponse(
-                        agent_name=f"failed_{specialist.__class__.__name__}",
-                        organ=context.organ,
-                        content=f"[{context.organ.value}] specialist_unavailable",
-                        confidence=0.0,
-                        reasoning_trace=[
-                            f"route -> {context.organ.value}",
-                            f"specialist_unavailable: {type(exc).__name__}",
-                        ],
-                    )
-                )
-
+        response = await self._call_one_safe(context.organ, context)
+        responses: List[AgentResponse] = [response]
         aggregated = await self.aggregate(responses)
         aggregated.latency_ms = (time.monotonic() - start) * 1000.0
         return aggregated
@@ -143,6 +184,21 @@ class DispatcherAgentImpl(DispatcherAgent, Agent):
             if not ok:
                 return False
         return True
+
+    async def close(self) -> None:
+        """释放 dispatcher 资源（调用各 specialist.close() 并清空 specialists 字典）。"""
+        for organ, specialist in list(self._specialists.items()):
+            try:
+                await specialist.close()
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(
+                    "dispatcher_specialist_close_error",
+                    organ=organ.value,
+                    error=str(exc),
+                    error_type=type(exc).__name__,
+                )
+        self._specialists.clear()
+        logger.info("dispatcher_closed", name=self._name)
 
     # ------------------------------------------------------------------
     # DispatcherAgent protocol
@@ -230,31 +286,11 @@ async def dispatch_all(
         return []
 
     async def _call_one(organ: Organ) -> AgentResponse:
-        specialist = dispatcher._specialists.get(organ)
-        if specialist is None:
-            return AgentResponse(
-                agent_name=f"unknown_{organ.value}",
-                organ=organ,
-                content=f"[{organ.value}] specialist_unavailable",
-                confidence=0.0,
-                reasoning_trace=["specialist_unavailable: no registered specialist"],
-            )
-        try:
-            return await specialist.invoke(context)
-        except Exception as exc:  # noqa: BLE001
-            logger.warning(
-                "dispatch_all_specialist_failed",
-                organ=organ.value,
-                error=str(exc),
-                error_type=type(exc).__name__,
-            )
-            return AgentResponse(
-                agent_name=f"failed_{specialist.__class__.__name__}",
-                organ=organ,
-                content=f"[{organ.value}] specialist_unavailable",
-                confidence=0.0,
-                reasoning_trace=[f"specialist_unavailable: {type(exc).__name__}"],
-            )
+        # dispatch_all 路径：reasoning_trace 不需要重复 "route -> xxx"（每行由
+        # 调用方在 aggregate 时统一追加 "aggregated N specialist(s)"）
+        return await dispatcher._call_one_safe(
+            organ, context, include_route_in_trace=False
+        )
 
     return await asyncio.gather(*[_call_one(o) for o in organs])
 

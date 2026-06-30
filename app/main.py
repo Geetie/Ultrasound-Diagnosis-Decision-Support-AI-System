@@ -194,36 +194,61 @@ async def lifespan(app: FastAPI):
     else:
         app.state.rag_service = None
 
-    # AGT 基础智能体（T-GA-AGT-01/02/03/07）：
+    # AGT 智能体（T-GA-AGT-01/02/03/04/05/06/07）：
     # dispatcher / knowledge / monitor 三个智能体在 lifespan 启动期实例化，
-    # 并通过 app.state 暴露给上层 endpoint。dispatcher 当前用占位 specialist
-    # 注册（AGT-04/05/06 真实实现交付后替换）。knowledge_agent 依赖 RAG
-    # Service（见上文 app.state.rag_service），RAG 不可用时降级为「无 RAG」
-    # 的占位实现（query 会直接抛 RuntimeError）。任何初始化失败都被吞掉 —
-    # AGT 模块在 Phase 0A 是可选项，不应阻塞主服务启动。
+    # 并通过 app.state 暴露给上层 endpoint。Wave 5+ 后 dispatcher 通过
+    # :func:`app.agents.specialist.build_dispatcher` 工厂注入 inference + knowledge
+    # 依赖，真实 specialist（ThyroidSpecialistAgent / LiverSpecialistAgent /
+    # CardiacSpecialistAgent）替换 Wave 1+2 阶段的占位实现。
+    # knowledge_agent 依赖 RAG Service（见上文 app.state.rag_service），
+    # RAG 不可用时降级为「无 RAG」的占位实现（query 会直接抛 RuntimeError）。
+    # 任何初始化失败都被吞掉 — AGT 模块在 Phase 0A 是可选项，不应阻塞主服务启动。
     import logging
     _logger = logging.getLogger(__name__)
     try:
-        from app.agents.dispatcher import DispatcherAgentImpl
         from app.agents.knowledge import KnowledgeAgentImpl
         from app.agents.monitor import MonitorAgentImpl
-        from app.agents.specialist import PlaceholderSpecialistAgent
+        from app.agents.specialist import build_dispatcher
+        from app.agents.dispatcher import DispatcherAgentImpl
+        from app.inference.factory import create_inference_engine_from_settings
         from app.models.schemas import Organ
-
-        # dispatcher：用占位 specialist 注册三个器官
-        placeholder_specialists = {
-            Organ.THYROID: PlaceholderSpecialistAgent(Organ.THYROID),
-            Organ.LIVER: PlaceholderSpecialistAgent(Organ.LIVER),
-            Organ.CARDIAC: PlaceholderSpecialistAgent(Organ.CARDIAC),
-        }
-        dispatcher = DispatcherAgentImpl(specialists=placeholder_specialists)
-        app.state.dispatcher = dispatcher
+        from app.agents.specialist import PlaceholderSpecialistAgent
 
         # knowledge_agent：RAG 不可用时降级为「仅占位」实现（query 抛 RuntimeError）
         if app.state.rag_service is not None:
+            # KB 版本解析器：动态从 RAG 服务或 settings 获取当前 KB 版本。
+            #
+            # 优先级：
+            #   1) RAG 服务暴露 ``current_kb_version()`` 方法 → 优先使用（最权威）
+            #   2) RAG 服务暴露 ``kb_version`` 属性 → 次选
+            #   3) settings.phase0a_mock_kb_version（运维可配置，Phase 0A 默认）
+            #   4) 解析失败时回退到 ``"kb_v0.0.0"``（缓存降级但仍可用）
+            #
+            # KB 版本变更会嵌入缓存键（见 ``app/agents/knowledge.py:_make_cache_key``），
+            # 实现自然失效，无需显式 ACK 事件。
+            def _kb_version_resolver() -> str:
+                fallback_version = settings.phase0a_mock_kb_version or "kb_v0.0.0"
+                try:
+                    rag = app.state.rag_service
+                    if rag is not None:
+                        # 1) 方法优先（与 RAG 服务契约对齐）
+                        if hasattr(rag, "current_kb_version"):
+                            v = rag.current_kb_version()
+                            if isinstance(v, str) and v:
+                                return v
+                        # 2) 属性次选
+                        if hasattr(rag, "kb_version"):
+                            v = rag.kb_version
+                            if isinstance(v, str) and v:
+                                return v
+                    return fallback_version
+                except Exception:
+                    return fallback_version
+
             knowledge_agent = KnowledgeAgentImpl(
                 rag_service=app.state.rag_service,
                 redis_client=RedisPool,
+                kb_version_resolver=_kb_version_resolver,
             )
         else:
             class _KnowledgeUnavailable:
@@ -237,6 +262,38 @@ async def lifespan(app: FastAPI):
 
             knowledge_agent = _KnowledgeUnavailable()
         app.state.knowledge_agent = knowledge_agent
+
+        # inference_engine：用于 specialist 的 LLM 调用。
+        # 创建失败（如配置缺失）→ dispatcher 自动降级为占位 specialist。
+        inference_engine = None
+        try:
+            inference_engine = create_inference_engine_from_settings()
+        except Exception as e:
+            _logger.warning(
+                "inference_engine_init_failed", extra={"error": str(e)}
+            )
+        app.state.inference_engine = inference_engine
+
+        # dispatcher：通过 build_dispatcher 工厂注入 inference + knowledge。
+        # 依赖任一缺失时自动用占位 specialist 兜底（dispatcher 仍可启动）。
+        # 知识查询接口 ``app.agents.protocols.KnowledgeAgent`` 是 ABC，
+        # 我们的占位 ``_KnowledgeUnavailable`` 没有显式继承，但提供同名
+        # ``query`` / ``health_check`` 协程 → 满足 duck-typing 契约；
+        # 工厂在 knowledge_agent 异常时也会回退到占位路径。
+        if isinstance(knowledge_agent, KnowledgeAgentImpl) and inference_engine is not None:
+            dispatcher = build_dispatcher(
+                inference_engine=inference_engine,
+                knowledge_agent=knowledge_agent,
+                use_placeholder_on_missing=False,
+            )
+        else:
+            # 依赖缺失（无 RAG 或无 inference）→ 使用占位 specialist 兜底
+            dispatcher = build_dispatcher(
+                inference_engine=None,
+                knowledge_agent=None,
+                use_placeholder_on_missing=True,
+            )
+        app.state.dispatcher = dispatcher
 
         # monitor_agent：独立组件，无需外部依赖
         monitor_agent = MonitorAgentImpl()
@@ -279,6 +336,20 @@ async def lifespan(app: FastAPI):
     await safety_gateway_client.close()
     if consent_consumer:
         await consent_consumer.stop()
+    # AGT 智能体显式关闭阶段（按 monitor → knowledge → dispatcher 顺序）：
+    # 反向拓扑序关闭，先释放依赖方，再释放被依赖方，确保每个 close()
+    # 看到的依赖状态都是有效的。
+    import logging
+    _shutdown_logger = logging.getLogger(__name__)
+    for agent_attr in ("monitor_agent", "knowledge_agent", "dispatcher"):
+        agent = getattr(app.state, agent_attr, None)
+        if agent is not None and hasattr(agent, "close"):
+            try:
+                await agent.close()
+            except Exception as e:
+                _shutdown_logger.warning(
+                    f"agents_close_failed", extra={"agent": agent_attr, "error": str(e)}
+                )
     if hasattr(app.state, "inference_engine") and app.state.inference_engine:
         await app.state.inference_engine.close()
     if hasattr(app.state, "speech_engine") and app.state.speech_engine:

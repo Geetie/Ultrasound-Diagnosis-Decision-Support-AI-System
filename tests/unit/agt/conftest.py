@@ -1,12 +1,21 @@
 """Shared fixtures for AGT track tests."""
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import Any, List, Optional
 from unittest.mock import AsyncMock
 
 import pytest
 
 from app.agents.protocols import Agent, AgentContext, AgentResponse
+from app.inference.protocols import (
+    InferenceEngine,
+    InferenceError,
+    InferenceErrorCode,
+    InferenceRequest,
+    InferenceResponse,
+    ModelInfo,
+    TokenUsage,
+)
 from app.knowledge.protocols import KnowledgeChunk
 from app.models.schemas import Organ
 
@@ -32,6 +41,24 @@ def make_chunk(
         section_path="",
         token_count=4,
     )
+
+
+def make_chunks(n: int, organ: str = "thyroid") -> List[KnowledgeChunk]:
+    """构造 n 个知识 chunk（用于 specialist 测试）。"""
+    return [
+        KnowledgeChunk(
+            chunk_id=f"chunk_{i}",
+            kb_version="kb_v1.0.0",
+            organ=organ,
+            content=f"chunk content {i}",
+            metadata={},
+            embedding=None,
+            source_doc_id=f"doc_{i}",
+            section_path="",
+            token_count=10,
+        )
+        for i in range(n)
+    ]
 
 
 class FakeSpecialist(Agent):
@@ -74,6 +101,15 @@ class FakeSpecialist(Agent):
 
     async def health_check(self) -> bool:
         return self._healthy
+
+    async def close(self) -> None:
+        """释放资源(测试替身无外部资源,实现为空)。
+
+        必须实现 ``Agent`` ABC 的 ``close()`` 抽象方法,否则
+        ``FakeSpecialist`` 无法被实例化(参见
+        ``app/agents/protocols.py:Agent.close``)。
+        """
+        return None
 
 
 class FakeRAGService:
@@ -139,6 +175,99 @@ class FakeRedis:
 
     def set_raw(self, key: str, value: bytes) -> None:
         self._store[key] = value
+
+
+# ----------------------------------------------------------------------
+# FakeKnowledgeAgent / FakeInferenceEngine（specialist 测试用）
+# ----------------------------------------------------------------------
+
+
+class FakeKnowledgeAgent:
+    """specialist 测试用的 knowledge agent 替身。
+
+    可注入：
+    - ``chunks`` — 默认返回的 chunk 列表
+    - ``raise_exc`` — 调用 ``query()`` 时抛出的异常
+    - ``query_call_count`` — ``query()`` 调用次数（用于断言）
+    """
+
+    def __init__(
+        self,
+        chunks: Optional[List[KnowledgeChunk]] = None,
+        raise_exc: Optional[Exception] = None,
+    ) -> None:
+        self._chunks = chunks if chunks is not None else make_chunks(3)
+        self._raise = raise_exc
+        self.query_call_count = 0
+        self.last_query = None
+        self.last_organ = None
+        self.last_top_k = None
+
+    async def query(
+        self,
+        query: str,
+        organ: Organ,
+        top_k: int = 10,
+    ) -> List[KnowledgeChunk]:
+        self.query_call_count += 1
+        self.last_query = query
+        self.last_organ = organ
+        self.last_top_k = top_k
+        if self._raise is not None:
+            raise self._raise
+        return list(self._chunks)[:top_k]
+
+    async def health_check(self) -> bool:
+        return True
+
+    async def close(self) -> None:
+        return None
+
+
+class FakeInferenceEngine:
+    """specialist 测试用的 inference engine 替身。
+
+    可注入：
+    - ``text`` — 默认返回的生成文本（公开属性，可在测试中直接修改）
+    - ``raise_exc`` — 调用 ``generate()`` 时抛出的异常
+    - ``latency_ms`` — 模拟的推理延迟（秒）
+    """
+
+    def __init__(
+        self,
+        text: str = "TR4",
+        raise_exc: Optional[Exception] = None,
+        latency_ms: float = 0.0,
+    ) -> None:
+        self.text = text
+        self.raise_exc = raise_exc
+        self.latency_ms = latency_ms
+        self.generate_call_count = 0
+        self.last_request: Optional[InferenceRequest] = None
+
+    async def generate(self, request: InferenceRequest) -> InferenceResponse:
+        self.generate_call_count += 1
+        self.last_request = request
+        if self.raise_exc is not None:
+            raise self.raise_exc
+        return InferenceResponse(
+            text=self.text,
+            model="fake-model",
+            usage=TokenUsage(prompt_tokens=100, completion_tokens=10, total_tokens=110),
+            finish_reason="stop",
+            request_id=request.request_id,
+            session_id=request.session_id,
+            latency_ms=self.latency_ms,
+        )
+
+    async def health_check(self) -> bool:
+        return True
+
+    async def get_model_info(self) -> ModelInfo:
+        return ModelInfo(model_name="fake-model", model_version="v1")
+
+    async def close(self) -> None:
+        return None
 
 
 # ----------------------------------------------------------------------
