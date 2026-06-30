@@ -131,8 +131,32 @@ class MonitorAgentImpl(MonitorAgent):
         request: DiagnosisRequest,
         response: DiagnosisResult,
     ) -> None:
-        """追踪一次完整诊断并按规则打标签。"""
-        # 1) 延迟埋点（秒）
+        """追踪一次完整诊断并按规则打标签。
+
+        行为契约（与 01-架构 §2 + debug-pro-1.0.0 审计要求一致）：
+
+        1) **延迟埋点**（与 status 无关）：所有诊断均记录 latency 指标；
+        2) **R3 滑动窗口**（与 status 无关）：所有诊断均更新 organ 级别的
+           连续失败滑动窗口，R3 在窗口满且全部为失败时触发；
+        3) **R1/R2 仅在终态（``status == "completed"``）判定**：在
+           ``processing`` 状态下的诊断不触发 R1（低置信度） / R2（性能降级）
+           规则。
+
+        设计理由（处理 P3 审查项）：
+
+        - R1 语义上是"诊断结果置信度不足，需人工复核"——"未完成的诊断"在
+          概念上**没有**置信度结果，不应被误判为 needs_review；
+        - R2 语义上是"处理时间过长，性能下降"——``processing`` 状态的请求
+          还没结束，``processing_time_ms`` 是中间值，不能据此判定性能降级；
+        - 运维可观测性需求通过**步骤 1（latency 埋点）+ 步骤 2（滑动窗口
+          更新）**覆盖：``processing`` 状态的延迟会被记录到指标库，超时
+          之后其转 ``"timeout"`` 终态的诊断会被 R2 / R3 正确捕获。
+
+        因此 ``if response.status != "completed": return`` 后的早返回**不是**
+        遗漏了 "processing 状态下的超时前最后状态的性能降级记录"，而是
+        故意为之（避免假阳性）。这条契约与设计文档保持一致，无需调整。
+        """
+        # 1) 延迟埋点（秒）— 与 status 无关
         seconds = response.processing_time_ms / 1000.0
         self._record_latency(seconds, with_retry=bool(request.retry))
 
@@ -158,6 +182,7 @@ class MonitorAgentImpl(MonitorAgent):
             self._record_health(0.5)
 
         # 4) R1 / R2 仅对终态（completed）结果判定
+        # 行为契约：``processing`` 状态不触发 R1/R2（见方法 docstring）。
         if response.status != "completed":
             return
 
@@ -207,6 +232,18 @@ class MonitorAgentImpl(MonitorAgent):
         启动期统一调用 ``health_check()`` 验证所有智能体的可用性。
         """
         return True
+
+    async def close(self) -> None:
+        """清空所有滑动窗口（释放内存态状态）。"""
+        try:
+            self.reset()
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "monitor_close_failed",
+                error=str(exc),
+                error_type=type(exc).__name__,
+            )
+        logger.info("monitor_closed")
 
     # ------------------------------------------------------------------
     # 测试 / 运维辅助

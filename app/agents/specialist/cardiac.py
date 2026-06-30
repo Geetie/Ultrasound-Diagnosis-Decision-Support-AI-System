@@ -95,10 +95,18 @@ class CardiacSpecialistAgent(RAGSpecialistAgent):
         - 启发式基线 + 数值清晰度加成（明确 "50%" 形式 +0.1）；
         - 严重程度 + 数值**一致**加成（+0.1）（说明 LLM 内部逻辑自洽）；
         - 封顶 1.0。
+
+        **R6 修正（矛盾检测）**：当 LLM 同时输出"EF 数值"和"严重程度
+        关键字"，但二者推算结果**不一致**时（如 "EF 60%, severely_reduced"，
+        数值推算 normal，关键字 severely_reduced），在 ``reasoning_trace``
+        追加 ``severity_mismatch: ...`` 标签，并将 ``confidence`` 扣减
+        0.1（保守策略 — 与原 spec 描述一致）。**不**自动改写 severity —
+        保留 LLM 原始输出供 FUS 轨道做最终决策。
         """
         normalized = normalize_grading_text(llm_text)
         lvef_value: Optional[float] = None
         severity: Optional[str] = None
+        trace_extra: List[str] = []  # 矛盾检测标签（追加到 reasoning_trace）
 
         # 1) 数值抽取
         for match in _LVEF_NUMBER_PATTERN.finditer(normalized):
@@ -121,12 +129,25 @@ class CardiacSpecialistAgent(RAGSpecialistAgent):
                     break
 
         # 3) 数值 → 严重程度推算
+        computed_severity: Optional[str] = None
         if lvef_value is not None:
             computed_severity = _lvef_to_severity(lvef_value)
             if severity is None:
                 severity = computed_severity
-            # 注：此处不做交叉校验；LLM 给出"50% mildly" 与 _lvef_to_severity 一致
-            # → 加成；不一致 → 不加成（说明 LLM 自相矛盾）
+
+        # 3.5) **R6 矛盾检测**：数值推算 vs 关键字不一致
+        severity_mismatch = False
+        if (
+            lvef_value is not None
+            and severity is not None
+            and computed_severity is not None
+            and severity != computed_severity
+        ):
+            severity_mismatch = True
+            trace_extra.append(
+                f"severity_mismatch: lvef={lvef_value:g}% -> "
+                f"computed={computed_severity} but keyword={severity}"
+            )
 
         # 4) 抽取失败 → 降级
         if severity is None:
@@ -158,6 +179,9 @@ class CardiacSpecialistAgent(RAGSpecialistAgent):
             # 一致性加成：数值推算的严重程度 == 关键字抽取的严重程度
             if severity == _lvef_to_severity(lvef_value):
                 score_bonus += 0.1
+        # R6: 矛盾检测扣减（保守策略 — spec 描述）
+        if severity_mismatch:
+            score_bonus -= 0.1
 
         final_conf = round(min(base_conf + score_bonus, 1.0), 4)
 
@@ -174,18 +198,26 @@ class CardiacSpecialistAgent(RAGSpecialistAgent):
         else:
             content = f"[cardiac] LVEF={lvef_str}, severity={severity}"
 
+        reasoning_trace = [
+            "grading_system -> LVEF",
+            f"lvef_value -> {lvef_value}",
+            f"severity -> {severity}",
+            f"score_bonus -> {score_bonus}",
+        ]
+        # 追加矛盾检测标签（在器官级 trace 末尾）
+        reasoning_trace.extend(trace_extra)
+
+        # R6: 矛盾检测额外设置 needs_review = True（更激进的安全策略）
+        needs_review = severity_mismatch
+
         return AgentResponse(
             agent_name="cardiac_specialist",
             organ=Organ.CARDIAC,
             content=content,
             confidence=final_conf,
             evidence_chunk_ids=evidence_ids,
-            reasoning_trace=[
-                "grading_system -> LVEF",
-                f"lvef_value -> {lvef_value}",
-                f"severity -> {severity}",
-                f"score_bonus -> {score_bonus}",
-            ],
+            reasoning_trace=reasoning_trace,
+            needs_review=needs_review,
         )
 
     @staticmethod
