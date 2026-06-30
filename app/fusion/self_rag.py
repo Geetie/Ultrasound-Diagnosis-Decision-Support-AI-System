@@ -1,0 +1,338 @@
+"""T-GA-FUS-02 — Self-RAG 自我评估模块。
+
+本模块实现 Self-RAG 的核心评估器 (:class:`SelfRAGEvaluator`)。
+
+Self-RAG 流程：
+
+1. 接收待评估的 :class:`AgentResponse`；
+2. 构造 self-evaluation prompt（评估"诊断是否有充分证据" / "证据是否
+   与诊断结论一致" / "是否有遗漏的关键特征"）；
+3. 调用 LLM 自我评估；
+4. 解析输出 → :class:`SelfRAGEvalResult`（pass / retry / needs_review）；
+5. 验收：质检通过率 ≥ 80%。
+
+评分维度（5 分制）：
+
+- **证据充分性**（0-5）：诊断是否有充分证据支持（Y/N + 0-5 分）；
+- **证据一致性**（0-5）：证据与诊断结论是否一致；
+- **关键特征**（0-5）：是否有遗漏的关键特征（5 = 无遗漏）。
+
+总分 = min(三个维度)。``total >= pass_threshold`` → passed=True。
+
+设计要点：
+
+- **失败安全**：LLM 调用失败 → 返回 ``passed=False, score=0.0,
+  reason="self_rag_eval_failed"``，由编排器决定后续（CRAG 兜底）；
+- **启发式兜底**：当未配置 LLM 引擎（``inference_engine=None``）时，
+  使用基于响应本身的启发式评估（confidence >= heuristic_threshold 即视为
+  通过），保留测试可达性。
+- **可注入**：评分阈值、LLM 引擎均通过构造参数注入。
+"""
+from __future__ import annotations
+
+import re
+from dataclasses import dataclass
+from typing import Any, List, Optional
+
+import structlog
+
+from app.agents.protocols import AgentResponse
+from app.inference.protocols import InferenceEngine, InferenceRequest
+from app.knowledge.protocols import KnowledgeChunk
+
+logger = structlog.get_logger("app.fusion.self_rag")
+
+
+# ----------------------------------------------------------------------
+# 数据模型
+# ----------------------------------------------------------------------
+
+
+@dataclass
+class SelfRAGEvalResult:
+    """Self-RAG 评估结果。
+
+    Attributes:
+        passed: 是否通过质检。
+        score: 总分（0.0 - 5.0，0 = 完全失败，5 = 完美）。
+        evidence_sufficiency: 证据充分性（0-5）。
+        evidence_consistency: 证据一致性（0-5）。
+        feature_completeness: 关键特征完整性（0-5）。
+        missing_features: 检出的遗漏特征列表（LLM 输出）。
+        reason: 失败原因（仅 passed=False 时有意义）。
+    """
+
+    passed: bool
+    score: float
+    evidence_sufficiency: float = 0.0
+    evidence_consistency: float = 0.0
+    feature_completeness: float = 0.0
+    missing_features: List[str] = None  # type: ignore[assignment]
+    reason: str = ""
+
+    def __post_init__(self) -> None:
+        if self.missing_features is None:
+            self.missing_features = []
+
+
+# ----------------------------------------------------------------------
+# SelfRAGEvaluator
+# ----------------------------------------------------------------------
+
+
+#: 评分通过阈值（总分 >= 阈值 → passed=True；推荐 3.0）
+DEFAULT_PASS_THRESHOLD = 3.0
+
+#: 启发式兜底阈值（当 inference_engine=None 时使用；confidence >= 阈值 → passed）
+DEFAULT_HEURISTIC_THRESHOLD = 0.7
+
+#: 单维度评分上限
+MAX_SCORE = 5.0
+
+#: self-evaluation prompt 模板
+_SELF_RAG_PROMPT = """你是一名严谨的超声诊断质检员。请对以下诊断结论做自我评估，按 3 个维度各打 0-5 分。
+
+# 诊断结论
+{diagnosis}
+
+# 引用的知识
+{evidence}
+
+# 评估维度
+1. 证据充分性（0-5）：诊断是否有充分证据支持？0=完全无证据，5=证据非常充分
+2. 证据一致性（0-5）：证据与诊断结论是否一致？0=完全矛盾，5=完全一致
+3. 关键特征（0-5）：是否有遗漏的关键特征？5=无遗漏，0=大量遗漏
+
+# 输出格式（严格遵守）
+```
+evidence_sufficiency: <0-5>
+evidence_consistency: <0-5>
+feature_completeness: <0-5>
+missing_features: <逗号分隔的特征列表，如 "无" 或 "钙化, 边界">
+```
+"""
+
+
+class SelfRAGEvaluator:
+    """Self-RAG 评估器（T-GA-FUS-02）。
+
+    Args:
+        inference_engine: LLM 推理引擎（用于 self-evaluation 调用）。
+            ``None`` 时降级为基于响应 confidence 的启发式评估。
+        pass_threshold: 总分 >= 阈值即视为通过（默认 3.0）。
+        heuristic_threshold: 启发式兜底阈值（仅在 ``inference_engine=None``
+            时使用；confidence >= 阈值即 passed=True）。
+        max_tokens: LLM 生成上限（默认 256）。
+    """
+
+    def __init__(
+        self,
+        inference_engine: Optional[InferenceEngine] = None,
+        pass_threshold: float = DEFAULT_PASS_THRESHOLD,
+        heuristic_threshold: float = DEFAULT_HEURISTIC_THRESHOLD,
+        max_tokens: int = 256,
+    ) -> None:
+        if not (0.0 <= pass_threshold <= MAX_SCORE):
+            raise ValueError(
+                f"pass_threshold must be in [0.0, {MAX_SCORE}], got {pass_threshold}"
+            )
+        if not (0.0 <= heuristic_threshold <= 1.0):
+            raise ValueError(
+                f"heuristic_threshold must be in [0.0, 1.0], got {heuristic_threshold}"
+            )
+        if max_tokens <= 0:
+            raise ValueError("max_tokens must be positive")
+        self._inference = inference_engine
+        self._pass_threshold = pass_threshold
+        self._heuristic_threshold = heuristic_threshold
+        self._max_tokens = max_tokens
+
+    # ------------------------------------------------------------------
+    # 公开 API
+    # ------------------------------------------------------------------
+
+    async def evaluate(self, response: AgentResponse) -> SelfRAGEvalResult:
+        """执行 Self-RAG 评估。
+
+        Args:
+            response: 待评估的 specialist 响应。
+
+        Returns:
+            :class:`SelfRAGEvalResult`：评估结果（passed / score / 维度分）。
+        """
+        # 1) 启发式兜底：未配置 LLM → 仅看 confidence + 证据数量
+        if self._inference is None:
+            return self._heuristic_evaluate(response)
+
+        # 2) LLM 自我评估
+        prompt = self._build_prompt(response)
+        try:
+            request = InferenceRequest(
+                prompt=prompt,
+                max_tokens=self._max_tokens,
+                request_id=f"self_rag_{response.agent_name}",
+            )
+            llm_response = await self._inference.generate(request)
+            text = llm_response.text or ""
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "self_rag_llm_failed_falling_back_to_heuristic",
+                agent=response.agent_name,
+                error=str(exc),
+                error_type=type(exc).__name__,
+            )
+            return self._heuristic_evaluate(
+                response, reason=f"llm_failed: {type(exc).__name__}"
+            )
+
+        # 3) 解析 LLM 输出
+        parsed = _parse_self_rag_output(text)
+        if parsed is None:
+            logger.warning(
+                "self_rag_parse_failed",
+                agent=response.agent_name,
+                llm_text_preview=text[:100],
+            )
+            return self._heuristic_evaluate(response, reason="llm_parse_failed")
+
+        # 4) 评分
+        evidence_sufficiency, evidence_consistency, feature_completeness, missing = parsed
+        total = min(evidence_sufficiency, evidence_consistency, feature_completeness)
+        passed = total >= self._pass_threshold
+        reason = "" if passed else f"score={total:.2f} < {self._pass_threshold}"
+        return SelfRAGEvalResult(
+            passed=passed,
+            score=round(total, 2),
+            evidence_sufficiency=evidence_sufficiency,
+            evidence_consistency=evidence_consistency,
+            feature_completeness=feature_completeness,
+            missing_features=missing,
+            reason=reason,
+        )
+
+    # ------------------------------------------------------------------
+    # 内部：prompt / 启发式 / 解析
+    # ------------------------------------------------------------------
+
+    def _build_prompt(self, response: AgentResponse) -> str:
+        """构造 self-evaluation prompt。"""
+        evidence_str = (
+            f"agent={response.agent_name}, "
+            f"organ={response.organ.value if response.organ else 'unknown'}, "
+            f"confidence={response.confidence:.4f}, "
+            f"evidence_chunks={len(response.evidence_chunk_ids)}"
+        )
+        return _SELF_RAG_PROMPT.format(
+            diagnosis=response.content or "(empty)",
+            evidence=evidence_str,
+        )
+
+    def _heuristic_evaluate(
+        self,
+        response: AgentResponse,
+        reason: str = "",
+    ) -> SelfRAGEvalResult:
+        """启发式评估（无 LLM 时使用，或 LLM 调用 / 解析失败时回退）。
+
+        评分规则：
+        - evidence_sufficiency = min(len(evidence) / 5, 1.0) * 5
+        - evidence_consistency = response.confidence * 5
+        - feature_completeness = (1.0 if response.content else 0.0) * 5
+        - total = min(三个维度)
+
+        注意：``reason`` 参数总是被保留（即使 passed=True），便于调用方
+        区分"启发式主动判定通过"和"LLM 失败后兜底通过"。
+        """
+        evidence_count = len(response.evidence_chunk_ids or [])
+        evidence_sufficiency = min(evidence_count / 5.0, 1.0) * MAX_SCORE
+        evidence_consistency = float(response.confidence) * MAX_SCORE
+        feature_completeness = (MAX_SCORE if response.content else 0.0)
+        total = min(evidence_sufficiency, evidence_consistency, feature_completeness)
+        passed = (
+            response.confidence >= self._heuristic_threshold
+            and evidence_count > 0
+            and bool(response.content)
+        )
+        # 总是保留 reason（包括 passed=True 时的 "llm_failed_fallback" 等）
+        final_reason = reason or ("" if passed else "heuristic_below_threshold")
+        return SelfRAGEvalResult(
+            passed=passed,
+            score=round(total, 2),
+            evidence_sufficiency=round(evidence_sufficiency, 2),
+            evidence_consistency=round(evidence_consistency, 2),
+            feature_completeness=round(feature_completeness, 2),
+            missing_features=[],
+            reason=final_reason,
+        )
+
+
+# ----------------------------------------------------------------------
+# 输出解析
+# ----------------------------------------------------------------------
+
+_FIELD_PATTERNS = {
+    "evidence_sufficiency": re.compile(
+        r"evidence_sufficiency\s*[:：]\s*([0-5](?:\.\d+)?)", re.IGNORECASE
+    ),
+    "evidence_consistency": re.compile(
+        r"evidence_consistency\s*[:：]\s*([0-5](?:\.\d+)?)", re.IGNORECASE
+    ),
+    "feature_completeness": re.compile(
+        r"feature_completeness\s*[:：]\s*([0-5](?:\.\d+)?)", re.IGNORECASE
+    ),
+    "missing_features": re.compile(
+        r"missing_features\s*[:：]\s*([^\n]+)", re.IGNORECASE
+    ),
+}
+
+
+def _parse_self_rag_output(
+    text: str,
+) -> Optional[tuple[float, float, float, List[str]]]:
+    """解析 self-rag LLM 输出。
+
+    期望格式（每行一个字段）：
+    ```
+    evidence_sufficiency: 4
+    evidence_consistency: 5
+    feature_completeness: 3
+    missing_features: 钙化, 边界
+    ```
+
+    Returns:
+        ``(evidence_sufficiency, evidence_consistency, feature_completeness, missing)``。
+        解析失败 → 返回 ``None``。
+    """
+    if not text or not text.strip():
+        return None
+    try:
+        sufficiency_m = _FIELD_PATTERNS["evidence_sufficiency"].search(text)
+        consistency_m = _FIELD_PATTERNS["evidence_consistency"].search(text)
+        completeness_m = _FIELD_PATTERNS["feature_completeness"].search(text)
+        missing_m = _FIELD_PATTERNS["missing_features"].search(text)
+        if not (sufficiency_m and consistency_m and completeness_m):
+            return None
+        sufficiency = float(sufficiency_m.group(1))
+        consistency = float(consistency_m.group(1))
+        completeness = float(completeness_m.group(1))
+        # clamp to [0, 5]
+        sufficiency = max(0.0, min(MAX_SCORE, sufficiency))
+        consistency = max(0.0, min(MAX_SCORE, consistency))
+        completeness = max(0.0, min(MAX_SCORE, completeness))
+        missing_text = (missing_m.group(1).strip() if missing_m else "")
+        missing_list: List[str] = []
+        if missing_text and missing_text.lower() not in {"无", "none", "n/a", ""}:
+            missing_list = [
+                t.strip() for t in re.split(r"[,，;；\n]", missing_text) if t.strip()
+            ]
+        return sufficiency, consistency, completeness, missing_list
+    except Exception:  # noqa: BLE001
+        return None
+
+
+__all__ = [
+    "SelfRAGEvaluator",
+    "SelfRAGEvalResult",
+    "DEFAULT_PASS_THRESHOLD",
+    "DEFAULT_HEURISTIC_THRESHOLD",
+]

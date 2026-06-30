@@ -329,6 +329,50 @@ async def lifespan(app: FastAPI):
         app.state.knowledge_agent = None
         app.state.monitor_agent = None
 
+    # FUS 融合层（T-GA-FUS-01/02）：
+    # 协调 conflict / consistency / self-rag / crag 四大组件。依赖任一
+    # 缺失（如 RAG / inference）→ 降级为"无 Self-RAG / 无 CRAG"模式。
+    # 任何初始化失败都吞掉 — 融合层是可选组件，不应阻塞主服务启动。
+    try:
+        from app.fusion.conflict import ConflictDetector
+        from app.fusion.consistency import ConsistencyChecker
+        from app.fusion.crag import CRAGHandler
+        from app.fusion.self_rag import SelfRAGEvaluator
+        from app.fusion.service import FusionEngineImpl
+
+        rag_service = getattr(app.state, "rag_service", None)
+        inference_engine = getattr(app.state, "inference_engine", None)
+
+        conflict_detector = ConflictDetector()
+        consistency_checker = ConsistencyChecker(rag_service=rag_service)
+        self_rag_evaluator = (
+            SelfRAGEvaluator(inference_engine=inference_engine)
+            if inference_engine is not None
+            else None
+        )
+        crag_handler = (
+            CRAGHandler(rag_service=rag_service)
+            if rag_service is not None
+            else None
+        )
+
+        fusion_engine = FusionEngineImpl(
+            conflict_detector=conflict_detector,
+            consistency_checker=consistency_checker,
+            self_rag_evaluator=self_rag_evaluator,
+            crag_handler=crag_handler,
+            rag_service=rag_service,
+        )
+        app.state.fusion_engine = fusion_engine
+        _logger.info(
+            "fusion_engine_initialized",
+            has_self_rag=self_rag_evaluator is not None,
+            has_crag=crag_handler is not None,
+        )
+    except Exception as e:
+        _logger.warning("fusion_engine_init_failed", extra={"error": str(e)})
+        app.state.fusion_engine = None
+
     yield
 
     from app.api.websocket.nav import manager as nav_manager
@@ -354,6 +398,14 @@ async def lifespan(app: FastAPI):
         await app.state.inference_engine.close()
     if hasattr(app.state, "speech_engine") and app.state.speech_engine:
         await app.state.speech_engine.close()
+    if hasattr(app.state, "fusion_engine") and app.state.fusion_engine:
+        try:
+            await app.state.fusion_engine.close()
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(
+                "fusion_engine_close_failed", extra={"error": str(e)}
+            )
     if hasattr(app.state, "rag_service") and app.state.rag_service:
         try:
             await app.state.rag_service.close()
