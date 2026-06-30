@@ -85,8 +85,133 @@ DEFAULT_ORGAN_CONFIDENCE_THRESHOLD = 0.70
 
 
 # ----------------------------------------------------------------------
-# 跨器官关联规则（P1-4 修复）
+# 跨器官关联规则（P1-4 + P2-7 完整实现）
 # ----------------------------------------------------------------------
+
+
+class UDTHierarchy:
+    """UDT（Unified Diagnosis Taxonomy）病种编码层级体系。
+
+    负责维护 UDT 编码间的父子层级关系，支持子类编码自动匹配父类。
+    完整 UDT 审定放 Gate 0B 完成；本类提供一期所需的初始层级
+    （02-核心流程与知识库.md:479 允许优先审定子集）。
+
+    使用示例：
+        >>> h = UDTHierarchy()
+        >>> h.matches("thyroid_toxic_diffuse_goiter", "thyroid_hyperthyroidism")
+        True  # 子类自动匹配父类
+    """
+
+    def __init__(
+        self,
+        parents: Optional[Dict[str, List[str]]] = None,
+    ) -> None:
+        # 父编码 → 子编码集合（直接 + 间接）
+        self._parents: Dict[str, Set[str]] = {}
+        # 反向索引：子编码 → 父编码集合
+        self._children: Dict[str, Set[str]] = {}
+        if parents:
+            for parent, children in parents.items():
+                for child in children:
+                    self.add_relation(parent, child)
+
+    def add_relation(self, parent: str, child: str) -> None:
+        """添加父子关系（父 → 子）。"""
+        p = parent.lower()
+        c = child.lower()
+        self._children.setdefault(c, set()).add(p)
+        self._parents.setdefault(p, set()).add(c)
+
+    def children_of(self, parent: str) -> Set[str]:
+        """获取父编码的所有直接 + 间接子类。"""
+        return set(self._parents.get(parent.lower(), set()))
+
+    def parents_of(self, child: str) -> Set[str]:
+        """获取子编码的所有父编码。"""
+        return set(self._children.get(child.lower(), set()))
+
+    def matches(self, code: str, *trigger_codes: str) -> bool:
+        """检查 ``code`` 是否匹配任一 ``trigger_codes``（含层级匹配）。
+
+        匹配规则：
+        1. 完全相等（不区分大小写）→ True；
+        2. ``code`` 是 ``trigger_codes`` 中任一项的子类 → True；
+        3. ``trigger_codes`` 中任一项是 ``code`` 的父类 → True（罕见，但支持）。
+        """
+        if not code:
+            return False
+        c = code.lower()
+        for trig in trigger_codes:
+            t = trig.lower()
+            if c == t:
+                return True
+            # code 是 trigger 的子类
+            if c in self.children_of(t):
+                return True
+            # trigger 是 code 的父类
+            if t in self.parents_of(c):
+                return True
+        return False
+
+    def expand_with_subclasses(self, *trigger_codes: str) -> Set[str]:
+        """展开 ``trigger_codes`` 为包含所有子类编码的集合。"""
+        result: Set[str] = set()
+        for trig in trigger_codes:
+            t = trig.lower()
+            result.add(t)
+            result.update(self.children_of(t))
+        return result
+
+
+# ----------------------------------------------------------------------
+# 一期三器官 UDT 层级初始集（02-核心流程与知识库.md:469-475）
+# ----------------------------------------------------------------------
+
+DEFAULT_UDT_HIERARCHY_PARENTS: Dict[str, List[str]] = {
+    # 甲状腺
+    "thyroid_hyperthyroidism": [
+        "thyroid_toxic_diffuse_goiter",   # Graves 病
+        "thyroid_toxic_nodular_goiter",   # 结节性甲亢
+        "thyroid_toxic_adenoma",
+    ],
+    "thyroid_hypothyroidism": [
+        "thyroid_primary_hypothyroidism",
+        "thyroid_secondary_hypothyroidism",
+        "thyroid_hashimoto",              # 桥本甲状腺炎
+    ],
+    # 肝脏
+    "liver_cirrhosis": [
+        "liver_post_hepatitic_cirrhosis",
+        "liver_alcoholic_cirrhosis",
+        "liver_biliary_cirrhosis",
+    ],
+    "liver_congestion": [
+        "liver_congestion_mild",
+        "liver_congestion_severe",
+    ],
+    "liver_autoimmune_hepatitis": [
+        "liver_autoimmune_hepatitis_type1",
+        "liver_autoimmune_hepatitis_type2",
+    ],
+    # 心脏
+    "cardiac_right_heart_failure": [
+        "cardiac_right_heart_failure_chronic",
+        "cardiac_right_heart_failure_acute",
+    ],
+    "cardiac_tricuspid_regurgitation": [
+        "cardiac_tricuspid_regurgitation_mild",
+        "cardiac_tricuspid_regurgitation_moderate",
+        "cardiac_tricuspid_regurgitation_severe",
+    ],
+    "cardiac_arrhythmia": [
+        "cardiac_atrial_fibrillation",
+        "cardiac_ventricular_arrhythmia",
+        "cardiac_bradycardia",
+        "cardiac_tachycardia",
+    ],
+}
+
+DEFAULT_UDT_HIERARCHY: UDTHierarchy = UDTHierarchy(DEFAULT_UDT_HIERARCHY_PARENTS)
 
 
 @dataclass(frozen=True)
@@ -114,138 +239,299 @@ class CrossOrganRule:
     condition_b: Any  # Callable[[AgentResponse], bool]
     severity: ConsistencySeverity
     description: str
+    suggested_action: str = ""
+    contraindication: str = ""
+    udt_hierarchy: Any = None  # UDTHierarchy
 
 
-def _has_disease_code(resp: AgentResponse, *prefixes: str) -> bool:
-    """响应 disease_code 是否匹配任一前缀（UDT 编码匹配）。"""
-    code = (resp.disease_code or "").upper()
+def _has_udt_code(
+    resp: AgentResponse,
+    udt: UDTHierarchy,
+    *trigger_codes: str,
+) -> bool:
+    """响应 disease_code 是否匹配任一 trigger（支持子类层级匹配）。
+
+    设计文档 02-核心流程与知识库.md:479 强制要求：UDT 编码不允许降级
+    为硬编码匹配；子类编码自动匹配父类。
+    """
+    code = resp.disease_code or ""
     if not code:
         return False
-    return any(code.startswith(p.upper()) for p in prefixes)
+    return udt.matches(code, *trigger_codes)
 
 
 def _content_matches(resp: AgentResponse, *keywords: str) -> bool:
-    """响应 content 是否包含任一关键词（不区分大小写）。"""
+    """响应 content 是否包含任一关键词（不区分大小写）。
+
+    仅作为 UDT 编码缺失时的 fallback（不推荐主路径使用，
+    详见 02-核心流程与知识库.md:479 UDT 审定不允许降级为硬编码匹配
+    的底线要求）。
+    """
     content_lower = (resp.content or "").lower()
     return any(kw.lower() in content_lower for kw in keywords)
 
 
-def _rule_heart_liver_syndrome() -> CrossOrganRule:
-    """规则 1：肝心综合征（liver HCC advanced + cardiac LVEF<40%）。
+def _extract_lvef(text: str) -> Optional[int]:
+    """从文本中抽取 LVEF 数值（仅 fallback 用）。"""
+    if not text:
+        return None
+    m = re.search(r"(?:LVEF|EF|射血分数)\s*[:=]?\s*(\d{1,3})", text, re.IGNORECASE)
+    if m:
+        try:
+            return int(m.group(1))
+        except ValueError:
+            return None
+    return None
 
-    临床意义：晚期肝细胞癌常合并循环高动力状态 → 心脏负荷增加 →
-    LVEF 下降。漏诊会错过治疗窗口。
+
+def _make_udt_condition(
+    primary_codes: Tuple[str, ...],
+    udt: UDTHierarchy,
+    keyword_fallback: Tuple[str, ...] = (),
+) -> Callable[[AgentResponse], bool]:
+    """构造 UDT 优先 + 关键词 fallback 的条件函数。"""
+
+    def _cond(resp: AgentResponse) -> bool:
+        if _has_udt_code(resp, udt, *primary_codes):
+            return True
+        if keyword_fallback:
+            return _content_matches(resp, *keyword_fallback)
+        return False
+
+    return _cond
+
+
+def _rule_heart_liver_syndrome(udt: UDTHierarchy) -> CrossOrganRule:
+    """规则 1：肝-心综合征（liver_cirrhosis / liver_congestion + 心脏异常）。
+
+    设计文档 02-核心流程与知识库.md:469：
+    > 肝脏诊断病种编码 ``liver_cirrhosis`` 或 ``liver_congestion`` →
+    > 建议心脏评估（右心功能） → 禁忌：肝硬化患者慎用 β 受体阻滞剂
     """
-    def liver_hcc_advanced(resp: AgentResponse) -> bool:
-        # UDT 编码优先
-        if _has_disease_code(resp, "UDT-LIVER-HCC-ADVANCED", "UDT-LIVER-HCC"):
-            return True
-        # 关键词 fallback
-        return _content_matches(
-            resp,
-            "肝细胞癌", "HCC", "liver cancer",
-            "LR-5", "LR5",  # LI-RADS 5 高度怀疑恶性
-            "门静脉癌栓", "PVTT",
-        )
-
-    def cardiac_lvef_reduced(resp: AgentResponse) -> bool:
-        if _has_disease_code(resp, "UDT-CARDIAC-HF-REDUCED", "UDT-CARDIAC-LVEF-LOW"):
-            return True
-        # 关键词 + 简单 LVEF 数字抽取
-        if not _content_matches(resp, "LVEF", "射血分数", "EF"):
-            return False
-        lvef_match = re.search(r"(?:LVEF|EF|射血分数)\s*[:=]?\s*(\d{1,3})", resp.content or "", re.IGNORECASE)
-        if lvef_match:
-            try:
-                lvef = int(lvef_match.group(1))
-                return lvef < 40
-            except ValueError:
-                return False
-        return _content_matches(resp, "心衰", "heart failure", "reduced ejection", "HFrEF")
-
     return CrossOrganRule(
         rule_id="heart_liver_syndrome",
         organ_a="liver",
         organ_b="cardiac",
-        condition_a=liver_hcc_advanced,
-        condition_b=cardiac_lvef_reduced,
+        condition_a=_make_udt_condition(
+            ("liver_cirrhosis", "liver_congestion"),
+            udt,
+            keyword_fallback=("肝硬化", "liver cirrhosis", "liver congestion", "肝淤血"),
+        ),
+        condition_b=lambda r: (
+            _has_udt_code(r, udt, "cardiac_right_heart_failure", "cardiac_tricuspid_regurgitation")
+            or (
+                _content_matches(r, "心功能不全", "心衰", "heart failure", "LVEF", "射血分数")
+                and (lambda lvef: lvef is not None and lvef < 50)(_extract_lvef(r.content or ""))
+            )
+        ),
         severity=ConsistencySeverity.CRITICAL,
-        description="肝心综合征：晚期肝癌合并心功能下降，需关注循环高动力状态",
+        description="肝-心综合征：肝硬化/肝淤血合并心功能异常，需评估右心功能",
+        suggested_action="建议心脏评估（右心功能、LVEF、肝静脉扩张）",
+        contraindication="肝硬化患者慎用 β 受体阻滞剂（心输出量已降低）",
+        udt_hierarchy=udt,
     )
 
 
-def _rule_hyperthyroid_heart_disease() -> CrossOrganRule:
-    """规则 2：甲亢性心脏病（thyroid hyperthyroidism + cardiac arrhythmia）。"""
-    def thyroid_hyper(resp: AgentResponse) -> bool:
-        if _has_disease_code(resp, "UDT-THYROID-HYPER", "UDT-THYROID-HYPERTHYROIDISM"):
-            return True
-        return _content_matches(
-            resp,
-            "甲亢", "hyperthyroidism", "graves",
-            "TSH降低", "TSH下降", "T3升高", "T4升高",
-            "graves病",
-        )
+def _rule_hyperthyroid_heart_disease(udt: UDTHierarchy) -> CrossOrganRule:
+    """规则 2：甲亢性心脏病（thyroid_hyperthyroidism + cardiac_arrhythmia）。
 
-    def cardiac_arrhythmia(resp: AgentResponse) -> bool:
-        if _has_disease_code(resp, "UDT-CARDIAC-ARRHYTHMIA", "UDT-CARDIAC-AF"):
-            return True
-        return _content_matches(
-            resp,
-            "心律失常", "arrhythmia",
-            "房颤", "atrial fibrillation", "AF",
-            "心动过速", "tachycardia",
-            "室性早搏", "PVC",
-        )
-
+    设计文档 02-核心流程与知识库.md:470。
+    """
     return CrossOrganRule(
         rule_id="hyperthyroid_heart_disease",
         organ_a="thyroid",
         organ_b="cardiac",
-        condition_a=thyroid_hyper,
-        condition_b=cardiac_arrhythmia,
+        condition_a=_make_udt_condition(
+            ("thyroid_hyperthyroidism",),
+            udt,
+            keyword_fallback=("甲亢", "hyperthyroidism", "graves", "graves病"),
+        ),
+        condition_b=_make_udt_condition(
+            ("cardiac_arrhythmia",),
+            udt,
+            keyword_fallback=(
+                "心律失常", "心衰", "heart failure", "arrhythmia",
+                "房颤", "atrial fibrillation", "心动过速", "tachycardia",
+            ),
+        ),
         severity=ConsistencySeverity.WARNING,
-        description="甲亢性心脏病：甲亢合并心律失常，需评估 β 受体阻滞剂 / 抗甲亢治疗",
+        description="甲亢性心脏病：甲亢合并心律失常/心衰，需评估 β 受体阻滞剂 / 抗甲亢治疗",
+        suggested_action="建议心脏评估（心律、心功能）",
+        contraindication="甲亢患者禁用含碘造影剂",
+        udt_hierarchy=udt,
     )
 
 
-def _rule_hypothyroid_pericardial_effusion() -> CrossOrganRule:
-    """规则 3：甲减心包积液（thyroid hypothyroidism + cardiac pericardial effusion）。"""
-    def thyroid_hypo(resp: AgentResponse) -> bool:
-        if _has_disease_code(resp, "UDT-THYROID-HYPO", "UDT-THYROID-HYPOTHYROIDISM"):
-            return True
-        return _content_matches(
-            resp,
-            "甲减", "hypothyroidism",
-            "TSH升高", "TSH上升", "T3降低", "T4降低",
-            "桥本", "hashimoto",
-        )
+def _rule_hyperthyroid_liver_damage(udt: UDTHierarchy) -> CrossOrganRule:
+    """规则 3：甲亢肝损害（thyroid_hyperthyroidism + 肝功能异常，P2-7 新增）。
 
-    def cardiac_pericardial_effusion(resp: AgentResponse) -> bool:
-        if _has_disease_code(resp, "UDT-CARDIAC-PERICARDIAL-EFFUSION"):
-            return True
-        return _content_matches(
-            resp,
-            "心包积液", "pericardial effusion",
-            "pericardial",
-        )
+    设计文档 02-核心流程与知识库.md:471：
+    > 甲状腺诊断病种编码含 ``thyroid_hyperthyroidism`` 且肝功能异常 →
+    > 建议肝脏评估 → 禁忌：甲亢药物（甲巯咪唑）可能加重肝损害
+    """
+    return CrossOrganRule(
+        rule_id="hyperthyroid_liver_damage",
+        organ_a="thyroid",
+        organ_b="liver",
+        condition_a=_make_udt_condition(
+            ("thyroid_hyperthyroidism",),
+            udt,
+            keyword_fallback=("甲亢", "hyperthyroidism", "graves"),
+        ),
+        condition_b=_make_udt_condition(
+            ("liver_congestion", "liver_cirrhosis", "liver_autoimmune_hepatitis"),
+            udt,
+            keyword_fallback=(
+                "肝功能异常", "转氨酶升高", "ALT升高", "AST升高",
+                "肝损害", "liver dysfunction", "hepatotoxicity",
+            ),
+        ),
+        severity=ConsistencySeverity.WARNING,
+        description="甲亢肝损害：甲亢合并肝功能异常，需评估甲状腺药物的肝毒性",
+        suggested_action="建议肝脏评估（肝功能、肝酶谱）",
+        contraindication="甲亢药物（甲巯咪唑）可能加重肝损害",
+        udt_hierarchy=udt,
+    )
 
+
+def _rule_cardiac_liver_congestion(udt: UDTHierarchy) -> CrossOrganRule:
+    """规则 4：心源性肝淤血（P2-7 新增）。
+
+    设计文档 02-核心流程与知识库.md:472：
+    > 心脏诊断病种编码 ``cardiac_right_heart_failure`` 或
+    > ``cardiac_tricuspid_regurgitation`` → 建议肝脏评估（肝静脉扩张）
+    > → 禁忌：抗凝治疗须评估肝功能
+    """
+    return CrossOrganRule(
+        rule_id="cardiac_liver_congestion",
+        organ_a="cardiac",
+        organ_b="liver",
+        condition_a=_make_udt_condition(
+            ("cardiac_right_heart_failure", "cardiac_tricuspid_regurgitation"),
+            udt,
+            keyword_fallback=("右心衰", "right heart failure", "三尖瓣反流", "tricuspid regurgitation"),
+        ),
+        condition_b=_make_udt_condition(
+            ("liver_congestion", "liver_cirrhosis"),
+            udt,
+            keyword_fallback=("肝淤血", "liver congestion", "肝静脉扩张", "hepatic vein dilation"),
+        ),
+        severity=ConsistencySeverity.WARNING,
+        description="心源性肝淤血：右心衰/三尖瓣反流合并肝淤血，需评估肝脏血流",
+        suggested_action="建议肝脏评估（肝静脉扩张、淤血性肝硬化）",
+        contraindication="抗凝治疗须评估肝功能",
+        udt_hierarchy=udt,
+    )
+
+
+def _rule_hypothyroid_pericardial_effusion(udt: UDTHierarchy) -> CrossOrganRule:
+    """规则 5：甲减心包积液（thyroid_hypothyroidism + 心包积液）。
+
+    设计文档 02-核心流程与知识库.md:473。
+    """
     return CrossOrganRule(
         rule_id="hypothyroid_pericardial_effusion",
         organ_a="thyroid",
         organ_b="cardiac",
-        condition_a=thyroid_hypo,
-        condition_b=cardiac_pericardial_effusion,
+        condition_a=_make_udt_condition(
+            ("thyroid_hypothyroidism",),
+            udt,
+            keyword_fallback=("甲减", "hypothyroidism", "桥本", "hashimoto"),
+        ),
+        condition_b=_make_udt_condition(
+            ("cardiac_pericardial_effusion",),
+            udt,
+            keyword_fallback=("心包积液", "pericardial effusion", "pericardial"),
+        ),
         severity=ConsistencySeverity.WARNING,
         description="甲减心包积液：甲减合并心包积液，需甲状腺激素替代治疗",
+        suggested_action="建议心脏评估（心包积液筛查）",
+        contraindication="甲减患者慎用镇静剂（呼吸抑制风险）",
+        udt_hierarchy=udt,
     )
 
 
-# 默认跨器官规则集（3 条关键规则；Phase 0B 扩展到完整 7 条）
-DEFAULT_CROSS_ORGAN_RULES: List[CrossOrganRule] = [
-    _rule_heart_liver_syndrome(),
-    _rule_hyperthyroid_heart_disease(),
-    _rule_hypothyroid_pericardial_effusion(),
-]
+def _rule_autoimmune_hepatitis_thyroid(udt: UDTHierarchy) -> CrossOrganRule:
+    """规则 6：自身免疫性肝病合并甲状腺异常（P2-7 新增）。
+
+    设计文档 02-核心流程与知识库.md:474：
+    > 肝脏诊断病种编码 ``liver_autoimmune_hepatitis`` → 建议甲状腺评估
+    > （自身免疫性甲状腺炎筛查） → 禁忌：免疫抑制剂治疗须监测甲状腺功能
+    """
+    return CrossOrganRule(
+        rule_id="autoimmune_hepatitis_thyroid",
+        organ_a="liver",
+        organ_b="thyroid",
+        condition_a=_make_udt_condition(
+            ("liver_autoimmune_hepatitis",),
+            udt,
+            keyword_fallback=("自身免疫性肝病", "autoimmune hepatitis", "AIH"),
+        ),
+        condition_b=_make_udt_condition(
+            ("thyroid_hypothyroidism", "thyroid_hyperthyroidism", "thyroid_hashimoto"),
+            udt,
+            keyword_fallback=(
+                "甲状腺功能异常", "thyroid dysfunction", "桥本", "hashimoto",
+                "graves", "甲亢", "甲减",
+            ),
+        ),
+        severity=ConsistencySeverity.WARNING,
+        description="自身免疫性肝病合并甲状腺异常：自身免疫性肝炎常合并自身免疫性甲状腺炎",
+        suggested_action="建议甲状腺评估（自身免疫性甲状腺炎筛查）",
+        contraindication="免疫抑制剂治疗须监测甲状腺功能",
+        udt_hierarchy=udt,
+    )
+
+
+def _rule_amiodarone_thyroid_dysfunction(udt: UDTHierarchy) -> CrossOrganRule:
+    """规则 7：胺碘酮致甲状腺功能异常（P2-7 新增）。
+
+    设计文档 02-核心流程与知识库.md:475：
+    > 心脏诊断病种编码 ``cardiac_arrhythmia`` 且用药含胺碘酮 → 建议甲状腺
+    > 评估（甲亢/甲减筛查） → 禁忌：胺碘酮所致甲亢禁用含碘药物
+    """
+    return CrossOrganRule(
+        rule_id="amiodarone_thyroid_dysfunction",
+        organ_a="cardiac",
+        organ_b="thyroid",
+        condition_a=lambda r: (
+            _has_udt_code(r, udt, "cardiac_arrhythmia")
+            or _content_matches(r, "心律失常", "arrhythmia", "房颤", "atrial fibrillation")
+        ) and _content_matches(r, "胺碘酮", "amiodarone"),
+        condition_b=_make_udt_condition(
+            ("thyroid_hyperthyroidism", "thyroid_hypothyroidism"),
+            udt,
+            keyword_fallback=(
+                "甲亢", "甲减", "hyperthyroidism", "hypothyroidism",
+                "TSH异常", "T3异常", "T4异常",
+            ),
+        ),
+        severity=ConsistencySeverity.WARNING,
+        description="胺碘酮致甲状腺功能异常：长期使用胺碘酮可致甲亢/甲减",
+        suggested_action="建议甲状腺评估（甲亢/甲减筛查、TSH监测）",
+        contraindication="胺碘酮所致甲亢禁用含碘药物",
+        udt_hierarchy=udt,
+    )
+
+
+def build_default_cross_organ_rules(
+    udt: Optional[UDTHierarchy] = None,
+) -> List[CrossOrganRule]:
+    """构造默认的 7 条跨器官规则（可注入 UDT 层级实例）。"""
+    u = udt or DEFAULT_UDT_HIERARCHY
+    return [
+        _rule_heart_liver_syndrome(u),
+        _rule_hyperthyroid_heart_disease(u),
+        _rule_hyperthyroid_liver_damage(u),
+        _rule_cardiac_liver_congestion(u),
+        _rule_hypothyroid_pericardial_effusion(u),
+        _rule_autoimmune_hepatitis_thyroid(u),
+        _rule_amiodarone_thyroid_dysfunction(u),
+    ]
+
+
+# 向后兼容：覆盖占位的 DEFAULT_CROSS_ORGAN_RULES
+DEFAULT_CROSS_ORGAN_RULES: List[CrossOrganRule] = build_default_cross_organ_rules()
 
 
 # ----------------------------------------------------------------------

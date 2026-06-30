@@ -179,6 +179,11 @@ class DispatcherAgent(ABC):
        ``target_organ`` 字段；Phase 0B+ 可加入基于文本意图识别的智能路由）。
     2. ``aggregate()``：融合多个 ``AgentResponse`` 为单一结果（Phase 0A 使用
        简单平均；Phase 0B+ 由 FUS 轨道替换为基于一致性的加权融合）。
+    3. **P2-8 修复** ``route_crag_query()``：CRAG 补充检索的中央路由
+       （设计文档 12-系统性修订实施指南.md:171）：
+       Self-RAG 失败 → ``dispatcher.route_crag_query(organ, query)`` →
+       内部委派给 ``KnowledgeAgent.query()``（享受两层缓存 + 负载均衡） →
+       返回 KnowledgeChunk 列表。
     """
 
     @abstractmethod
@@ -203,6 +208,36 @@ class DispatcherAgent(ABC):
         Returns:
             融合后的 ``AgentResponse``。当输入为空时返回 ``confidence=0.0`` 的
             占位响应。
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    async def route_crag_query(
+        self,
+        organ: Organ,
+        query: str,
+        top_k: int = 20,
+        failure_category: str = "unknown",
+    ) -> List["KnowledgeChunk"]:
+        """CRAG 补充检索的中央路由（P2-8 修复）。
+
+        设计文档 12-系统性修订实施指南.md:171 要求 CRAG 链路：
+        ``Self-RAG 失败 → 中央调度 → 知识查询智能体 → RAG → 返回结果``。
+
+        默认实现策略：内部直接调用 ``self._knowledge_agent.query()``。
+        复杂场景可重写为多跳路由 / 跨器官协调。
+
+        Args:
+            organ: 目标器官（用于过滤和缓存键）。
+            query: 增强后的查询文本（含失败原因关键词）。
+            top_k: 返回的 chunk 上限。
+            failure_category: Self-RAG 失败原因分类。
+
+        Returns:
+            :class:`KnowledgeChunk` 列表，按相关性降序。
+
+        Raises:
+            RuntimeError: 当未配置 ``knowledge_agent`` 时。
         """
         raise NotImplementedError
 
