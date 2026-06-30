@@ -151,6 +151,15 @@ class Settings(BaseSettings):
     phase0a_mock_model_version: str = "thyroid_v1.0.0"
     phase0a_mock_kb_version: str = "kb_v1.0.0"
 
+    # === T-GA-INT-01 端到端集成配置 ===
+    int_worker_pool_size: int = 4
+    int_pipeline_total_timeout_ms: int = 8000
+    int_dlq_max_retries: int = 3
+    int_worker_blpop_timeout_seconds: int = 5
+    int_worker_idle_log_interval_seconds: int = 60
+    int_pending_queue_max_length: int = 1000
+    int_consumer_recovery_delay_seconds: float = 2.0
+
     minio_endpoint: str = "localhost:9000"
     minio_access_key: str = ""
     minio_secret_key: str = ""

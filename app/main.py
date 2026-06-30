@@ -99,10 +99,27 @@ async def lifespan(app: FastAPI):
     from app.api.websocket.nav import manager as nav_manager
     await nav_manager.start_redis_subscriber()
 
+    # T-GA-INT-01: 启动后台诊断 worker 池
+    # N 个 worker 协程持续 BLPop 队列，调用 run_diagnosis_pipeline 执行完整管线。
+    # 任何启动失败都吞掉 — worker 池是可选组件，不阻塞主服务。
+    try:
+        from app.services.diagnosis_worker import start_worker_pool
+        await start_worker_pool(app, n=settings.int_worker_pool_size)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning("worker_pool_start_failed", extra={"error": str(e)})
+
     yield
 
     from app.api.websocket.nav import manager as nav_manager
     await nav_manager.stop_redis_subscriber()
+    # T-GA-INT-01: 关闭 worker 池（取消所有 task + 等待 5s 超时）
+    try:
+        from app.services.diagnosis_worker import stop_worker_pool
+        await stop_worker_pool(timeout=5.0)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning("worker_pool_stop_failed", extra={"error": str(e)})
     await safety_gateway_client.close()
     if consent_consumer:
         await consent_consumer.stop()

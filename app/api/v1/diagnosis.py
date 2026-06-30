@@ -32,6 +32,7 @@ from app.config.rate_limit import check_rate_limit, _get_user_id_from_request
 from app.config.settings import settings
 from app.dependencies import get_diagnosis_repo, get_consent_repo, get_session_repo, get_audit_service
 from app.api.v1.utils import get_actor_id, check_consent_status, try_renew_session
+from app.services.diagnosis_worker import enqueue_diagnosis
 from app.services.safety_gateway_client import safety_gateway_client
 from app.security.auth import get_current_active_user
 from app.api.websocket.nav import manager as nav_manager
@@ -129,6 +130,23 @@ async def submit_diagnosis_request(
         clinical_text=request.clinical_text,
     )
 
+    # T-GA-INT-01: 把 request_id 入队到后台 worker 池
+    # 入队失败不阻塞端点返回 — worker 池有 fallback 处理
+    try:
+        enqueued = await enqueue_diagnosis(request_id)
+        if not enqueued:
+            logger.warning(
+                "diagnosis_enqueue_failed_endpoint",
+                request_id=request_id,
+            )
+    except Exception as exc:
+        logger.warning(
+            "diagnosis_enqueue_exception_endpoint",
+            request_id=request_id,
+            error=str(exc),
+            error_type=type(exc).__name__,
+        )
+
     if request.retry and not request.retry_strategy:
         request.retry_strategy = RetryStrategy.FULL_RETRIEVAL
 
@@ -225,7 +243,7 @@ async def get_diagnosis_result(
     requires_manual_review = False
     review_reason = None
 
-    if not sg_result.get("allowed", False):
+    if not sg_result.get("passed", sg_result.get("allowed", False)):
         if sg_result.get("service_unavailable", False):
             raise SafetyGatewayUnavailableException()
         desensitization_status = DesensitizationStatus.DEGRADED

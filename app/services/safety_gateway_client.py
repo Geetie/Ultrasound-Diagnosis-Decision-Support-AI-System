@@ -211,7 +211,8 @@ class SafetyGatewayClient:
             if result is not None and not should_retry:
                 if error_code is None:
                     await self._record_success()
-                return result
+                # T-GA-INT-01 修复：统一暴露 "allowed" 别名
+                return self._normalize_response(result)
 
             failures = await self._record_failure()
             if failures >= self.FAST_FAIL_THRESHOLD:
@@ -236,6 +237,24 @@ class SafetyGatewayClient:
             retry_attempt += 1
             backoff_delay = min(self._retry_interval * (2 ** (retry_attempt - 1)), 4.0)
             await asyncio.sleep(min(backoff_delay, self._queue_timeout - elapsed))
+
+    @staticmethod
+    def _normalize_response(result: dict[str, Any]) -> dict[str, Any]:
+        """T-GA-INT-01 修复：保证返回 dict 同时包含 ``passed`` 和 ``allowed`` 字段。
+
+        历史代码使用 ``sg_result["allowed"]``，新代码统一用 ``sg_result["passed"]``。
+        本方法以 SG 返回的 ``passed`` 字段为权威，复制一份到 ``allowed`` 别名；
+        若 SG 仅返回 ``allowed``（旧版本），则复制到 ``passed``。
+
+        这是一个**纯本地**字段别名处理，不影响 SG 协议。
+        """
+        if not isinstance(result, dict):
+            return result
+        if "passed" in result and "allowed" not in result:
+            result["allowed"] = result["passed"]
+        elif "allowed" in result and "passed" not in result:
+            result["passed"] = result["allowed"]
+        return result
 
     async def get_consent_status(self, patient_id: str) -> str | None:
         try:
@@ -337,6 +356,8 @@ class SafetyGatewayClient:
         }
         return {
             "passed": False,
+            # T-GA-INT-01 修复：同时暴露 "allowed" 别名（向后兼容旧代码）
+            "allowed": False,
             "error_code": error_code,
             "consent_status_at_output": "unknown_blocked",
             "degraded_mode": True,

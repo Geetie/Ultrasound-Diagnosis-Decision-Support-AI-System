@@ -76,6 +76,15 @@ class RedisKey:
     def diagnosis_result(request_id: str) -> str:
         return f"{_PREFIX}:diagnosis:result:{request_id}"
 
+    # === T-GA-INT-01 端到端集成队列 ===
+    DIAGNOSIS_PENDING_QUEUE = f"{_PREFIX}:diagnosis:pending_queue"
+    DIAGNOSIS_DLQ = f"{_PREFIX}:diagnosis:dlq"
+
+    @staticmethod
+    def diagnosis_retry_count(request_id: str) -> str:
+        """单个请求的重试计数（int 类型 Redis key）。"""
+        return f"{_PREFIX}:diagnosis:retry:{request_id}"
+
     @staticmethod
     def feedback_idempotency(key: str) -> str:
         return f"{_PREFIX}:feedback:idempotency:{key}"
