@@ -24,3 +24,4 @@ opentelemetry-instrumentation-asyncpg==0.45b0
 opentelemetry-instrumentation-redis==0.45b0
 numpy>=1.24.0
 minio>=7.2.0
+rank-bm25==0.2.2

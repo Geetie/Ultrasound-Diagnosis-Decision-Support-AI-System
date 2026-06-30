@@ -34,4 +34,5 @@ markers = [
     "sec_domain_sg: SEC安全网关域 (校验/降级/熔断/P99)",
     "sec_critical: SEC安全关键路径测试",
     "sec_regression: SEC回归测试",
+    "debug_pro_1_0_0: marks tests for debug-pro-1.0.0 compliance verification (真实临床场景/器官特异标记/端到端管线)",
 ]

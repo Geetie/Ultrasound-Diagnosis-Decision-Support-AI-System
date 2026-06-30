@@ -221,3 +221,29 @@ class OrganDiseaseThreshold(Base):
     __table_args__ = (
         Index('idx_organ_disease', 'organ', 'disease_type'),
     )
+
+
+# T-GA-DATA-01: Knowledge base index construction pipeline authoritative table.
+# Distinct from KnowledgeBase (which serves as the RAG retrieval fast cache);
+# this table holds the source-of-truth chunked content produced by
+# scripts/init_knowledge_base.py. DDL lives in
+# alembic/versions/0006_knowledge_chunks.py.
+class KnowledgeChunkModel(Base):
+    __tablename__ = 'knowledge_chunks'
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    chunk_id = Column(String(128), unique=True, nullable=False, index=True)
+    kb_version = Column(String(32), nullable=False, index=True)
+    organ = Column(String(32), nullable=False, index=True)
+    content = Column(Text, nullable=False)
+    meta = Column('metadata', JSONB, nullable=False, default={})
+    embedding = Column(Vector(768))
+    source_doc_id = Column(String(128), nullable=False, index=True)
+    section_path = Column(Text, nullable=False, default='')
+    token_count = Column(Integer, nullable=False, default=0)
+    created_at = Column(TIMESTAMP(timezone=True), nullable=False, default=func.current_timestamp())
+    updated_at = Column(TIMESTAMP(timezone=True), nullable=False, default=func.current_timestamp(), onupdate=func.current_timestamp())
+
+    __table_args__ = (
+        Index('idx_kc_kb_organ', 'kb_version', 'organ'),
+    )

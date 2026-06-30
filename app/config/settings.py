@@ -179,6 +179,49 @@ class Settings(BaseSettings):
     embedding_contradiction_threshold_ultrasound_clip: float = 0.85
     embedding_contradiction_threshold_bge_m3_medical: float = 0.85
 
+    # Vector index backend (EMB-02)
+    vector_index_backend: str = 'qdrant'   # 'qdrant' | 'pgvector'
+    qdrant_host: str = 'localhost'
+    qdrant_port: int = 6333
+    qdrant_grpc_port: int = 6334
+    qdrant_timeout_seconds: float = 3.0
+    qdrant_api_key: str = ''
+    vector_index_auto_fallback: bool = True
+
+    # RAG (T-GA-RAG-01/02/03)
+    rag_use_query_enhancement: bool = True
+    rag_use_reranking: bool = True
+    rag_use_bm25_fallback: bool = True
+    rag_use_multimodal: bool = True
+    rag_use_llm_enhancement: bool = False
+    rag_collection: str = 'knowledge_chunks'
+    rag_image_collection: str = 'ultrasound_chunks'
+    rag_top_k: int = 20
+    rag_rerank_output_top_k: int = 5
+    rag_min_score_threshold: float = 0.5
+    rag_bm25_min_top1_score: float = 0.3
+    rag_bm25_min_results: int = 3
+    rag_bm25_max_chunks: int = 10000
+    rag_query_embedding_cache_ttl_seconds: int = 3600
+    rag_use_redis_cache: bool = False
+    rag_p99_warning_threshold_ms: float = 80.0
+    rag_p99_critical_threshold_ms: float = 100.0
+    rag_rrf_k: int = 60
+
+    # bge-reranker (T-GA-RAG-03)
+    bge_reranker_host: str = 'localhost'
+    bge_reranker_port: int = 8005
+    bge_reranker_timeout_seconds: float = 5.0
+    bge_reranker_model: str = 'bge-reranker-base'
+    bge_reranker_health_check_timeout_seconds: float = 3.0
+
+    # Agnes LLM (T-GA-RAG-01 optional enhancement)
+    # API key auto-injected from os.environ['AGNES_API_KEY'] via model_validator.
+    agnes_api_key: str = ''
+    agnes_api_base: str = 'https://agnes-api.example.com/v1'
+    agnes_api_model: str = 'agnes-flash'
+    agnes_timeout_seconds: float = 3.0
+
     speech_engine: str = 'funasr'
     funasr_model_dir: str = 'models/funasr'
     funasr_device: str = 'cpu'
@@ -246,6 +289,19 @@ class Settings(BaseSettings):
         import logging
         import os
         _log = logging.getLogger(__name__)
+
+        # Auto-inject AGNES_API_KEY from environment if not provided via .env
+        # (T-GA-RAG-01: enable Agnes LLM enhancement when env var is set).
+        if not self.agnes_api_key:
+            env_key = os.environ.get('AGNES_API_KEY', '').strip()
+            if env_key:
+                self.agnes_api_key = env_key
+                _log.info("agnes_api_key_loaded_from_env")
+            elif self.rag_use_llm_enhancement:
+                _log.warning(
+                    "rag_use_llm_enhancement=true but AGNES_API_KEY is empty; "
+                    "LLM enhancement will be silently disabled at runtime"
+                )
 
         if self.env == 'production':
             if os.environ.get('USE_REDIS_STORAGE', 'false').lower() != 'true':
@@ -338,6 +394,8 @@ class Settings(BaseSettings):
             ('vllm_port', self.vllm_port),
             ('ultrasound_clip_port', self.ultrasound_clip_port),
             ('bge_m3_port', self.bge_m3_port),
+            ('bge_reranker_port', self.bge_reranker_port),
+            ('qdrant_port', self.qdrant_port),
             ('dicom_scp_port', self.dicom_scp_port),
         ]
         seen: dict[int, str] = {}
