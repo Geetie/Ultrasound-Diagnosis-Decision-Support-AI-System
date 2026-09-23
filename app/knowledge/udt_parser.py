@@ -95,6 +95,15 @@ class UDTParser:
     Parses and normalizes ultrasound diagnostic text.
     """
 
+    # 器官关键词表（按优先级排序）。集中一处供 ``detect_organs`` /
+    # ``_detect_organ`` 共用，避免两份表漂移。同义表达在原有基础上扩展：
+    # 「甲亢/甲减」→ 甲状腺、「心律失常/心功能/左室」→ 心脏。
+    ORGAN_KEYWORDS: tuple = (
+        (Organ.THYROID, ('甲状腺', '甲亢', '甲减', 'thyroid')),
+        (Organ.LIVER, ('肝脏', '肝右', '肝左', 'liver')),
+        (Organ.HEART, ('心脏', '心功能', '心律失常', '左室', 'heart', 'cardiac')),
+    )
+
     def __init__(self, vocabulary: UDAFVocabulary | None = None,
                  config: UDTParserConfig | None = None):
         self.vocab = vocabulary or UDAFVocabulary()
@@ -164,16 +173,27 @@ class UDTParser:
         text = text.replace('\uff0c', ',').replace('\u3002', '.').replace('\uff1b', ';')
         return text
 
-    def _detect_organ(self, text: str) -> str | None:
-        """Detect organ from text."""
-        text_lower = text.lower()
-        if any(kw in text_lower for kw in ['甲状腺', 'thyroid']):
-            return Organ.THYROID
-        if any(kw in text_lower for kw in ['肝脏', '肝右', '肝左', 'liver']):
-            return Organ.LIVER
-        if any(kw in text_lower for kw in ['心脏', 'heart']):
-            return Organ.HEART
-        return None
+    def _detect_organ(self, text: str) -> Organ | None:
+        """Detect organ from text（首个命中的器官，语义与原有实现一致）。"""
+        organs = self.detect_organs(text)
+        return organs[0] if organs else None
+
+    def detect_organs(self, text: str) -> list[Organ]:
+        """Detect **all** organs mentioned in the text（按优先级顺序）。
+
+        与 ``_detect_organ`` 共用同一张关键词表。之所以需要复数版本：Adaptive
+        RAG 动态路由（01-系统架构设计 §5.3）要判断"是否涉及跨器官关联"
+        （示例「甲亢+心律失常」），单值检测无法表达。
+
+        关键词表在原基础上扩展了同义/近义表达：规格示例「甲亢+心律失常」
+        既无「甲状腺」也无「心脏」字面词，仅凭原关键词无法识别。
+        """
+        text_lower = (text or "").lower()
+        found: list[Organ] = []
+        for organ, keywords in self.ORGAN_KEYWORDS:
+            if any(kw in text_lower for kw in keywords):
+                found.append(organ)
+        return found
 
     def _extract_all_attributes(self, text: str,
                                 organ: str | None) -> list[ParsedAttribute]:

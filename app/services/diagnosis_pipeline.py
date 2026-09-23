@@ -33,7 +33,8 @@ from app.config.redis import RedisPool
 from app.config.redis_keys import RedisKey
 from app.config.settings import settings
 from app.agents.protocols import AgentContext, AgentResponse
-from app.models.schemas import Organ
+from app.agents.routing import AdaptiveRAGRouter, RoutingDecision
+from app.models.schemas import Organ, ResponseTier
 from app.repositories import (
     ConsentRepository,
     DiagnosisRepository,
@@ -42,6 +43,43 @@ from app.repositories import (
 from app.services.safety_gateway_client import safety_gateway_client
 
 logger = structlog.get_logger("app.services.diagnosis_pipeline")
+
+# Adaptive RAG 路由器（T-GB-AGT-02）。进程内单例：stats 需跨请求累计，
+# 对应 05-可观测性与运维"标准路径占比 ≥70%"的路由分布指标。
+_router: Optional[AdaptiveRAGRouter] = None
+
+
+def get_routing_router() -> AdaptiveRAGRouter:
+    """取得进程内路由器单例。"""
+    global _router
+    if _router is None:
+        _router = AdaptiveRAGRouter()
+    return _router
+
+
+def _coerce_response_tier(value: Any) -> ResponseTier:
+    """把 DB 中的 tier 字符串转成枚举；无法识别时按最保守（全量）处理。"""
+    try:
+        return ResponseTier(str(value))
+    except Exception:  # noqa: BLE001 - 未知值不得阻断诊断
+        return ResponseTier.FULL
+
+
+def _assess_routing(request: Any) -> Optional[RoutingDecision]:
+    """按规格 §5.3 给出路由判定（任何异常都不得阻断诊断）。"""
+    try:
+        return get_routing_router().assess(
+            query=str(getattr(request, "clinical_text", "") or ""),
+            target_organ=str(getattr(request, "organ", "") or "") or None,
+            requested_tier=_coerce_response_tier(getattr(request, "tier", None)),
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "routing_assessment_failed",
+            error=str(exc),
+            error_type=type(exc).__name__,
+        )
+        return None
 
 
 # ----------------------------------------------------------------------
@@ -81,6 +119,11 @@ async def run_diagnosis_pipeline(request_id: str) -> bool:
                 )
                 return False
 
+            # T-GB-AGT-02: Adaptive RAG 动态路由判定（规格 §5.3）。
+            # 判定结果写入 findings 的 routing 段：前端据此展示"初步结论 +
+            # 是否切换深度分析"的确认对话框，观测侧据此统计标准路径占比。
+            routing_decision = _assess_routing(request)
+
             # 1) 调度 (dispatcher.invoke)
             t = time.monotonic()
             specialist_responses = await _safe_dispatch(request, request_id)
@@ -113,6 +156,7 @@ async def run_diagnosis_pipeline(request_id: str) -> bool:
                 sg_result=sg_result,
                 sg_ok=sg_ok,
                 timings=timings,
+                routing=routing_decision,
             )
             timings["db_write_ms"] = (time.monotonic() - t) * 1000.0
 
@@ -189,7 +233,11 @@ async def _safe_dispatch(request, request_id: str):
             request_id=request_id,
             session_id=request.session_id,
             organ=organ,
-            user_query=request.clinical_text or "请基于提供的影像给出诊断",
+            # clinical_text 由 create_request 落库（0009 迁移补列）；此处用
+            # getattr 兜底，兼容测试替身与历史 NULL 行
+            user_query=str(
+                getattr(request, "clinical_text", None) or "请基于提供的影像给出诊断"
+            ),
             imaging_metadata=None,
             prior_messages=[],
         )
@@ -281,6 +329,7 @@ async def _write_result_to_db(
     sg_result: Optional[dict],
     sg_ok: bool,
     timings: Dict[str, float],
+    routing: Optional[RoutingDecision] = None,
 ) -> bool:
     """根据 fusion_result + sg_result 决定 status / findings / confidence 并写 DB。"""
     # 1) 决定 status
@@ -316,6 +365,8 @@ async def _write_result_to_db(
         "timings_ms": {k: round(v, 2) for k, v in timings.items()},
         "review_reason": review_reason,
         "completed_at": datetime.now(timezone.utc).isoformat(),
+        # T-GB-AGT-02 路由判定（前端确认对话框与路由分布观测的依据）
+        "routing": routing.as_dict() if routing is not None else None,
     }
 
     # 3) 写 DB

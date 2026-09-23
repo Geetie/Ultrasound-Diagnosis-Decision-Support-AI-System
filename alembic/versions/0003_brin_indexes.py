@@ -7,7 +7,7 @@ Create Date: 2026-05-13
 from alembic import op
 
 revision = '0003'
-down_revision = '0002'
+down_revision = '0002_missing_indexes'
 branch_labels = None
 depends_on = None
 

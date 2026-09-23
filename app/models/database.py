@@ -64,6 +64,9 @@ class DiagnosisResult(Base):
     session_id = Column(String(64), index=True)
     organ = Column(String(32), nullable=False)
     tier = Column(String(16), nullable=False)
+    # 医生提交的临床文本（含语音转写）。此前未落库，导致后台管线读取
+    # ``request.clinical_text`` 抛 AttributeError → 调度阶段恒失败。
+    clinical_text = Column(Text, nullable=True)
     confidence = Column(Float, nullable=False)
     findings = Column(JSONB)
     recommendations = Column(Text)

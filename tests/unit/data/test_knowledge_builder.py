@@ -823,6 +823,7 @@ class TestKnowledgeIndexBuilder:
         assert result2.skipped_existing == result1.total_chunks
         assert result2.total_chunks == 0
 
+    @pytest.mark.perf
     @pytest.mark.asyncio
     async def test_performance_under_60s_for_1000_chunks(self, tmp_path):
         """Soft performance check: 1000 chunks end-to-end should run fast.

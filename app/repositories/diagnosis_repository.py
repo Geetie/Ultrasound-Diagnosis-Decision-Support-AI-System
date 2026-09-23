@@ -55,6 +55,9 @@ class DiagnosisRepository:
             session_id=session_id,
             organ=organ,
             tier=response_tier.value,
+            # 临床文本必须落库：后台管线以它作为 AgentContext.user_query，
+            # 此前只写 findings={"status": "processing"} 导致文本丢失。
+            clinical_text=clinical_text,
             confidence=0.0,  # 初始置信度
             findings={"status": "processing"},
             status="processing",

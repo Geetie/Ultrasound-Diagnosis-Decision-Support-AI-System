@@ -10,7 +10,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 
 
 revision = '0002_missing_indexes'
-down_revision = '0001_initial_migration'
+down_revision = '0001'
 branch_labels = None
 depends_on = None
 
