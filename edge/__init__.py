@@ -18,12 +18,23 @@
 """
 
 from edge.device_auth import EdgeDeviceAuth
+from edge.device_manager import DeviceHealth, DeviceState, EdgeDeviceManager
 from edge.gpu_thermal import GPUThermalPolicy, ThermalDecision, ThermalLevel
+from edge.nav_backend import NullNavBackend, TensorRTNavBackend, create_nav_backend
+from edge.navigation import NavigationInferenceService
+from edge.ota_client import OTAClient, OTAError, OTAProgress
+from edge.pipeline import EdgePipeline
 from edge.protocols import Frame, NavInferenceBackend, NavResult, NavLabel
 from edge.safety import LocalSafetyChecker, LocalSafetyResult
+from edge.websocket_server import EdgeWebSocketClient
 
 __all__ = [
+    "DeviceHealth",
+    "DeviceState",
     "EdgeDeviceAuth",
+    "EdgeDeviceManager",
+    "EdgePipeline",
+    "EdgeWebSocketClient",
     "Frame",
     "GPUThermalPolicy",
     "LocalSafetyChecker",
@@ -31,6 +42,13 @@ __all__ = [
     "NavInferenceBackend",
     "NavLabel",
     "NavResult",
+    "NavigationInferenceService",
+    "NullNavBackend",
+    "OTAError",
+    "OTAProgress",
+    "OTAClient",
+    "TensorRTNavBackend",
     "ThermalDecision",
     "ThermalLevel",
+    "create_nav_backend",
 ]
