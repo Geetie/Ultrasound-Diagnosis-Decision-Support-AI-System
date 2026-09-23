@@ -26,15 +26,19 @@ class SpeechErrorCode(str, Enum):
     定义语音识别过程中可能出现的错误类型，用于统一异常处理和日志记录。
     
     活跃错误码：
-    - TIMEOUT: 请求超时
-    - CONNECTION_FAILED: 连接失败
-    - RECOGNITION_FAILED: 识别失败
-    - MODEL_LOAD_FAILED: 模型加载失败
+    - E3001_TIMEOUT: 请求超时
+    - E3001_CONNECTION_FAILED: 连接失败
+    - E3001_RECOGNITION_FAILED: 识别失败
+    - E3001_MODEL_LOAD_FAILED: 模型加载失败
+
+    成员名与取值保持一致（带 E3001_ 前缀）：app/speech/funasr.py 的
+    错误处理路径按带前缀形式引用，此前成员名漏了前缀，导致模型加载/识别
+    失败时抛 AttributeError 而不是 SpeechError（错误路径整体失效）。
     """
-    TIMEOUT = "E3001_TIMEOUT"
-    CONNECTION_FAILED = "E3001_CONNECTION_FAILED"
-    RECOGNITION_FAILED = "E3001_RECOGNITION_FAILED"
-    MODEL_LOAD_FAILED = "E3001_MODEL_LOAD_FAILED"
+    E3001_TIMEOUT = "E3001_TIMEOUT"
+    E3001_CONNECTION_FAILED = "E3001_CONNECTION_FAILED"
+    E3001_RECOGNITION_FAILED = "E3001_RECOGNITION_FAILED"
+    E3001_MODEL_LOAD_FAILED = "E3001_MODEL_LOAD_FAILED"
 
 
 class SpeechError(Exception):

@@ -1,0 +1,15 @@
+# 边缘端（Jetson）专属依赖。
+#
+# 只在超声设备旁的边缘工控机上安装，主服务与开发机不需要 —— edge/ 包对
+# 这些库一律懒加载（见 edge/__init__.py），未安装时相关能力给出明确报错，
+# 不影响其余模块导入与单测。
+#
+#   T-GA-EDG-01  pynetdicom（DICOM SCP）+ python-gdcm（压缩传输语法像素解码）
+#   T-GA-EDG-02  TensorRT（导航推理，Jetson 上随 JetPack 提供）
+#
+# 安装（边缘设备）：
+#   pip install -r requirements-edge.txt
+
+pynetdicom>=2.1.0
+python-gdcm>=3.0.23
+tensorrt>=8.6.0
