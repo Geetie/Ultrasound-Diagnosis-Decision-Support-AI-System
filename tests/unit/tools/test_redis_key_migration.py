@@ -78,12 +78,15 @@ class TestRedisKeyMigrator:
         ]
 
     @pytest.fixture
-    def migrator(self, mock_redis_client, mappings):
+    def migrator(self, mock_redis_client, mappings, tmp_path):
         mapper = KeyMapper(mappings)
         config = {
             'batch_size': 100,
             'rate_limit': 1000,
-            'progress_file': '.test_progress.json'
+            # 注意：进度文件必须落在 tmp_path。此前硬编码为仓库根的
+            # `.test_progress.json`，与 pytest 进度插件写入的同名文件冲突，
+            # 两个写入者争抢同一文件会导致写入阻塞（用例挂死）并污染工作区。
+            'progress_file': str(tmp_path / 'migration_progress.json')
         }
         return RedisKeyMigrator(mock_redis_client, mapper, config)
 
