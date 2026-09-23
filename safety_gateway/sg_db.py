@@ -10,13 +10,39 @@ logger = structlog.get_logger()
 
 _async_engine = None
 _async_session_local = None
-_init_lock = asyncio.Lock()
+_init_lock: asyncio.Lock | None = None
+_init_loop: asyncio.AbstractEventLoop | None = None
+
+
+def _ensure_init_lock() -> asyncio.Lock:
+    """取得与当前事件循环绑定的初始化锁（必要时重建）。
+
+    asyncio 原语与 SQLAlchemy 连接池都绑定到"创建它的那个事件循环"。
+    sg_db 的引擎/sessionmaker 是模块级单例：若在导入期（无运行循环）建锁，
+    或跨事件循环复用旧循环的连接池（测试每用例一个新循环、uvicorn
+    reload 等），等待旧循环的 I/O 永远不会返回——表现为阈值加载等 DB 操作
+    挂死，事件循环也不注册定时器（曾导致单测整轮卡住）。
+    检测到循环变化时重建锁并丢弃旧引擎。
+    """
+    global _init_lock, _init_loop, _async_engine, _async_session_local
+    loop = asyncio.get_running_loop()
+    if _init_loop is not loop:
+        if _init_loop is not None:
+            logger.warning(
+                "sg_db_rebound_to_new_event_loop",
+                previous_loop_closed=_init_loop.is_closed(),
+            )
+        _init_loop = loop
+        _init_lock = asyncio.Lock()
+        _async_engine = None
+        _async_session_local = None
+    return _init_lock
 
 
 async def _get_async_engine():
     global _async_engine
     if _async_engine is None:
-        async with _init_lock:
+        async with _ensure_init_lock():
             if _async_engine is None:
                 _async_engine = create_async_engine(
                     sg_settings.database_url,
@@ -41,9 +67,12 @@ async def _get_async_engine():
 async def _get_async_session_local():
     global _async_session_local
     if _async_session_local is None:
-        async with _init_lock:
+        # 注意：不能在持有 _init_lock 时调用 _get_async_engine()——后者内部
+        # 会再次获取同一把锁，asyncio.Lock 不可重入，会造成首次 DB 访问
+        # 永久死锁（SafetyGateway 的阈值/同意查询会整条挂死）。
+        engine = await _get_async_engine()
+        async with _ensure_init_lock():
             if _async_session_local is None:
-                engine = await _get_async_engine()
                 _async_session_local = async_sessionmaker(
                     engine,
                     class_=AsyncSession,
@@ -98,7 +127,7 @@ async def close_db() -> None:
         except RuntimeError:
             loop = None
         if loop is not None and loop.is_running():
-            async with _init_lock:
+            async with _ensure_init_lock():
                 if _async_engine is not None:
                     await _async_engine.dispose()
                     _async_engine = None

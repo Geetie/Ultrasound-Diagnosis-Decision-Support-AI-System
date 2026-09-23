@@ -23,9 +23,29 @@ class FusionProbe:
     def __init__(self) -> None:
         self._available: bool | None = None
         self._last_check_time: float = 0.0
-        self._check_lock = asyncio.Lock()
+        self._loop: asyncio.AbstractEventLoop | None = None
+        self._check_lock: asyncio.Lock | None = None
         self._client: httpx.AsyncClient | None = None
         self._closed: bool = False
+
+    def _ensure_loop_bound(self) -> None:
+        """让 asyncio 原语与 HTTP 连接池跟随当前事件循环。
+
+        FusionProbe 由进程级单例 HealthChecker 持有，而 asyncio.Lock 与
+        httpx.AsyncClient 的连接池都绑定到"创建它的那个事件循环"。一旦跨
+        事件循环复用（测试每用例一个新循环、uvicorn reload 等），等待旧循环
+        的 socket 永远不会有结果，事件循环也不注册定时器 —— 表现为
+        perform_full_check 永久挂死（曾导致单测整轮卡住）。
+        检测到循环变化即重建原语；旧 client 已不可用，直接丢弃。
+        """
+        loop = asyncio.get_running_loop()
+        if self._loop is loop and self._check_lock is not None:
+            return
+        if self._loop is not None:
+            logger.debug("sg_fusion_probe_rebound_to_new_loop")
+        self._loop = loop
+        self._check_lock = asyncio.Lock()
+        self._client = None
 
     def _ensure_client(self) -> httpx.AsyncClient:
         if self._client is None or self._client.is_closed:
@@ -35,6 +55,7 @@ class FusionProbe:
     async def check(self) -> dict[str, Any]:
         if self._closed:
             return {"status": "unhealthy", "error": "probe_closed"}
+        self._ensure_loop_bound()
         try:
             fusion_url = f"http://{settings.fusion_layer_host}:{settings.fusion_layer_port}/health"
             client = self._ensure_client()
@@ -70,6 +91,7 @@ class FusionProbe:
             return {"status": "unhealthy", "error": str(e)}
 
     async def get_availability(self) -> bool | None:
+        self._ensure_loop_bound()
         async with self._check_lock:
             now = time.monotonic()
             cache_ttl = settings.fusion_layer_health_check_cache_ttl

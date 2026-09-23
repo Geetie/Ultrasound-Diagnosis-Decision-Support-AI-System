@@ -1,4 +1,6 @@
 from typing import Any, ClassVar
+
+import asyncio
 import time
 
 import structlog
@@ -22,6 +24,10 @@ from safety_gateway.checker.threshold_phase import ThresholdPhase
 from safety_gateway.checker.consistency_phase import ConsistencyPhase
 
 logger = structlog.get_logger()
+
+# 延迟埋点限时：HealthChecker 为进程级单例，其内部 asyncio 原语可能绑定到
+# 较早的事件循环。观测属旁路，任何阻塞都不得影响安全校验主链路。
+_LATENCY_RECORD_TIMEOUT_SECONDS = 1.0
 
 
 class ElapsedTimer:
@@ -178,8 +184,24 @@ class SafetyGatewayChecker:
             return check_result
         finally:
             total_elapsed = timer.elapsed_ms()
-            await health_checker.record_latency(total_elapsed)
-            await health_checker.record_e2e_latency(total_elapsed)
+            # 延迟埋点属旁路观测：HealthChecker 由进程级单例持有，其内部
+            # asyncio 原语可能绑定到较早的事件循环；此处必须限时 + 兜底，
+            # 否则埋点一旦阻塞或抛错会污染（甚至挂死）安全校验主链路。
+            try:
+                await asyncio.wait_for(
+                    health_checker.record_latency(total_elapsed),
+                    timeout=_LATENCY_RECORD_TIMEOUT_SECONDS,
+                )
+                await asyncio.wait_for(
+                    health_checker.record_e2e_latency(total_elapsed),
+                    timeout=_LATENCY_RECORD_TIMEOUT_SECONDS,
+                )
+            except Exception as exc:  # noqa: BLE001 - 观测失败不得影响校验结果
+                logger.warning(
+                    "sg_latency_record_failed",
+                    error=str(exc),
+                    error_type=type(exc).__name__,
+                )
 
     async def check_desensitization(self, data: dict[str, Any]) -> list[str]:
         return await self._desensitization_phase.check_desensitization(data)
