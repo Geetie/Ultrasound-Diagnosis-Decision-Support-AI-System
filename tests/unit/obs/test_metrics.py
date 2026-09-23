@@ -382,7 +382,7 @@ class TestMemoryMonitorEdgeCases:
         await monitor.stop()
 
     @pytest.mark.asyncio
-    async def test_alert_count_warning_triggered(self):
+    async def test_alert_count_warning_triggered(self, mock_process):
         config = MemoryMonitorConfig(
             warning_threshold_mb=10.0,
             critical_threshold_mb=200.0,
@@ -390,6 +390,11 @@ class TestMemoryMonitorEdgeCases:
             sustained_duration_seconds=0,
         )
         monitor = VictoriaMetricsMemoryMonitor(config=config)
+        # 注入受控进程内存。此前用真实进程 RSS：全量运行/并行 worker 下
+        # 进程占用会超过 critical_threshold_mb(200MB)，档位变成 CRITICAL，
+        # 本用例（断言 WARNING）随运行规模偶发失败。
+        mock_process.memory_info.return_value.rss = 50 * 1024 * 1024
+        monitor._process = mock_process
 
         await monitor._check_memory()
         assert monitor._metrics.warning_since is not None

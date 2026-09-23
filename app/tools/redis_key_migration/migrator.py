@@ -111,12 +111,19 @@ class RedisKeyMigrator:
 
         cursor = 0
         batch_num = 0
+        first_pass = True
         start_time = time.time()
         processed_in_second = 0
 
         logger.info("Starting key migration", batch_size=self.batch_size, rate_limit=self.rate_limit)
-        
-        while cursor != 0 or stats['scanned'] == 0:
+
+        # 至少扫描一轮（空库也要走一次 SCAN，进度里才能体现 scanned=0），
+        # 之后严格按 Redis 返回的 cursor 判断是否结束。
+        # 原条件 `while cursor != 0 or stats['scanned'] == 0` 在库为空
+        # （cursor=0 且没有任何键）时永真 —— 死循环，每轮还会重写进度文件，
+        # 对空库/已迁移完的实例执行迁移会永久驻留。
+        while first_pass or cursor != 0:
+            first_pass = False
             batch_num += 1
             batch_start = time.time()
             self.progress_callback.on_batch_start(batch_num)
@@ -145,9 +152,13 @@ class RedisKeyMigrator:
                     continue
 
                 try:
-                    await self._migrate_key(key_str, new_key)
-                    stats['migrated'] += 1
-                    status = 'migrated'
+                    status = await self._migrate_key(key_str, new_key)
+                    if status == 'migrated':
+                        stats['migrated'] += 1
+                    else:
+                        # 源键在扫描与读取之间消失（并发过期/删除）：计 skipped，
+                        # 不能计入 migrated
+                        stats['skipped'] += 1
                 except Exception as e:
                     stats['failed'] += 1
                     logger.error("key_migration_failed", old_key=key_str, error=str(e))
@@ -173,18 +184,23 @@ class RedisKeyMigrator:
         logger.info("Migration completed", performance=stats['performance'])
         return stats
 
-    async def _migrate_key(self, old_key: str, new_key: str) -> None:
-        """迁移单个键"""
+    async def _migrate_key(self, old_key: str, new_key: str) -> str:
+        """迁移单个键。
+
+        Returns:
+            ``'migrated'``（已写入新键）或 ``'skipped'``（源键已不存在）。
+        """
         ttl = await self.redis_client.ttl(old_key)
         data = await self.redis_client.get(old_key)
 
         if data is None:
-            return
+            return 'skipped'
 
         if ttl > 0:
             await self.redis_client.setex(new_key, ttl, data)
         else:
             await self.redis_client.set(new_key, data)
+        return 'migrated'
 
     async def _save_progress(self, stats: Dict[str, Any]) -> None:
         """保存迁移进度"""

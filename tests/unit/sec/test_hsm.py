@@ -776,7 +776,10 @@ class TestEmergencySigningFullFlow:
         from app.security.emergency_signing import EmergencySigningManager
         mgr = EmergencySigningManager()
         with pytest.raises(RuntimeError):
-            asyncio.get_event_loop_policy().get_event_loop().run_until_complete(
+            # asyncio.run 每次新建并关闭事件循环（不要用
+            # get_event_loop_policy().get_event_loop()，Py3.13 下无当前循环会
+            # 抛 RuntimeError，掩盖真正被断言的业务异常）
+            asyncio.run(
                 mgr.enable_emergency_signing("op1", "approver1", "test_reason")
             )
 

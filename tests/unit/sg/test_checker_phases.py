@@ -17,8 +17,12 @@ class TestCheckPhaseProtocol:
     def test_base_check_phase_check_raises_not_implemented(self):
         phase = CheckPhase()
         with pytest.raises(NotImplementedError):
+            # 用 asyncio.run（每次新建并关闭事件循环）。
+            # 不要用 asyncio.get_event_loop()：Python 3.13 下没有当前事件循环时
+            # 会抛 RuntimeError，被 pytest.raises(NotImplementedError) 判为失败，
+            # 且是否触发取决于同进程内其他用例是否刚关闭过循环（顺序相关）。
             import asyncio
-            asyncio.get_event_loop().run_until_complete(phase.check(CheckContext()))
+            asyncio.run(phase.check(CheckContext()))
 
 
 class TestCheckContext:

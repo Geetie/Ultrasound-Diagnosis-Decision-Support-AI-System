@@ -2833,7 +2833,9 @@ class TestHallucinationDetectionMerged:
         verifier._hallucination_detector = mock_detector
         import asyncio
         case = {"case_id": "test", "organ": "thyroid", "prompt": "test", "expected_grading": "3"}
-        pair = asyncio.get_event_loop().run_until_complete(verifier._verify_single_case(case))
+        # asyncio.run 每次新建并关闭事件循环；get_event_loop() 在 Python 3.13
+        # 无当前循环时会抛 RuntimeError（同进程用例顺序相关，偶发失败）
+        pair = asyncio.run(verifier._verify_single_case(case))
         assert mock_detector.detect.call_count == 2
         assert mock_detector.is_hallucination.call_count == 0
 

@@ -1210,7 +1210,9 @@ class TestRateLimitBucketCleanup:
         rl_module._last_cleanup = 0
 
         import asyncio
-        asyncio.get_event_loop().run_until_complete(_cleanup_expired_buckets())
+        # asyncio.run 每次新建并关闭事件循环（get_event_loop() 在 Py3.13
+        # 无当前循环时抛 RuntimeError，顺序相关偶发失败）
+        asyncio.run(_cleanup_expired_buckets())
 
         assert "old_key" not in _buckets
         assert "new_key" in _buckets
@@ -1228,7 +1230,7 @@ class TestRateLimitBucketCleanup:
         _buckets["old_key"] = old_bucket
 
         import asyncio
-        asyncio.get_event_loop().run_until_complete(rl_module._cleanup_expired_buckets())
+        asyncio.run(rl_module._cleanup_expired_buckets())
 
         assert "old_key" in _buckets
 
@@ -1425,7 +1427,7 @@ class TestConfigUsedInConnections:
             with patch.object(redis.Redis, "from_url", return_value=Mock()) as mock_from_url:
                 import asyncio
                 try:
-                    asyncio.get_event_loop().run_until_complete(RedisPool.get_client())
+                    asyncio.run(RedisPool.get_client())
                 except Exception:
                     pass
                 if mock_from_url.called:
