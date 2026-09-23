@@ -139,6 +139,7 @@ async def lifespan(app: FastAPI):
             from app.knowledge.udt_parser import UDTParser
             from app.knowledge.vocabulary import UDAFVocabulary
             from app.rag.bm25_fallback import BM25Fallback, BM25Index
+            from app.rag.cache import RetrievalCache
             from app.rag.llm_enhancer import AgnesLLMEnhancer
             from app.rag.query_enhancer import QueryEnhancer
             from app.rag.reranker import BgeRerankerService, HeuristicReranker
@@ -196,6 +197,20 @@ async def lifespan(app: FastAPI):
                     shared_bm25_index,
                     min_top1_score=settings.rag_bm25_min_top1_score,
                     min_results=settings.rag_bm25_min_results,
+                ),
+                # 检索结果缓存：fusion 的 consistency / crag 直连检索路径
+                # 绕过知识智能体缓存，这里补齐；Redis 不可用时自动只用 L2。
+                cache=(
+                    RetrievalCache(
+                        RedisPool,
+                        redis_ttl_seconds=settings.rag_cache_redis_ttl_seconds,
+                        local_capacity=settings.rag_cache_local_capacity,
+                        local_ttl_seconds=settings.rag_cache_local_ttl_seconds,
+                        negative_ttl_seconds=settings.rag_cache_negative_ttl_seconds,
+                        jitter_ratio=settings.rag_cache_ttl_jitter_ratio,
+                    )
+                    if settings.rag_cache_enabled
+                    else None
                 ),
             )
             try:

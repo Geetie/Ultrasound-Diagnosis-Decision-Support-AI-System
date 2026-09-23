@@ -156,6 +156,15 @@ class Settings(BaseSettings):
     int_pipeline_total_timeout_ms: int = 8000
     int_dlq_max_retries: int = 3
     int_worker_blpop_timeout_seconds: int = 5
+
+    # === RAG 检索结果缓存（覆盖 fusion 的 consistency / crag 直连检索路径）===
+    # 关闭时 RAGServiceImpl 走真实流水线，行为与引入缓存前完全一致。
+    rag_cache_enabled: bool = True
+    rag_cache_redis_ttl_seconds: int = 3600
+    rag_cache_local_capacity: int = 128
+    rag_cache_local_ttl_seconds: int = 300
+    rag_cache_negative_ttl_seconds: int = 30
+    rag_cache_ttl_jitter_ratio: float = 0.1
     int_worker_idle_log_interval_seconds: int = 60
     int_pending_queue_max_length: int = 1000
     int_consumer_recovery_delay_seconds: float = 2.0

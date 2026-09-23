@@ -23,6 +23,7 @@ import structlog
 from app.config.settings import settings
 from app.knowledge.version import parse_kb_version
 from app.rag.bm25_fallback import BM25Fallback
+from app.rag.cache import RetrievalCache
 from app.rag.protocols import (
     EnhancedQuery,
     RAGError,
@@ -65,6 +66,7 @@ class RAGServiceImpl(RAGService):
         p99_warning_ms: float | None = None,
         p99_critical_ms: float | None = None,
         kb_version: str | None = None,
+        cache: Optional[RetrievalCache] = None,
     ):
         self._enhancer = query_enhancer
         self._retriever = retriever
@@ -87,6 +89,10 @@ class RAGServiceImpl(RAGService):
             else settings.rag_p99_critical_threshold_ms
         )
         self._kb_version = kb_version or settings.phase0a_mock_kb_version
+        # 检索结果缓存（T-GA-RAG 缓存层）：None 表示不启用（行为与之前一致）。
+        # 覆盖 fusion 的两条直连 RAG 路径（consistency / crag），
+        # 它们绕过知识查询智能体的两层缓存。
+        self._cache = cache
 
     # ------------------------------------------------------------------
     # KB 版本契约（知识查询智能体缓存键依赖）
@@ -120,6 +126,14 @@ class RAGServiceImpl(RAGService):
 
     async def retrieve(self, request: RetrievalRequest) -> RetrievalResult:
         start = time.monotonic()
+
+        # Stage 0: 缓存查询（命中则跳过 enhance/retrieve/rerank/fallback 全流水线）
+        cache_key: Optional[str] = None
+        if self._cache is not None and self._cache.is_cacheable(request):
+            cache_key = self._cache.make_key(request, self._kb_version)
+            cached = await self._cache.get(cache_key)
+            if cached is not None:
+                return self._finalize_cache_hit(cached, request, start)
 
         # Stage 1: query enhancement.
         enhanced: Optional[EnhancedQuery] = None
@@ -268,7 +282,40 @@ class RAGServiceImpl(RAGService):
                 if (sc.rerank_score if sc.rerank_score is not None else sc.score)
                 >= request.min_score_threshold
             ]
+
+        # Stage 5: 写缓存。缓存"阈值过滤后的最终结果"是安全的——min_score_threshold
+        # 已包含在缓存键中，不同阈值不会互相污染。
+        if cache_key is not None:
+            await self._cache.set(cache_key, result)
+
         return result
+
+    def _finalize_cache_hit(
+        self,
+        cached: RetrievalResult,
+        request: RetrievalRequest,
+        start: float,
+    ) -> RetrievalResult:
+        """命中缓存的收尾：用本次实际耗时覆盖延迟字段。
+
+        ``RetrievalCache.get`` 的返回值总是 JSON 反序列化出的**新对象**，
+        与缓存内部不共享引用，因此这里无需深拷贝即可安全返回/被调用方修改。
+        """
+        latency_ms = (time.monotonic() - start) * 1000.0
+        cached.latency_ms = latency_ms
+        cached.p99_violation = latency_ms > self._p99_critical_ms
+        logger.info(
+            "rag_cache_hit",
+            request_id=request.request_id,
+            organ=request.organ,
+            latency_ms=round(latency_ms, 3),
+            n_results=len(cached.chunks),
+        )
+        return cached
+
+    def cache_stats(self) -> Optional[dict]:
+        """缓存命中统计（未启用缓存时返回 None）。"""
+        return self._cache.stats() if self._cache is not None else None
 
     async def health_check(self) -> bool:
         """Probe all dependencies. Logs (does not raise) on failures.
