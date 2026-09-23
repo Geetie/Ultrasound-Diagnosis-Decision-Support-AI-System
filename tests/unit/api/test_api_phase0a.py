@@ -50,6 +50,7 @@ class TestDiagnosisRequestFields:
         req = DiagnosisRequest(
             session_id="sess_001",
             target_organ="thyroid",
+            image_ids=[],
         )
         assert not hasattr(req, "request_id")
 
@@ -57,6 +58,7 @@ class TestDiagnosisRequestFields:
         req = DiagnosisRequest(
             session_id="sess_001",
             target_organ="thyroid",
+            image_ids=[],
         )
         assert not hasattr(req, "request_id")
 
@@ -64,6 +66,7 @@ class TestDiagnosisRequestFields:
         req = DiagnosisRequest(
             session_id="sess_001",
             target_organ="thyroid",
+            image_ids=[],
             retry=True,
         )
         assert req.retry_strategy is None
@@ -72,6 +75,7 @@ class TestDiagnosisRequestFields:
         req = DiagnosisRequest(
             session_id="sess_001",
             target_organ="thyroid",
+            image_ids=[],
             retry=True,
             retry_strategy=RetryStrategy.GENERATION_ONLY,
         )

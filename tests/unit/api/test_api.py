@@ -244,6 +244,7 @@ class TestSchemas:
         request = DiagnosisRequest(
             session_id="session_001",
             target_organ="thyroid",
+            image_ids=["img_001"],
             response_tier=ResponseTier.FULL,
             patient_context=PatientContext(age=45, gender="F"),
             idempotency_key="test_key_123"
