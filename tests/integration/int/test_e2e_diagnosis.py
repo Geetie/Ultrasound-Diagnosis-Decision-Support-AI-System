@@ -55,10 +55,10 @@ class TestE2EScenarioT1NormalPath:
         """单器官甲状腺诊断返回 success=True。"""
         from app.services.diagnosis_pipeline import run_diagnosis_pipeline
 
-        with patch("app.services.diagnosis_pipeline._safe_dispatch") as mock_dispatch, \
-             patch("app.services.diagnosis_pipeline._safe_fuse") as mock_fuse, \
-             patch("app.services.diagnosis_pipeline._safe_safety_check") as mock_sg, \
-             patch("app.services.diagnosis_pipeline._write_result_to_db") as mock_write, \
+        with patch("app.services.diagnosis_pipeline._safe_dispatch", new_callable=AsyncMock) as mock_dispatch, \
+             patch("app.services.diagnosis_pipeline._safe_fuse", new_callable=AsyncMock) as mock_fuse, \
+             patch("app.services.diagnosis_pipeline._safe_safety_check", new_callable=AsyncMock) as mock_sg, \
+             patch("app.services.diagnosis_pipeline._write_result_to_db", new_callable=AsyncMock) as mock_write, \
              patch("app.services.diagnosis_pipeline.AsyncSessionLocal") as mock_session:
 
             mock_session.return_value.__aenter__ = AsyncMock(return_value=MagicMock())
@@ -85,10 +85,10 @@ class TestE2EScenarioT2MultiOrgan:
         """dispatcher.invoke 接收单 organ，但 fuse 可处理多响应。"""
         from app.services.diagnosis_pipeline import run_diagnosis_pipeline
 
-        with patch("app.services.diagnosis_pipeline._safe_dispatch") as mock_dispatch, \
-             patch("app.services.diagnosis_pipeline._safe_fuse") as mock_fuse, \
-             patch("app.services.diagnosis_pipeline._safe_safety_check") as mock_sg, \
-             patch("app.services.diagnosis_pipeline._write_result_to_db") as mock_write, \
+        with patch("app.services.diagnosis_pipeline._safe_dispatch", new_callable=AsyncMock) as mock_dispatch, \
+             patch("app.services.diagnosis_pipeline._safe_fuse", new_callable=AsyncMock) as mock_fuse, \
+             patch("app.services.diagnosis_pipeline._safe_safety_check", new_callable=AsyncMock) as mock_sg, \
+             patch("app.services.diagnosis_pipeline._write_result_to_db", new_callable=AsyncMock) as mock_write, \
              patch("app.services.diagnosis_pipeline.AsyncSessionLocal") as mock_session:
 
             mock_session.return_value.__aenter__ = AsyncMock(return_value=MagicMock())

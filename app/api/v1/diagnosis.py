@@ -268,6 +268,29 @@ async def get_diagnosis_result(
         if elapsed > RESULT_TIMEOUT_SECONDS:
             result_status = "timeout"
 
+    # 后台 worker（app/services/diagnosis_pipeline.py）写回的 findings 即
+    # 真实诊断结论，其结构为 organ / fusion_result / sg_result / timings_ms。
+    # 只有 worker 尚未写入（status=processing/timeout）时才给占位 payload。
+    diagnosis_payload = result.findings if isinstance(result.findings, dict) and result.findings else None
+    if diagnosis_payload:
+        timings = diagnosis_payload.get("timings_ms") or {}
+        processing_time_ms = int(timings.get("pipeline.total_ms") or 0) or settings.phase0a_mock_processing_time_ms
+        model_version = diagnosis_payload.get("model_version") or settings.phase0a_mock_model_version
+        knowledge_base_version = (
+            diagnosis_payload.get("knowledge_base_version") or settings.phase0a_mock_kb_version
+        )
+    else:
+        diagnosis_payload = {
+            "organ": result.organ,
+            "findings": "Waiting for diagnosis system completion",
+            "classification": "N/A",
+            "recommendation": "N/A",
+            "pending": True,
+        }
+        processing_time_ms = settings.phase0a_mock_processing_time_ms
+        model_version = settings.phase0a_mock_model_version
+        knowledge_base_version = settings.phase0a_mock_kb_version
+
     diagnosis_result = DiagnosisResult(
         request_id=request_id,
         status="completed" if result_status == "completed" else result_status,
@@ -275,13 +298,7 @@ async def get_diagnosis_result(
         desensitization_status=desensitization_status,
         consent_status_at_output=consent_status_at_output,
         fusion_status=FusionStatus.NORMAL,
-        diagnosis={
-            "organ": result.organ,
-            "findings": "Waiting for diagnosis system completion",
-            "classification": "N/A",
-            "recommendation": "N/A",
-            "_phase0a_mock": True,
-        },
+        diagnosis=diagnosis_payload,
         evidence=DiagnosisEvidence(
             knowledge_ids=result.knowledge_ids if hasattr(result, "knowledge_ids") and result.knowledge_ids else None,
             content=result.findings if result.findings else None,
@@ -296,13 +313,10 @@ async def get_diagnosis_result(
         ai_diagnosis_failed=False,
         hallucination_severity=None,
         version_compatibility="compatible",
-        processing_time_ms=settings.phase0a_mock_processing_time_ms,
-        model_version=settings.phase0a_mock_model_version,
-        knowledge_base_version=settings.phase0a_mock_kb_version,
+        processing_time_ms=processing_time_ms,
+        model_version=model_version,
+        knowledge_base_version=knowledge_base_version,
     )
-
-    if result.findings and "findings" in result.findings:
-        diagnosis_result.diagnosis = result.findings
 
     if result.status == "completed" and not result.result_pushed:
         await _push_diagnosis_result(result, request_id, db)

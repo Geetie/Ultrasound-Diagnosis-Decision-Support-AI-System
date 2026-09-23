@@ -71,7 +71,9 @@ class TestDiagnosisPhase0AMockConstants:
 
 class TestDiagnosisRequestModel:
     def test_minimal_request(self):
-        req = DiagnosisRequest(session_id="sess_001", target_organ="thyroid")
+        req = DiagnosisRequest(
+            session_id="sess_001", target_organ="thyroid", image_ids=[]
+        )
         assert req.session_id == "sess_001"
         assert req.target_organ == "thyroid"
         assert req.response_tier == ResponseTier.FULL
@@ -83,6 +85,7 @@ class TestDiagnosisRequestModel:
         req = DiagnosisRequest(
             session_id="sess_001",
             target_organ="thyroid",
+            image_ids=["img_001"],
             response_tier=ResponseTier.REALTIME,
             retry=True,
             retry_strategy=RetryStrategy.GENERATION_ONLY,

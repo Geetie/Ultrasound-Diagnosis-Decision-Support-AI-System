@@ -61,12 +61,12 @@ class TestE2ELatencyBaseline:
         """100 次单器官 mock 请求, P99 < 5.0s。"""
         from app.services.diagnosis_pipeline import run_diagnosis_pipeline
 
-        with patch("app.services.diagnosis_pipeline._safe_dispatch") as mock_dispatch, \
-             patch("app.services.diagnosis_pipeline._safe_fuse") as mock_fuse, \
-             patch("app.services.diagnosis_pipeline._safe_safety_check") as mock_sg, \
-             patch("app.services.diagnosis_pipeline._write_result_to_db") as mock_write, \
+        with patch("app.services.diagnosis_pipeline._safe_dispatch", new_callable=AsyncMock) as mock_dispatch, \
+             patch("app.services.diagnosis_pipeline._safe_fuse", new_callable=AsyncMock) as mock_fuse, \
+             patch("app.services.diagnosis_pipeline._safe_safety_check", new_callable=AsyncMock) as mock_sg, \
+             patch("app.services.diagnosis_pipeline._write_result_to_db", new_callable=AsyncMock) as mock_write, \
              patch("app.services.diagnosis_pipeline.AsyncSessionLocal") as mock_session, \
-             patch("app.services.diagnosis_pipeline.nav_manager") as mock_nav:
+             patch("app.api.websocket.nav.manager") as mock_nav:
 
             mock_session.return_value.__aenter__ = AsyncMock(return_value=MagicMock())
             mock_session.return_value.__aexit__ = AsyncMock(return_value=None)
@@ -105,12 +105,12 @@ class TestE2ELatencyBaseline:
         """20 次含 Self-RAG 重试, P99 < 8.0s。"""
         from app.services.diagnosis_pipeline import run_diagnosis_pipeline
 
-        with patch("app.services.diagnosis_pipeline._safe_dispatch") as mock_dispatch, \
-             patch("app.services.diagnosis_pipeline._safe_fuse") as mock_fuse, \
-             patch("app.services.diagnosis_pipeline._safe_safety_check") as mock_sg, \
-             patch("app.services.diagnosis_pipeline._write_result_to_db") as mock_write, \
+        with patch("app.services.diagnosis_pipeline._safe_dispatch", new_callable=AsyncMock) as mock_dispatch, \
+             patch("app.services.diagnosis_pipeline._safe_fuse", new_callable=AsyncMock) as mock_fuse, \
+             patch("app.services.diagnosis_pipeline._safe_safety_check", new_callable=AsyncMock) as mock_sg, \
+             patch("app.services.diagnosis_pipeline._write_result_to_db", new_callable=AsyncMock) as mock_write, \
              patch("app.services.diagnosis_pipeline.AsyncSessionLocal") as mock_session, \
-             patch("app.services.diagnosis_pipeline.nav_manager") as mock_nav:
+             patch("app.api.websocket.nav.manager") as mock_nav:
 
             mock_session.return_value.__aenter__ = AsyncMock(return_value=MagicMock())
             mock_session.return_value.__aexit__ = AsyncMock(return_value=None)
