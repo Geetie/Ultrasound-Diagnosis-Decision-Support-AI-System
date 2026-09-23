@@ -17,8 +17,10 @@
 推理调度）不依赖上述三方库，可在开发机直接单测。
 """
 
+from edge.config import EdgeConfigError, EdgeSettings
 from edge.device_auth import EdgeDeviceAuth
 from edge.device_manager import DeviceHealth, DeviceState, EdgeDeviceManager
+from edge.main import EdgeService, build_edge_service
 from edge.gpu_thermal import GPUThermalPolicy, ThermalDecision, ThermalLevel
 from edge.nav_backend import NullNavBackend, TensorRTNavBackend, create_nav_backend
 from edge.navigation import NavigationInferenceService
@@ -31,8 +33,11 @@ from edge.websocket_server import EdgeWebSocketClient
 __all__ = [
     "DeviceHealth",
     "DeviceState",
+    "EdgeConfigError",
     "EdgeDeviceAuth",
     "EdgeDeviceManager",
+    "EdgeService",
+    "EdgeSettings",
     "EdgePipeline",
     "EdgeWebSocketClient",
     "Frame",
@@ -50,5 +55,6 @@ __all__ = [
     "TensorRTNavBackend",
     "ThermalDecision",
     "ThermalLevel",
+    "build_edge_service",
     "create_nav_backend",
 ]

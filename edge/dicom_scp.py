@@ -156,6 +156,14 @@ class DicomSCPService:
     def started(self) -> bool:
         return self._started
 
+    def set_frame_handler(self, handler: Optional[Callable[[Frame], None]]) -> None:
+        """设置/替换帧回调。
+
+        组装期存在循环依赖（回调需要服务实例，服务需要 SCP），因此提供
+        构造后注入的入口，避免调用方直接改私有字段。
+        """
+        self._frame_handler = handler
+
     # ---- 生命周期 ----
     async def start(self) -> None:
         """启动 SCP（pynetdicom 懒加载；阻塞式启动放到线程中执行）。"""
