@@ -17,6 +17,7 @@ from __future__ import annotations
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import httpx
 import pytest
 
 pytestmark = [pytest.mark.track_emb]
@@ -78,6 +79,22 @@ def _make_hit(hit_id: str, score: float, payload: dict | None = None) -> MagicMo
     h.score = score
     h.payload = payload or {}
     return h
+
+
+def _unexpected_response(message: str, status_code: int = 500) -> UnexpectedResponse:
+    """构造 ``UnexpectedResponse``，兼容 qdrant-client >= 1.19 的签名。
+
+    1.19 起该异常需要 4 个位置参数
+    （``status_code`` / ``reason_phrase`` / ``content`` / ``headers``），
+    早期版本只接受一个消息字符串。被测试的逻辑只按异常「类型」分支
+    （``except UnexpectedResponse``），因此状态码取值不影响断言。
+    """
+    return UnexpectedResponse(
+        status_code=status_code,
+        reason_phrase=message,
+        content=b"",
+        headers=httpx.Headers(),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -200,7 +217,7 @@ class TestCreateCollection:
     async def test_unexpected_response_mapped(self) -> None:
         idx = _make_index()
         idx._client.collection_exists.return_value = False
-        idx._client.create_collection.side_effect = UnexpectedResponse("forbidden")
+        idx._client.create_collection.side_effect = _unexpected_response("forbidden", 403)
         with pytest.raises(VectorIndexError) as exc_info:
             await idx.create_collection("kb_v1", dimension=768)
         assert exc_info.value.error_code == VectorIndexErrorCode.UPSERT_FAILED
@@ -236,7 +253,7 @@ class TestUpsert:
 
     async def test_unexpected_response_mapped(self) -> None:
         idx = _make_index()
-        idx._client.upsert.side_effect = UnexpectedResponse("server error")
+        idx._client.upsert.side_effect = _unexpected_response("server error", 500)
         with pytest.raises(VectorIndexError) as exc_info:
             await idx.upsert("kb_v1", [VectorRecord(id="x", vector=[0.1], metadata={})])
         assert exc_info.value.error_code == VectorIndexErrorCode.UPSERT_FAILED
@@ -280,7 +297,7 @@ class TestSearch:
 
     async def test_unexpected_response_mapped(self) -> None:
         idx = _make_index()
-        idx._client.search.side_effect = UnexpectedResponse("not found")
+        idx._client.search.side_effect = _unexpected_response("not found", 404)
         with pytest.raises(VectorIndexError) as exc_info:
             await idx.search("kb_v1", query_vector=[0.1])
         assert exc_info.value.error_code == VectorIndexErrorCode.SEARCH_FAILED
@@ -313,7 +330,7 @@ class TestDeleteCollection:
 
     async def test_unexpected_response_mapped(self) -> None:
         idx = _make_index()
-        idx._client.delete_collection.side_effect = UnexpectedResponse("forbidden")
+        idx._client.delete_collection.side_effect = _unexpected_response("forbidden", 403)
         with pytest.raises(VectorIndexError) as exc_info:
             await idx.delete_collection("kb_v1")
         assert exc_info.value.error_code == VectorIndexErrorCode.DELETE_FAILED

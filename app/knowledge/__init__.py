@@ -18,6 +18,7 @@ from app.knowledge.chunker import (
     create_chunker,
 )
 from app.knowledge.feature_extractor import ExtractedFeatures, FeatureExtractor
+from app.knowledge.graph_query import GraphQueryAdapter, PgVectorGraphAdapter
 from app.knowledge.hybrid_indexer import (
     HybridIndexer,
     PGVectorHybridIndexer,
@@ -44,6 +45,7 @@ __all__ = [
     'F1Metrics',
     'FeatureExtractor',
     'FixedWindowChunker',
+    'GraphQueryAdapter',
     'HybridIndexer',
     'IndexBuildError',
     'IndexBuildErrorCode',
@@ -57,6 +59,7 @@ __all__ = [
     'MeasurementValue',
     'MockEmbeddingService',
     'PGVectorHybridIndexer',
+    'PgVectorGraphAdapter',
     'SegBackend',
     'SegmentationValidator',
     'SemanticChunker',

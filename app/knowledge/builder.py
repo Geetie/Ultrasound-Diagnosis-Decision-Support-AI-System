@@ -40,6 +40,10 @@ from app.knowledge.chunker import (
     KnowledgeSourceDoc,
     create_chunker,
 )
+from app.knowledge.desensitization import (
+    Desensitizer,
+    get_default_desensitizer,
+)
 from app.knowledge.feature_extractor import FeatureExtractor
 from app.knowledge.hybrid_indexer import PGVectorHybridIndexer
 from app.knowledge.protocols import (
@@ -92,9 +96,20 @@ def _load_manifest(source_dir: Path) -> dict:
 
 
 def _discover_source_docs(
-    source_dir: Path, organs_filter: Optional[List[str]]
+    source_dir: Path,
+    organs_filter: Optional[List[str]],
+    desensitizer: Optional[Desensitizer] = None,
 ) -> List[_SourceDocFile]:
-    """Walk <source-dir>/<organ>/*.json and return source doc descriptors."""
+    """Walk <source-dir>/<organ>/*.json and return source doc descriptors.
+
+    Args:
+        source_dir: 知识库源文档根目录。
+        organs_filter: 仅保留这些器官子目录（None 表示全部）。
+        desensitizer: 入库前脱敏器（P0-RAG-03）。传入时对每篇文档调用
+            ``desensitize(content, source_kind)``；``skipped=True`` 的来源
+            （如 ``guidelines``，属公开知识）保留原文，其余使用脱敏文本。
+            None 表示不做脱敏（保持既有行为）。
+    """
     if not source_dir.exists() or not source_dir.is_dir():
         raise IndexBuildError(
             IndexBuildErrorCode.SOURCE_NOT_FOUND,
@@ -127,6 +142,11 @@ def _discover_source_docs(
                 continue
             source_doc_id = data.get("source_doc_id") or json_file.stem
             section_path = data.get("section_path", "")
+            if desensitizer is not None:
+                source_kind = data.get("source_kind") or "case_reports"
+                sanitized = desensitizer.desensitize(content, source_kind)
+                if not sanitized.skipped:
+                    content = sanitized.sanitized
             docs.append(
                 _SourceDocFile(
                     source_doc_id=source_doc_id,
@@ -261,7 +281,11 @@ class KnowledgeIndexBuilderImpl(KnowledgeIndexBuilder):
             )
 
         organs_filter = request.organs or None
-        source_docs = _discover_source_docs(source_dir, organs_filter)
+        # P0-RAG-03：case_reports 含 PII，必须在入库前脱敏（硬约束）。
+        # guidelines 等公开知识由 Desensitizer 内部跳过。
+        source_docs = _discover_source_docs(
+            source_dir, organs_filter, desensitizer=get_default_desensitizer()
+        )
         if not source_docs:
             logger.warning(
                 "no_source_docs_found",

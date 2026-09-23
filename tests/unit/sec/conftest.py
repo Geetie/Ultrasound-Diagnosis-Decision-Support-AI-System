@@ -303,10 +303,23 @@ def reset_sec_singletons():
 
 @pytest.fixture(scope="session", autouse=True)
 def mock_hsm_redis_operations():
+    """屏蔽 HSM 的 Redis 持久化，避免测试等待真实连接超时。
+
+    注意：必须同时 patch ``PersistenceManager.safe_run_async_task``。
+    ``KeyManager``/``DegradationManager`` 持有各自的 ``PersistenceManager``
+    实例并直接调用其 ``safe_run_async_task``，不会经过
+    ``HSMManager._safe_run_async_task`` 这个向后兼容转发方法。只 patch
+    后者会导致持久化仍然同步执行真实的 Redis 写（每次命令等待
+    socket_timeout + Retry(3) ≈ 9~18s）。
+    """
     from app.security.hsm import HSMManager
+    from app.security.hsm.persistence_manager import PersistenceManager
+
     def _noop_safe_run(self, coro):
         coro.close()
-    with patch.object(HSMManager, '_safe_run_async_task', _noop_safe_run):
+
+    with patch.object(HSMManager, '_safe_run_async_task', _noop_safe_run), \
+         patch.object(PersistenceManager, 'safe_run_async_task', _noop_safe_run):
         yield
 
 

@@ -178,6 +178,11 @@ class Settings(BaseSettings):
     embedding_connect_timeout_seconds: float = 10.0
     embedding_contradiction_threshold_ultrasound_clip: float = 0.85
     embedding_contradiction_threshold_bge_m3_medical: float = 0.85
+    # P1-EMB-03：embedding HTTP 请求的退避重试预算
+    # （app/embedding/base.py::_run_with_retry，仅对 retryable=True 的
+    #  EmbeddingError 生效，sleep = backoff_base * 2^(attempt-1)）
+    embedding_retry_max_attempts: int = 3
+    embedding_retry_backoff_base: float = 1.0
 
     # Vector index backend (EMB-02)
     vector_index_backend: str = 'qdrant'   # 'qdrant' | 'pgvector'
@@ -196,6 +201,9 @@ class Settings(BaseSettings):
     rag_use_llm_enhancement: bool = False
     rag_collection: str = 'knowledge_chunks'
     rag_image_collection: str = 'ultrasound_chunks'
+    # 实体近似匹配专用 collection（≤1 万向量），与主检索 collection 隔离。
+    # 设计规格 §5.5 / 01-系统架构设计「Gate 0A 强制执行项」指定的名称。
+    rag_entity_matching_collection: str = 'entity_matching'
     rag_top_k: int = 20
     rag_rerank_output_top_k: int = 5
     rag_min_score_threshold: float = 0.5
@@ -206,6 +214,12 @@ class Settings(BaseSettings):
     rag_use_redis_cache: bool = False
     rag_p99_warning_threshold_ms: float = 80.0
     rag_p99_critical_threshold_ms: float = 100.0
+
+    # Knowledge Graph 图谱查询开关（app/knowledge/graph_query.py）。
+    # 一期 graph_query 为 STUB，默认关闭；调用方须先检查本开关，
+    # 关闭时自行 fallback 到非图谱路径。二期 Neo4j / PGVector 递归
+    # CTE 就绪后置 True 即可启用，无需改业务代码。
+    graph_query_enabled: bool = False
     rag_rrf_k: int = 60
 
     # bge-reranker (T-GA-RAG-03)

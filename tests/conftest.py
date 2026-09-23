@@ -3,6 +3,7 @@ import os
 import subprocess
 import sys
 import time
+from unittest.mock import patch
 
 import httpx
 import pytest
@@ -14,6 +15,36 @@ from app.config.redis import RedisPool
 def set_hsm_env_vars():
     os.environ.setdefault("HSM_PRIVATE_KEY_PASSWORD", "test_password_for_unit_tests_only")
     yield
+
+
+@pytest.fixture(scope="session", autouse=True)
+def fast_fail_redis():
+    """测试环境让真实 Redis 连接"瞬时失败"。
+
+    默认 ``REDIS_URL`` 指向 Docker 服务名（``redis:6379``），本机不可达。
+    ``RedisPool`` 的失败代价是 ``socket_connect_timeout`` × ``Retry(3)``，
+    实测**每个 Redis 命令阻塞 9~18s**（RedisPool.get_client 里
+    socket_timeout=settings.redis_pool_timeout, retry=Retry(retries=3)）。
+    任何触及 Redis 的用例都会被这条链路拖慢十秒以上。
+
+    单元测试不依赖真实 Redis，这里统一改为瞬时抛 ``ConnectionError``，
+    使各模块既有的"优雅降级"分支（catch RedisError → 返回 None/False）
+    被毫秒级验证。
+
+    需要真实 Redis 的用例请自行 ``patch("app.config.redis.RedisPool.get_client", ...)``
+    （内层 patch 优先，不受本守卫影响），或设置 ``USE_REAL_REDIS=1`` 关闭守卫。
+    """
+    if os.environ.get("USE_REAL_REDIS", "false").lower() == "true":
+        yield
+        return
+
+    from redis.exceptions import ConnectionError as RedisConnectionError
+
+    async def _fail_fast(*args, **kwargs):
+        raise RedisConnectionError("Redis is disabled during tests (fast_fail_redis)")
+
+    with patch.object(RedisPool, "get_client", _fail_fast):
+        yield
 
 
 @pytest.fixture(scope="session")

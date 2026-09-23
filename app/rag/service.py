@@ -21,6 +21,7 @@ from typing import List, Optional
 import structlog
 
 from app.config.settings import settings
+from app.knowledge.version import parse_kb_version
 from app.rag.bm25_fallback import BM25Fallback
 from app.rag.protocols import (
     EnhancedQuery,
@@ -63,6 +64,7 @@ class RAGServiceImpl(RAGService):
         rerank_output_top_k: int | None = None,
         p99_warning_ms: float | None = None,
         p99_critical_ms: float | None = None,
+        kb_version: str | None = None,
     ):
         self._enhancer = query_enhancer
         self._retriever = retriever
@@ -84,6 +86,33 @@ class RAGServiceImpl(RAGService):
             if p99_critical_ms is not None
             else settings.rag_p99_critical_threshold_ms
         )
+        self._kb_version = kb_version or settings.phase0a_mock_kb_version
+
+    # ------------------------------------------------------------------
+    # KB 版本契约（知识查询智能体缓存键依赖）
+    # ------------------------------------------------------------------
+    #
+    # ``app/main.py`` 构造 KnowledgeAgentImpl 时优先从 RAG 服务解析当前
+    # KB 版本（见 main.py 中的 ``_kb_version_resolver`` 四级回退）；KB 版本
+    # 变更会嵌入 ``KnowledgeAgentImpl._make_cache_key``，实现缓存自然失效。
+    # 因此 RAG 服务必须暴露这两个方法。
+
+    def current_kb_version(self) -> str:
+        """返回当前知识库版本（形如 ``kb_v1.0.0``）。"""
+        return self._kb_version
+
+    def update_kb_version(self, new_version: str) -> bool:
+        """切换知识库版本，返回是否真的发生了变更。
+
+        非法格式（不符合 ``kb_v{major}.{minor}.{patch}``）、空字符串、
+        或与当前版本相同 → 返回 ``False`` 且不改动。
+        """
+        if not new_version or parse_kb_version(new_version) is None:
+            return False
+        if new_version == self._kb_version:
+            return False
+        self._kb_version = new_version
+        return True
 
     # ------------------------------------------------------------------
     # RAGService interface

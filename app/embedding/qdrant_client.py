@@ -171,11 +171,17 @@ class QdrantVectorIndex(VectorIndexClient):
                     collection=collection_name,
                 )
                 return
+            try:
+                distance_enum = getattr(qmodels.Distance, distance_name)
+            except AttributeError:
+                # qdrant-client >= 1.19 起枚举成员改为全大写
+                # （COSINE / EUCLID / DOT），早期版本为首字母大写。
+                distance_enum = getattr(qmodels.Distance, distance_name.upper())
             await client.create_collection(
                 collection_name=collection_name,
                 vectors_config=qmodels.VectorParams(
                     size=dimension,
-                    distance=getattr(qmodels.Distance, distance_name),
+                    distance=distance_enum,
                 ),
             )
             logger.info(
