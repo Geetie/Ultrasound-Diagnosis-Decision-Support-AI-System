@@ -952,6 +952,7 @@ class TestDesensitizationMappingModelDeep:
         assert 'field_type' in columns
 
 
+@pytest.mark.perf
 class TestPerformanceBenchmarksExtended:
 
     def test_desensitize_latency_by_length(self):

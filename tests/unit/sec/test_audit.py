@@ -1290,6 +1290,7 @@ class TestRateLimitUserIdHashing:
         assert user_id == "anonymous"
 
 
+@pytest.mark.perf
 class TestSECPerformanceBenchmarks:
 
     def test_desensitization_p99_under_5ms(self):

@@ -2005,6 +2005,7 @@ class TestDesensitizationMappingKeySpecSupplementary:
         assert iv_col.type.length == 12, f"IV length should be 12, got {iv_col.type.length}"
 
 
+@pytest.mark.perf
 class TestSECPerformanceBenchmarksSupplementary:
 
     def test_desensitization_p99_under_5ms(self):

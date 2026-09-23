@@ -1,7 +1,8 @@
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-addopts = "--tb=short --no-header --durations=20"
+addopts = "--tb=short --no-header --durations=20 -m 'not perf'"
 markers = [
+    "perf: 性能/延迟基准测试（断言墙钟 P99 阈值，并行执行时受 CPU 争抢影响而假失败）。默认排除；需单独串行运行: pytest -m perf -p no:xdist",
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks tests as integration tests requiring external services",
     "phase0a: marks tests as Phase0A Gate 0A-Tech-P0 verification tests",
