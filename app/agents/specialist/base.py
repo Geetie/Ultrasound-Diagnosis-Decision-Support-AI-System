@@ -14,6 +14,10 @@
                                           ┌────────────────────────────┘
                                           ▼
                                     _parse_response → AgentResponse
+                                                                       │
+                                          ┌────────────────────────────┘
+                                          ▼
+                              used_evidence_ids 写入 + 阈值检查 → 返回
    ```
 
    真实专科（ThyroidSpecialistAgent / LiverSpecialistAgent / CardiacSpecialistAgent）
@@ -24,10 +28,16 @@
 - 公共 invoke 流程统一处理：RAG 检索、prompt 组装、LLM 调用、置信度计算。
 - 置信度计算：``min(RAG top score, 1.0) * 0.6 + LLM 完整度 0.4``（启发式）。
   依据：现有 KnowledgeAgent 抽象不暴露 score，因此走 RAG chunk 计数
-  + LLM 输出的非空比例作为替代信号。
+  + LLM 输出的非空比例作为替代信号。**LLM 完整度饱和阈值 = 500 字符**（与
+  实际 few-shot 输出长度对齐，避免 200 字符过早饱和导致评分粒度丢失）。
 - 降级路径：RAG 返回空、LLM 抛错、解析失败 → 全部返回
   ``confidence=0.0`` 的占位响应（不抛异常），与 ``Agent`` 协议契约一致。
 - P99 预算：RAG 1s + LLM 3s + 调度 1s = 5s。
+- **D2 修正**：invoke 末尾将 ``response.evidence_chunk_ids`` 写入
+  ``context.used_evidence_ids``（支持 KB safety_critical 更新的精确回溯）。
+- **D1 修正**：若构造时注入 ``organ_threshold``（器官级置信度阈值），
+  invoke 末尾检查 final_conf，低于阈值时设置 ``response.needs_review=True``
+  并在 trace 中追加 ``below_organ_threshold: ...`` 标签。
 """
 from __future__ import annotations
 
@@ -35,7 +45,7 @@ import re
 import time
 from abc import abstractmethod
 from pathlib import Path
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 import structlog
 
@@ -56,6 +66,9 @@ DEFAULT_RAG_TOP_K = 5
 # 置信度计算权重（RAG 0.6 + LLM 0.4）
 _RAG_CONFIDENCE_WEIGHT = 0.6
 _LLM_CONFIDENCE_WEIGHT = 0.4
+
+# LLM 因子饱和阈值（500 字符达到 1.0 — 与 few-shot 输出实际长度对齐）
+_LLM_TEXT_SATURATION_CHARS = 500
 
 # 空证据阈值：top_k 全部为空 → confidence=0.0 并标记 "evidence_insufficient"
 EMPTY_RAG_RESULT_CONFIDENCE = 0.0
@@ -102,6 +115,15 @@ class RAGSpecialistAgent(SpecialistAgent):
             自动从 ``app/agents/prompts/{organ.value}.md`` 加载。
         rag_top_k: RAG 检索返回 chunk 上限。默认 5。
         max_tokens: LLM 生成上限。默认 1024。
+        organ_threshold: 器官级置信度阈值。**D1 修正**（设计 §2.4）：
+            低于本阈值的 final_conf 会触发 ``response.needs_review = True``
+            并在 trace 中追加 ``below_organ_threshold`` 标签。``None``
+            时不触发阈值检查（保持向后兼容）。**典型值**：thyroid 0.85 /
+            liver 0.88 / cardiac 0.92。
+        disease_thresholds: 病种级置信度阈值映射（``{disease_type: threshold}``）。
+            **D1 修正**（设计 §2.4）：子类可在 _parse_response 末尾按
+            检出的病种调用 :meth:`_check_disease_threshold` 进一步收紧
+            阈值。``None`` 或空字典时不做病种级检查。
     """
 
     def __init__(
@@ -111,6 +133,8 @@ class RAGSpecialistAgent(SpecialistAgent):
         prompt_template: Optional[str] = None,
         rag_top_k: int = DEFAULT_RAG_TOP_K,
         max_tokens: int = 1024,
+        organ_threshold: Optional[float] = None,
+        disease_thresholds: Optional[Dict[str, float]] = None,
     ) -> None:
         if inference_engine is None:
             raise ValueError("inference_engine must not be None")
@@ -120,11 +144,24 @@ class RAGSpecialistAgent(SpecialistAgent):
             raise ValueError("rag_top_k must be positive")
         if max_tokens <= 0:
             raise ValueError("max_tokens must be positive")
+        if organ_threshold is not None and not (0.0 <= organ_threshold <= 1.0):
+            raise ValueError(
+                f"organ_threshold must be in [0.0, 1.0] if set, got {organ_threshold}"
+            )
+        if disease_thresholds is not None:
+            for dtype, th in disease_thresholds.items():
+                if not (0.0 <= th <= 1.0):
+                    raise ValueError(
+                        f"disease_thresholds[{dtype!r}] must be in [0.0, 1.0], got {th}"
+                    )
 
         self._inference = inference_engine
         self._knowledge = knowledge_agent
         self._rag_top_k = rag_top_k
         self._max_tokens = max_tokens
+        # D1: 器官级/病种级阈值
+        self._organ_threshold = organ_threshold
+        self._disease_thresholds: Dict[str, float] = dict(disease_thresholds or {})
         # 注意：用 ``is None`` 而非 ``or`` 判定，避免空字符串被吞掉
         # 当作「无自定义 prompt」回退到默认模板（保留对空字符串的拒绝校验）。
         if prompt_template is None:
@@ -191,7 +228,7 @@ class RAGSpecialistAgent(SpecialistAgent):
     # ------------------------------------------------------------------
 
     async def invoke(self, context: AgentContext) -> AgentResponse:
-        """公共 invoke 流程：RAG → prompt → LLM → parse。
+        """公共 invoke 流程：RAG → prompt → LLM → parse → 后处理。
 
         行为契约：
         1) 调用 :meth:`_retrieve_chunks` 拿 top-k 知识 chunk（异常 → 降级
@@ -200,7 +237,11 @@ class RAGSpecialistAgent(SpecialistAgent):
            （evidence_insufficient），标记需要人工复核；
         3) 否则调用 :meth:`_build_prompt` 拼装完整 prompt；
         4) 调用 :meth:`_call_llm` 拿 LLM 输出（异常 → 降级为 confidence=0.0）；
-        5) 调用 :meth:`_parse_response` 完成器官级解析。
+        5) 调用 :meth:`_parse_response` 完成器官级解析；
+        6) **D2 修正**：将 ``response.evidence_chunk_ids`` ``extend`` 到
+           ``context.used_evidence_ids``（KB safety_critical 精确取消用）；
+        7) **D1 修正**：若设置了 ``organ_threshold``，低于阈值时
+           设置 ``response.needs_review=True`` 并追加 trace 标签。
 
         Returns:
             :class:`AgentResponse`：含器官级分级结果 / 置信度 / 证据 / trace。
@@ -229,7 +270,7 @@ class RAGSpecialistAgent(SpecialistAgent):
         # 2) 空证据 → 降级
         if not chunks:
             trace.append("evidence_insufficient: zero chunks returned by RAG")
-            return AgentResponse(
+            response = AgentResponse(
                 agent_name=self._agent_name(),
                 organ=organ,
                 content=(
@@ -241,6 +282,8 @@ class RAGSpecialistAgent(SpecialistAgent):
                 reasoning_trace=trace,
                 latency_ms=(time.monotonic() - start) * 1000.0,
             )
+            self._post_process(context, response)
+            return response
 
         trace.append(f"rag_chunks: {len(chunks)}")
 
@@ -259,7 +302,7 @@ class RAGSpecialistAgent(SpecialistAgent):
                 error_type=type(exc).__name__,
             )
             trace.append(f"llm_failed: {type(exc).__name__}")
-            return AgentResponse(
+            response = AgentResponse(
                 agent_name=self._agent_name(),
                 organ=organ,
                 content=(
@@ -271,6 +314,8 @@ class RAGSpecialistAgent(SpecialistAgent):
                 reasoning_trace=trace,
                 latency_ms=(time.monotonic() - start) * 1000.0,
             )
+            self._post_process(context, response)
+            return response
 
         trace.append(f"llm_text_len: {len(llm_text)}")
 
@@ -287,7 +332,7 @@ class RAGSpecialistAgent(SpecialistAgent):
                 error_type=type(exc).__name__,
             )
             trace.append(f"parse_failed: {type(exc).__name__}")
-            return AgentResponse(
+            response = AgentResponse(
                 agent_name=self._agent_name(),
                 organ=organ,
                 content=(
@@ -299,6 +344,8 @@ class RAGSpecialistAgent(SpecialistAgent):
                 reasoning_trace=trace,
                 latency_ms=(time.monotonic() - start) * 1000.0,
             )
+            self._post_process(context, response)
+            return response
 
         # 合并 trace + 顶层 latency（保留器官级 trace 顺序）
         if response.reasoning_trace:
@@ -309,6 +356,9 @@ class RAGSpecialistAgent(SpecialistAgent):
         response.organ = organ  # 防御性：确保 organ 被设置
         response.agent_name = self._agent_name()
         response.latency_ms = (time.monotonic() - start) * 1000.0
+
+        # 6) 公共后处理（D1 阈值检查 + D2 used_evidence_ids 写入）
+        self._post_process(context, response)
         return response
 
     # ------------------------------------------------------------------
@@ -465,16 +515,110 @@ class RAGSpecialistAgent(SpecialistAgent):
 
         公式：
             RAG 因子 = min(len(chunks) / 5, 1.0)        # 5 条满证据
-            LLM 因子 = min(len(llm_text) / 200, 1.0)    # 200 字符饱满
+            LLM 因子 = min(len(llm_text) / 500, 1.0)    # **500 字符饱满**
             置信度   = RAG * 0.6 + LLM * 0.4
+
+        **500 字符饱和阈值的设计理由**：实际 few-shot 输出（含"分级"、
+        "理由"、"总分"等结构化字段）通常 200-500 字符。原 200 字符过
+        早达到 1.0，使 LLM 因子对 100-200 字符的"中等质量"输出丧失
+        区分度。500 字符饱和阈值与典型 few-shot 输出长度对齐，能更好
+        地反映输出完整度的差异。
 
         Returns:
             置信度（0.0 - 1.0）。
         """
         rag_factor = min(len(chunks) / max(self._rag_top_k, 1), 1.0)
-        llm_factor = min(len(llm_text or "") / 200.0, 1.0)
+        llm_factor = min(len(llm_text or "") / float(_LLM_TEXT_SATURATION_CHARS), 1.0)
         conf = rag_factor * _RAG_CONFIDENCE_WEIGHT + llm_factor * _LLM_CONFIDENCE_WEIGHT
         return round(conf, 4)
+
+    # ------------------------------------------------------------------
+    # 内部：D1 阈值检查（D1 偏离点修复）
+    # ------------------------------------------------------------------
+
+    def _check_disease_threshold(
+        self,
+        response: AgentResponse,
+        disease_type: Optional[str],
+    ) -> None:
+        """按器官级/病种级阈值检查 final_conf 并设置 needs_review 标签。
+
+        **D1 偏离点修复**（设计 §2.4）：
+        - 优先级：先查 ``disease_thresholds[disease_type]``（病种级），
+          若未配置则回退到 ``organ_threshold``（器官级）；
+        - 若 ``response.confidence < threshold``，设置
+          ``response.needs_review = True`` 并在 ``reasoning_trace`` 末尾追加
+          ``below_<scope>_threshold: <conf> < <threshold>`` 标签；
+        - 若 ``confidence == 0.0``（已降级）则跳过 — 降级响应本身已
+          表示"不可用"，无须额外触发 needs_review。
+
+        Args:
+            response: 已完成 _parse_response 的响应对象。
+            disease_type: 当前分级对应的病种（``None`` 或未知 → 走器官级）。
+        """
+        if response.confidence <= 0.0:
+            return
+        # 病种级优先 → 未配置则用器官级
+        threshold: Optional[float] = None
+        scope = "organ"
+        if disease_type and disease_type in self._disease_thresholds:
+            threshold = self._disease_thresholds[disease_type]
+            scope = "disease"
+        elif self._organ_threshold is not None:
+            threshold = self._organ_threshold
+            scope = "organ"
+        if threshold is None:
+            return
+        if response.confidence < threshold:
+            response.needs_review = True
+            response.reasoning_trace.append(
+                f"below_{scope}_threshold: {response.confidence:.4f} < {threshold}"
+            )
+            logger.info(
+                "specialist_below_threshold",
+                organ=self.get_organ().value,
+                scope=scope,
+                disease_type=disease_type,
+                confidence=response.confidence,
+                threshold=threshold,
+            )
+
+    # ------------------------------------------------------------------
+    # 内部：D1+D2 公共后处理（invoke 末尾调用）
+    # ------------------------------------------------------------------
+
+    def _post_process(
+        self,
+        context: AgentContext,
+        response: AgentResponse,
+    ) -> None:
+        """invoke 末尾的公共后处理（D1 阈值 + D2 used_evidence_ids 写入）。
+
+        **D2 修正**：将 ``response.evidence_chunk_ids`` ``extend`` 到
+        ``context.used_evidence_ids``，供 KB safety_critical 更新时做
+        "哪些在途诊断使用了旧版 chunk"的精确回溯（02-核心流程 §2.4）。
+        多专科联合诊断时所有 specialist 共享同一 ``AgentContext``，
+        ``extend`` 操作按器官顺序累积；deduplication 由 KB 软失效层完成。
+
+        **D1 修正**：器官级阈值检查（若 _parse_response 已调用
+        _check_disease_threshold，则不再重复检查器官级 — 避免
+        重复 trace 标签）。
+        """
+        # D2: 写入 used_evidence_ids（保留顺序，去重由调用方负责）
+        if response.evidence_chunk_ids:
+            context.used_evidence_ids.extend(response.evidence_chunk_ids)
+        # D1: 器官级阈值（病种级由 _parse_response 调用 _check_disease_threshold）
+        if (
+            response.confidence > 0.0
+            and self._organ_threshold is not None
+            and response.confidence < self._organ_threshold
+            and not response.needs_review
+        ):
+            response.needs_review = True
+            response.reasoning_trace.append(
+                f"below_organ_threshold: {response.confidence:.4f} < "
+                f"{self._organ_threshold}"
+            )
 
     # ------------------------------------------------------------------
     # 内部：默认 prompt 模板加载
@@ -611,4 +755,5 @@ __all__ = [
     "PlaceholderSpecialistAgent",
     "DEFAULT_RAG_TOP_K",
     "normalize_grading_text",
+    "_LLM_TEXT_SATURATION_CHARS",
 ]

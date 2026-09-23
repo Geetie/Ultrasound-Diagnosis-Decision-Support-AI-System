@@ -43,6 +43,14 @@ class AgentContext(BaseModel):
         user_query: 用户原始查询文本。
         imaging_metadata: 可选的影像元数据（DICOM 元信息、模态、帧序号等）。
         prior_messages: 多轮对话中的历史消息（``{"role": ..., "content": ...}``）。
+        used_evidence_ids: 专科智能体在诊断过程中**实际引用**的知识 chunk
+            ID 列表。**设计要求（02-核心流程与知识库 §2.4）**：KB
+            ``safety_critical`` 更新时依赖此字段做"哪些在途诊断使用了
+            旧版 chunk"的精确回溯与取消。**写入时机**：每个 specialist
+            在 :meth:`invoke` 末尾将本次响应实际使用的 evidence_chunk_ids
+            ``extend`` 到本字段。**多专科联合诊断**：dispatcher 应在调用
+            specialist 前对所有 specialist 共享同一 ``AgentContext``
+            （Python 对象传引用），以便多专科响应按器官顺序累积写入。
     """
     request_id: str
     session_id: str
@@ -50,6 +58,7 @@ class AgentContext(BaseModel):
     user_query: str
     imaging_metadata: Optional[dict[str, Any]] = None
     prior_messages: List[dict[str, Any]] = Field(default_factory=list)
+    used_evidence_ids: List[str] = Field(default_factory=list)
 
     @field_validator("request_id", "session_id")
     @classmethod
@@ -78,6 +87,7 @@ class AgentResponse(BaseModel):
         reasoning_trace: 推理链路描述，用于审计和调试。
         latency_ms: 调用总耗时（毫秒）。
         needs_review: 是否需要人工复核（specialist 自标，FUS 层不覆盖）。
+            由 specialist 在 confidence 低于器官级/病种级阈值时设置 ``True``。
             该字段在 FUS 融合层 (T-GA-FUS-01) 设计契约中明确：specialist
             标记 ``needs_review=True`` → 融合结果 ``FusionResult.needs_review``
             必须为 True 且 ``review_reason="specialist_flagged"``，由
@@ -91,6 +101,12 @@ class AgentResponse(BaseModel):
             区别于 ``evidence_chunk_ids``（所有引用），``used_evidence_ids``
             仅记录最终结论实际依赖的 chunk，KB 升级时仅需重新评估
             ``used_evidence_ids`` 命中的旧结论。
+        deviation_severity: 分级偏差跨越临床决策边界的严重程度。**FUS 阶段
+            消费**（02-核心流程 §3.1）：由 FUS-01 融合层基于 specialist
+            分级与知识库预期/历史结论的偏差判定写入，可能取值：
+            ``"none"``（一致） / ``"minor"``（同一档内微小偏差） /
+            ``"major"``（跨档偏差，如 TR3→TR4 — 不容忍 → 强制人工复核）。
+            specialist 自身不写入（仅占位 ``None``），保留给 FUS 轨道。
     """
     agent_name: str
     organ: Optional[Organ] = None
@@ -105,12 +121,23 @@ class AgentResponse(BaseModel):
     disease_code: Optional[str] = None
     # P2-1 增强：KB safety_critical 精确撤销
     used_evidence_ids: List[str] = Field(default_factory=list)
+    # FUS 分级偏差判定（specialist 仅占位 None，由 FUS-01 融合层写入）
+    deviation_severity: Optional[str] = None
 
     @field_validator("confidence")
     @classmethod
     def _confidence_in_range(cls, v: float) -> float:
         if v < 0.0 or v > 1.0:
             raise ValueError("confidence must be in [0.0, 1.0]")
+        return v
+
+    @field_validator("deviation_severity")
+    @classmethod
+    def _deviation_severity_valid(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and v not in {"none", "minor", "major"}:
+            raise ValueError(
+                "deviation_severity must be one of {None, 'none', 'minor', 'major'}"
+            )
         return v
 
     @field_validator("agent_name")
@@ -167,6 +194,16 @@ class Agent(ABC):
 
         Returns:
             True 表示健康，False 表示不健康。
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    async def close(self) -> None:
+        """释放智能体持有的所有资源（缓存、连接、内存态状态等）。
+
+        lifespan 关闭阶段会调用本方法。**实现要求**：
+        - 任何异常都必须吞掉（warning 日志），不能阻塞 lifespan 关闭；
+        - 调用后智能体不应再被使用（语义上"已关闭"）。
         """
         raise NotImplementedError
 
@@ -247,8 +284,13 @@ class KnowledgeAgent(ABC):
 
     负责：
     1. 封装 RAG Service（``app.rag.service.RAGService``）；
-    2. 实现两层缓存：Redis（TTL 300s）+ 进程内 LRU（容量 100）；
-    3. 缓存命中 / 未命中 / Redis 不可用降级。
+    2. 实现两层缓存（与 ``01-系统架构设计.md`` §2.3 对齐）：
+       - **L1 — Redis 共享缓存，TTL = 24 小时（86400s）**；
+       - **L2 — 进程内 LRU 缓存，容量 ≤ 50，TTL = 1 小时（3600s）**；
+    3. 缓存键格式 ``kb:cache:{organ.value}:v{kb_version}:{sha1(query)[:16]}``，
+       KB 版本号嵌入键名实现自然失效（版本变更 → 旧键自然消失）；
+    4. 击穿 / 穿透 / 雪崩三项防护（单 key 互斥锁、负缓存、TTL 抖动）；
+    5. 缓存命中 / 未命中 / Redis 不可用降级。
     """
 
     @abstractmethod
@@ -280,6 +322,18 @@ class KnowledgeAgent(ABC):
 
         Returns:
             True 当且仅当 RAG 依赖可达。
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    async def close(self) -> None:
+        """释放智能体持有的资源（清空 L1/L2 缓存、清理击穿锁等）。
+
+        lifespan 关闭阶段会调用本方法。**实现要求**：
+        - 任何异常都必须吞掉（warning 日志），不能阻塞 lifespan 关闭；
+        - 调用后智能体不应再被使用（语义上"已关闭"）；
+        - Redis 客户端连接**不**在本方法中关闭（由全局
+          ``app.config.redis.RedisPool.close()`` 统一负责）。
         """
         raise NotImplementedError
 
@@ -325,6 +379,16 @@ class MonitorAgent(ABC):
 
         Returns:
             True 表示健康，False 表示不健康。
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    async def close(self) -> None:
+        """释放智能体持有的资源（清空 organ 级别滑动窗口、停止后台任务等）。
+
+        lifespan 关闭阶段会调用本方法。**实现要求**：
+        - 任何异常都必须吞掉（warning 日志），不能阻塞 lifespan 关闭；
+        - 调用后智能体不应再被使用（语义上"已关闭"）。
         """
         raise NotImplementedError
 
