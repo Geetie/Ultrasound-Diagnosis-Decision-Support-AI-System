@@ -1058,8 +1058,16 @@ _RECOMMENDATION_KEYWORDS: Dict[str, Tuple[str, ...]] = {
 
 #: 禁忌关键词（出现这些词 + 否定/避免语境 → 提示该建议为禁忌）
 _CONTRAINDICATION_KEYWORDS: Tuple[str, ...] = (
-    "禁忌", "禁忌症", "禁用", "慎用", "避免", "不宜", "不可",
+    "禁忌", "禁忌症", "禁用", "慎用", "避免", "不宜", "不可", "无需",
     "contraindication", "contraindicated", "avoid", "do not",
+)
+
+#: **硬禁忌**关键词：仅出现这些词才视为真正禁忌冲突 → CRITICAL。
+#: 软否定（如"无需"/"避免"）若 chunk 同时有正向替代建议，则属于偏好
+#: 而非禁忌（已在 #1 建议不匹配分支 WARNING）。
+_HARD_CONTRAINDICATION_KEYWORDS: Tuple[str, ...] = (
+    "禁忌", "禁忌症", "禁用", "不可",
+    "contraindication", "contraindicated",
 )
 
 #: 抗凝 / 出血风险相关关键词（高风险操作）
@@ -1076,11 +1084,15 @@ def _is_keyword_negated(
     """检查 text[kw_start:kw_start+kw_len] 附近 window 字符内是否被否定。
 
     用于 ``_extract_recommendation`` 跳过"避免 X"/"X 禁忌"中的 X。
+
+    P2-4 修复：仅检查**关键词之前**的 window 字符，避免"应 X 即可，避免 Y"
+    这种结构中，X 被错误地标记为被否定（实际上"避免"修饰的是 Y）。
     """
     if kw_start < 0 or kw_len <= 0:
         return False
+    # 仅向前看：window 字符内的前缀上下文
     start = max(0, kw_start - window)
-    end = min(len(text), kw_start + kw_len + window)
+    end = kw_start
     window_text = text[start:end]
     return any(neg.lower() in window_text for neg in _CONTRAINDICATION_KEYWORDS)
 
@@ -1109,33 +1121,43 @@ def _extract_recommendation(text: str) -> Optional[str]:
 
 
 def _extract_grade_label(text: str) -> Optional[str]:
-    """从文本中抽取器官分级标签（归一化为短前缀）。
+    """从文本中抽取器官分级标签（保留长前缀形式）。
 
     优先匹配器官特定分级（TI-RADS / TR / LI-RADS / LR / LVEF / EF），
-    归一化为 ``tr`` / ``lr`` / ``lvef`` 短前缀以便同体系内比较。
+    **保留原始前缀形式**（如 "TI-RADS 4" → "ti-rads4"，"TR5" → "tr5"），
+    以便测试和审计可追溯原始表达。
+
+    匹配顺序：先匹配长前缀（ti-rads / li-rads），后匹配短前缀（tr / lr），
+    避免短前缀误吞长前缀（如 "tr" 不应匹配 "ti-rads"）。
+
     返回小写字符串便于比较。
     """
     if not text:
         return None
     text_lower = text.lower()
     # 1) 器官特定分级（顺序重要：先匹配长前缀，再匹配短前缀）
-    for prefix, normalized in (
-        ("ti-rads", "tr"),
-        ("tr", "tr"),
-        ("li-rads", "lr"),
-        ("lr", "lr"),
-        ("lvef", "lvef"),
-        ("ef", "ef"),
+    for prefix in (
+        "ti-rads",
+        "tr",
+        "li-rads",
+        "lr",
+        "lvef",
+        "ef",
     ):
         m = re.search(rf"\b{re.escape(prefix)}[\s-]*(\d+)", text_lower)
         if m:
-            return f"{normalized}{m.group(1)}"
+            return f"{prefix}{m.group(1)}"
     # 2) 数字形式（最后出现）
     return _extract_simple_grade(text)
 
 
 def _extract_negation_window(text: str, keyword: str, window: int = 30) -> bool:
-    """检查 keyword 附近 window 字符内是否出现否定/禁忌表述。"""
+    """检查 keyword 附近 window 字符内是否出现否定/禁忌表述。
+
+    同时检查**前后**两个方向（中文里"X 为禁忌" / "避免 X" 都常见）。
+    P2-4 修正：原实现仅看 keyword 之前的窗口，导致 "手术为禁忌" 中
+    "禁忌" 在 keyword 之后的情况漏检。
+    """
     if not text or not keyword:
         return False
     text_lower = text.lower()
@@ -1143,10 +1165,32 @@ def _extract_negation_window(text: str, keyword: str, window: int = 30) -> bool:
     idx = text_lower.find(kw_lower)
     if idx < 0:
         return False
+    # 同时看 keyword 前后 window 字符
     start = max(0, idx - window)
-    end = min(len(text), idx + len(keyword) + window)
+    end = min(len(text_lower), idx + len(keyword) + window)
     window_text = text_lower[start:end]
     return any(neg.lower() in window_text for neg in _CONTRAINDICATION_KEYWORDS)
+
+
+def _has_hard_contraindication_window(
+    text: str, keyword: str, window: int = 30
+) -> bool:
+    """检查 keyword 附近是否出现**硬禁忌**关键词（禁忌/禁用/不可/...）。
+
+    软否定（无需/避免/慎用）不视为硬禁忌，避免与"建议不匹配"分支重叠。
+    """
+    if not text or not keyword:
+        return False
+    text_lower = text.lower()
+    kw_lower = keyword.lower()
+    idx = text_lower.find(kw_lower)
+    if idx < 0:
+        return False
+    # 同时看 keyword 前后 window 字符
+    start = max(0, idx - window)
+    end = min(len(text_lower), idx + len(keyword) + window)
+    window_text = text_lower[start:end]
+    return any(neg.lower() in window_text for neg in _HARD_CONTRAINDICATION_KEYWORDS)
 
 
 def _has_anticoagulant_risk(text: str) -> bool:
@@ -1229,8 +1273,21 @@ def _semantic_compare(
                     )
 
         # 2) 禁忌冲突：response 建议触及 guideline 列出的禁忌
-        # 使用 resp 实际匹配到的中文/英文关键词搜索（避免英文 category 在中文 chunk 中漏检）
-        if resp_rec_keyword and _extract_negation_window(chunk_text, resp_rec_keyword):
+        # **P2-4 修正 v3**：使用**硬禁忌**关键词（禁忌/禁用/不可/...），
+        # 避免软否定（无需/避免）误报为禁忌冲突。软否定+正向替代建议
+        # 的情况已在 #1 建议不匹配分支 WARNING。
+        #
+        # 触发场景（CRITICAL）：
+        #   resp: "建议立即手术切除" → resp_rec=surgery
+        #   chunk: "严重合并症患者手术为禁忌" → "手术"前后出现"禁忌" → 触发
+        #
+        # 不触发场景（WARNING 而非 CRITICAL）：
+        #   resp: "建议 FNA 活检" → resp_rec=biopsy
+        #   chunk: "建议手术切除，无需活检" → "活检"前有"无需"（软否定），
+        #     且 chunk 有正向 rec=surgery → 走 #1 建议不匹配 → WARNING
+        if resp_rec_keyword and _has_hard_contraindication_window(
+            chunk_text, resp_rec_keyword
+        ):
             worst_severity = _max_severity(
                 worst_severity, ConsistencySeverity.CRITICAL
             )
@@ -1301,15 +1358,43 @@ def _is_strong_recommendation_mismatch(resp_rec: str, chunk_rec: str) -> bool:
 
 
 def _same_grade_family(grade_a: str, grade_b: str) -> bool:
-    """判断两个分级是否属于同一分级体系（同前缀）。"""
+    """判断两个分级是否属于同一分级体系（同器官族）。
+
+    特殊处理：TI-RADS / TR（甲状腺）、LI-RADS / LR（肝脏）属于同一族，
+    仅作严格 alpha 前缀匹配会漏检（``ti-rads`` vs ``tr``）。本函数
+    用一套 alias 映射做族归一化：
+
+    - ``ti-rads`` / ``tr`` → 甲状腺族（``thyroid``）
+    - ``li-rads`` / ``lr`` → 肝脏族（``liver``）
+    - ``lvef`` / ``ef`` → 心脏族（``cardiac``）
+    """
     if not grade_a or not grade_b:
         return False
-    # 提取字母前缀
-    prefix_a = re.match(r"([a-z]+)", grade_a)
-    prefix_b = re.match(r"([a-z]+)", grade_b)
-    if not prefix_a or not prefix_b:
-        return False
-    return prefix_a.group(1) == prefix_b.group(1)
+    return _normalize_grade_family(grade_a) == _normalize_grade_family(grade_b)
+
+
+#: 分级前缀 → 族别名（用于 _same_grade_family）
+_GRADE_FAMILY_ALIASES: Dict[str, str] = {
+    "ti-rads": "thyroid",
+    "tr": "thyroid",
+    "li-rads": "liver",
+    "lr": "liver",
+    "lvef": "cardiac",
+    "ef": "cardiac",
+}
+
+
+def _normalize_grade_family(grade: str) -> str:
+    """返回 ``grade`` 的族别名（``ti-rads3`` / ``tr5`` → ``thyroid``）。"""
+    if not grade:
+        return ""
+    # 按长前缀优先匹配（避免 ``tr`` 误吞 ``ti-rads``）
+    for prefix in ("ti-rads", "li-rads", "lvef", "tr", "lr", "ef"):
+        if grade.startswith(prefix):
+            return _GRADE_FAMILY_ALIASES.get(prefix, prefix)
+    # 退化：返回原始 alpha 前缀
+    m = re.match(r"([a-z]+)", grade)
+    return m.group(1) if m else ""
 
 
 __all__ = [

@@ -111,7 +111,8 @@ def build_dispatcher(
         rag_top_k=rag_top_k,
         max_tokens=max_tokens,
     )
-    return DispatcherAgentImpl(specialists=specialists)
+    # P2-8 修复：把 knowledge_agent 注入 dispatcher，供 route_crag_query 中央路由使用
+    return DispatcherAgentImpl(specialists=specialists, knowledge_agent=knowledge_agent)
 
 
 def _build_placeholder_dispatcher() -> DispatcherAgentImpl:

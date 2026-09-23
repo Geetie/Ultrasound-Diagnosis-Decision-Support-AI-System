@@ -1,6 +1,6 @@
 """T-GA-AGT-02 — 中央调度智能体实现。
 
-``DispatcherAgentImpl`` 提供两项能力：
+``DispatcherAgentImpl`` 提供三项能力：
 
 1. ``route()``：基于 ``DiagnosisRequest.target_organ`` 的简单路由。
    Phase 0A 直接透传 ``target_organ`` 字段；Phase 0B+ 可加入基于文本意图识别
@@ -8,6 +8,10 @@
 2. ``aggregate()``：将多个 ``AgentResponse`` 融合为单个 ``AgentResponse``。
    Phase 0A 使用「算术平均 confidence + 内容拼接」的简化策略；Phase 0B+ 由
    FUS 轨道替换为基于一致性的加权融合（在不破坏现有 API 的前提下替换本方法）。
+3. ``route_crag_query()``：P2-8 修复 — CRAG 补充检索的中央路由入口。
+   内部委派给已注入的 ``KnowledgeAgent``（享受两层缓存 + 负载均衡）。
+   无 ``knowledge_agent`` 时抛 ``RuntimeError``（由 CRAGHandler fallback
+   到 knowledge_agent / rag_service 后端）。
 
 错误降级策略：
 - 调用 specialist 抛任何异常 → 视为该 specialist 不可用，response 中
@@ -20,7 +24,7 @@ from __future__ import annotations
 
 import asyncio
 import time
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import structlog
 
@@ -29,7 +33,9 @@ from app.agents.protocols import (
     AgentContext,
     AgentResponse,
     DispatcherAgent,
+    KnowledgeAgent,
 )
+from app.knowledge.protocols import KnowledgeChunk
 from app.models.schemas import DiagnosisRequest, Organ
 
 logger = structlog.get_logger("app.agents.dispatcher")
@@ -56,22 +62,31 @@ class DispatcherAgentImpl(DispatcherAgent, Agent):
     """中央调度器实现。
 
     同时实现 ``Agent`` 协议（作为 dispatcher 自身也提供 ``invoke()``）和
-    ``DispatcherAgent`` 协议（额外暴露 ``route`` / ``aggregate``）。
+    ``DispatcherAgent`` 协议（额外暴露 ``route`` / ``aggregate`` /
+    ``route_crag_query``）。
 
     Args:
         specialists: ``{organ: specialist_agent}`` 字典。``organ`` 必须是
             ``Organ`` 枚举，specialist 必须是 ``Agent`` 子类实例。
+        knowledge_agent: P2-8 修复 — ``KnowledgeAgent`` 实例，用于
+            ``route_crag_query`` 中央路由。``None`` 时 ``route_crag_query``
+            抛 ``RuntimeError``（由 CRAGHandler 降级到 knowledge_agent /
+            rag_service 后端）。Phase 0B+ 可在此参数外加 KB 版本感知 /
+            跨器官协调逻辑。
         name: dispatcher 自身的名称（用于 ``AgentResponse.agent_name``）。
     """
 
     def __init__(
         self,
         specialists: Dict[Organ, Agent],
+        knowledge_agent: Optional[KnowledgeAgent] = None,
         name: str = "dispatcher",
     ) -> None:
         if not specialists:
             raise ValueError("specialists dict must not be empty")
         self._specialists: Dict[Organ, Agent] = dict(specialists)
+        # P2-8 修复：保存 knowledge_agent 引用，供 route_crag_query 使用
+        self._knowledge_agent: Optional[KnowledgeAgent] = knowledge_agent
         self._name = name
 
     # ------------------------------------------------------------------
@@ -255,6 +270,66 @@ class DispatcherAgentImpl(DispatcherAgent, Agent):
             confidence=avg_confidence,
             evidence_chunk_ids=evidence_ids,
             reasoning_trace=trace,
+        )
+
+    # ------------------------------------------------------------------
+    # P2-8 修复：CRAG 中央调度路由
+    # ------------------------------------------------------------------
+
+    async def route_crag_query(
+        self,
+        organ: Organ,
+        query: str,
+        top_k: int = 20,
+        failure_category: str = "unknown",
+    ) -> List[KnowledgeChunk]:
+        """CRAG 补充检索的中央路由（P2-8 修复实现）。
+
+        链路：``Self-RAG 失败 → Dispatcher.route_crag_query → KnowledgeAgent
+        → RAG → 返回 chunks``，享受 ``KnowledgeAgent`` 的两层缓存
+        （Redis TTL 86400s + LRU ≤50）+ 负载均衡 + KB 版本感知。
+
+        Args:
+            organ: 目标器官。
+            query: 增强后的查询文本（含失败原因关键词）。
+            top_k: 返回的 chunk 上限。
+            failure_category: Self-RAG 失败原因分类
+                （``evidence_insufficient`` / ``evidence_contradictory`` /
+                ``feature_missing`` / ``low_confidence`` / ``unknown``）。
+
+        Returns:
+            :class:`KnowledgeChunk` 列表，按相关性降序。
+
+        Raises:
+            RuntimeError: 未配置 ``knowledge_agent`` 时。CRAGHandler 捕获
+                此异常并降级到 ``knowledge_agent`` 直连 / ``rag_service``
+                后端，保证 CRAG 不被单点失败阻断。
+        """
+        if self._knowledge_agent is None:
+            logger.error(
+                "dispatcher_route_crag_query_no_knowledge_agent",
+                organ=organ.value if organ else None,
+                failure_category=failure_category,
+                message="knowledge_agent not configured; CRAGHandler will fallback",
+            )
+            raise RuntimeError(
+                "dispatcher.route_crag_query requires a configured knowledge_agent; "
+                "CRAGHandler should fallback to direct knowledge_agent / rag_service."
+            )
+
+        logger.info(
+            "dispatcher_route_crag_query",
+            organ=organ.value if organ else None,
+            query_preview=(query or "")[:80],
+            top_k=top_k,
+            failure_category=failure_category,
+        )
+        return list(
+            await self._knowledge_agent.query(
+                query=query,
+                organ=organ,
+                top_k=top_k,
+            )
         )
 
 
