@@ -164,6 +164,7 @@ class TestDiagnosisEndpointsIntegration:
                 json={
                     "session_id": "session_001",
                     "target_organ": "thyroid",
+                    "image_ids": [],
                     "response_tier": "full",
                     "idempotency_key": "test_key_123"
                 },
@@ -202,6 +203,7 @@ class TestDiagnosisEndpointsIntegration:
             json={
                 "session_id": "session_001",
                 "target_organ": "thyroid",
+                "image_ids": [],
                 "response_tier": "full"
             }
         )
@@ -907,6 +909,7 @@ class TestIdempotencyCacheHit:
                     json={
                         "session_id": "session_001",
                         "target_organ": "thyroid",
+                        "image_ids": [],
                         "response_tier": "full",
                         "idempotency_key": "cached_key_123",
                     },

@@ -4,6 +4,8 @@ __all__ = [
     "CUSUMConstants",
     "CacheMonitorConstants",
     "CacheAlertThresholds",
+    "DiskAlertThresholds",
+    "EdgeGPUConstants",
     "AlertConstants",
     "LoggingConstants",
     "VMConstants",
@@ -56,6 +58,28 @@ class CacheAlertThresholds:
     WARMUP_DURATION_WARNING = 60
     WRITE_P99_WARNING = 0.050
     READ_P99_WARNING = 0.020
+
+
+class DiskAlertThresholds:
+    """磁盘使用率告警阈值（使用率 = used / total）。"""
+
+    WARNING_RATIO = 0.85
+    CRITICAL_RATIO = 0.95
+
+
+class EdgeGPUConstants:
+    """边缘端 Jetson GPU 温度阈值与过热保护。
+
+    规格来源：05-可观测性与运维.md §GPU 温度（边缘端 Jetson）——
+    >80°C Warning、>90°C Critical；>90°C 持续 60s 触发紧急降级
+    （暂停所有 GPU 推理，提示转人工诊断）。
+    Jetson 散热受限，阈值低于服务器端（85/90）。
+    """
+
+    WARNING_TEMP_CELSIUS = 80.0
+    CRITICAL_TEMP_CELSIUS = 90.0
+    # 超过 CRITICAL_TEMP_CELSIUS 且持续该时长才升级为 critical（紧急降级）
+    OVERHEAT_DURATION_SECONDS = 60.0
 
 
 class AlertConstants:

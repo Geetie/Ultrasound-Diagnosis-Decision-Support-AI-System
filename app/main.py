@@ -109,6 +109,21 @@ async def lifespan(app: FastAPI):
         import logging
         logging.getLogger(__name__).warning("worker_pool_start_failed", extra={"error": str(e)})
 
+    # OBS: 基础设施巡检循环（Redis / PG / 磁盘）。与 worker 池同样按
+    # best-effort 处理——启动失败不阻塞主服务；关闭时经 shutdown event 退出，
+    # 避免此前该模块只定义不接线（巡检能力实际未生效）。
+    try:
+        import asyncio as _asyncio
+        from app.observability.infra_health import run_infra_health_checks
+
+        app.state.infra_health_task = _asyncio.create_task(
+            run_infra_health_checks()
+        )
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning("infra_health_start_failed", extra={"error": str(e)})
+        app.state.infra_health_task = None
+
     # RAG service (T-GA-RAG-01/02/03): query enhancement + multi-modal
     # retrieval + cross-encoder reranking + BM25 fallback. Best-effort
     # initialization — if any dependency is missing (vector store,
@@ -418,6 +433,21 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         import logging
         logging.getLogger(__name__).warning("worker_pool_stop_failed", extra={"error": str(e)})
+    # OBS: 停止基础设施巡检（置位 shutdown event → 等待 task 退出 → 兜底取消）
+    try:
+        import asyncio as _asyncio
+        from app.observability.infra_health import stop_infra_health_checks
+
+        await stop_infra_health_checks()
+        infra_task = getattr(app.state, "infra_health_task", None)
+        if infra_task is not None and not infra_task.done():
+            await _asyncio.wait_for(infra_task, timeout=5.0)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning("infra_health_stop_failed", extra={"error": str(e)})
+        infra_task = getattr(app.state, "infra_health_task", None)
+        if infra_task is not None and not infra_task.done():
+            infra_task.cancel()
     await safety_gateway_client.close()
     if consent_consumer:
         await consent_consumer.stop()

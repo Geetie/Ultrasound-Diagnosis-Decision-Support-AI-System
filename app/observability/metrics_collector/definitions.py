@@ -282,6 +282,17 @@ class MetricsDefinitions:
             "Edge device GPU temperature in Celsius",
             registry=r,
         )
+        self.disk_usage_ratio = Gauge(
+            "ultrasound_disk_usage_ratio",
+            "Filesystem usage ratio (used / total) per mount point",
+            labelnames=["mount_point"],
+            registry=r,
+        )
+        self.edge_gpu_overheat_duration_seconds = Gauge(
+            "ultrasound_edge_gpu_overheat_duration_seconds",
+            "Continuous duration of edge GPU overheat in seconds",
+            registry=r,
+        )
         self.victoriametrics_process_resident_memory_bytes = Gauge(
             "ultrasound_process_resident_memory_bytes",
             "VictoriaMetrics process resident memory in bytes",

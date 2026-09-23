@@ -316,8 +316,10 @@ class ConnectionManager:
                             max_missed=max_missed,
                         )
 
-        async with self.auth_manager._locks_lock:
-            await self.auth_manager.cleanup_expired_tokens()
+        # 注意：cleanup_expired_tokens() 内部会自行获取 auth_manager._locks_lock，
+        # 此处不能再包一层 async with 同一把锁（asyncio.Lock 不可重入），
+        # 否则心跳巡检首次执行即死锁，并导致后续所有 token 操作阻塞。
+        await self.auth_manager.cleanup_expired_tokens()
 
         return timeout_keys
 

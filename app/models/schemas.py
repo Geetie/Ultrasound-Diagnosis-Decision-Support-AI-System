@@ -300,7 +300,8 @@ class ConsentQueryResponse(BaseModel):
     consent_status: ConsentStatus
     consented_at: Optional[datetime] = None
     withdrawn_at: Optional[datetime] = None
-    consent_version: str = "1.0"
+    # 无知情同意记录时接口返回 None（表示"版本未知"），不能回填成假的默认版本号
+    consent_version: Optional[str] = None
 
 
 class ConsentAction(str, Enum):

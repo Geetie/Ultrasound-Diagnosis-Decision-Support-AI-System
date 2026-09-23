@@ -223,6 +223,12 @@ class MetricsCollector(MetricsDefinitions):
     def set_edge_gpu_temperature(self, celsius: float) -> None:
         self.edge_gpu_temperature_celsius.set(celsius)
 
+    def set_disk_usage_ratio(self, mount_point: str, ratio: float) -> None:
+        self.disk_usage_ratio.labels(mount_point=mount_point).set(ratio)
+
+    def set_edge_gpu_overheat_duration(self, seconds: float) -> None:
+        self.edge_gpu_overheat_duration_seconds.set(seconds)
+
     def set_victoriametrics_rss_bytes(self, bytes_value: float) -> None:
         self.victoriametrics_process_resident_memory_bytes.set(bytes_value)
 
