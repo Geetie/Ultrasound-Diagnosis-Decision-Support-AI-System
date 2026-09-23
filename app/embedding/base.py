@@ -228,3 +228,45 @@ class BaseHttpEmbeddingService(BaseHttpClient, EmbeddingService, ABC):
     @abstractmethod
     def _build_model_info(self, data: dict[str, Any]) -> EmbeddingModelInfo:
         raise NotImplementedError
+
+    # ------------------------------------------------------------------
+    # P1-EMB-03: retry loop for transient failures.
+    # ------------------------------------------------------------------
+    async def _run_with_retry(self, op_name: str, coro_factory):
+        """Execute ``coro_factory()`` with bounded exponential backoff.
+
+        Only ``EmbeddingError`` with ``retryable=True`` is retried; all
+        other exceptions propagate immediately. Honours
+        ``settings.embedding_retry_max_attempts`` and
+        ``settings.embedding_retry_backoff_base`` so production can
+        tune the budget without code changes.
+        """
+        from app.config.settings import settings
+
+        max_attempts = max(1, int(getattr(settings, "embedding_retry_max_attempts", 3)))
+        backoff_base = max(0.0, float(getattr(settings, "embedding_retry_backoff_base", 1.0)))
+
+        last_exc: Exception | None = None
+        for attempt in range(1, max_attempts + 1):
+            try:
+                return await coro_factory()
+            except EmbeddingError as exc:
+                last_exc = exc
+                if not exc.retryable or attempt >= max_attempts:
+                    raise
+                sleep_for = backoff_base * (2 ** (attempt - 1))
+                self._log.warning(
+                    "embedding_request_retrying",
+                    op=op_name,
+                    attempt=attempt,
+                    max_attempts=max_attempts,
+                    sleep_seconds=sleep_for,
+                    error_code=exc.error_code.value,
+                    error=str(exc),
+                )
+                if sleep_for > 0:
+                    import asyncio
+                    await asyncio.sleep(sleep_for)
+        # Defensive: unreachable, but keeps type checkers happy.
+        assert last_exc is not None
+        raise last_exc

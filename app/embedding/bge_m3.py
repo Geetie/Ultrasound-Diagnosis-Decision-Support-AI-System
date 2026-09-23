@@ -1,5 +1,6 @@
 from typing import Any
 
+from app.config.settings import settings
 from app.embedding.base import BaseHttpEmbeddingService
 from app.embedding.protocols import (
     EmbeddingError,
@@ -14,7 +15,8 @@ from app.embedding.protocols import (
     TextEmbeddingRequest,
 )
 
-BGE_M3_DIM = 1024
+# E-4 fix: Read dimension from settings instead of hardcoding.
+BGE_M3_DIM = settings.embedding_dim_fallback  # Default: 1024
 
 
 class BgeM3MedicalService(BaseHttpEmbeddingService):
