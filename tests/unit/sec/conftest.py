@@ -289,7 +289,7 @@ def pytest_collection_modifyitems(session, config, items):
 @pytest.fixture(autouse=True)
 def reset_sec_singletons():
     yield
-    from app.security.hsm import HSMManager
+    from app.security.hsm import HSMManager, hsm_manager
     from app.security.desensitization import DesensitizationEngine
     from app.security.refresh_token import MemoryRefreshTokenStore
     import app.security.emergency_signing as _esm
@@ -299,6 +299,19 @@ def reset_sec_singletons():
     MemoryRefreshTokenStore._instance = None
     _esm._emergency_signing_instance = None
     _tldm._three_layer_manager_instance = None
+    # HSM 门面是 app.security.hsm 的模块级单例（hsm_manager = HSMManager()），
+    # 上面置空 _instance 并不会重建它。多个测试文件都会调用
+    # set_degraded()/_degraded_at 赋值且不清理，导致同一进程内后续用例
+    # 看到 HSM 处于降级/限制态（签名被拒），出现大量跨文件"幽灵失败"。
+    # 这里在每次用例结束后把降级状态与密钥槽位复位，保证用例相互隔离。
+    hsm_manager.clear_degraded()
+    if _HSM_KEY_SNAPSHOT is not None:
+        # 仅"补回"被轮换/删除的预生成共享密钥，不删除用例自己新增的密钥
+        # （部分用例是链式依赖的，如 TestHSMIntegration 先建 key 再复用）。
+        slots = hsm_manager._key_slots
+        for slot, keys in _HSM_KEY_SNAPSHOT.items():
+            slots.setdefault(slot, {})
+            slots[slot].update(keys)
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -357,6 +370,28 @@ def _make_lightweight_hsm():
     mgr._pending_tasks = set()
     mgr._loop = None
     return mgr
+
+
+_HSM_KEY_SNAPSHOT: dict = None
+
+
+@pytest.fixture(scope="session", autouse=True)
+def snapshot_hsm_keys(pregenerate_hsm_keys):
+    """记录预生成共享密钥的快照，供逐用例复位。
+
+    密钥轮换/删除类用例（如 ``TestKeyRotationFullFlow``）会重命名或
+    停用 ``shared_*`` 密钥。串行执行时它们在文件末尾，不会影响前面的
+    用例；但 ``pytest-xdist`` 默认按用例分发，同一 worker 内可能先跑
+    轮换再跑槽位隔离，导致后者拿不到共享密钥而"幽灵失败"。
+    快照 + 复位使结果与执行顺序无关。
+    """
+    global _HSM_KEY_SNAPSHOT
+    from app.security.hsm import hsm_manager
+
+    _HSM_KEY_SNAPSHOT = {
+        slot: dict(keys) for slot, keys in hsm_manager._key_slots.items()
+    }
+    yield
 
 
 @pytest.fixture(scope="session", autouse=True)

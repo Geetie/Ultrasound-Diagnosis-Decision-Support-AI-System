@@ -2,8 +2,22 @@ import json
 import os
 import subprocess
 import sys
+import tempfile
 import time
 from unittest.mock import patch
+
+# === 必须在导入 app.* 之前设置：隔离 SoftHSM 的时间戳状态 ===
+# SoftHSMManager._load_timestamp() 会读取仓库根的 soft_hsm_enabled_at.txt
+# （当前记录启用日 2026-05-09）。SoftHSM 开发模式有 90 天有效期，该时间戳
+# 早已过期，EncryptionService.sign() 会因此抛 "SoftHSM has expired"，
+# 让所有签名/审计相关用例连锁失败——且失败与否取决于运行日期，属于
+# 时间漂移导致的非确定性。测试改用独立临时时间戳文件并默认不启用
+# SoftHSM；显式设置 USE_SOFT_HSM / SOFT_HSM_TIMESTAMP_PATH 的环境仍优先。
+os.environ.setdefault(
+    "SOFT_HSM_TIMESTAMP_PATH",
+    os.path.join(tempfile.gettempdir(), "ultrasound_test_soft_hsm_enabled_at.txt"),
+)
+os.environ.setdefault("USE_SOFT_HSM", "false")
 
 import httpx
 import pytest

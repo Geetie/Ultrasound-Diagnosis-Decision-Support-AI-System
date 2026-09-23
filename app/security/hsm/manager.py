@@ -54,8 +54,26 @@ class HSMManager:
     SOFT_HSM_CRITICAL_DAYS = SoftHSMManager.SOFT_HSM_CRITICAL_DAYS
     KEY_CLEANUP_INTERVAL_HOURS = KeyManager.KEY_CLEANUP_INTERVAL_HOURS
 
-    def __init__(self) -> None:
-        # ---- 初始化子管理器 ----
+    # 子管理器属性名（供 __getattr__ 惰性补齐）
+    _SUBMANAGER_NAMES = frozenset({
+        "_persistence_manager",
+        "_degradation_manager",
+        "_task_scheduler",
+        "_soft_hsm_manager",
+        "_key_manager",
+        "_encryption_service",
+    })
+
+    def _init_submanagers(self) -> None:
+        """构造子管理器（幂等）。
+
+        与 ``__init__`` 解耦：``__new__`` 构造的轻量实例（测试常用
+        ``HSMManager.__new__(HSMManager)`` 绕过 ``__init__`` 后直接读写
+        扁平属性）在首次访问子管理器时经 ``__getattr__`` 延迟补齐。
+        本方法不触碰 Redis、不启动定时任务。
+        """
+        if "_persistence_manager" in self.__dict__:
+            return
         self._persistence_manager = PersistenceManager()
         self._degradation_manager = DegradationManager()
         self._task_scheduler = TaskScheduler()
@@ -66,6 +84,24 @@ class HSMManager:
             degradation_manager=self._degradation_manager,
             soft_hsm_manager=self._soft_hsm_manager,
         )
+
+    def __getattr__(self, name: str):
+        """惰性补齐子管理器，保持与原模块一致的属性访问契约。
+
+        重构后``_key_slots`` / ``_is_degraded`` / ``_use_soft_hsm`` 等
+        都变成了委托子管理器的 property；若实例未经 ``__init__``
+        （``__new__`` 构造），子管理器缺失会导致 AttributeError。
+        """
+        if name in HSMManager._SUBMANAGER_NAMES:
+            self._init_submanagers()
+            return self.__dict__[name]
+        raise AttributeError(
+            f"{type(self).__name__!r} object has no attribute {name!r}"
+        )
+
+    def __init__(self) -> None:
+        # ---- 初始化子管理器 ----
+        self._init_submanagers()
 
         # ---- HSM 可用性检测 ----
         self._hsm_available: bool = self._check_hsm_availability()
@@ -122,6 +158,11 @@ class HSMManager:
     def _lock(self):
         """线程锁（向后兼容测试访问）。"""
         return self._key_manager.lock
+
+    @_lock.setter
+    def _lock(self, value) -> None:
+        """线程锁设置器（向后兼容测试构造轻量实例）。"""
+        self._key_manager._lock = value
 
     @property
     def _use_soft_hsm(self) -> bool:
@@ -193,30 +234,54 @@ class HSMManager:
         """SoftHSM 启用时间设置器（向后兼容测试访问）。"""
         self._soft_hsm_manager._soft_hsm_enabled_at = value
 
+    # 以下四个为重构前的扁平属性占位：定时器已迁入 TaskScheduler、
+    # 事件循环已迁入 PersistenceManager，这里保留可读可写的兼容语义
+    # （赋值存入实例 __dict__，供测试构造轻量实例时直接写入）。
+
     @property
     def _key_cleanup_timer(self):
         """密钥清理定时器占位（向后兼容测试访问）。"""
-        return None
+        return self.__dict__.get("_key_cleanup_timer")
+
+    @_key_cleanup_timer.setter
+    def _key_cleanup_timer(self, value) -> None:
+        self.__dict__["_key_cleanup_timer"] = value
 
     @property
     def _soft_hsm_check_timer(self):
         """SoftHSM检查定时器占位（向后兼容测试访问）。"""
-        return None
+        return self.__dict__.get("_soft_hsm_check_timer")
+
+    @_soft_hsm_check_timer.setter
+    def _soft_hsm_check_timer(self, value) -> None:
+        self.__dict__["_soft_hsm_check_timer"] = value
 
     @property
     def _periodic_check_timer(self):
         """定期检查定时器占位（向后兼容测试访问）。"""
-        return None
+        return self.__dict__.get("_periodic_check_timer")
+
+    @_periodic_check_timer.setter
+    def _periodic_check_timer(self, value) -> None:
+        self.__dict__["_periodic_check_timer"] = value
 
     @property
     def _pending_tasks(self) -> set:
         """待完成任务集合（向后兼容测试访问）。"""
         return self._persistence_manager._pending_tasks
 
+    @_pending_tasks.setter
+    def _pending_tasks(self, value: set) -> None:
+        self._persistence_manager._pending_tasks = value
+
     @property
     def _loop(self):
         """事件循环占位（向后兼容测试访问）。"""
-        return None
+        return self.__dict__.get("_loop")
+
+    @_loop.setter
+    def _loop(self, value) -> None:
+        self.__dict__["_loop"] = value
 
     @staticmethod
     def _get_encryption_key() -> bytes:
