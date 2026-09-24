@@ -144,6 +144,25 @@ class _LocalTTLCache:
         return len(self._cache)
 
 
+_instance: Optional["RetrievalCache"] = None
+
+
+def _register_instance(cache: "RetrievalCache") -> None:
+    global _instance
+    _instance = cache
+
+
+def get_retrieval_cache() -> Optional["RetrievalCache"]:
+    """取得本进程的检索缓存实例（未启用时为 None）。"""
+    return _instance
+
+
+def reset_retrieval_cache() -> None:
+    """清空注册（仅用于测试与进程重启）。"""
+    global _instance
+    _instance = None
+
+
 class RetrievalCache:
     """检索结果缓存（L1 Redis + L2 进程内 LRU）。
 
@@ -173,6 +192,29 @@ class RetrievalCache:
         self._jitter_ratio = max(0.0, float(jitter_ratio))
         self._local = _LocalTTLCache(local_capacity, local_ttl_seconds)
         self._stats = RetrievalCacheStats()
+        # 构造即注册（二期 §4.2）：缓存实例是在 lifespan 里作为构造参数内联创建的，
+        # 没有留出显式注册点；自注册让健康检查能拿到它，而不必为一个探针去重构
+        # 启动编排。每进程只会构造一个检索缓存，后者覆盖前者不构成问题。
+        _register_instance(self)
+
+    def health(self) -> Dict[str, Any]:
+        """共享缓存健康信息（二期 §4.2 多副本可观测性）。
+
+        多副本部署下的语义：**L1（Redis）是共享层**，各副本一致；**L2（进程内 LRU）
+        是副本本地的**，不共享。因此副本数增加时整体命中率会上升（L1 命中更多），
+        但单看某个副本的 L2 命中率会下降——这是正常的，不要据此判断"缓存坏了"。
+        """
+        stats = self._stats.as_dict()
+        return {
+            "redis_configured": self._redis_factory is not None,
+            "local_entries": len(self._local),
+            "local_capacity": getattr(self._local._cache, "maxsize", None),
+            "redis_ttl_seconds": self._redis_ttl,
+            "hit_rate": stats.get("hit_rate", 0.0),
+            "hits": stats.get("hits", 0),
+            "misses": stats.get("misses", 0),
+            "shared_layer": "redis" if self._redis_factory is not None else "none",
+        }
 
     # ------------------------------------------------------------------
     # 键与可缓存性

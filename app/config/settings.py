@@ -100,6 +100,11 @@ class Settings(BaseSettings):
     # T-G1-INT-06：撤回生效端到端时延验收线（撤回动作 -> 各处理器执行完毕）
     consent_withdrawal_e2e_latency_target_ms: int = 500
 
+    # 二期 §9 应用层算法档位：standard（RSA 家族）| gm（国密 SM2/SM4）
+    # 默认 standard 而非规格写的"默认国密"：国密需 gmssl，未安装时选 gm 会直接起不来，
+    # 部署侧装好依赖后改这一项即可切换。
+    security_algorithm_profile: str = "standard"
+
     # 二期 §20 分布漂移（与既有 SPC 检测器分工：SPC 判单点越限，这里判分布形状变化）
     drift_input_kl_threshold: float = 0.1
     drift_output_kl_threshold: float = 0.15

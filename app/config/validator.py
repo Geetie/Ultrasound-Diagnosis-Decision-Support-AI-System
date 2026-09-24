@@ -73,6 +73,23 @@ def validate_config() -> List[str]:
             "unreachable by construction: one blocking read can exceed it)"
         )
 
+    from app.security.hsm.crypto_algorithms import AlgorithmProfile, get_algorithm_registry
+
+    profile = settings.security_algorithm_profile
+    if profile not in {item.value for item in AlgorithmProfile}:
+        errors.append(
+            "SECURITY_ALGORITHM_PROFILE must be one of: standard, gm"
+        )
+    else:
+        missing = get_algorithm_registry().validate_profile(profile)
+        if missing:
+            # fail-fast：档案选了国密却没有提供方时**必须**启动失败。
+            # 静默回退到非国密是最糟的选择——合规审计会以为系统在跑国密。
+            errors.append(
+                "SECURITY_ALGORITHM_PROFILE=gm but these algorithms have no provider: "
+                f"{', '.join(missing)} (install gmssl or switch profile back to standard)"
+            )
+
     for name, value in (
         ("DRIFT_INPUT_KL_THRESHOLD", settings.drift_input_kl_threshold),
         ("DRIFT_OUTPUT_KL_THRESHOLD", settings.drift_output_kl_threshold),

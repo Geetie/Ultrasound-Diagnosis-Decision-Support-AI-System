@@ -38,10 +38,17 @@ async def health_check():
 
     all_healthy = redis_healthy and db_healthy and hsm_status["status"] == "healthy"
 
+    from app.rag.cache import get_retrieval_cache
+
+    cache = get_retrieval_cache()
     services = {
         "redis": "healthy" if redis_healthy else "unhealthy",
         "database": "healthy" if db_healthy else "unhealthy",
-        "hsm": hsm_status
+        "hsm": hsm_status,
+        # 仅作信息展示，不参与 all_healthy：缓存不可用时检索仍正确，只是变慢
+        "retrieval_cache": (
+            cache.health() if cache is not None else {"status": "disabled"}
+        ),
     }
 
     if all_healthy:
@@ -58,6 +65,21 @@ async def health_check():
 @router.get("/health/hsm")
 async def hsm_health_check():
     return await get_hsm_health()
+
+
+@router.get("/health/cache")
+async def retrieval_cache_health_check():
+    """检索缓存健康信息（二期 §4.2）。
+
+    缓存不可用**不影响**整体健康判定——它是优化项，不是正确性依赖；降级到无缓存
+    仍能正确检索。这里只做可观测性，好让多副本部署时能看出共享层是否生效。
+    """
+    from app.rag.cache import get_retrieval_cache
+
+    cache = get_retrieval_cache()
+    if cache is None:
+        return {"status": "disabled", "detail": "检索缓存未启用（rag_cache_enabled=false）"}
+    return {"status": "ok", "cache": cache.health()}
 
 
 async def get_hsm_health():
