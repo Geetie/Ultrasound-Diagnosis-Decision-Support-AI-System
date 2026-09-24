@@ -41,11 +41,12 @@
 """
 from __future__ import annotations
 
+import inspect
 import re
 import time
 from abc import abstractmethod
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 import structlog
 
@@ -62,6 +63,25 @@ _PROMPTS_DIR = Path(__file__).resolve().parent.parent / "prompts"
 
 # RAG 检索默认 top_k（与提示词 Few-shot 中"5 条"对齐）
 DEFAULT_RAG_TOP_K = 5
+
+
+def _accepts_kwarg(func: Callable[..., Any], name: str) -> bool:
+    """探测 ``func`` 是否接受名为 ``name`` 的关键字参数。
+
+    T-GB-AGT-02 需要向 ``KnowledgeAgent.query`` 传入 ``profile``，但历史
+    实现（测试替身、第三方注入）只声明 ``query(query, organ, top_k)``。
+    这里做一次性能力探测：显式声明该参数、或带 ``**kwargs``（含
+    ``MagicMock``）均视为支持。探测失败（无法取签名）时保守返回 False。
+    """
+    try:
+        params = inspect.signature(func).parameters
+    except (TypeError, ValueError):
+        return False
+    if name in params:
+        return True
+    return any(
+        p.kind is inspect.Parameter.VAR_KEYWORD for p in params.values()
+    )
 
 # 置信度计算权重（RAG 0.6 + LLM 0.4）
 _RAG_CONFIDENCE_WEIGHT = 0.6
@@ -159,6 +179,12 @@ class RAGSpecialistAgent(SpecialistAgent):
         self._knowledge = knowledge_agent
         self._rag_top_k = rag_top_k
         self._max_tokens = max_tokens
+        # T-GB-AGT-02：探测知识智能体是否支持 ``profile`` 关键字参数。
+        # 生产实现（KnowledgeAgentImpl）支持；历史测试替身只声明
+        # ``query(query, organ, top_k)``，此时不透传档位以保持兼容。
+        self._knowledge_accepts_profile = _accepts_kwarg(
+            knowledge_agent.query, "profile"
+        )
         # D1: 器官级/病种级阈值
         self._organ_threshold = organ_threshold
         self._disease_thresholds: Dict[str, float] = dict(disease_thresholds or {})
@@ -429,12 +455,20 @@ class RAGSpecialistAgent(SpecialistAgent):
         注意：现有 :class:`KnowledgeAgent` 抽象不暴露 score 字段，
         因此本方法只返回 chunk 列表。置信度计算走
         :meth:`_compute_heuristic_confidence` 的启发式路径。
+
+        T-GB-AGT-02：``context.retrieval_profile``（Adaptive RAG 档位）
+        透传给知识智能体，使"标准/全量"的区别真正作用于检索强度
+        （精排开关 / BM25 兜底 / LLM 增强 / 检索深度）。
         """
-        return await self._knowledge.query(
-            query=context.user_query,
-            organ=organ,
-            top_k=self._rag_top_k,
-        )
+        kwargs: Dict[str, Any] = {
+            "query": context.user_query,
+            "organ": organ,
+            "top_k": self._rag_top_k,
+        }
+        profile = getattr(context, "retrieval_profile", None)
+        if profile and self._knowledge_accepts_profile:
+            kwargs["profile"] = profile
+        return await self._knowledge.query(**kwargs)
 
     async def _call_llm(
         self,

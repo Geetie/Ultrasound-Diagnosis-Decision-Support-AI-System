@@ -89,6 +89,18 @@ DEFAULT_NEGATIVE_CACHE_TTL_SECONDS = 60
 # 击穿防护：单 key 锁最大等待时间（防止慢 RAG 阻塞读路径）
 DEFAULT_KEY_LOCK_TIMEOUT_SECONDS = 30.0
 
+# T-GB-AGT-02：检索档位中可映射到 ``RetrievalRequest`` 的字段
+# （``RetrievalProfile.as_retrieval_kwargs()`` 的键，不含 full_validation）。
+_RETRIEVAL_PROFILE_FIELDS = frozenset(
+    {
+        "use_query_enhancement",
+        "use_reranking",
+        "use_bm25_fallback",
+        "use_llm_enhancement",
+        "top_k",
+    }
+)
+
 
 class _TTLLRUCache:
     """带 TTL 的 LRU 缓存包装器。
@@ -271,15 +283,63 @@ class KnowledgeAgentImpl(KnowledgeAgent):
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _make_cache_key(organ: Organ, query: str, kb_version: str) -> str:
+    def _make_cache_key(
+        organ: Organ,
+        query: str,
+        kb_version: str,
+        profile_fingerprint: str = "",
+    ) -> str:
         """生成 query-based 顶层缓存键。
 
         格式：``kb:cache:{organ.value}:v{kb_version}:{sha1(query)[:16]}``
+        传入 ``profile_fingerprint`` 时追加 ``:{指纹}`` 后缀。
 
         KB 版本号嵌入键名 → KB 版本变更时旧键自然失效，无需显式清除。
+        档位指纹同理：标准路径（不精排、不 LLM 增强）与全量路径的检索
+        结果不同，必须落在不同缓存条目，否则"升级到全量"会命中标准路径
+        的旧结果而形同虚设。
         """
         digest = hashlib.sha1(query.encode("utf-8")).hexdigest()[:16]
-        return f"kb:cache:{organ.value}:v{kb_version}:{digest}"
+        suffix = f":{profile_fingerprint}" if profile_fingerprint else ""
+        return f"kb:cache:{organ.value}:v{kb_version}:{digest}{suffix}"
+
+    # ------------------------------------------------------------------
+    # 内部：检索档位（T-GB-AGT-02）
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _normalize_profile(profile: Any) -> Optional[Dict[str, Any]]:
+        """把档位归一为 ``RetrievalRequest`` 可用的字段子集。
+
+        接受 ``RoutingProfile`` / ``dict``；未知字段一律丢弃（避免把
+        ``full_validation`` 之类的非检索字段塞进请求）。
+        """
+        if not profile:
+            return None
+        try:
+            if hasattr(profile, "as_retrieval_kwargs"):
+                data = dict(profile.as_retrieval_kwargs())
+            else:
+                data = dict(profile)
+        except Exception as exc:  # noqa: BLE001 - 档位非法时退回默认档位
+            logger.warning(
+                "knowledge_profile_normalize_failed",
+                error=str(exc),
+                error_type=type(exc).__name__,
+            )
+            return None
+        return {
+            k: v for k, v in data.items() if k in _RETRIEVAL_PROFILE_FIELDS
+        } or None
+
+    @classmethod
+    def _profile_fingerprint(cls, profile: Any) -> str:
+        """档位指纹（写入缓存键，避免标准/全量路径互相污染）。"""
+        normalized = cls._normalize_profile(profile)
+        if not normalized:
+            return ""
+        payload = json.dumps(normalized, sort_keys=True, ensure_ascii=False)
+        return hashlib.sha1(payload.encode("utf-8")).hexdigest()[:8]
 
     # ------------------------------------------------------------------
     # 内部：负缓存哨兵（用于区分"未命中"与"明确为空"）
@@ -478,12 +538,23 @@ class KnowledgeAgentImpl(KnowledgeAgent):
         query: str,
         organ: Organ,
         top_k: int,
+        profile: Any = None,
     ) -> List[KnowledgeChunk]:
-        """调用底层 RAG（**不加锁**；由 ``query()`` 在锁内调用）。"""
+        """调用底层 RAG（**不加锁**；由 ``query()`` 在锁内调用）。
+
+        T-GB-AGT-02：``profile`` 传入时，其 ``use_reranking`` /
+        ``use_llm_enhancement`` / ``use_bm25_fallback`` / ``use_query_enhancement``
+        会覆盖 RAG 的默认开关，``top_k`` 用于**检索深度**（送入精排的候选
+        条数）；调用方要求的 ``top_k``（返回 chunk 上限）由 ``query()`` 负责
+        截断，两者语义不同、互不冲突。
+        """
+        profile_kwargs = self._normalize_profile(profile) or {}
+        retrieval_top_k = int(profile_kwargs.pop("top_k", 0) or 0) or top_k
         retrieval_request = RetrievalRequest(
             query=query,
             organ=organ.value,
-            top_k=top_k,
+            top_k=retrieval_top_k,
+            **profile_kwargs,
         )
         result = await self._rag.retrieve(retrieval_request)
         return [sc.chunk for sc in result.chunks]
@@ -497,11 +568,12 @@ class KnowledgeAgentImpl(KnowledgeAgent):
         query: str,
         organ: Organ,
         top_k: int = 10,
+        profile: Any = None,
     ) -> List[KnowledgeChunk]:
         """带两层缓存 + 三重防护的知识查询。
 
         防护策略（与 01-架构 §2.3 对齐）：
-        - L1/L2 缓存键含 KB 版本（自然失效）；
+        - L1/L2 缓存键含 KB 版本 + 检索档位指纹（自然失效）；
         - 击穿防护：单 key 互斥锁，热点 key 失效时只触发一次 RAG；
         - 穿透防护：RAG 空结果写入短 TTL 负缓存；
         - 雪崩防护：写入 TTL ±10% 随机扰动。
@@ -510,6 +582,9 @@ class KnowledgeAgentImpl(KnowledgeAgent):
             query: 用户查询文本（非空）。
             organ: 目标器官。
             top_k: 返回的 chunk 上限。
+            profile: T-GB-AGT-02 检索档位（``dict`` 或 ``RetrievalProfile``）。
+                非空时其开关与检索深度作用于底层 ``RetrievalRequest``，并
+                计入缓存键指纹——标准路径与全量路径结果不会互相污染。
 
         Returns:
             ``KnowledgeChunk`` 列表（已截断到 top_k）。
@@ -524,7 +599,9 @@ class KnowledgeAgentImpl(KnowledgeAgent):
             raise ValueError("top_k must be positive")
 
         kb_version = self._current_kb_version()
-        cache_key = self._make_cache_key(organ, query, kb_version)
+        cache_key = self._make_cache_key(
+            organ, query, kb_version, self._profile_fingerprint(profile)
+        )
 
         # ========== L1 (Redis) 命中检查 ==========
         cached, is_neg = await self._read_redis(cache_key)
@@ -578,6 +655,7 @@ class KnowledgeAgentImpl(KnowledgeAgent):
                         top_k=top_k,
                         cache_key=cache_key,
                         kb_version=kb_version,
+                        profile=profile,
                     )
                 try:
                     return await self._rag_fallback_with_cache(
@@ -586,6 +664,7 @@ class KnowledgeAgentImpl(KnowledgeAgent):
                         top_k=top_k,
                         cache_key=cache_key,
                         kb_version=kb_version,
+                        profile=profile,
                     )
                 finally:
                     lock.release()
@@ -598,6 +677,7 @@ class KnowledgeAgentImpl(KnowledgeAgent):
                     top_k=top_k,
                     cache_key=cache_key,
                     kb_version=kb_version,
+                    profile=profile,
                 )
         else:
             return await self._rag_fallback_with_cache(
@@ -606,6 +686,7 @@ class KnowledgeAgentImpl(KnowledgeAgent):
                 top_k=top_k,
                 cache_key=cache_key,
                 kb_version=kb_version,
+                profile=profile,
             )
 
     async def _rag_fallback_with_cache(
@@ -615,6 +696,7 @@ class KnowledgeAgentImpl(KnowledgeAgent):
         top_k: int,
         cache_key: str,
         kb_version: str,
+        profile: Any = None,
     ) -> List[KnowledgeChunk]:
         """实际 RAG 调用 + 写回缓存（含穿透防护 + 雪崩防护）。
 
@@ -634,7 +716,7 @@ class KnowledgeAgentImpl(KnowledgeAgent):
 
         self._misses += 1
         start = time.monotonic()
-        chunks = await self._call_rag(query, organ, top_k)
+        chunks = await self._call_rag(query, organ, top_k, profile)
         is_negative = len(chunks) == 0
 
         # 写回缓存（失败不阻塞业务）。

@@ -136,11 +136,15 @@ class RAGServiceImpl(RAGService):
                 return self._finalize_cache_hit(cached, request, start)
 
         # Stage 1: query enhancement.
+        # T-GB-AGT-02：``use_llm_enhancement`` 决定是否允许 LLM 改写查询，
+        # 使"标准路径不调用 LLM"这一档位差异真正生效。
         enhanced: Optional[EnhancedQuery] = None
         if request.use_query_enhancement:
             try:
                 enhanced = await self._enhancer.enhance(
-                    request.query, organ_hint=request.organ
+                    request.query,
+                    organ_hint=request.organ,
+                    use_llm=request.use_llm_enhancement,
                 )
             except Exception as exc:  # noqa: BLE001
                 logger.warning(

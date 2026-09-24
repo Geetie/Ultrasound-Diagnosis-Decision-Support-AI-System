@@ -51,11 +51,19 @@ class AgentContext(BaseModel):
             ``extend`` 到本字段。**多专科联合诊断**：dispatcher 应在调用
             specialist 前对所有 specialist 共享同一 ``AgentContext``
             （Python 对象传引用），以便多专科响应按器官顺序累积写入。
+        retrieval_profile: T-GB-AGT-02 Adaptive RAG 检索档位
+            （``RetrievalProfile.as_retrieval_kwargs()`` 的产物，形如
+            ``{"use_reranking": False, "top_k": 10, ...}``）。由诊断管线按
+            路由判定注入，专科智能体透传给
+            ``KnowledgeAgent.query(profile=...)``，使"标准/全量"档位真正
+            作用于检索强度。``None`` 表示沿用 RAG 默认档位（与引入该
+            字段前的行为完全一致）。
     """
     request_id: str
     session_id: str
     organ: Organ
     user_query: str
+    retrieval_profile: Optional[dict[str, Any]] = None
     imaging_metadata: Optional[dict[str, Any]] = None
     prior_messages: List[dict[str, Any]] = Field(default_factory=list)
     used_evidence_ids: List[str] = Field(default_factory=list)
@@ -299,6 +307,7 @@ class KnowledgeAgent(ABC):
         query: str,
         organ: Organ,
         top_k: int = 10,
+        profile: Optional[dict[str, Any]] = None,
     ) -> List[KnowledgeChunk]:
         """查询知识库。
 
@@ -306,6 +315,11 @@ class KnowledgeAgent(ABC):
             query: 用户查询文本（非空）。
             organ: 目标器官（用于过滤和缓存键）。
             top_k: 返回的 chunk 上限。
+            profile: T-GB-AGT-02 检索档位（
+                ``RetrievalProfile.as_retrieval_kwargs()`` 的产物）。
+                传入时其中的 ``use_reranking`` / ``use_llm_enhancement`` /
+                ``use_bm25_fallback`` / ``top_k`` 会真正作用于底层
+                ``RetrievalRequest``。``None`` 表示使用默认档位。
 
         Returns:
             ``KnowledgeChunk`` 列表，按相关性降序。

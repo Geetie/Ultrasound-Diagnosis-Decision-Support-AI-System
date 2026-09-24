@@ -107,6 +107,34 @@ class DiagnosisRepository:
         
         return result
     
+    async def update_findings(
+        self,
+        request_id: str,
+        findings: Dict[str, Any],
+    ) -> bool:
+        """仅更新 ``findings``（不动 status / confidence）。
+
+        T-GB-AGT-02 医生确认回写用：确认结果需要合并进既有 findings
+        （内含 ``routing``），但不得改变诊断本身的 status 与置信度。
+        """
+        result = await self.get_result(request_id)
+        if not result:
+            return False
+        result.findings = findings
+        await self.db.flush()
+        logger.info("diagnosis_findings_updated", request_id=request_id)
+        return True
+
+    async def update_tier(self, request_id: str, tier: str) -> bool:
+        """更新请求档位（T-GB-AGT-02 医生确认升级后按全量档位重跑）。"""
+        result = await self.get_result(request_id)
+        if not result:
+            return False
+        result.tier = tier
+        await self.db.flush()
+        logger.info("diagnosis_tier_updated", request_id=request_id, tier=tier)
+        return True
+
     async def get_results_by_session(
         self,
         session_id: str,

@@ -81,12 +81,16 @@ class QueryEnhancer:
         self,
         query: str,
         organ_hint: Optional[str] = None,
+        use_llm: bool = True,
     ) -> EnhancedQuery:
         """Run the full enhancement pipeline.
 
         Args:
             query: Raw user query.
             organ_hint: Optional organ hint from caller (overrides UDT detection).
+            use_llm: 是否允许 LLM 改写（T-GB-AGT-02 Adaptive RAG 档位控制）。
+                ``False`` 时只做确定性的 UDAF 三层扩展，适用于标准路径。
+                默认 ``True``，与引入该参数前的行为一致。
 
         Returns:
             EnhancedQuery with original/enhanced text, organ, and layer breakdowns.
@@ -171,9 +175,11 @@ class QueryEnhancer:
         enhanced_udaf = query if not expansion_tokens else f"{query} " + " ".join(expansion_tokens)
 
         # Step 6: Optional LLM rewrite.
+        # T-GB-AGT-02：标准路径（``use_llm_enhancement=False``）跳过 LLM
+        # 改写，只保留确定性的 UDAF 扩展 —— 这是"标准路径更快"的实质来源。
         llm_enhanced = False
         enhanced_final = enhanced_udaf
-        if self.llm_enhancer is not None:
+        if self.llm_enhancer is not None and use_llm:
             try:
                 rewritten = await self.llm_enhancer.enhance(
                     original_query=query,

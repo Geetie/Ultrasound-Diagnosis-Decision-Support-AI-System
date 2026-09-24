@@ -35,7 +35,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
 import structlog
 
@@ -106,6 +106,36 @@ class RetrievalProfile:
         payload = self.as_retrieval_kwargs()
         payload["full_validation"] = self.full_validation
         return payload
+
+    @classmethod
+    def from_dict(cls, payload: Optional[Mapping[str, Any]]) -> "RetrievalProfile":
+        """从 ``as_dict()`` / ``as_retrieval_kwargs()`` 的产物还原。
+
+        未知键忽略；缺失字段用 ``standard()`` 的默认值补齐（保守回退——
+        宁可少升级也不误升级）。无法识别时返回 ``standard()``。
+        """
+        if not payload:
+            return cls.standard()
+        defaults = cls.standard()
+        try:
+            return cls(
+                use_query_enhancement=bool(
+                    payload.get("use_query_enhancement", defaults.use_query_enhancement)
+                ),
+                use_reranking=bool(payload.get("use_reranking", defaults.use_reranking)),
+                use_bm25_fallback=bool(
+                    payload.get("use_bm25_fallback", defaults.use_bm25_fallback)
+                ),
+                use_llm_enhancement=bool(
+                    payload.get("use_llm_enhancement", defaults.use_llm_enhancement)
+                ),
+                top_k=int(payload.get("top_k", defaults.top_k) or defaults.top_k),
+                full_validation=bool(
+                    payload.get("full_validation", defaults.full_validation)
+                ),
+            )
+        except (TypeError, ValueError):
+            return defaults
 
     @classmethod
     def standard(cls, top_k: int = DEFAULT_STANDARD_TOP_K) -> "RetrievalProfile":
@@ -183,6 +213,42 @@ class RoutingDecision:
             "organ_threshold": self.organ_threshold,
             "retrieval_profile": self.retrieval_profile.as_dict(),
         }
+
+    @classmethod
+    def from_dict(cls, payload: Optional[Mapping[str, Any]]) -> Optional["RoutingDecision"]:
+        """从 ``as_dict()`` 的产物还原判定结果（T-GB-AGT-02 医生确认用）。
+
+        诊断结论落库时会把 ``as_dict()`` 写入 ``findings.routing``；医生在
+        前端点"确认升级/不升级"时，后端需要据此**重建**同一判定再调用
+        :meth:`AdaptiveRAGRouter.apply_confirmation`，避免二次判定引入
+        非确定性（文本解析结果可能随时间/词表变化）。
+
+        无法还原的载荷（缺字段、枚举值非法）返回 ``None``，由调用方
+        按"无待确认升级"处理。
+        """
+        if not isinstance(payload, Mapping):
+            return None
+        try:
+            reasons = tuple(
+                RoutingReason(str(reason)) for reason in (payload.get("reasons") or [])
+            )
+            return cls(
+                requested_tier=ResponseTier(str(payload["requested_tier"])),
+                effective_tier=ResponseTier(str(payload["effective_tier"])),
+                target_tier=ResponseTier(str(payload["target_tier"])),
+                complexity=QueryComplexity(str(payload["complexity"])),
+                requires_confirmation=bool(payload.get("requires_confirmation", False)),
+                reasons=reasons,
+                retrieval_profile=RetrievalProfile.from_dict(
+                    payload.get("retrieval_profile")
+                ),
+                feature_categories=tuple(payload.get("feature_categories") or ()),
+                detected_organs=tuple(payload.get("detected_organs") or ()),
+                retrieval_confidence=payload.get("retrieval_confidence"),
+                organ_threshold=payload.get("organ_threshold"),
+            )
+        except (KeyError, ValueError, TypeError):
+            return None
 
 
 class AdaptiveRAGRouter:

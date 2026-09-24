@@ -148,8 +148,12 @@ async def run_diagnosis_pipeline(request_id: str) -> bool:
             routing_decision = _assess_routing(request)
 
             # 1) 调度 (dispatcher.invoke)
+            # T-GB-AGT-02：把路由判定的检索档位一并注入，使"标准/全量"
+            # 真正作用于专科智能体的检索强度（此前判定结果只落库不生效）。
             t = time.monotonic()
-            specialist_responses = await _safe_dispatch(request, request_id)
+            specialist_responses = await _safe_dispatch(
+                request, request_id, routing=routing_decision
+            )
             timings["dispatcher.invoke_ms"] = (time.monotonic() - t) * 1000.0
 
             # 2) 融合 (fusion.fuse)
@@ -235,8 +239,15 @@ async def run_diagnosis_pipeline(request_id: str) -> bool:
 # ----------------------------------------------------------------------
 
 
-async def _safe_dispatch(request, request_id: str):
+async def _safe_dispatch(
+    request, request_id: str, routing: Optional[RoutingDecision] = None
+):
     """调用 dispatcher.invoke；失败时返回 [AgentResponse(confidence=0.0)]。
+
+    Args:
+        routing: Adaptive RAG 路由判定（T-GB-AGT-02）。传入时其
+            ``retrieval_profile`` 会写入 ``AgentContext``，由专科智能体
+            透传给知识智能体，使档位真正作用于检索强度。
 
     Returns:
         ``List[AgentResponse]``（不抛异常）。
@@ -261,6 +272,11 @@ async def _safe_dispatch(request, request_id: str):
             # getattr 兜底，兼容测试替身与历史 NULL 行
             user_query=str(
                 getattr(request, "clinical_text", None) or "请基于提供的影像给出诊断"
+            ),
+            retrieval_profile=(
+                routing.retrieval_profile.as_retrieval_kwargs()
+                if routing is not None
+                else None
             ),
             imaging_metadata=None,
             prior_messages=[],

@@ -356,7 +356,8 @@ class _StubEnhancer:
     def __init__(self):
         self.calls = 0
 
-    async def enhance(self, query, organ_hint=None):
+    async def enhance(self, query, organ_hint=None, use_llm=True):
+        # use_llm 对应 T-GB-AGT-02 的检索档位开关（标准路径不调 LLM 改写）。
         self.calls += 1
         return EnhancedQuery(original=query, enhanced=f"{query} 扩展", organ=organ_hint)
 

@@ -390,6 +390,29 @@ class MultiOrganDiagnosisResponse(BaseModel):
     total_ms: float
 
 
+# ============== T-GB-AGT-02 档位升级的医生确认 ==============
+class RoutingConfirmationRequest(BaseModel):
+    """医生对"是否升级到全量路径"的回答。
+
+    铁律：升级决策权交医生。只有"多特征组合推理"会走到本接口；
+    跨器官 / 置信度不足两类情形按规格直接走全量路径，不产生待确认项。
+    """
+
+    confirmed: bool
+    reason: Optional[str] = None
+
+
+class RoutingConfirmationResponse(BaseModel):
+    """确认结果（含是否已按全量档位重跑）。"""
+
+    request_id: str
+    confirmed: bool
+    effective_tier: ResponseTier
+    requires_confirmation: bool
+    rerun_enqueued: bool
+    routing: Dict[str, Any]
+
+
 # ============== 安全事件相关模型 ==============
 class SafetyEventType(str, Enum):
     KNOWLEDGE_UPDATED = "KnowledgeUpdated"

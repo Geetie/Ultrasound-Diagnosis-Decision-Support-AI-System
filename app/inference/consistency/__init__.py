@@ -26,3 +26,14 @@ from .serialization import report_to_dict, report_to_json
 from .quantization_verifier import QuantizationHallucinationVerifier, QuantizationResult
 
 from app.inference.grading_definitions import extract_grading
+# 幻觉检测器实体位于 app.inference.hallucination_detector，但一致性校验的
+# 调用方（tests/integration/llm/test_dual_engine_consistency.py 等）按
+# ``from app.inference.consistency import HallucinationDetector`` 引用，
+# 与 app/inference/__init__.py 的导出保持一致，这里做同名再导出。
+from app.inference.hallucination_detector import (
+    HallucinationDetector,
+    DetectionStrategy,
+    DetectionResult,
+    DetectionIssue,
+    get_default_detector,
+)

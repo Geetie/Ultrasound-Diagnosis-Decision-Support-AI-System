@@ -15,6 +15,8 @@ from app.models.schemas import (
     DiagnosisQualityControl,
     MultiOrganDiagnosisRequest,
     MultiOrganDiagnosisResponse,
+    RoutingConfirmationRequest,
+    RoutingConfirmationResponse,
     ResponseTier,
     ConsentStatus,
     FusionStatus,
@@ -34,6 +36,8 @@ from app.config.rate_limit import check_rate_limit, _get_user_id_from_request
 from app.config.settings import settings
 from app.dependencies import get_diagnosis_repo, get_consent_repo, get_session_repo, get_audit_service
 from app.api.v1.utils import get_actor_id, check_consent_status, try_renew_session
+from app.agents.routing import RoutingDecision
+from app.services.diagnosis_pipeline import get_routing_router
 from app.services.diagnosis_worker import enqueue_diagnosis
 from app.services.multi_organ_orchestrator import (
     SessionNotFoundError,
@@ -210,6 +214,122 @@ async def submit_diagnosis_request(
 
 
 RESULT_CACHE_TTL_SECONDS = 600
+
+
+@router.post(
+    "/{request_id}/confirm-upgrade", response_model=RoutingConfirmationResponse
+)
+async def confirm_routing_upgrade(
+    request_id: str,
+    payload: RoutingConfirmationRequest,
+    diagnosis_repo=Depends(get_diagnosis_repo),
+    audit_service=Depends(get_audit_service),
+    current_user: Optional[dict] = Depends(get_current_active_user),
+):
+    """T-GB-AGT-02：医生对"是否升级到全量检索档位"的确认回写。
+
+    铁律「升级决策权交医生」的落地：
+
+    - 只有"多特征组合推理"的判定会带 ``requires_confirmation=True``；
+    - 医生确认 → 请求档位改为 ``full`` 并重新入队（管线的路由判定会
+      直接给出全量路径，``reasons`` 含 ``doctor_requested_full``）；
+    - 医生拒绝 → 保持原档位，仅记录确认结果（**不可降级**：跨器官 /
+      置信度不足两类情形从一开始就走全量，不产生待确认项）。
+    """
+    result = await diagnosis_repo.get_result(request_id)
+    if not result:
+        raise NotFoundException(error_message=f"Diagnosis result not found: {request_id}")
+
+    findings = dict(result.findings) if isinstance(result.findings, dict) else {}
+    decision = RoutingDecision.from_dict(findings.get("routing"))
+    if decision is None:
+        raise BadRequestException(
+            error_message="诊断结果中不存在可确认的路由判定（findings.routing 缺失或非法）"
+        )
+    if not decision.pending_upgrade:
+        raise BadRequestException(
+            error_message="当前路由判定不存在待确认的档位升级"
+        )
+
+    router = get_routing_router()
+    final = router.apply_confirmation(decision, payload.confirmed)
+
+    actor_id = get_actor_id(current_user)
+    routing_record = final.as_dict()
+    routing_record["confirmation"] = {
+        "confirmed": payload.confirmed,
+        "confirmed_by": actor_id,
+        "confirmed_at": datetime.now(timezone.utc).isoformat(),
+        "reason": payload.reason,
+    }
+
+    previous_status = result.status
+    rerun_enqueued = False
+
+    if payload.confirmed:
+        # 用全量档位重跑：改 tier → 管线按 doctor_requested_full 走全量路径。
+        await diagnosis_repo.update_tier(request_id, ResponseTier.FULL.value)
+        merged_findings = {**findings, "routing": routing_record}
+        await diagnosis_repo.update_result(
+            request_id=request_id,
+            status="processing",
+            confidence=result.confidence,
+            findings=merged_findings,
+            recommendations=result.recommendations,
+            knowledge_ids=result.knowledge_ids,
+        )
+        enqueued = await enqueue_diagnosis(request_id)
+        if enqueued:
+            rerun_enqueued = True
+        else:
+            # 入队失败（Redis 与进程内队列均不可用）：回滚为原状态，避免
+            # 结果永久停在 processing 而让前端一直轮询到 timeout。
+            logger.warning(
+                "routing_upgrade_rerun_enqueue_failed",
+                request_id=request_id,
+            )
+            await diagnosis_repo.update_result(
+                request_id=request_id,
+                status=previous_status,
+                confidence=result.confidence,
+                findings=merged_findings,
+                recommendations=result.recommendations,
+                knowledge_ids=result.knowledge_ids,
+            )
+    else:
+        await diagnosis_repo.update_findings(
+            request_id, {**findings, "routing": routing_record}
+        )
+
+    try:
+        await diagnosis_repo.db.commit()
+    except Exception as exc:  # noqa: BLE001 - 测试替身可能不可 await
+        logger.warning("routing_confirmation_commit_failed", error=str(exc))
+
+    await audit_service.log_action(
+        action="routing_upgrade_confirmation",
+        actor=actor_id,
+        session_id=getattr(result, "session_id", None),
+        target_type="diagnosis",
+        target_id=request_id,
+        detail={
+            "confirmed": payload.confirmed,
+            "effective_tier": final.effective_tier.value,
+            "requested_tier": final.requested_tier.value,
+            "reasons": [r.value for r in final.reasons],
+            "rerun_enqueued": rerun_enqueued,
+            "reason": payload.reason,
+        },
+    )
+
+    return RoutingConfirmationResponse(
+        request_id=request_id,
+        confirmed=payload.confirmed,
+        effective_tier=final.effective_tier,
+        requires_confirmation=final.requires_confirmation,
+        rerun_enqueued=rerun_enqueued,
+        routing=routing_record,
+    )
 
 
 @router.post("/multi-organ", response_model=MultiOrganDiagnosisResponse)

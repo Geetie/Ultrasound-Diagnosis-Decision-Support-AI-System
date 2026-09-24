@@ -5,8 +5,8 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
-from ..protocols import InferenceEngine
-from ..hallucination_detector import HallucinationDetector
+from .protocols import InferenceEngine
+from .hallucination_detector import HallucinationDetector
 
 
 def _percentile(values: List[float], p: int) -> float:
