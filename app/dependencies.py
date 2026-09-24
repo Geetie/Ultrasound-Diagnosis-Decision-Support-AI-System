@@ -26,6 +26,7 @@ from app.repositories import (
     DiagnosisRepository,
     DeviceRepository,
     FeedbackRepository,
+    ReportRepository,
 )
 from app.services.audit_service import AuditService
 from app.services.safety_gateway_client import SafetyGatewayClient, safety_gateway_client
@@ -121,6 +122,11 @@ def get_device_repo(db: AsyncSession = Depends(get_db_session)) -> DeviceReposit
 
 def get_feedback_repo(db: AsyncSession = Depends(get_db_session)) -> FeedbackRepository:
     return FeedbackRepository(db)
+
+
+def get_report_repo(db: AsyncSession = Depends(get_db_session)) -> ReportRepository:
+    """获取诊断报告仓储（T-GB-API-02）。"""
+    return ReportRepository(db)
 
 
 def get_audit_service(db: AsyncSession = Depends(get_db_session)) -> AuditService:

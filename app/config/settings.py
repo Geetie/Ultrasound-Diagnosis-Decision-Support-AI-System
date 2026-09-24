@@ -274,6 +274,21 @@ class Settings(BaseSettings):
     # 等待活跃会话结束时的轮询间隔（秒）。
     hot_reload_poll_interval_seconds: float = 5.0
 
+    # === T-GB-API-02 报告生成与签发 ===
+    # 报告模板名（对应 app/templates/report/<name>），缺失时回退内置模板。
+    report_template_name: str = 'default.md'
+    # 报告签名密钥（前缀 report_ → KeySlot.REPORT_SIGNING）。
+    report_signing_key_name: str = 'report_signing_v1'
+    report_signing_key_size: int = 2048
+    # PACS/HIS 推送适配器：local_fake（本地假实现）| http（现场配置 endpoint）
+    pacs_adapter: str = 'local_fake'
+    pacs_endpoint: str = ''
+    pacs_timeout_seconds: float = 10.0
+    pacs_max_attempts: int = 3
+    pacs_retry_backoff_seconds: float = 0.5
+    # 报告草稿生成的软超时（秒）——规格验收：草稿 ≤ 2 分钟。
+    report_draft_budget_seconds: float = 120.0
+
     obs_metrics_enabled: bool = True
     obs_metrics_port: int = 9090
     obs_metrics_scrape_interval: float = 15.0

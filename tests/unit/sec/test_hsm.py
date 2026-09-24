@@ -165,7 +165,12 @@ class TestKeySlotSeparation:
 
     def test_key_slot_routing_default_data_encryption(self):
         assert hsm_manager._get_key_slot("my_key") == KeySlot.DATA_ENCRYPTION
-        assert hsm_manager._get_key_slot("report_key") == KeySlot.DATA_ENCRYPTION
+        assert hsm_manager._get_key_slot("shared_sign_key") == KeySlot.DATA_ENCRYPTION
+
+    def test_key_slot_routing_report_prefix(self):
+        # T-GB-API-02：报告签名密钥独立槽位（与 JWT/应急签名隔离）
+        assert hsm_manager._get_key_slot("report_signing_v1") == KeySlot.REPORT_SIGNING
+        assert KeySlot.REPORT_SIGNING == "report_signing"
 
     def test_generate_key_pair_with_explicit_slot(self):
         hsm_manager.generate_key_pair("test_slot_jwt", slot=KeySlot.JWT_SIGNING)

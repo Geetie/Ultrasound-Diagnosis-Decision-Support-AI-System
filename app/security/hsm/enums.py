@@ -23,6 +23,10 @@ class KeySlot(str, Enum):
     DATA_ENCRYPTION = "data_encryption"
     DESENSITIZATION_MAPPING = "desensitization_mapping"
     EMERGENCY_SIGNING = "emergency_signing"
+    # T-GB-API-02：诊断报告数字签名（与应急签名密钥隔离——报告签发是常规
+    # 高频操作，不应受 allow_emergency_signing 限制，也不应污染应急密钥的
+    # 每日签名配额）。
+    REPORT_SIGNING = "report_signing"
 
 
 @dataclass
@@ -67,6 +71,7 @@ _KEY_SLOT_ROUTING = {
     "jwt_": KeySlot.JWT_SIGNING,
     "desens_": KeySlot.DESENSITIZATION_MAPPING,
     "emergency_": KeySlot.EMERGENCY_SIGNING,
+    "report_": KeySlot.REPORT_SIGNING,
 }
 
 

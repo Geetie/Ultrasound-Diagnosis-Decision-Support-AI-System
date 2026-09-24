@@ -76,6 +76,54 @@ class DiagnosisResult(Base):
     created_at = Column(TIMESTAMP(timezone=True), default=func.current_timestamp())
 
 
+class DiagnosisReport(Base):
+    """T-GB-API-02：诊断报告（草稿 → 签名 → PACS/HIS 推送）。
+
+    与 ``diagnosis_results`` 一对多：一次诊断可生成草稿、修订后再签发多份
+    报告（content 为结构化报告内容，rendered 为签名与推送所依据的文本，
+    content_digest 为其 SHA-256，用于签名校验与幂等）。
+    """
+    __tablename__ = 'diagnosis_reports'
+    __table_args__ = (
+        Index('idx_reports_request_status', 'request_id', 'status'),
+    )
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    # 业务主键：rep_{date}_{hex8}
+    report_id = Column(String(64), unique=True, nullable=False, index=True)
+    request_id = Column(String(64), nullable=False, index=True)
+    session_id = Column(String(64), index=True)
+    patient_id = Column(String(64), index=True)
+    organ = Column(String(32))
+    # draft | signed | pushed | failed
+    status = Column(String(32), nullable=False, default='draft')
+    # 结构化报告内容（模板填充结果）
+    content = Column(JSONB)
+    # 渲染后的报告正文（签名与推送的载荷）
+    rendered = Column(Text)
+    # rendered 的 SHA-256（十六进制），签名前计算，幂等键的一部分
+    content_digest = Column(String(64))
+    # 报告模板版本，便于审计与追溯
+    template_version = Column(String(32))
+    # 数字签名（base64）与签名元信息
+    signature = Column(Text)
+    signing_key_name = Column(String(64))
+    signed_at = Column(TIMESTAMP(timezone=True))
+    signed_by = Column(String(64))
+    # PACS/HIS 推送结果
+    pacs_adapter = Column(String(32))
+    pacs_status = Column(String(32))  # pending | success | failed | skipped
+    pacs_message = Column(Text)
+    pacs_attempts = Column(Integer, default=0)
+    pushed_at = Column(TIMESTAMP(timezone=True))
+    created_at = Column(TIMESTAMP(timezone=True), default=func.current_timestamp())
+    updated_at = Column(
+        TIMESTAMP(timezone=True),
+        default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+    )
+
+
 class KnowledgeBase(Base):
     __tablename__ = 'knowledge_base'
     

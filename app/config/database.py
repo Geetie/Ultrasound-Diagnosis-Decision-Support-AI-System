@@ -57,6 +57,7 @@ async def init_db() -> None:
         ConsentRecord,
         DiagnosisSession,
         DiagnosisResult,
+        DiagnosisReport,
         KnowledgeBase,
         SafetyEvent,
         AuditLog,

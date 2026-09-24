@@ -15,6 +15,7 @@ from app.api.v1.feedback import router as feedback_router
 from app.api.v1.fhir import router as fhir_router
 from app.api.v1.health import router as health_router
 from app.api.v1.imaging import router as imaging_router
+from app.api.v1.report import router as report_router
 from app.api.v1.security import router as security_router
 from app.api.v1.session import router as session_router
 from app.api.v1.speech import router as speech_router
@@ -538,6 +539,7 @@ app.include_router(obs_dashboard_router, prefix="/api/v1/internal/obs")
 app.include_router(ws_nav_router)
 app.include_router(ws_dicom_router)
 app.include_router(fhir_router, prefix="/fhir")
+app.include_router(report_router, prefix="/api/v1/report")
 
 app.add_exception_handler(AppBaseException, app_exception_handler)
 app.add_exception_handler(StarletteHTTPException, http_exception_handler)

@@ -413,6 +413,54 @@ class RoutingConfirmationResponse(BaseModel):
     routing: Dict[str, Any]
 
 
+# ============== T-GB-API-02 报告生成与签发 ==============
+class ReportDraftRequest(BaseModel):
+    """生成报告草稿（可选一步签名/推送）。"""
+
+    request_id: str
+    sign: bool = False
+    push: bool = False
+    operator_id: Optional[str] = None
+
+
+class ReportResponse(BaseModel):
+    """报告视图（草稿 / 已签名 / 已推送）。"""
+
+    report_id: str
+    request_id: str
+    session_id: Optional[str] = None
+    patient_id: Optional[str] = None
+    organ: Optional[str] = None
+    status: str
+    template_version: Optional[str] = None
+    content_digest: Optional[str] = None
+    signature_present: bool = False
+    signature_verified: bool = False
+    signing_key_name: Optional[str] = None
+    signed_at: Optional[datetime] = None
+    signed_by: Optional[str] = None
+    pacs_adapter: Optional[str] = None
+    pacs_status: Optional[str] = None
+    pacs_message: Optional[str] = None
+    pacs_attempts: Optional[int] = None
+    pushed_at: Optional[datetime] = None
+    created_at: Optional[datetime] = None
+    content: Optional[Dict[str, Any]] = None
+    rendered: Optional[str] = None
+
+
+class ReportSignRequest(BaseModel):
+    """签发报告（可选覆盖操作者标识）。"""
+
+    operator_id: Optional[str] = None
+
+
+class ReportPushRequest(BaseModel):
+    """推送报告到 PACS/HIS（可指定适配器名，缺省用配置值）。"""
+
+    adapter: Optional[str] = None
+
+
 # ============== 安全事件相关模型 ==============
 class SafetyEventType(str, Enum):
     KNOWLEDGE_UPDATED = "KnowledgeUpdated"

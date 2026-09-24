@@ -4,6 +4,7 @@ from app.repositories.session_repository import SessionRepository
 from app.repositories.diagnosis_repository import DiagnosisRepository
 from app.repositories.device_repository import DeviceRepository
 from app.repositories.feedback_repository import FeedbackRepository
+from app.repositories.report_repository import ReportRepository
 
 __all__ = [
     "ConsentRepository",
@@ -11,4 +12,5 @@ __all__ = [
     "DiagnosisRepository",
     "DeviceRepository",
     "FeedbackRepository",
+    "ReportRepository",
 ]
