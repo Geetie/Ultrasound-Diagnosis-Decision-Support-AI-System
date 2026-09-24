@@ -289,6 +289,30 @@ class Settings(BaseSettings):
     # 报告草稿生成的软超时（秒）——规格验收：草稿 ≤ 2 分钟。
     report_draft_budget_seconds: float = 120.0
 
+    # === T-GB-SEC-02 审计/会话冷热分层（对象存储冷归档）===
+    # 适配器：local_fake（本地目录/内存假实现）| s3（MinIO/S3，用 boto3）
+    object_storage_adapter: str = 'local_fake'
+    object_storage_bucket: str = 'ultrasound-archive'
+    object_storage_prefix: str = 'cold-archive'
+    # local_fake 的落盘目录；留空则退化为进程内内存实现
+    object_storage_local_dir: str = './cold_archive_storage'
+    object_storage_endpoint: str = ''
+    object_storage_access_key: str = ''
+    object_storage_secret_key: str = ''
+    object_storage_region: str = 'us-east-1'
+    object_storage_max_retries: int = 3
+    object_storage_retry_backoff_seconds: float = 0.5
+    # 单批冷归档的记录数（避免一次性全表扫描）
+    cold_archive_batch_size: int = 500
+    # 单次任务最多处理的会话数（每个会话的审计链整条归档，避免跨批撕裂）
+    cold_archive_max_sessions_per_run: int = 20
+    # 审计日志热层保留窗口（天）：超过则移入对象存储冷层，
+    # 冷层保留年限由 data_retention_audit_years（30 年）约束。
+    audit_hot_retention_days: int = 90
+    # 未部署对象存储时是否允许直接清理到期归档（默认 False：先冷归档再清理，
+    # 避免把本应入冷层的数据直接删掉）。
+    data_retention_purge_without_cold_archive: bool = False
+
     obs_metrics_enabled: bool = True
     obs_metrics_port: int = 9090
     obs_metrics_scrape_interval: float = 15.0

@@ -1,10 +1,13 @@
 import structlog
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy.ext.asyncio import AsyncSession
 from app.observability.metrics_collector import get_metrics_collector
 from app.observability.cusum import AISafetyCircuitBreaker
 from app.observability.alert_escalation import get_alert_escalation_manager
 from app.observability.cache_monitor import get_cache_monitor
+from app.config.database import get_db_session
 from app.config.settings import settings
+from app.services.cold_archive import ColdArchiveService
 
 logger = structlog.get_logger()
 
@@ -39,6 +42,59 @@ async def dashboard_data():
         "cache": cache,
         "breaker": breaker_data,
     }
+
+
+@router.get("/cold-archive")
+async def cold_archive_status(
+    category: str | None = Query(default=None, description="audit_logs | session_archives"),
+    limit: int = Query(default=50, ge=1, le=500),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """T-GB-SEC-02：冷归档清单与批次总览（热/冷分层的唯一可观测入口）。
+
+    返回按 category+status 的批次统计，以及最近的清单（含 checksum 与
+    记录数），运维据此确认"冷层是否真的存住了"。
+    """
+    service = ColdArchiveService(db)
+    stats = await service.stats()
+    manifests = await service.list_manifests(category=category, limit=limit)
+    return {
+        "adapter": service.storage.name,
+        "hot_retention_days": settings.audit_hot_retention_days,
+        "stats": stats,
+        "manifests": [
+            {
+                "manifest_id": m.manifest_id,
+                "category": m.category,
+                "status": m.status,
+                "object_key": m.object_key,
+                "record_count": m.record_count,
+                "size_bytes": m.size_bytes,
+                "checksum": m.checksum,
+                "adapter": m.adapter,
+                "archived_at": m.archived_at.isoformat() if m.archived_at else None,
+                "purged_at": m.purged_at.isoformat() if m.purged_at else None,
+                "message": m.message,
+            }
+            for m in manifests
+        ],
+    }
+
+
+@router.post("/cold-archive/run")
+async def run_cold_archive(
+    category: str = Query(
+        default="audit_logs", description="audit_logs | session_archives"
+    ),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """手动触发一次冷归档（运维用；等价于周期任务中的冷层步骤）。"""
+    service = ColdArchiveService(db)
+    if category == "session_archives":
+        result = await service.archive_session_archives()
+    else:
+        result = await service.archive_audit_logs()
+    return result.as_dict()
 
 
 def _read_gpu_metrics(collector) -> dict:

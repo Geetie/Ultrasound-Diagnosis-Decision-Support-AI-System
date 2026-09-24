@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config.settings import settings
 from app.models.database import DiagnosisSession, SessionArchive, AuditLog
 from app.services.audit_service import AuditService
+from app.services.cold_archive import ColdArchiveService
 
 logger = structlog.get_logger()
 
@@ -141,6 +142,46 @@ class DataRetentionService:
         logger.info("data_retention_operation_purge_completed", count=purged_count)
         return purged_count
 
+    # ------------------------------------------------------------------
+    # T-GB-SEC-02：冷热分层（先冷归档，再清理热层）
+    # ------------------------------------------------------------------
+
+    async def archive_and_purge_audit_logs(
+        self,
+        *,
+        before: Optional[datetime] = None,
+        storage=None,
+    ) -> Dict[str, Any]:
+        """把超期审计日志移入对象存储冷层（PG 仅保留创世锚点）。
+
+        冷层不可用时**不删除任何热数据**（返回结果中 ``failed``/``pending``
+        体现），下次任务自动重试。
+        """
+        service = ColdArchiveService(self.db, storage=storage)
+        result = await service.archive_audit_logs(before=before)
+        logger.info("audit_logs_cold_tier_completed", **result.as_dict())
+        return result.as_dict()
+
+    async def archive_and_purge_session_archives(
+        self,
+        patient_type: Optional[str] = None,
+        *,
+        before: Optional[datetime] = None,
+        storage=None,
+    ) -> Dict[str, Any]:
+        """到期的会话归档先入冷层再从 PG 清理（门诊 15 年 / 住院 30 年）。"""
+        service = ColdArchiveService(self.db, storage=storage)
+        result = await service.archive_session_archives(
+            before=before, patient_type=patient_type
+        )
+        logger.info("session_archives_cold_tier_completed", **result.as_dict())
+        return result.as_dict()
+
+    async def archive_audit_manifest_stats(self) -> Dict[str, Any]:
+        """冷归档清单总览（合规留痕/运维面板用）。"""
+        service = ColdArchiveService(self.db)
+        return await service.stats()
+
     async def verify_retention_compliance(self) -> Dict[str, Any]:
         compliance_report = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -230,16 +271,31 @@ async def start_data_retention_periodic_task(
             try:
                 async for db in db_session_factory():
                     service = DataRetentionService(db)
+                    # 1) 热层：过期会话 → sessions_archive
                     archived = await service.archive_expired_sessions()
-                    purged_outpatient = await service.purge_expired_archives("outpatient")
-                    purged_inpatient = await service.purge_expired_archives("inpatient")
+                    # 2) 冷层（T-GB-SEC-02）：审计日志与到期会话归档先进对象
+                    #    存储，成功后才从 PG 清理；冷层不可用时保留热数据。
+                    cold_audit = await service.archive_and_purge_audit_logs()
+                    cold_outpatient = await service.archive_and_purge_session_archives(
+                        "outpatient"
+                    )
+                    cold_inpatient = await service.archive_and_purge_session_archives(
+                        "inpatient"
+                    )
+                    # 3) 仅在未部署对象存储时（显式配置）才退化为直接清理，
+                    #    否则"清理"会把本应入冷层的数据直接删掉。
+                    if settings.data_retention_purge_without_cold_archive:
+                        await service.purge_expired_archives("outpatient")
+                        await service.purge_expired_archives("inpatient")
+                    # 4) 操作日志（5 年）
                     purged_logs = await service.purge_expired_operation_logs()
                     compliance = await service.verify_retention_compliance()
                     logger.info(
                         "data_retention_periodic_task_completed",
                         archived=archived,
-                        purged_outpatient=purged_outpatient,
-                        purged_inpatient=purged_inpatient,
+                        cold_audit=cold_audit.get("archived", 0),
+                        cold_outpatient=cold_outpatient.get("archived", 0),
+                        cold_inpatient=cold_inpatient.get("archived", 0),
                         purged_logs=purged_logs,
                         compliant=compliance.get("overall_compliant", False),
                     )

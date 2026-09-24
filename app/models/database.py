@@ -124,6 +124,39 @@ class DiagnosisReport(Base):
     )
 
 
+class ColdArchiveManifest(Base):
+    """T-GB-SEC-02：冷归档批次清单（热数据被移出 PG 后的冷层索引）。
+
+    一条记录对应冷层的一个对象（JSONL 分片）。热数据**只有在对象上传成功
+    后**才会被删除，因此清单是"冷层是否真的存住了"的唯一凭据；``checksum``
+    与 ``record_count`` 供恢复/校验时比对。
+    """
+    __tablename__ = 'cold_archive_manifests'
+    __table_args__ = (
+        Index('idx_cold_manifest_category_status', 'category', 'status'),
+    )
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    manifest_id = Column(String(64), unique=True, nullable=False, index=True)
+    # audit_logs | session_archives | operation_logs
+    category = Column(String(32), nullable=False, index=True)
+    object_key = Column(String(512))
+    record_count = Column(Integer, default=0)
+    first_record_id = Column(BigInteger)
+    last_record_id = Column(BigInteger)
+    checksum = Column(String(64))
+    size_bytes = Column(BigInteger, default=0)
+    time_range_start = Column(TIMESTAMP(timezone=True))
+    time_range_end = Column(TIMESTAMP(timezone=True))
+    # pending | archived | failed | restored
+    status = Column(String(32), nullable=False, default='pending', index=True)
+    adapter = Column(String(32))
+    message = Column(Text)
+    created_at = Column(TIMESTAMP(timezone=True), default=func.current_timestamp())
+    archived_at = Column(TIMESTAMP(timezone=True))
+    purged_at = Column(TIMESTAMP(timezone=True))
+
+
 class KnowledgeBase(Base):
     __tablename__ = 'knowledge_base'
     
