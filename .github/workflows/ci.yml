@@ -202,12 +202,12 @@ jobs:
         # 达到目标后把下面两个数字提到 80 / 90。
         run: |
           set -e
-          echo "::notice::覆盖率目标 整体80%/核心90%；当前实测 整体81.57%/核心83.81%（棘轮门禁 81/83）"
+          echo "::notice::覆盖率目标 整体80%/核心90%；当前实测 整体81.78%/核心84.42%（棘轮门禁 81/84）"
           # 棘轮只进不退：实测值上调后同步收紧，并留约 0.5pt 环境波动余量
           python -m coverage report --fail-under=81
           python -m coverage report \
             --include='app/security/*,app/services/*,app/fusion/*,app/agents/*' \
-            --fail-under=83
+            --fail-under=84
       - uses: actions/upload-artifact@v4
         if: always()
         with:
