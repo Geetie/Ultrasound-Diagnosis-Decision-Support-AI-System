@@ -94,6 +94,18 @@ class MetricsCollector(MetricsDefinitions):
             with_retry=str(with_retry).lower(),
         ).observe(seconds)
 
+    def record_consent_withdrawal_latency(
+        self, seconds: float, target_seconds: float
+    ) -> None:
+        """T-G1-INT-06：记录撤回端到端时延，并单独计数越线次数。
+
+        越线单独计数而不是只看直方图：验收是"撤回后 <500ms 生效"，直方图能看
+        分布，但"有没有越线、越了几次"是告警要用的量，必须能直接读。
+        """
+        self.consent_withdrawal_latency.observe(max(0.0, seconds))
+        if seconds > target_seconds:
+            self.consent_withdrawal_target_exceeded.inc()
+
     def set_severe_hallucination_rate(self, rate: float) -> None:
         self.severe_hallucination_rate.set(rate)
 

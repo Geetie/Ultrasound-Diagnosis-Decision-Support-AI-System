@@ -115,6 +115,23 @@ class SafetyActionHandler(ConsentWithdrawalHandler):
                 logger.error("failed_to_notify_edge_stop_annotation",
                             patient_id=event.patient_id, error=str(e))
 
+        # T-G1-INT-06：取消该患者的在途诊断。
+        # 仅标记 session 是不够的——已在跑的那次诊断会继续算完并写库，医生在
+        # 撤回后仍可能看到基于已撤回同意的结论；这里直接把在途任务打断。
+        try:
+            from app.services.inflight_diagnosis import get_inflight_registry
+
+            cancelled = get_inflight_registry().cancel_for_patient(event.patient_id)
+            if cancelled:
+                logger.info(
+                    "consent_withdrawal_inflight_diagnosis_cancelled",
+                    patient_id=event.patient_id,
+                    request_ids=cancelled,
+                )
+        except Exception as e:
+            logger.error("failed_to_cancel_inflight_diagnosis",
+                        patient_id=event.patient_id, error=str(e))
+
         try:
             from app.services.audit_service import AuditService
             from app.config.database import get_session
@@ -337,6 +354,8 @@ class ConsentWithdrawalConsumer:
                                 patient_id=event.patient_id,
                                 error=str(e))
 
+            self._record_e2e_latency(event)
+
             logger.info("consent_withdrawal_event_processed",
                        patient_id=event.patient_id, event_id=event.event_id)
 
@@ -344,6 +363,49 @@ class ConsentWithdrawalConsumer:
             logger.error("consent_withdrawal_event_processing_failed",
                         msg_id=msg_id, error=str(e))
             await self._handle_processing_error(msg_id, fields, e)
+
+    @staticmethod
+    def _record_e2e_latency(event: ConsentWithdrawalEvent) -> None:
+        """T-G1-INT-06：撤回生效时延 = withdrawn_at -> 各处理器执行完毕。
+
+        验收线是"撤回后 <500ms 生效"，所以计时起点取**医生点撤回的时刻**
+        （流消息里的 withdrawn_at），不是消费者读到消息的时刻——把队列积压
+        排除在计时之外，指标就永远好看，而医生感受到的延迟才是真延迟。
+        """
+        from app.config.settings import settings
+
+        withdrawn_at = event.withdrawn_at
+        if withdrawn_at.tzinfo is None:
+            # 上游（API 端）可能写入 naive UTC 时间戳，不补时区会直接 TypeError
+            withdrawn_at = withdrawn_at.replace(tzinfo=timezone.utc)
+
+        elapsed_seconds = (datetime.now(timezone.utc) - withdrawn_at).total_seconds()
+        target_seconds = settings.consent_withdrawal_e2e_latency_target_ms / 1000.0
+
+        try:
+            from app.observability.metrics_collector import get_metrics_collector
+
+            get_metrics_collector().record_consent_withdrawal_latency(
+                elapsed_seconds, target_seconds
+            )
+        except Exception as exc:  # noqa: BLE001 - 埋点失败不得影响撤回本身
+            logger.warning("consent_withdrawal_metric_failed", error=str(exc))
+
+        if elapsed_seconds > target_seconds:
+            logger.warning(
+                "consent_withdrawal_e2e_latency_exceeded_target",
+                patient_id=event.patient_id,
+                event_id=event.event_id,
+                elapsed_ms=round(elapsed_seconds * 1000.0, 2),
+                target_ms=settings.consent_withdrawal_e2e_latency_target_ms,
+            )
+        else:
+            logger.info(
+                "consent_withdrawal_e2e_latency",
+                patient_id=event.patient_id,
+                event_id=event.event_id,
+                elapsed_ms=round(elapsed_seconds * 1000.0, 2),
+            )
 
     async def _handle_processing_error(
         self, msg_id: bytes, fields: dict, error: Exception

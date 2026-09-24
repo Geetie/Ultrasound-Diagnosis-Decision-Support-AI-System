@@ -41,6 +41,7 @@ from app.repositories import (
     DiagnosisRepository,
     SessionRepository,
 )
+from app.services.inflight_diagnosis import get_inflight_registry
 from app.services.safety_gateway_client import safety_gateway_client
 
 logger = structlog.get_logger("app.services.diagnosis_pipeline")
@@ -142,6 +143,13 @@ async def run_diagnosis_pipeline(request_id: str) -> bool:
                 )
                 return False
 
+            # T-G1-INT-06：登记在途诊断。撤回同意时由消费端取消同一患者的
+            # 在途任务（见 app/services/inflight_diagnosis.py）。
+            get_inflight_registry().register(
+                patient_id=getattr(request, "patient_id", "unknown"),
+                request_id=request_id,
+            )
+
             # T-GB-AGT-02: Adaptive RAG 动态路由判定（规格 §5.3）。
             # 判定结果写入 findings 的 routing 段：前端据此展示"初步结论 +
             # 是否切换深度分析"的确认对话框，观测侧据此统计标准路径占比。
@@ -215,6 +223,26 @@ async def run_diagnosis_pipeline(request_id: str) -> bool:
         )
         return write_ok
 
+    except asyncio.CancelledError:
+        # T-G1-INT-06：同意撤回触发的在途取消（见 inflight_diagnosis）。
+        # 必须留下终态：任务被取消时若 DB 行停在 in_progress，前端会一直转圈，
+        # 且没有任何记录说明这次诊断为什么不告而终。
+        logger.warning(
+            "pipeline_cancelled_by_consent_withdrawal",
+            request_id=request_id,
+            elapsed_ms=round((time.monotonic() - t_start) * 1000.0, 2),
+        )
+        try:
+            # shield：取消已投递过一次，收尾写库不能再被同一个取消打断
+            await asyncio.shield(_mark_result_cancelled(request_id))
+        except Exception as exc:  # noqa: BLE001 - 收尾失败不得掩盖取消本身
+            logger.error(
+                "pipeline_cancel_mark_failed",
+                request_id=request_id,
+                error=str(exc),
+            )
+        raise
+
     except Exception as exc:
         logger.error(
             "pipeline_unhandled_exception",
@@ -236,6 +264,11 @@ async def run_diagnosis_pipeline(request_id: str) -> bool:
         except Exception:
             pass
         return False
+
+    finally:
+        # 无论成功、失败还是被取消，都必须摘牌，否则登记表会把已结束的任务
+        # 一直留着，后续同患者的撤回会去 cancel 一个早已完成的任务
+        get_inflight_registry().unregister(request_id)
 
 
 # ----------------------------------------------------------------------
@@ -364,6 +397,33 @@ async def _safe_safety_check(request, fusion_result, request_id: str):
 # ----------------------------------------------------------------------
 # 内部：写结果
 # ----------------------------------------------------------------------
+
+
+async def _mark_result_cancelled(request_id: str) -> None:
+    """把被取消的诊断置为 ``cancelled`` 终态（T-G1-INT-06）。
+
+    独立开一个会话而不是复用管线里那个：管线的事务已随取消进入不确定状态，
+    在同一连接上再写很可能被一起回滚。
+    """
+    try:
+        async with AsyncSessionLocal() as db:
+            repo = DiagnosisRepository(db)
+            await repo.update_result(
+                request_id=request_id,
+                status="cancelled",
+                confidence=0.0,
+                findings={
+                    "error": "consent_withdrawn",
+                    "reason": "in-flight diagnosis cancelled after consent withdrawal",
+                },
+            )
+            await _commit_if_possible(db)
+    except Exception as exc:  # noqa: BLE001 - 收尾失败只记录，不改变取消语义
+        logger.error(
+            "pipeline_cancel_status_write_failed",
+            request_id=request_id,
+            error=str(exc),
+        )
 
 
 async def _write_result_to_db(

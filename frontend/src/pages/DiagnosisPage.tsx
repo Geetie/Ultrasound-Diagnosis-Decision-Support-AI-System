@@ -16,6 +16,7 @@ import QualityControlBadge from '@/components/diagnosis/QualityControlBadge';
 import MeasurementTable from '@/components/diagnosis/MeasurementTable';
 import DifferentialDiagnosisList from '@/components/diagnosis/DifferentialDiagnosisList';
 import ClinicalActions from '@/components/diagnosis/ClinicalActions';
+import { getConsentDisplayText, isPureReportMode } from '@/utils/consentGuard';
 import PatientExplanation from '@/components/diagnosis/PatientExplanation';
 import ResearchMetrics from '@/components/diagnosis/ResearchMetrics';
 import ProgressiveBlock from '@/components/diagnosis/ProgressiveBlock';
@@ -261,6 +262,46 @@ export default function DiagnosisPage() {
 
     const evidence = normalizeEvidence(result.evidence as Record<string, unknown> | undefined);
     const stageTimings = progressive.stageTimings;
+
+    const consentText = getConsentDisplayText(result.consent_status_at_output);
+    const pureReportMode = isPureReportMode(result.consent_status_at_output);
+
+    // T-G1-INT-06：同意状态展示拦截。
+    // 同意被撤回（或从未授权）时，本结果可能是在同意失效前算出来的，或来自
+    // 纯报告模式——继续把 AI 结论、恶性概率、鉴别诊断当诊断意见展示，医生会
+    // 在不知情的情况下使用一份不该使用的输出。故此处整段拦截。
+    if (pureReportMode) {
+      return (
+        <div
+          data-testid="consent-blocked-notice"
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: tokens.spacing.sm,
+            background: tokens.color.bg.secondary,
+            border: `1px solid ${tokens.color.accent.warning}60`,
+            borderLeft: `3px solid ${tokens.color.accent.warning}`,
+            borderRadius: tokens.radius.md,
+            padding: tokens.spacing.lg,
+          }}
+        >
+          <Text
+            style={{
+              fontFamily: tokens.font.display,
+              color: tokens.color.accent.warning,
+              fontSize: 12,
+              letterSpacing: '0.05em',
+            }}
+          >
+            AI OUTPUT BLOCKED
+          </Text>
+          <Text style={{ color: tokens.color.text.primary, fontSize: 14 }}>{consentText}</Text>
+          <Text style={{ color: tokens.color.text.muted, fontSize: 12 }}>
+            AI 辅助诊断结论已按同意状态拦截，不在此处展示。请以超声原始报告与执业医师判断为准。
+          </Text>
+        </div>
+      );
+    }
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacing.lg }}>

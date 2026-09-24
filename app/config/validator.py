@@ -63,6 +63,16 @@ def validate_config() -> List[str]:
     if settings.safety_gateway_p99_latency_warning_threshold_ms >= settings.safety_gateway_p99_latency_critical_threshold_ms:
         errors.append("SG_P99_LATENCY_WARNING_THRESHOLD_MS must be less than SG_P99_LATENCY_CRITICAL_THRESHOLD_MS")
 
+    if settings.consent_withdrawal_e2e_latency_target_ms <= 0:
+        errors.append("CONSENT_WITHDRAWAL_E2E_LATENCY_TARGET_MS must be greater than 0")
+
+    if settings.consent_withdrawal_e2e_latency_target_ms > settings.consent_withdrawal_poll_timeout_ms:
+        errors.append(
+            "CONSENT_WITHDRAWAL_E2E_LATENCY_TARGET_MS must not exceed "
+            "CONSENT_WITHDRAWAL_POLL_TIMEOUT_MS (otherwise the acceptance target is "
+            "unreachable by construction: one blocking read can exceed it)"
+        )
+
     errors.extend(validate_version_compatibility())
 
     return errors

@@ -97,6 +97,8 @@ class Settings(BaseSettings):
     consent_withdrawal_handlers: List[str] = Field(default_factory=lambda: ["safety_action", "data_cleanup"])
     consent_withdrawal_batch_size: int = 10
     consent_withdrawal_poll_timeout_ms: int = 5000
+    # T-G1-INT-06：撤回生效端到端时延验收线（撤回动作 -> 各处理器执行完毕）
+    consent_withdrawal_e2e_latency_target_ms: int = 500
 
     deployment_profile: str = 'compact'
 
