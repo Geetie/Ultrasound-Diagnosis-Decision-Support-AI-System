@@ -101,6 +101,37 @@ def parse_kb_version(version_str: str) -> Optional[KBVersion]:
         return None
 
 
+_VERSION_TOKEN_PATTERN = re.compile(r"[vV](\d+(?:\.\d+)*)")
+_BARE_VERSION_TOKEN_PATTERN = re.compile(r"(?<![A-Za-z0-9])(\d+(?:\.\d+)*)")
+
+
+def parse_model_version(version_str: str) -> Optional[Tuple[int, int]]:
+    """解析模型版本号，返回 (major, minor)。
+
+    比 :func:`_parse_simple_version` 更宽容：配置里的模型版本常带器官/骨干前缀
+    （如 ``"thyroid_v1.0.0"``、``"resnet50_v2.0"``），直接按点号切分会解析失败，
+    进而让兼容性校验对所有真实配置一律判"不兼容"。
+
+    解析优先级：
+    1. 纯版本写法（``"v1.0"`` / ``"1.2.3"``）直接解析；
+    2. 取 ``v``/``V`` 前缀的版本片段（``"thyroid_v1.0.0"`` -> ``1.0``）；
+    3. 兜底取非字母数字边界后的裸版本片段。
+    """
+    direct = _parse_simple_version(version_str)
+    if direct is not None:
+        return direct
+
+    for pattern in (_VERSION_TOKEN_PATTERN, _BARE_VERSION_TOKEN_PATTERN):
+        match = pattern.search(version_str or "")
+        if not match:
+            continue
+        parsed = _parse_simple_version(match.group(1))
+        if parsed is not None:
+            return parsed
+
+    return None
+
+
 def is_compatible(model_version: str, kb_version: str) -> bool:
     """
     Check if model version and knowledge base version are compatible.
@@ -118,7 +149,7 @@ def is_compatible(model_version: str, kb_version: str) -> bool:
     Returns:
         True if compatible, False otherwise
     """
-    model_ver = _parse_simple_version(model_version)
+    model_ver = parse_model_version(model_version)
     kb_ver = parse_kb_version(kb_version)
     
     if not model_ver or not kb_ver:

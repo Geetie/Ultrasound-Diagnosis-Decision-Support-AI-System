@@ -41,6 +41,7 @@ from app.config.redis import RedisPool
 from app.config.redis_keys import RedisKey
 from app.config.rate_limit import check_rate_limit, _get_user_id_from_request
 from app.config.settings import settings
+from app.config.validator import check_version_compatibility
 from app.dependencies import get_diagnosis_repo, get_consent_repo, get_session_repo, get_audit_service
 from app.api.v1.utils import get_actor_id, check_consent_status, try_renew_session
 from app.agents.routing import RoutingDecision
@@ -577,7 +578,10 @@ async def get_diagnosis_result(
         review_reason=review_reason,
         ai_diagnosis_failed=False,
         hallucination_severity=None,
-        version_compatibility="compatible",
+        # T-G1-DATA-02：按兼容矩阵真实计算，不再是恒为 "compatible" 的占位值
+        version_compatibility=check_version_compatibility(
+            model_version, knowledge_base_version
+        ),
         processing_time_ms=processing_time_ms,
         model_version=model_version,
         knowledge_base_version=knowledge_base_version,
