@@ -1,6 +1,7 @@
 import { Typography } from 'antd';
 import { tokens } from '@/styles/tokens';
 import type { Measurement } from '@/types/api';
+import { PIXEL_SPACING_SOURCE_LABELS } from './displayConstants';
 
 const { Text } = Typography;
 
@@ -13,12 +14,6 @@ const { Text } = Typography;
  *   必须提示——把它当作真实尺寸会让医生基于看似精确的错误数字做判断；
  * - ``text``：来自报告文本表述（医生/LLM 写下的大小）。
  */
-export const PIXEL_SPACING_SOURCE_LABELS: Record<string, { label: string; estimated: boolean }> = {
-  dicom: { label: 'DICOM 像素间距', estimated: false },
-  default: { label: '估算（缺 PixelSpacing）', estimated: true },
-  text: { label: '报告文本', estimated: false },
-};
-
 interface MeasurementRow {
   key: string;
   label: string;

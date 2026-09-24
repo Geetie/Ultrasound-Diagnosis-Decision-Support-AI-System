@@ -256,11 +256,15 @@ class Measurement(BaseModel):
 
 
 class DifferentialDiagnosis(BaseModel):
-    """鉴别诊断条目（M4），按可能性降序排列（rank 从 1 开始）。"""
+    """鉴别诊断条目（M4），按可能性降序排列（rank 从 1 开始）。
+
+    ``confidence`` 可选：模型未给出可能性数值时保持 ``None``（界面显示"—"）。
+    按下标反推一个数值会凭空制造看似精确的概率，比不给更危险。
+    """
 
     rank: int = Field(ge=1)
     disease_name: str
-    confidence: float = Field(ge=0.0, le=1.0)
+    confidence: Optional[float] = Field(default=None, ge=0.0, le=1.0)
     disease_code: Optional[str] = None
     supporting_evidence: List[str] = Field(default_factory=list)
     excluding_evidence: List[str] = Field(default_factory=list)

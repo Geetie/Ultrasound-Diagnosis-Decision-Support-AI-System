@@ -53,6 +53,10 @@ import structlog
 from app.agents.protocols import Agent, AgentContext, AgentResponse
 from app.agents.protocols import KnowledgeAgent as KnowledgeAgentProtocol
 from app.inference.protocols import InferenceEngine, InferenceRequest
+from app.knowledge.differential import (
+    differential_summary,
+    parse_differential_diagnoses,
+)
 from app.knowledge.measurement_extract import (
     measurement_features,
     structured_measurement_from_text,
@@ -706,6 +710,15 @@ class RAGSpecialistAgent(SpecialistAgent):
                 response.measurement = measurement
                 response.reasoning_trace.append(
                     f"measurement_source -> {measurement.pixel_spacing_source}"
+                )
+
+            differentials = parse_differential_diagnoses(llm_text)
+            if not differentials and fallback_text:
+                differentials = parse_differential_diagnoses(fallback_text)
+            if differentials:
+                response.differential_diagnoses = differentials
+                response.reasoning_trace.append(
+                    f"differential_diagnoses -> {differential_summary(differentials)}"
                 )
 
             posterior_term = pick_posterior_acoustic_term(features)

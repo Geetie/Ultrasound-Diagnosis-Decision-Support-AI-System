@@ -3,7 +3,8 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
 import type { MalignancyRisk } from '@/types/api';
-import MalignancyRiskGauge, { MALIGNANCY_FEATURE_LABELS } from '../MalignancyRiskGauge';
+import MalignancyRiskGauge from '../MalignancyRiskGauge';
+import { MALIGNANCY_FEATURE_LABELS } from '../displayConstants';
 
 function _risk(overrides: Partial<MalignancyRisk> = {}): MalignancyRisk {
   return {

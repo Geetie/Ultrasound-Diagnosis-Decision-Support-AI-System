@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Typography } from 'antd';
 import { tokens } from '@/styles/tokens';
 import type { MalignancyRisk, MalignancyRiskLevel } from '@/types/api';
+import { MALIGNANCY_FEATURE_LABELS } from './displayConstants';
 
 const { Text } = Typography;
 
@@ -14,23 +15,6 @@ const { Text } = Typography;
  * 红/黄/绿档位色，与置信度的蓝色条形成明确区分，并始终带文字档位标签
  * （不单靠颜色传意）。
  */
-export const MALIGNANCY_FEATURE_LABELS: Record<string, string> = {
-  micro: '微钙化',
-  irregular: '形态不规则',
-  'ill-defined': '边界不清',
-  hypoechoic: '低回声',
-  mixed: '混合/丰富血流',
-  lobulated: '分叶状',
-  internal: '内部血流',
-  aspect_ratio_taller_than_wide: '纵横比>1',
-  posterior_attenuation: '后方回声衰减',
-  clear: '边界清晰',
-  oval: '椭圆形/形态规则',
-  anechoic: '无回声（囊性）',
-  posterior_shadowing: '后方声影',
-  posterior_enhancement: '后方回声增强',
-};
-
 const LEVEL_META: Record<MalignancyRiskLevel, { label: string; color: string }> = {
   low: { label: '低', color: tokens.color.accent.success },
   medium: { label: '中', color: tokens.color.accent.warning },

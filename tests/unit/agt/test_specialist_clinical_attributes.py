@@ -109,6 +109,46 @@ class TestEnrichmentThroughInvoke:
         assert response.posterior_acoustic is None
 
 
+class TestDifferentialDiagnosesThroughInvoke:
+    @pytest.mark.asyncio
+    async def test_parses_differential_list(self, rag):
+        specialist = _specialist(
+            rag,
+            "分级: TR4\n鉴别诊断:\n"
+            "1. 乳头状癌 | 0.60 | 支持: 微钙化 | 排除: 边界清晰\n"
+            "2. 结节性甲状腺肿 | 0.30 | 支持: 混合回声\n",
+        )
+        response = await specialist.invoke(_ctx())
+
+        assert [item.rank for item in response.differential_diagnoses] == [1, 2]
+        assert response.differential_diagnoses[0].disease_name == "乳头状癌"
+        assert response.differential_diagnoses[0].confidence == 0.6
+        assert "differential_diagnoses ->" in "\n".join(response.reasoning_trace)
+
+    @pytest.mark.asyncio
+    async def test_no_differential_block_leaves_empty(self, rag):
+        specialist = _specialist(rag, "分级: TR2\n未见明显异常")
+        response = await specialist.invoke(_ctx())
+
+        assert response.differential_diagnoses == []
+
+    def test_falls_back_to_chunk_text(self):
+        from tests.unit.agt.conftest import make_chunk
+
+        chunk = make_chunk(
+            chunk_id="k1", content="鉴别诊断:\n1. 乳头状癌 | 0.5 | 支持: 微钙化\n"
+        )
+        specialist = ThyroidSpecialistAgent(
+            inference_engine=FakeInferenceEngine(text="分级: TR4"),
+            knowledge_agent=FakeKnowledgeAgent(chunks=[chunk]),
+        )
+        response = AgentResponse(agent_name="thyroid_specialist", organ=Organ.THYROID)
+
+        specialist._enrich_clinical_attributes(response, "分级: TR4", [chunk])
+
+        assert response.differential_diagnoses[0].disease_name == "乳头状癌"
+
+
 class TestEnrichmentRobustness:
     def test_failure_is_swallowed(self, monkeypatch):
         """增强能力失败不得影响诊断主流程。"""

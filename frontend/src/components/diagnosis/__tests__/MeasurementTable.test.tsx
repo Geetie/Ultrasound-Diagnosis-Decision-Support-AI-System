@@ -2,7 +2,8 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import type { Measurement } from '@/types/api';
-import MeasurementTable, { PIXEL_SPACING_SOURCE_LABELS } from '../MeasurementTable';
+import MeasurementTable from '../MeasurementTable';
+import { PIXEL_SPACING_SOURCE_LABELS } from '../displayConstants';
 
 function _measurement(overrides: Partial<Measurement> = {}): Measurement {
   return {

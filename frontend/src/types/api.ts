@@ -115,7 +115,8 @@ export interface Measurement {
 export interface DifferentialDiagnosis {
   rank: number;
   disease_name: string;
-  confidence: number;
+  /** 模型未给出可能性时为 null（界面显示"—"，不反推数值） */
+  confidence?: number | null;
   disease_code?: string | null;
   supporting_evidence: string[];
   excluding_evidence: string[];
