@@ -52,9 +52,30 @@ class BenchResult:
 
 
 @dataclass
+class MetricResult:
+    """非延迟型指标（并发放大倍数、显存占用等）。
+
+    延迟基准用 P50/P95/P99 表达，但"并发下退化倍数""显存占用"这类量纲不同的
+    指标硬塞进 BenchResult 会让报告表头失去意义（P99 是多少 MB？），故单列。
+    """
+
+    name: str
+    suite: str
+    value: float
+    unit: str
+    threshold: float
+    passed: bool
+    note: str = ""
+
+    def as_dict(self) -> Dict[str, object]:
+        return asdict(self)
+
+
+@dataclass
 class SuiteReport:
     passed: bool = True
     results: List[BenchResult] = field(default_factory=list)
+    metrics: List[MetricResult] = field(default_factory=list)
     errors: List[str] = field(default_factory=list)
     skipped: List[str] = field(default_factory=list)
 
@@ -211,6 +232,164 @@ def suite_inline(iterations: int) -> SuiteReport:
 
 
 # ----------------------------------------------------------------------
+# 并发维度（T-G1-INT-03 缺的一维：延迟达标不等于并发达标）
+# ----------------------------------------------------------------------
+
+CONCURRENCY_LEVEL = 8
+CONCURRENCY_AMPLIFICATION_LIMIT = 6.0
+
+
+def suite_concurrency(
+    iterations: int, concurrency: int = CONCURRENCY_LEVEL
+) -> SuiteReport:
+    """同一热路径在 C 路并发下的单次耗时放大倍数。
+
+    为什么单看 P99 不够：热路径若在并发下退化为近似串行（共享锁、GIL 密集
+    段、同步 I/O），**单次**延迟依然漂亮，而吞吐掉 C 倍——线上表现是"每个请求
+    都不慢，但排队排到超时"。这里把并发 P99 与串行 P99 的比值作为门槛，直接
+    暴露这类退化。
+
+    阈值 6.0 的由来：纯 CPU 密集段在 GIL 下并发 C=8 的理论最坏放大就是 8x，
+    取 6.0 留出噪声余量，同时能挡住"整段被串行化"（会到 8x 以上）。
+    """
+    import asyncio
+
+    from app.agents.routing import RoutingDecision  # noqa: F401  (保持与 inline 同源导入)
+    from app.models.schemas import ResponseTier
+    from app.services.diagnosis_pipeline import get_routing_router
+
+    report = SuiteReport()
+    router = get_routing_router()
+    query = "低回声结节，边界不清，微钙化，血流信号丰富"
+
+    def _hot_path() -> None:
+        router.assess(query=query, requested_tier=ResponseTier.STANDARD, target_organ="thyroid")
+
+    serial_batches = max(1, iterations // concurrency)
+
+    async def _run_concurrent() -> List[float]:
+        samples: List[float] = []
+        for _ in range(serial_batches):
+            started = time.perf_counter()
+            await asyncio.gather(*[asyncio.to_thread(_hot_path) for _ in range(concurrency)])
+            samples.append((time.perf_counter() - started) * 1000.0 / concurrency)
+        return samples
+
+    for _ in range(5):
+        _hot_path()  # warmup，避免把首次导入/缓存填充算进并发基线
+
+    serial = measure(
+        f"档位判定串行基线(C=1)",
+        suite="concurrency",
+        func=_hot_path,
+        iterations=iterations,
+        threshold_ms=50.0,
+        note="并发放大倍数的分母",
+    )
+    report.results.append(serial)
+
+    concurrent_samples = sorted(asyncio.run(_run_concurrent()))
+    concurrent_p99 = _percentile(concurrent_samples, 99)
+    amplification = concurrent_p99 / max(serial.p99_ms, 1e-6)
+
+    report.metrics.append(
+        MetricResult(
+            name=f"热路径并发放大倍数(C={concurrency})",
+            suite="concurrency",
+            value=round(amplification, 3),
+            unit="x",
+            threshold=CONCURRENCY_AMPLIFICATION_LIMIT,
+            passed=amplification <= CONCURRENCY_AMPLIFICATION_LIMIT,
+            note="并发 P99 / 串行 P99；接近 C 说明热路径在并发下退化为串行",
+        )
+    )
+    report.results.append(
+        BenchResult(
+            name=f"档位判定并发 P99(C={concurrency})",
+            suite="concurrency",
+            samples=len(concurrent_samples),
+            p50_ms=round(_percentile(concurrent_samples, 50), 4),
+            p95_ms=round(_percentile(concurrent_samples, 95), 4),
+            p99_ms=round(concurrent_p99, 4),
+            max_ms=round(max(concurrent_samples), 4),
+            threshold_ms=round(serial.p99_ms * CONCURRENCY_AMPLIFICATION_LIMIT, 4),
+            passed=amplification <= CONCURRENCY_AMPLIFICATION_LIMIT,
+            note="每样本为 C 路并发的平均单次耗时",
+        )
+    )
+    report.passed = all(item.passed for item in report.results) and all(
+        item.passed for item in report.metrics
+    )
+    return report
+
+
+# ----------------------------------------------------------------------
+# 显存维度（T-G1-INT-03 缺的另一维：真机项，无 GPU 时显式跳过而非静默通过）
+# ----------------------------------------------------------------------
+
+
+def suite_vram() -> SuiteReport:
+    """显存占用与碎片率快照。
+
+    真机项：本机无可用 GPU 时记为 SKIP 而不是 PASS——静默通过会让人误以为
+    "显存维度已验证"，而实际上什么都没测。
+    """
+    report = SuiteReport()
+    from app.inference.gpu_memory_monitor import GPUMemoryMonitor
+
+    monitor = GPUMemoryMonitor()
+    if not monitor.is_gpu_available():
+        report.skipped.append("vram（本机无可用 GPU；显存维度需真机验证）")
+        return report
+
+    snapshot = monitor.take_snapshot()
+    if snapshot is None:
+        report.skipped.append("vram（nvidia-smi 未返回快照）")
+        return report
+
+    data = snapshot.to_dict()
+    total = float(data.get("total_memory_mb") or 0.0)
+    used = float(data.get("used_memory_mb") or 0.0)
+    utilization = (used / total * 100.0) if total else 0.0
+
+    report.metrics.append(
+        MetricResult(
+            name="显存占用率",
+            suite="vram",
+            value=round(utilization, 2),
+            unit="%",
+            threshold=90.0,
+            passed=utilization <= 90.0,
+            note=f"used={used:.0f}MB / total={total:.0f}MB",
+        )
+    )
+    fragmentation = _vram_fragmentation_rate(data)
+    if fragmentation is not None:
+        report.metrics.append(
+            MetricResult(
+                name="显存碎片率",
+                suite="vram",
+                value=round(fragmentation, 2),
+                unit="%",
+                threshold=30.0,
+                passed=fragmentation <= 30.0,
+                note="碎片率过高会触发模型热重载（见 gpu_memory_monitor）",
+            )
+        )
+    report.passed = all(item.passed for item in report.metrics)
+    return report
+
+
+def _vram_fragmentation_rate(snapshot: Dict[str, object]) -> Optional[float]:
+    """从快照里取碎片率；缺字段或估算不可用时返回 None。"""
+    for key in ("fragmentation_rate", "fragmentation", "fragmentation_percent"):
+        raw = snapshot.get(key)
+        if isinstance(raw, (int, float)):
+            return float(raw) * 100.0 if raw <= 1.0 else float(raw)
+    return None
+
+
+# ----------------------------------------------------------------------
 # 子脚本基准（复用既有脚本，避免重复实现）
 # ----------------------------------------------------------------------
 
@@ -259,6 +438,14 @@ def print_report(report: SuiteReport) -> None:
         )
         if item.note:
             print(f"         备注：{item.note}")
+    for metric in report.metrics:
+        flag = "PASS" if metric.passed else "FAIL"
+        print(
+            f"  [{flag}] {metric.name:<32} {metric.value:>8.3f}{metric.unit} "
+            f"(阈值 {metric.threshold}{metric.unit})"
+        )
+        if metric.note:
+            print(f"         备注：{metric.note}")
     for skipped in report.skipped:
         print(f"  [SKIP] {skipped}")
     for error in report.errors:
@@ -272,7 +459,7 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     parser.add_argument(
         "--suite",
         default="inline",
-        choices=["inline", "sg", "http", "memory", "model", "all"],
+        choices=["inline", "concurrency", "vram", "sg", "http", "memory", "model", "all"],
         help="要运行的基准套件（默认 inline，无外部依赖）",
     )
     parser.add_argument("--iterations", type=int, default=500, help="inline 套件的采样次数")
@@ -302,12 +489,28 @@ def main(argv: Optional[List[str]] = None) -> int:
         for name, scripts in SUB_SCRIPTS.items():
             print(f"  {name:<8} -> {', '.join(scripts)}")
         print("  inline   -> 内置纯函数基准（报告渲染/摘要/冷归档序列化/档位判定）")
-        print("  all      -> inline + sg（http/memory/model 需额外参数，未纳入 all）")
+        print("  concurrency -> 热路径并发放大倍数（随 inline 一起跑）")
+        print("  vram     -> 显存占用率与碎片率（真机项，无 GPU 记为 SKIP）")
+        print("  all      -> inline + concurrency + vram + sg（http/memory/model 需额外参数，未纳入 all）")
         return 0
 
     report = SuiteReport()
     if args.suite in ("inline", "all"):
         report.results.extend(suite_inline(args.iterations).results)
+    if args.suite in ("inline", "concurrency", "all"):
+        # 并发维度与 inline 一样无外部依赖，随 inline 一起跑，CI 无需改配置
+        concurrent = suite_concurrency(args.iterations)
+        report.results.extend(concurrent.results)
+        report.metrics.extend(concurrent.metrics)
+        report.skipped.extend(concurrent.skipped)
+        if not concurrent.passed:
+            report.passed = False
+    if args.suite in ("vram", "all"):
+        vram = suite_vram()
+        report.metrics.extend(vram.metrics)
+        report.skipped.extend(vram.skipped)
+        if not vram.passed:
+            report.passed = False
     if args.suite == "sg":
         sub = suite_subprocess("sg", [])
         report.errors.extend(sub.errors)
@@ -339,6 +542,8 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     if report.results:
         report.passed = report.passed and all(item.passed for item in report.results)
+    if report.metrics:
+        report.passed = report.passed and all(item.passed for item in report.metrics)
 
     print_report(report)
 
@@ -346,6 +551,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         payload = {
             "passed": report.passed,
             "results": [item.as_dict() for item in report.results],
+            "metrics": [item.as_dict() for item in report.metrics],
             "errors": report.errors,
             "skipped": report.skipped,
             "generated_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
