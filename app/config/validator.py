@@ -73,6 +73,17 @@ def validate_config() -> List[str]:
             "unreachable by construction: one blocking read can exceed it)"
         )
 
+    if settings.correction_rate_window_days <= 0:
+        errors.append("CORRECTION_RATE_WINDOW_DAYS must be greater than 0")
+    if settings.correction_rate_min_samples < 1:
+        errors.append("CORRECTION_RATE_MIN_SAMPLES must be at least 1")
+    if not 0 < settings.correction_rate_direction_alert_threshold <= 1:
+        errors.append("CORRECTION_RATE_DIRECTION_ALERT_THRESHOLD must be in (0, 1]")
+    if not 0 < settings.correction_rate_reviewer_alert_threshold <= 1:
+        errors.append("CORRECTION_RATE_REVIEWER_ALERT_THRESHOLD must be in (0, 1]")
+    if not 0 <= settings.correction_rate_peer_baseline_threshold < 1:
+        errors.append("CORRECTION_RATE_PEER_BASELINE_THRESHOLD must be in [0, 1)")
+
     if settings.rollout_enabled:
         if not 0 <= settings.rollout_full_percent <= 100:
             errors.append("ROLLOUT_FULL_PERCENT must be between 0 and 100")

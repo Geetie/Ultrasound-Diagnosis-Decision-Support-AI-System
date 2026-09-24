@@ -100,6 +100,14 @@ class Settings(BaseSettings):
     # T-G1-INT-06：撤回生效端到端时延验收线（撤回动作 -> 各处理器执行完毕）
     consent_withdrawal_e2e_latency_target_ms: int = 500
 
+    # 二期 §7 AI 修正率监控
+    correction_rate_window_days: int = 30
+    correction_rate_direction_alert_threshold: float = 0.20
+    correction_rate_reviewer_alert_threshold: float = 0.50
+    correction_rate_peer_baseline_threshold: float = 0.20
+    # 低于该样本数只统计不判定：1/1=100% 会直接触发个体告警，把真实信号淹没
+    correction_rate_min_samples: int = 20
+
     # T-GR-INT-01 灰度发布路由
     rollout_enabled: bool = False
     rollout_full_percent: int = 5
