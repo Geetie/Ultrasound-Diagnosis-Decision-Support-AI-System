@@ -30,7 +30,9 @@ from edge.config import EdgeConfigError, EdgeSettings
 from edge.device_auth import EdgeDeviceAuth
 from edge.device_manager import EdgeDeviceManager
 from edge.dicom_scp import DicomSCPService
+from edge.image_quality import create_image_quality_adapter
 from edge.nav_backend import create_nav_backend
+from edge.plane_assessment import create_plane_assessment_adapter
 from edge.navigation import NavigationInferenceService
 from edge.ota_client import OTAClient
 from edge.pipeline import EdgePipeline
@@ -341,6 +343,14 @@ def build_edge_service(
             backend,
             safety_checker=LocalSafetyChecker(),
             target_fps=settings.nav_target_fps,
+            # M1/M6：未部署评估头时为 null 适配器（不产出字段）
+            plane_assessment_adapter=create_plane_assessment_adapter(
+                settings.plane_assessment_adapter
+            ),
+            image_quality_adapter=create_image_quality_adapter(
+                settings.image_quality_adapter
+            ),
+            organ_code=settings.organ_code,
         )
 
     pipeline = EdgePipeline(nav_service, uplink=uplink, device_manager=device_manager)

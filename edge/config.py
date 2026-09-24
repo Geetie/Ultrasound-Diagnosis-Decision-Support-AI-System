@@ -14,6 +14,9 @@
     EDGE_ENGINE_PATH        /opt/models/nav.plan
     EDGE_MODEL_LABELS       organ_name,boundary,echogenicity
     EDGE_DOWNLOAD_DIR       /var/lib/ultrasound/ota
+    EDGE_PLANE_ASSESSMENT_ADAPTER   null | local_fake（M1，真机经注入）
+    EDGE_IMAGE_QUALITY_ADAPTER      null | local_fake（M6，真机经注入）
+    EDGE_ORGAN_CODE         thyroid（M1 切面评估与 M2 阈值所需的器官标识）
 """
 from __future__ import annotations
 
@@ -90,6 +93,14 @@ class EdgeSettings:
     model_labels: Tuple[str, ...] = DEFAULT_MODEL_LABELS
     nav_target_fps: float = 15.0
 
+    # M1/M6 评估适配器：默认 null（不产出），真机实现由现场经
+    # edge.plane_assessment.set_plane_assessment_adapter() /
+    # edge.image_quality.set_image_quality_adapter() 注入。
+    plane_assessment_adapter: str = "null"
+    image_quality_adapter: str = "null"
+    # M2 器官级置信度阈值选取 + M1 切面评估的器官标识
+    organ_code: Optional[str] = None
+
     download_dir: str = "./edge_downloads"
     ota_rate_limit_bytes_per_second: int = DEFAULT_OTA_RATE_LIMIT_BPS
 
@@ -119,6 +130,9 @@ class EdgeSettings:
             engine_path=get("ENGINE_PATH") or None,
             model_labels=_as_labels(get("MODEL_LABELS"), DEFAULT_MODEL_LABELS),
             nav_target_fps=_as_float(get("NAV_TARGET_FPS"), 15.0),
+            plane_assessment_adapter=(get("PLANE_ASSESSMENT_ADAPTER") or "null").strip(),
+            image_quality_adapter=(get("IMAGE_QUALITY_ADAPTER") or "null").strip(),
+            organ_code=(get("ORGAN_CODE") or "").strip().lower() or None,
             download_dir=get("DOWNLOAD_DIR") or "./edge_downloads",
             ota_rate_limit_bytes_per_second=_as_int(
                 get("OTA_RATE_LIMIT_BPS"), DEFAULT_OTA_RATE_LIMIT_BPS
@@ -177,6 +191,9 @@ class EdgeSettings:
             "engine_path": self.engine_path,
             "model_labels": list(self.model_labels),
             "nav_target_fps": self.nav_target_fps,
+            "plane_assessment_adapter": self.plane_assessment_adapter,
+            "image_quality_adapter": self.image_quality_adapter,
+            "organ_code": self.organ_code,
             "download_dir": self.download_dir,
             "ota_rate_limit_bytes_per_second": self.ota_rate_limit_bytes_per_second,
             "heartbeat_interval_seconds": self.heartbeat_interval_seconds,

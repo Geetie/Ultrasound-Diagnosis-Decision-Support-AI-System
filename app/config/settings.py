@@ -145,6 +145,23 @@ class Settings(BaseSettings):
     nav_safety_check_max_timeout_seconds: float = 0.08
     nav_verification_workers: int = 4
     nav_max_connections_per_session: int = 5
+
+    # === M2 快速路径高危标记自动升级 ===
+    # 命中 B+ 级（risk_flag=high，已过 SafetyGateway）时自动发起深度诊断。
+    nav_auto_upgrade_enabled: bool = True
+    # 自动升级使用的响应档位（规格：标准/全量）。
+    nav_auto_upgrade_tier: str = "standard"
+    # 同一会话的升级冷却窗口（秒）。导航流为 15fps，若不做冷却会逐帧入队，
+    # 瞬间打满诊断队列。
+    nav_auto_upgrade_cooldown_seconds: float = 60.0
+    # 同一会话最多自动升级次数（防止异常模型持续误标导致队列饥饿）。
+    nav_auto_upgrade_max_per_session: int = 3
+
+    # === M1 切面标准性监控 ===
+    # 连续多少帧非标准切面触发流程监控提醒（规格：连续 5 帧）。
+    nav_plane_non_standard_streak_threshold: int = 5
+    # 连续多少帧图像质量不达标触发提醒。
+    nav_image_quality_poor_streak_threshold: int = 5
     session_max_ttl_seconds: int = 7200
     dicom_max_retransmit_per_frame: int = 3
     dicom_max_retransmit_frame_range: int = 90
@@ -378,6 +395,36 @@ class Settings(BaseSettings):
         if v not in allowed:
             raise ValueError(f"deployment_profile must be one of {allowed}, got '{v}'")
         return v
+
+    @field_validator("nav_auto_upgrade_tier")
+    @classmethod
+    def nav_auto_upgrade_tier_must_be_valid(cls, v: str) -> str:
+        allowed = {'realtime', 'standard', 'full'}
+        if v not in allowed:
+            raise ValueError(
+                f"nav_auto_upgrade_tier must be one of {allowed}, got '{v}'"
+            )
+        return v
+
+    @model_validator(mode='after')
+    def validate_m2_risk_config(self) -> 'Settings':
+        """M2 自动升级的参数必须自洽，避免配错导致逐帧入队打满队列。"""
+        if self.nav_auto_upgrade_cooldown_seconds < 0:
+            raise ValueError(
+                "nav_auto_upgrade_cooldown_seconds 不能为负: "
+                f"{self.nav_auto_upgrade_cooldown_seconds}"
+            )
+        if self.nav_auto_upgrade_max_per_session < 1:
+            raise ValueError(
+                "nav_auto_upgrade_max_per_session 必须 >= 1: "
+                f"{self.nav_auto_upgrade_max_per_session}"
+            )
+        if self.nav_plane_non_standard_streak_threshold < 1:
+            raise ValueError(
+                "nav_plane_non_standard_streak_threshold 必须 >= 1: "
+                f"{self.nav_plane_non_standard_streak_threshold}"
+            )
+        return self
 
     @model_validator(mode='after')
     def validate_deployment_config(self) -> 'Settings':

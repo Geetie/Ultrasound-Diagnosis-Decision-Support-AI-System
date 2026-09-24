@@ -22,6 +22,8 @@ from typing import Any, Awaitable, Callable, Deque, Dict, Optional
 import structlog
 
 from edge.device_auth import EdgeDeviceAuth
+from edge.image_quality import image_quality_to_dict
+from edge.plane_assessment import plane_assessment_to_dict
 from edge.protocols import Frame, NavResult
 
 logger = structlog.get_logger(__name__)
@@ -163,27 +165,46 @@ class EdgeWebSocketClient:
         self._queue.append(message)
 
     async def push_nav_result(self, result: NavResult) -> bool:
-        ok = await self._send(
-            {
-                "type": "nav_result",
-                "frame_id": result.frame_id,
-                "session_id": result.session_id,
-                "latency_ms": result.infer_latency_ms,
-                "backend": result.backend,
-                "labels": [
-                    {
-                        "label": label.label,
-                        "x": label.x,
-                        "y": label.y,
-                        "width": label.width,
-                        "height": label.height,
-                        "confidence": label.confidence,
-                    }
-                    for label in result.labels
-                ],
-                "timestamp_ms": int(time.time() * 1000),
-            }
-        )
+        """上行导航结果。
+
+        M1/M2/M6 的新增字段只在**确有值**时写入载荷：既减小实时流体积，
+        也让未升级的后端可以照旧解析（后端契约里这些字段均为可选）。
+        """
+        payload: Dict[str, Any] = {
+            "type": "nav_result",
+            "frame_id": result.frame_id,
+            "session_id": result.session_id,
+            "latency_ms": result.infer_latency_ms,
+            "backend": result.backend,
+            "labels": [
+                {
+                    "label": label.label,
+                    "x": label.x,
+                    "y": label.y,
+                    "width": label.width,
+                    "height": label.height,
+                    "confidence": label.confidence,
+                    **(
+                        {
+                            "risk_flag": label.risk_flag,
+                            "suggested_action": label.suggested_action,
+                        }
+                        if label.risk_flag or label.suggested_action
+                        else {}
+                    ),
+                }
+                for label in result.labels
+            ],
+            "timestamp_ms": int(time.time() * 1000),
+        }
+        if result.plane_assessment is not None:
+            payload["plane_assessment"] = plane_assessment_to_dict(
+                result.plane_assessment
+            )
+        if result.image_quality is not None:
+            payload["image_quality"] = image_quality_to_dict(result.image_quality)
+
+        ok = await self._send(payload)
         if ok:
             self._stats.sent_nav += 1
         return ok

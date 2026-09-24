@@ -1,5 +1,9 @@
 import type { NavigationAnnotation, AnnotationValidationStatus } from '@/types/navigation';
-import { ANNOTATION_STYLES } from '@/types/navigation';
+import {
+  ANNOTATION_STYLES,
+  HIGH_RISK_ACTION_TEXT,
+  HIGH_RISK_ANNOTATION_STYLE,
+} from '@/types/navigation';
 
 interface AnnotationBoxProps {
   annotation: NavigationAnnotation;
@@ -9,7 +13,10 @@ interface AnnotationBoxProps {
 
 export default function AnnotationBox({ annotation, status, revokeReason }: AnnotationBoxProps) {
   const [x, y, w, h] = annotation.bbox;
-  const style = ANNOTATION_STYLES[status];
+  // M2：B+ 级高危标记优先于校验态样式 —— 橙色脉冲必须压过琥珀色闪烁，
+  // 否则医生在多个标注并存时看不出"哪一个是需要立即关注的"。
+  const isHighRisk = annotation.risk_flag === 'high' && status !== 'revoked' && status !== 'timeout';
+  const style = isHighRisk ? HIGH_RISK_ANNOTATION_STYLE : ANNOTATION_STYLES[status];
   const confidencePercent = Math.round(annotation.confidence * 100);
 
   if (status === 'revoked') {
@@ -84,7 +91,7 @@ export default function AnnotationBox({ annotation, status, revokeReason }: Anno
   const isPending = status === 'pending';
 
   return (
-    <g>
+    <g data-testid="annotation-box" data-high-risk={isHighRisk ? 'true' : 'false'}>
       <rect
         x={x}
         y={y}
@@ -96,15 +103,17 @@ export default function AnnotationBox({ annotation, status, revokeReason }: Anno
         strokeWidth={style.borderWidth}
         strokeDasharray={style.dashArray}
         style={
-          isPending
-            ? { animation: 'annotation-pending-blink 1.5s ease-in-out infinite' }
-            : undefined
+          isHighRisk
+            ? { animation: HIGH_RISK_ANNOTATION_STYLE.animation }
+            : isPending
+              ? { animation: 'annotation-pending-blink 1.5s ease-in-out infinite' }
+              : undefined
         }
       />
       <rect
         x={x}
         y={y - 22}
-        width={Math.max(w, 120)}
+        width={Math.max(w, isHighRisk ? 190 : 120)}
         height={20}
         rx={3}
         fill={style.labelBgColor}
@@ -117,19 +126,34 @@ export default function AnnotationBox({ annotation, status, revokeReason }: Anno
         fontFamily="'Inter', sans-serif"
         fontWeight={600}
       >
+        {isHighRisk ? '⚠ ' : ''}
         {annotation.label} {confidencePercent}%
       </text>
-      {isPending && (
+      {isHighRisk ? (
         <text
           x={x + 6}
           y={y + h + 14}
-          fill="#f59e0b"
+          fill="#f97316"
           fontSize={9}
           fontFamily="'Inter', sans-serif"
-          style={{ animation: 'annotation-pending-blink 1.5s ease-in-out infinite' }}
+          fontWeight={600}
+          style={{ animation: 'annotation-high-risk-pulse 1.6s ease-in-out infinite' }}
         >
-          待校验
+          {HIGH_RISK_ACTION_TEXT}
         </text>
+      ) : (
+        isPending && (
+          <text
+            x={x + 6}
+            y={y + h + 14}
+            fill="#f59e0b"
+            fontSize={9}
+            fontFamily="'Inter', sans-serif"
+            style={{ animation: 'annotation-pending-blink 1.5s ease-in-out infinite' }}
+          >
+            待校验
+          </text>
+        )
       )}
     </g>
   );

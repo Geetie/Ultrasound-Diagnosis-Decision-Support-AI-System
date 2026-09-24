@@ -23,12 +23,20 @@ from app.models.schemas import (
     WebSocketMessageType,
     NavigationAnnotation,
     DesensitizationStatus,
+    ImageQuality,
+    PlaneAssessment,
+    RiskFlag,
+    SuggestedAction,
 )
 from app.config.database import AsyncSessionLocal
 from app.config.settings import settings
 from app.repositories import DeviceRepository, SessionRepository, ConsentRepository
 from app.models.database import DiagnosisSession
 from app.services.audit_service import AuditService
+from app.services.navigation_upgrade import (
+    collect_risk_labels,
+    get_navigation_upgrade_service,
+)
 from app.services.safety_gateway_client import safety_gateway_client
 
 logger = structlog.get_logger()
@@ -39,6 +47,9 @@ WS_CLOSE_AUTH_FAILED = 4001
 WS_CLOSE_AUTH_TIMEOUT = 4002
 
 _nav_verification_semaphore: Optional[asyncio.Semaphore] = None
+
+# M2：自动升级的后台任务引用（持引用避免被 GC；非 asyncio 原语，无需绑定事件循环）
+_pending_upgrade_tasks: Set[asyncio.Task] = set()
 
 
 def _get_nav_verification_semaphore() -> asyncio.Semaphore:
@@ -97,9 +108,16 @@ def record_nav_latency(message, started_monotonic: float) -> Optional[float]:
 
 
 def edge_labels_to_annotations(labels) -> List[NavigationAnnotation]:
-    """边缘端标注（归一化 x/y/w/h）→ 前端导航标注（归一化 bbox）。"""
+    """边缘端标注（归一化 x/y/w/h）→ 前端导航标注（归一化 bbox）。
+
+    M2：B+ 级标记随标注透传。只接受契约内的取值（``high`` /
+    ``start_standard_evaluation``），其它字符串一律丢弃——避免未升级或
+    异常边缘端把任意内容塞进对外契约。
+    """
     annotations: List[NavigationAnnotation] = []
     for label in labels:
+        risk_flag = getattr(label, "risk_flag", None)
+        suggested_action = getattr(label, "suggested_action", None)
         annotations.append(
             NavigationAnnotation(
                 label=label.label,
@@ -110,9 +128,98 @@ def edge_labels_to_annotations(labels) -> List[NavigationAnnotation]:
                     float(label.width),
                     float(label.height),
                 ],
+                risk_flag=(
+                    RiskFlag.HIGH if risk_flag == RiskFlag.HIGH.value else None
+                ),
+                suggested_action=(
+                    SuggestedAction.START_STANDARD_EVALUATION
+                    if suggested_action == SuggestedAction.START_STANDARD_EVALUATION.value
+                    else None
+                ),
             )
         )
     return annotations
+
+
+def _schedule_auto_upgrade(
+    *,
+    session_id: str,
+    frame_id: str,
+    annotations: List[NavigationAnnotation],
+    patient_id: Optional[str],
+    organ: Optional[str] = None,
+) -> Optional[asyncio.Task]:
+    """M2：把 B+ 级高危标记的自动升级**移出导航热路径**。
+
+    导航链路有 P99 < 200ms 的验收要求，而升级涉及多次 DB 查询 + 写入 +
+    入队，绝不能同步等待。这里只做两件廉价的事：同步收集高危标签、同步
+    预留配额（防抖在此生效，15fps 的连续帧不会派生一堆任务），真正的工作
+    交给后台任务。
+
+    Returns:
+        已派生的任务；未触发时返回 ``None``。
+    """
+    if not settings.nav_auto_upgrade_enabled:
+        return None
+    if not collect_risk_labels(annotations):
+        return None
+
+    service = get_navigation_upgrade_service()
+    rejection = service.try_reserve(session_id)
+    if rejection:
+        logger.debug(
+            "nav_auto_upgrade_not_scheduled",
+            session_id=session_id,
+            frame_id=frame_id,
+            reason=rejection,
+        )
+        return None
+
+    task = asyncio.create_task(
+        service.perform_upgrade(
+            session_id=session_id,
+            frame_id=frame_id,
+            annotations=annotations,
+            organ=organ,
+            patient_id=patient_id,
+        ),
+        name="nav-auto-upgrade",
+    )
+    _pending_upgrade_tasks.add(task)
+    task.add_done_callback(_pending_upgrade_tasks.discard)
+    return task
+
+
+def _observe_navigation_quality(
+    websocket,
+    *,
+    session_id: str,
+    frame_id: str,
+    plane_assessment: Optional[PlaneAssessment],
+    image_quality: Optional[ImageQuality],
+) -> List[str]:
+    """M1/M6：把本帧的切面/质量交给流程监控智能体。
+
+    监控是纯内存操作（同步、廉价），但仍是"旁路"能力：监控对象缺失或
+    内部异常都不得影响导航下发。
+    """
+    if plane_assessment is None and image_quality is None:
+        return []
+    try:
+        app = getattr(websocket, "app", None)
+        monitor = getattr(getattr(app, "state", None), "monitor_agent", None)
+        observe = getattr(monitor, "observe_navigation_frame", None)
+        if observe is None:
+            return []
+        return observe(
+            session_id=session_id,
+            frame_id=frame_id,
+            plane_assessment=plane_assessment,
+            image_quality=image_quality,
+        )
+    except Exception as exc:  # noqa: BLE001 - 监控失败不影响导航
+        logger.debug("nav_quality_monitor_failed", error=str(exc))
+        return []
 
 
 async def deliver_navigation_annotations(
@@ -123,11 +230,19 @@ async def deliver_navigation_annotations(
     annotations: List[NavigationAnnotation],
     message,
     started_monotonic: float,
+    plane_assessment: Optional[PlaneAssessment] = None,
+    image_quality: Optional[ImageQuality] = None,
+    organ: Optional[str] = None,
 ) -> bool:
     """同意/安全网关校验后把导航标注下发到前端，并记录链路延迟。
 
     后端推理路径（FrameMessage）与边缘端上行路径（nav_result）共用本函数，
     保证两条路径的安全检查、降级标记与埋点口径完全一致。
+
+    M1/M6：切面评估与图像质量是**帧级**属性，随 ``NavigationMessage`` 下发
+    （不逐标注重复）。M2：B+ 级高危标记的自动升级在网关放行、消息下发之后
+    以**后台任务**发起，既不阻塞本条导航（P99 < 200ms），也不为被网关拒绝
+    的输出发起诊断。
 
     Returns:
         True 已下发；False 被安全网关拒绝（已下发撤销消息）。
@@ -144,13 +259,23 @@ async def deliver_navigation_annotations(
         logger.warning("nav_consent_lookup_failed", session_id=session_id, error=str(e))
 
     desensitization_status = DesensitizationStatus.FULL
+    # 交给 SafetyGateway 的载荷：帧级属性同样要过网关（它们已在四处白名单
+    # 中同口径登记；未部署评估头时不带键，保持载荷与改造前一致）。
+    sg_output_data: Dict[str, object] = {
+        "annotations": [a.model_dump() for a in annotations]
+    }
+    if plane_assessment is not None:
+        sg_output_data["plane_assessment"] = plane_assessment.model_dump()
+    if image_quality is not None:
+        sg_output_data["image_quality"] = image_quality.model_dump()
+
     try:
         async with _get_nav_verification_semaphore():
             sg_result = await asyncio.wait_for(
                 safety_gateway_client.check_output(
                     session_id=session_id,
                     patient_id=patient_id,
-                    output_data={"annotations": [a.model_dump() for a in annotations]},
+                    output_data=sg_output_data,
                     consent_status_at_input=consent_status,
                 ),
                 timeout=settings.nav_safety_check_max_timeout_seconds,
@@ -185,10 +310,21 @@ async def deliver_navigation_annotations(
         frame_id=frame_id,
         annotations=annotations,
         desensitization_status=desensitization_status,
+        plane_assessment=plane_assessment,
+        image_quality=image_quality,
     )
     await manager.send_personal_message(nav_msg.model_dump(), session_id)
     # T-GB-INT-02：导航链路延迟埋点（此前 nav_latency 指标只有定义与读取方）
     record_nav_latency(message, started_monotonic)
+
+    # M2：网关放行后才考虑自动升级（被拒输出不发起深度诊断）
+    _schedule_auto_upgrade(
+        session_id=session_id,
+        frame_id=frame_id,
+        annotations=annotations,
+        patient_id=patient_id,
+        organ=organ,
+    )
     return True
 
 
@@ -644,7 +780,7 @@ async def websocket_nav_endpoint(
                         annotations = []
                         logger.info("nav_no_inference_engine_returning_empty", session_id=session_id)
 
-                    await deliver_navigation_annotations(
+                    delivered = await deliver_navigation_annotations(
                         manager=manager,
                         session_id=session_id,
                         frame_id=frame_msg.frame_id,
@@ -652,6 +788,16 @@ async def websocket_nav_endpoint(
                         message=frame_msg,
                         started_monotonic=frame_started,
                     )
+                    if delivered:
+                        # 后端推理路径当前不产出切面/质量（真机由边缘端提供），
+                        # 这里保持接线以便后续接入即生效。
+                        _observe_navigation_quality(
+                            websocket,
+                            session_id=session_id,
+                            frame_id=frame_msg.frame_id,
+                            plane_assessment=None,
+                            image_quality=None,
+                        )
 
                 elif data.get("type") == "nav_result":
                     # T-GB-INT-02：边缘端上行导航结果（edge/websocket_server
@@ -659,14 +805,26 @@ async def websocket_nav_endpoint(
                     # 边缘端算出的标注到后端即被丢弃，导航链路是断的。
                     edge_msg = EdgeNavResultMessage(**data)
                     edge_started = time.monotonic()
-                    await deliver_navigation_annotations(
+                    edge_session_id = edge_msg.session_id or session_id
+                    delivered = await deliver_navigation_annotations(
                         manager=manager,
-                        session_id=edge_msg.session_id or session_id,
+                        session_id=edge_session_id,
                         frame_id=edge_msg.frame_id,
                         annotations=edge_labels_to_annotations(edge_msg.labels),
                         message=edge_msg,
                         started_monotonic=edge_started,
+                        plane_assessment=edge_msg.plane_assessment,
+                        image_quality=edge_msg.image_quality,
                     )
+                    if delivered:
+                        # M1/M6：仅在网关放行（即医生确实看到这一帧）后监控
+                        _observe_navigation_quality(
+                            websocket,
+                            session_id=edge_session_id,
+                            frame_id=edge_msg.frame_id,
+                            plane_assessment=edge_msg.plane_assessment,
+                            image_quality=edge_msg.image_quality,
+                        )
 
             except WebSocketDisconnect:
                 break

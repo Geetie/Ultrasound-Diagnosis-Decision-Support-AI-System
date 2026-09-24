@@ -7,7 +7,8 @@ export interface WsNavigationMessage {
   type: 'navigation';
   frame_id: string;
   annotations: Array<{
-    id: string;
+    /** 后端 NavigationAnnotation 不含 id（可选）：前端按帧内下标派生稳定 id */
+    id?: string;
     label: string;
     confidence: number;
     threshold: number;

@@ -89,6 +89,20 @@
   }
 }
 
+/* M2 快速路径高危标记（B+ 级）：橙色脉冲呼吸。
+   节奏比"待校验"更慢更克制，但仍能与普通标注（蓝色实线、无动效）
+   一眼区分——安全状态必须显性化，不能只靠颜色差异。 */
+@keyframes annotation-high-risk-pulse {
+  0%, 100% {
+    opacity: 1;
+    stroke-width: 2;
+  }
+  50% {
+    opacity: 0.6;
+    stroke-width: 3;
+  }
+}
+
 @keyframes border-flow {
   0% {
     stroke-dashoffset: 0;

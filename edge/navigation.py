@@ -18,7 +18,22 @@ from typing import Deque, Dict, List, Optional
 import structlog
 
 from edge.gpu_thermal import GPUThermalPolicy, ThermalDecision, ThermalLevel
-from edge.protocols import Frame, NavInferenceBackend, NavLabel, NavResult
+from edge.image_quality import (
+    ImageQualityAdapter,
+    NullImageQualityAdapter,
+)
+from edge.plane_assessment import (
+    NullPlaneAssessmentAdapter,
+    PlaneAssessmentAdapter,
+)
+from edge.protocols import (
+    Frame,
+    ImageQuality,
+    NavInferenceBackend,
+    NavLabel,
+    NavResult,
+    PlaneAssessment,
+)
 from edge.safety import LocalSafetyChecker
 
 logger = structlog.get_logger(__name__)
@@ -28,7 +43,12 @@ DEFAULT_LATENCY_WINDOW = 512
 
 
 class NavigationInferenceService:
-    """导航推理调度器（同步推理 + 显式节流，便于在边缘线程/协程中复用）。"""
+    """导航推理调度器（同步推理 + 显式节流，便于在边缘线程/协程中复用）。
+
+    M1/M6 的切面评估与图像质量评估通过适配器注入（未部署时为空实现，
+    ``assess`` 返回 ``None``，不产出字段）；M2 的高危标记（B+ 级）由
+    :class:`edge.safety.LocalSafetyChecker` 在本地安全校验后统一打标。
+    """
 
     def __init__(
         self,
@@ -38,6 +58,10 @@ class NavigationInferenceService:
         safety_checker: Optional[LocalSafetyChecker] = None,
         target_fps: float = 15.0,
         latency_window: int = DEFAULT_LATENCY_WINDOW,
+        plane_assessment_adapter: Optional[PlaneAssessmentAdapter] = None,
+        image_quality_adapter: Optional[ImageQualityAdapter] = None,
+        organ_code: Optional[str] = None,
+        enable_risk_marking: bool = True,
     ) -> None:
         if target_fps <= 0:
             raise ValueError("target_fps 必须为正数")
@@ -46,11 +70,16 @@ class NavigationInferenceService:
         self._safety = safety_checker or LocalSafetyChecker()
         self._base_target_fps = target_fps
         self._latencies_ms: Deque[float] = deque(maxlen=latency_window)
+        self._plane_adapter = plane_assessment_adapter or NullPlaneAssessmentAdapter()
+        self._quality_adapter = image_quality_adapter or NullImageQualityAdapter()
+        self._organ_code = organ_code
+        self._enable_risk_marking = enable_risk_marking
 
         self._loaded = False
         self._frames_in = 0
         self._frames_inferred = 0
         self._frames_skipped = 0
+        self._risk_marked = 0
         self._last_infer_at: Optional[float] = None
         self._decision: ThermalDecision = self._thermal.decide(0.0)
 
@@ -58,12 +87,21 @@ class NavigationInferenceService:
     def load(self) -> None:
         if not self._loaded:
             self._backend.load()
+            self._plane_adapter.load()
+            self._quality_adapter.load()
             self._loaded = True
-            logger.info("edge_nav_backend_loaded", backend=self._backend.name)
+            logger.info(
+                "edge_nav_backend_loaded",
+                backend=self._backend.name,
+                plane_assessment_backend=self._plane_adapter.name,
+                image_quality_backend=self._quality_adapter.name,
+            )
 
     def close(self) -> None:
         if self._loaded:
             self._backend.close()
+            self._plane_adapter.close()
+            self._quality_adapter.close()
             self._loaded = False
 
     # ---- 温度 ----
@@ -146,7 +184,9 @@ class NavigationInferenceService:
         except Exception as exc:  # noqa: BLE001 - 埋点失败不得影响导航
             logger.debug("edge_nav_latency_metric_failed", error=str(exc))
 
-        accepted, violations, _rejected = self._safety.filter_labels(raw_labels)
+        accepted, violations, _rejected = self._safety.filter_labels(
+            raw_labels, organ=self._organ_code
+        )
         if violations:
             logger.warning(
                 "edge_nav_local_safety_violations",
@@ -154,13 +194,48 @@ class NavigationInferenceService:
                 violations=violations[:10],
             )
 
+        # M2：B+ 级高危标记（本地安全校验之后统一打标）
+        if self._enable_risk_marking:
+            marked = self._safety.mark_risk_batch(accepted, organ=self._organ_code)
+            self._risk_marked += sum(1 for label in marked if label.risk_flag)
+            accepted = marked
+
         return NavResult(
             frame_id=frame.frame_id,
             session_id=frame.session_id,
             labels=accepted,
             infer_latency_ms=round(latency_ms, 3),
             backend=self._backend.name,
+            plane_assessment=self._assess_plane(frame),
+            image_quality=self._assess_quality(frame),
         )
+
+    # ---- M1/M6 评估（适配器失败不得影响导航主链路）----
+    def _assess_plane(self, frame: Frame) -> Optional[PlaneAssessment]:
+        try:
+            return self._plane_adapter.assess(frame, organ_code=self._organ_code)
+        except Exception as exc:  # noqa: BLE001 - 评估失败降级为不产出
+            logger.warning(
+                "edge_plane_assessment_failed",
+                frame_id=frame.frame_id,
+                backend=self._plane_adapter.name,
+                error=str(exc),
+                error_type=type(exc).__name__,
+            )
+            return None
+
+    def _assess_quality(self, frame: Frame) -> Optional[ImageQuality]:
+        try:
+            return self._quality_adapter.assess(frame)
+        except Exception as exc:  # noqa: BLE001 - 评估失败降级为不产出
+            logger.warning(
+                "edge_image_quality_assessment_failed",
+                frame_id=frame.frame_id,
+                backend=self._quality_adapter.name,
+                error=str(exc),
+                error_type=type(exc).__name__,
+            )
+            return None
 
     # ---- 观测 ----
     def stats(self) -> Dict[str, object]:
@@ -175,6 +250,9 @@ class NavigationInferenceService:
             "thermal_level": self._decision.level.value,
             "nav_inference_allowed": self._decision.nav_inference_allowed,
             "backend": self._backend.name,
+            "risk_marked_labels": self._risk_marked,
+            "plane_assessment_backend": self._plane_adapter.name,
+            "image_quality_backend": self._quality_adapter.name,
         }
 
     def _percentile(self, pct: float) -> Optional[float]:
