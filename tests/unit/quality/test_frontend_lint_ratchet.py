@@ -1,6 +1,10 @@
 """前端 lint 收敛棘轮（quality-debt）。
 
-现状：0 error / 26 warning（几乎全是 ``@typescript-eslint/no-explicit-any``）。
+水位：**1 warning / 0 error**（起始 26，分 5 批收敛：26 -> 21 -> 13 -> 6 -> 2 -> 1；
+每批都以 tsc + vitest 验证，并同步下调 package.json 与本常量）。
+剩下的 1 条是 `ConsentPage` 的 `set-state-in-effect`：其 setState 实际发生在 await 之后，
+不构成规则描述的同步级联；该页是知情同意流程且**没有组件测试**，无验证手段下改写风险
+大于收益——先补组件测试再改。它是"经评估后保留"，只能减到 0，不能再涨。
 warning 默认不阻断，所以"下次再多几十条"没人会拦。这里用 ``--max-warnings`` 把当前
 水位钉住：新增任何一条告警即 CI 红，同时水位只允许下调。
 
@@ -20,7 +24,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 PACKAGE_JSON = REPO_ROOT / "frontend" / "package.json"
 
 # 当前水位：只允许下调（下调后请同步改这个常量）
-MAX_WARNINGS = 26
+MAX_WARNINGS = 1
 
 
 @pytest.fixture(scope="module")

@@ -117,12 +117,18 @@ class TestAlerting:
     async def test_dedup_same_hour(self):
         notifier = _RecordingNotifier()
         monitor = RestoreRateMonitor(hour_limit=100, notifier=notifier)
+        # hour_key 必须**每次唯一**：去重键是 (profile, hour_key)，而"占位"可能落在
+        # 同一 worker 更早用例留下的 Redis 状态上（本项目对真实 Redis 是 fast-fail，
+        # 但某些用例会注入假客户端）。写死字面量会让本用例时好时坏——
+        # "首次必然告警"的断言在别人已占位时直接失败（CI 上就是随机红）。
+        hour_key = f"{id(monitor) % 100000000:08d}"
+        next_hour_key = f"{(id(monitor) + 1) % 100000000:08d}"
 
         session_ctx, audit_patch, _service = _patch_audit()
         with session_ctx, audit_patch:
-            first = await monitor.evaluate(count=120, hour_key="2026092411")
-            second = await monitor.evaluate(count=180, hour_key="2026092411")
-            next_hour = await monitor.evaluate(count=130, hour_key="2026092412")
+            first = await monitor.evaluate(count=120, hour_key=hour_key)
+            second = await monitor.evaluate(count=180, hour_key=hour_key)
+            next_hour = await monitor.evaluate(count=130, hour_key=next_hour_key)
 
         assert first is not None
         assert second is None, "同一小时重复超限不应重复告警（防审计洪泛）"
