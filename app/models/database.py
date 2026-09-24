@@ -1,6 +1,6 @@
 from sqlalchemy import (
-    Column, Integer, String, Text, Float, Date, TIMESTAMP, Boolean, 
-    ARRAY, JSON, ForeignKey, BigInteger, Index
+    Column, Integer, String, Text, Float, Date, TIMESTAMP, Boolean,
+    ARRAY, JSON, ForeignKey, BigInteger, Index, CheckConstraint
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.sql import func
@@ -327,7 +327,21 @@ class KnowledgeChunkModel(Base):
     token_count = Column(Integer, nullable=False, default=0)
     created_at = Column(TIMESTAMP(timezone=True), nullable=False, default=func.current_timestamp())
     updated_at = Column(TIMESTAMP(timezone=True), nullable=False, default=func.current_timestamp(), onupdate=func.current_timestamp())
+    # 二期 §6 衰减（迁移 0012）：时间衰减看 last_referenced_at，反馈衰减看 dispute_count，
+    # confidence_score 是算出来的目标值（检索侧按其加权）。
+    last_referenced_at = Column(
+        TIMESTAMP(timezone=True), nullable=False, server_default=func.current_timestamp()
+    )
+    reference_count = Column(Integer, nullable=False, server_default='0')
+    dispute_count = Column(Integer, nullable=False, server_default='0')
+    confidence_score = Column(Float, nullable=False, server_default='1.0')
 
     __table_args__ = (
         Index('idx_kc_kb_organ', 'kb_version', 'organ'),
+        Index('idx_kc_last_referenced_at', 'last_referenced_at'),
+        Index('idx_kc_confidence_score', 'confidence_score'),
+        CheckConstraint(
+            'confidence_score >= 0.0 AND confidence_score <= 1.0',
+            name='ck_kc_confidence_score_range',
+        ),
     )

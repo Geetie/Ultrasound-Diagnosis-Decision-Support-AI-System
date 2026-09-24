@@ -172,10 +172,24 @@ class Retriever:
             )
             for h in fused
         ]
+        # 二期 §6：记录本次引用（best-effort，失败只记日志）。
+        # 放在返回前而不是各条检索腿里：只看最终入选的 chunks——落选条目的
+        # "被引用"并不是真的被用上，把它算进去会让衰减依据失真。
+        await self._record_references(chunks)
+
         return RetrievalResult(
             chunks=chunks,
             retrieval_method=RetrievalMethod.HYBRID,
         )
+
+    @staticmethod
+    async def _record_references(chunks: List[ScoredChunk]) -> None:
+        chunk_ids = [chunk.chunk.chunk_id for chunk in chunks if chunk.chunk.chunk_id]
+        if not chunk_ids:
+            return
+        from app.knowledge.decay import record_retrieval_references
+
+        await record_retrieval_references(chunk_ids)
 
     # ------------------------------------------------------------------
     # Legs
