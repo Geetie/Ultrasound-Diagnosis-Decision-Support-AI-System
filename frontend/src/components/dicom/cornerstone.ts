@@ -19,7 +19,7 @@ export function initCornerstone(): void {
   });
 
   cornerstoneTools.external.cornerstone = cornerstone;
-  cornerstoneTools.external.Hammer = (window as any).Hammer;
+  cornerstoneTools.external.Hammer = window.Hammer;
 
   cornerstoneTools.init({
     mouseEnabled: true,

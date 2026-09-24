@@ -5,6 +5,24 @@
  * 真实调用契约以各库文档为准（真机联调时若签名不符，以此文件为准修正）。
  */
 
+/**
+ * 由本项目的初始化代码挂到 window 上的全局（见 `components/dicom/cornerstone.ts`）。
+ * 声明在这里而不是每次 `(window as any)`：把"这个全局长什么样"集中成一处契约，
+ * 调用侧就不必靠断言绕过类型检查（`no-explicit-any` 也会因此不再报）。
+ */
+interface Window {
+  cornerstone?: {
+    getViewport(element: HTMLElement): import('cornerstone-core').CornerstoneViewport;
+    setViewport(
+      element: HTMLElement,
+      viewport: import('cornerstone-core').CornerstoneViewport
+    ): void;
+    [key: string]: unknown;
+  };
+  /** cornerstone-tools 依赖的外部 Hammer 全局 */
+  Hammer?: unknown;
+}
+
 declare module 'cornerstone-core' {
   export interface CornerstoneViewport {
     scale: number;

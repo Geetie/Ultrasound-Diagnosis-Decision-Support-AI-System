@@ -52,7 +52,7 @@ export const useDicomStore = create<DicomStoreState & DicomActions>((set, get) =
     const element = get().cornerstoneElement;
     if (element) {
       try {
-        const csViewport = (window as any).cornerstone?.getViewport(element);
+        const csViewport = window.cornerstone?.getViewport(element);
         if (csViewport) {
           if (viewport.windowWidth !== undefined) csViewport.voi.windowWidth = viewport.windowWidth;
           if (viewport.windowCenter !== undefined) csViewport.voi.windowCenter = viewport.windowCenter;
@@ -60,7 +60,7 @@ export const useDicomStore = create<DicomStoreState & DicomActions>((set, get) =
           if (viewport.translationX !== undefined) csViewport.translation.x = viewport.translationX;
           if (viewport.translationY !== undefined) csViewport.translation.y = viewport.translationY;
           if (viewport.invert !== undefined) csViewport.invert = viewport.invert;
-          (window as any).cornerstone?.setViewport(element, csViewport);
+          window.cornerstone?.setViewport(element, csViewport);
         }
       } catch {
         // cornerstone sync failed

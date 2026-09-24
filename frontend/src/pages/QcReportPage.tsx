@@ -21,9 +21,17 @@ const kpiData = [
   { title: '质控覆盖率', value: 98.2, suffix: '%', icon: <TeamOutlined />, color: tokens.color.accent.secondary },
 ];
 
+interface DepartmentRow {
+  department: string;
+  total: number;
+  accuracy: number;
+  correctionRate: number;
+  status: string;
+}
+
 const departmentColumns = [
   { title: '科室', dataIndex: 'department', key: 'department' },
-  { title: '诊断总量', dataIndex: 'total', key: 'total', sorter: (a: any, b: any) => a.total - b.total },
+  { title: '诊断总量', dataIndex: 'total', key: 'total', sorter: (a: DepartmentRow, b: DepartmentRow) => a.total - b.total },
   { title: 'AI准确率', dataIndex: 'accuracy', key: 'accuracy', render: (v: number) => <span style={{ color: v >= 95 ? tokens.color.accent.success : tokens.color.accent.warning }}>{v}%</span> },
   { title: '修正率', dataIndex: 'correctionRate', key: 'correctionRate', render: (v: number) => <span style={{ color: v > 8 ? tokens.color.accent.danger : tokens.color.text.secondary }}>{v}%</span> },
   { title: '状态', dataIndex: 'status', key: 'status', render: (v: string) => {
