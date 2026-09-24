@@ -12,17 +12,20 @@ omit = [
 [tool.coverage.report]
 # T-G1-INT-01 目标：整体 ≥80%，核心模块 ≥90%。
 # 棘轮记录（只进不退，每轮按实测上调，并留出约 0.5pt 的环境波动余量）：
-#   整体：76% -> 78% -> 79% -> **80%**（实测 78.26% -> 79.08% -> 80.07% -> 80.53%）
-#   核心：75% -> 76% -> 78% -> 79% -> **80%**（实测 77.06% -> 78.22% -> 79.76% -> 80.63%）
-# 达标情况：整体已达标（80%）；核心距 90% 还差约 9.37pt（约 +760 覆盖语句）。
+#   整体：76% -> 78% -> 79% -> **80%**（实测 78.26 -> 79.08 -> 80.07 -> 80.53 -> 80.90）
+#   核心：75% -> 76% -> 78% -> 79% -> 80% -> **81%**（实测 77.06 -> 78.22 -> 79.76 -> 80.63 -> 81.79）
+# 达标情况：整体已达标（80%）；核心距 90% 还差约 8.21pt（约 +670 覆盖语句）。
 # 缺口最大的模块（按缺失行数排序，来自 coverage.json 实测，已排除已补完项）：
 #   app/inference/gpu_monitor.py(52.5%/538)、app/security/refresh_token.py(77.7%/584)、
 #   app/api/websocket/nav.py(67.3%/341)、app/inference/gpu_memory_monitor.py(41.8%/184)、
-#   app/security/desensitization.py(64.0%/278)、app/security/desensitization_restore.py(68.6%/303 余下为 DB 路径)、
+#   app/security/hsm/persistence_manager.py(55.8%/224，余下多为 SoftHSM 真机路径)、
+#   app/security/desensitization_restore.py(68.6%/303，余下为 DB 路径)、
 #   app/inference/sustained_load_test.py(0%/95)
-# 已补完：rag/tokenizer_utils(0%->100%)、hsm/persistence_manager(13.8%->高位)、
-#         services/safety_gateway_client、obs/logging/file、
-#         obs/metrics_collector/collector(56.8%->82.7%)、obs/metrics_collector/pusher(32.2%->97.7%)
+# 已补完：rag/tokenizer_utils(0%->100%)、services/safety_gateway_client、obs/logging/file、
+#         obs/metrics_collector/collector(56.8%->82.7%)、obs/metrics_collector/pusher(32.2%->97.7%)、
+#         security/desensitization(64.0%->96%)
+# 注：上一轮曾把 hsm/persistence_manager 记为"->高位"，那是只看 sec 单目录的测量值；
+#     全量口径下实际为 55.8%，此处按实测更正。
 # 覆盖率达到目标后把这里与 CI 的阈值一并提到 80 / 90。
 fail_under = 80
 show_missing = true
