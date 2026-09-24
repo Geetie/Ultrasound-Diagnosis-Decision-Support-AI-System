@@ -13,8 +13,7 @@ from __future__ import annotations
 import json
 import time
 from pathlib import Path
-from typing import Any, List
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -22,9 +21,7 @@ from app.knowledge.protocols import (
     IndexBuildError,
     IndexBuildErrorCode,
     IndexBuildRequest,
-    IndexBuildResult,
     KnowledgeChunk,
-    KnowledgeIndexBuilder,
 )
 
 pytestmark = [pytest.mark.track_data]
@@ -94,7 +91,6 @@ class TestKnowledgeChunk:
 
 class TestIndexBuildError:
     def test_error_message_includes_code(self):
-        from app.knowledge.protocols import IndexBuildError, IndexBuildErrorCode
         err = IndexBuildError(
             IndexBuildErrorCode.VERSION_MISMATCH,
             "version does not match",
@@ -106,7 +102,6 @@ class TestIndexBuildError:
         assert err.retry_strategy == "no_retry"
 
     def test_retryable_propagates(self):
-        from app.knowledge.protocols import IndexBuildError, IndexBuildErrorCode
         err = IndexBuildError(
             IndexBuildErrorCode.EMBEDDING_FAILED,
             "embed failed",
@@ -277,7 +272,6 @@ class TestCreateChunker:
 
     def test_factory_accepts_string(self):
         from app.knowledge.chunker import (
-            ChunkerStrategy,
             create_chunker,
         )
         c = create_chunker("fixed_window")
@@ -601,11 +595,6 @@ class TestKnowledgeIndexBuilder:
     @pytest.mark.asyncio
     async def test_rejects_invalid_kb_version(self):
         from app.knowledge.builder import KnowledgeIndexBuilderImpl
-        from app.knowledge.protocols import (
-            IndexBuildError,
-            IndexBuildErrorCode,
-            IndexBuildRequest,
-        )
         builder = KnowledgeIndexBuilderImpl(
             session_factory=_make_mock_session_factory(),
             embedding_service=_MockEmbeddingService(),
@@ -621,11 +610,6 @@ class TestKnowledgeIndexBuilder:
     @pytest.mark.asyncio
     async def test_rejects_missing_source_dir(self):
         from app.knowledge.builder import KnowledgeIndexBuilderImpl
-        from app.knowledge.protocols import (
-            IndexBuildError,
-            IndexBuildErrorCode,
-            IndexBuildRequest,
-        )
         builder = KnowledgeIndexBuilderImpl(
             session_factory=_make_mock_session_factory(),
             embedding_service=_MockEmbeddingService(),
@@ -641,11 +625,6 @@ class TestKnowledgeIndexBuilder:
     @pytest.mark.asyncio
     async def test_invalid_manifest_raises(self, tmp_path):
         from app.knowledge.builder import KnowledgeIndexBuilderImpl
-        from app.knowledge.protocols import (
-            IndexBuildError,
-            IndexBuildErrorCode,
-            IndexBuildRequest,
-        )
         # No manifest.json
         builder = KnowledgeIndexBuilderImpl(
             session_factory=_make_mock_session_factory(),
@@ -661,11 +640,6 @@ class TestKnowledgeIndexBuilder:
     @pytest.mark.asyncio
     async def test_manifest_version_mismatch_raises(self, tmp_path):
         from app.knowledge.builder import KnowledgeIndexBuilderImpl
-        from app.knowledge.protocols import (
-            IndexBuildError,
-            IndexBuildErrorCode,
-            IndexBuildRequest,
-        )
         (tmp_path / "manifest.json").write_text(
             json.dumps({"kb_version": "kb_v9.9.9"})
         )
@@ -683,11 +657,6 @@ class TestKnowledgeIndexBuilder:
     @pytest.mark.asyncio
     async def test_invalid_manifest_json_raises(self, tmp_path):
         from app.knowledge.builder import KnowledgeIndexBuilderImpl
-        from app.knowledge.protocols import (
-            IndexBuildError,
-            IndexBuildErrorCode,
-            IndexBuildRequest,
-        )
         (tmp_path / "manifest.json").write_text("{not valid json")
         builder = KnowledgeIndexBuilderImpl(
             session_factory=_make_mock_session_factory(),
@@ -703,11 +672,6 @@ class TestKnowledgeIndexBuilder:
     @pytest.mark.asyncio
     async def test_manifest_missing_kb_version_raises(self, tmp_path):
         from app.knowledge.builder import KnowledgeIndexBuilderImpl
-        from app.knowledge.protocols import (
-            IndexBuildError,
-            IndexBuildErrorCode,
-            IndexBuildRequest,
-        )
         (tmp_path / "manifest.json").write_text(json.dumps({"embedding_model": "x"}))
         builder = KnowledgeIndexBuilderImpl(
             session_factory=_make_mock_session_factory(),
@@ -723,7 +687,6 @@ class TestKnowledgeIndexBuilder:
     @pytest.mark.asyncio
     async def test_happy_path_small_dataset(self, tmp_path):
         from app.knowledge.builder import KnowledgeIndexBuilderImpl
-        from app.knowledge.protocols import IndexBuildRequest
         # manifest + 1 organ + 2 docs
         (tmp_path / "manifest.json").write_text(
             json.dumps({"kb_version": "kb_v1.0.0"})
@@ -756,7 +719,6 @@ class TestKnowledgeIndexBuilder:
     @pytest.mark.asyncio
     async def test_organ_filter_excludes_other_organs(self, tmp_path):
         from app.knowledge.builder import KnowledgeIndexBuilderImpl
-        from app.knowledge.protocols import IndexBuildRequest
         (tmp_path / "manifest.json").write_text(
             json.dumps({"kb_version": "kb_v1.0.0"})
         )
@@ -783,10 +745,6 @@ class TestKnowledgeIndexBuilder:
     @pytest.mark.asyncio
     async def test_resume_skips_existing_chunks(self, tmp_path):
         from app.knowledge.builder import KnowledgeIndexBuilderImpl
-        from app.knowledge.protocols import (
-            IndexBuildRequest,
-            KnowledgeChunk,
-        )
 
         (tmp_path / "manifest.json").write_text(
             json.dumps({"kb_version": "kb_v1.0.0"})
@@ -833,7 +791,6 @@ class TestKnowledgeIndexBuilder:
         """
         from app.knowledge.builder import KnowledgeIndexBuilderImpl
         from app.knowledge.chunker import FixedWindowChunker
-        from app.knowledge.protocols import IndexBuildRequest
         (tmp_path / "manifest.json").write_text(
             json.dumps({"kb_version": "kb_v1.0.0"})
         )
@@ -1004,11 +961,6 @@ class TestCoverageBoosters:
     @pytest.mark.asyncio
     async def test_manifest_root_must_be_object(self, tmp_path):
         from app.knowledge.builder import KnowledgeIndexBuilderImpl
-        from app.knowledge.protocols import (
-            IndexBuildError,
-            IndexBuildErrorCode,
-            IndexBuildRequest,
-        )
         # manifest.json root is a JSON array, not an object
         (tmp_path / "manifest.json").write_text(json.dumps([1, 2, 3]))
         builder = KnowledgeIndexBuilderImpl(
@@ -1026,8 +978,6 @@ class TestCoverageBoosters:
     async def test_resolve_chunker_falls_back_to_default(self, tmp_path):
         """Unknown strategy in IndexBuildRequest should fall back to default."""
         from app.knowledge.builder import KnowledgeIndexBuilderImpl
-        from app.knowledge.chunker import SentenceBoundaryChunker
-        from app.knowledge.protocols import IndexBuildRequest
         (tmp_path / "manifest.json").write_text(
             json.dumps({"kb_version": "kb_v1.0.0"})
         )
@@ -1095,24 +1045,27 @@ class TestCoverageBoosters:
         assert len(chunks) >= 2
 
     def test_mock_embedding_service_health(self):
-        from app.knowledge.builder import MockEmbeddingService
         import asyncio
+
+        from app.knowledge.builder import MockEmbeddingService
         svc = MockEmbeddingService()
         result = asyncio.run(svc.health_check())
         assert result is True
 
     def test_mock_embedding_service_get_info(self):
-        from app.knowledge.builder import MockEmbeddingService
-        from app.embedding.protocols import EmbeddingModelType
         import asyncio
+
+        from app.embedding.protocols import EmbeddingModelType
+        from app.knowledge.builder import MockEmbeddingService
         svc = MockEmbeddingService()
         info = asyncio.run(svc.get_model_info())
         assert info.dimension == 768
         assert info.model_type == EmbeddingModelType.BGE_M3_MEDICAL
 
     def test_mock_embedding_service_close(self):
-        from app.knowledge.builder import MockEmbeddingService
         import asyncio
+
+        from app.knowledge.builder import MockEmbeddingService
         svc = MockEmbeddingService()
         assert asyncio.run(svc.close()) is None
 
@@ -1170,7 +1123,6 @@ class TestCoverageBoosters:
     @pytest.mark.asyncio
     async def test_force_rebuild_invokes_delete(self, tmp_path):
         from app.knowledge.builder import KnowledgeIndexBuilderImpl
-        from app.knowledge.protocols import IndexBuildRequest
         (tmp_path / "manifest.json").write_text(
             json.dumps({"kb_version": "kb_v1.0.0"})
         )

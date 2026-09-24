@@ -27,7 +27,7 @@ class TestKBBuildEndToEnd:
 
     async def test_semantic_chunker_produces_parent_child(self) -> None:
         """Verify SemanticChunker creates parent + child chunks."""
-        from app.knowledge.chunker import SemanticChunker, KnowledgeSourceDoc
+        from app.knowledge.chunker import KnowledgeSourceDoc, SemanticChunker
         from app.knowledge.protocols import ChunkType
 
         chunker = SemanticChunker()
@@ -66,7 +66,7 @@ class TestKBBuildEndToEnd:
 
     async def test_parent_child_id_consistency(self) -> None:
         """Verify child.parent_chunk_id references an actual parent chunk_id."""
-        from app.knowledge.chunker import SemanticChunker, KnowledgeSourceDoc
+        from app.knowledge.chunker import KnowledgeSourceDoc, SemanticChunker
 
         chunker = SemanticChunker()
         doc = KnowledgeSourceDoc(
@@ -91,7 +91,7 @@ class TestKBBuildEndToEnd:
 
     async def test_sentence_chunker_produces_only_children(self) -> None:
         """Verify SentenceBoundaryChunker only produces child chunks."""
-        from app.knowledge.chunker import SentenceBoundaryChunker, KnowledgeSourceDoc
+        from app.knowledge.chunker import KnowledgeSourceDoc, SentenceBoundaryChunker
 
         chunker = SentenceBoundaryChunker()
         doc = KnowledgeSourceDoc(

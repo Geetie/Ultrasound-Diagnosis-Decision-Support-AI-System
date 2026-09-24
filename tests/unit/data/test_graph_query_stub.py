@@ -9,12 +9,9 @@ Also verifies settings.graph_query_enabled defaults to False.
 """
 from __future__ import annotations
 
-import asyncio
 import logging
-from typing import List
 
 import pytest
-
 
 pytestmark = pytest.mark.phase1_stub
 
@@ -28,7 +25,7 @@ class _LocalCaplog:
     def __init__(self, logger_name: str, level: int) -> None:
         self._logger = logging.getLogger(logger_name)
         self._original_level = self._logger.level
-        self._records: List[logging.LogRecord] = []
+        self._records: list[logging.LogRecord] = []
         self._handler = logging.Handler()
         self._handler.setLevel(level)
         self._handler.emit = self._records.append

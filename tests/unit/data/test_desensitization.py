@@ -20,14 +20,13 @@ import pytest
 pytestmark = [pytest.mark.track_knowledge]
 
 from app.knowledge.desensitization import (
-    DesensitizationRuleSet,
-    Desensitizer,
-    DesensitizeResult,
     PII_LABEL_EMAIL,
     PII_LABEL_ID_CARD,
     PII_LABEL_PHONE,
+    DesensitizationRuleSet,
+    Desensitizer,
+    DesensitizeResult,
 )
-
 
 # ----------------------------------------------------------------------
 # helpers
@@ -233,7 +232,6 @@ class TestBuilderIntegration:
     def test_discover_source_docs_invokes_desensitizer(self, tmp_path: Path):
         """P0-RAG-03: KnowledgeIndexBuilderImpl._discover_source_docs
         applies desensitization to case_reports sources before chunking."""
-        from app.knowledge import desensitization as desens_mod
 
         # Replace the default desensitizer with a spy.
         spy_calls: list[tuple[str, str]] = []
