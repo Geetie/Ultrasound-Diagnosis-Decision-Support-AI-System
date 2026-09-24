@@ -265,6 +265,15 @@ class Settings(BaseSettings):
     gpu_fragmentation_critical_threshold: float = 0.40
     compact_memory_budget_mb: float = 22048.0
 
+    # === T-GB-LLM-01 模型热重载 ===
+    # 阈值复用上面两个（>0.30 Warning / >0.40 触发），避免同一数字两处定义。
+    # 重载适配器：local_fake（本地假实现，仅编排可测）| external（现场注入）。
+    hot_reload_adapter: str = 'local_fake'
+    # 有活跃会话时最多延迟多久（秒）——规格：延迟至会话结束，最长 10 分钟。
+    hot_reload_max_defer_seconds: float = 600.0
+    # 等待活跃会话结束时的轮询间隔（秒）。
+    hot_reload_poll_interval_seconds: float = 5.0
+
     obs_metrics_enabled: bool = True
     obs_metrics_port: int = 9090
     obs_metrics_scrape_interval: float = 15.0

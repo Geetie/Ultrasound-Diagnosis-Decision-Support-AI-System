@@ -107,6 +107,11 @@ def _estimate_fragmentation(free_memory_mb: float, total_memory_mb: float) -> fl
     return fragmented / total_memory_mb
 
 
+# T-GB-LLM-01：``hot_reload_controller`` 未显式传入时的哨兵——表示"用进程级
+# 控制器"，与显式传 ``None``（关闭自动触发）区分开。
+_AUTO_HOT_RELOAD = object()
+
+
 class GPUMemoryMonitor:
     FRAGMENTATION_SUSTAINED_WARNING_SECONDS = 600
     OVERHEAT_CRITICAL_CELSIUS = 90.0
@@ -118,6 +123,7 @@ class GPUMemoryMonitor:
         snapshot_interval_seconds: float = 60.0,
         warning_threshold: float = 0.30,
         critical_threshold: float = 0.40,
+        hot_reload_controller: Any = _AUTO_HOT_RELOAD,
     ):
         self._gpu_id = gpu_id
         self._snapshot_interval = snapshot_interval_seconds
@@ -126,6 +132,10 @@ class GPUMemoryMonitor:
         self._log = structlog.get_logger("app.inference.gpu_memory_monitor")
         self._fragmentation_above_warning_since: Optional[float] = None
         self._overheat_since: Optional[float] = None
+        # T-GB-LLM-01：碎片化超临界阈值时触发模型热重载。未传参时用进程级
+        # 控制器（延迟解析，避免构造期就要求适配器就绪）；显式传 None 关闭。
+        self._hot_reload_controller = hot_reload_controller
+        self._hot_reload_tasks: set = set()
 
     def take_snapshot(self) -> Optional[GPUMemorySnapshot]:
         info = _query_nvidia_smi(self._gpu_id)
@@ -156,7 +166,60 @@ class GPUMemoryMonitor:
 
         return snapshot
 
+    def _resolve_hot_reload_controller(self) -> Any:
+        """解析热重载控制器（哨兵 → 进程级单例；``None`` → 关闭）。"""
+        if self._hot_reload_controller is _AUTO_HOT_RELOAD:
+            try:
+                from app.inference.hot_reload import get_hot_reload_controller
+
+                return get_hot_reload_controller()
+            except Exception as exc:  # noqa: BLE001 - 适配器未就绪时不影响采样
+                self._log.warning(
+                    "hot_reload_controller_unavailable",
+                    error=str(exc),
+                    error_type=type(exc).__name__,
+                )
+                return None
+        return self._hot_reload_controller
+
+    def _maybe_trigger_hot_reload(self, fragmentation_rate: float) -> None:
+        """碎片化超临界阈值时触发模型热重载（T-GB-LLM-01）。
+
+        本方法位于**同步**采样路径，因此把异步编排交给当前事件循环执行；
+        没有运行中的事件循环（如 CLI 单次采样）时记录日志并跳过——真正的
+        触发由 ``monitor_during_load_test`` 等异步循环承担。
+        """
+        if fragmentation_rate <= self._critical_threshold:
+            return
+        controller = self._resolve_hot_reload_controller()
+        if controller is None:
+            return
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            self._log.warning(
+                "hot_reload_skipped_no_event_loop",
+                fragmentation_rate=round(fragmentation_rate, 4),
+            )
+            return
+        task = loop.create_task(controller.on_fragmentation_sample(fragmentation_rate))
+        # 持有引用避免任务被 GC；完成后自动移除。
+        self._hot_reload_tasks.add(task)
+        task.add_done_callback(self._hot_reload_tasks.discard)
+
+    async def trigger_hot_reload(self, reason: str = "manual") -> Any:
+        """显式触发一次热重载（运维/测试用），返回编排结果。"""
+        controller = self._resolve_hot_reload_controller()
+        if controller is None:
+            return None
+        return await controller.request_reload(reason)
+
     def _update_fragmentation_duration(self, fragmentation_rate: float) -> None:
+        """更新碎片化持续时长并处理阈值动作。
+
+        T-GB-LLM-01：除原有的"持续超 Warning 阈值告警"外，还负责在碎片化
+        超临界阈值时触发模型热重载（见 :meth:`_maybe_trigger_hot_reload`）。
+        """
         now = time.time()
         if fragmentation_rate > self._warning_threshold:
             if self._fragmentation_above_warning_since is None:
@@ -171,6 +234,9 @@ class GPUMemoryMonitor:
                 )
         else:
             self._fragmentation_above_warning_since = None
+
+        # T-GB-LLM-01：碎片化超临界阈值（默认 >40%）触发模型热重载
+        self._maybe_trigger_hot_reload(fragmentation_rate)
 
     def _update_overheat_duration(self, temperature: Optional[float]) -> None:
         if temperature is None:
