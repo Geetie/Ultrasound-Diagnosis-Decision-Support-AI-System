@@ -12,14 +12,15 @@ omit = [
 [tool.coverage.report]
 # T-G1-INT-01 目标：整体 ≥80%，核心模块 ≥90%。
 # 棘轮记录（只进不退，每轮按实测上调，并留出环境波动余量）：
-#   整体：76% -> 78%（实测 78.26%）；核心：75% -> 76%（实测 77.06%）
-# 距目标仍差：整体约 +434 覆盖语句、核心约 +1050 覆盖语句。
-# 缺口最大的模块（按缺失行数排序，来自 coverage.json 实测）：
-#   app/inference/gpu_monitor.py(52.5%/538)、app/security/hsm/persistence_manager.py(13.8%/224)、
-#   app/security/desensitization_restore.py(44.6%/303)、app/services/safety_gateway_client.py(35.0%/211)、
-#   app/security/refresh_token.py(77.7%/584)、app/api/websocket/nav.py(67.3%/341)、
-#   app/inference/gpu_memory_monitor.py(41.8%/184)、app/security/desensitization.py(64.0%/278)、
-#   app/rag/tokenizer_utils.py(0%/90)、app/inference/sustained_load_test.py(0%/95)
+#   整体：76% -> 78%（实测 78.26% -> 79.08%，余量仅 0.08pt，本轮**不**上调以免门禁 flaky）
+#   核心：75% -> 76% -> 78%（实测 77.06% -> 78.22%）
+# 达标情况：整体距 80% 还差约 0.92pt（约 +230 语句）；核心距 90% 还差约 11.78pt。
+# 缺口最大的模块（按缺失行数排序，来自 coverage.json 实测，已排除本轮补完项）：
+#   app/inference/gpu_monitor.py(52.5%/538)、app/security/desensitization_restore.py(44.6%/303)、
+#   app/services/safety_gateway_client.py(35.0%/211)、app/security/refresh_token.py(77.7%/584)、
+#   app/api/websocket/nav.py(67.3%/341)、app/inference/gpu_memory_monitor.py(41.8%/184)、
+#   app/security/desensitization.py(64.0%/278)、app/inference/sustained_load_test.py(0%/95)
+# 本轮已补完：app/rag/tokenizer_utils.py(0% -> 100%)、app/security/hsm/persistence_manager.py(13.8% -> 高位)
 # 覆盖率达到目标后把这里与 CI 的阈值一并提到 80 / 90。
 fail_under = 78
 show_missing = true
