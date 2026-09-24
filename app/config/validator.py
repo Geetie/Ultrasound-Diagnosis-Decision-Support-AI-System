@@ -73,6 +73,14 @@ def validate_config() -> List[str]:
             "unreachable by construction: one blocking read can exceed it)"
         )
 
+    if settings.rollout_enabled:
+        if not 0 <= settings.rollout_full_percent <= 100:
+            errors.append("ROLLOUT_FULL_PERCENT must be between 0 and 100")
+        if settings.rollout_compact_session_threshold < 1:
+            errors.append("ROLLOUT_COMPACT_SESSION_THRESHOLD must be at least 1")
+        if settings.rollout_counter_ttl_seconds <= 0:
+            errors.append("ROLLOUT_COUNTER_TTL_SECONDS must be greater than 0")
+
     errors.extend(validate_version_compatibility())
 
     return errors

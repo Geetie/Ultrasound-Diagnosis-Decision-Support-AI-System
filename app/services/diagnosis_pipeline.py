@@ -24,8 +24,9 @@ from __future__ import annotations
 import asyncio
 import inspect
 import time
+from dataclasses import replace
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 import structlog
 
@@ -34,7 +35,7 @@ from app.config.redis import RedisPool
 from app.config.redis_keys import RedisKey
 from app.config.settings import settings
 from app.agents.protocols import AgentContext, AgentResponse
-from app.agents.routing import AdaptiveRAGRouter, RoutingDecision
+from app.agents.routing import AdaptiveRAGRouter, RetrievalProfile, RoutingDecision
 from app.models.schemas import Organ, ResponseTier
 from app.repositories import (
     ConsentRepository,
@@ -42,6 +43,11 @@ from app.repositories import (
     SessionRepository,
 )
 from app.services.inflight_diagnosis import get_inflight_registry
+from app.services.rollout_router import (
+    RolloutDecision,
+    RolloutTrack,
+    get_rollout_router,
+)
 from app.services.safety_gateway_client import safety_gateway_client
 
 logger = structlog.get_logger("app.services.diagnosis_pipeline")
@@ -106,6 +112,51 @@ def _assess_routing(request: Any) -> Optional[RoutingDecision]:
         return None
 
 
+async def _apply_rollout_gate(
+    request: Any, routing: Optional[RoutingDecision]
+) -> Tuple[Optional[RoutingDecision], Optional[RolloutDecision]]:
+    """T-GR-INT-01：按灰度路由决定是否放行新行为。
+
+    未放行的会话把检索档位退回基线（``RetrievalProfile.standard()``），使灰度
+    效果真正体现为"一部分会话走新行为、其余走基线"，而不是只在日志里写一行
+    "本会话未命中灰度"。
+
+    任何异常都放行：灰度是控制新行为暴露面的手段，不该成为诊断不可用的原因。
+    """
+    try:
+        requested_tier = getattr(routing, "requested_tier", None)
+        tier_value = str(getattr(requested_tier, "value", requested_tier) or "").lower()
+        track = (
+            RolloutTrack.FULL.value if tier_value == "full" else RolloutTrack.COMPACT.value
+        )
+
+        decision = await get_rollout_router().decide(
+            session_id=str(getattr(request, "session_id", "") or ""),
+            track=track,
+        )
+
+        if not decision.allowed and routing is not None:
+            routing = replace(routing, retrieval_profile=RetrievalProfile.standard())
+
+        logger.info(
+            "rollout_routing_decision",
+            track=decision.track,
+            stage=decision.stage,
+            allowed=decision.allowed,
+            reason=decision.reason,
+            bucket=decision.bucket,
+            session_index=decision.session_index,
+        )
+        return routing, decision
+    except Exception as exc:  # noqa: BLE001 - 灰度判定失败一律放行
+        logger.warning(
+            "rollout_decision_failed",
+            error=str(exc),
+            error_type=type(exc).__name__,
+        )
+        return routing, None
+
+
 # ----------------------------------------------------------------------
 # 主入口
 # ----------------------------------------------------------------------
@@ -155,6 +206,12 @@ async def run_diagnosis_pipeline(request_id: str) -> bool:
             # 是否切换深度分析"的确认对话框，观测侧据此统计标准路径占比。
             routing_decision = _assess_routing(request)
 
+            # T-GR-INT-01：灰度发布路由。未放行的会话退回基线检索档位，
+            # 判定结果落库供观测侧统计放量比例。
+            routing_decision, rollout_decision = await _apply_rollout_gate(
+                request, routing_decision
+            )
+
             # 1) 调度 (dispatcher.invoke)
             # T-GB-AGT-02：把路由判定的检索档位一并注入，使"标准/全量"
             # 真正作用于专科智能体的检索强度（此前判定结果只落库不生效）。
@@ -192,6 +249,7 @@ async def run_diagnosis_pipeline(request_id: str) -> bool:
                 sg_ok=sg_ok,
                 timings=timings,
                 routing=routing_decision,
+                rollout=rollout_decision,
                 # 传入起点，使落库 findings 里带上真实的 pipeline.total_ms
                 # （否则该键只在写库后才出现在本地 timings 中，接口读不到，
                 #  processing_time_ms 会静默回退到 mock 值）
@@ -434,6 +492,7 @@ async def _write_result_to_db(
     sg_ok: bool,
     timings: Dict[str, float],
     routing: Optional[RoutingDecision] = None,
+    rollout: Optional["RolloutDecision"] = None,
     t_start: Optional[float] = None,
 ) -> bool:
     """根据 fusion_result + sg_result 决定 status / findings / confidence 并写 DB。
@@ -485,6 +544,8 @@ async def _write_result_to_db(
         "completed_at": datetime.now(timezone.utc).isoformat(),
         # T-GB-AGT-02 路由判定（前端确认对话框与路由分布观测的依据）
         "routing": routing.as_dict() if routing is not None else None,
+        # T-GR-INT-01：灰度判定落库，观测侧据此统计各轨道放量比例
+        "rollout": rollout.as_dict() if rollout is not None else None,
     }
 
     # 3) 写 DB

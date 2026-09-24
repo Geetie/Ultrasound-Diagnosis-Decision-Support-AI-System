@@ -100,6 +100,12 @@ class Settings(BaseSettings):
     # T-G1-INT-06：撤回生效端到端时延验收线（撤回动作 -> 各处理器执行完毕）
     consent_withdrawal_e2e_latency_target_ms: int = 500
 
+    # T-GR-INT-01 灰度发布路由
+    rollout_enabled: bool = False
+    rollout_full_percent: int = 5
+    rollout_compact_session_threshold: int = 10
+    rollout_counter_ttl_seconds: int = 7 * 24 * 3600
+
     deployment_profile: str = 'compact'
 
     inference_engine: str = 'llama.cpp'
