@@ -1,10 +1,13 @@
-import { useState } from 'react';
-import { Card, Form, Input, Button, Typography, Radio, message } from 'antd';
+import { useCallback, useState } from 'react';
+import { Card, Form, Input, Button, Typography, Radio, message, Select, Space } from 'antd';
 import { SendOutlined } from '@ant-design/icons';
 import apiClient from '@/services/api';
 import { useSessionStore } from '@/stores/sessionStore';
 import { tokens } from '@/styles/tokens';
+import { useTouchAdaptation } from '@/hooks/useTouchAdaptation';
 import { generateFeedbackId } from '@/utils/idGenerator';
+import { getApiErrorMessage } from '@/utils/apiError';
+import VoiceDictationButton from '@/components/voice/VoiceDictationButton';
 import type { FeedbackRequest } from '@/types/api';
 
 const { Title, Text } = Typography;
@@ -14,6 +17,15 @@ const feedbackTypeOptions = [
   { label: '纠正', value: 'correction' as const },
   { label: '错误报告', value: 'rule_change' as const },
   { label: '补充', value: 'supplement' as const },
+];
+
+/** 语音听写的目标字段（医生先选字段，再口述） */
+type DictationTarget = 'original_value' | 'corrected_value' | 'reason';
+
+const DICTATION_TARGETS: Array<{ value: DictationTarget; label: string }> = [
+  { value: 'original_value', label: '原始值' },
+  { value: 'corrected_value', label: '修正值' },
+  { value: 'reason', label: '原因' },
 ];
 
 interface FeedbackFormValues {
@@ -27,8 +39,22 @@ interface FeedbackFormValues {
 
 export default function FeedbackPage() {
   const [loading, setLoading] = useState(false);
+  const [dictationTarget, setDictationTarget] = useState<DictationTarget>('reason');
   const [form] = Form.useForm<FeedbackFormValues>();
   const sessionId = useSessionStore((s) => s.sessionId);
+  const touch = useTouchAdaptation();
+
+  // T-GB-FE-05：语音转写落到目标字段，文本保持可编辑
+  const handleTranscript = useCallback(
+    (text: string) => {
+      if (!text) return;
+      const current = (form.getFieldValue(dictationTarget) as string | undefined) ?? '';
+      const merged = current ? `${current}${current.endsWith('。') ? '' : '。'}${text}` : text;
+      form.setFieldsValue({ [dictationTarget]: merged } as Partial<FeedbackFormValues>);
+      message.success('语音已转写，可直接编辑后提交');
+    },
+    [dictationTarget, form]
+  );
 
   const handleSubmit = async (values: FeedbackFormValues) => {
     setLoading(true);
@@ -48,8 +74,8 @@ export default function FeedbackPage() {
       await apiClient.post('/feedback', payload);
       message.success('反馈提交成功');
       form.resetFields();
-    } catch (err: any) {
-      message.error(err?.response?.data?.error_message || '反馈提交失败');
+    } catch (err) {
+      message.error(getApiErrorMessage(err, '反馈提交失败'));
     } finally {
       setLoading(false);
     }
@@ -106,6 +132,39 @@ export default function FeedbackPage() {
                 ))}
               </Radio.Group>
             </Form.Item>
+
+            {/* T-GB-FE-05：语音填写（先选字段，再口述；转写文本可编辑） */}
+            <div
+              data-testid="voice-fill-section"
+              style={{
+                border: `1px dashed ${tokens.color.border.accent}`,
+                borderRadius: tokens.radius.md,
+                padding: tokens.spacing.md,
+                marginBottom: 16,
+                background: tokens.color.accent.primaryAlpha20,
+              }}
+            >
+              <div style={{ marginBottom: tokens.spacing.sm }}>
+                <Text style={{ color: tokens.color.text.secondary, fontSize: 13 }}>语音填写</Text>
+                <Text style={{ color: tokens.color.text.muted, fontSize: 11, marginLeft: 8 }}>
+                  选择字段后口述，转写结果可继续编辑
+                </Text>
+              </div>
+              <Space.Compact block>
+                <Select<DictationTarget>
+                  value={dictationTarget}
+                  onChange={setDictationTarget}
+                  style={{ width: 120 }}
+                  options={DICTATION_TARGETS}
+                  aria-label="语音填写目标字段"
+                />
+                <VoiceDictationButton
+                  onTranscript={handleTranscript}
+                  label="开始口述"
+                  size={touch.isTouch ? 'large' : 'middle'}
+                />
+              </Space.Compact>
+            </div>
 
             <Form.Item
               label="字段"

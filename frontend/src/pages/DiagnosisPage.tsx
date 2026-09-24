@@ -1,14 +1,19 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Card, Typography, Button, Spin, Empty } from 'antd';
-import { ReloadOutlined, ClockCircleOutlined } from '@ant-design/icons';
+import { Card, Typography, Button, Spin, Empty, Progress, Tag } from 'antd';
+import { ReloadOutlined, ClockCircleOutlined, LoadingOutlined } from '@ant-design/icons';
 import { tokens } from '@/styles/tokens';
 import { useSessionStore } from '@/stores/sessionStore';
-import { pollDiagnosisResult } from '@/services/diagnosisService';
+import { pollDiagnosisResult, STAGE_LABELS } from '@/services/diagnosisService';
+import type { DiagnosisStageEvent } from '@/services/diagnosisService';
 import type { DiagnosisResult } from '@/types/api';
+import { useProgressiveDiagnosis } from '@/hooks/useProgressiveDiagnosis';
+import { useTouchAdaptation } from '@/hooks/useTouchAdaptation';
 import DiagnosisConclusion from '@/components/diagnosis/DiagnosisConclusion';
 import EvidenceTrace from '@/components/diagnosis/EvidenceTrace';
+import { normalizeEvidence } from '@/components/diagnosis/evidence';
 import HallucinationWarning from '@/components/diagnosis/HallucinationWarning';
 import QualityControlBadge from '@/components/diagnosis/QualityControlBadge';
+import ProgressiveBlock from '@/components/diagnosis/ProgressiveBlock';
 
 const { Text, Title } = Typography;
 
@@ -16,12 +21,17 @@ type LoadingPhase = 'idle' | 'requesting' | 'polling' | 'completed' | 'timeout' 
 
 export default function DiagnosisPage() {
   const sessionId = useSessionStore((s) => s.sessionId);
+  const touch = useTouchAdaptation();
   const [result, setResult] = useState<DiagnosisResult | null>(null);
   const [phase, setPhase] = useState<LoadingPhase>('idle');
   const [requestId] = useState<string | null>(null);
   const [reviewAcknowledged, setReviewAcknowledged] = useState(false);
   const [responseTier] = useState<'realtime' | 'standard' | 'full'>('standard');
+  const [stage, setStage] = useState<DiagnosisStageEvent | null>(null);
   const cancelRef = useRef<{ cancel: () => void } | null>(null);
+
+  // T-GB-FE-01：结论先落地，安全警示/质控/证据链随后分块补齐
+  const progressive = useProgressiveDiagnosis(result);
 
   useEffect(() => {
     return () => {
@@ -50,11 +60,13 @@ export default function DiagnosisPage() {
         firstPollDelay: 800,
         pollInterval: 1500,
         maxWaitMs: 60000,
+        tier: responseTier,
+        onStage: setStage,
       });
       cancelRef.current = poller;
       setPhase('polling');
     },
-    [handleResult, handleTimeout],
+    [handleResult, handleTimeout, responseTier],
   );
 
   const handleRetry = useCallback(() => {
@@ -72,6 +84,15 @@ export default function DiagnosisPage() {
       polling: 'AI 正在分析影像数据...',
     };
     const msg = messages[phase] ?? '处理中...';
+    const stageKeys = [
+      'submitted',
+      'retrieval',
+      'reasoning',
+      'fusion',
+      'safety',
+      'finalizing',
+    ] as const;
+    const currentIndex = stage ? Math.max(0, stageKeys.indexOf(stage.key)) : 0;
 
     return (
       <div
@@ -80,12 +101,88 @@ export default function DiagnosisPage() {
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          padding: tokens.spacing.xl * 2,
+          padding: tokens.spacing.xl * (touch.isTouch ? 1 : 2),
           gap: tokens.spacing.md,
         }}
       >
         <Spin size="large" />
         <Text style={{ color: tokens.color.text.secondary, fontSize: 14 }}>{msg}</Text>
+
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: tokens.spacing.sm,
+            minWidth: touch.isTouch ? 320 : 260,
+            background: tokens.color.bg.secondary,
+            border: `1px solid ${tokens.color.border.default}`,
+            borderRadius: tokens.radius.md,
+            padding: tokens.spacing.md,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Text style={{ color: tokens.color.text.secondary, fontSize: 12, fontFamily: tokens.font.mono }}>
+              推理阶段
+            </Text>
+            {stage?.estimated && (
+              <Tag
+                style={{
+                  margin: 0,
+                  fontSize: 10,
+                  lineHeight: '16px',
+                  background: tokens.color.accent.primaryAlpha20,
+                  borderColor: `${tokens.color.accent.primary}40`,
+                  color: tokens.color.accent.primary,
+                }}
+              >
+                预计
+              </Tag>
+            )}
+          </div>
+
+          <Progress
+            percent={Math.round(((currentIndex + 1) / stageKeys.length) * 100)}
+            showInfo={false}
+            size="small"
+            strokeColor={tokens.color.accent.primary}
+            trailColor={tokens.color.border.default}
+          />
+
+          {stageKeys.map((key, index) => {
+            const done = index < currentIndex;
+            const active = index === currentIndex;
+            return (
+              <div
+                key={key}
+                style={{ display: 'flex', alignItems: 'center', gap: tokens.spacing.sm, opacity: done ? 0.55 : 1 }}
+              >
+                <span
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: '50%',
+                    flexShrink: 0,
+                    background: done
+                      ? tokens.color.accent.success
+                      : active
+                        ? tokens.color.accent.primary
+                        : tokens.color.border.default,
+                  }}
+                />
+                <Text
+                  style={{
+                    fontSize: tokens.touch.fontScale > 1 ? 13 : 12,
+                    color: active ? tokens.color.text.primary : tokens.color.text.muted,
+                  }}
+                >
+                  {STAGE_LABELS[key]}
+                </Text>
+                {active && <LoadingOutlined style={{ fontSize: 10, color: tokens.color.accent.primary }} />}
+              </div>
+            );
+          })}
+        </div>
+
         <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacing.xs }}>
           <ClockCircleOutlined style={{ color: tokens.color.text.muted, fontSize: 12 }} />
           <Text style={{ color: tokens.color.text.muted, fontSize: 11, fontFamily: tokens.font.mono }}>
@@ -157,62 +254,103 @@ export default function DiagnosisPage() {
   const renderResult = () => {
     if (!result) return null;
 
-    const evidence = result.evidence as Record<string, unknown>;
+    const evidence = normalizeEvidence(result.evidence as Record<string, unknown> | undefined);
+    const stageTimings = progressive.stageTimings;
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacing.lg }}>
-        <HallucinationWarning
-          visible={isSevere}
-          reviewReason={result.review_reason}
-          onAcknowledgeReview={() => setReviewAcknowledged(true)}
-        />
+        {/* 结论先行：医生最需要的信息第一时间落地 */}
+        <ProgressiveBlock ready={progressive.isRevealed('conclusion')} skeletonRows={3} label="结论">
+          <Card
+            size="small"
+            style={{
+              background: tokens.color.bg.secondary,
+              border: `1px solid ${tokens.color.border.default}`,
+              borderRadius: tokens.radius.md,
+            }}
+            styles={{ body: { padding: tokens.spacing.lg } }}
+          >
+            <DiagnosisConclusion result={result} responseTier={responseTier} />
+          </Card>
+        </ProgressiveBlock>
 
-        <Card
-          size="small"
-          style={{
-            background: tokens.color.bg.secondary,
-            border: `1px solid ${tokens.color.border.default}`,
-            borderRadius: tokens.radius.md,
-          }}
-          styles={{ body: { padding: tokens.spacing.lg } }}
-        >
-          <DiagnosisConclusion result={result} responseTier={responseTier} />
-        </Card>
-
-        <Card
-          size="small"
-          style={{
-            background: tokens.color.bg.secondary,
-            border: `1px solid ${tokens.color.border.default}`,
-            borderRadius: tokens.radius.md,
-          }}
-          styles={{ body: { padding: tokens.spacing.md } }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: tokens.spacing.sm }}>
-            <Text
-              style={{
-                fontFamily: tokens.font.display,
-                color: tokens.color.accent.secondary,
-                fontSize: 12,
-                letterSpacing: '0.05em',
-              }}
-            >
-              QUALITY CONTROL
-            </Text>
-            {needsReview && !reviewAcknowledged && (
-              <Text style={{ color: tokens.color.accent.danger, fontSize: 11, fontFamily: tokens.font.mono }}>
-                ⚠ 需人工审核
-              </Text>
-            )}
-          </div>
-          <QualityControlBadge
-            hallucination_severity={result.hallucination_severity}
-            fusion_status={result.fusion_status}
-            desensitization_status={result.desensitization_status}
+        {/* 安全警示随后补齐 */}
+        <ProgressiveBlock ready={progressive.isRevealed('hallucination')} skeletonRows={2} label="安全警示">
+          <HallucinationWarning
+            visible={isSevere}
+            reviewReason={result.review_reason}
+            onAcknowledgeReview={() => setReviewAcknowledged(true)}
           />
-        </Card>
+        </ProgressiveBlock>
 
-        <EvidenceTrace evidence={evidence as any} />
+        <ProgressiveBlock ready={progressive.isRevealed('quality')} skeletonRows={2} label="质量控制">
+          <Card
+            size="small"
+            style={{
+              background: tokens.color.bg.secondary,
+              border: `1px solid ${tokens.color.border.default}`,
+              borderRadius: tokens.radius.md,
+            }}
+            styles={{ body: { padding: tokens.spacing.md } }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: tokens.spacing.sm }}>
+              <Text
+                style={{
+                  fontFamily: tokens.font.display,
+                  color: tokens.color.accent.secondary,
+                  fontSize: 12,
+                  letterSpacing: '0.05em',
+                }}
+              >
+                QUALITY CONTROL
+              </Text>
+              {needsReview && !reviewAcknowledged && (
+                <Text style={{ color: tokens.color.accent.danger, fontSize: 11, fontFamily: tokens.font.mono }}>
+                  ⚠ 需人工审核
+                </Text>
+              )}
+            </div>
+            <QualityControlBadge
+              hallucination_severity={result.hallucination_severity}
+              fusion_status={result.fusion_status}
+              desensitization_status={result.desensitization_status}
+            />
+          </Card>
+        </ProgressiveBlock>
+
+        <ProgressiveBlock ready={progressive.isRevealed('evidence')} skeletonRows={4} label="证据链">
+          <EvidenceTrace evidence={evidence} />
+        </ProgressiveBlock>
+
+        {/* 真实阶段耗时：来自后端 findings.timings_ms，仅在有数据时展示 */}
+        {stageTimings.length > 0 && (
+          <div
+            data-testid="stage-timings"
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: tokens.spacing.sm,
+              padding: `${tokens.spacing.sm}px 0`,
+            }}
+          >
+            {stageTimings.map((item) => (
+              <span
+                key={item.key}
+                style={{
+                  fontFamily: tokens.font.mono,
+                  fontSize: 10,
+                  color: tokens.color.text.muted,
+                  border: `1px solid ${tokens.color.border.default}`,
+                  borderRadius: tokens.radius.sm,
+                  padding: '2px 8px',
+                  background: tokens.color.bg.secondary,
+                }}
+              >
+                {item.label} {item.durationMs}ms
+              </span>
+            ))}
+          </div>
+        )}
 
         <div
           style={{

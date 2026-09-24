@@ -14,4 +14,6 @@ export interface SessionState {
   createdAt: string | null;
   expiredAt: string | null;
   ttlRemainingMs: number | null;
+  /** 当前选中的检查器官（顶栏选择器 / 语音指令共用） */
+  currentOrgan: OrganType | null;
 }

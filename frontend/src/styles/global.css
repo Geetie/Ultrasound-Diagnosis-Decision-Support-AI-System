@@ -71,6 +71,60 @@ body {
   background: var(--color-text-muted);
 }
 
+/* ============================================================
+   触摸屏适配（T-GB-FE-04）
+   由 useTouchAdaptation 在 <body> 上挂 touch-mode 类，集中放大可点区域与
+   字号，避免在每个组件里散落条件样式。最小热区 48px 为人机工程常用下限。
+   ============================================================ */
+.touch-mode {
+  --touch-hit-target: 48px;
+  font-size: 15px;
+}
+
+.touch-mode .ant-btn:not(.ant-btn-sm):not(.ant-btn-link):not(.ant-btn-text) {
+  min-height: var(--touch-hit-target);
+  padding-inline: 18px;
+}
+
+.touch-mode .ant-btn-sm {
+  min-height: 40px;
+}
+
+.touch-mode .ant-input,
+.touch-mode .ant-input-affix-wrapper,
+.touch-mode .ant-select-selector,
+.touch-mode .ant-picker {
+  min-height: var(--touch-hit-target);
+}
+
+.touch-mode .ant-radio-wrapper,
+.touch-mode .ant-checkbox-wrapper {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.touch-mode .ant-menu-item {
+  min-height: var(--touch-hit-target);
+}
+
+.touch-mode .ant-tag {
+  padding: 4px 10px;
+  font-size: 13px;
+}
+
+/* 暗室模式：进一步压低背景亮度、提高文字对比（与 uiStore.isDarkRoomMode 联动） */
+.dark-room {
+  --color-bg-primary: #05070f;
+  --color-bg-secondary: #0b0f1a;
+  --color-text-primary: #f1f5f9;
+}
+
+.dark-room .ant-modal-content,
+.dark-room .ant-drawer-content {
+  background: #0b0f1a;
+}
+
 @layer components {
   .glow-accent {
     box-shadow: 0 0 12px rgba(0, 212, 255, 0.3);

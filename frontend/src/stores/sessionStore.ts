@@ -7,6 +7,8 @@ interface SessionActions {
   updateOrganStatus: (organ: OrganType, status: OrganStatus) => void;
   setConsentStatus: (status: SessionState['consentStatus']) => void;
   setTtlRemaining: (ms: number | null) => void;
+  /** 当前检查器官（顶栏选择器与语音指令共用同一处状态） */
+  setCurrentOrgan: (organ: OrganType | null) => void;
 }
 
 const initialSessionState: SessionState = {
@@ -21,6 +23,7 @@ const initialSessionState: SessionState = {
   createdAt: null,
   expiredAt: null,
   ttlRemainingMs: null,
+  currentOrgan: null,
 };
 
 export const useSessionStore = create<SessionState & SessionActions>((set) => ({
@@ -33,4 +36,5 @@ export const useSessionStore = create<SessionState & SessionActions>((set) => ({
     })),
   setConsentStatus: (consentStatus) => set({ consentStatus }),
   setTtlRemaining: (ttlRemainingMs) => set({ ttlRemainingMs }),
+  setCurrentOrgan: (currentOrgan) => set({ currentOrgan }),
 }));

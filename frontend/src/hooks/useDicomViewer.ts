@@ -22,7 +22,6 @@ export function useDicomViewer(element: HTMLElement | null, imageId?: string) {
     setLoaded,
     setError,
     setViewport,
-    setMetadata,
   } = useDicomStore();
 
   useEffect(() => {

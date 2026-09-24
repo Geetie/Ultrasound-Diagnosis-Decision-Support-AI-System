@@ -11,7 +11,7 @@ const organOptions = [
 
 export default function TopBar() {
   const { isDarkRoomMode, toggleDarkRoomMode } = useUiStore();
-  const { currentOrgan, targetOrgans } = useSessionStore();
+  const { currentOrgan, targetOrgans, setCurrentOrgan } = useSessionStore();
 
   return (
     <div className="w-full flex items-center justify-between">
@@ -41,8 +41,9 @@ export default function TopBar() {
       </div>
       <div className="flex items-center gap-4">
         <Select
-          value={currentOrgan || undefined}
+          value={currentOrgan ?? undefined}
           placeholder="选择器官"
+          onChange={(value) => setCurrentOrgan(value)}
           options={organOptions.filter((o) =>
             targetOrgans.length > 0 ? targetOrgans.includes(o.value as 'thyroid' | 'liver' | 'cardiac') : true
           )}

@@ -7,27 +7,9 @@ import {
 } from '@ant-design/icons';
 import { tokens } from '@/styles/tokens';
 import { useUiStore } from '@/stores/uiStore';
+import type { EvidenceData, ReasoningStep } from './evidence';
 
 const { Text } = Typography;
-
-interface ReasoningStep {
-  step: string;
-  description: string;
-  confidence?: number;
-}
-
-interface KnowledgeRef {
-  source: string;
-  version: string;
-  relevance: number;
-}
-
-interface EvidenceData {
-  reasoning_path?: ReasoningStep[];
-  knowledge_refs?: KnowledgeRef[];
-  confidence_score?: number;
-  cached?: boolean;
-}
 
 interface EvidenceTraceProps {
   evidence: EvidenceData;

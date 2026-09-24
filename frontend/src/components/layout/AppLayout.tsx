@@ -1,39 +1,54 @@
-import { Outlet } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Outlet, useNavigate } from 'react-router-dom';
 import { Layout } from 'antd';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
 import StatusBar from './StatusBar';
+import VoiceControl from '@/components/voice/VoiceControl';
 import { useUiStore } from '@/stores/uiStore';
+import { useTouchAdaptation } from '@/hooks/useTouchAdaptation';
+import { tokens } from '@/styles/tokens';
 
 const { Sider, Header, Content, Footer } = Layout;
 
 export default function AppLayout() {
-  const { sidebarCollapsed, setSidebarCollapsed } = useUiStore();
+  const { sidebarCollapsed, setSidebarCollapsed, isDarkRoomMode } = useUiStore();
+  // T-GB-FE-04：触摸设备放大热区与字号（结果写入 <body> 的 touch-mode 类）
+  const touch = useTouchAdaptation();
+  const navigate = useNavigate();
+
+  // 暗室模式同样以 body 类呈现，便于 CSS 统一压低亮度与提高对比
+  useEffect(() => {
+    document.body.classList.toggle('dark-room', isDarkRoomMode);
+    return () => document.body.classList.remove('dark-room');
+  }, [isDarkRoomMode]);
+
+  const background = isDarkRoomMode ? tokens.color.darkroom.bgDeep : '#0a0e1a';
 
   return (
-    <Layout className="h-screen" style={{ background: '#0a0e1a' }}>
+    <Layout className="h-screen" style={{ background }}>
       <Sider
         collapsible
         collapsed={sidebarCollapsed}
         onCollapse={setSidebarCollapsed}
-        width={220}
+        width={touch.isTouch ? 240 : 220}
         collapsedWidth={64}
         trigger={null}
         style={{
-          background: '#0a0e1a',
+          background,
           borderRight: '1px solid #1e293b',
         }}
       >
         <Sidebar collapsed={sidebarCollapsed} />
       </Sider>
-      <Layout style={{ background: '#0a0e1a' }}>
+      <Layout style={{ background }}>
         <Header
           style={{
             background: '#111827',
             borderBottom: '1px solid #1e293b',
-            padding: '0 24px',
-            height: 56,
-            lineHeight: '56px',
+            padding: touch.isTouch ? '0 16px' : '0 24px',
+            height: touch.isTouch ? 64 : 56,
+            lineHeight: touch.isTouch ? '64px' : '56px',
             display: 'flex',
             alignItems: 'center',
           }}
@@ -43,8 +58,8 @@ export default function AppLayout() {
         <Content
           className="animate-fade-in"
           style={{
-            background: '#0a0e1a',
-            padding: 16,
+            background,
+            padding: touch.isTouch ? 20 : 16,
             overflow: 'auto',
           }}
         >
@@ -62,6 +77,15 @@ export default function AppLayout() {
           <StatusBar />
         </Footer>
       </Layout>
+
+      {/* T-GB-FE-02：语音控件常驻（发起诊断后跳转诊断页查看结果） */}
+      <VoiceControl
+        onExecuted={(result) => {
+          if (result.request_id) {
+            navigate('/diagnosis');
+          }
+        }}
+      />
     </Layout>
   );
 }
