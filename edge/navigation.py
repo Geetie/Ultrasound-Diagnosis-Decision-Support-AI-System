@@ -137,6 +137,15 @@ class NavigationInferenceService:
         self._frames_inferred += 1
         self._latencies_ms.append(latency_ms)
 
+        # T-GB-INT-02：边缘端推理延迟埋点（指标此前只有定义与读取方）。
+        # 边缘端可能以独立进程运行、未必装配 metrics collector，故做尽力而为。
+        try:
+            from app.observability.metrics_collector import get_metrics_collector
+
+            get_metrics_collector().record_edge_nav_latency(latency_ms / 1000.0)
+        except Exception as exc:  # noqa: BLE001 - 埋点失败不得影响导航
+            logger.debug("edge_nav_latency_metric_failed", error=str(exc))
+
         accepted, violations, _rejected = self._safety.filter_labels(raw_labels)
         if violations:
             logger.warning(

@@ -138,6 +138,9 @@ class Settings(BaseSettings):
     navigation_ws_heartbeat_timeout_seconds: int = 15
     navigation_ws_auth_token_ttl_seconds: int = 300
     navigation_confidence_threshold: float = 0.75
+    # T-GB-INT-02：导航延迟埋点的合理性上限（毫秒）。超过该值视为时钟漂移
+    # 或单位错误（例如误传秒），丢弃以避免污染 P99（验收：导航 P99 < 200ms）。
+    nav_latency_max_plausible_ms: int = 60000
     nav_safety_check_normal_timeout_seconds: float = 0.05
     nav_safety_check_max_timeout_seconds: float = 0.08
     nav_verification_workers: int = 4

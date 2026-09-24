@@ -1,6 +1,6 @@
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query, WebSocketException, status
 from datetime import datetime, timezone
-from typing import Dict, Set, Optional
+from typing import Dict, List, Optional, Set
 import json
 import time
 import secrets
@@ -9,6 +9,7 @@ import structlog
 
 from app.models.schemas import (
     BaseWebSocketMessage,
+    EdgeNavResultMessage,
     FrameMessage,
     NavigationMessage,
     PingMessage,
@@ -45,6 +46,150 @@ def _get_nav_verification_semaphore() -> asyncio.Semaphore:
     if _nav_verification_semaphore is None:
         _nav_verification_semaphore = asyncio.Semaphore(settings.nav_verification_workers)
     return _nav_verification_semaphore
+
+
+def _now_ms() -> int:
+    """当前 epoch 毫秒（与边缘端 ``timestamp_ms`` 同口径）。"""
+    return int(datetime.now(timezone.utc).timestamp() * 1000)
+
+
+def record_nav_latency(message, started_monotonic: float) -> Optional[float]:
+    """记录一次导航链路延迟（T-GB-INT-02，验收：导航 P99 < 200ms）。
+
+    时间戳口径按优先级依次尝试（两种口径在链路里并存，混用会让 P99 失真）：
+
+    1. ``timestamp_ms``：边缘端上行消息的 **epoch 毫秒**（edge/websocket_server
+       的 ``push_nav_result`` / ``push_frame``）；
+    2. ``timestamp``：后端 ``get_timestamp()`` 的 **epoch 秒**（FrameMessage）；
+    3. 都没有/不可信（时钟漂移、单位错误、未来时间）时退化为**后端处理耗时**
+       （``started_monotonic``），并丢弃超出合理上限的样本。
+
+    Returns:
+        本次记录的延迟（秒）；埋点失败返回 ``None``（绝不影响导航链路）。
+    """
+    try:
+        seconds: Optional[float] = None
+
+        sent_ms = getattr(message, "timestamp_ms", None)
+        if sent_ms:
+            delta_ms = _now_ms() - int(sent_ms)
+            if 0 <= delta_ms <= settings.nav_latency_max_plausible_ms:
+                seconds = delta_ms / 1000.0
+
+        if seconds is None:
+            sent_seconds = getattr(message, "timestamp", None)
+            if sent_seconds:
+                delta = get_timestamp() - int(sent_seconds)
+                if 0 <= delta <= settings.nav_latency_max_plausible_ms / 1000.0:
+                    seconds = float(delta)
+
+        if seconds is None:
+            seconds = time.monotonic() - started_monotonic
+
+        seconds = max(0.0, seconds)
+        from app.observability.metrics_collector import get_metrics_collector
+
+        get_metrics_collector().record_nav_latency(seconds)
+        return seconds
+    except Exception as exc:  # noqa: BLE001 - 埋点失败不得中断导航
+        logger.debug("nav_latency_metric_failed", error=str(exc))
+        return None
+
+
+def edge_labels_to_annotations(labels) -> List[NavigationAnnotation]:
+    """边缘端标注（归一化 x/y/w/h）→ 前端导航标注（归一化 bbox）。"""
+    annotations: List[NavigationAnnotation] = []
+    for label in labels:
+        annotations.append(
+            NavigationAnnotation(
+                label=label.label,
+                confidence=float(label.confidence),
+                bbox=[
+                    float(label.x),
+                    float(label.y),
+                    float(label.width),
+                    float(label.height),
+                ],
+            )
+        )
+    return annotations
+
+
+async def deliver_navigation_annotations(
+    *,
+    manager,
+    session_id: str,
+    frame_id: str,
+    annotations: List[NavigationAnnotation],
+    message,
+    started_monotonic: float,
+) -> bool:
+    """同意/安全网关校验后把导航标注下发到前端，并记录链路延迟。
+
+    后端推理路径（FrameMessage）与边缘端上行路径（nav_result）共用本函数，
+    保证两条路径的安全检查、降级标记与埋点口径完全一致。
+
+    Returns:
+        True 已下发；False 被安全网关拒绝（已下发撤销消息）。
+    """
+    patient_id = await manager.get_patient_id(session_id)
+    consent_status = "unknown"
+    try:
+        async with AsyncSessionLocal() as db:
+            consent_repo = ConsentRepository(db)
+            consent_record = await consent_repo.get_latest_consent(patient_id)
+            if consent_record:
+                consent_status = consent_record.status
+    except Exception as e:
+        logger.warning("nav_consent_lookup_failed", session_id=session_id, error=str(e))
+
+    desensitization_status = DesensitizationStatus.FULL
+    try:
+        async with _get_nav_verification_semaphore():
+            sg_result = await asyncio.wait_for(
+                safety_gateway_client.check_output(
+                    session_id=session_id,
+                    patient_id=patient_id,
+                    output_data={"annotations": [a.model_dump() for a in annotations]},
+                    consent_status_at_input=consent_status,
+                ),
+                timeout=settings.nav_safety_check_max_timeout_seconds,
+            )
+        if not sg_result.get("allowed", False):
+            await manager.send_navigation_revocation(
+                session_id,
+                frame_id=frame_id,
+                reason=sg_result.get("message", "Safety check failed"),
+            )
+            return False
+        if sg_result.get("degraded_mode"):
+            desensitization_status = DesensitizationStatus.DEGRADED
+        elif sg_result.get("latency_ms", 0) > settings.nav_safety_check_normal_timeout_seconds * 1000:
+            logger.info(
+                "nav_safety_check_degraded_latency",
+                session_id=session_id,
+                latency_ms=sg_result.get("latency_ms"),
+                normal_threshold_ms=settings.nav_safety_check_normal_timeout_seconds * 1000,
+            )
+            desensitization_status = DesensitizationStatus.DEGRADED
+    except asyncio.TimeoutError:
+        logger.warning("nav_safety_check_timeout", session_id=session_id)
+        desensitization_status = DesensitizationStatus.DEGRADED
+    except Exception as e:
+        logger.warning("nav_safety_check_error", session_id=session_id, error=str(e))
+        desensitization_status = DesensitizationStatus.DEGRADED
+
+    nav_msg = NavigationMessage(
+        type=WebSocketMessageType.NAVIGATION,
+        timestamp=get_timestamp(),
+        frame_id=frame_id,
+        annotations=annotations,
+        desensitization_status=desensitization_status,
+    )
+    await manager.send_personal_message(nav_msg.model_dump(), session_id)
+    # T-GB-INT-02：导航链路延迟埋点（此前 nav_latency 指标只有定义与读取方）
+    record_nav_latency(message, started_monotonic)
+    return True
 
 
 class AuthTokenManager:
@@ -485,6 +630,8 @@ async def websocket_nav_endpoint(
 
                 elif data.get("type") == WebSocketMessageType.FRAME:
                     frame_msg = FrameMessage(**data)
+                    # T-GB-INT-02：导航延迟埋点起点（后端处理耗时兜底口径）
+                    frame_started = time.monotonic()
 
                     inference_engine = getattr(websocket.app.state, "inference_engine", None) if hasattr(websocket, "app") else None
                     if inference_engine:
@@ -497,61 +644,29 @@ async def websocket_nav_endpoint(
                         annotations = []
                         logger.info("nav_no_inference_engine_returning_empty", session_id=session_id)
 
-                    patient_id = await manager.get_patient_id(session_id)
-                    consent_status = "unknown"
-                    try:
-                        async with AsyncSessionLocal() as db:
-                            consent_repo = ConsentRepository(db)
-                            consent_record = await consent_repo.get_latest_consent(patient_id)
-                            if consent_record:
-                                consent_status = consent_record.status
-                    except Exception as e:
-                        logger.warning("nav_consent_lookup_failed", session_id=session_id, error=str(e))
-
-                    desensitization_status = DesensitizationStatus.FULL
-                    try:
-                        async with _get_nav_verification_semaphore():
-                            sg_result = await asyncio.wait_for(
-                                safety_gateway_client.check_output(
-                                    session_id=session_id,
-                                    patient_id=patient_id,
-                                    output_data={"annotations": [a.model_dump() for a in annotations]},
-                                    consent_status_at_input=consent_status,
-                                ),
-                                timeout=settings.nav_safety_check_max_timeout_seconds,
-                            )
-                        if not sg_result.get("allowed", False):
-                            await manager.send_navigation_revocation(
-                                session_id,
-                                frame_id=frame_msg.frame_id,
-                                reason=sg_result.get("message", "Safety check failed"),
-                            )
-                            continue
-                        if sg_result.get("degraded_mode"):
-                            desensitization_status = DesensitizationStatus.DEGRADED
-                        elif sg_result.get("latency_ms", 0) > settings.nav_safety_check_normal_timeout_seconds * 1000:
-                            logger.info(
-                                "nav_safety_check_degraded_latency",
-                                session_id=session_id,
-                                latency_ms=sg_result.get("latency_ms"),
-                                normal_threshold_ms=settings.nav_safety_check_normal_timeout_seconds * 1000,
-                            )
-                            desensitization_status = DesensitizationStatus.DEGRADED
-                    except asyncio.TimeoutError:
-                        logger.warning("nav_safety_check_timeout", session_id=session_id)
-                        desensitization_status = DesensitizationStatus.DEGRADED
-                    except Exception as e:
-                        logger.warning("nav_safety_check_error", session_id=session_id, error=str(e))
-                        desensitization_status = DesensitizationStatus.DEGRADED
-
-                    nav_msg = NavigationMessage(
-                        type=WebSocketMessageType.NAVIGATION,
-                        timestamp=get_timestamp(),
+                    await deliver_navigation_annotations(
+                        manager=manager,
+                        session_id=session_id,
                         frame_id=frame_msg.frame_id,
                         annotations=annotations,
-                        desensitization_status=desensitization_status
+                        message=frame_msg,
+                        started_monotonic=frame_started,
                     )
-                    await manager.send_personal_message(nav_msg.model_dump(), session_id)
+
+                elif data.get("type") == "nav_result":
+                    # T-GB-INT-02：边缘端上行导航结果（edge/websocket_server
+                    # 的 push_nav_result 载荷）。此前后端没有任何消费者，
+                    # 边缘端算出的标注到后端即被丢弃，导航链路是断的。
+                    edge_msg = EdgeNavResultMessage(**data)
+                    edge_started = time.monotonic()
+                    await deliver_navigation_annotations(
+                        manager=manager,
+                        session_id=edge_msg.session_id or session_id,
+                        frame_id=edge_msg.frame_id,
+                        annotations=edge_labels_to_annotations(edge_msg.labels),
+                        message=edge_msg,
+                        started_monotonic=edge_started,
+                    )
 
             except WebSocketDisconnect:
                 break

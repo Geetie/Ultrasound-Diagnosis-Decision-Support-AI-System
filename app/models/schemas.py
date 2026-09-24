@@ -220,7 +220,10 @@ class NavigationAnnotation(BaseModel):
     label: str
     confidence: float
     threshold: Optional[float] = None
-    bbox: Optional[List[int]] = None
+    # 兼容两种坐标口径：后端推理路径沿用接口规范示例的像素整数，
+    # 边缘端路径使用 0.0-1.0 归一化坐标（edge/safety 校验与前端
+    # NavigationOverlay 的口径）。前端类型为 [number, number, number, number]。
+    bbox: Optional[List[float]] = None
 
 
 class NavigationMessage(BaseWebSocketMessage):
@@ -228,6 +231,34 @@ class NavigationMessage(BaseWebSocketMessage):
     frame_id: str
     annotations: List[NavigationAnnotation] = []
     desensitization_status: DesensitizationStatus = DesensitizationStatus.FULL
+
+
+class EdgeNavLabel(BaseModel):
+    """边缘端推理输出的单个标注（归一化坐标，见 edge/protocols.NavLabel）。"""
+
+    label: str
+    x: float
+    y: float
+    width: float
+    height: float
+    confidence: float
+
+
+class EdgeNavResultMessage(BaseModel):
+    """边缘端上报的导航结果（T-GB-INT-02：edge → backend 的上行消息）。
+
+    与 ``edge/websocket_server.EdgeWebSocketClient.push_nav_result`` 的载荷
+    一一对应；此前后端**没有任何消费者**，边缘端算出的标注到后端即被丢弃。
+    """
+
+    type: str = "nav_result"
+    frame_id: str
+    session_id: Optional[str] = None
+    latency_ms: Optional[float] = None
+    backend: Optional[str] = None
+    labels: List[EdgeNavLabel] = []
+    # 毫秒级 epoch（边缘端 push_nav_result/push_frame 的口径）
+    timestamp_ms: Optional[int] = None
 
 
 class PingMessage(BaseWebSocketMessage):

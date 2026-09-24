@@ -588,14 +588,30 @@ def _default_response_tier() -> ResponseTier:
 
 
 def _record_latency(outcome: MultiOrganOutcome) -> None:
-    """上报多器官端到端延迟（``05-可观测性与运维`` 口径）。"""
+    """上报多器官端到端延迟（``05-可观测性与运维`` 口径）。
+
+    ``with_retry`` 对应规格中的两档延迟（不含重试 < 25s / 含重试 < 35s）：
+    本次运行只要**不是一次干净通过**即计入含重试档——包括器官超时/跳过
+    （有 reason）、器官失败或需复核（failed/needs_review，均需重跑）。
+    只按 ``reason`` 判断会把"器官失败"错记到不含重试档，使两档延迟统计
+    混入需要重跑的样本。
+    """
     try:
         from app.observability.metrics_collector import get_metrics_collector
 
+        needs_retry = (
+            bool(outcome.failed_organs)
+            or bool(outcome.skipped_organs)
+            or any(r.reason for r in outcome.organ_results)
+            or any(
+                getattr(r, "status", None) not in ("completed",)
+                for r in outcome.organ_results
+            )
+        )
         collector = get_metrics_collector()
         collector.record_multi_organ_latency(
             outcome.total_ms / 1000.0,
-            with_retry=any(r.reason for r in outcome.organ_results),
+            with_retry=needs_retry,
         )
     except Exception as exc:  # noqa: BLE001 - 埋点失败不得影响业务
         logger.debug("multi_organ_latency_metric_failed", error=str(exc))

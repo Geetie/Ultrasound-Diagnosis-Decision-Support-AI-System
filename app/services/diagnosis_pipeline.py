@@ -184,6 +184,10 @@ async def run_diagnosis_pipeline(request_id: str) -> bool:
                 sg_ok=sg_ok,
                 timings=timings,
                 routing=routing_decision,
+                # 传入起点，使落库 findings 里带上真实的 pipeline.total_ms
+                # （否则该键只在写库后才出现在本地 timings 中，接口读不到，
+                #  processing_time_ms 会静默回退到 mock 值）
+                t_start=t_start,
             )
             timings["db_write_ms"] = (time.monotonic() - t) * 1000.0
 
@@ -370,8 +374,15 @@ async def _write_result_to_db(
     sg_ok: bool,
     timings: Dict[str, float],
     routing: Optional[RoutingDecision] = None,
+    t_start: Optional[float] = None,
 ) -> bool:
-    """根据 fusion_result + sg_result 决定 status / findings / confidence 并写 DB。"""
+    """根据 fusion_result + sg_result 决定 status / findings / confidence 并写 DB。
+
+    Args:
+        t_start: 管线起点的 ``time.monotonic()``。传入时会在 findings 的
+            ``timings_ms`` 中补上 ``pipeline.total_ms``（截至写库前），供
+            接口的 ``processing_time_ms`` 与前端进度展示直接使用。
+    """
     # 1) 决定 status
     if not sg_ok:
         status = "failed"
@@ -398,11 +409,18 @@ async def _write_result_to_db(
         )
 
     # 2) 组装 findings
+    timings_ms = {k: round(v, 2) for k, v in timings.items()}
+    if t_start is not None:
+        # 截至写库前的总耗时（不含本次写库本身），接口的 processing_time_ms
+        # 与前端进度都读这个键
+        timings_ms["pipeline.total_ms"] = round(
+            (time.monotonic() - t_start) * 1000.0, 2
+        )
     findings = {
         "organ": request.organ,
         "fusion_result": _fusion_result_to_dict(fusion_result),
         "sg_result": sg_result or {"service_unavailable": True},
-        "timings_ms": {k: round(v, 2) for k, v in timings.items()},
+        "timings_ms": timings_ms,
         "review_reason": review_reason,
         "completed_at": datetime.now(timezone.utc).isoformat(),
         # T-GB-AGT-02 路由判定（前端确认对话框与路由分布观测的依据）
