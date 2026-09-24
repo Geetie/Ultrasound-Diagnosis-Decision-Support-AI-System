@@ -348,6 +348,48 @@ class SessionUpdateRequest(BaseModel):
     organ_statuses: Optional[Dict[str, str]] = None
 
 
+# ============== T-GB-AGT-01 多器官联合诊断 ==============
+class OrganDiagnosisStatus(BaseModel):
+    """单器官在联合诊断中的执行结果。"""
+
+    organ: str
+    status: OrganStatus
+    request_id: Optional[str] = None
+    confidence: float = 0.0
+    elapsed_ms: float = 0.0
+    reason: Optional[str] = None
+
+
+class MultiOrganDiagnosisRequest(BaseModel):
+    """会话级多器官联合诊断请求。
+
+    ``organs`` 缺省时取会话 ``target_organs``；超时按规格默认
+    单器官 30s / 全局 90s（可显式覆盖，用于测试与调参）。
+    """
+
+    session_id: str
+    organs: Optional[List[str]] = None
+    response_tier: Optional[ResponseTier] = None
+    per_organ_timeout_seconds: Optional[float] = None
+    total_timeout_seconds: Optional[float] = None
+
+
+class MultiOrganDiagnosisResponse(BaseModel):
+    """多器官联合诊断汇总响应（含"部分完成"标记）。"""
+
+    session_id: str
+    session_status: SessionStatus
+    organs: List[str]
+    organ_statuses: Dict[str, OrganStatus]
+    organ_results: List[OrganDiagnosisStatus]
+    completed_organs: List[str]
+    failed_organs: List[str]
+    skipped_organs: List[str]
+    needs_review_organs: List[str]
+    partial: bool
+    total_ms: float
+
+
 # ============== 安全事件相关模型 ==============
 class SafetyEventType(str, Enum):
     KNOWLEDGE_UPDATED = "KnowledgeUpdated"

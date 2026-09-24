@@ -13,6 +13,8 @@ from app.models.schemas import (
     DiagnosisResult,
     DiagnosisEvidence,
     DiagnosisQualityControl,
+    MultiOrganDiagnosisRequest,
+    MultiOrganDiagnosisResponse,
     ResponseTier,
     ConsentStatus,
     FusionStatus,
@@ -33,6 +35,10 @@ from app.config.settings import settings
 from app.dependencies import get_diagnosis_repo, get_consent_repo, get_session_repo, get_audit_service
 from app.api.v1.utils import get_actor_id, check_consent_status, try_renew_session
 from app.services.diagnosis_worker import enqueue_diagnosis
+from app.services.multi_organ_orchestrator import (
+    SessionNotFoundError,
+    run_multi_organ_diagnosis,
+)
 from app.services.safety_gateway_client import safety_gateway_client
 from app.security.auth import get_current_active_user
 from app.api.websocket.nav import manager as nav_manager
@@ -204,6 +210,75 @@ async def submit_diagnosis_request(
 
 
 RESULT_CACHE_TTL_SECONDS = 600
+
+
+@router.post("/multi-organ", response_model=MultiOrganDiagnosisResponse)
+async def submit_multi_organ_diagnosis(
+    request: MultiOrganDiagnosisRequest,
+    fastapi_request: Request,
+    session_repo=Depends(get_session_repo),
+    consent_repo=Depends(get_consent_repo),
+    audit_service=Depends(get_audit_service),
+    current_user: Optional[dict] = Depends(get_current_active_user),
+):
+    """T-GB-AGT-01：会话级多器官联合诊断（三器官串行 + 部分完成）。
+
+    与单器官 ``POST /request`` 的差异：
+    - 一次调用按规格顺序串行处理会话的全部目标器官；
+    - 单器官超时/失败不阻断其余器官，响应中返回各器官状态与
+      ``partial`` 标记；
+    - 会话 ``organ_statuses`` 与状态同步更新，前端可据此渲染进度
+      （WebSocket 侧推送 ``organ_switching``）。
+    """
+    session = await session_repo.get_session(request.session_id)
+    if not session:
+        raise NotFoundException(error_message=f"Session not found: {request.session_id}")
+
+    consent_record = await consent_repo.get_latest_consent(session.patient_id)
+    check_consent_status(consent_record, session.patient_id)
+
+    try:
+        outcome = await run_multi_organ_diagnosis(
+            session_id=request.session_id,
+            organs=request.organs,
+            per_organ_timeout_s=request.per_organ_timeout_seconds,
+            total_timeout_s=request.total_timeout_seconds,
+            response_tier=request.response_tier,
+        )
+    except SessionNotFoundError as exc:
+        raise NotFoundException(error_message=str(exc))
+
+    actor_id = get_actor_id(current_user)
+    await audit_service.log_action(
+        action="diagnosis_multi_organ",
+        actor=actor_id,
+        session_id=request.session_id,
+        target_type="diagnosis",
+        target_id=request.session_id,
+        detail={
+            "organs": outcome.organs,
+            "session_status": outcome.session_status,
+            "partial": outcome.partial,
+            "total_ms": round(outcome.total_ms, 2),
+            "organ_statuses": outcome.organ_statuses,
+        },
+    )
+
+    await try_renew_session(session_repo, request.session_id)
+
+    return MultiOrganDiagnosisResponse(
+        session_id=outcome.session_id,
+        session_status=outcome.session_status,
+        organs=outcome.organs,
+        organ_statuses=outcome.organ_statuses,
+        organ_results=[r.as_dict() for r in outcome.organ_results],
+        completed_organs=outcome.completed_organs,
+        failed_organs=outcome.failed_organs,
+        skipped_organs=outcome.skipped_organs,
+        needs_review_organs=outcome.needs_review_organs,
+        partial=outcome.partial,
+        total_ms=outcome.total_ms,
+    )
 
 
 @router.get("/result/{request_id}", response_model=DiagnosisResult)

@@ -22,6 +22,7 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import time
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
@@ -55,6 +56,28 @@ def get_routing_router() -> AdaptiveRAGRouter:
     if _router is None:
         _router = AdaptiveRAGRouter()
     return _router
+
+
+async def _commit_if_possible(db: Any) -> None:
+    """提交事务（对测试替身保持宽容）。
+
+    生产路径下 ``AsyncSessionLocal`` 产出真实 ``AsyncSession``，必须显式
+    ``commit()``：``async with AsyncSessionLocal() as db`` 退出时只调用
+    ``close()``（回滚未提交事务），因此此前仅 ``flush()`` 的写库会被丢弃——
+    诊断结论只留在 30s TTL 的 Redis 缓存里，缓存过期后外部就读不到结论。
+    测试用例普遍用 ``MagicMock`` 充当会话，其 ``commit()`` 不可 await，
+    这里做 awaitable 判定，保证既有用例不受影响。
+    """
+    commit = getattr(db, "commit", None)
+    if commit is None:
+        return
+    try:
+        maybe = commit()
+    except Exception as exc:  # noqa: BLE001 - 提交失败不应掩盖主流程结果
+        logger.warning("pipeline_commit_call_failed", error=str(exc))
+        return
+    if inspect.isawaitable(maybe):
+        await maybe
 
 
 def _coerce_response_tier(value: Any) -> ResponseTier:
@@ -201,6 +224,7 @@ async def run_diagnosis_pipeline(request_id: str) -> bool:
                     confidence=0.0,
                     findings={"error": str(exc), "error_type": type(exc).__name__},
                 )
+                await _commit_if_possible(db)
         except Exception:
             pass
         return False
@@ -396,6 +420,8 @@ async def _write_result_to_db(
             )
         except Exception:
             pass  # best-effort
+        # 5) 提交事务（见 _commit_if_possible 说明：不提交则写库被回滚）
+        await _commit_if_possible(getattr(diagnosis_repo, "db", None))
         return True
     except Exception as exc:
         logger.error(

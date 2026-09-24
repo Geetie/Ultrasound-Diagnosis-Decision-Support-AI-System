@@ -169,6 +169,15 @@ class Settings(BaseSettings):
     int_pending_queue_max_length: int = 1000
     int_consumer_recovery_delay_seconds: float = 2.0
 
+    # === T-GB-AGT-01 多器官联合诊断（三器官串行）===
+    # 超时预算：单器官 30s（规格验收），全局 90s（三器官串行上限）。
+    multi_organ_per_organ_timeout_seconds: float = 30.0
+    multi_organ_total_timeout_seconds: float = 90.0
+    # 会话级接口未指定档位时的默认响应档位（多器官串行更接近标准路径）。
+    multi_organ_default_response_tier: str = "standard"
+    # 是否在器官开始/结束时推送 WS organ_switching 进度消息。
+    multi_organ_progress_push_enabled: bool = True
+
     minio_endpoint: str = "localhost:9000"
     minio_access_key: str = ""
     minio_secret_key: str = ""
