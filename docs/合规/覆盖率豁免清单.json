@@ -1,0 +1,75 @@
+{
+  "policy": "本清单只解释'剩余的未覆盖部分是什么性质'，不参与降低覆盖率门禁：CI 的整体/核心覆盖率一律按 pyproject.toml 与 .github/workflows/ci.yml 的阈值对整个代码库计算，与清单无关。列为 external_service_semantics / hardware_hsm / external_object_storage / real_database / hardware_gpu 的条目，表示其剩余缺口需要真实外部系统或真机才能覆盖；每条都必须说明'离线已经覆盖到哪一层'，否则不允许留在清单里。",
+  "target_core_percent": 90,
+  "target_overall_percent": 80,
+  "updated_at": "2026-09-24",
+  "entries": [
+    {
+      "module": "app/security/refresh_token.py",
+      "percent": 77.7,
+      "missing_lines": 130,
+      "category": "external_service_semantics",
+      "field_verification": true,
+      "offline_covered": "内存实现的全部 CRUD/家族轮换/重放检测/并发上限，以及 Redis 实现的正常路径与错误分支（注入 mock client 断言命令形状）。",
+      "reason": "剩余缺口依赖真实 Redis 服务器语义：scan_iter 键空间遍历、Lua eval 更新 last_used_at、pipeline SETEX/TTL 的原子性与过期行为——离线 mock 只能验证'命令发了什么'，无法验证 TTL 与键空间一致性。",
+      "next_action": "在具备真实 Redis 的环境执行键空间与 TTL 一致性校验（可复用既有 Redis 集成测试脚手架）。"
+    },
+    {
+      "module": "app/security/hsm/persistence_manager.py",
+      "percent": 55.8,
+      "missing_lines": 99,
+      "category": "hardware_hsm",
+      "field_verification": true,
+      "offline_covered": "safe_run_async_task 的三种调度分支、flush_pending_persistence、cleanup_redis_keys 的 pipeline 语义、restore_degraded_state 的时间戳回退、migrate_legacy_keys 的前缀跳过。",
+      "reason": "剩余缺口是 SoftHSM 真机端到端：真实 SoftHSM 产出私钥经 persist_key 写入 Redis、再由 restore_keys 解密回填 KeySlot——离线只能覆盖'Redis 故障吞异常'与'pipeline 命令形状'两层，无法验证密钥可恢复性。",
+      "next_action": "现场以真实 SoftHSM 执行'生成→持久化→重启→恢复→验签'全链路，并留存回执。"
+    },
+    {
+      "module": "app/security/emergency_signing.py",
+      "percent": 72.4,
+      "missing_lines": 59,
+      "category": "hardware_hsm",
+      "field_verification": true,
+      "offline_covered": "启停生命周期、审批审计、签名的调用参数与返回值透传、每日配额的内存回退分支、待核验报告查询。",
+      "reason": "真实签名字节由 SoftHSM 硬件产生并由公钥验签，且每日配额依赖真实 Redis 上的 Lua 原子 INCR/EXPIRE；离线只能断言'参数正确、返回被透传'。",
+      "next_action": "现场执行应急签名→验签→配额耗尽全流程，确认硬件签名字节可被现有验签逻辑接受。"
+    },
+    {
+      "module": "app/services/data_retention.py",
+      "percent": 61.9,
+      "missing_lines": 49,
+      "category": "real_database",
+      "field_verification": true,
+      "offline_covered": "purge 系列的批循环与 rowcount 分支（mock 结果）、冷层包装（注入假 storage）、合规违规审计分支、周期任务启停。",
+      "reason": "需要真实 PostgreSQL 才能定论两件事：DELETE 的 rowcount 与批处理实际行为，以及 SessionArchive.archived_at 与构造时写入的 archive_timestamp 列名是否一致（疑点，mock 下看不出）。",
+      "next_action": "在具备真实 PG 的环境跑一次归档-清理-合规校验，并核对列名。"
+    },
+    {
+      "module": "app/inference/gpu_monitor.py",
+      "percent": 52.5,
+      "missing_lines": 256,
+      "category": "hardware_gpu",
+      "field_verification": true,
+      "offline_covered": "nvidia-smi 输出的解析与异常分支、阈值判定、快照结构（可注入假命令输出覆盖）。",
+      "reason": "剩余缺口是真实 GPU 上的采样：显存/温度/利用率读数与降级阈值在真机上的实际触发。无 GPU 时相关基准按 SKIP 记录（见 scripts/bench_suite.py 的 vram 套件）。",
+      "next_action": "在目标机型上跑 smoke 与 bench_suite --suite vram，留存显存占用与碎片率快照。"
+    },
+    {
+      "module": "app/inference/gpu_memory_monitor.py",
+      "percent": 41.8,
+      "missing_lines": 107,
+      "category": "hardware_gpu",
+      "field_verification": true,
+      "offline_covered": "监控循环的调度、阈值比较、碎片率估算与热重载触发条件（可注入假快照）。",
+      "reason": "碎片率与热重载判定必须在真实显存压力下验证才可信，离线估的值与真机行为无对应关系。",
+      "next_action": "现场制造显存压力，验证碎片率阈值与模型热重载回执。"
+    }
+  ],
+  "excluded_by_design": [
+    {
+      "module": "app/inference/sustained_load_test.py",
+      "percent": 0.0,
+      "reason": "纯现场长稳压测脚本（本机无 GPU 时其前置检查即退出）。它没有『离线可覆盖的那一层』可言，写在豁免清单里只会稀释清单的可信度；其验证动作归入现场验收清单，不进本清单。"
+    }
+  ]
+}
