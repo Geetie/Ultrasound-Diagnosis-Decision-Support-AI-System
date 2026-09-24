@@ -26,11 +26,48 @@ class Frame:
 
 
 @dataclass(frozen=True)
+class PlaneAssessment:
+    """切面标准性评估（M1）。帧级属性。
+
+    与后端 ``app.models.schemas.PlaneAssessment`` 一一对应；边缘端不导入
+    ``app.*``（独立可部署单元），因此这里用 dataclass 镜像同名契约。
+    真机切面分类头由 ``edge/plane_assessment.py`` 的适配器注入。
+    """
+
+    plane_type: str  # transverse | longitudinal | non_standard
+    is_standard: bool
+    plane_score: float = 0.0
+    organ_code: Optional[str] = None
+    issues: List[str] = field(default_factory=list)
+    required_structures_visible: List[str] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class ImageQuality:
+    """图像质量评估（M6）。帧级属性，各分项 0.0-1.0，越高越好。
+
+    真机质量评分头由 ``edge/image_quality.py`` 的适配器注入。
+    """
+
+    overall_score: float
+    blur_score: Optional[float] = None
+    artifact_score: Optional[float] = None
+    gain_score: Optional[float] = None
+    issues: List[str] = field(default_factory=list)
+    # none | minor | major
+    diagnostic_impact: Optional[str] = None
+
+
+@dataclass(frozen=True)
 class NavLabel:
     """导航推理输出的单个标注。
 
     坐标一律使用归一化坐标（0.0-1.0），与前端 NavigationOverlay 契约一致，
     避免边缘端与前端对像素尺寸的理解不一致。
+
+    ``risk_flag``/``suggested_action`` 为 M2 的 B+ 级高危标记：只表达
+    "需关注"+建议启动标准评估，不含分级词汇或病种编码（安全容忍度高于
+    A 级、低于 B 级）。默认 ``None`` 以兼容既有构造点。
     """
 
     label: str
@@ -39,6 +76,8 @@ class NavLabel:
     width: float
     height: float
     confidence: float
+    risk_flag: Optional[str] = None  # "high" | None
+    suggested_action: Optional[str] = None  # "start_standard_evaluation" | None
 
     def as_box(self) -> tuple:
         return (self.x, self.y, self.x + self.width, self.y + self.height)
@@ -53,6 +92,9 @@ class NavResult:
     labels: List[NavLabel] = field(default_factory=list)
     infer_latency_ms: float = 0.0
     backend: str = "unknown"
+    # M1/M6 帧级属性（可选，未接切面/质量头时为 None）
+    plane_assessment: Optional[PlaneAssessment] = None
+    image_quality: Optional[ImageQuality] = None
 
 
 @runtime_checkable

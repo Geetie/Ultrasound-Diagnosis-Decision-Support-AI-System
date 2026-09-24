@@ -1,9 +1,14 @@
+import type { RiskFlag, SuggestedAction } from './api';
+
 export interface NavigationAnnotation {
   id: string;
   label: string;
   confidence: number;
   threshold: number;
   bbox: [number, number, number, number];
+  /** M2 B+ 级高危标记：仅"需关注"，不含分级结论；命中时自动升级深度分析 */
+  risk_flag?: RiskFlag | null;
+  suggested_action?: SuggestedAction | null;
 }
 
 export type AnnotationValidationStatus =

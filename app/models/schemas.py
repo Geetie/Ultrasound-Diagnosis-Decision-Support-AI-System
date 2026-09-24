@@ -91,6 +91,66 @@ class RetryStrategyType(str, Enum):
     NO_RETRY = "no_retry"
 
 
+# ============== 医生直接信息需求（M1~M12）枚举 ==============
+# 来源：13-医生直接信息需求缺口实施指南.md（M1~M12）。
+class PlaneType(str, Enum):
+    """切面类型（M1 切面标准性评估）。"""
+
+    TRANSVERSE = "transverse"
+    LONGITUDINAL = "longitudinal"
+    NON_STANDARD = "non_standard"
+
+
+class PosteriorAcoustic(str, Enum):
+    """后方回声特征（M9，UDAF 属性扩展）。"""
+
+    ENHANCEMENT = "enhancement"
+    ATTENUATION = "attenuation"
+    SHADOWING = "shadowing"
+    NONE = "none"
+    MIXED = "mixed"
+
+
+class RiskFlag(str, Enum):
+    """B+ 级高危导航标记（M2）。
+
+    只表达"需关注"，**不含**分级词汇或病种编码，因此不违反
+    ``safety_gateway`` 的 FORBIDDEN_GRADING_TERMS 约束。
+    """
+
+    HIGH = "high"
+
+
+class SuggestedAction(str, Enum):
+    """B+ 级建议动作（M2）。"""
+
+    START_STANDARD_EVALUATION = "start_standard_evaluation"
+
+
+class MalignancyRiskLevel(str, Enum):
+    """恶性概率分级（M5）。"""
+
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+
+
+class ClinicalActionUrgency(str, Enum):
+    """处置紧急度（M7）。"""
+
+    ROUTINE = "routine"
+    SOON = "soon"
+    URGENT = "urgent"
+
+
+class ImageQualityImpact(str, Enum):
+    """图像质量对诊断的影响程度（M6）。"""
+
+    NONE = "none"
+    MINOR = "minor"
+    MAJOR = "major"
+
+
 # ============== 基础模型 ==============
 class PatientContext(BaseModel):
     age: Optional[int] = Field(None, ge=0, le=150)
@@ -147,6 +207,152 @@ class DiagnosisQualityControl(BaseModel):
     consistency_check_passed: bool = False
 
 
+# ============== 医生直接信息需求（M1~M12）共享模型 ==============
+# 这批模型同时被两处消费：
+# 1. ``app/agents/protocols.AgentResponse``（专科智能体结构化输出）；
+# 2. ``app/models/schemas.DiagnosisResult``（对外结果契约，经管线唯一组装点填充）。
+# 全部字段可选/带默认值，保证既有构造点（均为关键字参数）不受影响。
+class PlaneAssessment(BaseModel):
+    """切面标准性评估（M1）。帧级属性，由边缘端切面评估头产出。"""
+
+    plane_type: PlaneType
+    is_standard: bool
+    plane_score: float = Field(ge=0.0, le=1.0, description="切面标准化程度，0.0-1.0")
+    organ_code: Optional[str] = None
+    issues: List[str] = Field(default_factory=list)
+    required_structures_visible: List[str] = Field(default_factory=list)
+
+
+class ImageQuality(BaseModel):
+    """图像质量评估（M6）。各分项 0.0-1.0，越高越好。"""
+
+    overall_score: float = Field(ge=0.0, le=1.0)
+    blur_score: Optional[float] = Field(default=None, ge=0.0, le=1.0)
+    artifact_score: Optional[float] = Field(default=None, ge=0.0, le=1.0)
+    gain_score: Optional[float] = Field(default=None, ge=0.0, le=1.0)
+    issues: List[str] = Field(default_factory=list)
+    diagnostic_impact: Optional[ImageQualityImpact] = None
+
+
+class Measurement(BaseModel):
+    """结构化测量（M3）。长度单位统一 mm，体积单位 mm^3。
+
+    ``pixel_spacing_source`` 标明尺寸换算依据：``dicom`` 表示取自 DICOM
+    ``PixelSpacing``/``ImagerPixelSpacing``，``default`` 表示 DICOM 缺失时
+    回退到 ``DEFAULT_PIXEL_SPACING_MM``（此时测量值为估算，前端需标注）。
+    """
+
+    long_mm: Optional[float] = None
+    short_mm: Optional[float] = None
+    anteroposterior_mm: Optional[float] = None
+    aspect_ratio: Optional[float] = None
+    volume_mm3: Optional[float] = None
+    distance_to_capsule_mm: Optional[float] = None
+    distance_to_organ_edge_mm: Optional[float] = None
+    distance_to_skin_mm: Optional[float] = None
+    measurement_type: Optional[str] = None
+    unit: str = "mm"
+    pixel_spacing_source: str = "default"
+
+
+class DifferentialDiagnosis(BaseModel):
+    """鉴别诊断条目（M4），按可能性降序排列（rank 从 1 开始）。"""
+
+    rank: int = Field(ge=1)
+    disease_name: str
+    confidence: float = Field(ge=0.0, le=1.0)
+    disease_code: Optional[str] = None
+    supporting_evidence: List[str] = Field(default_factory=list)
+    excluding_evidence: List[str] = Field(default_factory=list)
+
+
+class MalignancyRiskBasis(BaseModel):
+    """恶性概率的单个特征贡献项（M5）。"""
+
+    feature: str
+    contribution: float
+
+
+class MalignancyRisk(BaseModel):
+    """恶性概率（M5）。
+
+    与 ``AgentResponse.confidence``/``DiagnosisQualityControl.confidence_score``
+    语义不同：前者是"AI 对这个结论有多确信"，本字段是"该病灶为恶性的
+    概率估计"。两者必须分开展示，避免医生混淆。
+    """
+
+    probability: float = Field(ge=0.0, le=1.0)
+    level: MalignancyRiskLevel
+    basis: List[MalignancyRiskBasis] = Field(default_factory=list)
+    source_reference: Optional[str] = None
+
+
+class ClinicalAction(BaseModel):
+    """转诊/处置建议（M7）。"""
+
+    action_type: str
+    target_department: Optional[str] = None
+    urgency: ClinicalActionUrgency = ClinicalActionUrgency.ROUTINE
+    trigger_condition: Optional[str] = None
+    description: Optional[str] = None
+    # 适用机构层级：基层 | 三甲 | 通用（前端按机构差异化展示）
+    applicable_level: Optional[str] = None
+    source_reference: Optional[str] = None
+
+
+class PatientExplanation(BaseModel):
+    """患者解释话术（M10）。默认不进入正式报告，由医生选择展示/打印。"""
+
+    explanation: str
+    reassurance: Optional[str] = None
+    next_step: Optional[str] = None
+    source_reference: Optional[str] = None
+
+
+class BloodFlowParameters(BaseModel):
+    """血流参数（M11 科研量化指标）。"""
+
+    psv: Optional[float] = None
+    edv: Optional[float] = None
+    ri: Optional[float] = None
+    unit: str = "cm/s"
+
+
+class AIExtractedFeatures(BaseModel):
+    """AI 抽取的量化特征（M11）。"""
+
+    texture_homogeneity: Optional[float] = None
+    edge_sharpness: Optional[float] = None
+    feature_vector_hash: Optional[str] = None
+
+
+class ModelConfidenceDistribution(BaseModel):
+    """模型置信度分布（M11）。"""
+
+    benign: Optional[float] = None
+    malignant: Optional[float] = None
+    indeterminate: Optional[float] = None
+
+
+class ResearchMetrics(BaseModel):
+    """科研量化指标（M11），前端默认折叠展示。"""
+
+    elasticity_score: Optional[float] = None
+    elasticity_unit: Optional[str] = None
+    blood_flow: Optional[BloodFlowParameters] = None
+    ai_features: Optional[AIExtractedFeatures] = None
+    confidence_distribution: Optional[ModelConfidenceDistribution] = None
+
+
+class CrossModalityHint(BaseModel):
+    """跨模态对照提示（M12）。"""
+
+    modality: str  # CT | MRI | pathology
+    finding: str
+    clinical_value: Optional[str] = None
+    source_reference: Optional[str] = None
+
+
 class DiagnosisResult(BaseModel):
     request_id: str
     status: str
@@ -165,6 +371,18 @@ class DiagnosisResult(BaseModel):
     processing_time_ms: int
     model_version: Optional[str] = None
     knowledge_base_version: Optional[str] = None
+    # === 医生直接信息需求（M1~M12）===
+    # 全部为可选展示型字段：新字段先承载于此契约（并由
+    # ``diagnosis_results.findings`` JSONB 落库），避免为展示型数据
+    # 引入不必要的表结构迁移。
+    measurement: Optional[Measurement] = None
+    differential_diagnoses: List[DifferentialDiagnosis] = Field(default_factory=list)
+    malignancy_risk: Optional[MalignancyRisk] = None
+    clinical_actions: List[ClinicalAction] = Field(default_factory=list)
+    patient_explanation: Optional[PatientExplanation] = None
+    research_metrics: Optional[ResearchMetrics] = None
+    cross_modality_hints: List[CrossModalityHint] = Field(default_factory=list)
+    posterior_acoustic: Optional[PosteriorAcoustic] = None
 
 
 # ============== DICOM 相关模型 ==============
@@ -224,6 +442,10 @@ class NavigationAnnotation(BaseModel):
     # 边缘端路径使用 0.0-1.0 归一化坐标（edge/safety 校验与前端
     # NavigationOverlay 的口径）。前端类型为 [number, number, number, number]。
     bbox: Optional[List[float]] = None
+    # === M2 快速路径高危标记（B+ 级，标注级属性）===
+    # 仅标记"需关注"并建议启动标准评估，不含分级词汇/病种编码。
+    risk_flag: Optional[RiskFlag] = None
+    suggested_action: Optional[SuggestedAction] = None
 
 
 class NavigationMessage(BaseWebSocketMessage):
@@ -231,6 +453,11 @@ class NavigationMessage(BaseWebSocketMessage):
     frame_id: str
     annotations: List[NavigationAnnotation] = []
     desensitization_status: DesensitizationStatus = DesensitizationStatus.FULL
+    # === M1/M6 帧级属性 ===
+    # 切面标准性与图像质量是"这一帧采集"的属性，不属于单个病灶标注，
+    # 因此挂在帧级消息上，避免在每个标注里重复。
+    plane_assessment: Optional[PlaneAssessment] = None
+    image_quality: Optional[ImageQuality] = None
 
 
 class EdgeNavLabel(BaseModel):
@@ -242,6 +469,9 @@ class EdgeNavLabel(BaseModel):
     width: float
     height: float
     confidence: float
+    # === M2（B+ 级高危标记），可选以兼容未升级的边缘端 ===
+    risk_flag: Optional[str] = None
+    suggested_action: Optional[str] = None
 
 
 class EdgeNavResultMessage(BaseModel):
@@ -257,6 +487,9 @@ class EdgeNavResultMessage(BaseModel):
     latency_ms: Optional[float] = None
     backend: Optional[str] = None
     labels: List[EdgeNavLabel] = []
+    # === M1/M6 帧级属性（可选以兼容未升级的边缘端）===
+    plane_assessment: Optional[PlaneAssessment] = None
+    image_quality: Optional[ImageQuality] = None
     # 毫秒级 epoch（边缘端 push_nav_result/push_frame 的口径）
     timestamp_ms: Optional[int] = None
 

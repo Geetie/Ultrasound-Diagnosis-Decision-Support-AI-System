@@ -16,8 +16,14 @@ from typing import Any, Dict, Iterable, List, Mapping, Sequence, Tuple
 
 from edge.protocols import NavLabel
 
-# 与 app/fusion/desensitization.py 的 whitelist 保持同一口径：
-# 只允许解剖/影像征象类字段上行，禁止分级结论类术语外泄。
+# 白名单口径必须与以下 3 处保持**完全一致**（跨模块一致性由
+# ``tests/unit/edg/test_whitelist_consistency.py`` 锁定）：
+#   1. safety_gateway/degraded_output.py  : DEFAULT_WHITELIST_FIELDS
+#   2. safety_gateway/sg_config.py        : SGSettings.safety_gateway_whitelist_fields
+#   3. safety_gateway/checker/orchestrator.py : SafetyGatewayChecker.DEFAULT_WHITELIST_FIELDS
+# 语义：只允许解剖/影像征象类字段上行，禁止分级结论类术语外泄。
+# M1/M2/M3/M6/M9 新增项均为"影像采集属性/测量/征象"，不含分级词汇
+# （如 TI-RADS/恶性/可疑），因此不突破该语义边界。
 DEFAULT_ALLOWED_LABELS: Tuple[str, ...] = (
     "organ_name",
     "anatomical_location",
@@ -28,6 +34,22 @@ DEFAULT_ALLOWED_LABELS: Tuple[str, ...] = (
     "calcification",
     "lesion_size_measurements",
     "observations",
+    # M1 切面标准性评估
+    "plane_assessment",
+    # M6 图像质量评估
+    "image_quality",
+    # M2 B+ 级高危标记与建议动作（仅"需关注"，无分级结论）
+    "risk_flag",
+    "suggested_action",
+    # M9 后方回声特征
+    "posterior_acoustic",
+    # M3 自动测量（结构化测量与派生尺寸）
+    "measurement",
+    "aspect_ratio",
+    "distance_to_capsule",
+    "distance_to_organ_edge",
+    "distance_to_skin",
+    "volume",
 )
 
 # 归一化坐标允许的数值范围（含端点）

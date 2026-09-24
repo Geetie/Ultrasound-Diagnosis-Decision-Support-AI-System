@@ -9,6 +9,9 @@ logger = structlog.get_logger()
 
 MAX_RECURSION_DEPTH = 20
 
+# 口径必须与 edge/safety.py、safety_gateway/sg_config.py、
+# safety_gateway/checker/orchestrator.py 保持一致（一致性测试见
+# tests/unit/edg/test_whitelist_consistency.py）。
 DEFAULT_WHITELIST_FIELDS: list[str] = [
     "organ_name",
     "anatomical_location",
@@ -19,6 +22,18 @@ DEFAULT_WHITELIST_FIELDS: list[str] = [
     "calcification",
     "lesion_size_measurements",
     "observations",
+    # M1 / M6 / M2 / M9 / M3（详见 edge/safety.py 注释）
+    "plane_assessment",
+    "image_quality",
+    "risk_flag",
+    "suggested_action",
+    "posterior_acoustic",
+    "measurement",
+    "aspect_ratio",
+    "distance_to_capsule",
+    "distance_to_organ_edge",
+    "distance_to_skin",
+    "volume",
 ]
 
 _WHITELIST_FIELD_MAPPING: dict[str, str] = {}

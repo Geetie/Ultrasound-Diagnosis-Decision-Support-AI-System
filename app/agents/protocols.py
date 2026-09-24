@@ -25,7 +25,19 @@ from typing import Any, List, Optional
 from pydantic import BaseModel, Field, field_validator
 
 from app.knowledge.protocols import KnowledgeChunk
-from app.models.schemas import DiagnosisRequest, DiagnosisResult, Organ
+from app.models.schemas import (
+    ClinicalAction,
+    CrossModalityHint,
+    DiagnosisRequest,
+    DiagnosisResult,
+    DifferentialDiagnosis,
+    MalignancyRisk,
+    Measurement,
+    Organ,
+    PatientExplanation,
+    PosteriorAcoustic,
+    ResearchMetrics,
+)
 
 
 # ----------------------------------------------------------------------
@@ -131,6 +143,26 @@ class AgentResponse(BaseModel):
     used_evidence_ids: List[str] = Field(default_factory=list)
     # FUS 分级偏差判定（specialist 仅占位 None，由 FUS-01 融合层写入）
     deviation_severity: Optional[str] = None
+    # === 医生直接信息需求（M1~M12）结构化输出 ===
+    # 全部可选且带默认值：既有构造点（生产 20 余处 + 测试 30 余处）均使用
+    # 关键字参数，扩展不会破坏任何调用方；未实现的专科智能体保持默认空值，
+    # 前端按"无数据不渲染"处理。
+    # 结构化测量（M3）
+    measurement: Optional[Measurement] = None
+    # 鉴别诊断清单，按可能性降序（M4）
+    differential_diagnoses: List[DifferentialDiagnosis] = Field(default_factory=list)
+    # 恶性概率，与 confidence 语义不同，需分开展示（M5）
+    malignancy_risk: Optional[MalignancyRisk] = None
+    # 转诊/处置建议（M7）
+    clinical_actions: List[ClinicalAction] = Field(default_factory=list)
+    # 患者解释话术（M10，默认不入正式报告）
+    patient_explanation: Optional[PatientExplanation] = None
+    # 科研量化指标（M11，前端默认折叠）
+    research_metrics: Optional[ResearchMetrics] = None
+    # 跨模态对照提示（M12）
+    cross_modality_hints: List[CrossModalityHint] = Field(default_factory=list)
+    # 后方回声特征（M9，UDAF 属性；同时供 M5 概率计算使用）
+    posterior_acoustic: Optional[PosteriorAcoustic] = None
 
     @field_validator("confidence")
     @classmethod

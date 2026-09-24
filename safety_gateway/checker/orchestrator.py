@@ -60,6 +60,18 @@ class SafetyGatewayChecker:
         "calcification",
         "lesion_size_measurements",
         "observations",
+        # M1 / M6 / M2 / M9 / M3（口径与 edge/safety.py 等 3 处一致）
+        "plane_assessment",
+        "image_quality",
+        "risk_flag",
+        "suggested_action",
+        "posterior_acoustic",
+        "measurement",
+        "aspect_ratio",
+        "distance_to_capsule",
+        "distance_to_organ_edge",
+        "distance_to_skin",
+        "volume",
     ]
 
     FORBIDDEN_GRADING_TERMS: ClassVar[tuple[str, ...]] = FORBIDDEN_GRADING_TERMS
