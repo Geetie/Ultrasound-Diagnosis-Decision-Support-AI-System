@@ -211,7 +211,7 @@ class ColdArchiveService:
                 result.archived += archived_count
                 result.manifests += 1
                 result.manifest_ids.append(manifest.manifest_id)
-        except Exception as exc:  # noqa: BLE001 - 后台任务不得抛出中断循环
+        except Exception as exc:
             result.failed = True
             result.message = f"{type(exc).__name__}: {exc}"
             logger.error(
@@ -336,7 +336,7 @@ class ColdArchiveService:
             result.archived += archived_count
             result.manifests += 1
             result.manifest_ids.append(manifest.manifest_id)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             result.failed = True
             result.message = f"{type(exc).__name__}: {exc}"
             logger.error(
@@ -400,7 +400,7 @@ class ColdArchiveService:
         started = time.monotonic()
         try:
             stored = await self.storage.put(object_key, payload)
-        except Exception as exc:  # noqa: BLE001 - 冷层不可用 → 保留热数据
+        except Exception as exc:
             manifest.status = "failed"
             manifest.message = f"{type(exc).__name__}: {exc}"[:2000]
             await self.db.flush()

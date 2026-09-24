@@ -14,9 +14,8 @@
 """
 from __future__ import annotations
 
-import os
 import threading
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -53,7 +52,7 @@ class _MemoryDb:
     def _entity(stmt):
         try:
             return stmt.column_descriptions[0].get("entity")
-        except Exception:  # noqa: BLE001 - 非 select 语句
+        except Exception:
             return None
 
     async def execute(self, stmt):

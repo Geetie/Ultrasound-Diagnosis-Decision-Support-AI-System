@@ -1,0 +1,105 @@
+name: Security scan
+
+# T-G1-INT-04 的 CSP / SCA 部分：每次提交跑依赖与代码扫描，
+# 每周一 03:00 UTC 全量重跑（依赖漏洞库更新后再扫一遍）。
+# 渗透测试与灾备演练需真实环境，不在此流水线内（列为待现场）。
+
+on:
+  push:
+    branches: [main, 'feature/**', 'chore/**']
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 3 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  python-sca:
+    name: Python SCA (pip-audit) + bandit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install scanners
+        run: pip install 'pip-audit==2.7.3' 'bandit==1.7.10'
+      - name: pip-audit（依赖已知漏洞）
+        run: pip-audit -r requirements.txt --strict --progress-spinner off
+      - name: bandit（代码安全问题）
+        run: bandit -r app safety_gateway edge -ll -x '*/tests/*'
+
+  frontend-sca:
+    name: Frontend SCA (npm audit)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+      - name: npm audit（high 及以上即失败）
+        run: npm audit --audit-level=high
+
+  csp-check:
+    name: CSP / 安全响应头检查
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: 校验安全响应头中间件与 CSP 指令
+        run: |
+          python - <<'PY'
+          """静态校验：主服务必须挂载安全响应头中间件，且 CSP 不允许 unsafe-eval。
+
+          真实响应头校验需运行中的服务（待集成环境），这里做可离线执行的
+          配置级检查，避免"中间件被删掉/被放开"这类回归无人发现。
+          只认 CSP 指令里的**带引号关键字**（'unsafe-eval'），避免把注释与
+          文档里对该关键字的说明误判为配置。
+          """
+          import ast
+          import pathlib
+          import sys
+
+          problems = []
+
+          main_path = pathlib.Path("app/main.py")
+          main_tree = ast.parse(main_path.read_text(encoding="utf-8"))
+          main_names = {
+              node.id
+              for node in ast.walk(main_tree)
+              if isinstance(node, ast.Name)
+          }
+          main_attrs = {
+              node.attr
+              for node in ast.walk(main_tree)
+              if isinstance(node, ast.Attribute)
+          }
+          if "SecurityHeadersMiddleware" not in main_names | main_attrs:
+              problems.append("app/main.py 未挂载 SecurityHeadersMiddleware")
+
+          headers_module = pathlib.Path("app/security/security_headers.py")
+          if not headers_module.exists():
+              problems.append("缺少 app/security/security_headers.py")
+              csp_sources = ""
+          else:
+              csp_sources = headers_module.read_text(encoding="utf-8")
+
+          if "Content-Security-Policy" not in csp_sources:
+              problems.append("未找到 Content-Security-Policy 配置")
+          if "'unsafe-eval'" in csp_sources:
+              problems.append("CSP 含 'unsafe-eval'（医疗前端不允许）")
+          if "'unsafe-inline'" in csp_sources.split("script-src")[-1].split("style-src")[0]:
+              problems.append("script-src 含 'unsafe-inline'（应仅 style-src 放开）")
+
+          for item in problems:
+              print(f"::error::{item}")
+          sys.exit(1 if problems else 0)
+          PY

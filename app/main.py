@@ -26,6 +26,7 @@ from app.api.websocket.dicom import router as ws_dicom_router
 from app.api.websocket.nav import router as ws_nav_router
 from app.config.redis import RedisPool
 from app.config.rate_limit import RateLimitMiddleware
+from app.security.security_headers import SecurityHeadersMiddleware
 from app.config.settings import settings
 from app.config.validator import ConfigValidationError, validate_config
 
@@ -522,6 +523,14 @@ app.add_middleware(
 )
 
 app.add_middleware(RateLimitMiddleware)
+
+# T-G1-INT-04：安全响应头（CSP / 点击劫持防护 / 患者数据禁缓存）
+app.add_middleware(
+    SecurityHeadersMiddleware,
+    csp_policy=settings.csp_policy or None,
+    report_only=settings.csp_report_only,
+    hsts_max_age=settings.hsts_max_age_seconds if settings.hsts_enabled else 0,
+)
 
 app.include_router(health_router, prefix="/api/v1")
 app.include_router(auth_router, prefix="/api/v1/auth")

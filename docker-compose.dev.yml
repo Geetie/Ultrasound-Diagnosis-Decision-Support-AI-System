@@ -144,6 +144,54 @@ services:
           memory: 256M
     oom_score_adj: -1000
 
+  # 边缘端（T-GA-EDG / T-GB-EDG）：DICOM SCP 接收 + 导航推理 + 本地安全校验
+  # + 上行双通道 + 设备心跳/隔离 + OTA。生产部署在设备旁的 Jetson 上，开发
+  # 环境用同一份代码以 x86 镜像跑通链路（TensorRT 缺失时自动退回空后端）。
+  edge:
+    build:
+      context: .
+      dockerfile: Dockerfile.edge.dev
+    container_name: ultrasound-edge
+    environment:
+      - EDGE_MAIN_SERVICE_URL=http://api:8000
+      - EDGE_WS_URL=ws://api:8000
+      - EDGE_DEVICE_ID=${EDGE_DEVICE_ID:-dev_edge_001}
+      - EDGE_API_KEY=${EDGE_API_KEY:-dev_edge_api_key}
+      - EDGE_AE_TITLE=ULTRASOUND_EDGE
+      - EDGE_DICOM_PORT=11112
+      - EDGE_ENABLE_DICOM_SCP=true
+      - EDGE_ENABLE_OTA=true
+      - EDGE_DOWNLOAD_DIR=/var/lib/ultrasound/ota
+      # 真机上指向 TensorRT 引擎文件；开发机留空 → 空后端（返回空调制集）
+      - EDGE_ENGINE_PATH=${EDGE_ENGINE_PATH:-}
+      - ENV=development
+    volumes:
+      - .:/app
+      - /app/__pycache__
+      - edge_data:/var/lib/ultrasound
+    ports:
+      - "11112:11112"
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - ultrasound-network
+    healthcheck:
+      # 进程存活即视为健康：边缘端刻意"降级运行"，DICOM/上行失败不阻断启动
+      test: ["CMD-SHELL", "pgrep -f 'python -m edge' >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
   victoriametrics:
     image: victoriametrics/victoria-metrics:v1.93.0
     container_name: ultrasound-victoriametrics
@@ -219,6 +267,8 @@ volumes:
   redis_data:
   vmdata:
   vmbackup_data:
+  # 边缘端 OTA 模型包与本地缓存
+  edge_data:
 
 networks:
   ultrasound-network:

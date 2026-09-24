@@ -13,7 +13,7 @@ from __future__ import annotations
 import asyncio
 import time
 from contextlib import contextmanager
-from typing import Any, Dict, List
+from typing import Any, Dict
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest

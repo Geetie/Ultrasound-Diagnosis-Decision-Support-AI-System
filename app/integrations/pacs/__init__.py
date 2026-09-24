@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Protocol, runtime_checkable
 
 import structlog
@@ -200,7 +200,7 @@ class HttpPacsAdapter:
                 # 4xx 属客户端问题，重试无意义
                 if 400 <= response.status_code < 500:
                     break
-            except Exception as exc:  # noqa: BLE001 - 网络异常一律重试
+            except Exception as exc:
                 last_message = f"{type(exc).__name__}: {exc}"
                 logger.warning(
                     "pacs_push_attempt_failed",
@@ -287,7 +287,7 @@ def decode_signature(signature: Optional[str]) -> Optional[bytes]:
         return None
     try:
         return base64.b64decode(signature)
-    except Exception:  # noqa: BLE001
+    except Exception:
         return None
 
 

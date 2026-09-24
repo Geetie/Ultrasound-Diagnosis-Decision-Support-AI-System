@@ -202,7 +202,15 @@ class TestDesensitizationEngine:
 
 
 class TestDesensitizationPerformance:
+    """墙钟性能断言。
 
+    两个用例都断言绝对耗时（<1s），并行执行时受 CPU 争抢影响会假失败
+    （实测 -n 8 下 1000 条 1.03s、5000 次 4.06s，串行均通过）。
+    因此按仓库既有约定标记 ``perf``：默认被 addopts 排除，
+    需串行单独运行（make test-perf / pytest -m perf -p no:xdist）。
+    """
+
+    @pytest.mark.perf
     def test_performance_large_text(self):
         engine = get_desensitization_engine()
 
@@ -217,6 +225,7 @@ class TestDesensitizationPerformance:
         assert len(result) > 0
         assert duration < 1.0, f"脱敏1000条记录耗时 {duration:.2f}s，超过1秒"
 
+    @pytest.mark.perf
     def test_performance_many_requests(self):
         engine = get_desensitization_engine()
 

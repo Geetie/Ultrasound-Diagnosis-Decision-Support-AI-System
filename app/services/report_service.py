@@ -101,7 +101,7 @@ def load_template(name: Optional[str] = None) -> str:
     path = TEMPLATE_DIR / template_name
     try:
         return path.read_text(encoding="utf-8")
-    except Exception as exc:  # noqa: BLE001 - 缺模板不应阻断报告生成
+    except Exception as exc:
         logger.warning(
             "report_template_load_failed",
             template=template_name,
@@ -247,7 +247,7 @@ def verify_report_signature(report: DiagnosisReport) -> bool:
 
     try:
         signature = base64.b64decode(report.signature)
-    except Exception:  # noqa: BLE001
+    except Exception:
         return False
     key_name = report.signing_key_name or settings.report_signing_key_name
     try:
@@ -256,7 +256,7 @@ def verify_report_signature(report: DiagnosisReport) -> bool:
                 key_name, report_payload(report.rendered), signature
             )
         )
-    except Exception as exc:  # noqa: BLE001 - 密钥缺失/HSM 异常一律视为校验失败
+    except Exception as exc:
         logger.warning(
             "report_signature_verify_failed",
             report_id=getattr(report, "report_id", None),
@@ -390,7 +390,7 @@ async def push_report(
             patient_id=report.patient_id,
             organ=report.organ,
         )
-    except Exception as exc:  # noqa: BLE001 - 适配器异常不得中断签发流程
+    except Exception as exc:
         logger.error(
             "report_push_adapter_raised",
             report_id=report.report_id,

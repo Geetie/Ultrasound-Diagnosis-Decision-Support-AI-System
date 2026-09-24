@@ -1,0 +1,36 @@
+# 边缘端开发镜像（docker-compose.dev.yml 的 edge 服务）
+#
+# 与主服务镜像的区别：
+# 1) 不安装 requirements-edge.txt 全量依赖：其中的 tensorrt 只能在 Jetson
+#    （随 JetPack 提供）上安装，在 x86 开发机上会直接失败。这里只装可在
+#    开发机运行的 pynetdicom 与 python-gdcm，TensorRT 由 edge/ 懒加载，
+#    未安装时自动退回 NullNavBackend（见 edge/nav_backend.create_nav_backend），
+#    链路仍可端到端跑通，只是导航标注为空。
+# 2) 启动命令是 `python -m edge`，并暴露 DICOM SCP 端口。
+FROM python:3.13-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y \
+    gcc \
+    libpq-dev \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN useradd -m -u 1001 edgeuser
+
+COPY requirements.txt .
+# 仅边缘端在开发机上可安装的部分（TensorRT 需真机 JetPack）
+RUN pip install --no-cache-dir -r requirements.txt \
+    && pip install --no-cache-dir 'pynetdicom>=2.1.0' 'python-gdcm>=3.0.23'
+
+COPY . .
+
+RUN chown -R edgeuser:edgeuser /app
+
+USER edgeuser
+
+# DICOM SCP（C-STORE 接收）
+EXPOSE 11112
+
+CMD ["python", "-m", "edge"]

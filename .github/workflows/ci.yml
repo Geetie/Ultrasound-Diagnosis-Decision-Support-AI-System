@@ -1,0 +1,189 @@
+name: CI
+
+# 提交即跑：代码规范 + 分轨并行测试 + 前端门禁 + 覆盖率（T-G1-INT-01）
+#
+# 依赖说明（与本地一致的运行方式）：
+#   pytest 必须带 --dist=loadfile（见 pyproject.toml 注释）：本仓库多个测试类
+#   存在链式依赖，按用例随机分发会把链条拆到不同 worker 造成假失败。
+#   SoftHSM 时间戳隔离由 tests/conftest.py 在导入 app 之前设置，CI 不覆盖。
+
+on:
+  push:
+    branches: [main, 'feature/**', 'chore/**']
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: '3.13'
+  NODE_VERSION: '22'
+  # 测试期禁用 SoftHSM 与真实外部服务
+  USE_SOFT_HSM: 'false'
+  ENV: test
+
+jobs:
+  backend-lint:
+    name: Backend lint (ruff)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - run: pip install 'ruff==0.6.9'
+
+      - name: 计算本次改动的 Python 文件
+        id: changed
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="origin/${{ github.base_ref }}"
+            git fetch --no-tags --depth=50 origin "${{ github.base_ref }}" || true
+          elif [ "${{ github.event.before }}" != "0000000000000000000000000000000000000000" ]; then
+            BASE="${{ github.event.before }}"
+          else
+            BASE="HEAD~1"
+          fi
+          FILES=$(git diff --name-only "$BASE" HEAD -- '*.py' 2>/dev/null || true)
+          {
+            echo "files<<EOF"
+            echo "$FILES"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+          echo "changed python files:"; echo "$FILES"
+
+      - name: 正确性门禁（仅改动文件：未定义名/重复定义/语法/字面量比较）
+        # 仓库存在历史风格债（ruff 全量 5000+ 条，主要是注解与导入排序），
+        # 本次不一并重写；但"新代码引入未定义名/重复定义"这类真实缺陷必须挡住。
+        if: steps.changed.outputs.files != ''
+        run: |
+          ruff check --select F821,F822,F823,F811,E9,F632 \
+            ${{ steps.changed.outputs.files }}
+
+      - name: 全量风格报告（仅报告，不阻断）
+        continue-on-error: true
+        run: ruff check app safety_gateway edge tests scripts > ruff-report.txt || true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ruff-report
+          path: ruff-report.txt
+          if-no-files-found: ignore
+
+  backend-test:
+    name: Backend tests (${{ matrix.track }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - track: agt-fus
+            paths: tests/unit/agt tests/unit/fus tests/integration/agt tests/integration/fus
+          - track: sec-sg
+            paths: tests/unit/sec tests/unit/sg tests/integration/sg
+          - track: rag-emb-data
+            paths: tests/unit/rag tests/unit/emb tests/unit/data tests/unit/knowledge tests/integration/rag tests/integration/emb tests/integration/data
+          - track: llm-inf-obs
+            paths: tests/unit/llm tests/unit/inf tests/unit/obs tests/integration/llm tests/integration/inf
+          - track: api-edg-tools
+            paths: tests/unit/api tests/unit/edg tests/unit/tools
+          - track: integration-int
+            paths: tests/integration/int
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-dev.txt
+      - name: Run ${{ matrix.track }}
+        run: |
+          python -m pytest ${{ matrix.paths }} \
+            -q --tb=short -p no:cacheprovider \
+            -n 4 --dist=loadfile --timeout=300
+
+  perf-baseline:
+    name: Performance baseline (serial)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-dev.txt
+      - name: Run perf-marked tests serially
+        # 墙钟断言必须串行（-n0）；CI 机器性能波动较大，这里以报告为主，
+        # 阈值收敛放在 Gate 1 的性能基准里（scripts/bench_suite.py）。
+        run: python -m pytest -m perf -n0 -q --tb=short --timeout=600
+
+  frontend:
+    name: Frontend (lint + typecheck + test + build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - name: ESLint
+        run: npm run lint
+      - name: TypeScript
+        run: npx tsc -b
+      - name: Unit tests (vitest)
+        run: npm run test:run
+      - name: Production build
+        run: npm run build
+
+  coverage:
+    name: Coverage gate
+    runs-on: ubuntu-latest
+    needs: [backend-test]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-dev.txt
+      - name: Run full suite with coverage
+        run: |
+          python -m pytest tests/unit tests/integration/int \
+            -q --tb=short -p no:cacheprovider \
+            -n 4 --dist=loadfile --timeout=300 \
+            --cov=app --cov-report=term-missing --cov-report=xml
+      - name: Enforce coverage thresholds
+        # 核心模块 ≥90%、整体 ≥80%（T-G1-INT-01，阈值见 pyproject.toml）
+        run: |
+          set -e
+          python -m coverage report --fail-under=80
+          python -m coverage report \
+            --include='app/security/*,app/services/*,app/fusion/*,app/agents/*' \
+            --fail-under=90
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: coverage.xml
+          if-no-files-found: ignore

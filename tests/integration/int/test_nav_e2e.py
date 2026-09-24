@@ -14,7 +14,6 @@
 """
 from __future__ import annotations
 
-import asyncio
 import time
 from typing import Any, Dict, List, Optional
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -36,7 +35,6 @@ from app.models.schemas import (
 from edge.navigation import NavigationInferenceService
 from edge.pipeline import EdgePipeline
 from edge.protocols import Frame, NavLabel
-from edge.safety import LocalSafetyChecker
 
 NAV_P99_BUDGET_MS = 200.0
 FRAME_COUNT = 200

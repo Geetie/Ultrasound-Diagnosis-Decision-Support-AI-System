@@ -316,6 +316,14 @@ class Settings(BaseSettings):
     # 避免把本应入冷层的数据直接删掉）。
     data_retention_purge_without_cold_archive: bool = False
 
+    # === T-G1-INT-04 安全响应头 / CSP ===
+    # 留空表示使用 app/security/security_headers.py 中的默认策略
+    csp_policy: str = ''
+    # 灰度观察期可置 True（只上报不拦截），生产必须为 False
+    csp_report_only: bool = False
+    hsts_enabled: bool = False
+    hsts_max_age_seconds: int = 31536000
+
     obs_metrics_enabled: bool = True
     obs_metrics_port: int = 9090
     obs_metrics_scrape_interval: float = 15.0

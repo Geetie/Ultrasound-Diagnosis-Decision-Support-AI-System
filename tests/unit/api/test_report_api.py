@@ -15,7 +15,7 @@ from __future__ import annotations
 import base64
 import hashlib
 from datetime import date
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest

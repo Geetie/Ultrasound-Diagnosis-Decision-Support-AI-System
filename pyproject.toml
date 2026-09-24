@@ -1,3 +1,26 @@
+[tool.coverage.run]
+source = ["app"]
+branch = true
+# 与业务无关或无法在单测中执行的分支（真机/外部服务）排除
+omit = [
+    "app/main.py",
+    "*/__init__.py",
+    "app/static/*",
+    "app/templates/*",
+]
+
+[tool.coverage.report]
+# T-G1-INT-01：整体 ≥80%，核心模块 ≥90%（CI 中分两步校验，见 ci.yml）
+fail_under = 80
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "\\.\\.\\.",
+]
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 # --dist=loadfile：按文件分发（而非按用例）。本仓库多个测试类存在
@@ -6,7 +29,7 @@ asyncio_mode = "auto"
 # 单进程运行时该选项无副作用。
 addopts = "--tb=short --no-header --durations=20 -m 'not perf' --dist=loadfile"
 markers = [
-    "perf: 性能/延迟基准测试（断言墙钟 P99 阈值，并行执行时受 CPU 争抢影响而假失败）。默认排除；需单独串行运行: pytest -m perf -p no:xdist",
+    "perf: 性能/延迟基准测试（断言墙钟 P99 阈值，并行执行时受 CPU 争抢影响而假失败）。默认排除；需单独串行运行: pytest -m perf -n0",
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks tests as integration tests requiring external services",
     "phase0a: marks tests as Phase0A Gate 0A-Tech-P0 verification tests",

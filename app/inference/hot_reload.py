@@ -184,7 +184,7 @@ async def _default_active_sessions_provider() -> int:
 
         conns = getattr(nav_manager, "active_connections", None)
         return len(conns) if conns else 0
-    except Exception as exc:  # noqa: BLE001 - 检测失败按"无活跃会话"从严处理
+    except Exception as exc:
         logger.warning(
             "hot_reload_active_sessions_probe_failed",
             error=str(exc),
@@ -385,7 +385,7 @@ class HotReloadController:
             started = time.monotonic()
             try:
                 success = bool(await self._adapter.reload(reason=reason))
-            except Exception as exc:  # noqa: BLE001 - 重载失败不得抛出中断采样循环
+            except Exception as exc:
                 success = False
                 logger.error(
                     "model_hot_reload_failed",
@@ -411,7 +411,7 @@ class HotReloadController:
             if asyncio.iscoroutine(value) or isinstance(value, Awaitable):
                 value = await value
             return max(0, int(value))
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning(
                 "hot_reload_active_sessions_provider_failed",
                 error=str(exc),
@@ -432,7 +432,7 @@ class HotReloadController:
                 1.0 if outcome.success else 0.0
             )
             collector.record_model_hot_reload_duration(outcome.duration_seconds)
-        except Exception as exc:  # noqa: BLE001 - 埋点失败不得影响业务
+        except Exception as exc:
             logger.debug("model_hot_reload_metric_failed", error=str(exc))
 
 

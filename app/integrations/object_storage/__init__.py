@@ -219,7 +219,7 @@ class MinioObjectStorage:
             attempt += 1
             try:
                 return await asyncio.to_thread(func, *args, **kwargs)
-            except Exception as exc:  # noqa: BLE001 - 网络/权限异常一律重试
+            except Exception as exc:
                 last_error = exc
                 logger.warning(
                     "object_storage_attempt_failed",
@@ -260,7 +260,7 @@ class MinioObjectStorage:
             try:
                 response = client.get_object(self._bucket, key)
                 return response.read()
-            except Exception as exc:  # noqa: BLE001 - 缺对象按 None 处理
+            except Exception as exc:
                 name = type(exc).__name__
                 if name in ("S3Error", "NoSuchKey") or "does not exist" in str(exc):
                     return None
@@ -277,7 +277,7 @@ class MinioObjectStorage:
             try:
                 self._client().stat_object(self._bucket, key)
                 return True
-            except Exception:  # noqa: BLE001 - 不存在即 False
+            except Exception:
                 return False
 
         return bool(await self._with_retry("stat", _stat))
@@ -308,7 +308,7 @@ class MinioObjectStorage:
 
         try:
             return bool(await self._with_retry("bucket_exists", _health))
-        except Exception:  # noqa: BLE001
+        except Exception:
             return False
 
 
