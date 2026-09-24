@@ -12,8 +12,13 @@ alembic/versions/*.pyc
 *.egg-info/
 .pytest_cache/
 .coverage
+coverage.xml
 htmlcov/
 *.log
+# 性能基准报告（scripts/bench_suite.py --json）与冷归档本地假实现的落盘目录
+bench_report.json
+cold_archive_storage/
+edge_downloads/
 .DS_Store
 .vscode/
 .idea/
