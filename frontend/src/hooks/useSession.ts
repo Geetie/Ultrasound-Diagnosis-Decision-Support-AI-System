@@ -1,7 +1,7 @@
 import { useEffect, useCallback, useRef } from 'react';
 import { useSessionStore } from '@/stores/sessionStore';
 import { createSession, getSession, endSession } from '@/services/sessionService';
-import type { OrganType } from '@/types/session';
+import type { OrganType, SessionState } from '@/types/session';
 
 export function useSession() {
   const ttlIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -61,7 +61,7 @@ export function useSession() {
           status: session.status,
           targetOrgans: session.target_organs as OrganType[],
           knowledgeBaseVersion: session.knowledge_base_version,
-          consentStatus: session.consent_status_at_creation as any,
+          consentStatus: session.consent_status_at_creation as SessionState['consentStatus'],
           createdAt: session.created_at,
           expiredAt: session.expired_at,
         });
@@ -104,7 +104,7 @@ export function useSession() {
       const session = await getSession(currentSessionId);
       useSessionStore.getState().setSession({
         status: session.status,
-        organStatuses: session.organ_statuses as any,
+        organStatuses: session.organ_statuses as SessionState['organStatuses'],
       });
     } catch (err) {
       console.warn('[Session] Refresh failed:', err);

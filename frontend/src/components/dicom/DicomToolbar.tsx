@@ -42,7 +42,7 @@ export default function DicomToolbar({ onFrameChange, currentFrame = 0 }: DicomT
               size="small"
               type={activeTool === tool.key ? 'primary' : 'text'}
               icon={tool.icon}
-              onClick={() => setActiveTool(tool.key as any)}
+              onClick={() => setActiveTool(tool.key)}
               style={
                 activeTool === tool.key
                   ? { background: '#00d4ff20', borderColor: '#00d4ff40' }

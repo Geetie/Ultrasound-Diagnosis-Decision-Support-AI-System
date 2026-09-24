@@ -49,6 +49,8 @@ interface ConclusionSection {
   label: string;
   labelColor: string;
   isDiff?: boolean;
+  /** 深度分析相对标准结论的逐句差异（仅 isDiff 段落有值） */
+  diffItems?: { text: string; isDiff: boolean }[];
 }
 
 function parseConclusionSections(
@@ -88,7 +90,7 @@ function parseConclusionSections(
       label: '深度分析',
       labelColor: tokens.color.accent.success,
       isDiff: true,
-      ...({ diffItems: diffContent } as any),
+      diffItems: diffContent,
     });
   } else {
     sections.push({
@@ -269,9 +271,9 @@ export default function DiagnosisConclusion({ result, responseTier }: DiagnosisC
             </Tag>
           </div>
 
-          {section.isDiff && (section as any).diffItems ? (
+          {section.isDiff && section.diffItems ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              {(section as any).diffItems.map(
+              {section.diffItems.map(
                 (item: { text: string; isDiff: boolean }, i: number) => (
                   <div
                     key={i}

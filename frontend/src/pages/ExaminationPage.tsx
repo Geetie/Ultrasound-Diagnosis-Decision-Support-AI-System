@@ -50,7 +50,7 @@ export default function ExaminationPage() {
       await requestDiagnosis({
         session_id: sessionId,
         image_ids: imageId ? [imageId] : [],
-        target_organ: selectedOrgan as any,
+        target_organ: selectedOrgan as 'thyroid' | 'liver' | 'cardiac',
         response_tier: 'standard',
         idempotency_key: idempotencyKey,
       });
