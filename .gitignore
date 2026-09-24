@@ -39,6 +39,11 @@ harness_engineering_guide-main/
 dicom_storage/
 models/
 data/
+# 例外：测试目录不能因为名字里带 data 就被忽略。
+# 实测踩到：`data/` 是无锚点模式，把 tests/unit/data 与 tests/integration/data 整目录
+# 忽略了，导致 3 个测试文件只存在于本机、**CI 从未运行过它们**；本地覆盖率因此虚高于 CI。
+!tests/unit/data/
+!tests/integration/data/
 keys/
 secrets/
 *.pem
