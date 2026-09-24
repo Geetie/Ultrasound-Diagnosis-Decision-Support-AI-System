@@ -2,6 +2,7 @@ import { Card, Tag, Typography } from 'antd';
 import { SafetyCertificateOutlined, ExperimentOutlined, EyeOutlined } from '@ant-design/icons';
 import { tokens } from '@/styles/tokens';
 import type { DiagnosisResult } from '@/types/api';
+import MalignancyRiskGauge from './MalignancyRiskGauge';
 
 const { Text, Title } = Typography;
 
@@ -112,6 +113,11 @@ export default function DiagnosisConclusion({ result, responseTier }: DiagnosisC
   const organLabel = (diagnosis?.target_organ ?? '') as string;
   const findingSummary = (diagnosis?.finding_summary ?? diagnosis?.summary ?? '') as string;
 
+  // M5：AI 置信度（蓝）与恶性概率（红/黄/绿）**并列但独立**展示。
+  // 两者语义不同，合并成一条会让医生把"模型很确信"误读为"恶性概率高"。
+  const quality = (result.quality_control ?? {}) as Record<string, unknown>;
+  const confidence = typeof quality.confidence_score === 'number' ? quality.confidence_score : null;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacing.md }}>
       <div
@@ -165,6 +171,59 @@ export default function DiagnosisConclusion({ result, responseTier }: DiagnosisC
       </div>
 
       <Text style={{ color: tokens.color.text.muted, fontSize: 11 }}>{levelConfig.desc}</Text>
+
+      {(confidence !== null || result.malignancy_risk) && (
+        <div
+          data-testid="probability-row"
+          style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            flexWrap: 'wrap',
+            gap: tokens.spacing.xl,
+          }}
+        >
+          {confidence !== null && (
+            <div
+              data-testid="ai-confidence-gauge"
+              style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 190 }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Text style={{ color: tokens.color.text.secondary, fontSize: 11 }}>
+                  AI 置信度
+                </Text>
+                <Text
+                  style={{
+                    color: tokens.color.accent.primary,
+                    fontSize: 13,
+                    fontWeight: 600,
+                  }}
+                >
+                  {Math.round(confidence * 100)}%
+                </Text>
+              </div>
+              <div
+                style={{
+                  height: 6,
+                  borderRadius: 3,
+                  background: tokens.color.bg.hover,
+                  overflow: 'hidden',
+                }}
+              >
+                <div
+                  style={{
+                    width: `${Math.max(0, Math.min(100, Math.round(confidence * 100)))}%`,
+                    height: '100%',
+                    background: tokens.color.accent.primary,
+                    transition: 'width 400ms ease-out',
+                  }}
+                />
+              </div>
+            </div>
+          )}
+
+          <MalignancyRiskGauge risk={result.malignancy_risk} />
+        </div>
+      )}
 
       {findingSummary && (
         <div

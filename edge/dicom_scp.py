@@ -20,6 +20,7 @@ from typing import Any, Callable, Deque, Dict, Optional, Protocol, Tuple
 import numpy as np
 import structlog
 
+from edge.measurement import PIXEL_SPACING_SOURCE_DICOM, from_dicom_metadata
 from edge.protocols import Frame
 
 logger = structlog.get_logger(__name__)
@@ -239,6 +240,9 @@ class DicomSCPService:
             pixels=pixels,
             received_at_ms=time.monotonic() * 1000.0,
             acquisition_datetime=self._extract_acquisition_datetime(dataset),
+            # M3：像素间距随帧传递，供导航标注框换算物理尺寸；DICOM 缺失时
+            # 保持 None，由 edge.measurement 明确标记为估算值。
+            pixel_spacing_mm=self._extract_pixel_spacing_mm(dataset),
         )
 
         if self._frame_handler is not None:
@@ -277,6 +281,19 @@ class DicomSCPService:
         if date and tm:
             return f"{date}{str(tm).split('.')[0]}"
         return None
+
+    @staticmethod
+    def _extract_pixel_spacing_mm(dataset: Any) -> Optional[Tuple[float, float]]:
+        """M3：取 DICOM 像素间距 ``(行间距, 列间距)``。
+
+        与 ``edge.measurement`` 的分工：这里只回答"DICOM 里到底有没有"，
+        回退默认间距的策略由测量模块统一决定并标记来源——本函数在缺失时
+        返回 ``None``，绝不填充默认值。
+        """
+        spacing = from_dicom_metadata(dataset)
+        if spacing.source != PIXEL_SPACING_SOURCE_DICOM:
+            return None
+        return (spacing.row_mm, spacing.column_mm)
 
     # ---- 观测 ----
     def latency_stats(self) -> Dict[str, Optional[float]]:

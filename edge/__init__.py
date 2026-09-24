@@ -26,6 +26,12 @@ from edge.image_quality import (
     set_image_quality_adapter,
 )
 from edge.main import EdgeService, build_edge_service
+from edge.measurement import (
+    PixelSpacing,
+    from_dicom_metadata,
+    measure_labels,
+    measurement_from_bbox,
+)
 from edge.gpu_thermal import GPUThermalPolicy, ThermalDecision, ThermalLevel
 from edge.nav_backend import NullNavBackend, TensorRTNavBackend, create_nav_backend
 from edge.navigation import NavigationInferenceService
@@ -71,6 +77,7 @@ __all__ = [
     "OTAError",
     "OTAProgress",
     "OTAClient",
+    "PixelSpacing",
     "PlaneAssessment",
     "PlaneAssessmentAdapter",
     "TensorRTNavBackend",
@@ -80,6 +87,9 @@ __all__ = [
     "create_image_quality_adapter",
     "create_nav_backend",
     "create_plane_assessment_adapter",
+    "from_dicom_metadata",
+    "measure_labels",
+    "measurement_from_bbox",
     "set_image_quality_adapter",
     "set_plane_assessment_adapter",
 ]

@@ -53,8 +53,19 @@ import structlog
 from app.agents.protocols import Agent, AgentContext, AgentResponse
 from app.agents.protocols import KnowledgeAgent as KnowledgeAgentProtocol
 from app.inference.protocols import InferenceEngine, InferenceRequest
+from app.knowledge.measurement_extract import (
+    measurement_features,
+    structured_measurement_from_text,
+)
 from app.knowledge.protocols import KnowledgeChunk
-from app.models.schemas import Organ
+from app.knowledge.risk_rules import (
+    compute_malignancy_risk,
+    extract_udaf_features,
+    pick_posterior_acoustic_term,
+    ti_rads_points_for_posterior,
+)
+from app.knowledge.vocabulary import posterior_acoustic_value
+from app.models.schemas import Organ, PosteriorAcoustic
 
 logger = structlog.get_logger("app.agents.specialist.base")
 
@@ -373,6 +384,9 @@ class RAGSpecialistAgent(SpecialistAgent):
             self._post_process(context, response)
             return response
 
+        # 5.5) M3/M5/M9：结构化测量 + 后方回声 + 恶性概率（增强能力，失败不影响主流程）
+        self._enrich_clinical_attributes(response, llm_text, chunks)
+
         # 合并 trace + 顶层 latency（保留器官级 trace 顺序）
         if response.reasoning_trace:
             # 器官级 trace 在前，公共 trace 在后
@@ -652,6 +666,76 @@ class RAGSpecialistAgent(SpecialistAgent):
             response.reasoning_trace.append(
                 f"below_organ_threshold: {response.confidence:.4f} < "
                 f"{self._organ_threshold}"
+            )
+
+    # ------------------------------------------------------------------
+    # 内部：M3/M5/M9 临床属性增强
+    # ------------------------------------------------------------------
+
+    def _enrich_clinical_attributes(
+        self,
+        response: AgentResponse,
+        llm_text: str,
+        chunks: List[KnowledgeChunk],
+    ) -> None:
+        """从 LLM 输出抽取结构化测量、后方回声与恶性概率（M3/M5/M9）。
+
+        三条设计约束：
+
+        1. **三重容错**：整体包在 try/except 内——增强能力失败绝不能影响诊断
+           主流程；特征来源按「LLM 输出 → 检索到的知识 chunk」依次回退。
+        2. **无依据就不写**：未命中任何特征时不写 ``malignancy_risk``（"依据
+           不足"不能伪装成"概率为零"，前者要医生补资料，后者是明确判断）；
+           未提取到尺寸时不写 ``measurement``（否则前端渲染全空表格）。
+        3. **可解释**：每条写入都追加 reasoning_trace，含后方回声的 TI-RADS
+           计分，医生可以据此核对模型为什么给出这个概率。
+        """
+        try:
+            organ = self.get_organ().value
+            features = extract_udaf_features(llm_text, organ=organ)
+            fallback_text = " ".join(
+                getattr(chunk, "content", "") or "" for chunk in chunks[:3]
+            )
+            if not features and fallback_text:
+                features = extract_udaf_features(fallback_text, organ=organ)
+
+            measurement = structured_measurement_from_text(llm_text, organ=organ)
+            if measurement is None and fallback_text:
+                measurement = structured_measurement_from_text(fallback_text, organ=organ)
+            if measurement is not None:
+                response.measurement = measurement
+                response.reasoning_trace.append(
+                    f"measurement_source -> {measurement.pixel_spacing_source}"
+                )
+
+            posterior_term = pick_posterior_acoustic_term(features)
+            if posterior_term:
+                enum_value = posterior_acoustic_value(posterior_term)
+                if enum_value:
+                    response.posterior_acoustic = PosteriorAcoustic(enum_value)
+                response.reasoning_trace.append(
+                    f"posterior_acoustic -> {posterior_term}"
+                )
+                points = ti_rads_points_for_posterior(posterior_term)
+                if points is not None:
+                    response.reasoning_trace.append(
+                        f"posterior_acoustic_ti_rads_points -> {points}"
+                    )
+
+            risk = compute_malignancy_risk(
+                organ, list(features) + measurement_features(measurement)
+            )
+            if risk is not None:
+                response.malignancy_risk = risk
+                response.reasoning_trace.append(
+                    f"malignancy_risk -> {risk.probability} ({risk.level.value})"
+                )
+        except Exception as exc:  # noqa: BLE001 - 增强失败不得影响诊断
+            logger.warning(
+                "clinical_attribute_enrichment_failed",
+                organ=self.get_organ().value,
+                error=str(exc),
+                error_type=type(exc).__name__,
             )
 
     # ------------------------------------------------------------------

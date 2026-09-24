@@ -104,8 +104,11 @@ export interface Measurement {
   distance_to_skin_mm?: number | null;
   measurement_type?: string | null;
   unit: string;
-  /** dicom = 取自 DICOM PixelSpacing；default = 回退默认间距（估算值） */
-  pixel_spacing_source: 'dicom' | 'default';
+  /**
+   * 尺寸来源：dicom = 取自 DICOM PixelSpacing；default = 回退默认间距（估算值，
+   * 必须提示医生）；text = 来自报告文本表述。
+   */
+  pixel_spacing_source: 'dicom' | 'default' | 'text';
 }
 
 /** M4 鉴别诊断条目，按可能性降序 */

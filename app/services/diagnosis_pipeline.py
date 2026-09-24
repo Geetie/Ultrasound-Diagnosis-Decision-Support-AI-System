@@ -516,23 +516,75 @@ def _extract_recommendation(fusion_result) -> Optional[str]:
     return content[:500]
 
 
+def _clinical_attributes_to_dict(response) -> dict:
+    """从专科响应抽取 M1~M12 的结构化临床属性（仅含确实存在的字段）。
+
+    取 ``final_response`` 而非任意候选：这些属性是"这个结论"的属性，必须与
+    结论同源，否则会出现"结论来自 A、测量与概率来自 B"的错配。
+
+    只写有值的字段——缺字段与"字段为空值"在语义上不同（前者是"未产出"，
+    后者可能被误解为"计算结果是空"）。
+    """
+    if response is None:
+        return {}
+
+    attributes: dict = {}
+
+    measurement = getattr(response, "measurement", None)
+    if measurement is not None:
+        attributes["measurement"] = (
+            measurement.model_dump() if hasattr(measurement, "model_dump") else measurement
+        )
+
+    risk = getattr(response, "malignancy_risk", None)
+    if risk is not None:
+        attributes["malignancy_risk"] = (
+            risk.model_dump() if hasattr(risk, "model_dump") else risk
+        )
+
+    posterior = getattr(response, "posterior_acoustic", None)
+    if posterior is not None:
+        attributes["posterior_acoustic"] = getattr(posterior, "value", posterior)
+
+    for list_field in (
+        "differential_diagnoses",
+        "clinical_actions",
+        "cross_modality_hints",
+    ):
+        value = getattr(response, list_field, None)
+        if value:
+            attributes[list_field] = [
+                item.model_dump() if hasattr(item, "model_dump") else item for item in value
+            ]
+
+    for single_field in ("patient_explanation", "research_metrics"):
+        value = getattr(response, single_field, None)
+        if value is not None:
+            attributes[single_field] = (
+                value.model_dump() if hasattr(value, "model_dump") else value
+            )
+
+    return attributes
+
+
 def _fusion_result_to_dict(fusion_result) -> dict:
     """把 FusionResult 转为可 JSON 序列化的 dict。"""
     if fusion_result is None:
         return {}
-    return {
+    final_response = getattr(fusion_result, "final_response", None)
+    payload = {
         "needs_review": getattr(fusion_result, "needs_review", False),
         "review_reason": getattr(fusion_result, "review_reason", None),
         "self_rag_passed": getattr(fusion_result, "self_rag_passed", None),
         "crag_triggered": getattr(fusion_result, "crag_triggered", False),
         "crag_recovered": getattr(fusion_result, "crag_recovered", False),
         "total_latency_ms": getattr(fusion_result, "total_latency_ms", 0.0),
-        "final_confidence": (
-            getattr(fusion_result.final_response, "confidence", 0.0)
-            if getattr(fusion_result, "final_response", None) is not None
-            else 0.0
-        ),
+        "final_confidence": getattr(final_response, "confidence", 0.0) if final_response is not None else 0.0,
     }
+    clinical = _clinical_attributes_to_dict(final_response)
+    if clinical:
+        payload["clinical_attributes"] = clinical
+    return payload
 
 
 __all__ = [

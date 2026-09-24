@@ -8,13 +8,20 @@ import time
 import structlog
 
 from app.models.schemas import (
+    ClinicalAction,
+    CrossModalityHint,
     DiagnosisRequest,
     DiagnosisRequestResponse,
     DiagnosisResult,
     DiagnosisEvidence,
     DiagnosisQualityControl,
+    DifferentialDiagnosis,
+    MalignancyRisk,
+    Measurement,
     MultiOrganDiagnosisRequest,
     MultiOrganDiagnosisResponse,
+    PatientExplanation,
+    ResearchMetrics,
     RoutingConfirmationRequest,
     RoutingConfirmationResponse,
     ResponseTier,
@@ -57,6 +64,68 @@ RESULT_TIMEOUT_SECONDS = 30
 def _generate_request_id() -> str:
     ts = datetime.now(timezone.utc).strftime("%Y%m%d")
     return f"req_{ts}_{uuid.uuid4().hex[:8]}"
+
+
+def clinical_attribute_fields(diagnosis_payload: Optional[dict]) -> dict:
+    """从 findings 的 ``clinical_attributes`` 映射出对外契约字段（M1~M12）。
+
+    管线把专科响应里的结构化临床属性写进 findings 的 ``clinical_attributes``
+    子字典，本函数是把它转成**类型化契约字段**的唯一出口（写库结构不进 API
+    契约，避免 DB 结构变化直接泄漏到前端）。
+
+    容错策略：逐字段独立解析，单个字段结构异常不影响其它字段——诊断结果页
+    能展示多少就展示多少，不能因为一个测量值格式不对就让整个结果接口 500
+    （这是医生正在看的页面）。
+    """
+    clinical = (diagnosis_payload or {}).get("clinical_attributes")
+    if not isinstance(clinical, dict):
+        # 始终返回完整键集（值为默认空），调用方可以直接 **展开 而不必
+        # 关心"有没有 clinical_attributes"
+        clinical = {}
+
+    def _one(key: str, model):
+        value = clinical.get(key)
+        if not value:
+            return None
+        try:
+            return model.model_validate(value)
+        except Exception as exc:  # noqa: BLE001 - 单字段失败不影响结果返回
+            logger.warning(
+                "clinical_attribute_parse_failed",
+                field=key,
+                error=str(exc),
+                error_type=type(exc).__name__,
+            )
+            return None
+
+    def _many(key: str, model) -> list:
+        values = clinical.get(key)
+        if not isinstance(values, list):
+            return []
+        parsed = []
+        for item in values:
+            try:
+                parsed.append(model.model_validate(item))
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(
+                    "clinical_attribute_parse_failed",
+                    field=key,
+                    error=str(exc),
+                    error_type=type(exc).__name__,
+                )
+        return parsed
+
+    return {
+        "measurement": _one("measurement", Measurement),
+        # M5：恶性概率必须与置信度分开展示（语义不同）
+        "malignancy_risk": _one("malignancy_risk", MalignancyRisk),
+        "patient_explanation": _one("patient_explanation", PatientExplanation),
+        "research_metrics": _one("research_metrics", ResearchMetrics),
+        "differential_diagnoses": _many("differential_diagnoses", DifferentialDiagnosis),
+        "clinical_actions": _many("clinical_actions", ClinicalAction),
+        "cross_modality_hints": _many("cross_modality_hints", CrossModalityHint),
+        "posterior_acoustic": clinical.get("posterior_acoustic") or None,
+    }
 
 
 async def _push_diagnosis_result(result, request_id: str, db: AsyncSession):
@@ -494,6 +563,7 @@ async def get_diagnosis_result(
         consent_status_at_output=consent_status_at_output,
         fusion_status=FusionStatus.NORMAL,
         diagnosis=diagnosis_payload,
+        **clinical_attribute_fields(diagnosis_payload),
         evidence=DiagnosisEvidence(
             knowledge_ids=result.knowledge_ids if hasattr(result, "knowledge_ids") and result.knowledge_ids else None,
             content=result.findings if result.findings else None,

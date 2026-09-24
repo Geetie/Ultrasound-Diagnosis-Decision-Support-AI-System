@@ -23,6 +23,9 @@ class Frame:
     # 单调时钟到达时间（毫秒），用于延迟埋点
     received_at_ms: float
     acquisition_datetime: Optional[str] = None
+    # M3 自动测量：DICOM 像素间距 (行间距, 列间距)，单位 mm；缺失时为 None，
+    # 由 edge.measurement 回退默认间距并标记为估算值。
+    pixel_spacing_mm: Optional[Tuple[float, float]] = None
 
 
 @dataclass(frozen=True)

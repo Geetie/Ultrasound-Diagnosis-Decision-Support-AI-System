@@ -13,6 +13,7 @@ import EvidenceTrace from '@/components/diagnosis/EvidenceTrace';
 import { normalizeEvidence } from '@/components/diagnosis/evidence';
 import HallucinationWarning from '@/components/diagnosis/HallucinationWarning';
 import QualityControlBadge from '@/components/diagnosis/QualityControlBadge';
+import MeasurementTable from '@/components/diagnosis/MeasurementTable';
 import ProgressiveBlock from '@/components/diagnosis/ProgressiveBlock';
 
 const { Text, Title } = Typography;
@@ -317,6 +318,23 @@ export default function DiagnosisPage() {
             />
           </Card>
         </ProgressiveBlock>
+
+        {/* M3 自动测量：无测量数据时整块不渲染（不展示空表格） */}
+        {result.measurement && (
+          <ProgressiveBlock ready={progressive.isRevealed('quality')} skeletonRows={2} label="自动测量">
+            <Card
+              size="small"
+              style={{
+                background: tokens.color.bg.secondary,
+                border: `1px solid ${tokens.color.border.default}`,
+                borderRadius: tokens.radius.md,
+              }}
+              styles={{ body: { padding: tokens.spacing.md } }}
+            >
+              <MeasurementTable measurement={result.measurement} />
+            </Card>
+          </ProgressiveBlock>
+        )}
 
         <ProgressiveBlock ready={progressive.isRevealed('evidence')} skeletonRows={4} label="证据链">
           <EvidenceTrace evidence={evidence} />
