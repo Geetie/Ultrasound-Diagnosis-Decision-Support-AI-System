@@ -12,6 +12,9 @@ alembic/versions/*.pyc
 *.egg-info/
 .pytest_cache/
 .coverage
+# pytest-cov 在 xdist 下会按 worker 落一堆 .coverage.<host>.pid<N>.<rand> 数据文件，
+# 只忽略精确名 `.coverage` 会让它们每次跑覆盖率都冒出来污染 git status。
+.coverage.*
 coverage.xml
 htmlcov/
 *.log
