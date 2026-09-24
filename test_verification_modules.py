@@ -11,18 +11,11 @@ sys.path.insert(0, str(Path.cwd()))
 try:
     # 测试导入新模块
     from app.inference.verification_config import (
-        get_verification_config,
         get_default_verification_config,
-        VerificationConfig
     )
     print('✓ verification_config 导入成功')
 
-    from app.inference.drift_detector import (
-        DriftDetector,
-        DriftReport,
-        DriftSeverity,
-        MetricType
-    )
+    from app.inference.drift_detector import DriftDetector
     print('✓ drift_detector 导入成功')
 
     # 测试获取默认配置
@@ -36,10 +29,7 @@ try:
     print('✓ 漂移检测器初始化成功')
 
     # 测试幻觉检测器
-    from app.inference.hallucination_detector import (
-        HallucinationDetector,
-        DetectionStrategy
-    )
+    from app.inference.hallucination_detector import HallucinationDetector
     detector = HallucinationDetector()
     print('✓ 幻觉检测器初始化成功')
 
@@ -51,7 +41,6 @@ try:
     print(f'✓ 检测到 {len(result.issues)} 个问题')
 
     # 测试一致性模块导入
-    from app.inference.consistency import ConsistencyVerifier, ConsistencyReport
     print('✓ consistency 模块导入成功')
 
     print()

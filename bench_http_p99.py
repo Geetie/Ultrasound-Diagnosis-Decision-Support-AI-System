@@ -1,8 +1,10 @@
 """HTTP end-to-end P99 latency benchmark for SafetyGateway."""
-import time
-import statistics
-import httpx
 import asyncio
+import statistics
+import time
+
+import httpx
+
 
 async def bench_http():
     samples = []
