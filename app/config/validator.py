@@ -73,6 +73,30 @@ def validate_config() -> List[str]:
             "unreachable by construction: one blocking read can exceed it)"
         )
 
+    for name, value in (
+        ("DRIFT_INPUT_KL_THRESHOLD", settings.drift_input_kl_threshold),
+        ("DRIFT_OUTPUT_KL_THRESHOLD", settings.drift_output_kl_threshold),
+        ("DRIFT_OUTPUT_MEAN_SHIFT_THRESHOLD", settings.drift_output_mean_shift_threshold),
+    ):
+        if value <= 0:
+            errors.append(f"{name} must be greater than 0")
+    if settings.drift_distribution_min_samples < 2:
+        errors.append("DRIFT_DISTRIBUTION_MIN_SAMPLES must be at least 2")
+
+    if settings.ab_experiment_enabled:
+        if not 0 < settings.ab_experiment_traffic_percent <= 100:
+            errors.append("AB_EXPERIMENT_TRAFFIC_PERCENT must be in (0, 100]")
+        if not 0 < settings.ab_alpha < 1:
+            errors.append("AB_ALPHA must be in (0, 1)")
+        if not 0 < settings.ab_power < 1:
+            errors.append("AB_POWER must be in (0, 1)")
+        if not 0 < settings.ab_mde < 1:
+            errors.append("AB_MDE must be in (0, 1)")
+        if settings.ab_non_inferiority_margin <= 0:
+            errors.append("AB_NON_INFERIORITY_MARGIN must be greater than 0")
+        if settings.ab_min_samples_per_variant < 1:
+            errors.append("AB_MIN_SAMPLES_PER_VARIANT must be at least 1")
+
     if settings.correction_rate_window_days <= 0:
         errors.append("CORRECTION_RATE_WINDOW_DAYS must be greater than 0")
     if settings.correction_rate_min_samples < 1:

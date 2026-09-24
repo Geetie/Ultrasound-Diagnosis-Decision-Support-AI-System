@@ -100,6 +100,22 @@ class Settings(BaseSettings):
     # T-G1-INT-06：撤回生效端到端时延验收线（撤回动作 -> 各处理器执行完毕）
     consent_withdrawal_e2e_latency_target_ms: int = 500
 
+    # 二期 §20 分布漂移（与既有 SPC 检测器分工：SPC 判单点越限，这里判分布形状变化）
+    drift_input_kl_threshold: float = 0.1
+    drift_output_kl_threshold: float = 0.15
+    drift_output_mean_shift_threshold: float = 0.05
+    drift_distribution_min_samples: int = 500
+
+    # 二期 §19 A/B 实验（仅 full Profile 生效）
+    ab_experiment_enabled: bool = False
+    ab_experiment_name: str = "default"
+    ab_experiment_traffic_percent: int = 10
+    ab_alpha: float = 0.05
+    ab_power: float = 0.80
+    ab_mde: float = 0.03
+    ab_non_inferiority_margin: float = 0.03
+    ab_min_samples_per_variant: int = 200
+
     # 二期 §7 AI 修正率监控
     correction_rate_window_days: int = 30
     correction_rate_direction_alert_threshold: float = 0.20
