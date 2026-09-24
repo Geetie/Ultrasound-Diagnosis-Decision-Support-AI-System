@@ -55,7 +55,7 @@ export function useDicomViewer(element: HTMLElement | null, imageId?: string) {
     setError(null);
 
     loadAndCacheImage(imageId)
-      .then((image: any) => {
+      .then((image) => {
         if (cancelled) return;
         displayImage(element, image);
         setLoaded(true);

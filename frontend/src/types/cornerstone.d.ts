@@ -37,6 +37,12 @@ declare module 'cornerstone-core' {
     height: number;
     windowWidth?: number;
     windowCenter?: number;
+    /**
+     * 解码后的 DICOM 数据集。显式声明（而不是走下面的索引签名落到 unknown）：
+     * 调用侧要用 `data.string(tag)` / `data.uint16(tag)` 取患者与影像元数据，
+     * 之前靠 `image: any` 兜着，去掉断言后必须给出真实类型。
+     */
+    data?: import('dicom-parser').DicomDataSet;
     [key: string]: unknown;
   }
 
@@ -101,6 +107,20 @@ declare module 'cornerstone-wado-image-loader' {
 }
 
 declare module 'dicom-parser' {
-  const dicomParser: Record<string, unknown>;
+  /**
+   * 解析后的 DataSet，按 DICOM 标签取值。
+   * 只声明本项目实际调用的访问器（`string` / `uint16`）；其余仍走索引签名，
+   * 新增访问器时请一并补在这里，避免又回到 `as any` 兜底。
+   */
+  export interface DicomDataSet {
+    string(tag: string, index?: number): string | undefined;
+    uint16(tag: string, index?: number): number | undefined;
+    [key: string]: unknown;
+  }
+
+  const dicomParser: {
+    parseDicom(buffer: ArrayBuffer | Uint8Array, options?: Record<string, unknown>): DicomDataSet;
+    [key: string]: unknown;
+  };
   export default dicomParser;
 }
