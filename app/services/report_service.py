@@ -273,6 +273,23 @@ def _format_recommendation(needs_review: bool, actions: Any) -> str:
     return "建议结合临床与随访观察。"
 
 
+def _format_patient_explanation(explanation: Any) -> str:
+    """M10 患者解释话术文本（缺失时为占位文本）。"""
+    placeholder = "（本次未生成患者解释话术）"
+    if not isinstance(explanation, Mapping):
+        return placeholder
+    lines = []
+    if explanation.get("explanation"):
+        lines.append(f"解释：{explanation['explanation']}")
+    if explanation.get("reassurance"):
+        lines.append(f"安抚：{explanation['reassurance']}")
+    if explanation.get("next_step"):
+        lines.append(f"下一步：{explanation['next_step']}")
+    if explanation.get("source_reference"):
+        lines.append(f"来源：{explanation['source_reference']}")
+    return "\n".join(lines) if lines else placeholder
+
+
 def build_report_content(result: Any, session: Any = None) -> Dict[str, Any]:
     """把诊断结果 + 会话组装为结构化报告内容。
 
@@ -320,6 +337,11 @@ def build_report_content(result: Any, session: Any = None) -> Dict[str, Any]:
         # M3 测量摘要 / M7 处置建议（器官模板中的独立段落）
         "measurement_summary": _format_measurement(measurement),
         "clinical_actions": _format_actions(actions),
+        # M10 患者解释话术：**刻意不放进模板**——报告是医疗文书，面向患者的
+        # 安抚性表述混入正文会改变文书性质；由医生按需追加（见 render_report）。
+        "patient_explanation": _format_patient_explanation(
+            clinical.get("patient_explanation")
+        ),
         "evidence": (
             "、".join(knowledge_ids) if knowledge_ids else "（本次结论无引用知识条目）"
         ),
@@ -332,10 +354,36 @@ def build_report_content(result: Any, session: Any = None) -> Dict[str, Any]:
     }
 
 
-def render_report(content: Mapping[str, Any]) -> str:
-    """按模板渲染报告正文（M8：按器官选择模板）。"""
+# M10：患者解释段标题。标注"非正式报告内容"，避免打印后与诊断意见混淆。
+PATIENT_EXPLANATION_HEADING = "患者解释（非正式报告内容，需医生确认后方可告知患者）"
+
+# 话术缺失时的占位前缀（用于判断"是否有可追加的内容"）
+PATIENT_EXPLANATION_PLACEHOLDER_PREFIX = "（本次未生成"
+
+
+def render_report(
+    content: Mapping[str, Any], *, include_patient_explanation: bool = False
+) -> str:
+    """按模板渲染报告正文（M8：按器官选择模板）。
+
+    Args:
+        content: :func:`build_report_content` 的输出。
+        include_patient_explanation: M10 是否追加患者解释段。**默认不追加**：
+            报告是医疗文书，面向患者的安抚性表述混入正文会改变文书性质；
+            医生选择告知/打印患者版时再显式开启。
+    """
     organ = str(content.get("organ") or "") if isinstance(content, Mapping) else ""
-    return render_template(load_template(organ=organ), content)
+    rendered = render_template(load_template(organ=organ), content)
+    if not include_patient_explanation:
+        return rendered
+
+    explanation = (
+        content.get("patient_explanation") if isinstance(content, Mapping) else None
+    )
+    if not explanation or str(explanation).startswith(PATIENT_EXPLANATION_PLACEHOLDER_PREFIX):
+        # 没有话术就不加空段（打印出来一个空的"患者解释"毫无意义）
+        return rendered
+    return f"{rendered}\n\n## {PATIENT_EXPLANATION_HEADING}\n\n{explanation}\n"
 
 
 def report_payload(rendered: str) -> bytes:

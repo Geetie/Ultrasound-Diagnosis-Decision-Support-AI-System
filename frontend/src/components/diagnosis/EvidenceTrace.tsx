@@ -4,15 +4,19 @@ import {
   BookOutlined,
   SafetyCertificateOutlined,
   CloudOutlined,
+  SwapOutlined,
 } from '@ant-design/icons';
 import { tokens } from '@/styles/tokens';
 import { useUiStore } from '@/stores/uiStore';
+import type { CrossModalityHint } from '@/types/api';
 import type { EvidenceData, ReasoningStep } from './evidence';
 
 const { Text } = Typography;
 
 interface EvidenceTraceProps {
   evidence: EvidenceData;
+  /** M12 跨模态对照提示（CT/MRI/病理）；无数据时不展示该子标签 */
+  crossModalityHints?: CrossModalityHint[];
 }
 
 function ConfidenceBar({ value }: { value: number }) {
@@ -126,7 +130,7 @@ function ReasoningPathItem({ step, index }: { step: ReasoningStep; index: number
   );
 }
 
-export default function EvidenceTrace({ evidence }: EvidenceTraceProps) {
+export default function EvidenceTrace({ evidence, crossModalityHints = [] }: EvidenceTraceProps) {
   const isDarkRoom = useUiStore((s) => s.isDarkRoomMode);
   const reasoningPath = evidence.reasoning_path ?? [];
   const knowledgeRefs = evidence.knowledge_refs ?? [];
@@ -245,6 +249,76 @@ export default function EvidenceTrace({ evidence }: EvidenceTraceProps) {
             ),
             style: panelStyle,
           },
+          ...(crossModalityHints.length > 0
+            ? [
+                {
+                  key: 'cross_modality',
+                  label: (
+                    <span style={headerStyle}>
+                      <SwapOutlined style={{ marginRight: 6, color: tokens.color.accent.info }} />
+                      跨模态对照 ({crossModalityHints.length})
+                    </span>
+                  ),
+                  children: (
+                    <div
+                      data-testid="cross-modality-hints"
+                      style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacing.xs }}
+                    >
+                      {crossModalityHints.map((hint, i) => (
+                        <div
+                          key={`${hint.modality}-${i}`}
+                          data-testid={`cross-modality-hint-${i}`}
+                          style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 2,
+                            padding: `${tokens.spacing.xs}px ${tokens.spacing.sm}px`,
+                            background: tokens.color.bg.hover,
+                            borderRadius: tokens.radius.sm,
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacing.sm }}>
+                            <Tag
+                              data-testid={`cross-modality-tag-${i}`}
+                              style={{
+                                margin: 0,
+                                background: `${tokens.color.accent.info}15`,
+                                border: `1px solid ${tokens.color.accent.info}40`,
+                                color: tokens.color.accent.info,
+                                fontSize: 10,
+                                fontFamily: tokens.font.mono,
+                              }}
+                            >
+                              {hint.modality}
+                            </Tag>
+                            <Text style={{ color: tokens.color.text.primary, fontSize: 12 }}>
+                              {hint.finding}
+                            </Text>
+                          </div>
+                          {hint.clinical_value && (
+                            <Text style={{ color: tokens.color.text.secondary, fontSize: 11 }}>
+                              {hint.clinical_value}
+                            </Text>
+                          )}
+                          {hint.source_reference && (
+                            <Text
+                              style={{
+                                color: tokens.color.text.muted,
+                                fontSize: 10,
+                                fontFamily: tokens.font.mono,
+                              }}
+                            >
+                              {hint.source_reference}
+                            </Text>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ),
+                  style: panelStyle,
+                },
+              ]
+            : []),
         ]}
       />
     </div>

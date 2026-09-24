@@ -16,6 +16,8 @@ import QualityControlBadge from '@/components/diagnosis/QualityControlBadge';
 import MeasurementTable from '@/components/diagnosis/MeasurementTable';
 import DifferentialDiagnosisList from '@/components/diagnosis/DifferentialDiagnosisList';
 import ClinicalActions from '@/components/diagnosis/ClinicalActions';
+import PatientExplanation from '@/components/diagnosis/PatientExplanation';
+import ResearchMetrics from '@/components/diagnosis/ResearchMetrics';
 import ProgressiveBlock from '@/components/diagnosis/ProgressiveBlock';
 
 const { Text, Title } = Typography;
@@ -397,8 +399,21 @@ export default function DiagnosisPage() {
         )}
 
         <ProgressiveBlock ready={progressive.isRevealed('evidence')} skeletonRows={4} label="证据链">
-          <EvidenceTrace evidence={evidence} />
+          <EvidenceTrace
+            evidence={evidence}
+            crossModalityHints={result.cross_modality_hints ?? []}
+          />
         </ProgressiveBlock>
+
+        {/* M11 科研指标：默认折叠（科研用途，展开会稀释临床结论） */}
+        {result.research_metrics && (
+          <ResearchMetrics metrics={result.research_metrics} />
+        )}
+
+        {/* M10 患者解释话术：默认折叠在底部，标注为非正式报告内容 */}
+        {result.patient_explanation && (
+          <PatientExplanation explanation={result.patient_explanation} />
+        )}
 
         {/* 真实阶段耗时：来自后端 findings.timings_ms，仅在有数据时展示 */}
         {stageTimings.length > 0 && (

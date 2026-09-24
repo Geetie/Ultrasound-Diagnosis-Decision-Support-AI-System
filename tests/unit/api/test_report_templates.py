@@ -178,6 +178,63 @@ class TestContentSections:
         assert content["recommendation"] == "建议执业医师复核后再行签发。"
 
 
+class TestPatientExplanationSection:
+    """M10：患者解释段默认不入正式报告，医生显式开启才追加。"""
+
+    def _content(self, explanation=None):
+        findings = {
+            "fusion_result": {},
+            "clinical_attributes": {
+                "measurement": {"long_mm": 12.0},
+                "clinical_actions": [{"action_type": "annual_followup"}],
+            },
+        }
+        if explanation is not None:
+            findings["clinical_attributes"]["patient_explanation"] = explanation
+        return build_report_content(_result(findings=findings), _session())
+
+    def test_not_in_default_render(self):
+        content = self._content(
+            {"explanation": "结节多为良性", "reassurance": "不必过度担心"}
+        )
+        rendered = render_report(content)
+
+        assert "患者解释" not in rendered
+        assert "结节多为良性" not in rendered
+
+    def test_appended_when_requested(self):
+        content = self._content(
+            {
+                "explanation": "结节多为良性",
+                "reassurance": "不必过度担心",
+                "next_step": "6 个月后复查",
+                "source_reference": "模型生成",
+            }
+        )
+        rendered = render_report(content, include_patient_explanation=True)
+
+        assert "患者解释" in rendered
+        assert "非正式报告内容" in rendered
+        assert "解释：结节多为良性" in rendered
+        assert "下一步：6 个月后复查" in rendered
+
+    def test_no_empty_section_without_explanation(self):
+        content = self._content()
+        rendered = render_report(content, include_patient_explanation=True)
+
+        assert "患者解释" not in rendered
+
+    def test_content_field_is_placeholder_when_absent(self):
+        content = self._content()
+        assert content["patient_explanation"].startswith("（本次未生成")
+
+    def test_patient_explanation_not_required_for_completeness(self):
+        """话术是可选内容，缺少它不应导致报告被判为不完整。"""
+        result = check_completeness(self._content(), organ="thyroid")
+        assert result["passed"] is True
+        assert "patient_explanation" not in result["required"]
+
+
 class TestRenderReport:
     def test_renders_organ_template(self):
         content = build_report_content(_result(organ="liver"), _session())
