@@ -149,6 +149,56 @@ class TestDifferentialDiagnosesThroughInvoke:
         assert response.differential_diagnoses[0].disease_name == "乳头状癌"
 
 
+class TestM10M11M12ThroughInvoke:
+    @pytest.mark.asyncio
+    async def test_patient_explanation_parsed(self, rag):
+        specialist = _specialist(
+            rag,
+            "分级: TR3\n患者解释:\n解释: 结节多为良性\n安抚: 不必过度担心\n下一步: 3-6 个月复查\n",
+        )
+        response = await specialist.invoke(_ctx())
+
+        assert response.patient_explanation is not None
+        assert response.patient_explanation.explanation == "结节多为良性"
+        assert response.patient_explanation.next_step == "3-6 个月复查"
+
+    @pytest.mark.asyncio
+    async def test_absent_patient_explanation_left_empty(self, rag):
+        response = await _specialist(rag, "分级: TR2").invoke(_ctx())
+        assert response.patient_explanation is None
+
+    @pytest.mark.asyncio
+    async def test_research_metrics_built_from_real_inputs_only(self, rag):
+        response = await _specialist(
+            rag, "分级: TR4\n低回声，PSV 45cm/s，RI 0.72"
+        ).invoke(_ctx())
+
+        metrics = response.research_metrics
+        assert metrics is not None
+        assert metrics.ai_features.feature_vector_hash
+        assert metrics.blood_flow.psv == 45.0
+        # 未提及弹性评分时不得虚造
+        assert metrics.elasticity_score is None
+
+    @pytest.mark.asyncio
+    async def test_cross_modality_hints_from_knowledge_table(self, rag):
+        response = await _specialist(rag, "分级: TR4\n低回声，微钙化").invoke(_ctx())
+
+        modalities = {hint.modality for hint in response.cross_modality_hints}
+        assert "pathology" in modalities
+
+    @pytest.mark.asyncio
+    async def test_trace_records_new_attributes(self, rag):
+        response = await _specialist(
+            rag, "分级: TR4\n微钙化\n患者解释:\n解释: 多为良性\n"
+        ).invoke(_ctx())
+
+        trace = "\n".join(response.reasoning_trace)
+        assert "patient_explanation -> provided" in trace
+        assert "cross_modality_hints ->" in trace
+        assert "research_metrics -> provided" in trace
+
+
 class TestEnrichmentRobustness:
     def test_failure_is_swallowed(self, monkeypatch):
         """增强能力失败不得影响诊断主流程。"""

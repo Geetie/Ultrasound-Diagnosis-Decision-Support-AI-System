@@ -54,6 +54,7 @@ from app.agents.protocols import Agent, AgentContext, AgentResponse
 from app.agents.protocols import KnowledgeAgent as KnowledgeAgentProtocol
 from app.inference.protocols import InferenceEngine, InferenceRequest
 from app.knowledge.clinical_actions import actions_for
+from app.knowledge.cross_modality import hints_for
 from app.knowledge.differential import (
     differential_summary,
     parse_differential_diagnoses,
@@ -62,7 +63,9 @@ from app.knowledge.measurement_extract import (
     measurement_features,
     structured_measurement_from_text,
 )
+from app.knowledge.patient_explanation import parse_patient_explanation
 from app.knowledge.protocols import KnowledgeChunk
+from app.knowledge.research_metrics import build_research_metrics
 from app.knowledge.risk_rules import (
     compute_malignancy_risk,
     extract_udaf_features,
@@ -757,6 +760,32 @@ class RAGSpecialistAgent(SpecialistAgent):
                 response.reasoning_trace.append(
                     "clinical_actions -> " + "、".join(item.action_type for item in actions)
                 )
+
+            # M10：患者解释话术（默认不入正式报告，由医生按需展示/打印）
+            explanation = parse_patient_explanation(llm_text)
+            if explanation is not None:
+                response.patient_explanation = explanation
+                response.reasoning_trace.append("patient_explanation -> provided")
+
+            # M12：跨模态对照提示（教科书级知识表，模型不参与生成）
+            hints = hints_for(organ, features)
+            if hints:
+                response.cross_modality_hints = hints
+                response.reasoning_trace.append(
+                    "cross_modality_hints -> " + "、".join(item.modality for item in hints)
+                )
+
+            # M11：科研量化指标（可派生项 + 显式出现的弹性/血流参数）
+            research = build_research_metrics(
+                features,
+                measurement=measurement,
+                probability=risk.probability if risk is not None else None,
+                confidence=response.confidence,
+                text=llm_text,
+            )
+            if research is not None:
+                response.research_metrics = research
+                response.reasoning_trace.append("research_metrics -> provided")
         except Exception as exc:  # noqa: BLE001 - 增强失败不得影响诊断
             logger.warning(
                 "clinical_attribute_enrichment_failed",
