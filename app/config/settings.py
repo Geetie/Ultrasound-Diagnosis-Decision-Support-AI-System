@@ -316,6 +316,10 @@ class Settings(BaseSettings):
     # 避免把本应入冷层的数据直接删掉）。
     data_retention_purge_without_cold_archive: bool = False
 
+    # === T-G1-SEC-02 脱敏还原频率监控 ===
+    # 数据安全官通知 webhook（对接安全运营平台/工单系统）；留空则只落结构化日志
+    security_officer_webhook: str = ''
+
     # === T-G1-INT-04 安全响应头 / CSP ===
     # 留空表示使用 app/security/security_headers.py 中的默认策略
     csp_policy: str = ''

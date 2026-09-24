@@ -62,6 +62,11 @@ class RedisKey:
     def desens_restore_rate(hour_key: str) -> str:
         return f"{_PREFIX}:desens:restore_rate:{hour_key}"
 
+    @staticmethod
+    def desens_restore_alert(profile: str, hour_key: str) -> str:
+        """脱敏还原超限告警去重键（T-G1-SEC-02：同档位同小时只告警一次）。"""
+        return f"{_PREFIX}:desens:restore_alert:{profile}:{hour_key}"
+
     DESSENS_RULES_UPDATE = f"{_PREFIX}:desens:rules:update"
     DESSENS_HMAC_KEY = f"{_PREFIX}:desens:hmac_key"
     DESSENS_TOKEN_COUNTER = f"{_PREFIX}:desens:token_counter"

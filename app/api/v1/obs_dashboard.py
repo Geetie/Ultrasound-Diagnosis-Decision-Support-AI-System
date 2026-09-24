@@ -81,6 +81,14 @@ async def cold_archive_status(
     }
 
 
+@router.get("/restore-rate")
+async def restore_rate_status():
+    """T-G1-SEC-02：脱敏还原频率监控（阈值、告警数与最近一次告警）。"""
+    from app.security.restore_rate_monitor import get_restore_rate_monitor
+
+    return get_restore_rate_monitor().stats()
+
+
 @router.post("/cold-archive/run")
 async def run_cold_archive(
     category: str = Query(

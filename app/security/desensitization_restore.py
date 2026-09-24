@@ -204,13 +204,48 @@ class DesensitizationRestoreService:
                     self._rate_limit_counter[hour_key] = max(
                         0, self._rate_limit_counter.get(hour_key, 1) - 1
                     )
-                logger.warning("desensitization_restore_rate_limit_exceeded_persistent",
-                              count=count, limit=limit)
+                await self._handle_rate_limit_exceeded(
+                    count=count, limit=limit, hour_key=hour_key
+                )
                 return False
         except Exception as e:
             logger.warning("failed_to_check_persistent_rate_limit", error=str(e))
 
         return True
+
+    async def _handle_rate_limit_exceeded(
+        self, *, count: int, limit: int, hour_key: str
+    ) -> None:
+        """超限统一处理：日志 + 告警（审计 + 通知数据安全官）。
+
+        单独抽出的原因有二：一是超限提示与告警链路只有一处实现；
+        二是 conftest 会把 ``_check_rate_limit_persistent`` 整体打桩
+        （测试期不希望限流生效），抽出的本方法仍可被单测直接覆盖。
+        """
+        logger.warning(
+            "desensitization_restore_rate_limit_exceeded_persistent",
+            count=count,
+            limit=limit,
+        )
+        await self._raise_rate_limit_alert(count=count, limit=limit, hour_key=hour_key)
+
+    async def _raise_rate_limit_alert(
+        self, *, count: int, limit: int, hour_key: str
+    ) -> None:
+        """触发超限告警（审计 + 通知数据安全官）。
+
+        告警链路是旁路：任何异常都不得影响"拒绝还原"这一安全动作本身。
+        """
+        try:
+            from app.security.restore_rate_monitor import get_restore_rate_monitor
+
+            await get_restore_rate_monitor().evaluate(
+                count=count,
+                limit=limit,
+                hour_key=hour_key,
+            )
+        except Exception as e:  # noqa: BLE001
+            logger.error("restore_rate_alert_dispatch_failed", error=str(e))
 
     async def store_mapping(
         self,
