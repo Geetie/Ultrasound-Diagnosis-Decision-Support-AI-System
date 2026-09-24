@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Card, Form, Input, Select, Button, Typography, message } from 'antd';
+import { getApiErrorMessage } from '@/utils/apiError';
 import { PlusOutlined } from '@ant-design/icons';
 import { useSession } from '@/hooks/useSession';
 import { useNavigate } from 'react-router-dom';
@@ -25,8 +26,8 @@ export default function SessionCreatePage() {
       await createSession(values.patient_id, values.device_id, values.target_organs);
       message.success('检查会话创建成功');
       navigate('/');
-    } catch (err: any) {
-      message.error(err?.response?.data?.error_message || '创建会话失败');
+    } catch (err: unknown) {
+      message.error(getApiErrorMessage(err, '创建会话失败'));
     } finally {
       setLoading(false);
     }

@@ -7,6 +7,7 @@ import { useNavigationAnnotations } from '@/hooks/useNavigationAnnotations';
 import { useSession } from '@/hooks/useSession';
 import { requestDiagnosis } from '@/services/diagnosisService';
 import { generateIdempotencyKey } from '@/utils/idGenerator';
+import { getApiErrorMessage } from '@/utils/apiError';
 
 const { Title, Text } = Typography;
 
@@ -54,8 +55,8 @@ export default function ExaminationPage() {
         idempotency_key: idempotencyKey,
       });
       message.success('诊断请求已提交，请等待结果');
-    } catch (err: any) {
-      message.error(err?.response?.data?.error_message || '诊断请求失败');
+    } catch (err: unknown) {
+      message.error(getApiErrorMessage(err, '诊断请求失败'));
     } finally {
       setDiagnosisLoading(false);
     }

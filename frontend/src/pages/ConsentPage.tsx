@@ -10,6 +10,7 @@ import {
 } from '@ant-design/icons';
 import { getConsentStatus, grantConsent, withdrawConsent } from '@/services/consentService';
 import type { ConsentActionData } from '@/services/consentService';
+import { getApiErrorMessage } from '@/utils/apiError';
 import { useSessionStore } from '@/stores/sessionStore';
 import { tokens } from '@/styles/tokens';
 import type { ConsentStatus } from '@/types/api';
@@ -104,8 +105,8 @@ export default function ConsentPage() {
       setConsentDetail(result);
       setConsentStatus(result.consent_status);
       message.success('知情同意已签署，AI辅助诊断已解锁');
-    } catch (err: any) {
-      message.error(err?.response?.data?.error_message || '签署知情同意失败');
+    } catch (err: unknown) {
+      message.error(getApiErrorMessage(err, '签署知情同意失败'));
     } finally {
       setLoading(false);
     }
@@ -124,8 +125,8 @@ export default function ConsentPage() {
       setConsentDetail(result);
       setConsentStatus(result.consent_status);
       message.warning('知情同意已撤回，系统切换至纯报告模式');
-    } catch (err: any) {
-      message.error(err?.response?.data?.error_message || '撤回知情同意失败');
+    } catch (err: unknown) {
+      message.error(getApiErrorMessage(err, '撤回知情同意失败'));
     } finally {
       setLoading(false);
     }
