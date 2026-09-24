@@ -315,7 +315,6 @@ class TestPipelineGate:
     async def test_denied_session_falls_back_to_baseline_profile(self, enabled, monkeypatch):
         from app.agents.routing import RetrievalProfile
         from app.services import diagnosis_pipeline as pipeline
-        from app.services.rollout_router import RolloutDecision
 
         async def _denied(self, *, session_id, track):
             return RolloutDecision(
@@ -333,7 +332,6 @@ class TestPipelineGate:
 
     async def test_allowed_session_keeps_profile(self, enabled, monkeypatch):
         from app.services import diagnosis_pipeline as pipeline
-        from app.services.rollout_router import RolloutDecision
 
         async def _allowed(self, *, session_id, track):
             return RolloutDecision(
@@ -350,7 +348,6 @@ class TestPipelineGate:
 
     async def test_track_selected_by_requested_tier(self, enabled, monkeypatch):
         from app.services import diagnosis_pipeline as pipeline
-        from app.services.rollout_router import RolloutDecision
 
         seen: list = []
 
@@ -387,7 +384,6 @@ class TestPipelineGate:
 
     async def test_gate_without_routing_decision_is_safe(self, enabled, monkeypatch):
         from app.services import diagnosis_pipeline as pipeline
-        from app.services.rollout_router import RolloutDecision
 
         async def _denied(self, *, session_id, track):
             return RolloutDecision(allowed=False, track=track, stage="off", reason="miss")
@@ -401,7 +397,6 @@ class TestPipelineGate:
 
     async def test_decision_is_written_to_findings(self):
         """判定必须落库，否则"放量比例"只能靠数日志。"""
-        from app.services.rollout_router import RolloutDecision
 
         decision = RolloutDecision(
             allowed=False, track="full", stage="off", reason="percent_bucket_miss", bucket=88

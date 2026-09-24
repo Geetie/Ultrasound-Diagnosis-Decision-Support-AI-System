@@ -48,7 +48,7 @@ import json
 import random
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any
 
 import structlog
 from cachetools import LRUCache
@@ -96,7 +96,7 @@ class RetrievalCacheStats:
         total = self.hits + self.misses
         return (self.hits / total) if total else 0.0
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         return {
             "hits_redis": self.hits_redis,
             "hits_local": self.hits_local,
@@ -119,10 +119,10 @@ class _LocalTTLCache:
         if ttl_seconds <= 0:
             raise ValueError("ttl_seconds must be positive")
         self._cache: LRUCache = LRUCache(maxsize=maxsize)
-        self._expires: Dict[str, float] = {}
+        self._expires: dict[str, float] = {}
         self._ttl = float(ttl_seconds)
 
-    def get(self, key: str) -> Optional[Any]:
+    def get(self, key: str) -> Any | None:
         if key not in self._cache:
             return None
         exp = self._expires.get(key)
@@ -132,7 +132,7 @@ class _LocalTTLCache:
             return None
         return self._cache[key]
 
-    def set(self, key: str, value: Any, ttl_seconds: Optional[float] = None) -> None:
+    def set(self, key: str, value: Any, ttl_seconds: float | None = None) -> None:
         self._cache[key] = value
         self._expires[key] = time.monotonic() + (ttl_seconds or self._ttl)
 
@@ -144,15 +144,15 @@ class _LocalTTLCache:
         return len(self._cache)
 
 
-_instance: Optional["RetrievalCache"] = None
+_instance: RetrievalCache | None = None
 
 
-def _register_instance(cache: "RetrievalCache") -> None:
+def _register_instance(cache: RetrievalCache) -> None:
     global _instance
     _instance = cache
 
 
-def get_retrieval_cache() -> Optional["RetrievalCache"]:
+def get_retrieval_cache() -> RetrievalCache | None:
     """取得本进程的检索缓存实例（未启用时为 None）。"""
     return _instance
 
@@ -197,7 +197,7 @@ class RetrievalCache:
         # 启动编排。每进程只会构造一个检索缓存，后者覆盖前者不构成问题。
         _register_instance(self)
 
-    def health(self) -> Dict[str, Any]:
+    def health(self) -> dict[str, Any]:
         """共享缓存健康信息（二期 §4.2 多副本可观测性）。
 
         多副本部署下的语义：**L1（Redis）是共享层**，各副本一致；**L2（进程内 LRU）
@@ -250,7 +250,7 @@ class RetrievalCache:
     # ------------------------------------------------------------------
     # 读
     # ------------------------------------------------------------------
-    async def get(self, key: str) -> Optional[RetrievalResult]:
+    async def get(self, key: str) -> RetrievalResult | None:
         """查询缓存。
 
         Returns:
@@ -300,12 +300,12 @@ class RetrievalCache:
     # 内部：编解码
     # ------------------------------------------------------------------
     @staticmethod
-    def _encode(result: RetrievalResult) -> Optional[str]:
+    def _encode(result: RetrievalResult) -> str | None:
         """序列化（剔除 embedding；失败返回 None 由调用方跳过写入）。"""
         try:
             payload = result.model_dump(mode="json", exclude=_EXCLUDE_EMBEDDING)
             return json.dumps(payload, ensure_ascii=False)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning(
                 "retrieval_cache_encode_failed",
                 error=str(exc),
@@ -313,13 +313,13 @@ class RetrievalCache:
             )
             return None
 
-    def _decode(self, raw: str, *, source: str) -> Optional[RetrievalResult]:
+    def _decode(self, raw: str, *, source: str) -> RetrievalResult | None:
         """反序列化（损坏或负缓存均安全处理）。"""
         try:
             if isinstance(raw, bytes):
                 raw = raw.decode("utf-8")
             data = json.loads(raw)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             self._stats.errors += 1
             logger.warning(
                 "retrieval_cache_value_corrupt",
@@ -336,7 +336,7 @@ class RetrievalCache:
 
         try:
             return RetrievalResult.model_validate(data)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             self._stats.errors += 1
             logger.warning(
                 "retrieval_cache_validate_failed",
@@ -357,12 +357,12 @@ class RetrievalCache:
         high = base * (1.0 + self._jitter_ratio)
         return max(1, int(random.uniform(low, high)))
 
-    async def _read_redis(self, key: str) -> Optional[str]:
+    async def _read_redis(self, key: str) -> str | None:
         if self._redis_factory is None:
             return None
         try:
             client = await self._redis_factory.get_client()
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             self._stats.errors += 1
             logger.warning(
                 "retrieval_cache_redis_client_failed",
@@ -373,7 +373,7 @@ class RetrievalCache:
             return None
         try:
             raw = await client.get(key)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             self._stats.errors += 1
             logger.warning(
                 "retrieval_cache_redis_get_failed",
@@ -394,7 +394,7 @@ class RetrievalCache:
         try:
             client = await self._redis_factory.get_client()
             await client.setex(key, ttl, payload)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             # Redis 不可用只影响跨进程共享，本地 L2 已写入，不向上抛
             self._stats.errors += 1
             logger.warning(
@@ -410,7 +410,7 @@ class RetrievalCache:
     def clear_local(self) -> None:
         self._local.clear()
 
-    def stats(self) -> Dict[str, Any]:
+    def stats(self) -> dict[str, Any]:
         payload = self._stats.as_dict()
         payload["local_entries"] = len(self._local)
         return payload

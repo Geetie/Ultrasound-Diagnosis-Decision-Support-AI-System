@@ -39,8 +39,8 @@ class TestUltrasoundCLIPSustained:
         max_i2t_drift = 0.05
         max_latency_p99_ms = 100.0
 
-        from app.embedding.clip_model import UltrasoundCLIPModel
         from app.embedding.busi_adapter import BUSIAdapter
+        from app.embedding.clip_model import UltrasoundCLIPModel
 
         model = UltrasoundCLIPModel(device="cuda")
         try:
@@ -106,7 +106,7 @@ class TestUltrasoundCLIPSustained:
                 f"P99 latency {p99:.2f}ms exceeds {max_latency_p99_ms}ms"
             )
 
-        print(f"\n=== Ultrasound-CLIP 持续运行报告 ===")
+        print("\n=== Ultrasound-CLIP 持续运行报告 ===")
         print(f"运行时长: {duration_hours}h")
         print(f"I2T@10 采样数: {len(i2t_samples)}")
         print(f"P99 延迟: {p99 if latencies else 0:.2f}ms")

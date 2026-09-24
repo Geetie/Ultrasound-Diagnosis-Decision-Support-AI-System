@@ -30,23 +30,23 @@
 from __future__ import annotations
 
 from app.fusion.protocols import (
-    ConsistencyCheckResult,
-    ConsistencySeverity,
     ConflictReport,
     ConflictResolution,
     ConflictType,
+    ConsistencyCheckResult,
+    ConsistencySeverity,
     FusionEngine,
     FusionRequest,
     FusionResult,
 )
 
 __all__ = [
-    "ConflictType",
-    "ConflictResolution",
     "ConflictReport",
-    "ConsistencySeverity",
+    "ConflictResolution",
+    "ConflictType",
     "ConsistencyCheckResult",
+    "ConsistencySeverity",
+    "FusionEngine",
     "FusionRequest",
     "FusionResult",
-    "FusionEngine",
 ]

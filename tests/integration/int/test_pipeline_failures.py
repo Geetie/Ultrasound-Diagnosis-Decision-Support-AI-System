@@ -13,13 +13,11 @@
 """
 from __future__ import annotations
 
-import asyncio
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from typing import List
+
+import pytest
 
 from app.agents.protocols import AgentResponse
-from app.models.schemas import Organ
 
 
 class TestPipelineFailurePaths:
@@ -160,8 +158,8 @@ class TestWriteResultFallback:
     @pytest.mark.asyncio
     async def test_write_result_with_needs_review(self):
         """fusion_result.needs_review=True 时 status='needs_review'。"""
-        from app.services.diagnosis_pipeline import _write_result_to_db
         from app.fusion.protocols import FusionResult
+        from app.services.diagnosis_pipeline import _write_result_to_db
 
         mock_repo = MagicMock()
         mock_repo.update_result = AsyncMock(return_value=MagicMock())

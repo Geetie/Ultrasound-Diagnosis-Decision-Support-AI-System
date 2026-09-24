@@ -21,8 +21,7 @@
 """
 from __future__ import annotations
 
-import asyncio
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import structlog
 
@@ -30,7 +29,6 @@ from app.agents.dispatcher import DispatcherAgentImpl
 from app.agents.protocols import KnowledgeAgent
 from app.agents.specialist.base import (
     PlaceholderSpecialistAgent,
-    RAGSpecialistAgent,
 )
 from app.agents.specialist.cardiac import CardiacSpecialistAgent
 from app.agents.specialist.liver import LiverSpecialistAgent
@@ -49,7 +47,7 @@ logger = structlog.get_logger("app.agents.specialist.factory")
 #   - 甲状腺 0.85（乳头状癌 0.88 / 未分化癌 0.95 / 结节性甲状腺肿 0.80）
 #   - 肝脏 0.88（肝细胞癌 0.92 / 肝血管瘤 0.85 / 肝硬化 0.88）
 #   - 心脏 0.92（急性心衰 0.95 / 慢性心功能不全 0.90 / 瓣膜反流 0.88）
-DEFAULT_ORGAN_THRESHOLDS: Dict[str, float] = {
+DEFAULT_ORGAN_THRESHOLDS: dict[str, float] = {
     "thyroid": 0.85,
     "liver": 0.88,
     "cardiac": 0.92,
@@ -61,8 +59,8 @@ DEFAULT_ORGAN_THRESHOLDS: Dict[str, float] = {
 # ----------------------------------------------------------------------
 
 
-async def load_organ_thresholds() -> Dict[
-    str, Tuple[float, Dict[str, float]]
+async def load_organ_thresholds() -> dict[
+    str, tuple[float, dict[str, float]]
 ]:
     """从 OrganDiseaseThreshold 表加载器官级/病种级置信度阈值。
 
@@ -83,7 +81,7 @@ async def load_organ_thresholds() -> Dict[
         from app.config.database import AsyncSessionLocal
         from app.models.database import OrganDiseaseThreshold
 
-        result_map: Dict[str, Tuple[float, Dict[str, float]]] = {}
+        result_map: dict[str, tuple[float, dict[str, float]]] = {}
         async with AsyncSessionLocal() as session:
             stmt = select(OrganDiseaseThreshold)
             rows = (await session.execute(stmt)).scalars().all()
@@ -108,7 +106,7 @@ async def load_organ_thresholds() -> Dict[
             organs=list(result_map.keys()),
         )
         return result_map
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         # DB 不可用 → 降级为默认硬编码阈值（warning 即可，不阻塞启动）
         logger.warning(
             "organ_thresholds_load_failed_using_defaults",
@@ -127,14 +125,12 @@ async def load_organ_thresholds() -> Dict[
 
 
 def build_dispatcher(
-    inference_engine: Optional[InferenceEngine],
-    knowledge_agent: Optional[KnowledgeAgent],
+    inference_engine: InferenceEngine | None,
+    knowledge_agent: KnowledgeAgent | None,
     use_placeholder_on_missing: bool = True,
     rag_top_k: int = 5,
     max_tokens: int = 1024,
-    organ_thresholds: Optional[Dict[
-        str, Tuple[float, Dict[str, float]]
-    ]] = None,
+    organ_thresholds: dict[str, tuple[float, dict[str, float]]] | None = None,
 ) -> DispatcherAgentImpl:
     """构建已注入依赖的中央调度器。
 
@@ -184,7 +180,7 @@ def build_dispatcher(
             for organ, threshold in DEFAULT_ORGAN_THRESHOLDS.items()
         }
 
-    def _th(organ_value: str) -> Tuple[float, Dict[str, float]]:
+    def _th(organ_value: str) -> tuple[float, dict[str, float]]:
         return organ_thresholds.get(organ_value, (0.0, {}))
 
     th_thyroid, disease_thyroid = _th("thyroid")
@@ -245,8 +241,8 @@ def _build_placeholder_dispatcher() -> DispatcherAgentImpl:
 
 
 async def build_dispatcher_with_thresholds(
-    inference_engine: Optional[InferenceEngine],
-    knowledge_agent: Optional[KnowledgeAgent],
+    inference_engine: InferenceEngine | None,
+    knowledge_agent: KnowledgeAgent | None,
     **kwargs: Any,
 ) -> DispatcherAgentImpl:
     """异步便捷方法：先加载阈值再构建 dispatcher（**lifespan 调用入口**）。
@@ -281,8 +277,8 @@ async def build_dispatcher_with_thresholds(
 
 
 __all__ = [
+    "DEFAULT_ORGAN_THRESHOLDS",
     "build_dispatcher",
     "build_dispatcher_with_thresholds",
     "load_organ_thresholds",
-    "DEFAULT_ORGAN_THRESHOLDS",
 ]

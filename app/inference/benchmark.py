@@ -5,12 +5,8 @@ from typing import Any
 
 import structlog
 
+from app.inference.hallucination_detector import detect_hallucination as unified_detect_hallucination
 from app.inference.protocols import InferenceEngine, InferenceRequest
-from app.inference.hallucination_detector import (
-    detect_hallucination as unified_detect_hallucination
-)
-
-
 from app.inference.utils import percentile as _percentile
 
 

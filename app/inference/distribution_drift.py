@@ -23,9 +23,10 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, Iterable, List, Optional, Sequence
+from typing import Any
 
 import structlog
 
@@ -47,14 +48,14 @@ class DistributionReference:
     """参考分布（基线）。"""
 
     distribution_type: str
-    probabilities: List[float]
+    probabilities: list[float]
     bins: int
     lower: float
     upper: float
     mean: float
     sample_count: int
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         return {
             "distribution_type": self.distribution_type,
             "bins": self.bins,
@@ -73,9 +74,9 @@ class DistributionDriftResult:
     kl_divergence: float = 0.0
     mean_shift: float = 0.0
     sample_count: int = 0
-    reasons: List[str] = field(default_factory=list)
+    reasons: list[str] = field(default_factory=list)
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         return {
             "distribution_type": self.distribution_type,
             "drifted": self.drifted,
@@ -94,7 +95,7 @@ def histogram(
     lower: float,
     upper: float,
     smoothing: float = DEFAULT_SMOOTHING,
-) -> List[float]:
+) -> list[float]:
     """把样本装进固定区间的直方图并归一化为概率（含拉普拉斯平滑）。
 
     区间由参考分布固定（``lower``/``upper``），当前批次的越界样本会被夹到边界箱：
@@ -154,10 +155,10 @@ class DistributionDriftMonitor:
         self,
         *,
         bins: int = DEFAULT_BINS,
-        input_kl_threshold: Optional[float] = None,
-        output_kl_threshold: Optional[float] = None,
-        output_mean_shift_threshold: Optional[float] = None,
-        min_samples: Optional[int] = None,
+        input_kl_threshold: float | None = None,
+        output_kl_threshold: float | None = None,
+        output_mean_shift_threshold: float | None = None,
+        min_samples: int | None = None,
     ) -> None:
         from app.config.settings import settings
 
@@ -182,7 +183,7 @@ class DistributionDriftMonitor:
             if min_samples is not None
             else max(2, settings.drift_distribution_min_samples)
         )
-        self._references: Dict[str, DistributionReference] = {}
+        self._references: dict[str, DistributionReference] = {}
 
     def set_reference(
         self, distribution_type: str, samples: Sequence[float]
@@ -273,7 +274,7 @@ class DistributionDriftMonitor:
             logger.warning("distribution_drift_detected", **result.as_dict())
         return result
 
-    def reference(self, distribution_type: str) -> Optional[DistributionReference]:
+    def reference(self, distribution_type: str) -> DistributionReference | None:
         return self._references.get(distribution_type)
 
     def reset(self) -> None:

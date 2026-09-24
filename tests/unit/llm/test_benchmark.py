@@ -1,4 +1,6 @@
 
+import pytest
+
 from app.inference.benchmark import (
     BenchmarkReport,
     BenchmarkResult,
@@ -8,7 +10,6 @@ from app.inference.benchmark import (
 )
 from app.inference.protocols import InferenceEngine, InferenceRequest, InferenceResponse, TokenUsage
 
-import pytest
 pytestmark = [pytest.mark.track_llm, pytest.mark.track_inf]
 
 

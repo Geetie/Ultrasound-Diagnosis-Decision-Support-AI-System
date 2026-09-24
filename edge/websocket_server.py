@@ -16,8 +16,9 @@ import contextlib
 import json
 import time
 from collections import deque
-from dataclasses import dataclass, field
-from typing import Any, Awaitable, Callable, Deque, Dict, Optional
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
+from typing import Any
 
 import structlog
 
@@ -59,12 +60,12 @@ class EdgeWebSocketClient:
         reconnect_base_seconds: float = DEFAULT_RECONNECT_BASE_SECONDS,
         reconnect_max_seconds: float = DEFAULT_RECONNECT_MAX_SECONDS,
         max_reconnect_attempts: int = DEFAULT_MAX_RECONNECT_ATTEMPTS,
-        connect_factory: Optional[Callable[[str, Dict[str, str]], Awaitable[Any]]] = None,
+        connect_factory: Callable[[str, dict[str, str]], Awaitable[Any]] | None = None,
     ) -> None:
         self._base_url = base_url.rstrip("/")
         self._auth = auth
         self._channel_path = channel_path
-        self._queue: Deque[str] = deque(maxlen=queue_maxlen)
+        self._queue: deque[str] = deque(maxlen=queue_maxlen)
         self._reconnect_base = reconnect_base_seconds
         self._reconnect_max = reconnect_max_seconds
         self._max_reconnect_attempts = max_reconnect_attempts
@@ -90,7 +91,7 @@ class EdgeWebSocketClient:
         return not closed
 
     @staticmethod
-    async def _default_connect(url: str, headers: Dict[str, str]) -> Any:
+    async def _default_connect(url: str, headers: dict[str, str]) -> Any:
         import websockets
 
         return await websockets.connect(url, additional_headers=headers)
@@ -136,7 +137,7 @@ class EdgeWebSocketClient:
             logger.info("edge_ws_closed", url=self.url)
 
     # ---- 发送 ----
-    async def _send(self, payload: Dict[str, Any]) -> bool:
+    async def _send(self, payload: dict[str, Any]) -> bool:
         """发送一条消息；未连接或发送失败则入队（队列满丢弃最旧）。"""
         message = json.dumps(payload, ensure_ascii=False, default=str)
 
@@ -170,7 +171,7 @@ class EdgeWebSocketClient:
         M1/M2/M6 的新增字段只在**确有值**时写入载荷：既减小实时流体积，
         也让未升级的后端可以照旧解析（后端契约里这些字段均为可选）。
         """
-        payload: Dict[str, Any] = {
+        payload: dict[str, Any] = {
             "type": "nav_result",
             "frame_id": result.frame_id,
             "session_id": result.session_id,
@@ -209,7 +210,7 @@ class EdgeWebSocketClient:
             self._stats.sent_nav += 1
         return ok
 
-    async def push_frame(self, frame: Frame, payload: Dict[str, Any]) -> bool:
+    async def push_frame(self, frame: Frame, payload: dict[str, Any]) -> bool:
         ok = await self._send(
             {
                 "type": "dicom_frame",

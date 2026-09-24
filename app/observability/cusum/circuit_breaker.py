@@ -1,7 +1,8 @@
 import threading
 import time
+from collections.abc import Callable
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Optional
 
 import structlog
 
@@ -34,21 +35,21 @@ class AISafetyCircuitBreaker:
 
     _instance: Optional["AISafetyCircuitBreaker"] = None
     _instance_lock = threading.Lock()
-    _safety_meltdown_callback: Optional[Callable[[str, float, float, str], None]] = None
+    _safety_meltdown_callback: Callable[[str, float, float, str], None] | None = None
 
-    def __init__(self, cusum_monitor: CUSUMMonitor, confirm_seconds: Optional[int] = None):
+    def __init__(self, cusum_monitor: CUSUMMonitor, confirm_seconds: int | None = None):
         self._monitor = cusum_monitor
         self._state = self.ACTIVE
-        self._suspended_at: Optional[float] = None
-        self._suspension_reason: Optional[str] = None
-        self._pending_reason: Optional[str] = None
-        self._pending_since: Optional[float] = None
+        self._suspended_at: float | None = None
+        self._suspension_reason: str | None = None
+        self._pending_reason: str | None = None
+        self._pending_since: float | None = None
         self._confirm_seconds = confirm_seconds if confirm_seconds is not None else self.DEPARTMENT_HEAD_CONFIRM_SECONDS
-        self._safety_review_deadline_at: Optional[float] = None
+        self._safety_review_deadline_at: float | None = None
         self._lock = threading.Lock()
-        self._suspension_callbacks: List[Callable[[str, str], None]] = []
-        self._pending_notification_callbacks: List[Callable[[str, int], None]] = []
-        self._suspended_diseases: Dict[str, Dict[str, Any]] = {}
+        self._suspension_callbacks: list[Callable[[str, str], None]] = []
+        self._pending_notification_callbacks: list[Callable[[str, int], None]] = []
+        self._suspended_diseases: dict[str, dict[str, Any]] = {}
         cusum_monitor.register_alert_callback(self._on_cusum_alert)
         cusum_monitor.register_weekly_rate_exceeded_callback(self._on_weekly_rate_exceeded)
 
@@ -76,7 +77,7 @@ class AISafetyCircuitBreaker:
         if direction == "s_plus":
             self.suspend_disease(disease_type, f"disease_cusum_s_plus_exceeded:{disease_type}:{value:.2f}")
 
-    def check_weekly_suspension(self) -> Optional[str]:
+    def check_weekly_suspension(self) -> str | None:
         alerts = self._monitor.check_compact_rules()
         if alerts:
             self._request_suspension(f"compact_rules:{','.join(alerts)}")
@@ -210,8 +211,8 @@ class AISafetyCircuitBreaker:
             previous_reason=previous_reason,
         )
         try:
-            from app.observability.logging.storage import get_log_storage
             from app.observability.enums import LogCategory
+            from app.observability.logging.storage import get_log_storage
             storage = get_log_storage()
             storage.write(
                 category=LogCategory.AUDIT,
@@ -241,11 +242,11 @@ class AISafetyCircuitBreaker:
         return True
 
     @property
-    def is_disease_suspended(self) -> Dict[str, bool]:
+    def is_disease_suspended(self) -> dict[str, bool]:
         with self._lock:
             return {dt: True for dt in self._suspended_diseases}
 
-    def get_suspended_diseases(self) -> List[str]:
+    def get_suspended_diseases(self) -> list[str]:
         with self._lock:
             return list(self._suspended_diseases.keys())
 
@@ -284,9 +285,9 @@ class AISafetyCircuitBreaker:
             return self._state == self.PENDING_CONFIRMATION
 
     @property
-    def suspension_info(self) -> Dict[str, Any]:
+    def suspension_info(self) -> dict[str, Any]:
         with self._lock:
-            info: Dict[str, Any] = {
+            info: dict[str, Any] = {
                 "state": self._state,
                 "suspended_at": self._suspended_at,
                 "reason": self._suspension_reason,

@@ -1,7 +1,8 @@
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from collections.abc import AsyncGenerator
+
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import declarative_base
-from typing import AsyncGenerator
-from fastapi import Depends
+
 from app.config.settings import settings
 
 # 创建异步引擎
@@ -52,19 +53,22 @@ get_session = get_db_session
 
 async def init_db() -> None:
     """初始化数据库表（使用Alembic迁移，此方法保留用于测试）"""
-    from app.models.database import (
-        Patient,
-        ConsentRecord,
-        DiagnosisSession,
-        DiagnosisResult,
-        DiagnosisReport,
-        KnowledgeBase,
-        SafetyEvent,
+    # 副作用导入：把 ORM 模型注册到 Base.metadata 上，测试期建表才能覆盖全部表。
+    # ruff 会把它们判为"未使用"（F401）而自动删除——这是一次真实踩到的坑，
+    # tests/unit/sec/test_audit.py 有守护测试钉住这一行，勿删。
+    from app.models.database import (  # noqa: F401
         AuditLog,
-        SessionArchive,
-        Device,
+        ConsentRecord,
+        DiagnosisReport,
+        DiagnosisResult,
+        DiagnosisSession,
         FeedbackRecord,
+        KnowledgeBase,
+        Patient,
+        SafetyEvent,
+        SessionArchive,
     )
+
     async with async_engine.begin() as conn:
         # 仅在测试时创建表，生产环境使用Alembic
         pass

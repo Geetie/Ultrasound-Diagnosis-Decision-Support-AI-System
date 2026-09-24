@@ -1,8 +1,9 @@
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from safety_gateway.checker.phase_base import CheckPhase, CheckContext
-from safety_gateway.validation_result import CheckResult, CheckResultStatus, ConsentStatus, DegradedReason
+import pytest
+
+from safety_gateway.checker.phase_base import CheckContext, CheckPhase
+from safety_gateway.validation_result import CheckResult, CheckResultStatus, ConsentStatus
 
 
 class TestCheckPhaseProtocol:

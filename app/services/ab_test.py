@@ -15,9 +15,10 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any
 
 import structlog
 
@@ -63,7 +64,7 @@ class ExperimentConfig:
     non_inferiority_margin: float = 0.03
     min_samples_per_variant: int = 200
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         return {
             "name": self.name,
             "enabled": self.enabled,
@@ -86,7 +87,7 @@ class VariantStats:
     def rate(self) -> float:
         return self.successes / self.total if self.total else 0.0
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         return {
             "variant": self.variant,
             "successes": self.successes,
@@ -169,7 +170,7 @@ def chi_square_two_proportions(
     control_total: int,
     treatment_successes: int,
     treatment_total: int,
-) -> Dict[str, float]:
+) -> dict[str, float]:
     """两比例卡方检验（不依赖 scipy：判定逻辑要在任何环境都能跑）。
 
     返回 ``statistic`` / ``p_value`` / ``dof``；样本为 0 时返回全 0，由调用方按
@@ -227,13 +228,13 @@ class ExperimentEvaluation:
     statistic: float = 0.0
     absolute_lift: float = 0.0
     required_per_variant: int = 0
-    reasons: List[str] = field(default_factory=list)
+    reasons: list[str] = field(default_factory=list)
 
     @property
     def enough_data(self) -> bool:
         return self.verdict != Verdict.NOT_ENOUGH_DATA.value
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         return {
             "experiment": self.config.name,
             "verdict": self.verdict,
@@ -352,7 +353,7 @@ def _early_stop_decision(evaluation: ExperimentEvaluation) -> str:
 
 def evaluate_experiment_from_counts(
     config: ExperimentConfig,
-    counts: Dict[str, Sequence[int]],
+    counts: dict[str, Sequence[int]],
 ) -> ExperimentEvaluation:
     """便捷入口：``{"control": (successes, total), "treatment": (successes, total)}``。"""
     control = counts.get(Variant.CONTROL.value, (0, 0))

@@ -7,7 +7,8 @@
 __all__ = ["OBSComponentRegistry", "get_obs_registry"]
 
 import threading
-from typing import Any, Callable, Dict, Optional
+from collections.abc import Callable
+from typing import Any
 
 import structlog
 
@@ -16,8 +17,8 @@ _logger = structlog.get_logger("app.observability.registry")
 
 class OBSComponentRegistry:
     def __init__(self) -> None:
-        self._instances: Dict[str, Any] = {}
-        self._factories: Dict[str, Callable[[], Any]] = {}
+        self._instances: dict[str, Any] = {}
+        self._factories: dict[str, Callable[[], Any]] = {}
         self._lock = threading.Lock()
 
     def register(self, name: str, factory: Callable[[], Any]) -> None:
@@ -35,7 +36,7 @@ class OBSComponentRegistry:
                     self._instances[name] = self._factories[name]()
         return self._instances[name]
 
-    def reset(self, name: Optional[str] = None) -> None:
+    def reset(self, name: str | None = None) -> None:
         with self._lock:
             if name is None:
                 self._instances.clear()
@@ -53,7 +54,7 @@ class OBSComponentRegistry:
         return name in self._instances
 
 
-_registry: Optional[OBSComponentRegistry] = None
+_registry: OBSComponentRegistry | None = None
 _registry_lock = threading.Lock()
 
 
@@ -68,11 +69,11 @@ def get_obs_registry() -> OBSComponentRegistry:
 
 
 def _register_defaults(registry: OBSComponentRegistry) -> None:
-    from app.observability.metrics_collector import MetricsCollector
-    from app.observability.cusum import HallucinationCUSUMBridge, AISafetyCircuitBreaker, create_cusum_monitor
-    from app.observability.cache_monitor import CacheMonitor
-    from app.observability.logging import LogStorage
     from app.observability.alert_escalation import AlertEscalationManager
+    from app.observability.cache_monitor import CacheMonitor
+    from app.observability.cusum import AISafetyCircuitBreaker, HallucinationCUSUMBridge
+    from app.observability.logging import LogStorage
+    from app.observability.metrics_collector import MetricsCollector
 
     registry.register("metrics_collector", lambda: MetricsCollector.get_instance())
     registry.register("cache_monitor", lambda: CacheMonitor.get_instance())

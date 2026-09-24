@@ -1,12 +1,11 @@
 """DICOM文件存储服务 - 支持本地文件系统和MinIO后端"""
 import os
 import shutil
-from io import BytesIO
-from pathlib import Path
-from typing import Optional, Tuple
 from datetime import datetime, timezone
-import structlog
+from io import BytesIO
+
 import aiofiles
+import structlog
 
 from app.config.settings import settings
 
@@ -47,7 +46,7 @@ _PHI_TAGS = [
 ]
 
 
-def strip_dicom_phi(content: bytes, patient_id: str) -> Tuple[bytes, bool]:
+def strip_dicom_phi(content: bytes, patient_id: str) -> tuple[bytes, bool]:
     stripped = False
     try:
         import pydicom
@@ -190,7 +189,7 @@ class DicomStorageService:
         date_prefix = datetime.now(timezone.utc).strftime("%Y%m%d")
         return f"{date_prefix}/{patient_id}/{session_id}/{sop_instance_uid}.dcm"
 
-    async def retrieve(self, storage_path: str) -> Optional[bytes]:
+    async def retrieve(self, storage_path: str) -> bytes | None:
         if self._backend == "local":
             if os.path.exists(storage_path):
                 async with aiofiles.open(storage_path, "rb") as f:
@@ -225,7 +224,7 @@ class DicomStorageService:
         return False
 
 
-_dicom_storage: Optional[DicomStorageService] = None
+_dicom_storage: DicomStorageService | None = None
 
 
 def get_dicom_storage() -> DicomStorageService:

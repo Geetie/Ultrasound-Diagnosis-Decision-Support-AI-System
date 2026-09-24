@@ -5,12 +5,12 @@ from typing import Any
 import structlog
 import yaml
 
-from app.common.desensitization.rule import DesensitizationRule
 from app.common.desensitization.recursive import (
-    desensitize_dict,
     compile_patterns,
+    desensitize_dict,
     validate_rules,
 )
+from app.common.desensitization.rule import DesensitizationRule
 
 logger = structlog.get_logger()
 
@@ -43,7 +43,7 @@ class BaseDesensitizationEngine(ABC):
         if not os.path.exists(rules_path):
             logger.warning("desensitization_rules_file_not_found", path=rules_path)
             return
-        with open(rules_path, "r", encoding="utf-8") as f:
+        with open(rules_path, encoding="utf-8") as f:
             rules_data = yaml.safe_load(f)
         if rules_data and "rules" in rules_data:
             self._rules = [DesensitizationRule(**rule) for rule in rules_data["rules"]]

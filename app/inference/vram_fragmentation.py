@@ -7,7 +7,7 @@ import subprocess
 import time
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from .verification_config import VerificationConfig, get_verification_config
 
@@ -26,7 +26,7 @@ class VRAMSnapshot:
 
 @dataclass
 class VRAMFragmentationReport:
-    snapshots: List[VRAMSnapshot] = field(default_factory=list)
+    snapshots: list[VRAMSnapshot] = field(default_factory=list)
     peak_fragmentation_rate: float = 0.0
     avg_fragmentation_rate: float = 0.0
     warning_triggered: bool = False
@@ -37,7 +37,7 @@ class VRAMFragmentationReport:
     WARNING_THRESHOLD: float = 0.30
     HOTRELOAD_THRESHOLD: float = 0.40
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         d = asdict(self)
         d.pop("WARNING_THRESHOLD", None)
         d.pop("HOTRELOAD_THRESHOLD", None)
@@ -48,7 +48,7 @@ class VRAMFragmentationReport:
 
 
 class VRAMFragmentationVerifier:
-    def __init__(self, config: Optional[VerificationConfig] = None):
+    def __init__(self, config: VerificationConfig | None = None):
         self._config = config or get_verification_config()
 
     async def verify(
@@ -97,7 +97,7 @@ class VRAMFragmentationVerifier:
 
         return report
 
-    def _sample_vram(self) -> Optional[VRAMSnapshot]:
+    def _sample_vram(self) -> VRAMSnapshot | None:
         try:
             result = subprocess.run(
                 ["nvidia-smi",

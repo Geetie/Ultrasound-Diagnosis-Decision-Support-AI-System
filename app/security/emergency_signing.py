@@ -1,9 +1,11 @@
-import structlog
 import threading
-from typing import Dict, Any, Optional, List, Tuple
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
+from typing import Any
 
-from app.security.hsm import hsm_manager, KeySlot, DegradedPhase
+import structlog
+
+from app.config.settings import settings
+from app.security.hsm import DegradedPhase, KeySlot, hsm_manager
 
 logger = structlog.get_logger()
 
@@ -14,11 +16,11 @@ class EmergencySigningManager:
     def __init__(self) -> None:
         self._lock = threading.Lock()
         self._daily_signature_count: int = 0
-        self._daily_count_reset_at: Optional[datetime] = None
+        self._daily_count_reset_at: datetime | None = None
 
     async def _atomic_check_and_increment_daily_count(self) -> int:
-        from app.config.settings import settings
         from app.config.redis_keys import RedisKey
+        from app.config.settings import settings
         max_daily = settings.hsm_emergency_signing_max_daily
         now = datetime.now(timezone.utc)
         date_key = now.strftime("%Y%m%d")
@@ -173,7 +175,7 @@ class EmergencySigningManager:
         except Exception:
             return False
 
-    async def sign_emergency(self, key_name: str, data: bytes) -> Tuple[bytes, Dict[str, Any]]:
+    async def sign_emergency(self, key_name: str, data: bytes) -> tuple[bytes, dict[str, Any]]:
         if not await self.is_emergency_signing_active():
             raise RuntimeError("Emergency signing is not active")
 
@@ -211,8 +213,8 @@ class EmergencySigningManager:
         return signature, metadata
 
     async def sign_jwt_emergency(
-        self, key_name: str, header: Dict[str, Any], payload: Dict[str, Any]
-    ) -> Tuple[str, Dict[str, Any]]:
+        self, key_name: str, header: dict[str, Any], payload: dict[str, Any]
+    ) -> tuple[str, dict[str, Any]]:
         if not await self.is_emergency_signing_active():
             raise RuntimeError("Emergency signing is not active")
 
@@ -240,7 +242,7 @@ class EmergencySigningManager:
 
         return jwt_token, metadata
 
-    async def get_pending_verification_reports(self) -> List[Dict[str, Any]]:
+    async def get_pending_verification_reports(self) -> list[dict[str, Any]]:
         try:
             from app.config.redis import RedisPool
             from app.config.redis_keys import RedisKey
@@ -322,7 +324,7 @@ class EmergencySigningManager:
             return False
 
 
-_emergency_signing_instance: Optional[EmergencySigningManager] = None
+_emergency_signing_instance: EmergencySigningManager | None = None
 _emergency_signing_lock = threading.Lock()
 
 

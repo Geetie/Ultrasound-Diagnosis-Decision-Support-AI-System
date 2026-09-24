@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import threading
-from typing import Any, Dict, List
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -25,10 +25,10 @@ from app.integrations.object_storage import LocalFakeObjectStorage
 from app.models.database import AuditLog, DiagnosisReport, DiagnosisResult
 from app.models.schemas import ConsentStatus, ReportDraftRequest
 from app.observability.audit_chain.verify_utils import verify_chain_integrity
+from app.security.desensitization import DesensitizationEngine
 from app.services import report_service
 from app.services.audit_service import AuditService
 from app.services.cold_archive import ColdArchiveService
-from app.security.desensitization import DesensitizationEngine
 
 PII_CLINICAL_TEXT = (
     "患者张三，身份证 110101199001011234，手机 13812345678；"
@@ -45,8 +45,8 @@ class _MemoryDb:
     """内存审计库（单会话链 + 冷归档清单），支持 select/delete。"""
 
     def __init__(self) -> None:
-        self.rows: List[AuditLog] = []
-        self.manifests: List[Any] = []
+        self.rows: list[AuditLog] = []
+        self.manifests: list[Any] = []
 
     @staticmethod
     def _entity(stmt):
@@ -145,7 +145,7 @@ def _make_lightweight_hsm():
 
 class _FakeReportRepo:
     def __init__(self) -> None:
-        self.reports: Dict[str, DiagnosisReport] = {}
+        self.reports: dict[str, DiagnosisReport] = {}
         self.db = _MemoryDb()
 
     async def get_latest_by_request(self, request_id: str):

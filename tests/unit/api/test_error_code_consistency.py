@@ -1,12 +1,12 @@
-import pytest
+
 from app.api.v1.errors import (
     ERROR_CODE_MAP,
     AppBaseException,
     HSMUnavailableException,
-    RedisUnavailableNewSessionDelayException,
-    SafetyOutputBlockedException,
-    SafetyException,
     InfrastructureException,
+    RedisUnavailableNewSessionDelayException,
+    SafetyException,
+    SafetyOutputBlockedException,
 )
 
 

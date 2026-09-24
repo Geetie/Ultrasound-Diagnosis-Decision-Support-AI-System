@@ -1,4 +1,6 @@
 
+import pytest
+
 from app.inference.consistency import (
     ConsistencyPair,
     ConsistencyReport,
@@ -7,18 +9,17 @@ from app.inference.consistency import (
     FalseStats,
     GateStatus,
     GradingResult,
-    extract_grading,
     detect_hallucination,
+    extract_grading,
     grading_semantic_equivalent,
+    mcnemar_test,
     text_consistency_with_grading,
     text_similarity,
     wilson_confidence_interval,
-    mcnemar_test,
 )
 from app.inference.protocols import InferenceEngine, InferenceRequest, InferenceResponse, TokenUsage
 from app.inference.verification_config import BenchmarkThresholdConfig
 
-import pytest
 pytestmark = [pytest.mark.track_llm, pytest.mark.track_inf]
 
 
@@ -693,7 +694,8 @@ class TestTextExactMatchRate:
 
     def test_exact_match_rate_gate_check(self):
         from unittest.mock import patch
-        from app.inference.verification_config import VerificationConfig, ConsistencyThresholdConfig
+
+        from app.inference.verification_config import ConsistencyThresholdConfig, VerificationConfig
         config = VerificationConfig(
             consistency_thresholds=ConsistencyThresholdConfig(
                 text_exact_match_rate=0.90,
@@ -715,7 +717,8 @@ class TestTextExactMatchRate:
 
     def test_exact_match_rate_passes_at_threshold(self):
         from unittest.mock import patch
-        from app.inference.verification_config import VerificationConfig, ConsistencyThresholdConfig
+
+        from app.inference.verification_config import ConsistencyThresholdConfig, VerificationConfig
         config = VerificationConfig(
             consistency_thresholds=ConsistencyThresholdConfig(
                 text_exact_match_rate=0.90,
@@ -742,7 +745,8 @@ class TestTextExactMatchRate:
 class TestLatencyDiffOrLogic:
     def test_or_logic_pct_exceeds_abs_within_passes(self):
         from unittest.mock import patch
-        from app.inference.verification_config import VerificationConfig, ConsistencyThresholdConfig
+
+        from app.inference.verification_config import ConsistencyThresholdConfig, VerificationConfig
         config = VerificationConfig(
             consistency_thresholds=ConsistencyThresholdConfig(
                 latency_diff_pct=20.0,
@@ -769,7 +773,8 @@ class TestLatencyDiffOrLogic:
 
     def test_or_logic_low_baseline_pct_exceeds_abs_within_passes(self):
         from unittest.mock import patch
-        from app.inference.verification_config import VerificationConfig, ConsistencyThresholdConfig
+
+        from app.inference.verification_config import ConsistencyThresholdConfig, VerificationConfig
         config = VerificationConfig(
             consistency_thresholds=ConsistencyThresholdConfig(
                 latency_diff_pct=20.0,
@@ -796,7 +801,8 @@ class TestLatencyDiffOrLogic:
 
     def test_or_logic_both_exceed_fails(self):
         from unittest.mock import patch
-        from app.inference.verification_config import VerificationConfig, ConsistencyThresholdConfig
+
+        from app.inference.verification_config import ConsistencyThresholdConfig, VerificationConfig
         config = VerificationConfig(
             consistency_thresholds=ConsistencyThresholdConfig(
                 latency_diff_pct=20.0,
@@ -824,7 +830,8 @@ class TestLatencyDiffOrLogic:
 class TestLatencyUnreliableGateFailed:
     def test_unreliable_latency_causes_gate_failed(self):
         from unittest.mock import patch
-        from app.inference.verification_config import VerificationConfig, ConsistencyThresholdConfig
+
+        from app.inference.verification_config import ConsistencyThresholdConfig, VerificationConfig
         config = VerificationConfig(
             consistency_thresholds=ConsistencyThresholdConfig(),
         )
@@ -844,7 +851,8 @@ class TestLatencyUnreliableGateFailed:
 
     def test_reliable_latency_allows_gate_passed(self):
         from unittest.mock import patch
-        from app.inference.verification_config import VerificationConfig, ConsistencyThresholdConfig
+
+        from app.inference.verification_config import ConsistencyThresholdConfig, VerificationConfig
         config = VerificationConfig(
             consistency_thresholds=ConsistencyThresholdConfig(),
         )
@@ -869,6 +877,7 @@ class TestLatencyUnreliableGateFailed:
 class TestLVEFThreadSafety:
     def test_concurrent_lvef_access(self):
         import threading
+
         from app.inference.grading_definitions import _map_lvef_to_grading
         results = []
         errors = []
@@ -1090,7 +1099,8 @@ class TestAdaptiveThreshold:
 
     def test_failed_high_ci_upper(self):
         from unittest.mock import patch
-        from app.inference.verification_config import VerificationConfig, ConsistencyThresholdConfig
+
+        from app.inference.verification_config import ConsistencyThresholdConfig, VerificationConfig
         config = VerificationConfig(
             consistency_thresholds=ConsistencyThresholdConfig(
                 verification_phase="phase2",
@@ -1959,7 +1969,8 @@ class TestOrganSampleSize:
 class TestPhase2GateCriteria:
     def test_phase2_fails_with_insufficient_organ_samples(self):
         from unittest.mock import patch
-        from app.inference.verification_config import VerificationConfig, ConsistencyThresholdConfig
+
+        from app.inference.verification_config import ConsistencyThresholdConfig, VerificationConfig
 
         phase2_config = VerificationConfig(
             consistency_thresholds=ConsistencyThresholdConfig(
@@ -1985,7 +1996,8 @@ class TestPhase2GateCriteria:
 
     def test_phase2_passes_with_sufficient_samples(self):
         from unittest.mock import patch
-        from app.inference.verification_config import VerificationConfig, ConsistencyThresholdConfig
+
+        from app.inference.verification_config import ConsistencyThresholdConfig, VerificationConfig
 
         phase2_config = VerificationConfig(
             consistency_thresholds=ConsistencyThresholdConfig(
@@ -2345,7 +2357,8 @@ class TestOverallTimeout:
 class TestOrganGateCheck:
     def test_global_passed_but_organ_conditional(self):
         from unittest.mock import patch
-        from app.inference.verification_config import VerificationConfig, ConsistencyThresholdConfig
+
+        from app.inference.verification_config import ConsistencyThresholdConfig, VerificationConfig
         config = VerificationConfig(
             consistency_thresholds=ConsistencyThresholdConfig(),
         )
@@ -2374,7 +2387,8 @@ class TestOrganGateCheck:
 
     def test_organ_severe_failure_gate_failed(self):
         from unittest.mock import patch
-        from app.inference.verification_config import VerificationConfig, ConsistencyThresholdConfig
+
+        from app.inference.verification_config import ConsistencyThresholdConfig, VerificationConfig
         config = VerificationConfig(
             consistency_thresholds=ConsistencyThresholdConfig(),
         )
@@ -2397,7 +2411,8 @@ class TestOrganGateCheck:
 
     def test_all_organs_pass_gate_passed(self):
         from unittest.mock import patch
-        from app.inference.verification_config import VerificationConfig, ConsistencyThresholdConfig
+
+        from app.inference.verification_config import ConsistencyThresholdConfig, VerificationConfig
         config = VerificationConfig(
             consistency_thresholds=ConsistencyThresholdConfig(),
         )
@@ -2426,7 +2441,8 @@ class TestOrganGateCheck:
 class TestLatencyDiffAndLogic:
     def test_and_logic_pct_exceeds_abs_ok(self):
         from unittest.mock import patch
-        from app.inference.verification_config import VerificationConfig, ConsistencyThresholdConfig
+
+        from app.inference.verification_config import ConsistencyThresholdConfig, VerificationConfig
         config = VerificationConfig(
             consistency_thresholds=ConsistencyThresholdConfig(
                 latency_diff_pct=20.0,
@@ -2451,7 +2467,8 @@ class TestLatencyDiffAndLogic:
 
     def test_and_logic_abs_exceeds_pct_ok(self):
         from unittest.mock import patch
-        from app.inference.verification_config import VerificationConfig, ConsistencyThresholdConfig
+
+        from app.inference.verification_config import ConsistencyThresholdConfig, VerificationConfig
         config = VerificationConfig(
             consistency_thresholds=ConsistencyThresholdConfig(
                 latency_diff_pct=20.0,
@@ -2476,7 +2493,8 @@ class TestLatencyDiffAndLogic:
 
     def test_and_logic_both_pass(self):
         from unittest.mock import patch
-        from app.inference.verification_config import VerificationConfig, ConsistencyThresholdConfig
+
+        from app.inference.verification_config import ConsistencyThresholdConfig, VerificationConfig
         config = VerificationConfig(
             consistency_thresholds=ConsistencyThresholdConfig(
                 latency_diff_pct=20.0,
@@ -2745,8 +2763,9 @@ class TestGPUFragmentationMonitor:
 
 class TestConfigConsistency:
     def test_default_config_loads_from_json(self):
-        from app.inference.verification_config import load_config_from_json, get_default_verification_config
         import os
+
+        from app.inference.verification_config import get_default_verification_config, load_config_from_json
         json_path = os.path.join(os.path.dirname(__file__), "..", "..", "..", "app", "inference", "data", "default_verification_config.json")
         json_path = os.path.normpath(json_path)
         if not os.path.exists(json_path):
@@ -2758,8 +2777,9 @@ class TestConfigConsistency:
         assert loaded.consistency_thresholds.clinical_boundary_diff_rate == default.consistency_thresholds.clinical_boundary_diff_rate
 
     def test_boundary_config_code_json_consistency(self):
-        from app.inference.verification_config import get_default_boundary_config, load_config_from_json
         import os
+
+        from app.inference.verification_config import get_default_boundary_config, load_config_from_json
         json_path = os.path.join(os.path.dirname(__file__), "..", "..", "..", "app", "inference", "data", "default_verification_config.json")
         json_path = os.path.normpath(json_path)
         if not os.path.exists(json_path):
@@ -2779,7 +2799,7 @@ class TestConfigConsistency:
 
 class TestWeightedBoundaryDiffRateFix:
     def test_weighted_rate_with_actual_weights(self):
-        from app.inference.consistency.report import ConsistencyReport, ConsistencyPair, GradingResult
+        from app.inference.consistency.report import ConsistencyPair, ConsistencyReport, GradingResult
         from app.inference.verification_config import get_verification_config
         config = get_verification_config()
         report = ConsistencyReport(
@@ -2815,9 +2835,9 @@ class TestWeightedBoundaryDiffRateFix:
 
 class TestHallucinationDetectionMerged:
     def test_detect_called_once_per_engine(self):
-        from unittest.mock import AsyncMock, MagicMock, patch
+        from unittest.mock import AsyncMock, MagicMock
+
         from app.inference.consistency.verifier import ConsistencyVerifier
-        from app.inference.consistency.report import ConsistencyPair
         from app.inference.protocols import InferenceResponse
         engine_a = AsyncMock()
         engine_b = AsyncMock()
@@ -2842,8 +2862,8 @@ class TestHallucinationDetectionMerged:
 
 class TestPhase1GateCriteria:
     def _make_report(self, grading_rate=0.96, boundary_rate=0.02, **kwargs):
-        from app.inference.consistency.report import ConsistencyReport, GateStatus
-        from app.inference.verification_config import VerificationConfig, get_default_verification_config
+        from app.inference.consistency.report import ConsistencyReport
+        from app.inference.verification_config import get_default_verification_config
         config = get_default_verification_config()
         config.consistency_thresholds.verification_phase = "phase1"
         report = ConsistencyReport(

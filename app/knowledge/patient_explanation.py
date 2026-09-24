@@ -21,7 +21,6 @@
 from __future__ import annotations
 
 import re
-from typing import Optional
 
 import structlog
 
@@ -42,14 +41,14 @@ _INLINE_RE = re.compile(
 )
 
 
-def _clean(value: Optional[str]) -> Optional[str]:
+def _clean(value: str | None) -> str | None:
     if value is None:
         return None
     text = value.strip().strip("。.;；,")
     return text or None
 
 
-def parse_patient_explanation(text: Optional[str]) -> Optional[PatientExplanation]:
+def parse_patient_explanation(text: str | None) -> PatientExplanation | None:
     """从 LLM 输出解析患者解释话术。
 
     Returns:

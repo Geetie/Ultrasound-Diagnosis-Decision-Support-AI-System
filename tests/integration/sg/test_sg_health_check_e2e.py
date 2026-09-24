@@ -1,5 +1,5 @@
-import pytest
 import httpx
+import pytest
 
 SG_BASE_URL = "http://localhost:9001"
 

@@ -4,6 +4,7 @@
 """
 
 import pytest
+
 from app.api.v1.errors import SafetyGatewayUnavailableException, SafetyOutputBlockedException
 
 pytestmark = [pytest.mark.sec_domain_sg]

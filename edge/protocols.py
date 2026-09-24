@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 import numpy as np
 
@@ -22,10 +22,10 @@ class Frame:
     pixels: np.ndarray
     # 单调时钟到达时间（毫秒），用于延迟埋点
     received_at_ms: float
-    acquisition_datetime: Optional[str] = None
+    acquisition_datetime: str | None = None
     # M3 自动测量：DICOM 像素间距 (行间距, 列间距)，单位 mm；缺失时为 None，
     # 由 edge.measurement 回退默认间距并标记为估算值。
-    pixel_spacing_mm: Optional[Tuple[float, float]] = None
+    pixel_spacing_mm: tuple[float, float] | None = None
 
 
 @dataclass(frozen=True)
@@ -40,9 +40,9 @@ class PlaneAssessment:
     plane_type: str  # transverse | longitudinal | non_standard
     is_standard: bool
     plane_score: float = 0.0
-    organ_code: Optional[str] = None
-    issues: List[str] = field(default_factory=list)
-    required_structures_visible: List[str] = field(default_factory=list)
+    organ_code: str | None = None
+    issues: list[str] = field(default_factory=list)
+    required_structures_visible: list[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -53,12 +53,12 @@ class ImageQuality:
     """
 
     overall_score: float
-    blur_score: Optional[float] = None
-    artifact_score: Optional[float] = None
-    gain_score: Optional[float] = None
-    issues: List[str] = field(default_factory=list)
+    blur_score: float | None = None
+    artifact_score: float | None = None
+    gain_score: float | None = None
+    issues: list[str] = field(default_factory=list)
     # none | minor | major
-    diagnostic_impact: Optional[str] = None
+    diagnostic_impact: str | None = None
 
 
 @dataclass(frozen=True)
@@ -79,8 +79,8 @@ class NavLabel:
     width: float
     height: float
     confidence: float
-    risk_flag: Optional[str] = None  # "high" | None
-    suggested_action: Optional[str] = None  # "start_standard_evaluation" | None
+    risk_flag: str | None = None  # "high" | None
+    suggested_action: str | None = None  # "start_standard_evaluation" | None
 
     def as_box(self) -> tuple:
         return (self.x, self.y, self.x + self.width, self.y + self.height)
@@ -92,12 +92,12 @@ class NavResult:
 
     frame_id: str
     session_id: str
-    labels: List[NavLabel] = field(default_factory=list)
+    labels: list[NavLabel] = field(default_factory=list)
     infer_latency_ms: float = 0.0
     backend: str = "unknown"
     # M1/M6 帧级属性（可选，未接切面/质量头时为 None）
-    plane_assessment: Optional[PlaneAssessment] = None
-    image_quality: Optional[ImageQuality] = None
+    plane_assessment: PlaneAssessment | None = None
+    image_quality: ImageQuality | None = None
 
 
 @runtime_checkable
@@ -109,7 +109,7 @@ class NavInferenceBackend(Protocol):
     def load(self) -> None:
         """加载模型（幂等）。"""
 
-    def infer(self, frame: Frame) -> List[NavLabel]:
+    def infer(self, frame: Frame) -> list[NavLabel]:
         """同步推理，返回归一化坐标标注。"""
 
     def close(self) -> None:
@@ -123,5 +123,5 @@ class FrameSink(Protocol):
     async def push_nav_result(self, result: NavResult) -> None:
         ...
 
-    async def push_frame(self, frame: Frame, payload: Dict[str, Any]) -> None:
+    async def push_frame(self, frame: Frame, payload: dict[str, Any]) -> None:
         ...

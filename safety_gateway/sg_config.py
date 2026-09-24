@@ -1,7 +1,6 @@
 from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings
 
-
 _KNOWN_SERVICE_PORTS = {8000, 8001, 8002, 5432, 6379, 8428, 9093}
 
 

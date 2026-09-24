@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import json
 from abc import ABC, abstractmethod
-from typing import List, Optional
 
 import httpx
 import structlog
@@ -50,9 +49,9 @@ class LLMEnhancer(ABC):
     async def enhance(
         self,
         original_query: str,
-        udaf_expansion: List[str],
-        organ: Optional[str],
-    ) -> Optional[str]:
+        udaf_expansion: list[str],
+        organ: str | None,
+    ) -> str | None:
         """Rewrite the query for retrieval.
 
         Args:
@@ -130,9 +129,9 @@ class AgnesLLMEnhancer(LLMEnhancer):
     async def enhance(
         self,
         original_query: str,
-        udaf_expansion: List[str],
-        organ: Optional[str],
-    ) -> Optional[str]:
+        udaf_expansion: list[str],
+        organ: str | None,
+    ) -> str | None:
         """Call Agnes /chat/completions to rewrite the query.
 
         Returns None (with INFO log) on:
@@ -178,7 +177,7 @@ class AgnesLLMEnhancer(LLMEnhancer):
                 error_type=type(exc).__name__,
             )
             return None
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.info(
                 "llm_enhance_unexpected_error",
                 error=str(exc),
@@ -207,7 +206,7 @@ class AgnesLLMEnhancer(LLMEnhancer):
         return rewritten
 
     @staticmethod
-    def _extract_rewritten_query(data: dict) -> Optional[str]:
+    def _extract_rewritten_query(data: dict) -> str | None:
         """Extract rewritten query from OpenAI-compatible chat response.
 
         Supports two response shapes:
@@ -250,7 +249,7 @@ class AgnesLLMEnhancer(LLMEnhancer):
             return response.status_code == 200
         except (httpx.TimeoutException, httpx.ConnectError):
             return False
-        except Exception:  # noqa: BLE001
+        except Exception:
             return False
 
     async def close(self) -> None:
@@ -260,4 +259,4 @@ class AgnesLLMEnhancer(LLMEnhancer):
             self._client = None
 
 
-__all__ = ["LLMEnhancer", "AgnesLLMEnhancer"]
+__all__ = ["AgnesLLMEnhancer", "LLMEnhancer"]

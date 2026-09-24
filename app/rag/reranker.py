@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import json
 from abc import ABC, abstractmethod
-from typing import List
 
 import httpx
 import numpy as np
@@ -43,9 +42,9 @@ class RerankService(ABC):
     async def rerank(
         self,
         query: str,
-        chunks: List[KnowledgeChunk],
+        chunks: list[KnowledgeChunk],
         top_k: int,
-    ) -> List[ScoredChunk]:
+    ) -> list[ScoredChunk]:
         """Rerank the given chunks against the query, return top_k.
 
         Returns ScoredChunk objects preserving the original chunk, with
@@ -107,9 +106,9 @@ class BgeRerankerService(RerankService):
     async def rerank(
         self,
         query: str,
-        chunks: List[KnowledgeChunk],
+        chunks: list[KnowledgeChunk],
         top_k: int,
-    ) -> List[ScoredChunk]:
+    ) -> list[ScoredChunk]:
         if not chunks:
             return []
         documents = [c.content for c in chunks]
@@ -127,7 +126,7 @@ class BgeRerankerService(RerankService):
                 f"bge-reranker request failed: {exc}",
                 detail=type(exc).__name__,
             ) from exc
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             raise RerankError(
                 f"bge-reranker unexpected error: {exc}",
                 detail=type(exc).__name__,
@@ -148,7 +147,7 @@ class BgeRerankerService(RerankService):
         if not isinstance(results, list):
             raise RerankError("bge-reranker response missing 'results' list")
 
-        scored: List[ScoredChunk] = []
+        scored: list[ScoredChunk] = []
         for item in results:
             if not isinstance(item, dict):
                 continue
@@ -182,7 +181,7 @@ class BgeRerankerService(RerankService):
             return response.status_code == 200
         except (httpx.TimeoutException, httpx.ConnectError):
             return False
-        except Exception:  # noqa: BLE001
+        except Exception:
             return False
 
     async def close(self) -> None:
@@ -206,7 +205,7 @@ class HeuristicReranker(RerankService):
         self._cw = cosine_weight
 
     @staticmethod
-    def _jaccard(a: List[str], b: List[str]) -> float:
+    def _jaccard(a: list[str], b: list[str]) -> float:
         sa, sb = set(a), set(b)
         if not sa and not sb:
             return 0.0
@@ -215,7 +214,7 @@ class HeuristicReranker(RerankService):
         return len(inter) / len(union) if union else 0.0
 
     @staticmethod
-    def _cosine(a: List[float] | None) -> float:
+    def _cosine(a: list[float] | None) -> float:
         """Map a single vector's norm to a 0..1 score (no pairwise here).
 
         For the heuristic reranker we don't have a query embedding, so we
@@ -235,13 +234,13 @@ class HeuristicReranker(RerankService):
     async def rerank(
         self,
         query: str,
-        chunks: List[KnowledgeChunk],
+        chunks: list[KnowledgeChunk],
         top_k: int,
-    ) -> List[ScoredChunk]:
+    ) -> list[ScoredChunk]:
         if not chunks:
             return []
         q_tokens = tokenize(query)
-        scored: List[ScoredChunk] = []
+        scored: list[ScoredChunk] = []
         for chunk in chunks:
             j = self._jaccard(q_tokens, tokenize(chunk.content))
             c = self._cosine(chunk.embedding) if chunk.embedding else 0.0
@@ -265,8 +264,8 @@ class HeuristicReranker(RerankService):
 
 
 __all__ = [
-    "RerankService",
     "BgeRerankerService",
     "HeuristicReranker",
     "RerankError",
+    "RerankService",
 ]

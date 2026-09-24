@@ -20,10 +20,7 @@ Verification targets (matching the T-GA-RAG spec):
 """
 from __future__ import annotations
 
-import asyncio
 import random
-import time
-from typing import Dict, List, Optional, Tuple
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -34,9 +31,10 @@ pytestmark = [
 ]
 
 from app.knowledge.protocols import KnowledgeChunk
-from app.rag.bm25_fallback import BM25Fallback, BM25Index, BM25Hit
+from app.knowledge.udt_parser import UDTParser
+from app.knowledge.vocabulary import UDAFVocabulary
+from app.rag.bm25_fallback import BM25Fallback, BM25Index
 from app.rag.protocols import (
-    EnhancedQuery,
     RetrievalMethod,
     RetrievalRequest,
     RetrievalResult,
@@ -45,16 +43,13 @@ from app.rag.protocols import (
 from app.rag.query_enhancer import QueryEnhancer
 from app.rag.reranker import HeuristicReranker
 from app.rag.service import RAGServiceImpl
-from app.knowledge.udt_parser import UDTParser
-from app.knowledge.vocabulary import UDAFVocabulary
-
 
 # ----------------------------------------------------------------------
 # Test fixture: 100 deterministic queries with ground truth chunk_ids
 # ----------------------------------------------------------------------
 
 
-def _gen_test_corpus(n_docs: int = 200) -> List[KnowledgeChunk]:
+def _gen_test_corpus(n_docs: int = 200) -> list[KnowledgeChunk]:
     """Generate a synthetic corpus with known content for query routing."""
     rng = random.Random(20260629)
     organs = ["thyroid", "liver", "heart"]
@@ -82,7 +77,7 @@ def _gen_test_corpus(n_docs: int = 200) -> List[KnowledgeChunk]:
             "pericardial effusion small",
         ],
     }
-    chunks: List[KnowledgeChunk] = []
+    chunks: list[KnowledgeChunk] = []
     for i in range(n_docs):
         organ = rng.choice(organs)
         template = rng.choice(templates[organ])
@@ -104,7 +99,7 @@ def _gen_test_corpus(n_docs: int = 200) -> List[KnowledgeChunk]:
 
 
 # 100 deterministic queries: each maps to a ground-truth (organ, content_pattern).
-def _gen_test_queries(n_queries: int = 100) -> List[Tuple[str, str, str]]:
+def _gen_test_queries(n_queries: int = 100) -> list[tuple[str, str, str]]:
     """Returns list of (query, organ, ground_truth_substring) tuples."""
     rng = random.Random(20260629)
     queries = []
@@ -141,13 +136,13 @@ def _gen_test_queries(n_queries: int = 100) -> List[Tuple[str, str, str]]:
 # ----------------------------------------------------------------------
 
 
-def _build_mock_retriever(corpus: List[KnowledgeChunk]) -> MagicMock:
+def _build_mock_retriever(corpus: list[KnowledgeChunk]) -> MagicMock:
     """Mock Retriever that emulates:
     - Dense: cosine-like score over organ-filtered docs whose content shares tokens
     - Sparse: BM25 over content with simple word overlap
     - RRF fusion with k=60
     """
-    corpus_by_id: Dict[str, KnowledgeChunk] = {c.chunk_id: c for c in corpus}
+    corpus_by_id: dict[str, KnowledgeChunk] = {c.chunk_id: c for c in corpus}
 
     def _score(query: str, chunk: KnowledgeChunk) -> float:
         q_tokens = set(query.lower().split())
@@ -191,8 +186,8 @@ def _build_mock_retriever(corpus: List[KnowledgeChunk]) -> MagicMock:
 def _build_mock_reranker(ground_truth_lookup=None) -> MagicMock:
     """Mock reranker that bumps the score of chunks matching ground truth."""
     async def mock_rerank(
-        query: str, chunks: List[KnowledgeChunk], top_k: int
-    ) -> List[ScoredChunk]:
+        query: str, chunks: list[KnowledgeChunk], top_k: int
+    ) -> list[ScoredChunk]:
         scored = []
         for chunk in chunks:
             score = 0.5
@@ -219,12 +214,14 @@ def _build_mock_reranker(ground_truth_lookup=None) -> MagicMock:
     return reranker
 
 
-def _build_real_bm25(corpus: List[KnowledgeChunk]) -> BM25Index:
+def _build_real_bm25(corpus: list[KnowledgeChunk]) -> BM25Index:
     """Build a real BM25 index from the corpus (small, in-process)."""
     # We bypass the session factory by injecting _built directly.
-    from app.rag.bm25_fallback import _BuiltIndex, tokenize
-    from rank_bm25 import BM25Okapi
     import time as _time
+
+    from rank_bm25 import BM25Okapi
+
+    from app.rag.bm25_fallback import _BuiltIndex, tokenize
 
     # Only keep docs with non-empty tokenization
     usable = [c for c in corpus if tokenize(c.content)]
@@ -321,7 +318,7 @@ class TestEndToEndPipeline:
 
     async def test_100_queries_pipeline_runs(self, rag_service, test_queries):
         """100 queries run end-to-end without error."""
-        latencies: List[float] = []
+        latencies: list[float] = []
         for q, organ, _pattern in test_queries:
             req = RetrievalRequest(query=q, organ=organ, top_k=5)
             result = await rag_service.retrieve(req)
@@ -407,7 +404,7 @@ class TestP99Latency:
         """With all external components mocked, P99 latency should be well
         under 100ms — the 100ms budget includes real Qdrant / bge-m3 / bge-reranker
         HTTP round-trips, which are absent here."""
-        latencies: List[float] = []
+        latencies: list[float] = []
         for q, organ, _pattern in test_queries:
             req = RetrievalRequest(query=q, organ=organ, top_k=5)
             result = await rag_service.retrieve(req)

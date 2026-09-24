@@ -8,18 +8,17 @@
 """
 from __future__ import annotations
 
-import asyncio
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from app.config.redis_keys import RedisKey
+import pytest
+
 from app.services import diagnosis_worker
 from app.services.diagnosis_worker import (
     enqueue_diagnosis,
+    get_active_worker_count,
+    is_worker_pool_started,
     start_worker_pool,
     stop_worker_pool,
-    is_worker_pool_started,
-    get_active_worker_count,
 )
 
 
@@ -175,7 +174,7 @@ class TestDLQBehavior:
 
 
 __all__ = [
-    "TestWorkerPoolLifecycle",
-    "TestEnqueueDequeue",
     "TestDLQBehavior",
+    "TestEnqueueDequeue",
+    "TestWorkerPoolLifecycle",
 ]

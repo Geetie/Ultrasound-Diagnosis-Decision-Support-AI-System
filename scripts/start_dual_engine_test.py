@@ -18,14 +18,13 @@
 """
 
 import argparse
-import asyncio
-import httpx
 import os
 import signal
 import subprocess
 import sys
 import time
-from typing import Optional
+
+import httpx
 
 
 def wait_for_service(url: str, timeout: float = 120.0, interval: float = 2.0) -> bool:
@@ -44,7 +43,7 @@ def wait_for_service(url: str, timeout: float = 120.0, interval: float = 2.0) ->
 
 def start_llama_cpp(model: str, host: str = "0.0.0.0", port: int = 8001,
                     n_ctx: int = 4096, n_gpu_layers: int = -1,
-                    extra_args: Optional[list[str]] = None) -> subprocess.Popen:
+                    extra_args: list[str] | None = None) -> subprocess.Popen:
     cmd = [
         sys.executable, "-m", "llama_cpp.server",
         "--model", model,
@@ -61,8 +60,8 @@ def start_llama_cpp(model: str, host: str = "0.0.0.0", port: int = 8001,
 
 def start_vllm(model: str, host: str = "0.0.0.0", port: int = 8002,
                device: str = "cuda", gpu_memory_utilization: float = 0.5,
-               cpu_kv_cache_capacity: Optional[int] = None,
-               extra_args: Optional[list[str]] = None) -> subprocess.Popen:
+               cpu_kv_cache_capacity: int | None = None,
+               extra_args: list[str] | None = None) -> subprocess.Popen:
     script_path = os.path.join(os.path.dirname(__file__), "vllm_server.py")
     cmd = [
         sys.executable, script_path,

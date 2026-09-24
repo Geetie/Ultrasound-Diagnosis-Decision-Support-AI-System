@@ -14,7 +14,7 @@
 """
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 import numpy as np
 import structlog
@@ -47,7 +47,7 @@ class ImageQualityAdapter(Protocol):
     def load(self) -> None:
         """加载资源（幂等；假实现为空操作）。"""
 
-    def assess(self, frame: Frame) -> Optional[ImageQuality]:
+    def assess(self, frame: Frame) -> ImageQuality | None:
         """评估单帧质量；返回 ``None`` 表示本帧未产出评估。"""
 
     def close(self) -> None:
@@ -62,7 +62,7 @@ class NullImageQualityAdapter:
     def load(self) -> None:
         return None
 
-    def assess(self, frame: Frame) -> Optional[ImageQuality]:
+    def assess(self, frame: Frame) -> ImageQuality | None:
         return None
 
     def close(self) -> None:
@@ -87,7 +87,7 @@ class LocalFakeImageQualityAdapter:
     def load(self) -> None:
         logger.warning("edge_image_quality_local_fake_in_use")
 
-    def assess(self, frame: Frame) -> Optional[ImageQuality]:
+    def assess(self, frame: Frame) -> ImageQuality | None:
         pixels = np.asarray(frame.pixels, dtype=np.float32)
         if pixels.ndim != 2 or pixels.size == 0:
             return None
@@ -114,7 +114,7 @@ class LocalFakeImageQualityAdapter:
             0.35 * blur_score + 0.25 * gain_score + 0.20 * artifact_score + 0.20 * contrast
         )
 
-        issues: List[str] = []
+        issues: list[str] = []
         if mean < DARK_MEAN_THRESHOLD:
             issues.append("image_too_dark")
         elif mean > BRIGHT_MEAN_THRESHOLD:
@@ -152,10 +152,10 @@ def _impact_of(overall_score: float) -> str:
 
 
 # 进程级注入点：现场用真机适配器替换
-_INJECTED_ADAPTER: Optional[ImageQualityAdapter] = None
+_INJECTED_ADAPTER: ImageQualityAdapter | None = None
 
 
-def set_image_quality_adapter(adapter: Optional[ImageQualityAdapter]) -> None:
+def set_image_quality_adapter(adapter: ImageQualityAdapter | None) -> None:
     """注入图像质量适配器（现场真机实现；传 ``None`` 清除注入）。"""
     global _INJECTED_ADAPTER
     _INJECTED_ADAPTER = adapter
@@ -182,12 +182,12 @@ def create_image_quality_adapter(name: str = "null") -> ImageQualityAdapter:
     )
 
 
-def get_image_quality_adapter() -> Optional[ImageQualityAdapter]:
+def get_image_quality_adapter() -> ImageQualityAdapter | None:
     """当前注入的适配器（无则 None）。"""
     return _INJECTED_ADAPTER
 
 
-def image_quality_to_dict(quality: ImageQuality) -> Dict[str, Any]:
+def image_quality_to_dict(quality: ImageQuality) -> dict[str, Any]:
     """序列化为上行载荷（键名与后端 ``app.models.schemas.ImageQuality`` 对齐）。"""
     return {
         "overall_score": quality.overall_score,

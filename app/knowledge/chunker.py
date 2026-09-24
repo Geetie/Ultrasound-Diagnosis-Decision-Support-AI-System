@@ -17,7 +17,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from enum import Enum
-from typing import List, Optional, Protocol
+from typing import Protocol
 
 import structlog
 
@@ -70,7 +70,7 @@ class ChunkerStrategy(str, Enum):
 
 class Chunker(Protocol):
     """Protocol for chunker implementations."""
-    def chunk(self, doc: KnowledgeSourceDoc, kb_version: str) -> List[KnowledgeChunk]:
+    def chunk(self, doc: KnowledgeSourceDoc, kb_version: str) -> list[KnowledgeChunk]:
         ...
 
 
@@ -98,7 +98,7 @@ _SEMANTIC_TITLE_RE = re.compile(
 )
 
 
-def _split_sentences(text: str) -> List[str]:
+def _split_sentences(text: str) -> list[str]:
     """Split text into sentences on common CJK + Latin punctuation.
 
     Empty fragments are dropped. Whitespace is preserved within a sentence.
@@ -141,12 +141,12 @@ class FixedWindowChunker:
             raise ValueError("window_chars must be positive")
         self.window_chars = window_chars
 
-    def chunk(self, doc: KnowledgeSourceDoc, kb_version: str) -> List[KnowledgeChunk]:
+    def chunk(self, doc: KnowledgeSourceDoc, kb_version: str) -> list[KnowledgeChunk]:
         text = doc.content or ""
         if not text.strip():
             return []
 
-        chunks: List[KnowledgeChunk] = []
+        chunks: list[KnowledgeChunk] = []
         stride = self.window_chars
         base_section = doc.section_path or doc.organ
 
@@ -203,7 +203,7 @@ class SentenceBoundaryChunker:
         self.max_chars = max_tokens * 2
         self.fallback = FixedWindowChunker(window_chars=self.max_chars)
 
-    def chunk(self, doc: KnowledgeSourceDoc, kb_version: str) -> List[KnowledgeChunk]:
+    def chunk(self, doc: KnowledgeSourceDoc, kb_version: str) -> list[KnowledgeChunk]:
         text = doc.content or ""
         if not text.strip():
             return []
@@ -213,11 +213,11 @@ class SentenceBoundaryChunker:
             return []
 
         base_section = doc.section_path or doc.organ
-        chunks: List[KnowledgeChunk] = []
-        buffer: List[str] = []
+        chunks: list[KnowledgeChunk] = []
+        buffer: list[str] = []
         buffer_chars = 0
 
-        def _flush_buffer(idx_hint: int) -> Optional[KnowledgeChunk]:
+        def _flush_buffer(idx_hint: int) -> KnowledgeChunk | None:
             if not buffer:
                 return None
             content = " ".join(buffer).strip()
@@ -316,7 +316,7 @@ class SemanticChunker:
             min_tokens=min_tokens, max_tokens=max_tokens
         )
 
-    def chunk(self, doc: KnowledgeSourceDoc, kb_version: str) -> List[KnowledgeChunk]:
+    def chunk(self, doc: KnowledgeSourceDoc, kb_version: str) -> list[KnowledgeChunk]:
         text = doc.content or ""
         if not text.strip():
             return []
@@ -327,7 +327,7 @@ class SemanticChunker:
             # No semantic boundaries; fall back to sentence splitter on full doc.
             return self.inner.chunk(doc, kb_version)
 
-        sections: List[tuple[str, str]] = []  # (title, body)
+        sections: list[tuple[str, str]] = []  # (title, body)
         cursor = 0
         for i, m in enumerate(matches):
             title = m.group(1).strip()
@@ -345,7 +345,7 @@ class SemanticChunker:
                 sections.append(("", tail))
 
         # Build chunks per section.
-        all_chunks: List[KnowledgeChunk] = []
+        all_chunks: list[KnowledgeChunk] = []
         for title, body in sections:
             if not body:
                 continue

@@ -1,27 +1,26 @@
-from fastapi import APIRouter, UploadFile, File, Form, Depends
-from datetime import datetime, timezone
-import uuid
 import base64
-import structlog
-from typing import Optional, List, Tuple
-
-import pydicom
+import uuid
+from datetime import datetime, timezone
 from io import BytesIO
 
-from app.models.schemas import DICOMUploadResponse, DICOMStreamRequest, DICOMStreamResponse
+import pydicom
+import structlog
+from fastapi import APIRouter, Depends, File, Form, UploadFile
+
 from app.api.v1.errors import (
     BadRequestException,
-    NotFoundException,
     MissingDICOMTagException,
+    NotFoundException,
     ServerErrorException,
 )
-from app.config.settings import settings
-from app.dependencies import get_session_repo, get_audit_service
 from app.api.v1.utils import get_actor_id
+from app.config.settings import settings
+from app.dependencies import get_audit_service, get_session_repo
+from app.models.schemas import DICOMStreamRequest, DICOMStreamResponse, DICOMUploadResponse
 from app.repositories import SessionRepository
+from app.security.auth import get_current_active_user
 from app.services.audit_service import AuditService
 from app.services.dicom_storage import get_dicom_storage
-from app.security.auth import get_current_active_user
 
 logger = structlog.get_logger()
 router = APIRouter(tags=["imaging"])
@@ -51,7 +50,7 @@ REQUIRED_DICOM_TAGS = [
 ]
 
 
-def validate_dicom_format(content: bytes) -> Tuple[bool, Optional[str]]:
+def validate_dicom_format(content: bytes) -> tuple[bool, str | None]:
     """DICOM format basic validation (magic word)"""
     if len(content) < 132:
         return False, "File too small"
@@ -60,7 +59,7 @@ def validate_dicom_format(content: bytes) -> Tuple[bool, Optional[str]]:
     return True, None
 
 
-def parse_and_validate_dicom(content: bytes) -> Tuple[Optional[pydicom.Dataset], Optional[str], List[str]]:
+def parse_and_validate_dicom(content: bytes) -> tuple[pydicom.Dataset | None, str | None, list[str]]:
     """Parse DICOM file and validate required tags (single parse)
 
     Returns:
@@ -70,7 +69,7 @@ def parse_and_validate_dicom(content: bytes) -> Tuple[Optional[pydicom.Dataset],
     try:
         ds = pydicom.dcmread(BytesIO(content), force=True)
     except Exception as e:
-        return None, f"Failed to parse DICOM: {str(e)}", []
+        return None, f"Failed to parse DICOM: {e!s}", []
 
     missing_tags = []
     for group, elem, name in REQUIRED_DICOM_TAGS:
@@ -103,7 +102,7 @@ def _desensitize_patient_name(value: str) -> str:
     return value[:1] + "******"
 
 
-def extract_metadata_from_dataset(ds: pydicom.Dataset, content: bytes) -> Tuple[dict, dict, str]:
+def extract_metadata_from_dataset(ds: pydicom.Dataset, content: bytes) -> tuple[dict, dict, str]:
     raw_patient_id = str(getattr(ds, "PatientID", ""))
     raw_patient_name = str(getattr(ds, "PatientName", ""))
     response_metadata = {
@@ -133,7 +132,7 @@ async def upload_dicom(
     priority: int = Form(1),
     session_repo: SessionRepository = Depends(get_session_repo),
     audit_service: AuditService = Depends(get_audit_service),
-    current_user: Optional[dict] = Depends(get_current_active_user),
+    current_user: dict | None = Depends(get_current_active_user),
 ):
 
     if priority not in (0, 1, 2):
@@ -145,28 +144,28 @@ async def upload_dicom(
     session = await session_repo.get_session(session_id)
     if not session:
         raise NotFoundException(error_message=f"Session not found: {session_id}")
-    
+
     content = await file.read()
-    
+
     if len(content) > settings.dicom_storage_max_file_size:
         raise BadRequestException(
             error_code="E1004",
             error_message=f"DICOM file size {len(content)} exceeds maximum {settings.dicom_storage_max_file_size}",
         )
-    
+
     is_valid, error_msg = validate_dicom_format(content)
     if not is_valid:
         raise BadRequestException(error_code="E1004", error_message=error_msg or "Invalid DICOM file")
-    
+
     dataset, tags_error, missing_tags = parse_and_validate_dicom(content)
     if dataset is None:
         raise MissingDICOMTagException(error_message=tags_error or "Missing required DICOM tags", detail=",".join(missing_tags))
-    
+
     response_metadata, internal_metadata, raw_patient_id = extract_metadata_from_dataset(dataset, content)
     internal_metadata = dict(internal_metadata)
     internal_metadata["original_filename"] = file.filename
     internal_metadata["priority"] = priority
-    
+
     image_id = generate_image_id()
 
     sop_instance_uid = internal_metadata.get("sop_instance_uid", image_id)
@@ -217,7 +216,7 @@ async def stream_dicom_frame(
     request: DICOMStreamRequest,
     session_repo: SessionRepository = Depends(get_session_repo),
     audit_service: AuditService = Depends(get_audit_service),
-    current_user: Optional[dict] = Depends(get_current_active_user),
+    current_user: dict | None = Depends(get_current_active_user),
 ):
     if request.frame_index < 0:
         raise BadRequestException(
@@ -228,7 +227,7 @@ async def stream_dicom_frame(
     session = await session_repo.get_session(request.session_id)
     if not session:
         raise NotFoundException(error_message=f"Session not found: {request.session_id}")
-    
+
     try:
         frame_data = base64.b64decode(request.frame_data)
     except Exception:
@@ -248,9 +247,9 @@ async def stream_dicom_frame(
             session_id=request.session_id,
             frame_index=request.frame_index,
         )
-    
+
     frame_id = generate_frame_id()
-    
+
     actor_id = get_actor_id(current_user)
     await audit_service.log_action(
         action="dicom_stream",
@@ -265,14 +264,14 @@ async def stream_dicom_frame(
             "frame_size": len(frame_data),
         },
     )
-    
+
     logger.info(
         "DICOM frame streamed",
         frame_id=frame_id,
         session_id=request.session_id,
         frame_index=request.frame_index,
     )
-    
+
     return DICOMStreamResponse(
         session_id=request.session_id,
         frame_id=frame_id,

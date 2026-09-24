@@ -15,7 +15,7 @@ from __future__ import annotations
 import base64
 import hashlib
 from datetime import date
-from typing import Any, Dict, List
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -30,7 +30,6 @@ from app.models.database import DiagnosisReport, DiagnosisResult
 from app.models.schemas import ConsentStatus
 from app.services import report_service
 
-
 # ----------------------------------------------------------------------
 # 桩件
 # ----------------------------------------------------------------------
@@ -40,8 +39,8 @@ class _FakeHSM:
     """最小 HSM 替身：签名 = b"sig:" + sha256(data)（对整段载荷敏感）。"""
 
     def __init__(self) -> None:
-        self.keys: Dict[str, Any] = {}
-        self.sign_calls: List[Any] = []
+        self.keys: dict[str, Any] = {}
+        self.sign_calls: list[Any] = []
 
     def get_key_info(self, key_name: str):
         return self.keys.get(key_name)
@@ -92,7 +91,7 @@ class _FakeReportRepo:
     """内存报告仓储替身。"""
 
     def __init__(self) -> None:
-        self.reports: Dict[str, DiagnosisReport] = {}
+        self.reports: dict[str, DiagnosisReport] = {}
         self._seq = 0
         self.db = MagicMock()
         self.db.commit = AsyncMock()
@@ -438,7 +437,7 @@ class TestPacsAdapterFactory:
 
     @pytest.mark.asyncio
     async def test_http_adapter_retries_then_succeeds(self, monkeypatch):
-        attempts: List[int] = []
+        attempts: list[int] = []
 
         class _Resp:
             def __init__(self, code: int) -> None:
@@ -472,7 +471,7 @@ class TestPacsAdapterFactory:
 
     @pytest.mark.asyncio
     async def test_http_adapter_does_not_retry_4xx(self, monkeypatch):
-        attempts: List[int] = []
+        attempts: list[int] = []
 
         class _Resp:
             status_code = 422
@@ -539,7 +538,7 @@ class _DiagnosisRepo:
 
 class _Audit:
     def __init__(self) -> None:
-        self.calls: List[Dict[str, Any]] = []
+        self.calls: list[dict[str, Any]] = []
 
     async def log_action(self, **kwargs):
         self.calls.append(kwargs)
@@ -713,8 +712,8 @@ class _FakeDb:
         self._rows = rows or []
         self._scalar = scalar
         self._obj = obj
-        self.added: List[Any] = []
-        self.deleted: List[Any] = []
+        self.added: list[Any] = []
+        self.deleted: list[Any] = []
         self.flushed = 0
 
     async def execute(self, stmt):

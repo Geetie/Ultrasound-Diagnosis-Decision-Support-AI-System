@@ -1,12 +1,13 @@
 import structlog
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.observability.metrics_collector import get_metrics_collector
-from app.observability.cusum import AISafetyCircuitBreaker
-from app.observability.alert_escalation import get_alert_escalation_manager
-from app.observability.cache_monitor import get_cache_monitor
+
 from app.config.database import get_db_session
 from app.config.settings import settings
+from app.observability.alert_escalation import get_alert_escalation_manager
+from app.observability.cache_monitor import get_cache_monitor
+from app.observability.cusum import AISafetyCircuitBreaker
+from app.observability.metrics_collector import get_metrics_collector
 from app.services.cold_archive import ColdArchiveService
 
 logger = structlog.get_logger()

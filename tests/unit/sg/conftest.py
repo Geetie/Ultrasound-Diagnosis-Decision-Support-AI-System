@@ -6,14 +6,15 @@
 3. 测试阶段自动分类
 4. 源码变更检测：重型测试在源码未变时自动跳过
 """
-import os
 import logging
+import os
+from unittest.mock import AsyncMock, patch
+
 import pytest
-from unittest.mock import patch, AsyncMock
 
 logger = logging.getLogger(__name__)
 
-from tests.utils.track_progress_reporter import TrackProgressReporter, SourceChangeDetector
+from tests.utils.track_progress_reporter import SourceChangeDetector, TrackProgressReporter
 
 PHASE_ICONS = {
     "desensitization": "\U0001f6e1",

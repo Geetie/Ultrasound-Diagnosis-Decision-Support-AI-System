@@ -20,7 +20,6 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, Optional
 
 import structlog
 
@@ -49,11 +48,11 @@ class RolloutDecision:
     track: str
     stage: str
     reason: str
-    bucket: Optional[int] = None
+    bucket: int | None = None
     session_index: int = 0
     percent: int = 0
 
-    def as_dict(self) -> Dict[str, object]:
+    def as_dict(self) -> dict[str, object]:
         return {
             "allowed": self.allowed,
             "track": self.track,
@@ -80,7 +79,7 @@ class RolloutSessionCounter:
 
     def __init__(self, redis_client=None) -> None:
         self._redis = redis_client
-        self._memory: Dict[str, int] = {}
+        self._memory: dict[str, int] = {}
 
     async def _ensure_redis(self):
         if self._redis is not None:
@@ -89,7 +88,7 @@ class RolloutSessionCounter:
             from app.config.redis import RedisPool
 
             self._redis = await RedisPool.get_client()
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("rollout_counter_redis_unavailable", error=str(exc))
             self._redis = None
         return self._redis
@@ -109,7 +108,7 @@ class RolloutSessionCounter:
                         key, settings.rollout_counter_ttl_seconds
                     )
                 return int(index)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.warning(
                     "rollout_counter_redis_failed_fallback_memory",
                     track=track,
@@ -124,7 +123,7 @@ class RolloutSessionCounter:
 
 
 class RolloutRouter:
-    def __init__(self, counter: Optional[RolloutSessionCounter] = None) -> None:
+    def __init__(self, counter: RolloutSessionCounter | None = None) -> None:
         self._counter = counter or RolloutSessionCounter()
 
     async def decide(self, *, session_id: str, track: str) -> RolloutDecision:
@@ -199,7 +198,7 @@ class RolloutRouter:
         )
 
 
-_router: Optional[RolloutRouter] = None
+_router: RolloutRouter | None = None
 
 
 def get_rollout_router() -> RolloutRouter:
@@ -209,7 +208,7 @@ def get_rollout_router() -> RolloutRouter:
     return _router
 
 
-def set_rollout_router(router: Optional[RolloutRouter]) -> None:
+def set_rollout_router(router: RolloutRouter | None) -> None:
     """替换全局路由器（测试注入用）。"""
     global _router
     _router = router

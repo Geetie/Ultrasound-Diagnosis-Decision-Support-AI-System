@@ -21,10 +21,11 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass, field
-from typing import Any, Mapping, Optional, Tuple
+from collections.abc import Mapping
+from dataclasses import dataclass
+from typing import Any
 
-DEFAULT_MODEL_LABELS: Tuple[str, ...] = (
+DEFAULT_MODEL_LABELS: tuple[str, ...] = (
     "organ_name",
     "anatomical_location",
     "echogenicity",
@@ -67,7 +68,7 @@ def _as_int(value: Any, default: int) -> int:
         return default
 
 
-def _as_labels(value: Any, default: Tuple[str, ...]) -> Tuple[str, ...]:
+def _as_labels(value: Any, default: tuple[str, ...]) -> tuple[str, ...]:
     if value is None or value == "":
         return default
     if isinstance(value, (list, tuple)):
@@ -89,8 +90,8 @@ class EdgeSettings:
     enable_dicom_scp: bool = True
     enable_ota: bool = True
 
-    engine_path: Optional[str] = None
-    model_labels: Tuple[str, ...] = DEFAULT_MODEL_LABELS
+    engine_path: str | None = None
+    model_labels: tuple[str, ...] = DEFAULT_MODEL_LABELS
     nav_target_fps: float = 15.0
 
     # M1/M6 评估适配器：默认 null（不产出），真机实现由现场经
@@ -99,7 +100,7 @@ class EdgeSettings:
     plane_assessment_adapter: str = "null"
     image_quality_adapter: str = "null"
     # M2 器官级置信度阈值选取 + M1 切面评估的器官标识
-    organ_code: Optional[str] = None
+    organ_code: str | None = None
 
     download_dir: str = "./edge_downloads"
     ota_rate_limit_bytes_per_second: int = DEFAULT_OTA_RATE_LIMIT_BPS
@@ -110,11 +111,11 @@ class EdgeSettings:
     reconnect_interval_seconds: float = 5.0
 
     @classmethod
-    def from_env(cls, env: Optional[Mapping[str, str]] = None) -> "EdgeSettings":
+    def from_env(cls, env: Mapping[str, str] | None = None) -> EdgeSettings:
         """从环境变量构建配置（未知键忽略，非法数值回退默认并保留原值语义）。"""
         source: Mapping[str, str] = os.environ if env is None else env
 
-        def get(name: str) -> Optional[str]:
+        def get(name: str) -> str | None:
             value = source.get(f"EDGE_{name}")
             return value if value is not None else None
 

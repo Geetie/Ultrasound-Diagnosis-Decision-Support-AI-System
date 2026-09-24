@@ -14,8 +14,6 @@ Covers:
 """
 from __future__ import annotations
 
-import asyncio
-
 import pytest
 
 pytestmark = [pytest.mark.track_agt]

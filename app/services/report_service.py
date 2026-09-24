@@ -23,9 +23,10 @@ from __future__ import annotations
 import base64
 import hashlib
 import time
+from collections.abc import Mapping
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Mapping, Optional
+from typing import Any
 
 import structlog
 
@@ -46,7 +47,7 @@ TEMPLATE_VERSION = "report-template-v1"
 
 TEMPLATE_DIR = Path(__file__).resolve().parent.parent / "templates" / "report"
 
-ORGAN_LABELS: Dict[str, str] = {
+ORGAN_LABELS: dict[str, str] = {
     "thyroid": "甲状腺",
     "liver": "肝脏",
     "cardiac": "心脏",
@@ -54,7 +55,7 @@ ORGAN_LABELS: Dict[str, str] = {
 
 # M8 报告模板库：器官 → 模板文件名。未登记的器官回退
 # settings.report_template_name（默认 default.md）。
-ORGAN_TEMPLATES: Dict[str, str] = {
+ORGAN_TEMPLATES: dict[str, str] = {
     "thyroid": "thyroid_standard.md",
     "liver": "liver_standard.md",
     "cardiac": "cardiac_standard.md",
@@ -64,7 +65,7 @@ ORGAN_TEMPLATES: Dict[str, str] = {
 # 通用字段缺失说明报告"根本没有内容"；器官级字段缺失说明"该器官该有的段落
 # 没填"（例如甲状腺报告缺测量数据），两者都要在完整性面板里显示出来。
 REQUIRED_FIELDS_COMMON: tuple = ("request_id", "organ", "generated_at", "template_version")
-REQUIRED_FIELDS_BY_ORGAN: Dict[str, tuple] = {
+REQUIRED_FIELDS_BY_ORGAN: dict[str, tuple] = {
     "thyroid": ("findings", "diagnosis", "measurement_summary", "clinical_actions"),
     "liver": ("findings", "diagnosis", "measurement_summary", "clinical_actions"),
     "cardiac": ("findings", "diagnosis", "clinical_actions"),
@@ -117,7 +118,7 @@ _FALLBACK_TEMPLATE = """# 超声诊断报告
 
 
 def select_template_name(
-    organ: Optional[str] = None, name: Optional[str] = None
+    organ: str | None = None, name: str | None = None
 ) -> str:
     """选定模板文件名。
 
@@ -137,7 +138,7 @@ def select_template_name(
     return settings.report_template_name
 
 
-def load_template(name: Optional[str] = None, organ: Optional[str] = None) -> str:
+def load_template(name: str | None = None, organ: str | None = None) -> str:
     """加载报告模板；文件缺失/不可读时回退内置模板。"""
     template_name = select_template_name(organ=organ, name=name)
     path = TEMPLATE_DIR / template_name
@@ -166,7 +167,7 @@ def _is_missing(value: Any) -> bool:
     return False
 
 
-def check_completeness(content: Mapping[str, Any], organ: Optional[str] = None) -> Dict[str, Any]:
+def check_completeness(content: Mapping[str, Any], organ: str | None = None) -> dict[str, Any]:
     """M8 报告完整性校验：必需段落/字段是否齐备。
 
     返回结构直接供接口与前端完整性面板使用：``passed`` 为 False 时前端高亮
@@ -217,7 +218,7 @@ _MEASUREMENT_ROW_LABELS: tuple = (
     ("distance_to_skin_mm", "距皮肤", "mm"),
 )
 
-_PIXEL_SPACING_SOURCE_LABELS: Dict[str, str] = {
+_PIXEL_SPACING_SOURCE_LABELS: dict[str, str] = {
     "dicom": "DICOM 像素间距",
     "default": "估算（缺 PixelSpacing）",
     "text": "报告文本",
@@ -290,7 +291,7 @@ def _format_patient_explanation(explanation: Any) -> str:
     return "\n".join(lines) if lines else placeholder
 
 
-def build_report_content(result: Any, session: Any = None) -> Dict[str, Any]:
+def build_report_content(result: Any, session: Any = None) -> dict[str, Any]:
     """把诊断结果 + 会话组装为结构化报告内容。
 
     Args:
@@ -416,7 +417,7 @@ def _ensure_signing_key() -> str:
     return key_name
 
 
-def sign_payload(payload: bytes) -> Dict[str, str]:
+def sign_payload(payload: bytes) -> dict[str, str]:
     """对载荷做数字签名。
 
     Returns:
@@ -532,7 +533,7 @@ async def sign_report(
     *,
     report: DiagnosisReport,
     report_repo: ReportRepository,
-    actor_id: Optional[str] = None,
+    actor_id: str | None = None,
 ) -> DiagnosisReport:
     """对报告正文签名并置为 ``signed``。"""
     payload = report_payload(report.rendered or "")
@@ -550,7 +551,7 @@ async def push_report(
     *,
     report: DiagnosisReport,
     report_repo: ReportRepository,
-    adapter: Optional[PacsPushAdapter] = None,
+    adapter: PacsPushAdapter | None = None,
 ) -> PushResult:
     """把已签名报告推送到 PACS/HIS。
 
@@ -612,7 +613,7 @@ async def push_report(
     return result
 
 
-def list_evidence_ids(report: DiagnosisReport) -> List[str]:
+def list_evidence_ids(report: DiagnosisReport) -> list[str]:
     """从报告内容中提取证据条目（供 FHIR/接口透出）。"""
     content = report.content if isinstance(report.content, dict) else {}
     raw = str(content.get("evidence") or "")

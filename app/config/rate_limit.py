@@ -1,12 +1,12 @@
-import time
 import asyncio
 import hashlib
-from typing import Dict, List, Optional, Tuple
+import time
 from collections import OrderedDict
-from fastapi import Request, HTTPException
+
+import structlog
+from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
-import structlog
 
 from app.api.v1.errors import RateLimitExceededException
 from app.config.settings import settings
@@ -57,7 +57,7 @@ EMERGENCY_MULTIPLIER_FULL = 5
 
 _buckets: OrderedDict[str, TokenBucket] = OrderedDict()
 _STRIPE_COUNT = 16
-_bucket_stripes: List[asyncio.Lock] = [asyncio.Lock() for _ in range(_STRIPE_COUNT)]
+_bucket_stripes: list[asyncio.Lock] = [asyncio.Lock() for _ in range(_STRIPE_COUNT)]
 _last_cleanup: float = time.monotonic()
 
 
@@ -70,7 +70,7 @@ async def _cleanup_expired_buckets() -> None:
     now = time.monotonic()
     if now - _last_cleanup < BUCKET_CLEANUP_INTERVAL_SECONDS:
         return
-    expired_by_stripe: Dict[int, List[str]] = {}
+    expired_by_stripe: dict[int, list[str]] = {}
     for k, v in _buckets.items():
         if now - v.last_access > BUCKET_MAX_AGE_SECONDS:
             stripe_idx = _get_stripe_index(k)
@@ -87,7 +87,7 @@ async def _cleanup_expired_buckets() -> None:
     _last_cleanup = now
 
 
-async def _get_bucket(key: str, path: str, capacity_override: Optional[int] = None) -> Optional[TokenBucket]:
+async def _get_bucket(key: str, path: str, capacity_override: int | None = None) -> TokenBucket | None:
     stripe_idx = _get_stripe_index(key)
     async with _bucket_stripes[stripe_idx]:
         if key in _buckets:
@@ -136,8 +136,8 @@ async def check_rate_limit(
     user_id: str,
     is_emergency: bool = False,
     skip: bool = False,
-    dedup_key: Optional[str] = None,
-) -> Optional[RateLimitExceededException]:
+    dedup_key: str | None = None,
+) -> RateLimitExceededException | None:
     if skip:
         return None
 
@@ -152,8 +152,8 @@ async def _check_rate_limit_local(
     client_ip: str,
     user_id: str,
     is_emergency: bool,
-    dedup_key: Optional[str],
-) -> Optional[RateLimitExceededException]:
+    dedup_key: str | None,
+) -> RateLimitExceededException | None:
     await _cleanup_expired_buckets()
 
     bucket_key = f"{client_ip}:{user_id}:{path}"
@@ -242,8 +242,8 @@ async def _check_rate_limit_redis(
     client_ip: str,
     user_id: str,
     is_emergency: bool,
-    dedup_key: Optional[str],
-) -> Optional[RateLimitExceededException]:
+    dedup_key: str | None,
+) -> RateLimitExceededException | None:
     from app.config.redis import RedisPool
 
     config = RATE_LIMITS.get(path, {"capacity": 60, "refill_rate": 1.0})

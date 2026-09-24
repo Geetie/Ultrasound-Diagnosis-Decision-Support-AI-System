@@ -2,9 +2,8 @@ import pytest
 
 from safety_gateway.contraindication import (
     ContraindicationEngine,
-    ContraindicationRule,
     ContraindicationMatch,
-    get_contraindication_engine,
+    ContraindicationRule,
 )
 
 pytestmark = [pytest.mark.track_sg, pytest.mark.track_sec, pytest.mark.sec_domain_sg]

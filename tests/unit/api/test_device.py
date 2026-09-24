@@ -1,14 +1,7 @@
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-from datetime import datetime, timezone
+from unittest.mock import AsyncMock, MagicMock
 
-from app.api.v1.errors import BadRequestException, NotFoundException
-from app.models.schemas import (
-    DeviceRegisterRequest,
-    DeviceRegisterResponse,
-    DeviceRecoveryResponse,
-    DeviceRemoteRecoveryResponse,
-)
+import pytest
+
 pytestmark = [pytest.mark.track_api, pytest.mark.track_sec]
 
 
@@ -17,11 +10,11 @@ class TestDeviceRegister:
 
     @pytest.fixture
     def mock_deps(self):
+        from app.dependencies import get_audit_service, get_device_repo
         from app.main import app
-        from app.dependencies import get_device_repo, get_audit_service
         from app.repositories.device_repository import DeviceRepository
-        from app.services.audit_service import AuditService
         from app.security.auth import get_current_active_user
+        from app.services.audit_service import AuditService
 
         mock_device_repo = AsyncMock(spec=DeviceRepository)
         mock_audit_service = AsyncMock(spec=AuditService)
@@ -108,11 +101,11 @@ class TestDeviceDeregister:
 
     @pytest.fixture
     def mock_deps(self):
+        from app.dependencies import get_audit_service, get_device_repo
         from app.main import app
-        from app.dependencies import get_device_repo, get_audit_service
         from app.repositories.device_repository import DeviceRepository
-        from app.services.audit_service import AuditService
         from app.security.auth import get_current_active_user
+        from app.services.audit_service import AuditService
 
         mock_device_repo = AsyncMock(spec=DeviceRepository)
         mock_audit_service = AsyncMock(spec=AuditService)
@@ -185,11 +178,11 @@ class TestDeviceRecovery:
 
     @pytest.fixture
     def mock_deps(self):
+        from app.dependencies import get_audit_service, get_device_repo
         from app.main import app
-        from app.dependencies import get_device_repo, get_audit_service
         from app.repositories.device_repository import DeviceRepository
-        from app.services.audit_service import AuditService
         from app.security.auth import get_current_active_user
+        from app.services.audit_service import AuditService
 
         mock_device_repo = AsyncMock(spec=DeviceRepository)
         mock_audit_service = AsyncMock(spec=AuditService)
@@ -269,11 +262,11 @@ class TestDeviceRemoteRecovery:
 
     @pytest.fixture
     def mock_deps(self):
+        from app.dependencies import get_audit_service, get_device_repo
         from app.main import app
-        from app.dependencies import get_device_repo, get_audit_service
         from app.repositories.device_repository import DeviceRepository
-        from app.services.audit_service import AuditService
         from app.security.auth import get_current_active_user
+        from app.services.audit_service import AuditService
 
         mock_device_repo = AsyncMock(spec=DeviceRepository)
         mock_audit_service = AsyncMock(spec=AuditService)

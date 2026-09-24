@@ -1,37 +1,36 @@
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query, WebSocketException, status
-from datetime import datetime, timezone
-from typing import Dict, List, Optional, Set
-import json
-import time
-import secrets
 import asyncio
-import structlog
+import json
+import secrets
+import time
+from datetime import datetime, timezone
 
-from app.models.schemas import (
-    BaseWebSocketMessage,
-    EdgeNavResultMessage,
-    FrameMessage,
-    NavigationMessage,
-    PingMessage,
-    PongMessage,
-    AuthMessage,
-    AuthOKMessage,
-    DiagnosisResultMessage,
-    SessionTerminatedMessage,
-    NavigationRevocationMessage,
-    ReconnectAckMessage,
-    WebSocketMessageType,
-    NavigationAnnotation,
-    DesensitizationStatus,
-    ImageQuality,
-    PlaneAssessment,
-    RiskFlag,
-    SuggestedAction,
-)
+import structlog
+from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect, status
+
 from app.config.database import AsyncSessionLocal
 from app.config.settings import settings
-from app.repositories import DeviceRepository, SessionRepository, ConsentRepository
 from app.models.database import DiagnosisSession
+from app.models.schemas import (
+    AuthMessage,
+    AuthOKMessage,
+    DesensitizationStatus,
+    DiagnosisResultMessage,
+    EdgeNavResultMessage,
+    FrameMessage,
+    ImageQuality,
+    NavigationAnnotation,
+    NavigationMessage,
+    NavigationRevocationMessage,
+    PingMessage,
+    PlaneAssessment,
+    PongMessage,
+    ReconnectAckMessage,
+    RiskFlag,
+    SessionTerminatedMessage,
+    SuggestedAction,
+    WebSocketMessageType,
+)
+from app.repositories import ConsentRepository, DeviceRepository, SessionRepository
 from app.services.audit_service import AuditService
 from app.services.navigation_upgrade import (
     collect_risk_labels,
@@ -46,10 +45,10 @@ router = APIRouter(tags=["websocket-nav"])
 WS_CLOSE_AUTH_FAILED = 4001
 WS_CLOSE_AUTH_TIMEOUT = 4002
 
-_nav_verification_semaphore: Optional[asyncio.Semaphore] = None
+_nav_verification_semaphore: asyncio.Semaphore | None = None
 
 # M2：自动升级的后台任务引用（持引用避免被 GC；非 asyncio 原语，无需绑定事件循环）
-_pending_upgrade_tasks: Set[asyncio.Task] = set()
+_pending_upgrade_tasks: set[asyncio.Task] = set()
 
 
 def _get_nav_verification_semaphore() -> asyncio.Semaphore:
@@ -64,7 +63,7 @@ def _now_ms() -> int:
     return int(datetime.now(timezone.utc).timestamp() * 1000)
 
 
-def record_nav_latency(message, started_monotonic: float) -> Optional[float]:
+def record_nav_latency(message, started_monotonic: float) -> float | None:
     """记录一次导航链路延迟（T-GB-INT-02，验收：导航 P99 < 200ms）。
 
     时间戳口径按优先级依次尝试（两种口径在链路里并存，混用会让 P99 失真）：
@@ -79,7 +78,7 @@ def record_nav_latency(message, started_monotonic: float) -> Optional[float]:
         本次记录的延迟（秒）；埋点失败返回 ``None``（绝不影响导航链路）。
     """
     try:
-        seconds: Optional[float] = None
+        seconds: float | None = None
 
         sent_ms = getattr(message, "timestamp_ms", None)
         if sent_ms:
@@ -102,19 +101,19 @@ def record_nav_latency(message, started_monotonic: float) -> Optional[float]:
 
         get_metrics_collector().record_nav_latency(seconds)
         return seconds
-    except Exception as exc:  # noqa: BLE001 - 埋点失败不得中断导航
+    except Exception as exc:
         logger.debug("nav_latency_metric_failed", error=str(exc))
         return None
 
 
-def edge_labels_to_annotations(labels) -> List[NavigationAnnotation]:
+def edge_labels_to_annotations(labels) -> list[NavigationAnnotation]:
     """边缘端标注（归一化 x/y/w/h）→ 前端导航标注（归一化 bbox）。
 
     M2：B+ 级标记随标注透传。只接受契约内的取值（``high`` /
     ``start_standard_evaluation``），其它字符串一律丢弃——避免未升级或
     异常边缘端把任意内容塞进对外契约。
     """
-    annotations: List[NavigationAnnotation] = []
+    annotations: list[NavigationAnnotation] = []
     for label in labels:
         risk_flag = getattr(label, "risk_flag", None)
         suggested_action = getattr(label, "suggested_action", None)
@@ -145,10 +144,10 @@ def _schedule_auto_upgrade(
     *,
     session_id: str,
     frame_id: str,
-    annotations: List[NavigationAnnotation],
-    patient_id: Optional[str],
-    organ: Optional[str] = None,
-) -> Optional[asyncio.Task]:
+    annotations: list[NavigationAnnotation],
+    patient_id: str | None,
+    organ: str | None = None,
+) -> asyncio.Task | None:
     """M2：把 B+ 级高危标记的自动升级**移出导航热路径**。
 
     导航链路有 P99 < 200ms 的验收要求，而升级涉及多次 DB 查询 + 写入 +
@@ -195,9 +194,9 @@ def _observe_navigation_quality(
     *,
     session_id: str,
     frame_id: str,
-    plane_assessment: Optional[PlaneAssessment],
-    image_quality: Optional[ImageQuality],
-) -> List[str]:
+    plane_assessment: PlaneAssessment | None,
+    image_quality: ImageQuality | None,
+) -> list[str]:
     """M1/M6：把本帧的切面/质量交给流程监控智能体。
 
     监控是纯内存操作（同步、廉价），但仍是"旁路"能力：监控对象缺失或
@@ -217,7 +216,7 @@ def _observe_navigation_quality(
             plane_assessment=plane_assessment,
             image_quality=image_quality,
         )
-    except Exception as exc:  # noqa: BLE001 - 监控失败不影响导航
+    except Exception as exc:
         logger.debug("nav_quality_monitor_failed", error=str(exc))
         return []
 
@@ -227,12 +226,12 @@ async def deliver_navigation_annotations(
     manager,
     session_id: str,
     frame_id: str,
-    annotations: List[NavigationAnnotation],
+    annotations: list[NavigationAnnotation],
     message,
     started_monotonic: float,
-    plane_assessment: Optional[PlaneAssessment] = None,
-    image_quality: Optional[ImageQuality] = None,
-    organ: Optional[str] = None,
+    plane_assessment: PlaneAssessment | None = None,
+    image_quality: ImageQuality | None = None,
+    organ: str | None = None,
 ) -> bool:
     """同意/安全网关校验后把导航标注下发到前端，并记录链路延迟。
 
@@ -261,7 +260,7 @@ async def deliver_navigation_annotations(
     desensitization_status = DesensitizationStatus.FULL
     # 交给 SafetyGateway 的载荷：帧级属性同样要过网关（它们已在四处白名单
     # 中同口径登记；未部署评估头时不带键，保持载荷与改造前一致）。
-    sg_output_data: Dict[str, object] = {
+    sg_output_data: dict[str, object] = {
         "annotations": [a.model_dump() for a in annotations]
     }
     if plane_assessment is not None:
@@ -330,8 +329,8 @@ async def deliver_navigation_annotations(
 
 class AuthTokenManager:
     def __init__(self):
-        self._tokens: Dict[str, tuple] = {}
-        self._session_locks: Dict[str, asyncio.Lock] = {}
+        self._tokens: dict[str, tuple] = {}
+        self._session_locks: dict[str, asyncio.Lock] = {}
         self._locks_lock = asyncio.Lock()
 
     async def _get_session_lock(self, session_id: str) -> asyncio.Lock:
@@ -380,15 +379,15 @@ class AuthTokenManager:
 
 class ConnectionManager:
     def __init__(self):
-        self.active_connections: Dict[tuple, WebSocket] = {}
-        self.session_index: Dict[str, list] = {}
+        self.active_connections: dict[tuple, WebSocket] = {}
+        self.session_index: dict[str, list] = {}
         self.auth_manager = AuthTokenManager()
-        self.last_heartbeat: Dict[tuple, float] = {}
-        self.missed_pongs: Dict[tuple, int] = {}
-        self.device_sessions: Dict[str, str] = {}
-        self._redis_sub_task: Optional[asyncio.Task] = None
+        self.last_heartbeat: dict[tuple, float] = {}
+        self.missed_pongs: dict[tuple, int] = {}
+        self.device_sessions: dict[str, str] = {}
+        self._redis_sub_task: asyncio.Task | None = None
         self._worker_id: str = secrets.token_hex(4)
-        self._patient_id_cache: Dict[str, tuple] = {}
+        self._patient_id_cache: dict[str, tuple] = {}
 
     async def start_redis_subscriber(self) -> None:
         if not settings.websocket_redis_pubsub_enabled:
@@ -540,8 +539,8 @@ class ConnectionManager:
         self,
         session_id: str,
         reason: str,
-        affected_organs: Optional[list] = None,
-        kb_version: Optional[str] = None,
+        affected_organs: list | None = None,
+        kb_version: str | None = None,
     ):
         msg = SessionTerminatedMessage(
             type=WebSocketMessageType.SESSION_TERMINATED,
@@ -561,7 +560,7 @@ class ConnectionManager:
         )
         await self.send_personal_message(msg.model_dump(), session_id)
 
-    async def send_reconnect_ack(self, session_id: str, session_ttl_remaining_ms: Optional[int] = None):
+    async def send_reconnect_ack(self, session_id: str, session_ttl_remaining_ms: int | None = None):
         msg = ReconnectAckMessage(
             type=WebSocketMessageType.RECONNECT_ACK,
             timestamp=get_timestamp(),

@@ -1,28 +1,28 @@
-from fastapi import APIRouter, Depends
 from datetime import datetime, timezone
-from typing import Optional
 
+from fastapi import APIRouter, Depends
+
+from app.api.v1.errors import NotFoundException
+from app.api.v1.utils import check_consent_status, get_actor_id
+from app.dependencies import get_audit_service, get_consent_repo, get_session_repo
 from app.models.schemas import (
+    ConsentStatus,
+    OrganStatus,
     SessionCreateRequest,
     SessionResponse,
-    SessionUpdateRequest,
     SessionStatus,
-    OrganStatus,
-    ConsentStatus,
+    SessionUpdateRequest,
 )
-from app.api.v1.errors import NotFoundException
-from app.dependencies import get_session_repo, get_consent_repo, get_audit_service
-from app.api.v1.utils import get_actor_id, check_consent_status
-from app.repositories import SessionRepository, ConsentRepository
-from app.services.audit_service import AuditService
+from app.repositories import ConsentRepository, SessionRepository
 from app.security.auth import get_current_active_user
+from app.services.audit_service import AuditService
 
 router = APIRouter(tags=["sessions"])
 
 SESSION_TTL_SECONDS = 7200
 
 
-def _calc_ttl_remaining(updated_at: Optional[datetime]) -> Optional[int]:
+def _calc_ttl_remaining(updated_at: datetime | None) -> int | None:
     if not updated_at:
         return None
     elapsed = (datetime.now(timezone.utc) - updated_at).total_seconds()
@@ -51,7 +51,7 @@ async def create_session(
     session_repo: SessionRepository = Depends(get_session_repo),
     consent_repo: ConsentRepository = Depends(get_consent_repo),
     audit_service: AuditService = Depends(get_audit_service),
-    current_user: Optional[dict] = Depends(get_current_active_user),
+    current_user: dict | None = Depends(get_current_active_user),
 ):
     consent_record = await consent_repo.get_latest_consent(request.patient_id)
     consent_status = check_consent_status(consent_record, request.patient_id)
@@ -84,7 +84,7 @@ async def create_session(
 async def get_session(
     session_id: str,
     session_repo: SessionRepository = Depends(get_session_repo),
-    current_user: Optional[dict] = Depends(get_current_active_user),
+    current_user: dict | None = Depends(get_current_active_user),
 ):
     session = await session_repo.get_session(session_id)
     if not session:
@@ -99,7 +99,7 @@ async def update_session(
     request: SessionUpdateRequest,
     session_repo: SessionRepository = Depends(get_session_repo),
     audit_service: AuditService = Depends(get_audit_service),
-    current_user: Optional[dict] = Depends(get_current_active_user),
+    current_user: dict | None = Depends(get_current_active_user),
 ):
     session = await session_repo.update_session(
         session_id=session_id,

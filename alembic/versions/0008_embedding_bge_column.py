@@ -15,10 +15,10 @@ P0-EMB-01 fix: implements the dual-column design from
 Both columns get an HNSW cosine-distance index so neither path
 degrades retrieval latency.
 """
-from alembic import op
 import sqlalchemy as sa
 from pgvector.sqlalchemy import Vector
 
+from alembic import op
 
 revision = '0008'
 down_revision = '0007'

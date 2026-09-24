@@ -13,7 +13,7 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Any, List, Optional
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -26,7 +26,6 @@ from app.inference.hot_reload import (
     set_reload_adapter,
 )
 
-
 # ----------------------------------------------------------------------
 # 桩件
 # ----------------------------------------------------------------------
@@ -35,7 +34,7 @@ from app.inference.hot_reload import (
 class _CountingSleep:
     """记录调用次数的休眠替身（不真的等待）。"""
 
-    def __init__(self, release_after: Optional[int] = None) -> None:
+    def __init__(self, release_after: int | None = None) -> None:
         self.calls = 0
         self._release_after = release_after
 
@@ -46,7 +45,7 @@ class _CountingSleep:
 class _SessionProvider:
     """可编排活跃会话数的 provider。"""
 
-    def __init__(self, sequence: List[int]) -> None:
+    def __init__(self, sequence: list[int]) -> None:
         self._sequence = list(sequence)
         self.calls = 0
 
@@ -59,8 +58,8 @@ class _SessionProvider:
 
 class _FakeCollector:
     def __init__(self) -> None:
-        self.success_rates: List[float] = []
-        self.durations: List[float] = []
+        self.success_rates: list[float] = []
+        self.durations: list[float] = []
 
     def set_model_hot_reload_success_rate(self, rate: float) -> None:
         self.success_rates.append(rate)
@@ -81,7 +80,7 @@ def _controller(
     *,
     adapter: Any = None,
     sessions: Any = 0,
-    collector: Optional[_FakeCollector] = None,
+    collector: _FakeCollector | None = None,
     max_defer: float = 600.0,
     sleep: Any = None,
 ) -> HotReloadController:

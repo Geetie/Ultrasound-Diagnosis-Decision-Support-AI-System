@@ -1,9 +1,7 @@
 import re
 import threading
-from typing import Dict, List, Optional, Tuple
 
-
-_GRADING_PATTERNS: Dict[str, List[re.Pattern]] = {
+_GRADING_PATTERNS: dict[str, list[re.Pattern]] = {
     "thyroid": [
         re.compile(r'TI[-_]?RADS\s*(\d[a-zA-Z]?)', re.IGNORECASE),
         re.compile(r'TI[-_]?RADS[^\d]*?(\d[a-zA-Z]?)\s*(?:类|级|category)', re.IGNORECASE),
@@ -39,7 +37,7 @@ _GRADING_PATTERNS: Dict[str, List[re.Pattern]] = {
     ],
 }
 
-_GRADE_HIERARCHY: Dict[str, Dict[str, Tuple[int, int]]] = {
+_GRADE_HIERARCHY: dict[str, dict[str, tuple[int, int]]] = {
     "thyroid": {
         "0": (0, 0), "1": (1, 0), "2": (2, 0), "3": (3, 0),
         "4": (4, 0), "4a": (4, 1), "4b": (4, 2), "4c": (4, 3), "5": (5, 0),
@@ -53,18 +51,18 @@ _GRADE_HIERARCHY: Dict[str, Dict[str, Tuple[int, int]]] = {
     "cardiac": {"normal": (0, 0), "mild": (1, 0), "moderate": (2, 0), "severe": (3, 0)},
 }
 
-_LVEF_TO_GRADING_DEFAULTS: List[Tuple[float, str]] = [
+_LVEF_TO_GRADING_DEFAULTS: list[tuple[float, str]] = [
     (55.0, "normal"),
     (45.0, "mild"),
     (30.0, "moderate"),
     (0.0, "severe"),
 ]
 
-_lvef_cache: Optional[List[Tuple[float, str]]] = None
+_lvef_cache: list[tuple[float, str]] | None = None
 _lvef_cache_lock = threading.Lock()
 
 
-def _get_lvef_grading_table() -> List[Tuple[float, str]]:
+def _get_lvef_grading_table() -> list[tuple[float, str]]:
     global _lvef_cache
     if _lvef_cache is not None:
         return _lvef_cache
@@ -95,14 +93,14 @@ def _sync_lvef_thresholds_from_config() -> None:
         with _lvef_cache_lock:
             _lvef_cache = list(_LVEF_TO_GRADING_DEFAULTS)
 
-_CN_CARDIAC_TO_GRADING: Dict[str, str] = {
+_CN_CARDIAC_TO_GRADING: dict[str, str] = {
     "正常": "normal",
     "轻度": "mild",
     "中度": "moderate",
     "重度": "severe",
 }
 
-_CN_CARDIAC_CLASS_TO_GRADING: Dict[str, str] = {
+_CN_CARDIAC_CLASS_TO_GRADING: dict[str, str] = {
     "Ⅰ": "normal",
     "1": "normal",
     "Ⅱ": "mild",
@@ -113,7 +111,7 @@ _CN_CARDIAC_CLASS_TO_GRADING: Dict[str, str] = {
     "4": "severe",
 }
 
-_CLINICALLY_SIGNIFICANT_SUBCLASS_PAIRS: Dict[str, set] = {
+_CLINICALLY_SIGNIFICANT_SUBCLASS_PAIRS: dict[str, set] = {
     "thyroid": {frozenset({"4a", "4b"}), frozenset({"4b", "4c"})},
     "breast": {frozenset({"4a", "4b"}), frozenset({"4b", "4c"})},
     "liver": set(),
@@ -132,7 +130,7 @@ def _map_lvef_to_grading(lvef_str: str) -> str:
     return "severe"
 
 
-def extract_grading(text: str, organ: str) -> Optional[str]:
+def extract_grading(text: str, organ: str) -> str | None:
     result = extract_grading_with_conflict(text, organ)
     if result is None:
         return None
@@ -150,7 +148,7 @@ def _pick_lvef_preferred_grading(cn_grading: str, lvef_grading: str, prefer_lvef
     return cn_grading if sev_cn >= sev_lvef else lvef_grading
 
 
-def extract_grading_with_conflict(text: str, organ: str) -> Optional[Tuple[str, bool]]:
+def extract_grading_with_conflict(text: str, organ: str) -> tuple[str, bool] | None:
     """从文本中提取分级结果，同时返回是否存在冲突。
 
     Returns:
@@ -160,7 +158,7 @@ def extract_grading_with_conflict(text: str, organ: str) -> Optional[Tuple[str, 
         - 任何器官：文本中存在多个不同的分级结果
     """
     patterns = _GRADING_PATTERNS.get(organ, [])
-    all_gradings: List[str] = []
+    all_gradings: list[str] = []
     for pattern in patterns:
         for match in pattern.finditer(text):
             raw = match.group(1)

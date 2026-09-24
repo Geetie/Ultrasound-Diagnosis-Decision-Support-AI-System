@@ -8,8 +8,11 @@
 """
 
 import time
+
 import pytest
+
 from app.security.desensitization import get_desensitization_engine
+
 pytestmark = [pytest.mark.track_sec, pytest.mark.track_data, pytest.mark.benchmark]
 
 
@@ -20,29 +23,29 @@ class TestDesensitizationPerformance:
     测量结果仅反映逻辑正确性和相对性能，不代表生产环境的绝对延迟。
     不应将此处的基准数值直接用于生产环境SLA评估。
     """
-    
+
     def test_performance_large_text(self):
         """测试大规模文本脱敏性能"""
         engine = get_desensitization_engine()
-        
+
         large_text = "患者张三，身份证号110101199001011234，手机号13812345678。" * 1000
 
         for _ in range(10):
             engine.desensitize(large_text)
-        
+
         start_time = time.time()
         result = engine.desensitize(large_text)
         end_time = time.time()
-        
+
         duration = end_time - start_time
-        
+
         assert len(result) > 0
         assert duration < 1.0, f"脱敏1000条记录耗时 {duration:.2f}s，超过1秒基准值"
 
     def test_performance_many_requests(self):
         """测试高频请求场景下的脱敏性能"""
         engine = get_desensitization_engine()
-        
+
         test_cases = [
             "患者张三，身份证号110101199001011234",
             "手机号13812345678",
@@ -54,15 +57,15 @@ class TestDesensitizationPerformance:
         for _ in range(10):
             for case in test_cases:
                 engine.desensitize(case)
-        
+
         start_time = time.time()
         for _ in range(1000):
             for case in test_cases:
                 engine.desensitize(case)
         end_time = time.time()
-        
+
         duration = end_time - start_time
-        
+
         assert duration < 1.0, f"5000次脱敏请求耗时 {duration:.2f}s，超过1秒基准值"
 
     def test_ci_throughput(self):

@@ -6,8 +6,6 @@ pytestmark = [pytest.mark.track_sec, pytest.mark.sec_domain_desens]
 
 from app.security.three_layer_desensitization import (
     ThreeLayerDesensitizationManager,
-    ThreeLayerDesensitizationResult,
-    DesensitizationLayer,
 )
 
 PII_INPUT_DATA = {
@@ -67,13 +65,12 @@ class TestThreeLayerPipeline:
             "app.services.safety_gateway_client.safety_gateway_client.check_output",
             new_callable=AsyncMock,
             return_value=SG_PASS_RESULT,
-        ):
-            with pytest.raises(ValueError, match="consent_status_at_input must not be None"):
-                await manager.process_full_pipeline(
-                    patient_id="P001",
-                    input_data=PII_INPUT_DATA,
-                    consent_status_at_input=None,
-                )
+        ), pytest.raises(ValueError, match="consent_status_at_input must not be None"):
+            await manager.process_full_pipeline(
+                patient_id="P001",
+                input_data=PII_INPUT_DATA,
+                consent_status_at_input=None,
+            )
 
     @pytest.mark.asyncio
     async def test_full_pipeline_sg_check_fails(self):

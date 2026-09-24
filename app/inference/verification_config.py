@@ -8,7 +8,6 @@
 import json
 import threading
 from pathlib import Path
-from typing import Dict, List, Optional
 
 import structlog
 from pydantic import BaseModel, Field, field_validator
@@ -42,7 +41,7 @@ class BoundaryPairConfig(BaseModel):
 class BoundaryConfig(BaseModel):
     """边界配置"""
     version: str = Field("1.0", description="配置版本")
-    organ_boundaries: Dict[str, List[BoundaryPairConfig]] = Field(
+    organ_boundaries: dict[str, list[BoundaryPairConfig]] = Field(
         default_factory=dict,
         description="各器官的边界对配置"
     )
@@ -51,7 +50,7 @@ class BoundaryConfig(BaseModel):
 class ForbiddenTermConfig(BaseModel):
     """禁忌词配置"""
     term: str = Field(..., description="禁忌词")
-    variants: List[str] = Field(default_factory=list, description="术语变体")
+    variants: list[str] = Field(default_factory=list, description="术语变体")
     severity: int = Field(2, description="严重程度", ge=1, le=3)
     description: str = Field("", description="描述")
     allow_if_context: str = Field("", description="上下文允许关键词，若文本包含此词则跳过检测")
@@ -61,7 +60,7 @@ class ForbiddenTermConfig(BaseModel):
 class ForbiddenTermsConfig(BaseModel):
     """禁忌词配置"""
     version: str = Field("1.0", description="配置版本")
-    organ_terms: Dict[str, List[ForbiddenTermConfig]] = Field(
+    organ_terms: dict[str, list[ForbiddenTermConfig]] = Field(
         default_factory=dict,
         description="各器官的禁忌词配置"
     )
@@ -102,7 +101,7 @@ class NumericalRangeConfig(BaseModel):
 class NumericalValidationConfig(BaseModel):
     """数值验证配置"""
     version: str = Field("1.0", description="配置版本")
-    organ_ranges: Dict[str, List[NumericalRangeConfig]] = Field(
+    organ_ranges: dict[str, list[NumericalRangeConfig]] = Field(
         default_factory=dict,
         description="各器官的数值范围配置"
     )
@@ -119,7 +118,7 @@ class AdaptiveThresholdConfig(BaseModel):
 
 def compute_adaptive_threshold(
     config: AdaptiveThresholdConfig,
-    historical_pass_rates: List[float],
+    historical_pass_rates: list[float],
 ) -> float:
     if not historical_pass_rates:
         return config.base_threshold
@@ -218,7 +217,7 @@ class VerificationConfig(BaseModel):
         default_factory=NumericalValidationConfig,
         description="数值验证配置"
     )
-    adaptive_thresholds: List[AdaptiveThresholdConfig] = Field(
+    adaptive_thresholds: list[AdaptiveThresholdConfig] = Field(
         default_factory=list,
         description="自适应阈值配置列表"
     )
@@ -771,7 +770,7 @@ def get_default_verification_config() -> VerificationConfig:
     )
 
 
-def load_config_from_json(file_path: str) -> Optional[VerificationConfig]:
+def load_config_from_json(file_path: str) -> VerificationConfig | None:
     """从JSON文件加载配置"""
     try:
         path = Path(file_path)
@@ -779,7 +778,7 @@ def load_config_from_json(file_path: str) -> Optional[VerificationConfig]:
             logger.warning("config_file_not_found", path=file_path)
             return None
 
-        with open(path, 'r', encoding='utf-8') as f:
+        with open(path, encoding='utf-8') as f:
             data = json.load(f)
 
         config = VerificationConfig.model_validate(data)
@@ -815,11 +814,11 @@ def sync_default_config_to_json(
 
 
 # 全局配置实例
-_config: Optional[VerificationConfig] = None
+_config: VerificationConfig | None = None
 _config_lock = threading.Lock()
 
 
-def get_verification_config(config_path: Optional[str] = None) -> VerificationConfig:
+def get_verification_config(config_path: str | None = None) -> VerificationConfig:
     """获取验证配置（线程安全单例模式）"""
     global _config
 

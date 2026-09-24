@@ -24,7 +24,7 @@
 from __future__ import annotations
 
 import re
-from typing import List, Optional, Sequence
+from collections.abc import Sequence
 
 import structlog
 
@@ -55,17 +55,17 @@ _LIST_SPLIT_RE = re.compile(r"[、,，;；/]")
 _CODE_RE = re.compile(r"\b(UDT-[A-Z0-9\-]+)\b", re.IGNORECASE)
 
 
-def _clean(text: Optional[str]) -> str:
+def _clean(text: str | None) -> str:
     return (text or "").strip().strip("。.;；,")
 
 
-def _split_evidence(raw: Optional[str]) -> List[str]:
+def _split_evidence(raw: str | None) -> list[str]:
     if not raw:
         return []
     return [item for item in (part.strip() for part in _LIST_SPLIT_RE.split(raw)) if item]
 
 
-def _parse_confidence(raw: Optional[str]) -> Optional[float]:
+def _parse_confidence(raw: str | None) -> float | None:
     """解析可能性数值；缺失或占位符（—/N/A）返回 None。"""
     if not raw:
         return None
@@ -85,9 +85,9 @@ def _parse_confidence(raw: Optional[str]) -> Optional[float]:
     return round(value, 4)
 
 
-def _parse_name(raw: str) -> tuple[str, Optional[str]]:
+def _parse_name(raw: str) -> tuple[str, str | None]:
     name = _clean(raw)
-    code: Optional[str] = None
+    code: str | None = None
     match = _CODE_RE.search(name)
     if match:
         code = match.group(1)
@@ -96,9 +96,9 @@ def _parse_name(raw: str) -> tuple[str, Optional[str]]:
 
 
 def parse_differential_diagnoses(
-    text: Optional[str],
+    text: str | None,
     max_candidates: int = DEFAULT_MAX_CANDIDATES,
-) -> List[DifferentialDiagnosis]:
+) -> list[DifferentialDiagnosis]:
     """从 LLM 输出解析鉴别诊断清单（按 rank 升序，去重保序）。
 
     Args:
@@ -121,8 +121,8 @@ def parse_differential_diagnoses(
     return items[:max_candidates]
 
 
-def _parse_structured(text: str) -> List[DifferentialDiagnosis]:
-    items: List[DifferentialDiagnosis] = []
+def _parse_structured(text: str) -> list[DifferentialDiagnosis]:
+    items: list[DifferentialDiagnosis] = []
     seen: set = set()
     for line in text.splitlines():
         match = _STRUCTURED_RE.match(line)
@@ -148,13 +148,13 @@ def _parse_structured(text: str) -> List[DifferentialDiagnosis]:
     return items
 
 
-def _parse_lenient(text: str) -> List[DifferentialDiagnosis]:
+def _parse_lenient(text: str) -> list[DifferentialDiagnosis]:
     """宽松解析：从"鉴别诊断：A、B、C"取病种名（无依据/无数值）。"""
     match = _LIST_RE.search(text)
     if not match:
         return []
 
-    items: List[DifferentialDiagnosis] = []
+    items: list[DifferentialDiagnosis] = []
     seen: set = set()
     rank = 0
     for raw in _LIST_SPLIT_RE.split(match.group("body")):

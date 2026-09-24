@@ -1,18 +1,19 @@
 import logging
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
-from safety_gateway.desensitization import sg_desensitization_engine
-from safety_gateway.threshold import get_threshold_engine
-from safety_gateway.validation_result import ThresholdCheckResult, ConsentStatus
+import pytest
+
 from safety_gateway.checker import (
-    SafetyGatewayChecker,
+    CheckResult,
     CheckResultStatus,
     DegradedReason,
-    CheckResult,
+    SafetyGatewayChecker,
     get_safety_gateway_checker,
 )
 from safety_gateway.consent_checker import ConsentCheckResult
+from safety_gateway.desensitization import sg_desensitization_engine
+from safety_gateway.threshold import get_threshold_engine
+from safety_gateway.validation_result import ConsentStatus
 
 logger = logging.getLogger(__name__)
 
@@ -348,12 +349,12 @@ class TestSafetyGatewayErrors:
 
     def test_error_hierarchy(self):
         from safety_gateway.errors import (
-            SafetyGatewayError,
-            DatabaseError,
-            DatabaseConnectionError,
-            ConsentError,
-            ValidationError,
             CircuitBreakerError,
+            ConsentError,
+            DatabaseConnectionError,
+            DatabaseError,
+            SafetyGatewayError,
+            ValidationError,
         )
 
         assert issubclass(DatabaseError, SafetyGatewayError)
@@ -364,13 +365,13 @@ class TestSafetyGatewayErrors:
 
     def test_error_codes(self):
         from safety_gateway.errors import (
+            CircuitBreakerError,
+            ConsentCheckError,
+            ContraindicationError,
             DatabaseConnectionError,
             DatabaseQueryTimeoutError,
-            ConsentCheckError,
             SensitiveDataError,
-            ContraindicationError,
             ThresholdError,
-            CircuitBreakerError,
         )
 
         assert DatabaseConnectionError.code == "SG_DB_CONNECTION"
@@ -603,8 +604,9 @@ class TestHallucinationWarning:
 class TestPortConflictDetection:
 
     def test_port_8000_conflict_detected(self):
-        from safety_gateway.sg_config import SGSettings
         from pydantic import ValidationError
+
+        from safety_gateway.sg_config import SGSettings
         with pytest.raises(ValidationError, match="conflicts"):
             SGSettings(safety_gateway_port=8000)
 
@@ -642,6 +644,6 @@ class TestE4005ASubCodeSplit:
         assert exc.code == "E4005A2"
 
     def test_error_code_map_includes_both(self):
-        from safety_gateway.errors import DesensitizationSafetyViolationError, ConsentSafetyViolationError
+        from safety_gateway.errors import ConsentSafetyViolationError, DesensitizationSafetyViolationError
         assert DesensitizationSafetyViolationError.code == "E4005A1"
         assert ConsentSafetyViolationError.code == "E4005A2"

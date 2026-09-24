@@ -1,12 +1,13 @@
-import pytest
 from unittest.mock import AsyncMock, patch
 
-from safety_gateway.validation_result import ConsentStatus
+import pytest
+
 from safety_gateway.checker import (
     CheckResultStatus,
     get_safety_gateway_checker,
 )
 from safety_gateway.consent_checker import ConsentCheckResult
+from safety_gateway.validation_result import ConsentStatus
 
 pytestmark = [pytest.mark.track_sg, pytest.mark.track_sec, pytest.mark.sec_domain_sg]
 
@@ -32,8 +33,8 @@ class TestConsentStatusInputFastReject:
 
     @pytest.mark.asyncio
     async def test_pending_status_fast_reject(self):
-        from unittest.mock import patch, AsyncMock
-        from safety_gateway.consent_checker import ConsentCheckResult
+        from unittest.mock import AsyncMock, patch
+
         checker = get_safety_gateway_checker()
         with patch.object(checker._consent_checker, 'check_consent_status', new_callable=AsyncMock, return_value=ConsentCheckResult(status=ConsentStatus.PENDING, timeout=False, error=False)):
             result = await checker.perform_full_check(
@@ -58,8 +59,8 @@ class TestConsentStatusSource:
 
     @pytest.mark.asyncio
     async def test_fast_reject_sets_input_fast_reject_source(self):
-        from unittest.mock import patch, AsyncMock
-        from safety_gateway.consent_checker import ConsentCheckResult
+        from unittest.mock import AsyncMock, patch
+
         checker = get_safety_gateway_checker()
         with patch.object(checker._consent_checker, 'check_consent_status', new_callable=AsyncMock, return_value=ConsentCheckResult(status=ConsentStatus.DENIED, timeout=False, error=False)):
             result = await checker.perform_full_check(
@@ -83,8 +84,8 @@ class TestConsentStatusSource:
 
     @pytest.mark.asyncio
     async def test_pg_direct_check_sets_pg_direct_source(self):
-        from unittest.mock import patch, AsyncMock, MagicMock
-        from safety_gateway.consent_checker import ConsentCheckResult
+        from unittest.mock import AsyncMock, patch
+
         from safety_gateway.checker.consent_phase import ConsentPhase
         from safety_gateway.checker.phase_base import CheckContext
         mock_result = ConsentCheckResult(status=ConsentStatus.GRANTED, timeout=False, error=False)

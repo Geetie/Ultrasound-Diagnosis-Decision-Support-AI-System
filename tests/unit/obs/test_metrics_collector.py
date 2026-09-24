@@ -1,6 +1,7 @@
 import pytest
-from app.observability.metrics_collector import MetricsCollector, VictoriaMetricsPusher
+
 from app.observability.enums import DeploymentProfile
+from app.observability.metrics_collector import MetricsCollector, VictoriaMetricsPusher
 
 
 @pytest.fixture(autouse=True)

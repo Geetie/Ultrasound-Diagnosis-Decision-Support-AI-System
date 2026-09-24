@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import asyncio
 import re
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -63,7 +63,7 @@ def _is_collection_not_found(exc: Exception) -> bool:
 class _Hit:
     """Internal lightweight hit type used during RRF fusion."""
 
-    __slots__ = ("chunk_id", "chunk", "score", "source")
+    __slots__ = ("chunk", "chunk_id", "score", "source")
 
     def __init__(
         self,
@@ -96,9 +96,9 @@ class Retriever:
         self,
         vector_client: VectorIndexClient,
         embedding_service: EmbeddingService,
-        ultrasound_clip: Optional[EmbeddingService] = None,
-        bm25_index: Optional[BM25Index] = None,
-        session_factory: Optional[Any] = None,
+        ultrasound_clip: EmbeddingService | None = None,
+        bm25_index: BM25Index | None = None,
+        session_factory: Any | None = None,
         rrf_k: int | None = None,
     ):
         self._vector_client = vector_client
@@ -121,7 +121,7 @@ class Retriever:
         # Each leg is keyed by the RetrievalMethod enum value that its hits
         # carry (image leg hits are tagged DENSE inside _safe_image, so the
         # image leg is also keyed under DENSE).
-        tasks: List[Tuple[RetrievalMethod, "asyncio.Future"]] = []
+        tasks: list[tuple[RetrievalMethod, asyncio.Future]] = []
         tasks.append((
             RetrievalMethod.DENSE,
             asyncio.create_task(self._safe_dense(enhanced_query, request)),
@@ -143,11 +143,11 @@ class Retriever:
                 asyncio.create_task(self._safe_image(request)),
             ))
 
-        legs: Dict[RetrievalMethod, List[_Hit]] = {}
+        legs: dict[RetrievalMethod, list[_Hit]] = {}
         for method, task in tasks:
             try:
                 hits = await task
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.warning(
                     "retriever_leg_failed",
                     leg=method.value,
@@ -183,7 +183,7 @@ class Retriever:
         )
 
     @staticmethod
-    async def _record_references(chunks: List[ScoredChunk]) -> None:
+    async def _record_references(chunks: list[ScoredChunk]) -> None:
         chunk_ids = [chunk.chunk.chunk_id for chunk in chunks if chunk.chunk.chunk_id]
         if not chunk_ids:
             return
@@ -197,7 +197,7 @@ class Retriever:
 
     async def _safe_dense(
         self, query: str, request: RetrievalRequest
-    ) -> List[_Hit]:
+    ) -> list[_Hit]:
         try:
             return await self._dense_search(query, request)
         except (EmbeddingError, VectorIndexError) as exc:
@@ -207,7 +207,7 @@ class Retriever:
                 error_type=type(exc).__name__,
             )
             return []
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning(
                 "dense_search_unexpected",
                 error=str(exc),
@@ -217,14 +217,14 @@ class Retriever:
 
     async def _safe_sparse(
         self, query: str, request: RetrievalRequest
-    ) -> List[_Hit]:
+    ) -> list[_Hit]:
         if self._bm25 is None or not self._bm25.is_built:
             return []
         try:
             hits = self._bm25.search(
                 query, top_k=request.top_k, organ_filter=request.organ
             )
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning(
                 "sparse_search_failed",
                 error=str(exc),
@@ -241,7 +241,7 @@ class Retriever:
             for h in hits
         ]
 
-    async def _safe_image(self, request: RetrievalRequest) -> List[_Hit]:
+    async def _safe_image(self, request: RetrievalRequest) -> list[_Hit]:
         if self._clip is None or request.image_data is None:
             return []
         try:
@@ -283,7 +283,7 @@ class Retriever:
                 error_type=type(exc).__name__,
             )
             return []
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             if _is_collection_not_found(exc):
                 logger.info(
                     "image_collection_not_found_skipping",
@@ -301,7 +301,7 @@ class Retriever:
 
     async def _dense_search(
         self, query: str, request: RetrievalRequest
-    ) -> List[_Hit]:
+    ) -> list[_Hit]:
         # Embed the query (1 call, no retry logic here; the orchestrator wraps).
         text_resp = await self._embedding.embed_text(
             TextEmbeddingRequest(
@@ -329,9 +329,9 @@ class Retriever:
 
     async def _wrap_search_results(
         self,
-        results: List[SearchResult],
+        results: list[SearchResult],
         source: RetrievalMethod,
-    ) -> List[_Hit]:
+    ) -> list[_Hit]:
         if not results:
             return []
         if self._session_factory is None:
@@ -349,6 +349,7 @@ class Retriever:
         session: AsyncSession = self._session_factory()
         try:
             from sqlalchemy import select
+
             from app.models.database import KnowledgeChunkModel
 
             ids = [r.id for r in results]
@@ -365,7 +366,7 @@ class Retriever:
                     await res
 
         score_map = {r.id: float(r.score) for r in results}
-        hits: List[_Hit] = []
+        hits: list[_Hit] = []
         for r in results:
             row = rows.get(r.id)
             if row is None:
@@ -392,16 +393,16 @@ class Retriever:
         return hits
 
     def _rrf_fuse(
-        self, legs: Dict[RetrievalMethod, List[_Hit]]
-    ) -> List[_Hit]:
+        self, legs: dict[RetrievalMethod, list[_Hit]]
+    ) -> list[_Hit]:
         """Reciprocal Rank Fusion: fused(d) = sum(1 / (k + rank_i(d))).
 
         Preserves the original _Hit.chunk / _Hit.source from the first leg
         where the chunk appears; ranks the fused list by fused score.
         """
         k = self._rrf_k
-        fused_scores: Dict[str, float] = {}
-        first_seen: Dict[str, _Hit] = {}
+        fused_scores: dict[str, float] = {}
+        first_seen: dict[str, _Hit] = {}
         for source, hits in legs.items():
             # Sort this leg by score desc to derive ranks.
             ordered = sorted(hits, key=lambda h: h.score, reverse=True)
@@ -413,7 +414,7 @@ class Retriever:
                     first_seen[hit.chunk_id] = hit
 
         # Deduplicate by chunk_id, keep the hit with the highest RRF score.
-        unique: Dict[str, _Hit] = {}
+        unique: dict[str, _Hit] = {}
         for cid, score in fused_scores.items():
             hit = first_seen[cid]
             # Use the fused RRF score as the new "score" so consumers see a
@@ -430,13 +431,13 @@ class Retriever:
         )
 
     @staticmethod
-    def _embedding_to_list(emb: Any) -> List[float]:
+    def _embedding_to_list(emb: Any) -> list[float]:
         """Coerce an embedding (np.ndarray, list, etc.) to a flat list of floats."""
         try:
             import numpy as np
             if isinstance(emb, np.ndarray):
                 return emb.astype(np.float32).ravel().tolist()
-        except Exception:  # noqa: BLE001
+        except Exception:
             pass
         if isinstance(emb, list):
             return [float(x) for x in emb]
@@ -444,20 +445,20 @@ class Retriever:
             return [float(x) for x in emb.tolist()]
         return [float(emb)]
 
-    async def health_check(self) -> Dict[str, bool]:
+    async def health_check(self) -> dict[str, bool]:
         """Check health of embedding service and vector index.
 
         Returns a dict with keys "embedding" and "vector_index", values are
         True if healthy, False otherwise.
         """
-        results: Dict[str, bool] = {}
+        results: dict[str, bool] = {}
         try:
             results["embedding"] = bool(await self._embedding.health_check())
-        except Exception:  # noqa: BLE001
+        except Exception:
             results["embedding"] = False
         try:
             results["vector_index"] = bool(await self._vector_client.health_check())
-        except Exception:  # noqa: BLE001
+        except Exception:
             results["vector_index"] = False
         return results
 
@@ -470,7 +471,7 @@ class Retriever:
                     res = close()
                     if asyncio.iscoroutine(res):
                         await res
-                except Exception:  # noqa: BLE001
+                except Exception:
                     pass
 
 

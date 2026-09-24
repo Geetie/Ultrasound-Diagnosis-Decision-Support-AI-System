@@ -1,7 +1,7 @@
 import asyncio
 import threading
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 import structlog
 
@@ -51,15 +51,15 @@ structlog.configure(
 class LogStorage:
     _instance: Optional["LogStorage"] = None
     _lock = threading.Lock()
-    _backend: Optional[LogStorageBackend] = None
+    _backend: LogStorageBackend | None = None
     _profile: DeploymentProfile = DeploymentProfile.COMPACT
 
     def __init__(
         self,
         profile: DeploymentProfile = DeploymentProfile.COMPACT,
-        database_url: Optional[str] = None,
-        log_dir: Optional[str] = None,
-        es_url: Optional[str] = None,
+        database_url: str | None = None,
+        log_dir: str | None = None,
+        es_url: str | None = None,
         enable_batching: bool = True,
         batch_size: int = BatchLogStorageWrapper.DEFAULT_BATCH_SIZE,
         flush_interval: float = BatchLogStorageWrapper.DEFAULT_FLUSH_INTERVAL,
@@ -95,8 +95,8 @@ class LogStorage:
 
     @staticmethod
     def _create_compact_backend(
-        database_url: Optional[str] = None,
-        log_dir: Optional[str] = None,
+        database_url: str | None = None,
+        log_dir: str | None = None,
     ) -> LogStorageBackend:
         try:
             backend = PostgreSQLLogStorage(
@@ -114,10 +114,10 @@ class LogStorage:
     @classmethod
     def get_instance(
         cls,
-        profile: Optional[DeploymentProfile] = None,
-        database_url: Optional[str] = None,
-        log_dir: Optional[str] = None,
-        es_url: Optional[str] = None,
+        profile: DeploymentProfile | None = None,
+        database_url: str | None = None,
+        log_dir: str | None = None,
+        es_url: str | None = None,
         enable_batching: bool = True,
         batch_size: int = BatchLogStorageWrapper.DEFAULT_BATCH_SIZE,
         flush_interval: float = BatchLogStorageWrapper.DEFAULT_FLUSH_INTERVAL,
@@ -161,7 +161,7 @@ class LogStorage:
     def get_profile(self) -> DeploymentProfile:
         return self._profile
 
-    def get_metrics(self) -> Dict[str, Any]:
+    def get_metrics(self) -> dict[str, Any]:
         if isinstance(self._backend, BatchLogStorageWrapper):
             return self._backend.get_metrics()
         return {}
@@ -170,8 +170,8 @@ class LogStorage:
         self,
         category: LogCategory,
         message: str,
-        extra: Optional[Dict[str, Any]] = None,
-        ntp_sync_status: Optional[NtpSyncStatus] = None,
+        extra: dict[str, Any] | None = None,
+        ntp_sync_status: NtpSyncStatus | None = None,
         **kwargs,
     ) -> None:
         if self._backend:
@@ -188,8 +188,8 @@ class LogStorage:
         self,
         category: LogCategory,
         message: str,
-        extra: Optional[Dict[str, Any]] = None,
-        ntp_sync_status: Optional[NtpSyncStatus] = None,
+        extra: dict[str, Any] | None = None,
+        ntp_sync_status: NtpSyncStatus | None = None,
         **kwargs,
     ) -> None:
         if self._backend:
@@ -216,8 +216,8 @@ def add_ntp_context(
 
 def classify_and_bind_logger(
     category: LogCategory,
-    logger_name: Optional[str] = None,
-    ntp_sync_status: Optional[NtpSyncStatus] = None,
+    logger_name: str | None = None,
+    ntp_sync_status: NtpSyncStatus | None = None,
 ) -> structlog.stdlib.BoundLogger:
     logger = structlog.get_logger(name=logger_name)
 
@@ -233,8 +233,8 @@ def classify_and_bind_logger(
 
 
 def create_diagnostic_logger(
-    logger_name: Optional[str] = None,
-    ntp_sync_status: Optional[NtpSyncStatus] = None,
+    logger_name: str | None = None,
+    ntp_sync_status: NtpSyncStatus | None = None,
 ) -> structlog.stdlib.BoundLogger:
     return classify_and_bind_logger(
         category=LogCategory.DIAGNOSTIC,
@@ -244,8 +244,8 @@ def create_diagnostic_logger(
 
 
 def create_operational_logger(
-    logger_name: Optional[str] = None,
-    ntp_sync_status: Optional[NtpSyncStatus] = None,
+    logger_name: str | None = None,
+    ntp_sync_status: NtpSyncStatus | None = None,
 ) -> structlog.stdlib.BoundLogger:
     return classify_and_bind_logger(
         category=LogCategory.OPERATIONAL,
@@ -255,8 +255,8 @@ def create_operational_logger(
 
 
 def create_audit_logger(
-    logger_name: Optional[str] = None,
-    ntp_sync_status: Optional[NtpSyncStatus] = None,
+    logger_name: str | None = None,
+    ntp_sync_status: NtpSyncStatus | None = None,
 ) -> structlog.stdlib.BoundLogger:
     return classify_and_bind_logger(
         category=LogCategory.AUDIT,

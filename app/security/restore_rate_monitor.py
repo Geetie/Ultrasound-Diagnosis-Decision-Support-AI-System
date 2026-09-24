@@ -24,7 +24,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional, Protocol, Set, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 import structlog
 
@@ -46,11 +46,11 @@ class RestoreRateAlert:
     count: int
     limit: int
     detected_at: datetime
-    actors: Set[str] = field(default_factory=set)
+    actors: set[str] = field(default_factory=set)
     notified: bool = False
     audit_logged: bool = False
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         return {
             "profile": self.profile,
             "hour_key": self.hour_key,
@@ -116,7 +116,7 @@ class WebhookSecurityOfficerNotifier:
                     json={"type": AUDIT_ACTION, **alert.as_dict()},
                 )
             return 200 <= response.status_code < 300
-        except Exception as exc:  # noqa: BLE001 - 通知失败不阻断业务
+        except Exception as exc:
             logger.error(
                 "security_officer_notify_failed",
                 channel=self.name,
@@ -138,15 +138,15 @@ class RestoreRateMonitor:
     def __init__(
         self,
         *,
-        profile: Optional[str] = None,
-        hour_limit: Optional[int] = None,
-        notifier: Optional[SecurityOfficerNotifier] = None,
+        profile: str | None = None,
+        hour_limit: int | None = None,
+        notifier: SecurityOfficerNotifier | None = None,
     ) -> None:
         self._profile_override = profile
         self._hour_limit_override = hour_limit
         self._notifier = notifier
         # 进程内去重（Redis 不可用时的兜底），键为 (profile, hour_key)
-        self._alerted: Set[tuple] = set()
+        self._alerted: set[tuple] = set()
         self._alerts: list = []
 
     # ---- 阈值 ----
@@ -163,7 +163,7 @@ class RestoreRateMonitor:
         # （full 模式下会用 desensitization_restore_rate_limit_full）
         return int(settings.desensitization_restore_rate_limit)
 
-    def thresholds(self) -> Dict[str, Any]:
+    def thresholds(self) -> dict[str, Any]:
         """对外暴露阈值口径（运维面板与合规检查用）。"""
         return {
             "profile": self.profile,
@@ -182,11 +182,11 @@ class RestoreRateMonitor:
         self,
         *,
         count: int,
-        hour_key: Optional[str] = None,
-        actor: Optional[str] = None,
-        session_id: Optional[str] = None,
-        limit: Optional[int] = None,
-    ) -> Optional[RestoreRateAlert]:
+        hour_key: str | None = None,
+        actor: str | None = None,
+        session_id: str | None = None,
+        limit: int | None = None,
+    ) -> RestoreRateAlert | None:
         """超限则触发一次告警（同小时同档位去重）。
 
         Returns:
@@ -235,7 +235,7 @@ class RestoreRateMonitor:
                 ex=7200,
             )
             return bool(acquired)
-        except Exception as exc:  # noqa: BLE001 - Redis 不可用时退化为进程内去重
+        except Exception as exc:
             logger.debug("restore_rate_alert_dedup_redis_failed", error=str(exc))
             if dedup_key in self._alerted:
                 return False
@@ -246,8 +246,8 @@ class RestoreRateMonitor:
         self,
         alert: RestoreRateAlert,
         *,
-        actor: Optional[str],
-        session_id: Optional[str],
+        actor: str | None,
+        session_id: str | None,
     ) -> bool:
         """写审计（独立会话，失败不影响业务与告警）。"""
         try:
@@ -273,7 +273,7 @@ class RestoreRateMonitor:
                     if inspect.isawaitable(maybe):
                         await maybe
             return True
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.error(
                 "restore_rate_alert_audit_failed",
                 error=str(exc),
@@ -286,7 +286,7 @@ class RestoreRateMonitor:
         notifier = self._notifier or self._build_notifier()
         try:
             sent = await notifier.notify(alert)
-        except Exception as exc:  # noqa: BLE001 - 通知通道异常不阻断业务
+        except Exception as exc:
             logger.error(
                 "restore_rate_alert_notify_failed",
                 channel=getattr(notifier, "name", "unknown"),
@@ -310,7 +310,7 @@ class RestoreRateMonitor:
 
     # ---- 观测 ----
 
-    def stats(self) -> Dict[str, Any]:
+    def stats(self) -> dict[str, Any]:
         """监控总览（运维面板与合规检查用）。"""
         return {
             **self.thresholds(),
@@ -320,7 +320,7 @@ class RestoreRateMonitor:
         }
 
 
-_monitor: Optional[RestoreRateMonitor] = None
+_monitor: RestoreRateMonitor | None = None
 
 
 def get_restore_rate_monitor() -> RestoreRateMonitor:

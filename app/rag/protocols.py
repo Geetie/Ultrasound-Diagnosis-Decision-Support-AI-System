@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Any, List, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -104,8 +104,8 @@ class RetrievalRequest(BaseModel):
         extra: Arbitrary metadata.
     """
     query: str
-    organ: Optional[str] = None
-    image_data: Optional[bytes] = None
+    organ: str | None = None
+    image_data: bytes | None = None
     image_format: str = "dicom"
     top_k: int = 20
     use_query_enhancement: bool = True
@@ -114,9 +114,9 @@ class RetrievalRequest(BaseModel):
     use_multimodal: bool = True
     use_llm_enhancement: bool = False
     min_score_threshold: float = 0.5
-    kb_version: Optional[str] = None
-    request_id: Optional[str] = None
-    session_id: Optional[str] = None
+    kb_version: str | None = None
+    request_id: str | None = None
+    session_id: str | None = None
     extra: dict[str, Any] = Field(default_factory=dict)
 
     @field_validator("query")
@@ -145,7 +145,7 @@ class ScoredChunk(BaseModel):
     """
     chunk: KnowledgeChunk
     score: float
-    rerank_score: Optional[float] = None
+    rerank_score: float | None = None
     retrieval_source: RetrievalMethod
 
     model_config = {"arbitrary_types_allowed": True}
@@ -165,10 +165,10 @@ class EnhancedQuery(BaseModel):
     """
     original: str
     enhanced: str
-    organ: Optional[str] = None
-    layer1_synonyms: List[str] = Field(default_factory=list)
-    layer2_hypernyms: List[str] = Field(default_factory=list)
-    layer3_related: List[str] = Field(default_factory=list)
+    organ: str | None = None
+    layer1_synonyms: list[str] = Field(default_factory=list)
+    layer2_hypernyms: list[str] = Field(default_factory=list)
+    layer3_related: list[str] = Field(default_factory=list)
     llm_enhanced: bool = False
 
 
@@ -184,9 +184,9 @@ class RetrievalResult(BaseModel):
         latency_ms: Total retrieval latency in milliseconds.
         p99_violation: True if latency exceeded the configured P99 critical threshold.
     """
-    chunks: List[ScoredChunk] = Field(default_factory=list)
+    chunks: list[ScoredChunk] = Field(default_factory=list)
     retrieval_method: RetrievalMethod = RetrievalMethod.HYBRID
-    enhanced_query: Optional[str] = None
+    enhanced_query: str | None = None
     llm_enhanced: bool = False
     triggered_bm25_fallback: bool = False
     latency_ms: float = 0.0

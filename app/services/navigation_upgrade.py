@@ -19,8 +19,9 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass, field
-from typing import Any, Awaitable, Callable, Dict, List, Optional, Sequence
+from typing import Any
 
 import structlog
 
@@ -44,11 +45,11 @@ class UpgradeDecision:
 
     triggered: bool
     reason: str
-    request_id: Optional[str] = None
-    organ: Optional[str] = None
-    risk_labels: List[str] = field(default_factory=list)
+    request_id: str | None = None
+    organ: str | None = None
+    risk_labels: list[str] = field(default_factory=list)
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         return {
             "triggered": self.triggered,
             "reason": self.reason,
@@ -58,13 +59,13 @@ class UpgradeDecision:
         }
 
 
-def collect_risk_labels(annotations: Sequence[Any]) -> List[str]:
+def collect_risk_labels(annotations: Sequence[Any]) -> list[str]:
     """从导航标注中收集携带 B+ 高危标记的标签名（去重保序）。
 
     兼容后端枚举（``RiskFlag.HIGH``）与边缘端字符串（``"high"``）两种形态，
     并忽略任何非 "high" 的取值——避免未升级或异常边缘端把任意字符串当标记。
     """
-    seen: List[str] = []
+    seen: list[str] = []
     for annotation in annotations or ():
         flag = getattr(annotation, "risk_flag", None)
         value = getattr(flag, "value", flag)
@@ -76,9 +77,9 @@ def collect_risk_labels(annotations: Sequence[Any]) -> List[str]:
     return seen
 
 
-def _pick_organ(target_organs: Any, preferred: Optional[str]) -> Optional[str]:
+def _pick_organ(target_organs: Any, preferred: str | None) -> str | None:
     """从会话的 ``target_organs`` 中选出本次升级对应的器官。"""
-    organs: List[str] = []
+    organs: list[str] = []
     if isinstance(target_organs, (list, tuple)):
         organs = [str(item) for item in target_organs if item]
     elif isinstance(target_organs, str) and target_organs:
@@ -96,12 +97,12 @@ class NavigationUpgradeService:
     def __init__(
         self,
         *,
-        enabled: Optional[bool] = None,
-        tier: Optional[ResponseTier] = None,
-        cooldown_seconds: Optional[float] = None,
-        max_per_session: Optional[int] = None,
-        enqueue: Optional[Callable[[str], Awaitable[bool]]] = None,
-        clock: Optional[Callable[[], float]] = None,
+        enabled: bool | None = None,
+        tier: ResponseTier | None = None,
+        cooldown_seconds: float | None = None,
+        max_per_session: int | None = None,
+        enqueue: Callable[[str], Awaitable[bool]] | None = None,
+        clock: Callable[[], float] | None = None,
     ) -> None:
         self._enabled = settings.nav_auto_upgrade_enabled if enabled is None else enabled
         self._tier = tier or ResponseTier(settings.nav_auto_upgrade_tier)
@@ -118,8 +119,8 @@ class NavigationUpgradeService:
         self._enqueue_override = enqueue
         self._clock = clock or time.monotonic
         # 会话级防抖状态（纯内存 + 同步读写，见模块 docstring 第 2 点）
-        self._last_upgrade_at: Dict[str, float] = {}
-        self._counts: Dict[str, int] = {}
+        self._last_upgrade_at: dict[str, float] = {}
+        self._counts: dict[str, int] = {}
 
     # ---- 只读视图（运维 / 测试）----
     @property
@@ -144,7 +145,7 @@ class NavigationUpgradeService:
     def remaining_budget(self, session_id: str) -> int:
         return max(0, self._max_per_session - self.upgrade_count(session_id))
 
-    def reset(self, session_id: Optional[str] = None) -> None:
+    def reset(self, session_id: str | None = None) -> None:
         """清空防抖状态（测试与运维用；传 None 清空全部）。"""
         if session_id is None:
             self._last_upgrade_at.clear()
@@ -154,7 +155,7 @@ class NavigationUpgradeService:
         self._counts.pop(session_id, None)
 
     # ---- 同步预留（禁止在其中 await）----
-    def try_reserve(self, session_id: str) -> Optional[str]:
+    def try_reserve(self, session_id: str) -> str | None:
         """尝试占用一次升级配额；成功返回 None，被拒返回原因。
 
         纯同步、微秒级，可安全地在导航热路径上同步调用——防抖必须在这里
@@ -184,8 +185,8 @@ class NavigationUpgradeService:
         session_id: str,
         frame_id: str,
         annotations: Sequence[Any],
-        organ: Optional[str] = None,
-        patient_id: Optional[str] = None,
+        organ: str | None = None,
+        patient_id: str | None = None,
     ) -> UpgradeDecision:
         """若标注含 B+ 级高危标记则尝试自动升级；否则不做任何事。
 
@@ -222,8 +223,8 @@ class NavigationUpgradeService:
         session_id: str,
         frame_id: str,
         annotations: Sequence[Any],
-        organ: Optional[str] = None,
-        patient_id: Optional[str] = None,
+        organ: str | None = None,
+        patient_id: str | None = None,
     ) -> UpgradeDecision:
         """执行一次**已预留配额**的升级；失败时自行释放预留、绝不抛出。
 
@@ -239,7 +240,7 @@ class NavigationUpgradeService:
                 patient_id=patient_id,
                 risk_labels=risk_labels,
             )
-        except Exception as exc:  # noqa: BLE001 - 升级是旁路能力，绝不抛出
+        except Exception as exc:
             self.release(session_id)
             logger.error(
                 "nav_auto_upgrade_failed",
@@ -261,9 +262,9 @@ class NavigationUpgradeService:
         *,
         session_id: str,
         frame_id: str,
-        organ: Optional[str],
-        patient_id: Optional[str],
-        risk_labels: List[str],
+        organ: str | None,
+        patient_id: str | None,
+        risk_labels: list[str],
     ) -> UpgradeDecision:
         resolved_organ = organ
         resolved_patient = patient_id
@@ -333,7 +334,7 @@ class NavigationUpgradeService:
                     },
                 )
                 await db.commit()
-            except Exception as exc:  # noqa: BLE001 - 审计失败不回滚已入队请求
+            except Exception as exc:
                 logger.warning(
                     "nav_auto_upgrade_audit_failed",
                     request_id=request_id,
@@ -385,7 +386,7 @@ class NavigationUpgradeService:
 # ----------------------------------------------------------------------
 # 进程级单例
 # ----------------------------------------------------------------------
-_navigation_upgrade_service: Optional[NavigationUpgradeService] = None
+_navigation_upgrade_service: NavigationUpgradeService | None = None
 
 
 def get_navigation_upgrade_service() -> NavigationUpgradeService:

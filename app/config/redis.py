@@ -1,8 +1,9 @@
 import asyncio
+from typing import Any, NamedTuple
+
 import redis.asyncio as redis
-import redis.retry
 import redis.backoff
-from typing import Optional, Any, NamedTuple
+import redis.retry
 import structlog
 
 from app.config.settings import settings
@@ -11,19 +12,19 @@ logger = structlog.get_logger()
 
 
 class RedisGetResult(NamedTuple):
-    value: Optional[bytes]
+    value: bytes | None
     error: bool = False
 
-    def decode_value(self) -> Optional[str]:
+    def decode_value(self) -> str | None:
         if self.value is None:
             return None
         return self.value.decode('utf-8') if isinstance(self.value, bytes) else self.value
 
 
 class RedisPool:
-    _client: Optional[redis.Redis] = None
-    _init_lock: Optional[asyncio.Lock] = None
-    _lock_loop_id: Optional[int] = None
+    _client: redis.Redis | None = None
+    _init_lock: asyncio.Lock | None = None
+    _lock_loop_id: int | None = None
     _connection_check_failures: int = 0
 
     @classmethod
@@ -143,7 +144,7 @@ class RedisPool:
             return {"status": "unhealthy", "error": str(e)}
 
     @classmethod
-    async def get(cls, key: str) -> Optional[bytes]:
+    async def get(cls, key: str) -> bytes | None:
         try:
             client = await cls.get_client()
             return await client.get(key)

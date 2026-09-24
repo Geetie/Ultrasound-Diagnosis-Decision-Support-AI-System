@@ -1,7 +1,6 @@
-from typing import List, Optional, Tuple
 
 
-def verify_chain_integrity(logs: List) -> Tuple[bool, Optional[str], Optional[str], Optional[str]]:
+def verify_chain_integrity(logs: list) -> tuple[bool, str | None, str | None, str | None]:
     prev_hash = None
     for i, log in enumerate(logs):
         if i == 0:

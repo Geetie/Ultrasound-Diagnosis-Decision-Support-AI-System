@@ -8,8 +8,6 @@
 import importlib.util
 from pathlib import Path
 
-import pytest
-
 from app.knowledge.rule_engine import (
     CONDITION_ALIASES,
     GLOBAL_SCOPE,
@@ -145,9 +143,8 @@ class TestSimpleRuleEngine:
 
 class TestAdapterEquivalence:
     def test_new_engine_matches_legacy_on_shared_corpus(self):
-        from safety_gateway.contraindication import ContraindicationEngine
-
         from app.knowledge.rule_engine import ContraindicationRuleEngineAdapter
+        from safety_gateway.contraindication import ContraindicationEngine
 
         rules = [
             Rule(rule_id="g1", condition="pregnancy", organ=GLOBAL_SCOPE),
@@ -174,9 +171,8 @@ class TestAdapterEquivalence:
 
     def test_verification_detects_divergence(self):
         """故意造一个语义走样的引擎：验证必须报不一致，否则等于没验证。"""
-        from safety_gateway.contraindication import ContraindicationEngine
-
         from app.knowledge.rule_engine import ContraindicationRuleEngineAdapter
+        from safety_gateway.contraindication import ContraindicationEngine
 
         class _NeverMatches(SimpleRuleEngine):
             def evaluate(self, facts, *, organ=None):

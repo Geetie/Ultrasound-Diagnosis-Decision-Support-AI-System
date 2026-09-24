@@ -12,12 +12,10 @@ from __future__ import annotations
 
 import time
 from collections import deque
-from dataclasses import dataclass, field
-from typing import Deque, Dict, List, Optional
 
 import structlog
 
-from edge.gpu_thermal import GPUThermalPolicy, ThermalDecision, ThermalLevel
+from edge.gpu_thermal import GPUThermalPolicy, ThermalDecision
 from edge.image_quality import (
     ImageQualityAdapter,
     NullImageQualityAdapter,
@@ -54,13 +52,13 @@ class NavigationInferenceService:
         self,
         backend: NavInferenceBackend,
         *,
-        thermal_policy: Optional[GPUThermalPolicy] = None,
-        safety_checker: Optional[LocalSafetyChecker] = None,
+        thermal_policy: GPUThermalPolicy | None = None,
+        safety_checker: LocalSafetyChecker | None = None,
         target_fps: float = 15.0,
         latency_window: int = DEFAULT_LATENCY_WINDOW,
-        plane_assessment_adapter: Optional[PlaneAssessmentAdapter] = None,
-        image_quality_adapter: Optional[ImageQualityAdapter] = None,
-        organ_code: Optional[str] = None,
+        plane_assessment_adapter: PlaneAssessmentAdapter | None = None,
+        image_quality_adapter: ImageQualityAdapter | None = None,
+        organ_code: str | None = None,
         enable_risk_marking: bool = True,
     ) -> None:
         if target_fps <= 0:
@@ -69,7 +67,7 @@ class NavigationInferenceService:
         self._thermal = thermal_policy or GPUThermalPolicy()
         self._safety = safety_checker or LocalSafetyChecker()
         self._base_target_fps = target_fps
-        self._latencies_ms: Deque[float] = deque(maxlen=latency_window)
+        self._latencies_ms: deque[float] = deque(maxlen=latency_window)
         self._plane_adapter = plane_assessment_adapter or NullPlaneAssessmentAdapter()
         self._quality_adapter = image_quality_adapter or NullImageQualityAdapter()
         self._organ_code = organ_code
@@ -80,7 +78,7 @@ class NavigationInferenceService:
         self._frames_inferred = 0
         self._frames_skipped = 0
         self._risk_marked = 0
-        self._last_infer_at: Optional[float] = None
+        self._last_infer_at: float | None = None
         self._decision: ThermalDecision = self._thermal.decide(0.0)
 
     # ---- 生命周期 ----
@@ -105,7 +103,7 @@ class NavigationInferenceService:
             self._loaded = False
 
     # ---- 温度 ----
-    def record_temperature(self, celsius: float, now: Optional[float] = None) -> ThermalDecision:
+    def record_temperature(self, celsius: float, now: float | None = None) -> ThermalDecision:
         """上报 GPU 温度并刷新调度决策（档位变化时打日志便于运维追踪）。"""
         previous = self._decision.level
         self._decision = self._thermal.decide(celsius, now=now)
@@ -135,7 +133,7 @@ class NavigationInferenceService:
         return min(self._base_target_fps, thermal_fps)
 
     # ---- 调度 ----
-    def should_infer(self, frame_index: int, now: Optional[float] = None) -> bool:
+    def should_infer(self, frame_index: int, now: float | None = None) -> bool:
         """是否对当前帧执行推理（温度档位 + 隔帧 + 帧率节流）。"""
         if not self._decision.nav_inference_allowed:
             return False
@@ -156,7 +154,7 @@ class NavigationInferenceService:
         return True
 
     # ---- 主流程 ----
-    def process_frame(self, frame: Frame, now: Optional[float] = None) -> Optional[NavResult]:
+    def process_frame(self, frame: Frame, now: float | None = None) -> NavResult | None:
         """处理一帧；返回 None 表示本帧按策略被跳过。"""
         self._frames_in += 1
         now = time.monotonic() if now is None else now
@@ -168,7 +166,7 @@ class NavigationInferenceService:
         self.load()
 
         start = time.monotonic()
-        raw_labels: List[NavLabel] = self._backend.infer(frame)
+        raw_labels: list[NavLabel] = self._backend.infer(frame)
         latency_ms = (time.monotonic() - start) * 1000.0
 
         self._last_infer_at = now
@@ -181,7 +179,7 @@ class NavigationInferenceService:
             from app.observability.metrics_collector import get_metrics_collector
 
             get_metrics_collector().record_edge_nav_latency(latency_ms / 1000.0)
-        except Exception as exc:  # noqa: BLE001 - 埋点失败不得影响导航
+        except Exception as exc:
             logger.debug("edge_nav_latency_metric_failed", error=str(exc))
 
         accepted, violations, _rejected = self._safety.filter_labels(
@@ -211,10 +209,10 @@ class NavigationInferenceService:
         )
 
     # ---- M1/M6 评估（适配器失败不得影响导航主链路）----
-    def _assess_plane(self, frame: Frame) -> Optional[PlaneAssessment]:
+    def _assess_plane(self, frame: Frame) -> PlaneAssessment | None:
         try:
             return self._plane_adapter.assess(frame, organ_code=self._organ_code)
-        except Exception as exc:  # noqa: BLE001 - 评估失败降级为不产出
+        except Exception as exc:
             logger.warning(
                 "edge_plane_assessment_failed",
                 frame_id=frame.frame_id,
@@ -224,10 +222,10 @@ class NavigationInferenceService:
             )
             return None
 
-    def _assess_quality(self, frame: Frame) -> Optional[ImageQuality]:
+    def _assess_quality(self, frame: Frame) -> ImageQuality | None:
         try:
             return self._quality_adapter.assess(frame)
-        except Exception as exc:  # noqa: BLE001 - 评估失败降级为不产出
+        except Exception as exc:
             logger.warning(
                 "edge_image_quality_assessment_failed",
                 frame_id=frame.frame_id,
@@ -238,7 +236,7 @@ class NavigationInferenceService:
             return None
 
     # ---- 观测 ----
-    def stats(self) -> Dict[str, object]:
+    def stats(self) -> dict[str, object]:
         return {
             "frames_in": self._frames_in,
             "frames_inferred": self._frames_inferred,
@@ -255,7 +253,7 @@ class NavigationInferenceService:
             "image_quality_backend": self._quality_adapter.name,
         }
 
-    def _percentile(self, pct: float) -> Optional[float]:
+    def _percentile(self, pct: float) -> float | None:
         if not self._latencies_ms:
             return None
         ordered = sorted(self._latencies_ms)

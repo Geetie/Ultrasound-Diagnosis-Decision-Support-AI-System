@@ -1,9 +1,8 @@
 import json
 import random
-from typing import List, Dict
 
 
-def _scale_distribution(base_distribution: Dict[str, int], count: int) -> List[str]:
+def _scale_distribution(base_distribution: dict[str, int], count: int) -> list[str]:
     """按比例缩放分级分布到指定总数"""
     total = sum(base_distribution.values())
     result = []
@@ -16,85 +15,85 @@ def _scale_distribution(base_distribution: Dict[str, int], count: int) -> List[s
     return result[:count]
 
 
-def generate_thyroid_cases(count: int = 100) -> List[Dict]:
+def generate_thyroid_cases(count: int = 100) -> list[dict]:
     """生成甲状腺TI-RADS分级测试病例"""
     cases = []
-    
+
     # TI-RADS分级特征模板
     grade_templates = {
         "2": [
-            {"size": "0.4×0.3", "echo": "无回声", "border": "清晰", "shape": "规则", 
+            {"size": "0.4×0.3", "echo": "无回声", "border": "清晰", "shape": "规则",
              "calcification": "无", "blood": "未见明显血流信号"},
-            {"size": "0.5×0.4", "echo": "无回声", "border": "清晰", "shape": "规则", 
+            {"size": "0.5×0.4", "echo": "无回声", "border": "清晰", "shape": "规则",
              "calcification": "无", "blood": "未见血流信号"},
-            {"size": "0.6×0.5", "echo": "低回声", "border": "清晰", "shape": "规则", 
+            {"size": "0.6×0.5", "echo": "低回声", "border": "清晰", "shape": "规则",
              "calcification": "无", "blood": "未见血流信号"},
-            {"size": "0.7×0.6", "echo": "高回声", "border": "清晰", "shape": "规则", 
+            {"size": "0.7×0.6", "echo": "高回声", "border": "清晰", "shape": "规则",
              "calcification": "无", "blood": "未见明显血流信号"},
-            {"size": "0.8×0.7", "echo": "无回声", "border": "清晰", "shape": "规则", 
+            {"size": "0.8×0.7", "echo": "无回声", "border": "清晰", "shape": "规则",
              "calcification": "无", "blood": "未见血流信号"},
         ],
         "3": [
-            {"size": "1.0×0.8", "echo": "等回声", "border": "尚清晰", "shape": "尚规则", 
+            {"size": "1.0×0.8", "echo": "等回声", "border": "尚清晰", "shape": "尚规则",
              "calcification": "无", "blood": "周边少量血流"},
-            {"size": "1.2×1.0", "echo": "低回声", "border": "尚清晰", "shape": "尚规则", 
+            {"size": "1.2×1.0", "echo": "低回声", "border": "尚清晰", "shape": "尚规则",
              "calcification": "无", "blood": "少量血流信号"},
-            {"size": "1.4×1.1", "echo": "稍低回声", "border": "尚清晰", "shape": "尚规则", 
+            {"size": "1.4×1.1", "echo": "稍低回声", "border": "尚清晰", "shape": "尚规则",
              "calcification": "粗钙化", "blood": "周边血流信号"},
-            {"size": "1.5×1.2", "echo": "等回声", "border": "尚清晰", "shape": "尚规则", 
+            {"size": "1.5×1.2", "echo": "等回声", "border": "尚清晰", "shape": "尚规则",
              "calcification": "无", "blood": "少量血流"},
-            {"size": "1.3×1.0", "echo": "低回声", "border": "尚清晰", "shape": "尚规则", 
+            {"size": "1.3×1.0", "echo": "低回声", "border": "尚清晰", "shape": "尚规则",
              "calcification": "无", "blood": "周边少量血流信号"},
         ],
         "4a": [
-            {"size": "1.6×1.2", "echo": "低回声", "border": "欠清晰", "shape": "欠规则", 
+            {"size": "1.6×1.2", "echo": "低回声", "border": "欠清晰", "shape": "欠规则",
              "calcification": "点状强回声", "blood": "内部少量血流"},
-            {"size": "1.8×1.4", "echo": "混合回声", "border": "欠清晰", "shape": "欠规则", 
+            {"size": "1.8×1.4", "echo": "混合回声", "border": "欠清晰", "shape": "欠规则",
              "calcification": "微小钙化", "blood": "实性部分血流"},
-            {"size": "1.7×1.3", "echo": "低回声", "border": "欠清晰", "shape": "欠规则", 
+            {"size": "1.7×1.3", "echo": "低回声", "border": "欠清晰", "shape": "欠规则",
              "calcification": "微钙化", "blood": "内部血流信号"},
-            {"size": "1.9×1.5", "echo": "稍低回声", "border": "欠清晰", "shape": "欠规则", 
+            {"size": "1.9×1.5", "echo": "稍低回声", "border": "欠清晰", "shape": "欠规则",
              "calcification": "点状钙化", "blood": "少量血流"},
-            {"size": "1.5×1.1", "echo": "低回声", "border": "欠清晰", "shape": "欠规则", 
+            {"size": "1.5×1.1", "echo": "低回声", "border": "欠清晰", "shape": "欠规则",
              "calcification": "微小钙化点", "blood": "内部少量血流信号"},
         ],
         "4b": [
-            {"size": "2.0×1.6", "echo": "低回声", "border": "模糊", "shape": "不规则", 
+            {"size": "2.0×1.6", "echo": "低回声", "border": "模糊", "shape": "不规则",
              "calcification": "簇状微钙化", "blood": "血流信号丰富"},
-            {"size": "2.2×1.8", "echo": "极低回声", "border": "模糊", "shape": "不规则", 
+            {"size": "2.2×1.8", "echo": "极低回声", "border": "模糊", "shape": "不规则",
              "calcification": "多个微钙化点", "blood": "血流信号较丰富"},
-            {"size": "2.4×1.9", "echo": "低回声", "border": "模糊", "shape": "不规则", 
+            {"size": "2.4×1.9", "echo": "低回声", "border": "模糊", "shape": "不规则",
              "calcification": "簇状微钙化", "blood": "血流丰富"},
-            {"size": "2.5×2.0", "echo": "实性低回声", "border": "模糊", "shape": "不规则", 
+            {"size": "2.5×2.0", "echo": "实性低回声", "border": "模糊", "shape": "不规则",
              "calcification": "微钙化", "blood": "血流信号丰富"},
-            {"size": "2.3×1.8", "echo": "低回声", "border": "模糊", "shape": "不规则", 
+            {"size": "2.3×1.8", "echo": "低回声", "border": "模糊", "shape": "不规则",
              "calcification": "多个微钙化", "blood": "血流较丰富"},
         ],
         "5": [
-            {"size": "3.0×2.5", "echo": "实性低回声", "border": "模糊", "shape": "极不规则", 
+            {"size": "3.0×2.5", "echo": "实性低回声", "border": "模糊", "shape": "极不规则",
              "calcification": "大量微钙化", "blood": "血流信号异常丰富", "extra": "颈部淋巴结肿大"},
-            {"size": "3.5×3.0", "echo": "实性", "border": "模糊", "shape": "极不规则", 
+            {"size": "3.5×3.0", "echo": "实性", "border": "模糊", "shape": "极不规则",
              "calcification": "大片钙化", "blood": "血流信号极丰富", "extra": "颈部淋巴结转移"},
-            {"size": "4.0×3.5", "echo": "实性低回声", "border": "模糊", "shape": "极不规则", 
+            {"size": "4.0×3.5", "echo": "实性低回声", "border": "模糊", "shape": "极不规则",
              "calcification": "大量微钙化", "blood": "血流信号异常丰富", "extra": "颈部淋巴结肿大明显"},
-            {"size": "3.8×3.2", "echo": "实性", "border": "模糊", "shape": "极不规则", 
+            {"size": "3.8×3.2", "echo": "实性", "border": "模糊", "shape": "极不规则",
              "calcification": "微钙化及坏死区", "blood": "血流极丰富", "extra": "颈部淋巴结转移"},
-            {"size": "4.5×4.0", "echo": "实性低回声", "border": "模糊", "shape": "极不规则", 
+            {"size": "4.5×4.0", "echo": "实性低回声", "border": "模糊", "shape": "极不规则",
              "calcification": "大量微钙化", "blood": "血流信号异常丰富", "extra": "颈部淋巴结明显肿大"},
         ],
     }
-    
+
     # 分级分布基准：2级20例，3级25例，4a级20例，4b级20例，5级15例
     base_distribution = {"2": 20, "3": 25, "4a": 20, "4b": 20, "5": 15}
     grade_distribution = _scale_distribution(base_distribution, count)
     random.shuffle(grade_distribution)
-    
+
     for i, grade in enumerate(grade_distribution, 1):
         templates = grade_templates[grade]
         template = random.choice(templates)
         lobe = random.choice(["左叶", "右叶"])
         location = random.choice(["上极", "中上部", "中部", "中下部", "下极"]) if grade != "5" else ""
-        
+
         prompt = f"甲状腺超声检查：甲状腺{lobe}{location}见{template['size']}cm{template['echo']}结节，边界{template['border']}，形态{template['shape']}"
         if template['calcification'] != "无":
             prompt += f"，可见{template['calcification']}"
@@ -102,93 +101,93 @@ def generate_thyroid_cases(count: int = 100) -> List[Dict]:
         if "extra" in template:
             prompt += f"，{template['extra']}"
         prompt += "。请给出TI-RADS分级。"
-        
+
         cases.append({
             "case_id": f"THY-{i:03d}",
             "organ": "thyroid",
             "prompt": prompt,
             "expected_grading": grade
         })
-    
+
     return cases
 
 
-def generate_liver_cases(count: int = 100) -> List[Dict]:
+def generate_liver_cases(count: int = 100) -> list[dict]:
     """生成肝脏LI-RADS分级测试病例"""
     cases = []
-    
+
     grade_templates = {
         "1": [
-            {"size": "1.0×0.8", "echo": "高回声", "border": "清晰", "shape": "规则", 
+            {"size": "1.0×0.8", "echo": "高回声", "border": "清晰", "shape": "规则",
              "calcification": "无", "blood": "未见明显血流信号"},
-            {"size": "1.2×1.0", "echo": "高回声", "border": "清晰", "shape": "规则", 
+            {"size": "1.2×1.0", "echo": "高回声", "border": "清晰", "shape": "规则",
              "calcification": "无", "blood": "未见血流信号"},
-            {"size": "0.8×0.6", "echo": "无回声", "border": "清晰", "shape": "规则", 
+            {"size": "0.8×0.6", "echo": "无回声", "border": "清晰", "shape": "规则",
              "calcification": "无", "blood": "未见血流信号", "extra": "后方回声增强"},
-            {"size": "1.4×1.1", "echo": "高回声", "border": "清晰", "shape": "规则", 
+            {"size": "1.4×1.1", "echo": "高回声", "border": "清晰", "shape": "规则",
              "calcification": "无", "blood": "未见明显血流信号"},
-            {"size": "0.9×0.7", "echo": "无回声", "border": "清晰", "shape": "规则", 
+            {"size": "0.9×0.7", "echo": "无回声", "border": "清晰", "shape": "规则",
              "calcification": "无", "blood": "未见血流信号"},
         ],
         "2": [
-            {"size": "1.5×1.3", "echo": "稍高回声", "border": "清晰", "shape": "规则", 
+            {"size": "1.5×1.3", "echo": "稍高回声", "border": "清晰", "shape": "规则",
              "calcification": "无", "blood": "未见血流信号"},
-            {"size": "1.8×1.5", "echo": "稍低回声", "border": "尚清晰", "shape": "尚规则", 
+            {"size": "1.8×1.5", "echo": "稍低回声", "border": "尚清晰", "shape": "尚规则",
              "calcification": "无", "blood": "少量血流信号"},
-            {"size": "1.6×1.4", "echo": "稍高回声", "border": "清晰", "shape": "规则", 
+            {"size": "1.6×1.4", "echo": "稍高回声", "border": "清晰", "shape": "规则",
              "calcification": "无", "blood": "未见血流信号"},
-            {"size": "1.4×1.2", "echo": "稍低回声", "border": "尚清晰", "shape": "尚规则", 
+            {"size": "1.4×1.2", "echo": "稍低回声", "border": "尚清晰", "shape": "尚规则",
              "calcification": "无", "blood": "少量血流"},
-            {"size": "1.7×1.4", "echo": "稍高回声", "border": "清晰", "shape": "规则", 
+            {"size": "1.7×1.4", "echo": "稍高回声", "border": "清晰", "shape": "规则",
              "calcification": "无", "blood": "未见血流信号"},
         ],
         "3": [
-            {"size": "2.0×1.8", "echo": "低回声", "border": "欠清晰", "shape": "欠规则", 
+            {"size": "2.0×1.8", "echo": "低回声", "border": "欠清晰", "shape": "欠规则",
              "calcification": "无", "blood": "周边血流信号"},
-            {"size": "2.2×2.0", "echo": "低回声", "border": "欠清晰", "shape": "欠规则", 
+            {"size": "2.2×2.0", "echo": "低回声", "border": "欠清晰", "shape": "欠规则",
              "calcification": "无", "blood": "内部少量血流"},
-            {"size": "2.4×2.1", "echo": "低回声", "border": "欠清晰", "shape": "欠规则", 
+            {"size": "2.4×2.1", "echo": "低回声", "border": "欠清晰", "shape": "欠规则",
              "calcification": "无", "blood": "周边血流"},
-            {"size": "2.1×1.9", "echo": "低回声", "border": "欠清晰", "shape": "欠规则", 
+            {"size": "2.1×1.9", "echo": "低回声", "border": "欠清晰", "shape": "欠规则",
              "calcification": "无", "blood": "少量血流信号"},
-            {"size": "2.3×2.0", "echo": "低回声", "border": "欠清晰", "shape": "欠规则", 
+            {"size": "2.3×2.0", "echo": "低回声", "border": "欠清晰", "shape": "欠规则",
              "calcification": "无", "blood": "周边少量血流"},
         ],
         "4": [
-            {"size": "2.8×2.5", "echo": "低回声", "border": "模糊", "shape": "不规则", 
+            {"size": "2.8×2.5", "echo": "低回声", "border": "模糊", "shape": "不规则",
              "calcification": "钙化点", "blood": "血流信号丰富"},
-            {"size": "3.0×2.7", "echo": "低回声", "border": "模糊", "shape": "不规则", 
+            {"size": "3.0×2.7", "echo": "低回声", "border": "模糊", "shape": "不规则",
              "calcification": "钙化", "blood": "血流信号较丰富"},
-            {"size": "3.2×2.8", "echo": "低回声", "border": "模糊", "shape": "不规则", 
+            {"size": "3.2×2.8", "echo": "低回声", "border": "模糊", "shape": "不规则",
              "calcification": "钙化点", "blood": "血流丰富"},
-            {"size": "2.7×2.4", "echo": "低回声", "border": "模糊", "shape": "不规则", 
+            {"size": "2.7×2.4", "echo": "低回声", "border": "模糊", "shape": "不规则",
              "calcification": "钙化", "blood": "血流信号较丰富"},
-            {"size": "2.9×2.6", "echo": "低回声", "border": "模糊", "shape": "不规则", 
+            {"size": "2.9×2.6", "echo": "低回声", "border": "模糊", "shape": "不规则",
              "calcification": "钙化点", "blood": "血流丰富"},
         ],
         "5": [
-            {"size": "3.5×3.0", "echo": "低回声", "border": "模糊", "shape": "极不规则", 
+            {"size": "3.5×3.0", "echo": "低回声", "border": "模糊", "shape": "极不规则",
              "calcification": "大片坏死区", "blood": "血流信号异常丰富", "extra": "呈抱球征"},
-            {"size": "4.0×3.5", "echo": "低回声", "border": "模糊", "shape": "极不规则", 
+            {"size": "4.0×3.5", "echo": "低回声", "border": "模糊", "shape": "极不规则",
              "calcification": "液化坏死区", "blood": "血流信号极丰富", "extra": "门静脉内可见癌栓"},
-            {"size": "4.5×4.0", "echo": "低回声", "border": "模糊", "shape": "极不规则", 
+            {"size": "4.5×4.0", "echo": "低回声", "border": "模糊", "shape": "极不规则",
              "calcification": "大片液化区", "blood": "血流信号异常丰富", "extra": ""},
-            {"size": "3.8×3.2", "echo": "低回声", "border": "模糊", "shape": "极不规则", 
+            {"size": "3.8×3.2", "echo": "低回声", "border": "模糊", "shape": "极不规则",
              "calcification": "坏死区", "blood": "血流信号极丰富", "extra": "门静脉癌栓"},
-            {"size": "4.2×3.8", "echo": "低回声", "border": "模糊", "shape": "极不规则", 
+            {"size": "4.2×3.8", "echo": "低回声", "border": "模糊", "shape": "极不规则",
              "calcification": "大片坏死区", "blood": "血流信号异常丰富", "extra": "呈抱球征"},
         ],
     }
-    
+
     base_distribution = {"1": 20, "2": 25, "3": 25, "4": 20, "5": 10}
     grade_distribution = _scale_distribution(base_distribution, count)
     random.shuffle(grade_distribution)
-    
+
     for i, grade in enumerate(grade_distribution, 1):
         templates = grade_templates[grade]
         template = random.choice(templates)
         lobe = random.choice(["右叶", "左叶"])
-        
+
         prompt = f"肝脏超声检查：肝{lobe}见{template['size']}cm{template['echo']}结节，边界{template['border']}，形态{template['shape']}"
         if template['calcification'] != "无":
             prompt += f"，内部回声不均匀，可见{template['calcification']}"
@@ -198,25 +197,25 @@ def generate_liver_cases(count: int = 100) -> List[Dict]:
         if template.get("extra", ""):
             prompt += f"，{template['extra']}"
         prompt += "。请给出LI-RADS分级。"
-        
+
         cases.append({
             "case_id": f"LIV-{i:03d}",
             "organ": "liver",
             "prompt": prompt,
             "expected_grading": grade
         })
-    
+
     return cases
 
 
-def generate_cardiac_cases(count: int = 100) -> List[Dict]:
+def generate_cardiac_cases(count: int = 100) -> list[dict]:
     """生成心脏LVEF分级测试病例"""
     cases = []
-    
+
     base_distribution = {"normal": 30, "mild": 30, "moderate": 25, "severe": 15}
     lvef_distribution = _scale_distribution(base_distribution, count)
     random.shuffle(lvef_distribution)
-    
+
     for i, grade in enumerate(lvef_distribution, 1):
         if grade == "normal":
             lvef = round(random.uniform(55, 80), 1)
@@ -247,10 +246,10 @@ def generate_cardiac_cases(count: int = 100) -> List[Dict]:
                 "左室明显增大，室壁运动严重减弱，收缩功能重度受损",
                 "左室显著扩大，室壁运动弥漫性减弱，收缩功能重度降低",
             ]
-        
+
         description = random.choice(descriptions)
         prompt = f"心脏超声检查：{description}。左室射血分数(LVEF)约{lvef}%。请评估心功能分级。"
-        
+
         # ASE/EACI指南: normal≥55, mild≥45, moderate≥30, severe<30
         if lvef >= 55:
             expected = "normal"
@@ -260,7 +259,7 @@ def generate_cardiac_cases(count: int = 100) -> List[Dict]:
             expected = "moderate"
         else:
             expected = "severe"
-        
+
         cases.append({
             "case_id": f"CRD-{i:03d}",
             "organ": "cardiac",
@@ -268,11 +267,11 @@ def generate_cardiac_cases(count: int = 100) -> List[Dict]:
             "expected_grading": expected,
             "lvef_value": lvef
         })
-    
+
     return cases
 
 
-def generate_adversarial_cases() -> List[Dict]:
+def generate_adversarial_cases() -> list[dict]:
     """生成对抗性测试用例：边界模糊、多器官提及、罕见分级、幻觉触发"""
     cases = []
 
@@ -331,7 +330,7 @@ def generate_adversarial_cases() -> List[Dict]:
     return cases
 
 
-def generate_all_cases() -> Dict:
+def generate_all_cases() -> dict:
     """生成完整的测试病例（含对抗性用例）"""
     thyroid_cases = generate_thyroid_cases(100)
     liver_cases = generate_liver_cases(100)
@@ -374,7 +373,6 @@ _SYNONYM_MAP = {
 
 def _apply_synonym_variation(prompt: str) -> str:
     """对prompt中的关键词进行同义词随机替换，增加文本多样性。"""
-    import re
     result = prompt
     for original, synonyms in _SYNONYM_MAP.items():
         if original in result and random.random() < 0.3:
@@ -383,7 +381,7 @@ def _apply_synonym_variation(prompt: str) -> str:
     return result
 
 
-def generate_boundary_ambiguous_cases() -> List[Dict]:
+def generate_boundary_ambiguous_cases() -> list[dict]:
     """生成分级边界模糊的测试用例：介于两个分级之间的描述。"""
     cases = []
 
@@ -424,11 +422,11 @@ def generate_boundary_ambiguous_cases() -> List[Dict]:
 
 if __name__ == "__main__":
     dataset = generate_all_cases()
-    
+
     output_path = "app/inference/data/consistency_test_cases.json"
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(dataset, f, ensure_ascii=False, indent=2)
-    
+
     print(f"Generated {len(dataset['cases'])} test cases")
     print(f"Thyroid cases: {sum(1 for c in dataset['cases'] if c['organ'] == 'thyroid')}")
     print(f"Liver cases: {sum(1 for c in dataset['cases'] if c['organ'] == 'liver')}")

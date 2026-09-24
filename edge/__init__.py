@@ -20,6 +20,7 @@
 from edge.config import EdgeConfigError, EdgeSettings
 from edge.device_auth import EdgeDeviceAuth
 from edge.device_manager import DeviceHealth, DeviceState, EdgeDeviceManager
+from edge.gpu_thermal import GPUThermalPolicy, ThermalDecision, ThermalLevel
 from edge.image_quality import (
     ImageQualityAdapter,
     create_image_quality_adapter,
@@ -32,7 +33,6 @@ from edge.measurement import (
     measure_labels,
     measurement_from_bbox,
 )
-from edge.gpu_thermal import GPUThermalPolicy, ThermalDecision, ThermalLevel
 from edge.nav_backend import NullNavBackend, TensorRTNavBackend, create_nav_backend
 from edge.navigation import NavigationInferenceService
 from edge.ota_client import OTAClient, OTAError, OTAProgress
@@ -46,8 +46,8 @@ from edge.protocols import (
     Frame,
     ImageQuality,
     NavInferenceBackend,
-    NavResult,
     NavLabel,
+    NavResult,
     PlaneAssessment,
 )
 from edge.safety import LocalSafetyChecker, LocalSafetyResult
@@ -59,9 +59,9 @@ __all__ = [
     "EdgeConfigError",
     "EdgeDeviceAuth",
     "EdgeDeviceManager",
+    "EdgePipeline",
     "EdgeService",
     "EdgeSettings",
-    "EdgePipeline",
     "EdgeWebSocketClient",
     "Frame",
     "GPUThermalPolicy",
@@ -74,9 +74,9 @@ __all__ = [
     "NavResult",
     "NavigationInferenceService",
     "NullNavBackend",
+    "OTAClient",
     "OTAError",
     "OTAProgress",
-    "OTAClient",
     "PixelSpacing",
     "PlaneAssessment",
     "PlaneAssessmentAdapter",

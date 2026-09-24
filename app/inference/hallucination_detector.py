@@ -15,17 +15,18 @@
 import re
 import threading
 import time
-import structlog
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, List, Dict, Set, Optional, Tuple
+from typing import Any
 
+import structlog
+
+from app.inference.grading_definitions import _GRADE_HIERARCHY, _GRADING_PATTERNS
 from app.inference.verification_config import (
-    get_verification_config,
     VerificationConfig,
+    get_verification_config,
 )
-from app.inference.grading_definitions import _GRADING_PATTERNS, _GRADE_HIERARCHY
 
 logger = structlog.get_logger("app.inference.hallucination_detector")
 
@@ -44,17 +45,17 @@ class DetectionIssue:
     """检测到的问题"""
     strategy: DetectionStrategy
     description: str
-    location: Optional[str] = None
+    location: str | None = None
     severity: int = 1
     weight: float = 1.0
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: dict[str, Any] | None = None
 
 
 @dataclass
 class DetectionResult:
     """检测结果"""
     is_hallucination: bool
-    issues: List[DetectionIssue] = field(default_factory=list)
+    issues: list[DetectionIssue] = field(default_factory=list)
     confidence: float = 0.0
     execution_time_ms: float = 0.0
     test_data_version: str = ""
@@ -63,11 +64,11 @@ class DetectionResult:
 class BaseDetector(ABC):
     """检测器基类"""
 
-    def __init__(self, config: Optional[VerificationConfig] = None):
+    def __init__(self, config: VerificationConfig | None = None):
         self.config = config or get_verification_config()
 
     @abstractmethod
-    def detect(self, text: str, organ: str) -> List[DetectionIssue]:
+    def detect(self, text: str, organ: str) -> list[DetectionIssue]:
         pass
 
 
@@ -97,7 +98,7 @@ class ForbiddenTermsDetector(BaseDetector):
                 neg_pos = context.find(neg, neg_pos + 1)
         return False
 
-    def detect(self, text: str, organ: str) -> List[DetectionIssue]:
+    def detect(self, text: str, organ: str) -> list[DetectionIssue]:
         issues = []
         skipped_by_context = []
         organ_terms = self.config.forbidden_terms_config.organ_terms.get(organ, [])
@@ -162,7 +163,7 @@ class ForbiddenTermsDetector(BaseDetector):
 class ContradictoryGradingDetector(BaseDetector):
     """矛盾分级检测器"""
 
-    def detect(self, text: str, organ: str) -> List[DetectionIssue]:
+    def detect(self, text: str, organ: str) -> list[DetectionIssue]:
         issues = []
         patterns = _GRADING_PATTERNS.get(organ, [])
 
@@ -206,7 +207,7 @@ class MedicalCommonSenseDetector(BaseDetector):
 
     _BENIGN_KEYWORDS = {"良性", "无恶性", "考虑良性", "倾向良性"}
     _MALIGNANT_KEYWORDS = {"恶性", "转移", "侵袭", "浸润"}
-    _ORGAN_MALIGNANT_TERMS: Dict[str, Set[str]] = {
+    _ORGAN_MALIGNANT_TERMS: dict[str, set[str]] = {
         "thyroid": {"甲状腺癌", "甲状腺恶性肿瘤"},
         "liver": {"肝癌", "肝细胞癌", "肝脏恶性肿瘤", "肝转移癌"},
         "breast": {"乳腺癌", "乳腺恶性肿瘤"},
@@ -215,7 +216,7 @@ class MedicalCommonSenseDetector(BaseDetector):
     _EXCLUSION_PATTERNS = {"排除", "需排除", "应排除", "待排除", "需鉴别"}
     _AUGMENT_PATTERNS = {"不除外", "不能除外", "无法除外"}
 
-    def detect(self, text: str, organ: str) -> List[DetectionIssue]:
+    def detect(self, text: str, organ: str) -> list[DetectionIssue]:
         issues = []
 
         has_benign = any(keyword in text for keyword in self._BENIGN_KEYWORDS)
@@ -262,7 +263,7 @@ class NumericalValidityDetector(BaseDetector):
         re.IGNORECASE
     )
 
-    def detect(self, text: str, organ: str) -> List[DetectionIssue]:
+    def detect(self, text: str, organ: str) -> list[DetectionIssue]:
         issues = []
         organ_ranges = self.config.numerical_validation_config.organ_ranges.get(organ, [])
 
@@ -274,7 +275,7 @@ class NumericalValidityDetector(BaseDetector):
 
         return issues
 
-    def _check_lvef(self, text: str, range_config, issues: List[DetectionIssue]):
+    def _check_lvef(self, text: str, range_config, issues: list[DetectionIssue]):
         matches = self._LVEF_PATTERN.findall(text)
         for match in matches:
             try:
@@ -289,7 +290,7 @@ class NumericalValidityDetector(BaseDetector):
             except ValueError:
                 pass
 
-    def _check_nodule_size(self, text: str, range_config, issues: List[DetectionIssue]):
+    def _check_nodule_size(self, text: str, range_config, issues: list[DetectionIssue]):
         matches = self._NODULE_SIZE_PATTERN.findall(text)
         for value_str, unit in matches:
             try:
@@ -338,7 +339,7 @@ class ContextAwareDetector(BaseDetector):
         (re.compile(r'轻度', re.IGNORECASE), re.compile(r'紧急手术|立即干预')),
     ]
 
-    def detect(self, text: str, organ: str) -> List[DetectionIssue]:
+    def detect(self, text: str, organ: str) -> list[DetectionIssue]:
         issues = []
         if organ == "cardiac":
             self._check_cardiac_description_conclusion_conflict(text, issues)
@@ -348,7 +349,7 @@ class ContextAwareDetector(BaseDetector):
             self._check_overreaction(text, organ, issues)
         return issues
 
-    def _check_description_conclusion_conflict(self, text: str, organ: str, issues: List[DetectionIssue]):
+    def _check_description_conclusion_conflict(self, text: str, organ: str, issues: list[DetectionIssue]):
         has_benign_desc = any(kw in text for kw in self._BENIGN_DESC_KEYWORDS)
         has_malignant_desc = any(kw in text for kw in self._MALIGNANT_DESC_KEYWORDS)
         has_benign_conclusion = any(kw in text for kw in self._BENIGN_CONCLUSION_KEYWORDS)
@@ -370,18 +371,18 @@ class ContextAwareDetector(BaseDetector):
                 weight=self.config.strategy_weights.context_aware,
             ))
 
-    def _check_overreaction(self, text: str, organ: str, issues: List[DetectionIssue]):
+    def _check_overreaction(self, text: str, organ: str, issues: list[DetectionIssue]):
         for grading_pattern, action_pattern in self._OVERREACTION_PATTERNS:
             if grading_pattern.search(text) and action_pattern.search(text):
                 issues.append(DetectionIssue(
                     strategy=DetectionStrategy.CONTEXT_AWARE,
-                    description=f"低风险分级但建议激进治疗，存在过度反应",
+                    description="低风险分级但建议激进治疗，存在过度反应",
                     severity=2,
                     weight=self.config.strategy_weights.context_aware,
                 ))
                 break
 
-    def _check_cardiac_description_conclusion_conflict(self, text: str, issues: List[DetectionIssue]):
+    def _check_cardiac_description_conclusion_conflict(self, text: str, issues: list[DetectionIssue]):
         has_benign_desc = any(kw in text for kw in self._CARDIAC_BENIGN_DESC_KEYWORDS)
         has_malignant_desc = any(kw in text for kw in self._CARDIAC_MALIGNANT_DESC_KEYWORDS)
         has_benign_conclusion = any(kw in text for kw in self._CARDIAC_BENIGN_CONCLUSION_KEYWORDS)
@@ -403,7 +404,7 @@ class ContextAwareDetector(BaseDetector):
                 weight=self.config.strategy_weights.context_aware,
             ))
 
-    def _check_cardiac_overreaction(self, text: str, issues: List[DetectionIssue]):
+    def _check_cardiac_overreaction(self, text: str, issues: list[DetectionIssue]):
         for grading_pattern, action_pattern in self._CARDIAC_OVERREACTION_PATTERNS:
             if grading_pattern.search(text) and action_pattern.search(text):
                 issues.append(DetectionIssue(
@@ -420,9 +421,9 @@ class HallucinationDetector:
 
     def __init__(
         self,
-        strategies: Optional[List[DetectionStrategy]] = None,
+        strategies: list[DetectionStrategy] | None = None,
         severity_threshold: int = 2,
-        config: Optional[VerificationConfig] = None,
+        config: VerificationConfig | None = None,
     ):
         """
         初始化幻觉检测器
@@ -443,7 +444,7 @@ class HallucinationDetector:
             test_data_version=self.config.test_data_version,
         )
 
-    def _init_detectors(self) -> Dict[DetectionStrategy, BaseDetector]:
+    def _init_detectors(self) -> dict[DetectionStrategy, BaseDetector]:
         """初始化各策略检测器"""
         detectors = {}
         if DetectionStrategy.FORBIDDEN_TERMS in self.strategies:
@@ -545,7 +546,7 @@ class HallucinationDetector:
 
 
 # 全局默认检测器实例
-_default_detector: Optional[HallucinationDetector] = None
+_default_detector: HallucinationDetector | None = None
 _default_detector_lock = threading.Lock()
 
 

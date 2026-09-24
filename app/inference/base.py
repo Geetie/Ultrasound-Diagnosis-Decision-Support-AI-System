@@ -31,10 +31,8 @@ from typing import Any
 
 import httpx
 
-from app.inference.constants import InferenceConstants as _IC
-import structlog
-
 from app.common.http_client_base import BaseHttpClient
+from app.inference.constants import InferenceConstants as _IC
 from app.inference.protocols import (
     InferenceEngine,
     InferenceError,

@@ -11,8 +11,9 @@
 """
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
-from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
+from typing import Any
 
 from edge.protocols import NavLabel
 
@@ -24,7 +25,7 @@ from edge.protocols import NavLabel
 # 语义：只允许解剖/影像征象类字段上行，禁止分级结论类术语外泄。
 # M1/M2/M3/M6/M9 新增项均为"影像采集属性/测量/征象"，不含分级词汇
 # （如 TI-RADS/恶性/可疑），因此不突破该语义边界。
-DEFAULT_ALLOWED_LABELS: Tuple[str, ...] = (
+DEFAULT_ALLOWED_LABELS: tuple[str, ...] = (
     "organ_name",
     "anatomical_location",
     "echogenicity",
@@ -53,7 +54,7 @@ DEFAULT_ALLOWED_LABELS: Tuple[str, ...] = (
 )
 
 # 归一化坐标允许的数值范围（含端点）
-DEFAULT_COORD_RANGE: Tuple[float, float] = (0.0, 1.0)
+DEFAULT_COORD_RANGE: tuple[float, float] = (0.0, 1.0)
 
 # ----------------------------------------------------------------------
 # M2 快速路径高危标记（B+ 级）
@@ -66,7 +67,7 @@ SUGGESTED_ACTION_START_STANDARD_EVALUATION = "start_standard_evaluation"
 
 # 高风险标签集合（B+ 触发源）。与 DEFAULT_ALLOWED_LABELS 分离：它们是
 # "怀疑"级信号而非确认的征象，因此走更严的阈值校验路径。
-DEFAULT_HIGH_RISK_LABELS: Tuple[str, ...] = (
+DEFAULT_HIGH_RISK_LABELS: tuple[str, ...] = (
     "malignant_suspected",
     "anaplastic_carcinoma_suspected",
     "metastasis_suspected",
@@ -78,7 +79,7 @@ RISK_CONFIDENCE_MULTIPLIER = 1.05
 
 # 各器官的导航级基础置信度阈值。真机调参由现场按模型标定覆盖；此处的值
 # 只作为"未标定时的安全默认"，偏保守（宁可不标记，不要误标）。
-DEFAULT_ORGAN_CONFIDENCE_THRESHOLDS: Dict[str, float] = {
+DEFAULT_ORGAN_CONFIDENCE_THRESHOLDS: dict[str, float] = {
     "thyroid": 0.60,
     "liver": 0.60,
     "cardiac": 0.55,
@@ -91,13 +92,13 @@ class LocalSafetyResult:
     """本地安全检查结果。"""
 
     passed: bool
-    violations: List[str] = field(default_factory=list)
+    violations: list[str] = field(default_factory=list)
     # 通过白名单过滤后的数据（越界/未知字段被丢弃）
-    filtered: Dict[str, Any] = field(default_factory=dict)
+    filtered: dict[str, Any] = field(default_factory=dict)
     # 坐标越界的标注（供调用方决定丢弃或裁剪）
-    rejected_labels: List[NavLabel] = field(default_factory=list)
+    rejected_labels: list[NavLabel] = field(default_factory=list)
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         return {
             "passed": self.passed,
             "violations": list(self.violations),
@@ -112,10 +113,10 @@ class LocalSafetyChecker:
     def __init__(
         self,
         allowed_labels: Iterable[str] = DEFAULT_ALLOWED_LABELS,
-        coord_range: Tuple[float, float] = DEFAULT_COORD_RANGE,
+        coord_range: tuple[float, float] = DEFAULT_COORD_RANGE,
         min_confidence: float = 0.0,
         high_risk_labels: Iterable[str] = DEFAULT_HIGH_RISK_LABELS,
-        organ_confidence_thresholds: Optional[Mapping[str, float]] = None,
+        organ_confidence_thresholds: Mapping[str, float] | None = None,
         risk_multiplier: float = RISK_CONFIDENCE_MULTIPLIER,
     ) -> None:
         if coord_range[0] >= coord_range[1]:
@@ -144,14 +145,14 @@ class LocalSafetyChecker:
         """标签是否属于高风险集合（B+ 候选）。"""
         return label.label in self._high_risk
 
-    def risk_confidence_threshold(self, organ: Optional[str] = None) -> float:
+    def risk_confidence_threshold(self, organ: str | None = None) -> float:
         """B+ 级触发所需的置信度下限 = 器官级基础阈值 × 收紧系数（1.05）。"""
         base = self._organ_thresholds.get(
             (organ or "").strip().lower(), DEFAULT_ORGAN_CONFIDENCE_THRESHOLD
         )
         return base * self._risk_multiplier
 
-    def mark_risk(self, label: NavLabel, organ: Optional[str] = None) -> NavLabel:
+    def mark_risk(self, label: NavLabel, organ: str | None = None) -> NavLabel:
         """对单个标注做 B+ 级判定，命中则返回带 risk_flag 的新标注。
 
         命中条件（规格）：标签属高风险集合，且置信度 > 器官级阈值 × 1.05。
@@ -168,16 +169,16 @@ class LocalSafetyChecker:
         )
 
     def mark_risk_batch(
-        self, labels: Sequence[NavLabel], organ: Optional[str] = None
-    ) -> List[NavLabel]:
+        self, labels: Sequence[NavLabel], organ: str | None = None
+    ) -> list[NavLabel]:
         """对一批标注做 B+ 级判定，返回的新列表与输入等长同序。"""
         return [self.mark_risk(label, organ=organ) for label in labels]
 
-    def filter_fields(self, payload: Mapping[str, Any]) -> Dict[str, Any]:
+    def filter_fields(self, payload: Mapping[str, Any]) -> dict[str, Any]:
         """按白名单过滤字段（未在白名单中的键直接丢弃）。"""
         return {k: v for k, v in payload.items() if k in self._allowed}
 
-    def check_label(self, label: NavLabel, organ: Optional[str] = None) -> List[str]:
+    def check_label(self, label: NavLabel, organ: str | None = None) -> list[str]:
         """校验单个标注，返回违规原因（空列表表示通过）。
 
         标签合法性有两条路径：
@@ -186,7 +187,7 @@ class LocalSafetyChecker:
            否则**拒绝转发**：疑癌类标签若低于阈值，既不足以升格为 B+ 级
            （避免误标引发不必要的深度诊断），也不应作为普通标注静默外泄。
         """
-        violations: List[str] = []
+        violations: list[str] = []
         if label.label not in self._allowed:
             if label.label in self._high_risk:
                 threshold = self.risk_confidence_threshold(organ)
@@ -213,16 +214,16 @@ class LocalSafetyChecker:
         return violations
 
     def filter_labels(
-        self, labels: Sequence[NavLabel], organ: Optional[str] = None
-    ) -> Tuple[List[NavLabel], List[str], List[NavLabel]]:
+        self, labels: Sequence[NavLabel], organ: str | None = None
+    ) -> tuple[list[NavLabel], list[str], list[NavLabel]]:
         """校验一批标注。
 
         Returns:
             (通过的标注, 违规原因列表, 被拒绝的标注)
         """
-        accepted: List[NavLabel] = []
-        rejected: List[NavLabel] = []
-        violations: List[str] = []
+        accepted: list[NavLabel] = []
+        rejected: list[NavLabel] = []
+        violations: list[str] = []
         for label in labels:
             problems = self.check_label(label, organ=organ)
             if problems:
@@ -236,7 +237,7 @@ class LocalSafetyChecker:
         self,
         payload: Mapping[str, Any],
         labels: Sequence[NavLabel] = (),
-        organ: Optional[str] = None,
+        organ: str | None = None,
     ) -> LocalSafetyResult:
         """一次性完成字段白名单过滤 + 坐标校验。
 
@@ -247,7 +248,7 @@ class LocalSafetyChecker:
         dropped = sorted(set(payload.keys()) - set(filtered.keys()))
 
         accepted, label_violations, rejected = self.filter_labels(labels, organ=organ)
-        violations: List[str] = []
+        violations: list[str] = []
         if dropped:
             violations.append("fields_filtered:" + ",".join(dropped))
         violations.extend(label_violations)
@@ -270,8 +271,8 @@ __all__ = [
     "DEFAULT_ALLOWED_LABELS",
     "DEFAULT_COORD_RANGE",
     "DEFAULT_HIGH_RISK_LABELS",
-    "DEFAULT_ORGAN_CONFIDENCE_THRESHOLDS",
     "DEFAULT_ORGAN_CONFIDENCE_THRESHOLD",
+    "DEFAULT_ORGAN_CONFIDENCE_THRESHOLDS",
     "RISK_CONFIDENCE_MULTIPLIER",
     "RISK_FLAG_HIGH",
     "SUGGESTED_ACTION_START_STANDARD_EVALUATION",

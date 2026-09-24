@@ -9,9 +9,6 @@
 """
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
-from unittest.mock import AsyncMock, MagicMock
-
 import pytest
 
 from app.agents.protocols import AgentResponse
@@ -19,9 +16,7 @@ from app.fusion.conflict import ConflictDetector
 from app.fusion.consistency import ConsistencyChecker
 from app.fusion.crag import CRAGHandler
 from app.fusion.self_rag import SelfRAGEvaluator
-from app.fusion.service import FusionEngineImpl
 from app.inference.protocols import (
-    InferenceEngine,
     InferenceRequest,
     InferenceResponse,
     ModelInfo,
@@ -30,13 +25,11 @@ from app.inference.protocols import (
 from app.knowledge.protocols import KnowledgeChunk
 from app.models.schemas import Organ
 from app.rag.protocols import (
-    RAGService,
     RetrievalMethod,
     RetrievalRequest,
     RetrievalResult,
     ScoredChunk,
 )
-
 
 # ----------------------------------------------------------------------
 # AgentResponse 工厂
@@ -48,11 +41,11 @@ def make_response(
     organ: Organ = Organ.THYROID,
     content: str = "TR3 边界清晰",
     confidence: float = 0.85,
-    evidence: Optional[List[str]] = None,
+    evidence: list[str] | None = None,
     needs_review: bool = False,
-    reasoning_trace: Optional[List[str]] = None,
-    disease_code: Optional[str] = None,
-    used_evidence_ids: Optional[List[str]] = None,
+    reasoning_trace: list[str] | None = None,
+    disease_code: str | None = None,
+    used_evidence_ids: list[str] | None = None,
 ) -> AgentResponse:
     """构造一个 AgentResponse（用于融合层测试）。
 
@@ -124,13 +117,13 @@ class FakeRAGService:
 
     def __init__(
         self,
-        chunks: Optional[List[ScoredChunk]] = None,
-        raise_exc: Optional[Exception] = None,
+        chunks: list[ScoredChunk] | None = None,
+        raise_exc: Exception | None = None,
     ) -> None:
         self._chunks = chunks or []
         self._raise = raise_exc
         self.retrieve_call_count = 0
-        self.last_request: Optional[RetrievalRequest] = None
+        self.last_request: RetrievalRequest | None = None
 
     async def retrieve(self, request: RetrievalRequest) -> RetrievalResult:
         self.retrieve_call_count += 1
@@ -158,12 +151,12 @@ class FakeInferenceEngine:
         "evidence_consistency: 5\n"
         "feature_completeness: 5\n"
         "missing_features: 无",
-        raise_exc: Optional[Exception] = None,
+        raise_exc: Exception | None = None,
     ) -> None:
         self.text = text
         self.raise_exc = raise_exc
         self.generate_call_count = 0
-        self.last_request: Optional[InferenceRequest] = None
+        self.last_request: InferenceRequest | None = None
 
     async def generate(self, request: InferenceRequest) -> InferenceResponse:
         self.generate_call_count += 1

@@ -4,7 +4,7 @@ import json
 import threading
 import uuid
 from datetime import datetime, timezone
-from typing import Any, List, Optional
+from typing import Any
 
 import structlog
 
@@ -24,12 +24,11 @@ class PostgreSQLLogStorage(LogStorageBackend):
         min_pool_size: int = None,
     ):
         self.database_url = database_url
-        from app.config.settings import settings
         self.max_pool_size = max_pool_size or settings.log_db_pool_max_size
         self.min_pool_size = min_pool_size or settings.log_db_pool_min_size
-        self._pool: Optional[Any] = None
+        self._pool: Any | None = None
         self._lock = threading.Lock()
-        self._async_lock: Optional[asyncio.Lock] = None
+        self._async_lock: asyncio.Lock | None = None
 
     async def _get_pool(self):
         if self._pool is None:
@@ -74,7 +73,7 @@ class PostgreSQLLogStorage(LogStorageBackend):
                           message=record.message)
             self._report_degraded_write()
 
-    async def awrite_batch(self, records: List[LogRecord]) -> None:
+    async def awrite_batch(self, records: list[LogRecord]) -> None:
         if not records:
             return
         try:

@@ -18,10 +18,7 @@ All dependencies are mocked with AsyncMock / MagicMock; no real DB / HTTP.
 """
 from __future__ import annotations
 
-import asyncio
-import time
-from typing import List, Optional
-from unittest.mock import AsyncMock, MagicMock, call
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -43,7 +40,6 @@ from app.rag.query_enhancer import QueryEnhancer
 from app.rag.reranker import HeuristicReranker, RerankError, RerankService
 from app.rag.retriever import Retriever
 from app.rag.service import RAGServiceImpl
-
 
 # ----------------------------------------------------------------------
 # helpers
@@ -84,7 +80,7 @@ def _mk_scored(
 def _mk_enhanced(
     original: str = "x",
     enhanced: str = "x expanded",
-    organ: Optional[str] = "thyroid",
+    organ: str | None = "thyroid",
     llm_enhanced: bool = False,
 ) -> EnhancedQuery:
     return EnhancedQuery(
@@ -100,13 +96,13 @@ def _mk_enhanced(
 
 def _build_service(
     *,
-    rerank_error: Optional[Exception] = None,
-    rerank_output: Optional[List[ScoredChunk]] = None,
-    heuristic_output: Optional[List[ScoredChunk]] = None,
-    retriever_output: Optional[RetrievalResult] = None,
-    enhanced: Optional[EnhancedQuery] = None,
+    rerank_error: Exception | None = None,
+    rerank_output: list[ScoredChunk] | None = None,
+    heuristic_output: list[ScoredChunk] | None = None,
+    retriever_output: RetrievalResult | None = None,
+    enhanced: EnhancedQuery | None = None,
     bm25_should_trigger: bool = False,
-    bm25_fallback_chunks: Optional[List[ScoredChunk]] = None,
+    bm25_fallback_chunks: list[ScoredChunk] | None = None,
     p99_warning_ms: float = 80.0,
     p99_critical_ms: float = 100.0,
     rerank_top_k: int = 5,
@@ -221,7 +217,7 @@ class TestHappyPath:
 
     async def test_calls_all_stages_in_order(self):
         svc = _build_service()
-        call_order: List[str] = []
+        call_order: list[str] = []
 
         async def track_enhance(*args, **kwargs):
             call_order.append("enhance")
@@ -484,7 +480,6 @@ class TestUseRerankingFalse:
 class TestRetrievalSourcePreservation:
     async def test_dense_source_preserved_through_rerank(self):
         # Retriever gives DENSE results; reranker should preserve via chunk_id lookup
-        from app.rag.retriever import Retriever
         retriever_output = RetrievalResult(
             chunks=[
                 _mk_scored("c1", 0.9, RetrievalMethod.DENSE),

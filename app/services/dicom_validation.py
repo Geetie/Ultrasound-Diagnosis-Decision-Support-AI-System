@@ -1,7 +1,6 @@
-import pydicom
 from io import BytesIO
-from typing import List, Optional, Tuple
 
+import pydicom
 
 REQUIRED_DICOM_TAGS = [
     (0x0010, 0x0010, "PatientName"),
@@ -17,7 +16,7 @@ REQUIRED_DICOM_TAGS = [
 ]
 
 
-def validate_dicom_format(content: bytes) -> Tuple[bool, Optional[str]]:
+def validate_dicom_format(content: bytes) -> tuple[bool, str | None]:
     if len(content) < 132:
         return False, "File too small"
     if content[128:132] != b"DICM":
@@ -25,11 +24,11 @@ def validate_dicom_format(content: bytes) -> Tuple[bool, Optional[str]]:
     return True, None
 
 
-def parse_and_validate_dicom(content: bytes) -> Tuple[Optional[pydicom.Dataset], Optional[str], List[str]]:
+def parse_and_validate_dicom(content: bytes) -> tuple[pydicom.Dataset | None, str | None, list[str]]:
     try:
         ds = pydicom.dcmread(BytesIO(content), force=True)
     except Exception as e:
-        return None, f"Failed to parse DICOM: {str(e)}", []
+        return None, f"Failed to parse DICOM: {e!s}", []
 
     missing_tags = []
     for group, elem, name in REQUIRED_DICOM_TAGS:

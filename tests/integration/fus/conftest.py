@@ -9,14 +9,14 @@ from __future__ import annotations
 from tests.unit.fus.conftest import (  # noqa: F401
     FakeInferenceEngine,
     FakeRAGService,
-    make_chunk,
-    make_response,
-    make_scored,
     conflict_detector,
     consistency_checker,
     consistency_checker_with_rag,
     crag_handler,
     crag_handler_with_chunks,
+    make_chunk,
+    make_response,
+    make_scored,
     self_rag_evaluator_heuristic,
     self_rag_evaluator_with_llm,
 )

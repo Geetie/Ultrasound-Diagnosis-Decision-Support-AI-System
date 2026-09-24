@@ -1,7 +1,8 @@
 import asyncio
-import httpx
-from typing import Any, Optional
 from datetime import datetime, timezone
+from typing import Any
+
+import httpx
 import structlog
 
 from app.config.settings import settings
@@ -134,7 +135,7 @@ class SafetyGatewayClient:
         output_data: dict[str, Any],
         consent_status_at_input: str,
         desensitization_degraded: bool = False,
-    ) -> tuple[Optional[dict[str, Any]], bool, Optional[str]]:
+    ) -> tuple[dict[str, Any] | None, bool, str | None]:
         try:
             client = await self._get_client()
             response = await client.post(
@@ -299,7 +300,7 @@ class SafetyGatewayClient:
             return {"consistent": False, "conflicts": [], "message": "一致性校验超时"}
         except Exception as e:
             logger.error("safety_gateway_consistency_error", error=str(e), session_id=session_id)
-            return {"consistent": False, "conflicts": [], "message": f"一致性校验异常: {str(e)}"}
+            return {"consistent": False, "conflicts": [], "message": f"一致性校验异常: {e!s}"}
 
     async def check_contraindication(
         self,
@@ -333,7 +334,7 @@ class SafetyGatewayClient:
             return {"has_contraindication": True, "contraindications": [], "message": "禁忌校验超时，默认存在禁忌"}
         except Exception as e:
             logger.error("safety_gateway_contraindication_error", error=str(e), session_id=session_id)
-            return {"has_contraindication": True, "contraindications": [], "message": f"禁忌校验异常，默认存在禁忌: {str(e)}"}
+            return {"has_contraindication": True, "contraindications": [], "message": f"禁忌校验异常，默认存在禁忌: {e!s}"}
 
     async def health_check(self) -> dict[str, Any]:
         try:

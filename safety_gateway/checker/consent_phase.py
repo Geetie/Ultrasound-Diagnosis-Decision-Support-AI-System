@@ -1,10 +1,10 @@
 import structlog
 
-from safety_gateway.validation_result import ConsentStatus, CheckResult, DegradedReason
-from safety_gateway.errors import DatabaseUnavailableError, CombinedUnavailableError
-from safety_gateway.consent_checker import get_consent_checker
-from safety_gateway.checker.phase_base import CheckPhase, CheckContext
+from safety_gateway.checker.phase_base import CheckContext, CheckPhase
 from safety_gateway.circuit_breaker import circuit_breaker_manager
+from safety_gateway.consent_checker import get_consent_checker
+from safety_gateway.errors import CombinedUnavailableError, DatabaseUnavailableError
+from safety_gateway.validation_result import CheckResult, ConsentStatus, DegradedReason
 
 logger = structlog.get_logger()
 

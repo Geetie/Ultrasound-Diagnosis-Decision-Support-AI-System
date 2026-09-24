@@ -347,6 +347,7 @@ class TestBUSIAdapter:
 
     def test_load_jsonl(self, tmp_path):
         import json
+
         from app.embedding.busi_adapter import BUSIAdapter
 
         jsonl = tmp_path / "train.jsonl"

@@ -21,7 +21,7 @@ os.environ.setdefault("USE_SOFT_HSM", "false")
 
 import httpx
 import pytest
-from app.config.settings import settings
+
 from app.config.redis import RedisPool
 
 

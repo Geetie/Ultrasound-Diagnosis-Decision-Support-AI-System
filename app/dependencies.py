@@ -6,7 +6,7 @@
 T-GA-INT-01 新增：dispatcher / fusion_engine / rag_service /
 knowledge_agent / monitor_agent / safety_gateway_client 的 DI 注入。
 """
-from fastapi import Request, Depends
+from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.protocols import (
@@ -14,23 +14,22 @@ from app.agents.protocols import (
     KnowledgeAgent,
     MonitorAgent,
 )
+from app.config.database import get_db_session
 from app.fusion.protocols import FusionEngine
 from app.inference.gpu_monitor import GPUScheduleStrategy
 from app.inference.protocols import InferenceEngine
-from app.speech.protocols import SpeechEngine
 from app.rag.protocols import RAGService
-from app.config.database import get_db_session
 from app.repositories import (
-    SessionRepository,
     ConsentRepository,
-    DiagnosisRepository,
     DeviceRepository,
+    DiagnosisRepository,
     FeedbackRepository,
     ReportRepository,
+    SessionRepository,
 )
 from app.services.audit_service import AuditService
 from app.services.safety_gateway_client import SafetyGatewayClient, safety_gateway_client
-
+from app.speech.protocols import SpeechEngine
 
 # ----------------------------------------------------------------------
 # Engine / GPU / Speech

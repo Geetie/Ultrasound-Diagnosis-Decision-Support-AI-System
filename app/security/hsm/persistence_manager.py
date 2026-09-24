@@ -9,13 +9,13 @@ import asyncio
 import json
 import os
 import threading
-from typing import Optional, Dict, Any, List, Tuple, Callable
-
-from cryptography.fernet import Fernet
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.backends import default_backend
+from collections.abc import Callable
+from typing import Any
 
 import structlog
+from cryptography.fernet import Fernet
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import serialization
 
 from app.security.hsm.enums import KeySlot, get_key_slot
 
@@ -115,8 +115,8 @@ class PersistenceManager:
         created_at,
         expires_at,
         is_active: bool,
-        slot: Optional[KeySlot] = None,
-        encryption_key_getter: Optional[Callable[[], bytes]] = None,
+        slot: KeySlot | None = None,
+        encryption_key_getter: Callable[[], bytes] | None = None,
     ) -> None:
         """持久化密钥到 Redis。
 
@@ -173,8 +173,8 @@ class PersistenceManager:
     def persist_degraded_state(
         self,
         is_degraded: bool,
-        degraded_at: Optional[str],
-        degraded_reason: Optional[str],
+        degraded_at: str | None,
+        degraded_reason: str | None,
     ) -> None:
         """持久化降级状态到 Redis。
 
@@ -243,10 +243,10 @@ class PersistenceManager:
 
     def restore_keys(
         self,
-        key_slots: Dict[KeySlot, Dict[str, Dict[str, Any]]],
+        key_slots: dict[KeySlot, dict[str, dict[str, Any]]],
         lock: threading.RLock,
         encryption_key_getter: Callable[[], bytes],
-        key_encryption_password_getter: Callable[[], Optional[bytes]],
+        key_encryption_password_getter: Callable[[], bytes | None],
     ) -> None:
         """从 Redis 恢复密钥。
 
@@ -257,9 +257,11 @@ class PersistenceManager:
             key_encryption_password_getter: 获取私钥加密密码的回调
         """
         try:
-            from app.config.redis import RedisPool
-            from app.config.redis_keys import RedisKey, _PREFIX as REDIS_KEY_PREFIX
             from datetime import datetime
+
+            from app.config.redis import RedisPool
+            from app.config.redis_keys import _PREFIX as REDIS_KEY_PREFIX
+            from app.config.redis_keys import RedisKey
 
             async def restore():
                 redis_client = await RedisPool.get_client()
@@ -334,7 +336,7 @@ class PersistenceManager:
         """迁移旧版 Redis 密钥格式到新格式。"""
         try:
             from app.config.redis import RedisPool
-            from app.config.redis_keys import RedisKey, LegacyRedisKey
+            from app.config.redis_keys import LegacyRedisKey, RedisKey
 
             async def migrate():
                 redis_client = await RedisPool.get_client()
@@ -379,7 +381,7 @@ class PersistenceManager:
         except Exception as e:
             logger.error("failed_to_migrate_legacy_keys", error=str(e))
 
-    async def cleanup_redis_keys(self, expired_keys: List[Tuple[str, KeySlot]]) -> None:
+    async def cleanup_redis_keys(self, expired_keys: list[tuple[str, KeySlot]]) -> None:
         """清理 Redis 中的过期密钥。
 
         Args:

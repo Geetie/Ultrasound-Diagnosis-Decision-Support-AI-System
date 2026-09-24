@@ -18,7 +18,6 @@ from __future__ import annotations
 import time
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
 
 # 四级温度边界（℃）
 THROTTLE_TEMP = 75.0
@@ -87,9 +86,9 @@ class GPUThermalPolicy:
         self._overheat_duration_seconds = overheat_duration_seconds
         # >0 时表示紧急降级阶段每该秒数重复要求一次 checkpoint（默认只要求一次）
         self._checkpoint_interval_seconds = checkpoint_interval_seconds
-        self._emergency_since: Optional[float] = None
+        self._emergency_since: float | None = None
         self._checkpoint_issued = False
-        self._last_checkpoint_at: Optional[float] = None
+        self._last_checkpoint_at: float | None = None
         self._current_level = ThermalLevel.NORMAL
 
     @property
@@ -110,7 +109,7 @@ class GPUThermalPolicy:
         self._last_checkpoint_at = None
         self._current_level = ThermalLevel.NORMAL
 
-    def decide(self, celsius: float, now: Optional[float] = None) -> ThermalDecision:
+    def decide(self, celsius: float, now: float | None = None) -> ThermalDecision:
         """根据温度给出决策。
 
         Args:
@@ -208,11 +207,11 @@ __all__ = [
     "EMERGENCY_TEMP",
     "FRAME_SKIP_FPS",
     "FRAME_SKIP_TEMP",
-    "GPUThermalPolicy",
     "NAV_PAUSE_TEMP",
     "NORMAL_FPS",
-    "THROTTLE_TEMP",
     "THROTTLED_FPS",
+    "THROTTLE_TEMP",
+    "GPUThermalPolicy",
     "ThermalDecision",
     "ThermalLevel",
 ]

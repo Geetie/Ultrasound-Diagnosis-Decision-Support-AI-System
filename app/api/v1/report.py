@@ -8,8 +8,6 @@
 """
 from __future__ import annotations
 
-from typing import Optional
-
 import structlog
 from fastapi import APIRouter, Depends
 
@@ -94,7 +92,7 @@ async def create_report_draft(
     session_repo=Depends(get_session_repo),
     consent_repo=Depends(get_consent_repo),
     audit_service: AuditService = Depends(get_audit_service),
-    current_user: Optional[dict] = Depends(get_current_active_user),
+    current_user: dict | None = Depends(get_current_active_user),
 ):
     """生成报告草稿（模板填充）；``sign``/``push`` 为 True 时连续执行。"""
     result = await diagnosis_repo.get_result(payload.request_id)
@@ -171,7 +169,7 @@ async def create_report_draft(
 async def get_report_by_request(
     request_id: str,
     report_repo=Depends(get_report_repo),
-    current_user: Optional[dict] = Depends(get_current_active_user),
+    current_user: dict | None = Depends(get_current_active_user),
 ):
     """取某次诊断请求的最新报告。"""
     report = await report_repo.get_latest_by_request(request_id)
@@ -185,7 +183,7 @@ async def get_report(
     report_id: str,
     verify: bool = False,
     report_repo=Depends(get_report_repo),
-    current_user: Optional[dict] = Depends(get_current_active_user),
+    current_user: dict | None = Depends(get_current_active_user),
 ):
     """读取报告；``verify=true`` 时附带数字签名校验结果。"""
     report = await report_repo.get_report(report_id)
@@ -200,7 +198,7 @@ async def sign_report(
     payload: ReportSignRequest,
     report_repo=Depends(get_report_repo),
     audit_service: AuditService = Depends(get_audit_service),
-    current_user: Optional[dict] = Depends(get_current_active_user),
+    current_user: dict | None = Depends(get_current_active_user),
 ):
     """对报告正文做 HSM 数字签名。"""
     report = await report_repo.get_report(report_id)
@@ -236,7 +234,7 @@ async def push_report(
     payload: ReportPushRequest,
     report_repo=Depends(get_report_repo),
     audit_service: AuditService = Depends(get_audit_service),
-    current_user: Optional[dict] = Depends(get_current_active_user),
+    current_user: dict | None = Depends(get_current_active_user),
 ):
     """把已签名报告推送到 PACS/HIS（推送失败不改变签名状态，可重推）。"""
     report = await report_repo.get_report(report_id)
@@ -276,7 +274,7 @@ async def push_report(
 async def verify_signature(
     report_id: str,
     report_repo=Depends(get_report_repo),
-    current_user: Optional[dict] = Depends(get_current_active_user),
+    current_user: dict | None = Depends(get_current_active_user),
 ):
     """校验报告签名与正文是否匹配（正文被改动即失败）。"""
     report = await report_repo.get_report(report_id)

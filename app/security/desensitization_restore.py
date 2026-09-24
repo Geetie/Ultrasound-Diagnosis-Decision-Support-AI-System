@@ -1,16 +1,17 @@
-import os
-import uuid
 import asyncio
-import structlog
+import os
 import threading
-from typing import Dict, Any, Optional, List
-from dataclasses import dataclass
-from datetime import datetime, timezone, timedelta
 import time
+import uuid
+from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
+from typing import Any
+
+import structlog
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
-from app.security.hsm import hsm_manager, KeySlot
 from app.config.redis_keys import RedisKey
+from app.security.hsm import KeySlot, hsm_manager
 
 logger = structlog.get_logger()
 
@@ -40,13 +41,13 @@ class DesensitizationMappingRecord:
 
 class DesensitizationRestoreService:
     def __init__(self) -> None:
-        self._key_cache: Optional[bytes] = None
-        self._key_cache_at: Optional[datetime] = None
+        self._key_cache: bytes | None = None
+        self._key_cache_at: datetime | None = None
         self._current_key_version: int = 0
         self._lock = threading.Lock()
         self._async_lock = asyncio.Lock()
-        self._rate_limit_counter: Dict[str, int] = {}
-        self._rate_limit_window_start: Optional[datetime] = None
+        self._rate_limit_counter: dict[str, int] = {}
+        self._rate_limit_window_start: datetime | None = None
 
     def _ensure_hsm_key(self) -> None:
         key_info = hsm_manager.get_key_info(_DESENSITIZATION_KEY_NAME)
@@ -244,7 +245,7 @@ class DesensitizationRestoreService:
                 limit=limit,
                 hour_key=hour_key,
             )
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             logger.error("restore_rate_alert_dispatch_failed", error=str(e))
 
     async def store_mapping(
@@ -306,9 +307,10 @@ class DesensitizationRestoreService:
             raise RuntimeError("Desensitization restore rate limit exceeded")
 
         try:
+            from sqlalchemy import select
+
             from app.config.database import get_session
             from app.models.desensitization_mapping import DesensitizationMapping
-            from sqlalchemy import select
 
             async for db_session in get_session():
                 result = await db_session.execute(
@@ -346,7 +348,7 @@ class DesensitizationRestoreService:
 
         return original_value
 
-    async def batch_restore(self, record_ids: List[str]) -> Dict[str, Optional[str]]:
+    async def batch_restore(self, record_ids: list[str]) -> dict[str, str | None]:
         if not record_ids:
             logger.debug("batch_restore_empty_request")
             return {}
@@ -358,11 +360,12 @@ class DesensitizationRestoreService:
         logger.info("batch_restore_started", record_count=len(record_ids), record_ids_sample=record_ids[:5])
         start_time = time.monotonic()
 
-        from app.config.database import get_session
-        from app.models.desensitization_mapping import DesensitizationMapping
         from sqlalchemy import select
 
-        mappings_by_id: Dict[str, DesensitizationMapping] = {}
+        from app.config.database import get_session
+        from app.models.desensitization_mapping import DesensitizationMapping
+
+        mappings_by_id: dict[str, DesensitizationMapping] = {}
         async for db_session in get_session():
             result = await db_session.execute(
                 select(DesensitizationMapping).where(DesensitizationMapping.id.in_(record_ids))
@@ -373,7 +376,7 @@ class DesensitizationRestoreService:
 
         semaphore = asyncio.Semaphore(5)
 
-        async def _restore_one(record_id: str) -> tuple[str, Optional[str]]:
+        async def _restore_one(record_id: str) -> tuple[str, str | None]:
             mapping = mappings_by_id.get(record_id)
             if not mapping:
                 return record_id, None
@@ -404,11 +407,12 @@ class DesensitizationRestoreService:
 
         return dict(results_list)
 
-    async def re_encrypt_with_new_key(self, new_key_version: int, resume_from_id: Optional[str] = None) -> int:
+    async def re_encrypt_with_new_key(self, new_key_version: int, resume_from_id: str | None = None) -> int:
         try:
+            from sqlalchemy import select
+
             from app.config.database import get_session
             from app.models.desensitization_mapping import DesensitizationMapping
-            from sqlalchemy import select
 
             total_re_encrypted = 0
             failed_count = 0
@@ -477,7 +481,7 @@ class DesensitizationRestoreService:
             logger.error("failed_to_re_encrypt_mappings", error=str(e))
             raise ReEncryptionError(str(e), 0, resume_from_id or "")
 
-    def get_restore_stats(self) -> Dict[str, Any]:
+    def get_restore_stats(self) -> dict[str, Any]:
         with self._lock:
             total_requests = sum(self._rate_limit_counter.values()) if self._rate_limit_counter else 0
         return {
@@ -487,7 +491,7 @@ class DesensitizationRestoreService:
         }
 
 
-_desensitization_restore_instance: Optional[DesensitizationRestoreService] = None
+_desensitization_restore_instance: DesensitizationRestoreService | None = None
 _desensitization_restore_lock = threading.Lock()
 
 

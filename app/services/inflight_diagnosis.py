@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
 
 import structlog
 
@@ -37,14 +36,14 @@ class _Entry:
 class InFlightDiagnosisRegistry:
     """按 ``request_id`` 登记在途诊断任务，并维护 ``patient_id -> request_id`` 索引。"""
 
-    _entries: Dict[str, _Entry] = field(default_factory=dict)
-    _by_patient: Dict[str, set] = field(default_factory=dict)
+    _entries: dict[str, _Entry] = field(default_factory=dict)
+    _by_patient: dict[str, set] = field(default_factory=dict)
 
     def register(
         self,
         patient_id: str,
         request_id: str,
-        task: Optional[asyncio.Task] = None,
+        task: asyncio.Task | None = None,
     ) -> None:
         """登记当前（或指定）任务。无事件循环时静默跳过（同步上下文调用）。
 
@@ -80,7 +79,7 @@ class InFlightDiagnosisRegistry:
             if not patient_set:
                 self._by_patient.pop(entry.patient_id, None)
 
-    def cancel_for_patient(self, patient_id: str) -> List[str]:
+    def cancel_for_patient(self, patient_id: str) -> list[str]:
         """取消该患者全部在途诊断，返回被取消的 request_id 列表。"""
         request_ids = sorted(self._by_patient.get(patient_id, set()))
         if not request_ids:
@@ -91,7 +90,7 @@ class InFlightDiagnosisRegistry:
         except RuntimeError:
             running_loop = None
 
-        cancelled: List[str] = []
+        cancelled: list[str] = []
         for request_id in request_ids:
             entry = self._entries.get(request_id)
             if entry is None:
@@ -118,7 +117,7 @@ class InFlightDiagnosisRegistry:
             )
         return cancelled
 
-    def in_flight_request_ids(self) -> List[str]:
+    def in_flight_request_ids(self) -> list[str]:
         return sorted(self._entries.keys())
 
     def in_flight_count(self) -> int:

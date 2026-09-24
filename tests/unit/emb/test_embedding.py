@@ -1,11 +1,11 @@
 import time
 
 import pytest
+
 pytestmark = [pytest.mark.track_emb, pytest.mark.track_llm]
 
 import httpx
 import numpy as np
-from freezegun import freeze_time
 from pydantic import ValidationError
 
 from app.embedding.base import BaseHttpEmbeddingService, get_mime_type

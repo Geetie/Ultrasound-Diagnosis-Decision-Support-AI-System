@@ -1,20 +1,14 @@
 from datetime import datetime, timedelta, timezone
-from unittest.mock import patch, AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+
 from app.config.redis_keys import RedisKey
 from app.security.refresh_token import (
     MemoryRefreshTokenStore,
     RedisRefreshTokenStore,
-    create_refresh_token,
-    verify_refresh_token,
-    revoke_refresh_token,
-    revoke_token_family,
-    revoke_all_user_tokens,
-    reset_storage,
 )
 
-
-
-import pytest
 pytestmark = [pytest.mark.track_sec, pytest.mark.track_inf, pytest.mark.sec_critical]
 @pytest.fixture(autouse=True)
 def reset_refresh_store():
@@ -42,7 +36,7 @@ def sample_user_info():
 
 class TestTokenReplayDetection:
     """Token重用检测（Replay Attack）是Refresh Token轮换的核心安全机制。
-    
+
     当已撤销的Token被再次使用时，系统应吊销整个Token Family，
     以防止Token窃取后的重放攻击。
     """
@@ -179,7 +173,7 @@ class TestTokenReplayDetection:
 
 class TestRedisRefreshTokenStore:
     """RedisRefreshTokenStore完整测试。
-    
+
     生产环境使用Redis存储Token，需要验证所有CRUD操作、
     家族撤销、并发安全、过期清理等功能。
     """
@@ -548,18 +542,19 @@ class TestRedisRefreshTokenStore:
 
 class TestConsentWithdrawalLatency:
     """同意撤回端到端延迟测试。
-    
+
     04-安全合规要求：撤回后<500ms生效。
     """
 
     @pytest.mark.asyncio
     async def test_consent_withdrawal_marks_session_within_500ms(self):
         import time
+        from unittest.mock import AsyncMock, MagicMock, patch
+
         from app.security.consent_withdrawal_consumer import (
             ConsentWithdrawalEvent,
             SafetyActionHandler,
         )
-        from unittest.mock import AsyncMock, patch, MagicMock
 
         handler = SafetyActionHandler()
         event = ConsentWithdrawalEvent(
@@ -594,9 +589,10 @@ class TestConsentWithdrawalLatency:
     @pytest.mark.asyncio
     async def test_safety_gateway_consent_check_latency(self):
         import time
-        from safety_gateway.consent_checker import ConsentChecker, ConsentCheckResult
-        from safety_gateway.validation_result import ConsentStatus
         from unittest.mock import AsyncMock, patch
+
+        from safety_gateway.consent_checker import ConsentChecker
+        from safety_gateway.validation_result import ConsentStatus
 
         checker = ConsentChecker()
 
@@ -614,6 +610,7 @@ class TestConsentWithdrawalLatency:
 
     def test_consent_withdrawal_event_construction_latency(self):
         import time
+
         from app.security.consent_withdrawal_consumer import ConsentWithdrawalEvent
 
         start = time.perf_counter()
@@ -632,13 +629,14 @@ class TestConsentWithdrawalLatency:
 
 class TestHSMKeyRotation:
     """HSM密钥自动轮换测试。
-    
+
     04-安全合规要求：JWT密钥120天轮换，脱敏映射密钥180天轮换。
     """
 
     def test_jwt_key_rotation_creates_new_version(self):
-        from app.security.hsm import HSMManager, KeySlot
         import os
+
+        from app.security.hsm import HSMManager, KeySlot
 
         os.environ.setdefault('HSM_PRIVATE_KEY_PASSWORD', 'test-password-for-unit-test-only')
         os.environ.setdefault('HSM_KEY_ENCRYPTION_KEY', 'test-fernet-key-for-unit-test-only==')
@@ -657,8 +655,9 @@ class TestHSMKeyRotation:
         assert result['key_version'] == version_before + 1
 
     def test_desensitization_key_rotation(self):
-        from app.security.hsm import HSMManager, KeySlot
         import os
+
+        from app.security.hsm import HSMManager, KeySlot
 
         os.environ.setdefault('HSM_PRIVATE_KEY_PASSWORD', 'test-password-for-unit-test-only')
         os.environ.setdefault('HSM_KEY_ENCRYPTION_KEY', 'test-fernet-key-for-unit-test-only==')
@@ -673,8 +672,9 @@ class TestHSMKeyRotation:
         assert key_info['key_version'] >= 2
 
     def test_old_key_valid_after_rotation(self):
-        from app.security.hsm import HSMManager, KeySlot
         import os
+
+        from app.security.hsm import HSMManager, KeySlot
 
         os.environ.setdefault('HSM_PRIVATE_KEY_PASSWORD', 'test-password-for-unit-test-only')
         os.environ.setdefault('HSM_KEY_ENCRYPTION_KEY', 'test-fernet-key-for-unit-test-only==')
@@ -691,9 +691,9 @@ class TestHSMKeyRotation:
         assert is_valid is True
 
     def test_rotation_sets_old_key_expiry(self):
-        from app.security.hsm import HSMManager, KeySlot
         import os
-        from datetime import datetime, timezone
+
+        from app.security.hsm import HSMManager, KeySlot
 
         os.environ.setdefault('HSM_PRIVATE_KEY_PASSWORD', 'test-password-for-unit-test-only')
         os.environ.setdefault('HSM_KEY_ENCRYPTION_KEY', 'test-fernet-key-for-unit-test-only==')
@@ -709,9 +709,10 @@ class TestHSMKeyRotation:
             assert old_key_info['is_active'] is False
 
     def test_cleanup_expired_keys_after_rotation(self):
-        from app.security.hsm import HSMManager, KeySlot
         import os
-        from datetime import datetime, timezone, timedelta
+        from datetime import datetime, timedelta, timezone
+
+        from app.security.hsm import HSMManager, KeySlot
 
         os.environ.setdefault('HSM_PRIVATE_KEY_PASSWORD', 'test-password-for-unit-test-only')
         os.environ.setdefault('HSM_KEY_ENCRYPTION_KEY', 'test-fernet-key-for-unit-test-only==')
@@ -730,8 +731,9 @@ class TestHSMKeyRotation:
         assert count >= 0
 
     def test_rotation_preserves_key_slot(self):
-        from app.security.hsm import HSMManager, KeySlot
         import os
+
+        from app.security.hsm import HSMManager, KeySlot
 
         os.environ.setdefault('HSM_PRIVATE_KEY_PASSWORD', 'test-password-for-unit-test-only')
         os.environ.setdefault('HSM_KEY_ENCRYPTION_KEY', 'test-fernet-key-for-unit-test-only==')

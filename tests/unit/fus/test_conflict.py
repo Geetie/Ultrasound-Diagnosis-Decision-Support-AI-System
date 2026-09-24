@@ -17,18 +17,14 @@
 """
 from __future__ import annotations
 
-from typing import List
-
 import pytest
 
 pytestmark = [pytest.mark.track_fus]
 
-from app.agents.protocols import AgentResponse
 from app.fusion.conflict import ConflictDetector
 from app.fusion.protocols import ConflictResolution, ConflictType
 from app.models.schemas import Organ
 from tests.unit.fus.conftest import make_response
-
 
 # ======================================================================
 # GRADING_CONFLICT — 5 用例

@@ -23,7 +23,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, List, Optional, Protocol
+from typing import Protocol
 
 import structlog
 
@@ -52,7 +52,7 @@ STANDARD_ALGORITHMS = (
 
 # 各档位允许的算法集合：档位决定"签名/加密能用哪些算法"，
 # 而不是让调用方随手传一个字符串——白名单是合规判据的落点。
-PROFILE_ALGORITHMS: Dict[str, tuple] = {
+PROFILE_ALGORITHMS: dict[str, tuple] = {
     AlgorithmProfile.STANDARD.value: STANDARD_ALGORITHMS,
     AlgorithmProfile.GM.value: GM_ALGORITHMS,
 }
@@ -134,7 +134,7 @@ class GmsslProvider:
                 import gmssl  # type: ignore
 
                 self._gmssl = gmssl
-            except Exception as exc:  # noqa: BLE001 - 缺失依赖是预期情况
+            except Exception as exc:
                 logger.info("gmssl_not_installed", error=str(exc))
                 self._gmssl = None
         return self._gmssl
@@ -152,7 +152,7 @@ class GmsslProvider:
     def sign(self, algorithm: CryptoAlgorithm, key: bytes, data: bytes) -> bytes:
         if algorithm is not CryptoAlgorithm.SM2:
             raise ValueError(f"GmsslProvider cannot sign with {algorithm}")
-        from gmssl import sm2  # type: ignore  # noqa: PLC0415
+        from gmssl import sm2  # type: ignore
 
         private_key, public_key = _split_sm2_key(key)
         crypt = sm2.CryptSM2(private_key=private_key, public_key=public_key)
@@ -163,7 +163,7 @@ class GmsslProvider:
     ) -> bool:
         if algorithm is not CryptoAlgorithm.SM2:
             raise ValueError(f"GmsslProvider cannot verify with {algorithm}")
-        from gmssl import sm2  # type: ignore  # noqa: PLC0415
+        from gmssl import sm2  # type: ignore
 
         private_key, public_key = _split_sm2_key(key)
         crypt = sm2.CryptSM2(private_key=private_key, public_key=public_key)
@@ -171,14 +171,14 @@ class GmsslProvider:
             return bool(
                 crypt.verify(_to_hex(signature), _to_hex(data), _to_hex(key[:32]))
             )
-        except Exception as exc:  # noqa: BLE001 - 校验失败按 False 处理
+        except Exception as exc:
             logger.warning("sm2_verify_failed", error=str(exc))
             return False
 
     def encrypt(self, algorithm: CryptoAlgorithm, key: bytes, plaintext: bytes) -> bytes:
         if algorithm is not CryptoAlgorithm.SM4:
             raise ValueError(f"GmsslProvider cannot encrypt with {algorithm}")
-        from gmssl import sm4  # type: ignore  # noqa: PLC0415
+        from gmssl import sm4  # type: ignore
 
         crypt = sm4.CryptSM4()
         crypt.set_key(key, sm4.SM4_ENCRYPT)
@@ -189,7 +189,7 @@ class GmsslProvider:
     def decrypt(self, algorithm: CryptoAlgorithm, key: bytes, ciphertext: bytes) -> bytes:
         if algorithm is not CryptoAlgorithm.SM4:
             raise ValueError(f"GmsslProvider cannot decrypt with {algorithm}")
-        from gmssl import sm4  # type: ignore  # noqa: PLC0415
+        from gmssl import sm4  # type: ignore
 
         crypt = sm4.CryptSM4()
         crypt.set_key(key, sm4.SM4_DECRYPT)
@@ -200,18 +200,18 @@ class GmsslProvider:
 class AlgorithmRegistry:
     """算法 -> 提供方 的解析与可用性判定。"""
 
-    def __init__(self, providers: Optional[List[CryptoProvider]] = None) -> None:
+    def __init__(self, providers: list[CryptoProvider] | None = None) -> None:
         self._providers = list(providers) if providers is not None else [
             StandardCryptoProvider(),
             GmsslProvider(),
         ]
 
-    def providers(self) -> List[CryptoProvider]:
+    def providers(self) -> list[CryptoProvider]:
         return list(self._providers)
 
     def resolve(
         self, algorithm: CryptoAlgorithm
-    ) -> Optional[CryptoProvider]:
+    ) -> CryptoProvider | None:
         for provider in self._providers:
             if provider.supports(algorithm) and provider.available():
                 return provider
@@ -220,7 +220,7 @@ class AlgorithmRegistry:
     def is_available(self, algorithm: CryptoAlgorithm) -> bool:
         return self.resolve(algorithm) is not None
 
-    def available_algorithms(self) -> List[str]:
+    def available_algorithms(self) -> list[str]:
         return [
             algorithm.value
             for algorithm in CryptoAlgorithm
@@ -236,11 +236,11 @@ class AlgorithmRegistry:
             )
         return provider
 
-    def allowed_algorithms(self, profile: str) -> List[str]:
+    def allowed_algorithms(self, profile: str) -> list[str]:
         """某档位下允许使用的算法（合规白名单）。"""
         return [algorithm.value for algorithm in PROFILE_ALGORITHMS.get(profile, ())]
 
-    def validate_profile(self, profile: str) -> List[str]:
+    def validate_profile(self, profile: str) -> list[str]:
         """返回该档位不可用的算法列表（空表示该档位可启用）。"""
         if profile not in PROFILE_ALGORITHMS:
             return []
@@ -251,7 +251,7 @@ class AlgorithmRegistry:
         ]
 
 
-_registry: Optional[AlgorithmRegistry] = None
+_registry: AlgorithmRegistry | None = None
 
 
 def get_algorithm_registry() -> AlgorithmRegistry:
@@ -261,7 +261,7 @@ def get_algorithm_registry() -> AlgorithmRegistry:
     return _registry
 
 
-def set_algorithm_registry(registry: Optional[AlgorithmRegistry]) -> None:
+def set_algorithm_registry(registry: AlgorithmRegistry | None) -> None:
     """替换注册表（测试注入用）。"""
     global _registry
     _registry = registry
@@ -303,11 +303,11 @@ class AlgorithmStatus:
     """当前生效算法状态（给设置页展示，避免界面自己猜）。"""
 
     profile: str
-    available: List[str]
-    allowed: List[str]
-    unavailable: List[str]
+    available: list[str]
+    allowed: list[str]
+    unavailable: list[str]
 
-    def as_dict(self) -> Dict[str, object]:
+    def as_dict(self) -> dict[str, object]:
         return {
             "profile": self.profile,
             "available": self.available,

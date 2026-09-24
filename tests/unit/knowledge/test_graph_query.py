@@ -3,9 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.knowledge.graph_query import GraphQueryAdapter, PgVectorGraphAdapter
-from app.knowledge.protocols import KnowledgeChunk
-
+from app.knowledge.graph_query import PgVectorGraphAdapter
 
 # ------------------------------------------------------------------
 # PgVectorGraphAdapter skeleton tests

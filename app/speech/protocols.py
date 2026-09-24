@@ -22,9 +22,9 @@ from pydantic import BaseModel, Field, field_validator
 
 class SpeechErrorCode(str, Enum):
     """语音识别错误码枚举。
-    
+
     定义语音识别过程中可能出现的错误类型，用于统一异常处理和日志记录。
-    
+
     活跃错误码：
     - E3001_TIMEOUT: 请求超时
     - E3001_CONNECTION_FAILED: 连接失败
@@ -43,15 +43,15 @@ class SpeechErrorCode(str, Enum):
 
 class SpeechError(Exception):
     """语音引擎统一异常类。
-    
+
     封装语音识别过程中的所有错误，包含错误码、错误信息、详细描述和重试策略。
-    
+
     Args:
         error_code: 错误码枚举值
         message: 错误简要描述
         detail: 错误详细信息（可选）
         retryable: 是否可重试
-        
+
     Attributes:
         error_code: 错误码
         message: 错误消息
@@ -74,9 +74,9 @@ class SpeechError(Exception):
 
 class SpeechRequest(BaseModel):
     """语音识别请求模型。
-    
+
     封装语音识别请求的所有参数，包含严格的字段校验。
-    
+
     Attributes:
         audio_data: 音频数据（字节数组，必填）
         sample_rate: 采样率（默认16000Hz）
@@ -112,9 +112,9 @@ class SpeechRequest(BaseModel):
 
 class SpeechResponse(BaseModel):
     """语音识别响应模型。
-    
+
     封装语音识别的响应结果，包含识别文本和术语匹配信息。
-    
+
     Attributes:
         text: 识别出的文本结果
         language: 语言标识
@@ -135,9 +135,9 @@ class SpeechResponse(BaseModel):
 
 class SpeechEngineInfo(BaseModel):
     """语音引擎信息模型。
-    
+
     描述当前语音引擎加载的模型信息，用于监控和调试。
-    
+
     Attributes:
         engine_name: 引擎名称
         model_name: 模型名称
@@ -154,9 +154,9 @@ class SpeechEngineInfo(BaseModel):
 
 class SpeechEngine(ABC):
     """语音引擎抽象基类。
-    
+
     定义所有语音引擎必须实现的核心接口，实现多后端的统一抽象。
-    
+
     子类需要实现的抽象方法：
     - recognize: 执行语音识别
     - health_check: 健康检查
@@ -167,13 +167,13 @@ class SpeechEngine(ABC):
     @abstractmethod
     async def recognize(self, request: SpeechRequest) -> SpeechResponse:
         """执行语音识别。
-        
+
         Args:
             request: 语音识别请求对象
-            
+
         Returns:
             SpeechResponse: 语音识别响应对象
-            
+
         Raises:
             SpeechError: 识别过程中发生错误
         """
@@ -182,7 +182,7 @@ class SpeechEngine(ABC):
     @abstractmethod
     async def health_check(self) -> bool:
         """检查语音引擎健康状态。
-        
+
         Returns:
             bool: True表示健康，False表示不健康
         """
@@ -191,7 +191,7 @@ class SpeechEngine(ABC):
     @abstractmethod
     async def get_engine_info(self) -> SpeechEngineInfo:
         """获取当前加载的引擎信息。
-        
+
         Returns:
             SpeechEngineInfo: 引擎信息对象
         """
@@ -200,7 +200,7 @@ class SpeechEngine(ABC):
     @abstractmethod
     async def close(self) -> None:
         """关闭语音引擎，释放资源。
-        
+
         子类应在此方法中关闭模型、释放内存等资源。
         """
         raise NotImplementedError

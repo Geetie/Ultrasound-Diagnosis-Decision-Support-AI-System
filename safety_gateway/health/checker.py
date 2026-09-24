@@ -3,11 +3,11 @@ from typing import Any
 
 import structlog
 
-from safety_gateway.sg_config import sg_settings as settings
+from safety_gateway.health import providers
+from safety_gateway.health.fusion_probe import FusionProbe
 from safety_gateway.health.latency_tracker import LatencyTracker
 from safety_gateway.health.memory_monitor import MemoryMonitor
-from safety_gateway.health.fusion_probe import FusionProbe
-from safety_gateway.health import providers
+from safety_gateway.sg_config import sg_settings as settings
 
 logger = structlog.get_logger()
 

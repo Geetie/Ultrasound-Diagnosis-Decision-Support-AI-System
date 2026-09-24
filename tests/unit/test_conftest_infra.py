@@ -9,9 +9,7 @@ import os
 import tempfile
 import time
 
-import pytest
-
-from tests.utils.track_progress_reporter import TrackProgressReporter, SourceChangeDetector
+from tests.utils.track_progress_reporter import SourceChangeDetector, TrackProgressReporter
 
 
 class TestTrackProgressReporter:
@@ -239,7 +237,7 @@ class TestSourceChangeDetector:
 
                 cache_file = os.path.join(cache_dir, "source_hashes.json")
                 assert os.path.exists(cache_file)
-                with open(cache_file, "r") as cf:
+                with open(cache_file) as cf:
                     data = json.load(cf)
                 assert "test" in data
             finally:

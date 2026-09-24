@@ -1,20 +1,22 @@
-from fastapi import Request, HTTPException
-from fastapi.responses import JSONResponse
-from typing import Dict, Any, Optional
+from typing import Any
+
 import structlog
+from fastapi import HTTPException, Request
+from fastapi.responses import JSONResponse
+
 from app.models.schemas import ErrorResponse
 
 logger = structlog.get_logger()
 
 
-_ERROR_CODE_REGISTRY: Dict[str, str] = {}
+_ERROR_CODE_REGISTRY: dict[str, str] = {}
 
 
 class ErrorSpec:
-    __slots__ = ("code", "message", "status_code", "suggestion", "retryable", "retry_strategy")
+    __slots__ = ("code", "message", "retry_strategy", "retryable", "status_code", "suggestion")
 
     def __init__(self, code: str, message: str, status_code: int,
-                 suggestion: Optional[str] = None, retryable: bool = False,
+                 suggestion: str | None = None, retryable: bool = False,
                  retry_strategy: str = "no_retry"):
         self.code = code
         self.message = message
@@ -24,14 +26,14 @@ class ErrorSpec:
         self.retry_strategy = retry_strategy
 
 
-_SPEC_REGISTRY: Dict[str, ErrorSpec] = {}
+_SPEC_REGISTRY: dict[str, ErrorSpec] = {}
 
 
 class AppBaseException(HTTPException):
     _error_code: str = ""
     _error_message: str = ""
     _status_code: int = 400
-    _suggestion: Optional[str] = None
+    _suggestion: str | None = None
     _retryable: bool = False
     _retry_strategy: str = "no_retry"
 
@@ -53,12 +55,12 @@ class AppBaseException(HTTPException):
         error_code: str,
         error_message: str,
         status_code: int = 400,
-        detail: Optional[str] = None,
-        request_id: Optional[str] = None,
-        suggestion: Optional[str] = None,
+        detail: str | None = None,
+        request_id: str | None = None,
+        suggestion: str | None = None,
         retryable: bool = False,
         retry_strategy: str = "no_retry",
-        headers: Optional[Dict[str, Any]] = None,
+        headers: dict[str, Any] | None = None,
     ):
         self.error_code = error_code
         self.error_message = error_message
@@ -75,7 +77,7 @@ class BadRequestException(AppBaseException):
     _error_message = "Bad request"
     _status_code = 400
 
-    def __init__(self, error_code: Optional[str] = None, error_message: Optional[str] = None, **kwargs):
+    def __init__(self, error_code: str | None = None, error_message: str | None = None, **kwargs):
         super().__init__(
             error_code=error_code or self._error_code,
             error_message=error_message or self._error_message,
@@ -87,7 +89,7 @@ class NotFoundException(AppBaseException):
     _error_message = "Resource not found"
     _status_code = 404
 
-    def __init__(self, error_code: Optional[str] = None, error_message: Optional[str] = None, **kwargs):
+    def __init__(self, error_code: str | None = None, error_message: str | None = None, **kwargs):
         super().__init__(error_code=error_code or self._error_code, error_message=error_message or self._error_message, status_code=404, **kwargs)
 
 
@@ -226,7 +228,7 @@ class ServerErrorException(AppBaseException):
     _error_message = "Internal server error"
     _status_code = 500
 
-    def __init__(self, error_code: Optional[str] = None, error_message: Optional[str] = None, status_code: int = 500, **kwargs):
+    def __init__(self, error_code: str | None = None, error_message: str | None = None, status_code: int = 500, **kwargs):
         super().__init__(
             error_code=error_code or self._error_code,
             error_message=error_message or self._error_message,
@@ -827,7 +829,7 @@ def define_simple_error(
     error_code: str,
     error_message: str,
     status_code: int = 400,
-    suggestion: Optional[str] = None,
+    suggestion: str | None = None,
     retryable: bool = False,
     retry_strategy: str = "no_retry",
     base_class=AppBaseException,
@@ -872,7 +874,7 @@ def register_error(code: str, message: str, status_code: int, **kwargs) -> Error
     return spec
 
 
-def raise_error(code: str, message_override: Optional[str] = None, **kwargs):
+def raise_error(code: str, message_override: str | None = None, **kwargs):
     spec = _SPEC_REGISTRY.get(code)
     if not spec:
         raise ServerErrorException(error_code="E2999", error_message=f"Unknown error code: {code}")

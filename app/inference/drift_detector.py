@@ -11,12 +11,11 @@
 
 import json
 import math
-import os
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import structlog
 
@@ -83,9 +82,9 @@ class DriftReport:
     model_name: str
     model_version: str
     test_timestamp: str
-    alerts: List[DriftAlert] = field(default_factory=list)
-    snapshots: List[MetricSnapshot] = field(default_factory=list)
-    baselines: Dict[MetricType, PerformanceBaseline] = field(default_factory=dict)
+    alerts: list[DriftAlert] = field(default_factory=list)
+    snapshots: list[MetricSnapshot] = field(default_factory=list)
+    baselines: dict[MetricType, PerformanceBaseline] = field(default_factory=dict)
     overall_status: DriftSeverity = DriftSeverity.NONE
     test_data_version: str = ""
 
@@ -97,7 +96,7 @@ class DriftDetector:
         self,
         model_name: str,
         model_version: str = "",
-        baseline_dir: Optional[str] = None,
+        baseline_dir: str | None = None,
     ):
         """
         初始化漂移检测器
@@ -111,7 +110,7 @@ class DriftDetector:
         self.model_version = model_version
         self.baseline_dir = Path(baseline_dir) if baseline_dir else Path("data/drift_baselines")
         self.baseline_dir.mkdir(parents=True, exist_ok=True)
-        self.baselines: Dict[str, Dict[MetricType, PerformanceBaseline]] = {}
+        self.baselines: dict[str, dict[MetricType, PerformanceBaseline]] = {}
 
         logger.info(
             "drift_detector_initialized",
@@ -120,7 +119,7 @@ class DriftDetector:
             baseline_dir=str(self.baseline_dir),
         )
 
-    def _get_baseline_path(self, organ: str = "all", metric_type: Optional[str] = None) -> Path:
+    def _get_baseline_path(self, organ: str = "all", metric_type: str | None = None) -> Path:
         """获取基线文件路径"""
         safe_model_name = self.model_name.replace("/", "_").replace("\\", "_")
         if metric_type:
@@ -178,7 +177,7 @@ class DriftDetector:
             logger.error("baseline_save_failed", model_name=self.model_name, error=str(e))
             return False
 
-    def load_baseline(self, metric_type: MetricType, organ: str = "all") -> Optional[PerformanceBaseline]:
+    def load_baseline(self, metric_type: MetricType, organ: str = "all") -> PerformanceBaseline | None:
         """
         加载性能基线
 
@@ -197,7 +196,7 @@ class DriftDetector:
             if not file_path.exists():
                 return None
 
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8") as f:
                 data = json.load(f)
 
             baseline = PerformanceBaseline(
@@ -236,9 +235,9 @@ class DriftDetector:
     def compute_baseline(
         self,
         metric_type: MetricType,
-        historical_values: List[float],
+        historical_values: list[float],
         organ: str = "all",
-    ) -> Optional[PerformanceBaseline]:
+    ) -> PerformanceBaseline | None:
         """
         从历史数据计算性能基线
 
@@ -315,7 +314,7 @@ class DriftDetector:
         metric_type: MetricType,
         current_value: float,
         organ: str = "all",
-    ) -> Optional[DriftAlert]:
+    ) -> DriftAlert | None:
         """
         检测单个指标是否发生漂移
 
@@ -397,8 +396,8 @@ class DriftDetector:
 
     def run_detection(
         self,
-        current_metrics: Dict[MetricType, float],
-        organ_metrics: Optional[Dict[str, Dict[MetricType, float]]] = None,
+        current_metrics: dict[MetricType, float],
+        organ_metrics: dict[str, dict[MetricType, float]] | None = None,
         test_data_version: str = "",
     ) -> DriftReport:
         """
@@ -486,7 +485,7 @@ class DriftDetector:
 
         return report
 
-    def report_to_dict(self, report: DriftReport) -> Dict[str, Any]:
+    def report_to_dict(self, report: DriftReport) -> dict[str, Any]:
         """将漂移报告转换为字典"""
         return {
             "model_name": report.model_name,

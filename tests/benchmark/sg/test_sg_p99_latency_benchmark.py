@@ -19,17 +19,15 @@
 
 import gc
 import time
-import asyncio
-import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, patch
 
-from safety_gateway.checker import get_safety_gateway_checker, CheckResultStatus
+import pytest
+
+from safety_gateway.checker import get_safety_gateway_checker
+from safety_gateway.consent_checker import ConsentCheckResult
 from safety_gateway.desensitization import sg_desensitization_engine
 from safety_gateway.threshold import get_threshold_engine
-from safety_gateway.contraindication import get_contraindication_engine
-from safety_gateway.health import HealthChecker
 from safety_gateway.validation_result import ConsentStatus
-from safety_gateway.consent_checker import ConsentCheckResult
 
 pytestmark = [pytest.mark.track_sg, pytest.mark.track_sec]
 
@@ -123,7 +121,7 @@ class TestSGInternalP99Latency:
         min_lat = min(latencies)
 
         print(f"\n{'='*60}")
-        print(f"SG内部处理延迟实测报告")
+        print("SG内部处理延迟实测报告")
         print(f"{'='*60}")
         print(f"样本数: {n}")
         print(f"最小延迟: {min_lat:.3f}ms")
@@ -138,7 +136,7 @@ class TestSGInternalP99Latency:
         p95_status = "✅ PASS" if p95 < 3.0 else "❌ FAIL"
         p50_status = "✅ PASS" if p50 < 1.0 else "❌ FAIL"
 
-        print(f"\n验证结果:")
+        print("\n验证结果:")
         print(f"  P99 < 5ms: {p99_status} ({p99:.3f}ms)")
         print(f"  P95 < 3ms: {p95_status} ({p95:.3f}ms)")
         print(f"  P50 < 1ms: {p50_status} ({p50:.3f}ms)")
@@ -234,13 +232,11 @@ class TestSGPhaseLatencyBreakdown:
             gc.disable()
             try:
                 for _ in range(200):
-                    from safety_gateway.checker.phase_base import CheckContext
                     from safety_gateway.checker.consent_phase import ConsentPhase
-                    from safety_gateway.checker.desensitization_phase import DesensitizationPhase
-                    from safety_gateway.checker.threshold_phase import ThresholdPhase
                     from safety_gateway.checker.contraindication_threshold_phase import ContraindicationThresholdPhase
-                    from safety_gateway.checker.consistency_phase import ConsistencyPhase
-                    from safety_gateway.health import _get_health_checker
+                    from safety_gateway.checker.desensitization_phase import DesensitizationPhase
+                    from safety_gateway.checker.phase_base import CheckContext
+                    from safety_gateway.checker.threshold_phase import ThresholdPhase
 
                     ctx = CheckContext()
                     timer = time.perf_counter
@@ -277,7 +273,7 @@ class TestSGPhaseLatencyBreakdown:
                 gc.enable()
 
         print(f"\n{'='*60}")
-        print(f"SG各阶段延迟分解报告")
+        print("SG各阶段延迟分解报告")
         print(f"{'='*60}")
         for phase, latencies in phase_latencies.items():
             if latencies:
@@ -346,7 +342,7 @@ class TestSGSustainedLoadLatency:
                 print(f"  窗口{w+1}/{num_windows}: P99={window_p99:.3f}ms")
 
         overall_p99 = max(window_p99s)
-        print(f"\n持续负载P99稳定性报告:")
+        print("\n持续负载P99稳定性报告:")
         print(f"  窗口数: {num_windows}")
         print(f"  每窗口样本: {window_size}")
         print(f"  最大P99: {overall_p99:.3f}ms")
@@ -386,7 +382,7 @@ class TestSGComponentLatency:
         p95 = compute_percentile(latencies, 95)
         p99 = compute_percentile(latencies, 99)
 
-        print(f"\n脱敏引擎延迟:")
+        print("\n脱敏引擎延迟:")
         print(f"  P50: {p50:.3f}ms")
         print(f"  P95: {p95:.3f}ms")
         print(f"  P99: {p99:.3f}ms")
@@ -417,7 +413,7 @@ class TestSGComponentLatency:
         latencies.sort()
         p99 = compute_percentile(latencies, 99)
 
-        print(f"\n阈值引擎延迟:")
+        print("\n阈值引擎延迟:")
         print(f"  P99: {p99:.3f}ms")
 
         assert p99 < 0.5, f"阈值引擎P99延迟{p99:.3f}ms超过0.5ms阈值"
@@ -461,7 +457,7 @@ class TestSGP99Alerting:
         stats = await tracker.compute_stats()
         assert tracker.is_throttling is True, "持续3次P99超限应触发throttling"
 
-        print(f"\nP99 throttling触发测试通过")
+        print("\nP99 throttling触发测试通过")
 
     @pytest.mark.asyncio
     async def test_p99_throttling_recovery(self):
@@ -493,7 +489,7 @@ class TestSGP99Alerting:
         stats = await tracker.compute_stats()
         assert tracker.is_throttling is False, "连续2次P99正常应恢复throttling"
 
-        print(f"\nP99 throttling恢复测试通过")
+        print("\nP99 throttling恢复测试通过")
 
 
 class TestSGGate0Validation:
@@ -557,7 +553,7 @@ class TestSGGate0Validation:
         avg = sum(latencies) / n
 
         print(f"\n{'='*60}")
-        print(f"Gate 0 P99延迟验证报告")
+        print("Gate 0 P99延迟验证报告")
         print(f"{'='*60}")
         print(f"测试样本数: {measurement_count}")
         print(f"预热样本数: {warmup_count}")
@@ -570,10 +566,10 @@ class TestSGGate0Validation:
         gate0_passed = p99 < 5.0
 
         if gate0_passed:
-            print(f"\n🎉 Gate 0 P99延迟验证通过!")
+            print("\n🎉 Gate 0 P99延迟验证通过!")
             print(f"   SG内部P99延迟 {p99:.3f}ms < 5ms")
         else:
-            print(f"\n❌ Gate 0 P99延迟验证未通过")
+            print("\n❌ Gate 0 P99延迟验证未通过")
             print(f"   SG内部P99延迟 {p99:.3f}ms >= 5ms")
 
         assert p99 < 5.0, (

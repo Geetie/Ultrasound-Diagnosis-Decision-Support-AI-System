@@ -13,18 +13,17 @@ Gate 0A必须验证项: FunASR+vLLM+TensorRT混合运行显存碎片化率<30%
     pytest tests/integration/llm/test_gpu_memory_fragmentation.py -v -m "phase0a and slow"
 """
 
-import os
 
 import pytest
 
 pytestmark = [pytest.mark.track_llm, pytest.mark.track_int]
 
 from app.inference.gpu_memory_monitor import (
+    FragmentationReport,
     GPUMemoryMonitor,
     GPUMemorySnapshot,
-    FragmentationReport,
-    _query_nvidia_smi,
     _estimate_fragmentation,
+    _query_nvidia_smi,
 )
 from app.inference.verification_config import get_verification_config
 

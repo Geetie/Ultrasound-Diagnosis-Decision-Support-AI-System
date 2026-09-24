@@ -26,21 +26,18 @@ import inspect
 import time
 from dataclasses import replace
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 import structlog
 
+from app.agents.protocols import AgentContext, AgentResponse
+from app.agents.routing import AdaptiveRAGRouter, RetrievalProfile, RoutingDecision
 from app.config.database import AsyncSessionLocal
 from app.config.redis import RedisPool
 from app.config.redis_keys import RedisKey
-from app.config.settings import settings
-from app.agents.protocols import AgentContext, AgentResponse
-from app.agents.routing import AdaptiveRAGRouter, RetrievalProfile, RoutingDecision
 from app.models.schemas import Organ, ResponseTier
 from app.repositories import (
-    ConsentRepository,
     DiagnosisRepository,
-    SessionRepository,
 )
 from app.services.inflight_diagnosis import get_inflight_registry
 from app.services.rollout_router import (
@@ -54,7 +51,7 @@ logger = structlog.get_logger("app.services.diagnosis_pipeline")
 
 # Adaptive RAG 路由器（T-GB-AGT-02）。进程内单例：stats 需跨请求累计，
 # 对应 05-可观测性与运维"标准路径占比 ≥70%"的路由分布指标。
-_router: Optional[AdaptiveRAGRouter] = None
+_router: AdaptiveRAGRouter | None = None
 
 
 def get_routing_router() -> AdaptiveRAGRouter:
@@ -80,7 +77,7 @@ async def _commit_if_possible(db: Any) -> None:
         return
     try:
         maybe = commit()
-    except Exception as exc:  # noqa: BLE001 - 提交失败不应掩盖主流程结果
+    except Exception as exc:
         logger.warning("pipeline_commit_call_failed", error=str(exc))
         return
     if inspect.isawaitable(maybe):
@@ -91,11 +88,11 @@ def _coerce_response_tier(value: Any) -> ResponseTier:
     """把 DB 中的 tier 字符串转成枚举；无法识别时按最保守（全量）处理。"""
     try:
         return ResponseTier(str(value))
-    except Exception:  # noqa: BLE001 - 未知值不得阻断诊断
+    except Exception:
         return ResponseTier.FULL
 
 
-def _assess_routing(request: Any) -> Optional[RoutingDecision]:
+def _assess_routing(request: Any) -> RoutingDecision | None:
     """按规格 §5.3 给出路由判定（任何异常都不得阻断诊断）。"""
     try:
         return get_routing_router().assess(
@@ -103,7 +100,7 @@ def _assess_routing(request: Any) -> Optional[RoutingDecision]:
             target_organ=str(getattr(request, "organ", "") or "") or None,
             requested_tier=_coerce_response_tier(getattr(request, "tier", None)),
         )
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.warning(
             "routing_assessment_failed",
             error=str(exc),
@@ -113,8 +110,8 @@ def _assess_routing(request: Any) -> Optional[RoutingDecision]:
 
 
 async def _apply_rollout_gate(
-    request: Any, routing: Optional[RoutingDecision]
-) -> Tuple[Optional[RoutingDecision], Optional[RolloutDecision]]:
+    request: Any, routing: RoutingDecision | None
+) -> tuple[RoutingDecision | None, RolloutDecision | None]:
     """T-GR-INT-01：按灰度路由决定是否放行新行为。
 
     未放行的会话把检索档位退回基线（``RetrievalProfile.standard()``），使灰度
@@ -148,7 +145,7 @@ async def _apply_rollout_gate(
             session_index=decision.session_index,
         )
         return routing, decision
-    except Exception as exc:  # noqa: BLE001 - 灰度判定失败一律放行
+    except Exception as exc:
         logger.warning(
             "rollout_decision_failed",
             error=str(exc),
@@ -178,7 +175,7 @@ async def run_diagnosis_pipeline(request_id: str) -> bool:
         - **不抛异常**：调用方（worker）只关心 True/False，无需处理异常。
     """
     t_start = time.monotonic()
-    timings: Dict[str, float] = {}
+    timings: dict[str, float] = {}
 
     try:
         async with AsyncSessionLocal() as db:
@@ -293,7 +290,7 @@ async def run_diagnosis_pipeline(request_id: str) -> bool:
         try:
             # shield：取消已投递过一次，收尾写库不能再被同一个取消打断
             await asyncio.shield(_mark_result_cancelled(request_id))
-        except Exception as exc:  # noqa: BLE001 - 收尾失败不得掩盖取消本身
+        except Exception as exc:
             logger.error(
                 "pipeline_cancel_mark_failed",
                 request_id=request_id,
@@ -335,7 +332,7 @@ async def run_diagnosis_pipeline(request_id: str) -> bool:
 
 
 async def _safe_dispatch(
-    request, request_id: str, routing: Optional[RoutingDecision] = None
+    request, request_id: str, routing: RoutingDecision | None = None
 ):
     """调用 dispatcher.invoke；失败时返回 [AgentResponse(confidence=0.0)]。
 
@@ -428,7 +425,7 @@ async def _safe_safety_check(request, fusion_result, request_id: str):
     """
     try:
         # 收集 fusion_result 的 findings 作为 sg 输出
-        output_data: Dict[str, Any] = {
+        output_data: dict[str, Any] = {
             "organ": request.organ,
             "findings": _extract_findings(fusion_result),
             "recommendation": _extract_recommendation(fusion_result),
@@ -476,7 +473,7 @@ async def _mark_result_cancelled(request_id: str) -> None:
                 },
             )
             await _commit_if_possible(db)
-    except Exception as exc:  # noqa: BLE001 - 收尾失败只记录，不改变取消语义
+    except Exception as exc:
         logger.error(
             "pipeline_cancel_status_write_failed",
             request_id=request_id,
@@ -488,12 +485,12 @@ async def _write_result_to_db(
     diagnosis_repo: DiagnosisRepository,
     request,
     fusion_result,
-    sg_result: Optional[dict],
+    sg_result: dict | None,
     sg_ok: bool,
-    timings: Dict[str, float],
-    routing: Optional[RoutingDecision] = None,
-    rollout: Optional["RolloutDecision"] = None,
-    t_start: Optional[float] = None,
+    timings: dict[str, float],
+    routing: RoutingDecision | None = None,
+    rollout: RolloutDecision | None = None,
+    t_start: float | None = None,
 ) -> bool:
     """根据 fusion_result + sg_result 决定 status / findings / confidence 并写 DB。
 
@@ -629,7 +626,7 @@ def _extract_findings(fusion_result) -> str:
     return getattr(final, "content", "") or ""
 
 
-def _extract_recommendation(fusion_result) -> Optional[str]:
+def _extract_recommendation(fusion_result) -> str | None:
     """从 fusion_result 抽取建议（简化为截断 content 前 500 字符）。"""
     content = _extract_findings(fusion_result)
     if not content:

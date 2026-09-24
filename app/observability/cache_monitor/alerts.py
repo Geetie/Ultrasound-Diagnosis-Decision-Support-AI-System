@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any
 
 from app.observability.constants import CacheAlertThresholds
 
@@ -33,7 +33,7 @@ ESCALATION_STEPS = {
 }
 
 
-def get_escalation_steps(alert: Dict[str, Any]) -> List[str]:
+def get_escalation_steps(alert: dict[str, Any]) -> list[str]:
     metric = alert.get("metric", "")
     return ESCALATION_STEPS.get(metric, [])
 
@@ -56,7 +56,7 @@ def check_alerts(
     warmup_duration: float,
     write_p99: float,
     read_p99: float,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     alerts = []
 
     if overall_hit_rate < CacheAlertThresholds.HIT_RATE_CRITICAL:

@@ -12,7 +12,6 @@
 from __future__ import annotations
 
 import re
-from typing import List, Optional
 
 import structlog
 
@@ -69,7 +68,7 @@ class LiverSpecialistAgent(RAGSpecialistAgent):
     def _parse_response(
         self,
         llm_text: str,
-        chunks: List[KnowledgeChunk],
+        chunks: list[KnowledgeChunk],
     ) -> AgentResponse:
         """从 LLM 输出中抽取 LR-1 ~ LR-5 / LR-M / LR-TIV 分级码。
 
@@ -84,7 +83,7 @@ class LiverSpecialistAgent(RAGSpecialistAgent):
         - 封顶 0.95。
         """
         normalized = normalize_grading_text(llm_text)
-        grade: Optional[str] = None
+        grade: str | None = None
 
         # 1) 单个匹配
         match = _LI_RADS_PATTERN.search(normalized)
@@ -173,7 +172,7 @@ class LiverSpecialistAgent(RAGSpecialistAgent):
 
 
 __all__ = [
-    "LiverSpecialistAgent",
     "LI_RADS_LEVELS",
     "LI_RADS_RISK_WEIGHT",
+    "LiverSpecialistAgent",
 ]

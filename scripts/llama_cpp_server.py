@@ -1,7 +1,4 @@
 import argparse
-import time
-import uuid
-from typing import Optional
 
 import uvicorn
 from llama_cpp import Llama
@@ -10,7 +7,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Route
 
-llm: Optional[Llama] = None
+llm: Llama | None = None
 
 
 async def health(request: Request) -> JSONResponse:

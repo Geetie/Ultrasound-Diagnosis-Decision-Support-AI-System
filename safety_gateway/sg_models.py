@@ -7,7 +7,7 @@
 - OrganDiseaseThreshold: 器官-病种置信度阈值配置
 """
 
-from sqlalchemy import Column, BigInteger, String, Float, Text, TIMESTAMP, Index, CheckConstraint
+from sqlalchemy import TIMESTAMP, BigInteger, CheckConstraint, Column, Float, Index, String, Text
 from sqlalchemy.sql import func
 
 from safety_gateway.sg_db import Base

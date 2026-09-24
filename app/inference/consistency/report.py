@@ -1,15 +1,14 @@
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
-from app.inference.verification_config import get_verification_config, VerificationConfig
-from app.inference.grading_definitions import _GRADE_HIERARCHY
 from app.inference.hallucination_detector import detect_hallucination as unified_detect_hallucination
+from app.inference.verification_config import VerificationConfig, get_verification_config
+
 from .statistics import (
-    grading_semantic_equivalent,
-    grading_clinically_equivalent,
-    text_similarity,
     _grades_cross_clinical_boundary,
+    grading_clinically_equivalent,
+    grading_semantic_equivalent,
 )
 
 
@@ -29,13 +28,13 @@ class GateStatus(str, Enum):
 @dataclass
 class GradingResult:
     text: str
-    grading: Optional[str] = None
+    grading: str | None = None
     organ: str = ""
     latency_ms: float = 0.0
     is_hallucination: bool = False
-    hallucination_issues: List[Dict[str, Any]] = field(default_factory=list)
+    hallucination_issues: list[dict[str, Any]] = field(default_factory=list)
     has_lvef_description_conflict: bool = False
-    error: Optional[str] = None
+    error: str | None = None
 
 
 @dataclass
@@ -43,11 +42,11 @@ class ConsistencyPair:
     case_id: str
     organ: str
     prompt: str
-    expected_grading: Optional[str] = None
-    expected_hallucination: Optional[bool] = None
+    expected_grading: str | None = None
+    expected_hallucination: bool | None = None
     is_high_risk: bool = False
-    engine_a_result: Optional[GradingResult] = None
-    engine_b_result: Optional[GradingResult] = None
+    engine_a_result: GradingResult | None = None
+    engine_b_result: GradingResult | None = None
     boundary_weight: float = 0.0
     is_critical_boundary: bool = False
 
@@ -146,7 +145,7 @@ class FalseStats:
     cases_with_ground_truth: int = 0
     engine_a_stats: Optional["FalseStats"] = None
     engine_b_stats: Optional["FalseStats"] = None
-    strategy_breakdown: Dict[str, StrategyFalseStats] = field(default_factory=dict)
+    strategy_breakdown: dict[str, StrategyFalseStats] = field(default_factory=dict)
     precision_ci_lower: float = 0.0
     precision_ci_upper: float = 0.0
     recall_ci_lower: float = 0.0
@@ -233,14 +232,14 @@ class ConsistencyReport:
     latency_sample_count_b: int = 0
     latency_p99_reliable: bool = False
     latency_faster_engine: str = ""
-    organ_breakdown: Dict[str, Dict[str, Any]] = field(default_factory=dict)
-    boundary_cases: List[Dict[str, Any]] = field(default_factory=list)
-    inconsistent_cases: List[Dict[str, Any]] = field(default_factory=list)
+    organ_breakdown: dict[str, dict[str, Any]] = field(default_factory=dict)
+    boundary_cases: list[dict[str, Any]] = field(default_factory=list)
+    inconsistent_cases: list[dict[str, Any]] = field(default_factory=list)
     false_stats: FalseStats = field(default_factory=FalseStats)
-    organ_false_stats: Dict[str, FalseStats] = field(default_factory=dict)
-    organ_sample_warnings: List[Dict[str, Any]] = field(default_factory=list)
-    organ_gate_failures: List[Dict[str, Any]] = field(default_factory=list)
-    failure_analysis: Dict[str, Any] = field(default_factory=dict)
+    organ_false_stats: dict[str, FalseStats] = field(default_factory=dict)
+    organ_sample_warnings: list[dict[str, Any]] = field(default_factory=list)
+    organ_gate_failures: list[dict[str, Any]] = field(default_factory=list)
+    failure_analysis: dict[str, Any] = field(default_factory=dict)
     test_data_version: str = ""
     elapsed_seconds: float = 0.0
     phase_upgraded: bool = False
@@ -259,14 +258,14 @@ class ConsistencyReport:
     quantization_test_rate: float = 0.0
     quantization_increment_exceeded: bool = False
     accuracy_retention_rate: float = 0.0
-    strategy_hallucination_diff: Dict[str, float] = field(default_factory=dict)
+    strategy_hallucination_diff: dict[str, float] = field(default_factory=dict)
     hallucination_diff_p_value: float = 0.0
     absolute_hallucination_rate_exceeded: bool = False
     data_source_type: str = ""
     high_risk_hallucination_rate: float = 0.0
     high_risk_case_count: int = 0
-    _config: Optional[VerificationConfig] = field(default=None, repr=False)
-    _gate_status_cache: Optional[GateStatus] = field(default=None, repr=False)
+    _config: VerificationConfig | None = field(default=None, repr=False)
+    _gate_status_cache: GateStatus | None = field(default=None, repr=False)
 
     @property
     def gate_status(self) -> GateStatus:
@@ -325,7 +324,7 @@ class ConsistencyReport:
         ld_abs_passed = (ld_abs <= thresholds.latency_diff_abs_ms) if self.latency_p99_reliable else False
         ld_conditional = (ld <= thresholds.latency_diff_pct * thresholds.conditional_latency_diff_pct_multiplier) if self.latency_p99_reliable else True
 
-        organ_failures: List[Dict[str, Any]] = []
+        organ_failures: list[dict[str, Any]] = []
         for organ_name, organ_data in self.organ_breakdown.items():
             organ_gc = organ_data.get("grading_consistency_rate", 1.0)
             organ_bd = organ_data.get("clinical_boundary_diff_rate", 0.0)
@@ -391,12 +390,12 @@ class ConsistencyReport:
         return self.gate_status == GateStatus.PASSED
 
     @property
-    def remediation(self) -> Dict[str, Any]:
+    def remediation(self) -> dict[str, Any]:
         if self.gate_status == GateStatus.PASSED:
             return {"action": "proceed", "details": "所有指标达标"}
 
         thresholds = (self._config or get_verification_config()).consistency_thresholds
-        deviations: Dict[str, Any] = {}
+        deviations: dict[str, Any] = {}
 
         gc_dev = (thresholds.grading_consistency_rate - self.grading_consistency_rate) / thresholds.grading_consistency_rate * 100
         if gc_dev > 0:
@@ -454,7 +453,7 @@ class ConsistencyReport:
         return {"action": "remediation_required", "deviations": deviations}
 
     @property
-    def nmpa_declaration(self) -> Optional[Dict[str, Any]]:
+    def nmpa_declaration(self) -> dict[str, Any] | None:
         if self.gate_status != GateStatus.CONDITIONAL:
             return None
         thresholds = (self._config or get_verification_config()).consistency_thresholds

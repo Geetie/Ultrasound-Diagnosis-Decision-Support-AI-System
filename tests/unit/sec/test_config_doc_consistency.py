@@ -1,6 +1,8 @@
 import pytest
-from safety_gateway.sg_config import sg_settings
+
 from app.config.settings import settings
+from safety_gateway.sg_config import sg_settings
+
 pytestmark = [pytest.mark.track_sec, pytest.mark.track_sg, pytest.mark.sec_domain_audit]
 
 

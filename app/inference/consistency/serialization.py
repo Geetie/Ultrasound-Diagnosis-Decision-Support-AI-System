@@ -1,10 +1,10 @@
 import json
-from typing import Any, Dict
+from typing import Any
 
 from .report import ConsistencyReport
 
 
-def report_to_dict(report: ConsistencyReport) -> Dict[str, Any]:
+def report_to_dict(report: ConsistencyReport) -> dict[str, Any]:
     return {
         "engine_a": report.engine_a_name,
         "engine_b": report.engine_b_name,

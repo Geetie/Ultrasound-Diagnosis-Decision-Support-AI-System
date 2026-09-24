@@ -10,7 +10,7 @@
 """
 from __future__ import annotations
 
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 import pytest
 
@@ -28,10 +28,10 @@ async def _call_middleware(
     path: str,
     *,
     middleware_factory=SecurityHeadersMiddleware,
-    inner_headers: List[Tuple[bytes, bytes]] | None = None,
-) -> Dict[bytes, bytes]:
+    inner_headers: list[tuple[bytes, bytes]] | None = None,
+) -> dict[bytes, bytes]:
     """用一个回显下游应用驱动中间件，返回最终响应头。"""
-    captured: Dict[str, Any] = {}
+    captured: dict[str, Any] = {}
 
     async def inner(scope, receive, send):
         await send(
@@ -131,13 +131,13 @@ class TestMiddlewareHeaders:
 
     @pytest.mark.asyncio
     async def test_websocket_scope_passes_through(self):
-        seen: Dict[str, Any] = {}
+        seen: dict[str, Any] = {}
 
         async def inner(scope, receive, send):
             seen["scope_type"] = scope["type"]
             await send({"type": "websocket.accept"})
 
-        sent: List[Dict[str, Any]] = []
+        sent: list[dict[str, Any]] = []
 
         async def send(message):
             sent.append(message)

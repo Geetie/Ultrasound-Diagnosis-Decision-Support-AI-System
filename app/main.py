@@ -1,34 +1,34 @@
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from app.api.v1.alert_admin import router as alert_admin_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.consent import router as consent_router
-from app.api.v1.diagnosis import router as diagnosis_router
 from app.api.v1.device import router as device_router
-from app.api.v1.errors import AppBaseException, app_exception_handler, http_exception_handler, general_exception_handler
+from app.api.v1.diagnosis import router as diagnosis_router
+from app.api.v1.errors import AppBaseException, app_exception_handler, general_exception_handler, http_exception_handler
 from app.api.v1.feedback import router as feedback_router
 from app.api.v1.fhir import router as fhir_router
 from app.api.v1.health import router as health_router
 from app.api.v1.imaging import router as imaging_router
+from app.api.v1.obs_dashboard import router as obs_dashboard_router
 from app.api.v1.report import router as report_router
 from app.api.v1.security import router as security_router
 from app.api.v1.session import router as session_router
 from app.api.v1.speech import router as speech_router
 from app.api.v1.voice import router as voice_router
-from app.api.v1.alert_admin import router as alert_admin_router
-from app.api.v1.obs_dashboard import router as obs_dashboard_router
 from app.api.websocket.dicom import router as ws_dicom_router
 from app.api.websocket.nav import router as ws_nav_router
-from app.config.redis import RedisPool
 from app.config.rate_limit import RateLimitMiddleware
-from app.security.security_headers import SecurityHeadersMiddleware
+from app.config.redis import RedisPool
 from app.config.settings import settings
 from app.config.validator import ConfigValidationError, validate_config
+from app.security.security_headers import SecurityHeadersMiddleware
 
 
 @asynccontextmanager
@@ -71,8 +71,8 @@ async def lifespan(app: FastAPI):
     await safety_gateway_client.warmup()
     await safety_gateway_client.start_health_probe()
 
-    from app.observability.cusum import CUSUMMonitor, AISafetyCircuitBreaker, HallucinationCUSUMBridge
     from app.observability.alert_escalation import get_alert_escalation_manager
+    from app.observability.cusum import AISafetyCircuitBreaker, HallucinationCUSUMBridge
 
     alert_mgr = get_alert_escalation_manager()
 
@@ -116,6 +116,7 @@ async def lifespan(app: FastAPI):
     # 避免此前该模块只定义不接线（巡检能力实际未生效）。
     try:
         import asyncio as _asyncio
+
         from app.observability.infra_health import run_infra_health_checks
 
         app.state.infra_health_task = _asyncio.create_task(
@@ -251,10 +252,7 @@ async def lifespan(app: FastAPI):
         from app.agents.knowledge import KnowledgeAgentImpl
         from app.agents.monitor import MonitorAgentImpl
         from app.agents.specialist import build_dispatcher
-        from app.agents.dispatcher import DispatcherAgentImpl
         from app.inference.factory import create_inference_engine_from_settings
-        from app.models.schemas import Organ
-        from app.agents.specialist import PlaceholderSpecialistAgent
 
         # knowledge_agent：RAG 不可用时降级为「仅占位」实现（query 抛 RuntimeError）
         if app.state.rag_service is not None:
@@ -294,7 +292,7 @@ async def lifespan(app: FastAPI):
             )
         else:
             class _KnowledgeUnavailable:
-                async def query(self, *args, **kwargs):  # noqa: ANN001
+                async def query(self, *args, **kwargs):
                     raise RuntimeError(
                         "knowledge_agent unavailable: RAG service not initialized"
                     )
@@ -453,6 +451,7 @@ async def lifespan(app: FastAPI):
     # OBS: 停止基础设施巡检（置位 shutdown event → 等待 task 退出 → 兜底取消）
     try:
         import asyncio as _asyncio
+
         from app.observability.infra_health import stop_infra_health_checks
 
         await stop_infra_health_checks()
@@ -480,7 +479,7 @@ async def lifespan(app: FastAPI):
                 await agent.close()
             except Exception as e:
                 _shutdown_logger.warning(
-                    f"agents_close_failed", extra={"agent": agent_attr, "error": str(e)}
+                    "agents_close_failed", extra={"agent": agent_attr, "error": str(e)}
                 )
     if hasattr(app.state, "inference_engine") and app.state.inference_engine:
         await app.state.inference_engine.close()

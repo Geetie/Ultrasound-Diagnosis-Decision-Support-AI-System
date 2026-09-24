@@ -16,7 +16,6 @@ mock them with MagicMock(spec=...) so attribute access is type-checked.
 """
 from __future__ import annotations
 
-from typing import Any, List, Optional
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -27,10 +26,7 @@ from app.embedding.protocols import (
     EmbeddingError,
     EmbeddingErrorCode,
     EmbeddingModality,
-    EmbeddingModelInfo,
-    EmbeddingModelType,
     EmbeddingResponse,
-    ImageEmbeddingRequest,
     SearchResult,
     TextEmbeddingRequest,
     VectorIndexError,
@@ -41,11 +37,8 @@ from app.rag.bm25_fallback import BM25Hit, BM25Index
 from app.rag.protocols import (
     RetrievalMethod,
     RetrievalRequest,
-    RetrievalResult,
-    ScoredChunk,
 )
 from app.rag.retriever import Retriever
-
 
 # ----------------------------------------------------------------------
 # helpers
@@ -56,7 +49,7 @@ def _make_chunk(
     chunk_id: str,
     organ: str = "thyroid",
     content: str = "x",
-    embedding: Optional[List[float]] = None,
+    embedding: list[float] | None = None,
 ) -> KnowledgeChunk:
     return KnowledgeChunk(
         chunk_id=chunk_id,

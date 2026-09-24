@@ -10,8 +10,10 @@
 
 import asyncio
 import json
+from collections.abc import Callable, Coroutine
+from typing import Any
+
 import structlog
-from typing import Any, Callable, Coroutine
 
 from safety_gateway.redis_pool import SafetyGatewayRedisPool
 

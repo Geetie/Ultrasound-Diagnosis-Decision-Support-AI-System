@@ -4,10 +4,10 @@
 FULL模式强制高采样率（>=0.5），支持FastAPI请求自动追踪。
 """
 
-__all__ = ["DiagnosisSpan", "DIAGNOSIS_SPANS", "init_tracing", "instrument_fastapi", "inject_trace_to_structlog"]
+__all__ = ["DIAGNOSIS_SPANS", "DiagnosisSpan", "init_tracing", "inject_trace_to_structlog", "instrument_fastapi"]
 
 import contextvars
-from typing import Any, Dict, Optional
+from typing import Any
 
 import structlog
 
@@ -16,10 +16,10 @@ from app.observability.enums import DeploymentProfile
 
 _logger = structlog.get_logger("app.observability.tracing")
 
-_current_trace_id: contextvars.ContextVar[Optional[str]] = contextvars.ContextVar(
+_current_trace_id: contextvars.ContextVar[str | None] = contextvars.ContextVar(
     "current_trace_id", default=None
 )
-_current_span_id: contextvars.ContextVar[Optional[str]] = contextvars.ContextVar(
+_current_span_id: contextvars.ContextVar[str | None] = contextvars.ContextVar(
     "current_span_id", default=None
 )
 
@@ -62,9 +62,9 @@ def init_tracing() -> None:
 
     try:
         from opentelemetry import trace
+        from opentelemetry.sdk.resources import Resource
         from opentelemetry.sdk.trace import TracerProvider as SDKTracerProvider
         from opentelemetry.sdk.trace.sampling import TraceIdRatioBased
-        from opentelemetry.sdk.resources import Resource
 
         profile = DeploymentProfile(settings.deployment_profile)
         sample_rate = settings.obs_tracing_sample_rate
@@ -131,11 +131,11 @@ def get_tracer():
     return _tracer
 
 
-def get_current_trace_id() -> Optional[str]:
+def get_current_trace_id() -> str | None:
     return _current_trace_id.get()
 
 
-def get_current_span_id() -> Optional[str]:
+def get_current_span_id() -> str | None:
     return _current_span_id.get()
 
 
@@ -153,7 +153,7 @@ class DiagnosisSpan:
     def __init__(
         self,
         span_name: str,
-        attributes: Optional[Dict[str, Any]] = None,
+        attributes: dict[str, Any] | None = None,
     ):
         self._span_name = span_name
         self._attributes = attributes or {}
@@ -208,7 +208,7 @@ class DiagnosisSpan:
         if self._span is not None:
             self._span.set_attribute(key, value)
 
-    def add_event(self, name: str, attributes: Optional[Dict[str, Any]] = None) -> None:
+    def add_event(self, name: str, attributes: dict[str, Any] | None = None) -> None:
         if self._span is not None:
             self._span.add_event(name, attributes or {})
 

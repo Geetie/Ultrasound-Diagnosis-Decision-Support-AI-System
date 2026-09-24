@@ -16,8 +16,6 @@ Covers:
 from __future__ import annotations
 
 import json
-import re
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -38,12 +36,10 @@ from app.embedding.pgvector_client import (  # noqa: E402
     _validate_meta_key,
 )
 from app.embedding.protocols import (  # noqa: E402
-    SearchResult,
     VectorIndexError,
     VectorIndexErrorCode,
     VectorRecord,
 )
-
 
 # ---------------------------------------------------------------------------
 # Collection / metadata key validation

@@ -20,7 +20,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, List, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -38,7 +38,6 @@ from app.models.schemas import (
     PosteriorAcoustic,
     ResearchMetrics,
 )
-
 
 # ----------------------------------------------------------------------
 # 共享数据模型
@@ -75,10 +74,10 @@ class AgentContext(BaseModel):
     session_id: str
     organ: Organ
     user_query: str
-    retrieval_profile: Optional[dict[str, Any]] = None
-    imaging_metadata: Optional[dict[str, Any]] = None
-    prior_messages: List[dict[str, Any]] = Field(default_factory=list)
-    used_evidence_ids: List[str] = Field(default_factory=list)
+    retrieval_profile: dict[str, Any] | None = None
+    imaging_metadata: dict[str, Any] | None = None
+    prior_messages: list[dict[str, Any]] = Field(default_factory=list)
+    used_evidence_ids: list[str] = Field(default_factory=list)
 
     @field_validator("request_id", "session_id")
     @classmethod
@@ -129,40 +128,40 @@ class AgentResponse(BaseModel):
             specialist 自身不写入（仅占位 ``None``），保留给 FUS 轨道。
     """
     agent_name: str
-    organ: Optional[Organ] = None
+    organ: Organ | None = None
     content: str = ""
     confidence: float = 0.0
-    evidence_chunk_ids: List[str] = Field(default_factory=list)
-    reasoning_trace: List[str] = Field(default_factory=list)
+    evidence_chunk_ids: list[str] = Field(default_factory=list)
+    reasoning_trace: list[str] = Field(default_factory=list)
     latency_ms: float = 0.0
     # P0-1 修复：补齐 FUS 透传契约
     needs_review: bool = False
     # P2-1 增强：跨器官关联规则使用
-    disease_code: Optional[str] = None
+    disease_code: str | None = None
     # P2-1 增强：KB safety_critical 精确撤销
-    used_evidence_ids: List[str] = Field(default_factory=list)
+    used_evidence_ids: list[str] = Field(default_factory=list)
     # FUS 分级偏差判定（specialist 仅占位 None，由 FUS-01 融合层写入）
-    deviation_severity: Optional[str] = None
+    deviation_severity: str | None = None
     # === 医生直接信息需求（M1~M12）结构化输出 ===
     # 全部可选且带默认值：既有构造点（生产 20 余处 + 测试 30 余处）均使用
     # 关键字参数，扩展不会破坏任何调用方；未实现的专科智能体保持默认空值，
     # 前端按"无数据不渲染"处理。
     # 结构化测量（M3）
-    measurement: Optional[Measurement] = None
+    measurement: Measurement | None = None
     # 鉴别诊断清单，按可能性降序（M4）
-    differential_diagnoses: List[DifferentialDiagnosis] = Field(default_factory=list)
+    differential_diagnoses: list[DifferentialDiagnosis] = Field(default_factory=list)
     # 恶性概率，与 confidence 语义不同，需分开展示（M5）
-    malignancy_risk: Optional[MalignancyRisk] = None
+    malignancy_risk: MalignancyRisk | None = None
     # 转诊/处置建议（M7）
-    clinical_actions: List[ClinicalAction] = Field(default_factory=list)
+    clinical_actions: list[ClinicalAction] = Field(default_factory=list)
     # 患者解释话术（M10，默认不入正式报告）
-    patient_explanation: Optional[PatientExplanation] = None
+    patient_explanation: PatientExplanation | None = None
     # 科研量化指标（M11，前端默认折叠）
-    research_metrics: Optional[ResearchMetrics] = None
+    research_metrics: ResearchMetrics | None = None
     # 跨模态对照提示（M12）
-    cross_modality_hints: List[CrossModalityHint] = Field(default_factory=list)
+    cross_modality_hints: list[CrossModalityHint] = Field(default_factory=list)
     # 后方回声特征（M9，UDAF 属性；同时供 M5 概率计算使用）
-    posterior_acoustic: Optional[PosteriorAcoustic] = None
+    posterior_acoustic: PosteriorAcoustic | None = None
 
     @field_validator("confidence")
     @classmethod
@@ -173,7 +172,7 @@ class AgentResponse(BaseModel):
 
     @field_validator("deviation_severity")
     @classmethod
-    def _deviation_severity_valid(cls, v: Optional[str]) -> Optional[str]:
+    def _deviation_severity_valid(cls, v: str | None) -> str | None:
         if v is not None and v not in {"none", "minor", "major"}:
             raise ValueError(
                 "deviation_severity must be one of {None, 'none', 'minor', 'major'}"
@@ -216,7 +215,7 @@ class Agent(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def get_capability_tags(self) -> List[str]:
+    def get_capability_tags(self) -> list[str]:
         """返回智能体的能力标签列表。
 
         用于：
@@ -276,7 +275,7 @@ class DispatcherAgent(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def aggregate(self, specialist_responses: List[AgentResponse]) -> AgentResponse:
+    async def aggregate(self, specialist_responses: list[AgentResponse]) -> AgentResponse:
         """融合多个 specialist 响应。
 
         Args:
@@ -295,7 +294,7 @@ class DispatcherAgent(ABC):
         query: str,
         top_k: int = 20,
         failure_category: str = "unknown",
-    ) -> List["KnowledgeChunk"]:
+    ) -> list[KnowledgeChunk]:
         """CRAG 补充检索的中央路由（P2-8 修复）。
 
         设计文档 12-系统性修订实施指南.md:171 要求 CRAG 链路：
@@ -339,8 +338,8 @@ class KnowledgeAgent(ABC):
         query: str,
         organ: Organ,
         top_k: int = 10,
-        profile: Optional[dict[str, Any]] = None,
-    ) -> List[KnowledgeChunk]:
+        profile: dict[str, Any] | None = None,
+    ) -> list[KnowledgeChunk]:
         """查询知识库。
 
         Args:
@@ -408,7 +407,7 @@ class MonitorAgent(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def detect_anomaly(self, request: DiagnosisRequest) -> Optional[str]:
+    async def detect_anomaly(self, request: DiagnosisRequest) -> str | None:
         """对请求做异常预检。
 
         Phase 0A 仅做最简检查（image_ids 为空 / target_organ 缺失），后续可扩展。

@@ -33,8 +33,9 @@ CRAG 流程（设计文档 12-系统性修订实施指南.md:171）：
 """
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from typing import Any, Awaitable, Callable, List, Optional, Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 import structlog
 
@@ -45,7 +46,6 @@ from app.knowledge.protocols import KnowledgeChunk
 from app.rag.protocols import (
     RAGService,
     RetrievalRequest,
-    ScoredChunk,
 )
 
 logger = structlog.get_logger("app.fusion.crag")
@@ -67,9 +67,9 @@ class _KnowledgeAgentLike(Protocol):
     async def query(
         self,
         query: str,
-        organ: Optional[Any] = None,
+        organ: Any | None = None,
         top_k: int = 10,
-    ) -> List[KnowledgeChunk]: ...
+    ) -> list[KnowledgeChunk]: ...
 
 
 @runtime_checkable
@@ -86,7 +86,7 @@ class _DispatcherLike(Protocol):
         query: str,
         top_k: int = 20,
         failure_category: str = "unknown",
-    ) -> List[KnowledgeChunk]: ...
+    ) -> list[KnowledgeChunk]: ...
 
 
 #: Specialist invoker 类型（P2-6）：接收 AgentContext，返回新 AgentResponse
@@ -113,11 +113,11 @@ class CRAGResult:
     """
 
     recovered: bool
-    new_response: Optional[AgentResponse] = None
+    new_response: AgentResponse | None = None
     failure_category: str = "unknown"
     retrieval_top_k: int = 0
     reason: str = ""
-    via_dispatcher: Optional[bool] = None
+    via_dispatcher: bool | None = None
     specialist_reinvoked: bool = False
 
 
@@ -157,10 +157,10 @@ class CRAGHandler:
 
     def __init__(
         self,
-        rag_service: Optional[RAGService] = None,
-        knowledge_agent: Optional[_KnowledgeAgentLike] = None,
-        dispatcher_agent: Optional[_DispatcherLike] = None,
-        specialist_invoker: Optional[SpecialistInvoker] = None,
+        rag_service: RAGService | None = None,
+        knowledge_agent: _KnowledgeAgentLike | None = None,
+        dispatcher_agent: _DispatcherLike | None = None,
+        specialist_invoker: SpecialistInvoker | None = None,
         crag_top_k: int = DEFAULT_CRAG_TOP_K,
     ) -> None:
         if crag_top_k <= 0:
@@ -187,7 +187,7 @@ class CRAGHandler:
         self._specialist_invoker = specialist_invoker
         self._crag_top_k = crag_top_k
         # P2-9 增强：记录最近一次检索异常（用于失败原因透出）
-        self._last_retrieval_error: Optional[BaseException] = None
+        self._last_retrieval_error: BaseException | None = None
 
     # ------------------------------------------------------------------
     # 公开 API
@@ -299,7 +299,7 @@ class CRAGHandler:
         request: FusionRequest,
         query: str,
         failure_category: str,
-    ) -> tuple[List[KnowledgeChunk], Optional[bool]]:
+    ) -> tuple[list[KnowledgeChunk], bool | None]:
         """执行补充检索并返回 ``(chunks, via_dispatcher)``。
 
         异常时按优先级降级到下一个后端（dispatcher → knowledge_agent →
@@ -318,7 +318,7 @@ class CRAGHandler:
                     failure_category=failure_category,
                 )
                 return list(chunks or []), True
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 self._last_retrieval_error = exc
                 logger.warning(
                     "crag_dispatcher_failed_fallback",
@@ -344,7 +344,7 @@ class CRAGHandler:
         self,
         organ: Any,
         query: str,
-    ) -> tuple[List[KnowledgeChunk], Optional[bool]]:
+    ) -> tuple[list[KnowledgeChunk], bool | None]:
         """通过 KnowledgeAgent 检索（带异常降级到 RAG Service）。"""
         try:
             chunks = await self._knowledge_agent.query(  # type: ignore[union-attr]
@@ -353,7 +353,7 @@ class CRAGHandler:
                 top_k=self._crag_top_k,
             )
             return list(chunks or []), False
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             self._last_retrieval_error = exc
             logger.warning(
                 "crag_knowledge_agent_failed_fallback",
@@ -369,8 +369,8 @@ class CRAGHandler:
         self,
         organ: Any,
         query: str,
-        request: Optional[FusionRequest],
-    ) -> tuple[List[KnowledgeChunk], Optional[bool]]:
+        request: FusionRequest | None,
+    ) -> tuple[list[KnowledgeChunk], bool | None]:
         """通过 RAG Service 直连检索（带 BM25 兜底）。"""
         try:
             retrieval_request = RetrievalRequest(
@@ -387,7 +387,7 @@ class CRAGHandler:
             result = await self._rag_service.retrieve(retrieval_request)  # type: ignore[union-attr]
             chunks = [sc.chunk for sc in (result.chunks or [])]
             return chunks, False
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             self._last_retrieval_error = exc
             logger.warning(
                 "crag_rag_service_failed",
@@ -398,7 +398,7 @@ class CRAGHandler:
 
     async def _retrieve_fail(
         self, failure_category: str
-    ) -> tuple[List[KnowledgeChunk], Optional[bool]]:
+    ) -> tuple[list[KnowledgeChunk], bool | None]:
         """统一失败返回（返回特殊 CRAGResult 标记让 handle() 短路）。
 
         P2-9 增强：若 _last_retrieval_error 有值，handle() 会读取并把
@@ -416,7 +416,7 @@ class CRAGHandler:
     async def _build_new_response(
         self,
         original: AgentResponse,
-        new_evidence: List[KnowledgeChunk],
+        new_evidence: list[KnowledgeChunk],
         request: FusionRequest,
     ) -> tuple[AgentResponse, bool]:
         """基于新证据构造新响应。
@@ -471,7 +471,7 @@ class CRAGHandler:
                     new_evidence_count=len(new_evidence),
                 )
                 return final_response, True
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.warning(
                     "crag_specialist_reinvoke_failed",
                     error=str(exc),
@@ -505,7 +505,7 @@ class CRAGHandler:
     @staticmethod
     def _build_specialist_context(
         original: AgentResponse,
-        new_evidence: List[KnowledgeChunk],
+        new_evidence: list[KnowledgeChunk],
         request: FusionRequest,
     ) -> AgentContext:
         """从原始 response + 新证据构造 AgentContext 供 specialist 重生成。
@@ -515,7 +515,7 @@ class CRAGHandler:
         中读取 evidence，避免污染 AgentContext.evidence_chunk_ids）。
         """
         # 收集所有 evidence（old + new）
-        all_evidence_ids: List[str] = []
+        all_evidence_ids: list[str] = []
         seen: set[str] = set()
         for cid in (original.evidence_chunk_ids or []):
             if cid and cid not in seen:
@@ -558,10 +558,10 @@ class CRAGHandler:
     @staticmethod
     def _merge_evidence(
         original: AgentResponse,
-        new_evidence: List[KnowledgeChunk],
-    ) -> List[str]:
+        new_evidence: list[KnowledgeChunk],
+    ) -> list[str]:
         """合并 evidence（旧在前，新在后，去重）。"""
-        merged: List[str] = []
+        merged: list[str] = []
         seen: set[str] = set()
         for cid in (original.evidence_chunk_ids or []):
             if cid and cid not in seen:
@@ -577,15 +577,15 @@ class CRAGHandler:
     @staticmethod
     def _merge_evidence_three(
         original: AgentResponse,
-        new_evidence: List[KnowledgeChunk],
+        new_evidence: list[KnowledgeChunk],
         reinvoked_response: AgentResponse,
-    ) -> List[str]:
+    ) -> list[str]:
         """三方合并 evidence：原 + 新 + reinvoked。
 
         顺序：原 specialist evidence → 新 chunks → reinvoked response evidence
         （保持 specialist 输出优先）。
         """
-        merged: List[str] = []
+        merged: list[str] = []
         seen: set[str] = set()
         # 1) 原 evidence
         for cid in (original.evidence_chunk_ids or []):
@@ -649,8 +649,8 @@ class CRAGHandler:
 
 
 __all__ = [
+    "DEFAULT_CRAG_TOP_K",
     "CRAGHandler",
     "CRAGResult",
-    "DEFAULT_CRAG_TOP_K",
     "SpecialistInvoker",
 ]

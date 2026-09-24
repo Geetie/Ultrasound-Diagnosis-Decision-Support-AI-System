@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import Optional
 
 from app.inference.verification_config import BenchmarkThresholdConfig
 
@@ -38,7 +37,7 @@ class QuantizationHallucinationVerifier:
         self,
         baseline_hallucination_rate: float,
         test_hallucination_rate: float,
-        report: Optional[object] = None,
+        report: object | None = None,
     ) -> QuantizationResult:
         result = self.verify(baseline_hallucination_rate, test_hallucination_rate)
         if report is not None:

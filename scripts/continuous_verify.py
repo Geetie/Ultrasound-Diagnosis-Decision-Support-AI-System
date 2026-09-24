@@ -17,18 +17,18 @@ import json
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.inference.consistency import ConsistencyVerifier
-from app.inference.drift_detector import DriftDetector, MetricType, DriftSeverity
+from app.inference.drift_detector import DriftDetector, DriftSeverity, MetricType
 from app.inference.factory import create_inference_engine
 from app.inference.verification_config import get_verification_config
 
 
 def load_test_cases(path: str) -> list:
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         data = json.load(f)
     return data.get("cases", [])
 
@@ -43,7 +43,7 @@ async def run_verification(
     llama_cpp_port: int = 8001,
     vllm_host: str = "localhost",
     vllm_port: int = 8002,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     test_cases = load_test_cases(test_cases_path)
     if not test_cases:
         print("ERROR: No test cases found")
@@ -102,7 +102,7 @@ async def run_verification(
     with open(report_path, "w", encoding="utf-8") as f:
         json.dump(combined, f, ensure_ascii=False, indent=2)
 
-    print(f"\n=== Verification Report ===")
+    print("\n=== Verification Report ===")
     print(f"Verdict: {combined['verdict'].upper()}")
     print(f"Total cases: {report.total_cases}")
     print(f"Grading consistency: {report.grading_consistency_rate:.2%}")

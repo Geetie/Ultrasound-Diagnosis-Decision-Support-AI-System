@@ -31,9 +31,8 @@ fuse(request)
 """
 from __future__ import annotations
 
-import asyncio
 import time
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import structlog
 
@@ -43,9 +42,6 @@ from app.fusion.consistency import ConsistencyChecker
 from app.fusion.crag import CRAGHandler
 from app.fusion.layered_validator import LayeredValidator
 from app.fusion.protocols import (
-    ConflictReport,
-    ConsistencyCheckResult,
-    ConsistencySeverity,
     FusionEngine,
     FusionRequest,
     FusionResult,
@@ -77,9 +73,9 @@ class FusionEngineImpl(FusionEngine):
         self,
         conflict_detector: ConflictDetector,
         consistency_checker: ConsistencyChecker,
-        self_rag_evaluator: Optional[SelfRAGEvaluator] = None,
-        crag_handler: Optional[CRAGHandler] = None,
-        rag_service: Optional[RAGService] = None,
+        self_rag_evaluator: SelfRAGEvaluator | None = None,
+        crag_handler: CRAGHandler | None = None,
+        rag_service: RAGService | None = None,
         name: str = "fusion_engine",
     ) -> None:
         if conflict_detector is None:
@@ -138,7 +134,7 @@ class FusionEngineImpl(FusionEngine):
         # 2) 三层校验（冲突 / 一致性 / Self-RAG）
         try:
             result = await self._layered_validator.validate(request)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning(
                 "fusion_validate_failed",
                 error=str(exc),
@@ -188,7 +184,7 @@ class FusionEngineImpl(FusionEngine):
                         "fusion_crag_not_recovered",
                         reason=crag_result.reason,
                     )
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.warning(
                     "fusion_crag_failed",
                     error=str(exc),
@@ -235,7 +231,7 @@ class FusionEngineImpl(FusionEngine):
                 self._conflict_detector is not None
                 and self._consistency_checker is not None
             )
-        except Exception:  # noqa: BLE001
+        except Exception:
             return False
 
     async def close(self) -> None:
@@ -248,7 +244,7 @@ class FusionEngineImpl(FusionEngine):
 
     @staticmethod
     def _select_final_response(
-        responses: List[AgentResponse],
+        responses: list[AgentResponse],
     ) -> AgentResponse:
         """选择 final_response：取 confidence 最高者；并列时第一个。"""
         if not responses:

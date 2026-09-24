@@ -29,6 +29,7 @@
 
 import argparse
 import os
+import signal
 import subprocess
 import sys
 import time
@@ -286,10 +287,10 @@ def main():
         print("Run Phase0A integration tests:")
         print()
         if sys.platform == "win32":
-            print(f"  set LLM_TEST_MODE=local")
-            print(f"  pytest tests/integration/test_phase0a_consistency.py -v -m phase0a")
+            print("  set LLM_TEST_MODE=local")
+            print("  pytest tests/integration/test_phase0a_consistency.py -v -m phase0a")
         else:
-            print(f"  LLM_TEST_MODE=local pytest tests/integration/test_phase0a_consistency.py -v -m phase0a")
+            print("  LLM_TEST_MODE=local pytest tests/integration/test_phase0a_consistency.py -v -m phase0a")
         print()
         print("Press Ctrl+C to stop all services.")
         print("=" * 60)

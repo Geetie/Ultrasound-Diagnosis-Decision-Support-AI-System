@@ -1,12 +1,14 @@
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import patch, AsyncMock, MagicMock
-from httpx import AsyncClient, ASGITransport
+from httpx import ASGITransport, AsyncClient
+
 from app.observability.webhook_adapter import (
-    app,
-    _format_alerts_text,
-    _build_feishu_payload,
     _build_dingtalk_payload,
+    _build_feishu_payload,
     _build_wecom_payload,
+    _format_alerts_text,
+    app,
 )
 
 

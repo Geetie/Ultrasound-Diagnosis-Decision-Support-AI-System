@@ -9,8 +9,8 @@
 - Redis RefreshTokenStore 家族撤销 P99 < 500ms
 """
 
-import time
 import gc
+import time
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -20,10 +20,6 @@ pytestmark = [pytest.mark.track_sec, pytest.mark.track_inf]
 from app.config.redis_keys import RedisKey
 from app.security.refresh_token import (
     MemoryRefreshTokenStore,
-    create_refresh_token,
-    revoke_refresh_token,
-    revoke_token_family,
-    verify_refresh_token,
 )
 
 
@@ -144,7 +140,7 @@ class TestRevocationPerformance:
             for _ in range(500):
                 MemoryRefreshTokenStore._instance = None
                 store = MemoryRefreshTokenStore()
-                family_id = f"family_reuse"
+                family_id = "family_reuse"
                 token1 = store.create_refresh_token(user_id, user_info, family_id=family_id)
                 store.create_refresh_token(user_id, user_info, family_id=family_id)
                 store.revoke_refresh_token(token1)
@@ -245,7 +241,6 @@ class TestRedisRevocationPerformance:
     """
 
     def _create_mock_redis_store(self, latency_ms: float = 2.0):
-        from app.security.refresh_token import RedisRefreshTokenStore
 
         mock_redis = AsyncMock()
         _store = {}

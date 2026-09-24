@@ -24,7 +24,6 @@
 from __future__ import annotations
 
 import time
-from typing import Any, List, Optional, Tuple
 
 import structlog
 
@@ -38,8 +37,7 @@ from app.fusion.protocols import (
     FusionRequest,
     FusionResult,
 )
-from app.fusion.self_rag import SelfRAGEvaluator, SelfRAGEvalResult
-from app.rag.protocols import RAGService
+from app.fusion.self_rag import SelfRAGEvaluator
 
 logger = structlog.get_logger("app.fusion.layered_validator")
 
@@ -62,7 +60,7 @@ class LayeredValidator:
         self,
         conflict_detector: ConflictDetector,
         consistency_checker: ConsistencyChecker,
-        self_rag_evaluator: Optional[SelfRAGEvaluator] = None,
+        self_rag_evaluator: SelfRAGEvaluator | None = None,
     ) -> None:
         if conflict_detector is None:
             raise ValueError("conflict_detector must not be None")
@@ -91,7 +89,7 @@ class LayeredValidator:
         # Layer 1: 冲突检测
         try:
             conflict_report = self._conflict_detector.detect(request.agent_responses)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning(
                 "layered_validator_conflict_check_failed",
                 error=str(exc),
@@ -115,7 +113,7 @@ class LayeredValidator:
         # Layer 2: 一致性校验
         try:
             consistency_result = await self._consistency_checker.check(request)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning(
                 "layered_validator_consistency_check_failed",
                 error=str(exc),
@@ -156,7 +154,7 @@ class LayeredValidator:
                         score=self_rag_result.score,
                         reason=self_rag_result.reason,
                     )
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.warning(
                     "layered_validator_self_rag_failed",
                     error=str(exc),
@@ -173,7 +171,7 @@ class LayeredValidator:
 
     @staticmethod
     def _select_primary_response(
-        responses: List[AgentResponse],
+        responses: list[AgentResponse],
     ) -> AgentResponse:
         """从多条响应中选取"主响应"（供 Self-RAG 评估用）。
 

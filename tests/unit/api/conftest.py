@@ -7,8 +7,9 @@
 4. TestClient生命周期mock：跳过Redis/SG/Consent等外部服务连接
 """
 import logging
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import patch, AsyncMock, MagicMock
 
 from tests.utils.track_progress_reporter import TrackProgressReporter
 
@@ -75,6 +76,7 @@ def _patch_lifespan_deps():
 @pytest.fixture(scope="session")
 def test_client():
     from fastapi.testclient import TestClient
+
     from app.main import app
 
     logger.info("api_test_client_init_start")
@@ -117,6 +119,7 @@ def reset_rate_limit_buckets():
 @pytest.fixture
 def mock_db_session():
     from unittest.mock import AsyncMock
+
     from sqlalchemy.ext.asyncio import AsyncSession
     return AsyncMock(spec=AsyncSession)
 

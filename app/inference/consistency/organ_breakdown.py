@@ -1,13 +1,18 @@
-from typing import Any, Dict, List, Optional, Set
 
 from app.inference.utils import percentile as _percentile
 from app.inference.verification_config import get_verification_config
-from .statistics import grading_semantic_equivalent, text_similarity, text_consistency_with_grading, wilson_confidence_interval
+
 from .report import ConsistencyPair, ConsistencyReport, FalseStats
+from .statistics import (
+    grading_semantic_equivalent,
+    text_consistency_with_grading,
+    text_similarity,
+    wilson_confidence_interval,
+)
 
 
-def compute_organ_breakdown(report: ConsistencyReport, pairs: List[ConsistencyPair]) -> None:
-    organs: Dict[str, List[ConsistencyPair]] = {}
+def compute_organ_breakdown(report: ConsistencyReport, pairs: list[ConsistencyPair]) -> None:
+    organs: dict[str, list[ConsistencyPair]] = {}
     for p in pairs:
         organs.setdefault(p.organ, []).append(p)
 
@@ -32,7 +37,7 @@ def compute_organ_breakdown(report: ConsistencyReport, pairs: List[ConsistencyPa
         _verification_config = get_verification_config()
         organ_latency_p99_reliable = len(organ_latencies_a) >= _verification_config.consistency_thresholds.latency_p99_min_samples and len(organ_latencies_b) >= _verification_config.consistency_thresholds.latency_p99_min_samples
 
-        grading_distribution: Dict[str, int] = {}
+        grading_distribution: dict[str, int] = {}
         for p in organ_pairs:
             grade = None
             if p.engine_a_result and p.engine_a_result.grading:

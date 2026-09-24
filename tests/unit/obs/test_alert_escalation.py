@@ -1,14 +1,13 @@
-import asyncio
 import json
 import time
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
 from app.observability.alert_escalation import (
     AlertContact,
-    AlertEvent,
     AlertEscalationManager,
+    AlertEvent,
 )
 
 
@@ -346,7 +345,6 @@ class TestWebhookRetryOnFailure:
     async def test_pending_webhook_retried_on_failure(self):
         from app.observability.alert_escalation.manager import AlertEscalationManager
         from app.observability.alert_escalation.models import AlertContact, AlertEvent
-        from app.observability.enums import AlertLevel
         manager = AlertEscalationManager()
         contact = AlertContact(
             name="test",

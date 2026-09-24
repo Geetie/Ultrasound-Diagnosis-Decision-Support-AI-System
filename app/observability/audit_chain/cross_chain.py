@@ -3,10 +3,9 @@ import hashlib
 import json
 import uuid
 from datetime import datetime, timezone
-from typing import Dict, Optional, Tuple
 
 import structlog
-from sqlalchemy import select, and_
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.database import AuditLog
@@ -23,7 +22,7 @@ class AuditCrossChain:
         self,
         period_start: datetime,
         period_end: datetime,
-    ) -> Optional[str]:
+    ) -> str | None:
         result = await self.db.execute(
             select(AuditLog.hash_self, AuditLog.session_id)
             .where(
@@ -39,7 +38,7 @@ class AuditCrossChain:
         if not all_hashes:
             return None
 
-        latest_per_session: Dict[str, str] = {}
+        latest_per_session: dict[str, str] = {}
         for hash_self, session_id in all_hashes:
             if session_id:
                 latest_per_session[session_id] = hash_self
@@ -52,8 +51,8 @@ class AuditCrossChain:
         self,
         period_start: datetime,
         period_end: datetime,
-        prev_cross_hash: Optional[str] = None,
-    ) -> Optional[str]:
+        prev_cross_hash: str | None = None,
+    ) -> str | None:
         current_hash = await self.generate_cross_chain_hash(period_start, period_end)
         if current_hash is None:
             return None
@@ -93,7 +92,7 @@ class AuditCrossChain:
         self,
         period_start: datetime,
         period_end: datetime,
-    ) -> Dict[str, str]:
+    ) -> dict[str, str]:
         result = await self.db.execute(
             select(AuditLog.hash_self, AuditLog.session_id)
             .where(
@@ -105,7 +104,7 @@ class AuditCrossChain:
             )
             .order_by(AuditLog.session_id, AuditLog.created_at.asc())
         )
-        latest: Dict[str, str] = {}
+        latest: dict[str, str] = {}
         for hash_self, session_id in result.all():
             latest[session_id] = hash_self
         return latest
@@ -114,7 +113,7 @@ class AuditCrossChain:
         self,
         period_start: datetime,
         period_end: datetime,
-    ) -> Tuple[bool, Optional[str], Optional[str]]:
+    ) -> tuple[bool, str | None, str | None]:
         from app.models.database import AuditCrossChain as AuditCrossChainModel
 
         result = await self.db.execute(

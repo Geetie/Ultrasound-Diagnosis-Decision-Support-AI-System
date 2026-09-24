@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Any, List, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -97,7 +97,7 @@ class KnowledgeChunk(BaseModel):
     organ: str
     content: str
     metadata: dict[str, Any] = Field(default_factory=dict)
-    embedding: Optional[List[float]] = None
+    embedding: list[float] | None = None
     source_doc_id: str
     section_path: str = ""
     token_count: int = 0
@@ -145,7 +145,7 @@ class IndexBuildRequest(BaseModel):
     """
     kb_version: str
     source_dir: str
-    organs: List[str] = Field(default_factory=list)
+    organs: list[str] = Field(default_factory=list)
     force_rebuild: bool = False
     embedding_model: str = "bge-m3-medical"
     strategy: str = "sentence_boundary"

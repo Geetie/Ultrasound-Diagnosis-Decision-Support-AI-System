@@ -21,9 +21,9 @@ from __future__ import annotations
 
 import json
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, List, Optional
 
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -97,9 +97,9 @@ def _load_manifest(source_dir: Path) -> dict:
 
 def _discover_source_docs(
     source_dir: Path,
-    organs_filter: Optional[List[str]],
-    desensitizer: Optional[Desensitizer] = None,
-) -> List[_SourceDocFile]:
+    organs_filter: list[str] | None,
+    desensitizer: Desensitizer | None = None,
+) -> list[_SourceDocFile]:
     """Walk <source-dir>/<organ>/*.json and return source doc descriptors.
 
     Args:
@@ -116,7 +116,7 @@ def _discover_source_docs(
             f"source_dir does not exist or is not a directory: {source_dir}",
         )
 
-    docs: List[_SourceDocFile] = []
+    docs: list[_SourceDocFile] = []
     for organ_dir in sorted(p for p in source_dir.iterdir() if p.is_dir()):
         organ = organ_dir.name
         if organs_filter and organ not in organs_filter:
@@ -237,11 +237,11 @@ class KnowledgeIndexBuilderImpl(KnowledgeIndexBuilder):
 
     def __init__(
         self,
-        session_factory: Optional[async_sessionmaker[AsyncSession]] = None,
-        chunker: Optional[Chunker] = None,
-        feature_extractor: Optional[FeatureExtractor] = None,
-        indexer: Optional[PGVectorHybridIndexer] = None,
-        embedding_service: Optional[EmbeddingService] = None,
+        session_factory: async_sessionmaker[AsyncSession] | None = None,
+        chunker: Chunker | None = None,
+        feature_extractor: FeatureExtractor | None = None,
+        indexer: PGVectorHybridIndexer | None = None,
+        embedding_service: EmbeddingService | None = None,
         strategy: str = "sentence_boundary",
     ):
         self.session_factory = session_factory or AsyncSessionLocal
@@ -313,7 +313,7 @@ class KnowledgeIndexBuilderImpl(KnowledgeIndexBuilder):
         chunker = self._chunker_factory(request.strategy or self._default_strategy)
         organ_breakdown: dict[str, int] = {}
         skipped_existing = 0
-        buffer: List[KnowledgeChunk] = []
+        buffer: list[KnowledgeChunk] = []
 
         async with self.session_factory() as session:
             for doc in source_docs:
@@ -326,7 +326,7 @@ class KnowledgeIndexBuilderImpl(KnowledgeIndexBuilder):
                 raw_chunks = chunker.chunk(src, request.kb_version)
 
                 # Extract features + check resume for each chunk.
-                enriched: List[KnowledgeChunk] = []
+                enriched: list[KnowledgeChunk] = []
                 for c in raw_chunks:
                     # Resume: skip if chunk_id already exists.
                     if await self.indexer.exists(c.chunk_id, session):

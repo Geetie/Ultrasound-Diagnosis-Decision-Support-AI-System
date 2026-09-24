@@ -19,7 +19,8 @@ CSP 取值依据本项目实际形态（前端由 Vite 打包、antd 运行时�
 """
 from __future__ import annotations
 
-from typing import Any, Dict, Iterable, Optional
+from collections.abc import Iterable
+from typing import Any
 
 import structlog
 
@@ -28,7 +29,7 @@ from app.config.settings import settings
 logger = structlog.get_logger("app.security.security_headers")
 
 
-CSP_DIRECTIVES: Dict[str, Iterable[str]] = {
+CSP_DIRECTIVES: dict[str, Iterable[str]] = {
     "default-src": ("'self'",),
     "script-src": ("'self'",),
     "style-src": ("'self'", "'unsafe-inline'"),
@@ -44,7 +45,7 @@ CSP_DIRECTIVES: Dict[str, Iterable[str]] = {
 }
 
 # 恒定安全头（与 CSP 互补）
-STATIC_SECURITY_HEADERS: Dict[str, str] = {
+STATIC_SECURITY_HEADERS: dict[str, str] = {
     "X-Content-Type-Options": "nosniff",
     "X-Frame-Options": "DENY",
     "Referrer-Policy": "no-referrer",
@@ -65,7 +66,7 @@ NO_STORE_PREFIXES = (
 )
 
 
-def build_csp_policy(directives: Optional[Dict[str, Iterable[str]]] = None) -> str:
+def build_csp_policy(directives: dict[str, Iterable[str]] | None = None) -> str:
     """拼装 Content-Security-Policy 字符串（纯函数，便于单测）。"""
     source = directives or CSP_DIRECTIVES
     return "; ".join(
@@ -88,7 +89,7 @@ class SecurityHeadersMiddleware:
         self,
         app: Any,
         *,
-        csp_policy: Optional[str] = None,
+        csp_policy: str | None = None,
         report_only: bool = False,
         hsts_max_age: int = 0,
     ) -> None:
@@ -102,7 +103,7 @@ class SecurityHeadersMiddleware:
             else b"content-security-policy"
         )
 
-    def _headers_for(self, path: str) -> Dict[str, str]:
+    def _headers_for(self, path: str) -> dict[str, str]:
         headers = dict(STATIC_SECURITY_HEADERS)
         headers["Content-Security-Policy"] = self.csp_policy
         if self.report_only:
@@ -117,7 +118,7 @@ class SecurityHeadersMiddleware:
             headers["Pragma"] = "no-cache"
         return headers
 
-    async def __call__(self, scope: Dict[str, Any], receive: Any, send: Any) -> None:
+    async def __call__(self, scope: dict[str, Any], receive: Any, send: Any) -> None:
         if scope.get("type") != "http":
             # WebSocket 握手响应由 uvicorn 处理，这里不介入
             await self.app(scope, receive, send)
@@ -126,7 +127,7 @@ class SecurityHeadersMiddleware:
         headers = self._headers_for(scope.get("path", ""))
         normalized = {name.lower().encode(): value.encode() for name, value in headers.items()}
 
-        async def send_with_headers(message: Dict[str, Any]) -> None:
+        async def send_with_headers(message: dict[str, Any]) -> None:
             if message.get("type") == "http.response.start":
                 raw = list(message.get("headers") or [])
                 present = {key.lower() for key, _ in raw}

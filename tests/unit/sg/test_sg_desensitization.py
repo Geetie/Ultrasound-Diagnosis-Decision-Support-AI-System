@@ -1,10 +1,10 @@
-import pytest
 from unittest.mock import patch
 
+import pytest
+
 from safety_gateway.desensitization import (
-    SafetyGatewayDesensitizationEngine,
     DesensitizationRule,
-    sg_desensitization_engine,
+    SafetyGatewayDesensitizationEngine,
 )
 from safety_gateway.sg_config import sg_settings as settings
 

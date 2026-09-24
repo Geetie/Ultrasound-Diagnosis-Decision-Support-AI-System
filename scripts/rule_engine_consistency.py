@@ -17,7 +17,7 @@ import json
 import random
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
@@ -31,7 +31,7 @@ SEVERITIES = ["high", "medium", "low"]
 EXTRA_CONDITIONS = ["diabetes", "renal_failure", "hypertension", "obesity"]
 
 
-def build_rule_corpus() -> List[Any]:
+def build_rule_corpus() -> list[Any]:
     """既有默认规则 + 合成规则（补齐到 ≥MIN_RULES 条）。"""
     from app.knowledge.rule_engine import CONDITION_ALIASES, GLOBAL_SCOPE, Rule
     from safety_gateway.contraindication import ContraindicationEngine
@@ -39,7 +39,7 @@ def build_rule_corpus() -> List[Any]:
     legacy = ContraindicationEngine()
     legacy.load_rules()
 
-    rules: List[Rule] = []
+    rules: list[Rule] = []
     seen = set()
 
     def _add(rule: Rule) -> None:
@@ -97,7 +97,7 @@ def build_rule_corpus() -> List[Any]:
     return rules
 
 
-def build_inputs(count: int, seed: int = 20260924) -> List[Dict[str, Any]]:
+def build_inputs(count: int, seed: int = 20260924) -> list[dict[str, Any]]:
     """确定性生成输入事实（固定种子，失败可复现）。"""
     from app.knowledge.rule_engine import CONDITION_ALIASES
 
@@ -106,10 +106,10 @@ def build_inputs(count: int, seed: int = 20260924) -> List[Dict[str, Any]]:
     aliases = [alias for values in CONDITION_ALIASES.values() for alias in values]
     unrelated = ["healthy", "routine_check", "followup"]
 
-    inputs: List[Dict[str, Any]] = []
+    inputs: list[dict[str, Any]] = []
     for index in range(count):
         shape = index % 4
-        facts: Dict[str, Any] = {}
+        facts: dict[str, Any] = {}
 
         if shape in (0, 2):
             pool = aliases if index % 3 else conditions
@@ -179,7 +179,7 @@ def run(rules_count_min: int, inputs_count: int, seed: int) -> int:
     return 0 if report.equivalent else 1
 
 
-def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="规则引擎等价性验证")
     parser.add_argument("--rules-min", type=int, default=MIN_RULES)
     parser.add_argument("--inputs", type=int, default=DEFAULT_INPUTS)
@@ -188,7 +188,7 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     exit_code = run(args.rules_min, args.inputs, args.seed)
     if args.json_path:

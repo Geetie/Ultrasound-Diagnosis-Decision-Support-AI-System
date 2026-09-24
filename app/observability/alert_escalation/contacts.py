@@ -1,5 +1,4 @@
 import json
-from typing import List, Optional
 
 import structlog
 
@@ -8,7 +7,7 @@ from .models import AlertContact
 _logger = structlog.get_logger("app.observability.alert_escalation.contacts")
 
 
-def load_contacts(contacts_json: str) -> List[AlertContact]:
+def load_contacts(contacts_json: str) -> list[AlertContact]:
     if not contacts_json:
         return []
     try:
@@ -21,7 +20,7 @@ def load_contacts(contacts_json: str) -> List[AlertContact]:
         return []
 
 
-def parse_contacts(contacts_json: str) -> Optional[List[AlertContact]]:
+def parse_contacts(contacts_json: str) -> list[AlertContact] | None:
     try:
         contacts_data = json.loads(contacts_json)
         return [_build_contact(cd) for cd in contacts_data]
@@ -52,7 +51,7 @@ def _build_contact(cd: dict) -> AlertContact:
 
 
 async def verify_contact_reachability(
-    webhook_url: str, contacts: List[AlertContact]
+    webhook_url: str, contacts: list[AlertContact]
 ) -> bool:
     if not webhook_url:
         _logger.warning("contact_reachability_skip_no_webhook")

@@ -1,14 +1,15 @@
-from unittest.mock import patch, MagicMock, AsyncMock
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
 pytestmark = [pytest.mark.track_sec, pytest.mark.track_inf, pytest.mark.emergency_crypto, pytest.mark.sec_domain_hsm]
 
 from app.security.emergency_signing import (
     EmergencySigningManager,
     get_emergency_signing_manager,
 )
-from app.security.hsm import hsm_manager, DegradedPhase
+from app.security.hsm import DegradedPhase, hsm_manager
 
 
 class TestEmergencySigningManager:

@@ -18,7 +18,7 @@
 """
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 import numpy as np
 import structlog
@@ -42,7 +42,7 @@ LOW_CONTRAST_STD = 12.0
 
 # 本地假实现使用的"该器官标准切面应可见结构"目录（**非临床标准**，
 # 仅用于让后端的关键结构缺失监控链路可测）。
-_FAKE_STRUCTURE_CATALOG: Dict[str, List[str]] = {
+_FAKE_STRUCTURE_CATALOG: dict[str, list[str]] = {
     "thyroid": ["left_lobe", "right_lobe", "isthmus"],
     "liver": ["right_lobe", "left_lobe", "portal_vein"],
     "cardiac": ["left_ventricle", "left_atrium", "aortic_valve"],
@@ -59,8 +59,8 @@ class PlaneAssessmentAdapter(Protocol):
         """加载资源（幂等；假实现为空操作）。"""
 
     def assess(
-        self, frame: Frame, organ_code: Optional[str] = None
-    ) -> Optional[PlaneAssessment]:
+        self, frame: Frame, organ_code: str | None = None
+    ) -> PlaneAssessment | None:
         """评估单帧切面；返回 ``None`` 表示本帧未产出评估。"""
 
     def close(self) -> None:
@@ -76,8 +76,8 @@ class NullPlaneAssessmentAdapter:
         return None
 
     def assess(
-        self, frame: Frame, organ_code: Optional[str] = None
-    ) -> Optional[PlaneAssessment]:
+        self, frame: Frame, organ_code: str | None = None
+    ) -> PlaneAssessment | None:
         return None
 
     def close(self) -> None:
@@ -108,8 +108,8 @@ class LocalFakePlaneAssessmentAdapter:
         logger.warning("edge_plane_assessment_local_fake_in_use")
 
     def assess(
-        self, frame: Frame, organ_code: Optional[str] = None
-    ) -> Optional[PlaneAssessment]:
+        self, frame: Frame, organ_code: str | None = None
+    ) -> PlaneAssessment | None:
         pixels = np.asarray(frame.pixels, dtype=np.float32)
         if pixels.ndim != 2 or pixels.size == 0:
             return None
@@ -122,7 +122,7 @@ class LocalFakePlaneAssessmentAdapter:
         brightness_fitness = 1.0 - min(1.0, abs(mean - 128.0) / 128.0)
         score = round(max(0.0, min(1.0, 0.5 * contrast + 0.5 * brightness_fitness)), 4)
 
-        issues: List[str] = []
+        issues: list[str] = []
         if mean < DARK_MEAN_THRESHOLD:
             issues.append("image_too_dark")
         elif mean > BRIGHT_MEAN_THRESHOLD:
@@ -155,8 +155,8 @@ class LocalFakePlaneAssessmentAdapter:
 
     @staticmethod
     def _fake_visible_structures(
-        organ_code: Optional[str], is_standard: bool
-    ) -> List[str]:
+        organ_code: str | None, is_standard: bool
+    ) -> list[str]:
         """假实现：非标准切面时"最后一个结构不可见"，用于驱动关键结构缺失监控。"""
         catalog = _FAKE_STRUCTURE_CATALOG.get(organ_code or "", [])
         if not catalog:
@@ -170,10 +170,10 @@ class LocalFakePlaneAssessmentAdapter:
 
 
 # 进程级注入点：现场用真机适配器替换（与 set_reload_adapter 等既有模式一致）
-_INJECTED_ADAPTER: Optional[PlaneAssessmentAdapter] = None
+_INJECTED_ADAPTER: PlaneAssessmentAdapter | None = None
 
 
-def set_plane_assessment_adapter(adapter: Optional[PlaneAssessmentAdapter]) -> None:
+def set_plane_assessment_adapter(adapter: PlaneAssessmentAdapter | None) -> None:
     """注入切面评估适配器（现场真机实现；传 ``None`` 清除注入）。"""
     global _INJECTED_ADAPTER
     _INJECTED_ADAPTER = adapter
@@ -200,12 +200,12 @@ def create_plane_assessment_adapter(name: str = "null") -> PlaneAssessmentAdapte
     )
 
 
-def get_plane_assessment_adapter() -> Optional[PlaneAssessmentAdapter]:
+def get_plane_assessment_adapter() -> PlaneAssessmentAdapter | None:
     """当前注入的适配器（无则 None）。"""
     return _INJECTED_ADAPTER
 
 
-def plane_assessment_to_dict(assessment: PlaneAssessment) -> Dict[str, Any]:
+def plane_assessment_to_dict(assessment: PlaneAssessment) -> dict[str, Any]:
     """序列化为上行载荷（键名与后端 ``app.models.schemas.PlaneAssessment`` 对齐）。"""
     return {
         "plane_type": assessment.plane_type,

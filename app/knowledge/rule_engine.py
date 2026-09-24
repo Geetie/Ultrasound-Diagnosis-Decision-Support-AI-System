@@ -14,8 +14,9 @@
 """
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Mapping, Optional, Protocol, Sequence, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 import structlog
 
@@ -23,7 +24,7 @@ logger = structlog.get_logger()
 
 # 与 safety_gateway/contraindication.py 保持同口径：条件别名表是"医学表述不一致"的
 # 现实补偿（同一情况在不同来源里叫法不同），两边不一致会导致换引擎后拦截率变化。
-CONDITION_ALIASES: Dict[str, List[str]] = {
+CONDITION_ALIASES: dict[str, list[str]] = {
     "pregnancy": [
         "pregnancy",
         "pregnancy_radiation",
@@ -106,8 +107,8 @@ class RuleEngine(Protocol):
         ...
 
     def evaluate(
-        self, facts: Mapping[str, Any], *, organ: Optional[str] = None
-    ) -> List[RuleMatch]:  # pragma: no cover - 协议声明
+        self, facts: Mapping[str, Any], *, organ: str | None = None
+    ) -> list[RuleMatch]:  # pragma: no cover - 协议声明
         ...
 
 
@@ -135,9 +136,9 @@ class SimpleRuleEngine:
     必须在等价性验证（``verify_equivalence``）之后才允许替换默认实现。
     """
 
-    def __init__(self, rules: Optional[Sequence[Rule]] = None) -> None:
-        self._global_rules: List[Rule] = []
-        self._organ_rules: Dict[str, List[Rule]] = {}
+    def __init__(self, rules: Sequence[Rule] | None = None) -> None:
+        self._global_rules: list[Rule] = []
+        self._organ_rules: dict[str, list[Rule]] = {}
         if rules:
             self.load(rules)
 
@@ -154,17 +155,17 @@ class SimpleRuleEngine:
             else:
                 self._organ_rules.setdefault(rule.scope, []).append(rule)
 
-    def rules(self) -> List[Rule]:
+    def rules(self) -> list[Rule]:
         all_rules = list(self._global_rules)
         for organ_rules in self._organ_rules.values():
             all_rules.extend(organ_rules)
         return all_rules
 
     def evaluate(
-        self, facts: Mapping[str, Any], *, organ: Optional[str] = None
-    ) -> List[RuleMatch]:
-        matches: List[RuleMatch] = []
-        candidates: List[Rule] = list(self._global_rules)
+        self, facts: Mapping[str, Any], *, organ: str | None = None
+    ) -> list[RuleMatch]:
+        matches: list[RuleMatch] = []
+        candidates: list[Rule] = list(self._global_rules)
         if organ:
             candidates.extend(self._organ_rules.get(organ, []))
         for rule in candidates:
@@ -199,7 +200,7 @@ class ContraindicationRuleEngineAdapter:
         from safety_gateway.contraindication import ContraindicationRule
 
         global_rules = []
-        organ_rules: Dict[str, List[Any]] = {}
+        organ_rules: dict[str, list[Any]] = {}
         for rule in rules:
             converted = ContraindicationRule(
                 id=rule.rule_id,
@@ -218,8 +219,8 @@ class ContraindicationRuleEngineAdapter:
         self._engine._loaded = True
 
     def evaluate(
-        self, facts: Mapping[str, Any], *, organ: Optional[str] = None
-    ) -> List[RuleMatch]:
+        self, facts: Mapping[str, Any], *, organ: str | None = None
+    ) -> list[RuleMatch]:
         matches = self._engine.check(organ or "", dict(facts))
         return [
             RuleMatch(
@@ -241,12 +242,12 @@ def get_rule_engine() -> RuleEngine:
     return _engine
 
 
-def set_rule_engine(engine: Optional[RuleEngine]) -> None:
+def set_rule_engine(engine: RuleEngine | None) -> None:
     global _engine
     _engine = engine
 
 
-_engine: Optional[SimpleRuleEngine] = None
+_engine: SimpleRuleEngine | None = None
 
 
 @dataclass
@@ -255,7 +256,7 @@ class EquivalenceReport:
 
     total_inputs: int = 0
     matched_inputs: int = 0
-    mismatches: List[Dict[str, Any]] = field(default_factory=list)
+    mismatches: list[dict[str, Any]] = field(default_factory=list)
 
     @property
     def equivalent(self) -> bool:
@@ -265,7 +266,7 @@ class EquivalenceReport:
     def mismatch_rate(self) -> float:
         return len(self.mismatches) / self.total_inputs if self.total_inputs else 0.0
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         return {
             "total_inputs": self.total_inputs,
             "matched_inputs": self.matched_inputs,
@@ -282,7 +283,7 @@ def verify_equivalence(
     rules: Sequence[Rule],
     inputs: Sequence[Mapping[str, Any]],
     *,
-    organs: Optional[Sequence[Optional[str]]] = None,
+    organs: Sequence[str | None] | None = None,
     max_examples: int = 20,
 ) -> EquivalenceReport:
     """对拍两个引擎：每条输入的**命中规则集合**必须完全一致。

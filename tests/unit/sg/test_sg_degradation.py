@@ -1,17 +1,18 @@
 import asyncio
 import logging
-import pytest
 from unittest.mock import AsyncMock, patch
 
-from safety_gateway.threshold import get_threshold_engine
-from safety_gateway.validation_result import ConsentStatus, ThresholdCheckResult
+import pytest
+
 from safety_gateway.checker import (
-    SafetyGatewayChecker,
     CheckResultStatus,
     DegradedReason,
+    SafetyGatewayChecker,
     get_safety_gateway_checker,
 )
-from safety_gateway.consent_checker import ConsentCheckResult, ConsentChecker
+from safety_gateway.consent_checker import ConsentChecker, ConsentCheckResult
+from safety_gateway.threshold import get_threshold_engine
+from safety_gateway.validation_result import ConsentStatus, ThresholdCheckResult
 
 logger = logging.getLogger(__name__)
 
@@ -350,7 +351,7 @@ class TestDBTimeoutDegradedReason:
 class TestDegradationWarning:
 
     def test_degradation_warning_default_message(self):
-        from safety_gateway.degraded_output import apply_degraded_output, DegradedReason
+        from safety_gateway.degraded_output import DegradedReason, apply_degraded_output
         output_data = {
             "organ_name": "thyroid",
             "diagnostic_conclusion": "恶性结节",
@@ -361,7 +362,7 @@ class TestDegradationWarning:
         assert result["degradation_warning"] == "脱敏降级模式，身份信息保护等级降低"
 
     def test_degradation_warning_dual_degradation_message(self):
-        from safety_gateway.degraded_output import apply_degraded_output, DegradedReason
+        from safety_gateway.degraded_output import DegradedReason, apply_degraded_output
         output_data = {
             "organ_name": "thyroid",
             "diagnostic_conclusion": "恶性结节",
@@ -376,7 +377,7 @@ class TestDegradationWarning:
         assert result["degradation_warning"] == "双重安全校验缺失，请人工核验"
 
     def test_degradation_warning_consent_withdrawn_dual_message(self):
-        from safety_gateway.degraded_output import apply_degraded_output, DegradedReason
+        from safety_gateway.degraded_output import DegradedReason, apply_degraded_output
         output_data = {
             "organ_name": "thyroid",
             "diagnostic_conclusion": "恶性结节",

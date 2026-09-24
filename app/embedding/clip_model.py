@@ -125,7 +125,7 @@ class UltrasoundCLIPModel:
     def is_loaded(self) -> bool:
         return self._loaded
 
-    def load(self, model_path: str | None = None) -> "UltrasoundCLIPModel":
+    def load(self, model_path: str | None = None) -> UltrasoundCLIPModel:
         """加载模型权重。model_path=None 时使用 model_name。"""
         torch = _require_torch()
         try:
@@ -178,7 +178,7 @@ class UltrasoundCLIPModel:
         """应用 LoRA adapter(若启用)。"""
         try:
             from peft import LoraConfig, get_peft_model
-        except ImportError as exc:
+        except ImportError:
             logger.warning("peft_not_available_skip_lora")
             return
         config = LoraConfig(
@@ -429,7 +429,7 @@ class UltrasoundCLIPModel:
         device: str = "cuda",
         use_lora: bool = True,
         max_samples: int | None = None,
-    ) -> tuple["UltrasoundCLIPModel", list[CLIPSample]]:
+    ) -> tuple[UltrasoundCLIPModel, list[CLIPSample]]:
         """便捷方法:加载模型并加载数据集样本。"""
         adapter = BUSIAdapter(dataset_path=dataset_path)
         samples = adapter.load(max_samples=max_samples)
@@ -438,9 +438,9 @@ class UltrasoundCLIPModel:
 
 
 __all__ = [
-    "UltrasoundCLIPModel",
-    "FinetuneResult",
-    "EvaluationResult",
     "BUSIAdapter",
     "CLIPSample",
+    "EvaluationResult",
+    "FinetuneResult",
+    "UltrasoundCLIPModel",
 ]

@@ -23,8 +23,8 @@
 """
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Sequence, Tuple
 
 import structlog
 
@@ -47,7 +47,7 @@ BIAS_MALIGNANT = "malignant"
 BIAS_BENIGN = "benign"
 BIAS_NEUTRAL = "neutral"
 
-POSTERIOR_ACOUSTIC_BIAS: Dict[str, str] = {
+POSTERIOR_ACOUSTIC_BIAS: dict[str, str] = {
     "posterior_attenuation": BIAS_MALIGNANT,
     "posterior_shadowing": BIAS_BENIGN,
     "posterior_enhancement": BIAS_BENIGN,
@@ -57,7 +57,7 @@ POSTERIOR_ACOUSTIC_BIAS: Dict[str, str] = {
 
 # 后方回声在 TI-RADS 评分中的计分（M9 规格：衰减 +1 / 声影良性 / 增强良性 /
 # 无影响）
-POSTERIOR_ACOUSTIC_TI_RADS_POINTS: Dict[str, int] = {
+POSTERIOR_ACOUSTIC_TI_RADS_POINTS: dict[str, int] = {
     "posterior_attenuation": 1,
     "posterior_shadowing": 0,
     "posterior_enhancement": 0,
@@ -90,10 +90,10 @@ class OrganRiskModel:
     organ_code: str
     grading_system: str
     base_risk: float
-    features: Tuple[RiskFeature, ...]
+    features: tuple[RiskFeature, ...]
     source_reference: str
 
-    def feature_map(self) -> Dict[str, RiskFeature]:
+    def feature_map(self) -> dict[str, RiskFeature]:
         return {item.feature: item for item in self.features}
 
 
@@ -147,13 +147,13 @@ LIVER_RISK_MODEL = OrganRiskModel(
     source_reference=REFERENCE_LIRADS,
 )
 
-ORGAN_RISK_MODELS: Dict[str, OrganRiskModel] = {
+ORGAN_RISK_MODELS: dict[str, OrganRiskModel] = {
     THYROID_RISK_MODEL.organ_code: THYROID_RISK_MODEL,
     LIVER_RISK_MODEL.organ_code: LIVER_RISK_MODEL,
 }
 
 
-def get_risk_model(organ_code: Optional[str]) -> Optional[OrganRiskModel]:
+def get_risk_model(organ_code: str | None) -> OrganRiskModel | None:
     """取器官级风险模型；未建模的器官（如心脏）返回 ``None``。
 
     心脏超声不产出恶性概率——返回 ``None`` 而不是 0.0，是为了让前端区分
@@ -164,14 +164,14 @@ def get_risk_model(organ_code: Optional[str]) -> Optional[OrganRiskModel]:
     return ORGAN_RISK_MODELS.get(organ_code.strip().lower())
 
 
-def ti_rads_points_for_posterior(standard_term: Optional[str]) -> Optional[int]:
+def ti_rads_points_for_posterior(standard_term: str | None) -> int | None:
     """后方回声的 TI-RADS 计分（非后方回声术语返回 ``None``）。"""
     if not standard_term:
         return None
     return POSTERIOR_ACOUSTIC_TI_RADS_POINTS.get(standard_term)
 
 
-def posterior_acoustic_bias(standard_term: Optional[str]) -> Optional[str]:
+def posterior_acoustic_bias(standard_term: str | None) -> str | None:
     """后方回声性质的倾向（malignant / benign / neutral）。"""
     if not standard_term:
         return None
@@ -200,7 +200,7 @@ def get_shared_udt_parser():
     return _shared_parser
 
 
-def extract_udaf_features(text: Optional[str], organ: Optional[str] = None) -> List[str]:
+def extract_udaf_features(text: str | None, organ: str | None = None) -> list[str]:
     """从文本抽取 UDAF 标准术语（去重保序）。
 
     失败返回空列表——特征抽取是增强能力，不能影响诊断主流程。
@@ -209,7 +209,7 @@ def extract_udaf_features(text: Optional[str], organ: Optional[str] = None) -> L
         return []
     try:
         parsed = get_shared_udt_parser().parse(text, organ=organ)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.warning(
             "udaf_feature_extraction_failed",
             organ=organ,
@@ -218,7 +218,7 @@ def extract_udaf_features(text: Optional[str], organ: Optional[str] = None) -> L
         )
         return []
 
-    seen: List[str] = []
+    seen: list[str] = []
     for attribute in parsed.attributes:
         value = getattr(attribute, "value", None)
         if value and value not in seen:
@@ -226,7 +226,7 @@ def extract_udaf_features(text: Optional[str], organ: Optional[str] = None) -> L
     return seen
 
 
-def pick_posterior_acoustic_term(features: Sequence[str]) -> Optional[str]:
+def pick_posterior_acoustic_term(features: Sequence[str]) -> str | None:
     """从 UDAF 术语列表中挑出后方回声**标准术语**（如 ``posterior_attenuation``）。
 
     若同时命中多个（罕见，通常是表述矛盾），取**恶性倾向**的那个——风险
@@ -241,7 +241,7 @@ def pick_posterior_acoustic_term(features: Sequence[str]) -> Optional[str]:
     return matched[0]
 
 
-def pick_posterior_acoustic(features: Sequence[str]) -> Optional[str]:
+def pick_posterior_acoustic(features: Sequence[str]) -> str | None:
     """从 UDAF 术语列表中挑出后方回声特征（返回契约枚举值）。"""
     term = pick_posterior_acoustic_term(features)
     return posterior_acoustic_value(term)
@@ -256,9 +256,9 @@ def _level_of(probability: float) -> MalignancyRiskLevel:
 
 
 def compute_malignancy_risk(
-    organ_code: Optional[str],
+    organ_code: str | None,
     features: Sequence[str],
-) -> Optional[MalignancyRisk]:
+) -> MalignancyRisk | None:
     """按器官模型把 UDAF 特征折算为恶性概率。
 
     Args:
@@ -275,7 +275,7 @@ def compute_malignancy_risk(
         return None
 
     feature_map = model.feature_map()
-    basis: List[MalignancyRiskBasis] = []
+    basis: list[MalignancyRiskBasis] = []
     probability = model.base_risk
     seen: set = set()
 

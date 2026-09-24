@@ -1,15 +1,16 @@
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_
-from typing import Optional, List
-from datetime import datetime, timezone
 import json
 import uuid
+from datetime import datetime, timezone
+
 import structlog
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.config.redis_keys import RedisKey
 from app.models.database import ConsentRecord, SafetyEvent
-from app.models.schemas import ConsentStatus, ConsentAction, SafetyEventType, SafetySeverity
+from app.models.schemas import ConsentStatus, SafetyEventType, SafetySeverity
 from app.services.audit_service import AuditService
 from app.services.safety_service import SafetyService
-from app.config.redis_keys import RedisKey
 
 logger = structlog.get_logger()
 
@@ -63,7 +64,7 @@ class ConsentRepository:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def get_latest_consent(self, patient_id: str) -> Optional[ConsentRecord]:
+    async def get_latest_consent(self, patient_id: str) -> ConsentRecord | None:
         """获取患者最新的知情同意记录"""
         result = await self.db.execute(
             select(ConsentRecord)
@@ -73,7 +74,7 @@ class ConsentRepository:
         )
         return result.scalar_one_or_none()
 
-    async def get_consent_by_id(self, record_id: int) -> Optional[ConsentRecord]:
+    async def get_consent_by_id(self, record_id: int) -> ConsentRecord | None:
         """根据记录ID获取知情同意"""
         result = await self.db.execute(
             select(ConsentRecord).where(ConsentRecord.id == record_id)
@@ -89,9 +90,9 @@ class ConsentRepository:
     ) -> ConsentRecord:
         """创建新的知情同意记录"""
         now = datetime.now(timezone.utc)
-        
+
         record_id = uuid.uuid4().int % (2**63)
-        
+
         consent_record = ConsentRecord(
             record_id=record_id,
             patient_id=patient_id,
@@ -101,7 +102,7 @@ class ConsentRepository:
             consent_version=consent_version,
             created_at=now,
         )
-        
+
         self.db.add(consent_record)
         await self.db.flush()
 
@@ -113,7 +114,7 @@ class ConsentRepository:
             target_id=patient_id,
             detail={"status": status.value, "version": consent_version},
         )
-        
+
         if status == ConsentStatus.WITHDRAWN:
             safety_service = SafetyService(self.db)
             await safety_service.log_event(
@@ -128,14 +129,14 @@ class ConsentRepository:
                 withdrawn_at=now,
                 consent_version=consent_version,
             )
-        
+
         logger.info(
             "consent_record_created",
             patient_id=patient_id,
             status=status.value,
             operator_id=operator_id,
         )
-        
+
         return consent_record
 
     async def _publish_consent_withdrawal(

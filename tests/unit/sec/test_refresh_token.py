@@ -1,18 +1,18 @@
+import threading
 from datetime import datetime, timedelta, timezone
+from unittest.mock import patch
+
+import pytest
 from freezegun import freeze_time
-from unittest.mock import patch, MagicMock, AsyncMock
+
+from app.config.settings import settings
+from app.security.auth import RoleChecker, create_access_token, decode_access_token, get_password_hash, verify_password
+from app.security.hsm import DegradedPhase, HSMManager, KeySlot, hsm_manager
 from app.security.refresh_token import (
     MemoryRefreshTokenStore,
     refresh_token_store,
 )
-from app.security.auth import create_access_token, decode_access_token, RoleChecker, verify_password, get_password_hash
-from app.security.hsm import HSMManager, hsm_manager, DegradedPhase, KeySlot
-from app.config.settings import settings
 
-
-
-import pytest
-import threading
 pytestmark = [pytest.mark.track_sec, pytest.mark.track_inf, pytest.mark.sec_domain_token]
 @pytest.fixture(autouse=True)
 def reset_refresh_store():
@@ -192,17 +192,17 @@ def test_cleanup_expired_tokens(sample_user_info):
     store = MemoryRefreshTokenStore()
     with freeze_time("2026-01-01 00:00:00"):
         expired_token = store.create_refresh_token("user123", sample_user_info)
-    
+
     with freeze_time("2026-01-08 00:00:00"):
         active_token = store.create_refresh_token("user456", sample_user_info)
-    
+
     with freeze_time("2026-01-10 00:00:00"):
         cleaned_count = store.cleanup_expired_tokens()
-        
+
         assert cleaned_count == 1
         assert expired_token not in store._store
         assert active_token in store._store
-    
+
     store._store.clear()
     store._family_store.clear()
     store._user_tokens.clear()

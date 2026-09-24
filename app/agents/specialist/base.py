@@ -45,8 +45,9 @@ import inspect
 import re
 import time
 from abc import abstractmethod
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 
 import structlog
 
@@ -169,11 +170,11 @@ class RAGSpecialistAgent(SpecialistAgent):
         self,
         inference_engine: InferenceEngine,
         knowledge_agent: KnowledgeAgentProtocol,
-        prompt_template: Optional[str] = None,
+        prompt_template: str | None = None,
         rag_top_k: int = DEFAULT_RAG_TOP_K,
         max_tokens: int = 1024,
-        organ_threshold: Optional[float] = None,
-        disease_thresholds: Optional[Dict[str, float]] = None,
+        organ_threshold: float | None = None,
+        disease_thresholds: dict[str, float] | None = None,
     ) -> None:
         if inference_engine is None:
             raise ValueError("inference_engine must not be None")
@@ -206,7 +207,7 @@ class RAGSpecialistAgent(SpecialistAgent):
         )
         # D1: 器官级/病种级阈值
         self._organ_threshold = organ_threshold
-        self._disease_thresholds: Dict[str, float] = dict(disease_thresholds or {})
+        self._disease_thresholds: dict[str, float] = dict(disease_thresholds or {})
         # 注意：用 ``is None`` 而非 ``or`` 判定，避免空字符串被吞掉
         # 当作「无自定义 prompt」回退到默认模板（保留对空字符串的拒绝校验）。
         if prompt_template is None:
@@ -248,7 +249,7 @@ class RAGSpecialistAgent(SpecialistAgent):
     def _parse_response(
         self,
         llm_text: str,
-        chunks: List[KnowledgeChunk],
+        chunks: list[KnowledgeChunk],
     ) -> AgentResponse:
         """把 LLM 输出 + RAG 证据解析为 AgentResponse。
 
@@ -293,7 +294,7 @@ class RAGSpecialistAgent(SpecialistAgent):
         """
         start = time.monotonic()
         organ = self.get_organ()
-        trace: List[str] = [
+        trace: list[str] = [
             f"route -> {organ.value}",
             f"grading_system -> {self.get_grading_system()}",
         ]
@@ -301,7 +302,7 @@ class RAGSpecialistAgent(SpecialistAgent):
         # 1) RAG 检索（异常时不抛，降级为空列表）
         try:
             chunks = await self._retrieve_chunks(context, organ)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning(
                 "specialist_rag_failed",
                 organ=organ.value,
@@ -338,7 +339,7 @@ class RAGSpecialistAgent(SpecialistAgent):
         # 4) LLM 调用（异常时不抛，降级为 confidence=0.0）
         try:
             llm_text = await self._call_llm(context, prompt)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning(
                 "specialist_llm_failed",
                 organ=organ.value,
@@ -367,7 +368,7 @@ class RAGSpecialistAgent(SpecialistAgent):
         # 5) 器官级解析
         try:
             response = self._parse_response(llm_text, chunks)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             # 解析失败 → 降级（不要让 specialist 抛错阻塞 dispatcher）
             logger.warning(
                 "specialist_parse_failed",
@@ -413,7 +414,7 @@ class RAGSpecialistAgent(SpecialistAgent):
     # Agent 协议默认实现（子类可覆盖）
     # ------------------------------------------------------------------
 
-    def get_capability_tags(self) -> List[str]:
+    def get_capability_tags(self) -> list[str]:
         organ = self.get_organ()
         return [
             organ.value,
@@ -430,7 +431,7 @@ class RAGSpecialistAgent(SpecialistAgent):
         """
         try:
             rag_ok = await self._knowledge.health_check()
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning(
                 "specialist_health_rag_error",
                 organ=self.get_organ().value,
@@ -440,7 +441,7 @@ class RAGSpecialistAgent(SpecialistAgent):
             rag_ok = False
         try:
             llm_ok = await self._inference.health_check()
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning(
                 "specialist_health_llm_error",
                 organ=self.get_organ().value,
@@ -471,7 +472,7 @@ class RAGSpecialistAgent(SpecialistAgent):
         self,
         context: AgentContext,
         organ: Organ,
-    ) -> List[KnowledgeChunk]:
+    ) -> list[KnowledgeChunk]:
         """调用 KnowledgeAgent 检索 top-k 证据。
 
         注意：现有 :class:`KnowledgeAgent` 抽象不暴露 score 字段，
@@ -482,7 +483,7 @@ class RAGSpecialistAgent(SpecialistAgent):
         透传给知识智能体，使"标准/全量"的区别真正作用于检索强度
         （精排开关 / BM25 兜底 / LLM 增强 / 检索深度）。
         """
-        kwargs: Dict[str, Any] = {
+        kwargs: dict[str, Any] = {
             "query": context.user_query,
             "organ": organ,
             "top_k": self._rag_top_k,
@@ -521,8 +522,8 @@ class RAGSpecialistAgent(SpecialistAgent):
     def _build_prompt(
         self,
         context: AgentContext,
-        chunks: List[KnowledgeChunk],
-        trace: List[str],
+        chunks: list[KnowledgeChunk],
+        trace: list[str],
     ) -> str:
         """拼装完整 prompt：system 模板 + 知识 chunk + 用户 query。
 
@@ -544,7 +545,7 @@ class RAGSpecialistAgent(SpecialistAgent):
 
         子类可覆盖本方法自定义格式（如 few-shot 注入位置不同）。
         """
-        parts: List[str] = [self._prompt_template, ""]
+        parts: list[str] = [self._prompt_template, ""]
         parts.append(f"# 检索到的知识（top {len(chunks)}）")
         for idx, chunk in enumerate(chunks, start=1):
             source = chunk.source_doc_id or chunk.chunk_id
@@ -564,7 +565,7 @@ class RAGSpecialistAgent(SpecialistAgent):
 
     def _compute_heuristic_confidence(
         self,
-        chunks: List[KnowledgeChunk],
+        chunks: list[KnowledgeChunk],
         llm_text: str,
     ) -> float:
         """启发式置信度计算（公共基线，器官级可在 _parse_response 中覆盖）。
@@ -595,7 +596,7 @@ class RAGSpecialistAgent(SpecialistAgent):
     def _check_disease_threshold(
         self,
         response: AgentResponse,
-        disease_type: Optional[str],
+        disease_type: str | None,
     ) -> None:
         """按器官级/病种级阈值检查 final_conf 并设置 needs_review 标签。
 
@@ -615,7 +616,7 @@ class RAGSpecialistAgent(SpecialistAgent):
         if response.confidence <= 0.0:
             return
         # 病种级优先 → 未配置则用器官级
-        threshold: Optional[float] = None
+        threshold: float | None = None
         scope = "organ"
         if disease_type and disease_type in self._disease_thresholds:
             threshold = self._disease_thresholds[disease_type]
@@ -684,7 +685,7 @@ class RAGSpecialistAgent(SpecialistAgent):
         self,
         response: AgentResponse,
         llm_text: str,
-        chunks: List[KnowledgeChunk],
+        chunks: list[KnowledgeChunk],
     ) -> None:
         """从 LLM 输出抽取结构化测量、后方回声与恶性概率（M3/M5/M9）。
 
@@ -786,7 +787,7 @@ class RAGSpecialistAgent(SpecialistAgent):
             if research is not None:
                 response.research_metrics = research
                 response.reasoning_trace.append("research_metrics -> provided")
-        except Exception as exc:  # noqa: BLE001 - 增强失败不得影响诊断
+        except Exception as exc:
             logger.warning(
                 "clinical_attribute_enrichment_failed",
                 organ=self.get_organ().value,
@@ -812,7 +813,7 @@ class RAGSpecialistAgent(SpecialistAgent):
         Raises:
             FileNotFoundError: prompt 文件不存在（应当提供）。
         """
-        organ_name: Optional[str] = None
+        organ_name: str | None = None
         # 1) 类/实例属性 organ
         organ_attr = getattr(self, "organ", None)
         if isinstance(organ_attr, Organ):
@@ -889,7 +890,7 @@ class PlaceholderSpecialistAgent(SpecialistAgent):
             latency_ms=(time.monotonic() - start) * 1000.0,
         )
 
-    def get_capability_tags(self) -> List[str]:
+    def get_capability_tags(self) -> list[str]:
         return [f"{self.organ.value}_placeholder"]
 
     async def health_check(self) -> bool:
@@ -924,10 +925,10 @@ def normalize_grading_text(text: str) -> str:
 
 
 __all__ = [
-    "SpecialistAgent",
-    "RAGSpecialistAgent",
-    "PlaceholderSpecialistAgent",
     "DEFAULT_RAG_TOP_K",
-    "normalize_grading_text",
     "_LLM_TEXT_SATURATION_CHARS",
+    "PlaceholderSpecialistAgent",
+    "RAGSpecialistAgent",
+    "SpecialistAgent",
+    "normalize_grading_text",
 ]

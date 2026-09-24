@@ -1,44 +1,44 @@
 import asyncio
+import hashlib
 import os
 import time
-import hashlib
-import pytest
-import pytest_asyncio
 from datetime import datetime, timedelta, timezone
-from typing import Dict, Any, Optional
-from unittest.mock import AsyncMock, MagicMock, patch
+from typing import Any
+from unittest.mock import patch
+
+import pytest
 
 pytestmark = [pytest.mark.track_sec, pytest.mark.sec_domain_sg]
 
 os.environ["USE_REDIS_REFRESH_TOKEN"] = "false"
 os.environ["USE_SOFT_HSM"] = "true"
 
-from app.security.hsm import HSMManager, DegradedPhase, hsm_manager
-from app.security.auth import create_access_token, decode_access_token, _ensure_jwt_key_exists
+from app.config.settings import settings
+from app.fusion.desensitization import FusionDesensitizationEngine, fusion_desensitization_engine
+from app.models.desensitization_mapping import DesensitizationMapping
+from app.security.auth import _ensure_jwt_key_exists, create_access_token, decode_access_token
+from app.security.consent_withdrawal_consumer import ConsentWithdrawalConsumer
+from app.security.desensitization import (
+    DesensitizationEngine,
+    DesensitizationRule,
+    desensitization_engine,
+    get_desensitization_engine,
+)
+from app.security.emergency_signing import EmergencySigningManager
+from app.security.hsm import DegradedPhase, HSMManager, hsm_manager
 from app.security.refresh_token import (
     MemoryRefreshTokenStore,
     create_refresh_token,
-    verify_refresh_token,
+    get_refresh_token_count,
+    refresh_token_store,
+    revoke_all_user_tokens,
     revoke_refresh_token,
     revoke_token_family,
-    revoke_all_user_tokens,
-    cleanup_expired_tokens,
-    get_refresh_token_count
+    verify_refresh_token,
 )
-from app.security.three_layer_desensitization import (
-    ThreeLayerDesensitizationManager,
-    DesensitizationLayer
-)
-from app.security.desensitization import desensitization_engine, DesensitizationRule, get_desensitization_engine, DesensitizationEngine
-from app.fusion.desensitization import fusion_desensitization_engine, FusionDesensitizationEngine
+from app.security.three_layer_desensitization import ThreeLayerDesensitizationManager
+from safety_gateway.checker import SafetyGatewayChecker
 from safety_gateway.desensitization import sg_desensitization_engine
-from safety_gateway.checker import SafetyGatewayChecker, CheckResultStatus
-from app.config.settings import settings
-from app.security.refresh_token import refresh_token_store
-from app.security.emergency_signing import EmergencySigningManager
-from app.security.consent_withdrawal_consumer import ConsentWithdrawalConsumer
-from app.services.audit_service import AuditService
-from app.models.desensitization_mapping import DesensitizationMapping
 
 
 @pytest.fixture(autouse=True)
@@ -69,7 +69,7 @@ class TestDataFactory:
         return f"P{cls._counter:06d}"
 
     @classmethod
-    def get_user_info(cls, role: str = "ULTRASOUND_DOCTOR") -> Dict[str, Any]:
+    def get_user_info(cls, role: str = "ULTRASOUND_DOCTOR") -> dict[str, Any]:
         return {
             "username": cls.get_unique_user_id(),
             "full_name": f"测试用户{cls._counter}",
@@ -1063,7 +1063,7 @@ class TestSecuritySpecial:
         logger = logging.getLogger("app.security")
         for handler in logger.handlers:
             if hasattr(handler, 'baseFilename'):
-                with open(handler.baseFilename, 'r') as f:
+                with open(handler.baseFilename) as f:
                     content = f.read()
                     assert 'password' not in content.lower() or True
 
@@ -1081,7 +1081,7 @@ class TestSecuritySpecial:
         assert len(data["family_id"]) > 0
 
     def test_consent_update_requires_operator(self):
-        from app.models.schemas import ConsentUpdateRequest, ConsentAction
+        from app.models.schemas import ConsentAction, ConsentUpdateRequest
         with pytest.raises(Exception):
             ConsentUpdateRequest(
                 patient_id="P001",
@@ -1101,7 +1101,7 @@ class TestSecuritySpecial:
 
     def test_aes_key_cache_ttl_is_5min(self):
         from app.security.desensitization_restore import _KEY_CACHE_TTL
-        assert _KEY_CACHE_TTL == timedelta(minutes=5)
+        assert timedelta(minutes=5) == _KEY_CACHE_TTL
 
     def test_hsm_sign_uses_pss_and_jwt_uses_pkcs1v15(self):
         hsm_manager.generate_key_pair("padding_test_key")

@@ -1,7 +1,6 @@
 import argparse
 import time
 import uuid
-from typing import Optional
 
 import uvicorn
 from starlette.applications import Starlette

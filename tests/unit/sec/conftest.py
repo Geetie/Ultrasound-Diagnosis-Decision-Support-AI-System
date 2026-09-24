@@ -8,15 +8,16 @@
 5. HSM Redis操作mock：消除测试中不必要的Redis连接开销
 6. 共享密钥fixture：减少RSA密钥生成次数
 """
-import sys
-import os
-import time
 import hashlib
 import json
+import os
+import sys
 import threading
+import time
+from unittest.mock import AsyncMock, patch
+
 import pytest
 import structlog
-from unittest.mock import patch, AsyncMock
 
 logger = structlog.get_logger()
 
@@ -81,9 +82,9 @@ def _compute_source_hash(source_files):
 def _load_hash_cache():
     try:
         if os.path.exists(_HASH_CACHE_FILE):
-            with open(_HASH_CACHE_FILE, "r", encoding="utf-8") as f:
+            with open(_HASH_CACHE_FILE, encoding="utf-8") as f:
                 return json.load(f)
-    except (json.JSONDecodeError, IOError):
+    except (OSError, json.JSONDecodeError):
         pass
     return {}
 
@@ -289,11 +290,11 @@ def pytest_collection_modifyitems(session, config, items):
 @pytest.fixture(autouse=True)
 def reset_sec_singletons():
     yield
-    from app.security.hsm import HSMManager, hsm_manager
-    from app.security.desensitization import DesensitizationEngine
-    from app.security.refresh_token import MemoryRefreshTokenStore
     import app.security.emergency_signing as _esm
     import app.security.three_layer_desensitization as _tldm
+    from app.security.desensitization import DesensitizationEngine
+    from app.security.hsm import HSMManager, hsm_manager
+    from app.security.refresh_token import MemoryRefreshTokenStore
     HSMManager._instance = None
     DesensitizationEngine._instance = None
     MemoryRefreshTokenStore._instance = None
@@ -396,7 +397,7 @@ def snapshot_hsm_keys(pregenerate_hsm_keys):
 
 @pytest.fixture(scope="session", autouse=True)
 def pregenerate_hsm_keys(mock_hsm_redis_operations):
-    from app.security.hsm import hsm_manager, KeySlot
+    from app.security.hsm import KeySlot, hsm_manager
     hsm_manager.generate_key_pair("shared_sign_key", slot=KeySlot.DATA_ENCRYPTION)
     hsm_manager.generate_key_pair("shared_enc_key", slot=KeySlot.DATA_ENCRYPTION)
     hsm_manager.generate_key_pair("shared_jwt_key", slot=KeySlot.JWT_SIGNING)

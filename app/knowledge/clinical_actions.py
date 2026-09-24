@@ -20,7 +20,7 @@
 """
 from __future__ import annotations
 
-from typing import Callable, Dict, List, Optional, Sequence
+from collections.abc import Callable, Sequence
 
 from app.models.schemas import ClinicalAction, ClinicalActionUrgency, MalignancyRiskLevel, Organ
 
@@ -39,12 +39,12 @@ LEVEL_GENERAL = "通用"
 def _action(
     action_type: str,
     *,
-    department: Optional[str] = None,
+    department: str | None = None,
     urgency: ClinicalActionUrgency = ClinicalActionUrgency.ROUTINE,
-    trigger: Optional[str] = None,
-    description: Optional[str] = None,
-    level: Optional[str] = None,
-    reference: Optional[str] = None,
+    trigger: str | None = None,
+    description: str | None = None,
+    level: str | None = None,
+    reference: str | None = None,
 ) -> ClinicalAction:
     return ClinicalAction(
         action_type=action_type,
@@ -57,17 +57,17 @@ def _action(
     )
 
 
-def _as_level(risk_level: Optional[str]) -> Optional[str]:
+def _as_level(risk_level: str | None) -> str | None:
     if risk_level is None:
         return None
     return getattr(risk_level, "value", risk_level)
 
 
 def _thyroid_actions(
-    features: Sequence[str], risk_level: Optional[str]
-) -> List[ClinicalAction]:
+    features: Sequence[str], risk_level: str | None
+) -> list[ClinicalAction]:
     level = _as_level(risk_level)
-    actions: List[ClinicalAction] = []
+    actions: list[ClinicalAction] = []
 
     if level == MalignancyRiskLevel.HIGH.value:
         actions.append(
@@ -128,10 +128,10 @@ def _thyroid_actions(
 
 
 def _liver_actions(
-    features: Sequence[str], risk_level: Optional[str]
-) -> List[ClinicalAction]:
+    features: Sequence[str], risk_level: str | None
+) -> list[ClinicalAction]:
     level = _as_level(risk_level)
-    actions: List[ClinicalAction] = []
+    actions: list[ClinicalAction] = []
 
     if level == MalignancyRiskLevel.HIGH.value:
         actions.append(
@@ -189,11 +189,11 @@ _REDUCED_FUNCTION_FEATURES = (
 
 
 def _cardiac_actions(
-    features: Sequence[str], risk_level: Optional[str]
-) -> List[ClinicalAction]:
+    features: Sequence[str], risk_level: str | None
+) -> list[ClinicalAction]:
     """心脏超声不产出恶性概率，处置建议按心功能特征给出。"""
     del risk_level
-    actions: List[ClinicalAction] = []
+    actions: list[ClinicalAction] = []
     reduced = [item for item in features if item in _REDUCED_FUNCTION_FEATURES]
 
     if reduced:
@@ -226,7 +226,7 @@ def _cardiac_actions(
     return actions
 
 
-_BUILDERS: Dict[str, Callable[[Sequence[str], Optional[str]], List[ClinicalAction]]] = {
+_BUILDERS: dict[str, Callable[[Sequence[str], str | None], list[ClinicalAction]]] = {
     Organ.THYROID.value: _thyroid_actions,
     Organ.LIVER.value: _liver_actions,
     Organ.CARDIAC.value: _cardiac_actions,
@@ -234,10 +234,10 @@ _BUILDERS: Dict[str, Callable[[Sequence[str], Optional[str]], List[ClinicalActio
 
 
 def actions_for(
-    organ_code: Optional[str],
+    organ_code: str | None,
     features: Sequence[str] = (),
-    risk_level: Optional[str] = None,
-) -> List[ClinicalAction]:
+    risk_level: str | None = None,
+) -> list[ClinicalAction]:
     """按器官生成处置建议（未建模器官返回空列表）。
 
     注意：返回空列表表示"本器官没有内置处置规则"，而不是"不需要处置"——
@@ -256,7 +256,7 @@ def summarize_actions(actions: Sequence[ClinicalAction]) -> str:
     """把处置建议汇总为报告用的一段文本。"""
     if not actions:
         return "（本次未生成结构化处置建议，请结合临床判断）"
-    lines: List[str] = []
+    lines: list[str] = []
     for index, item in enumerate(actions, start=1):
         parts = [f"{index}. {item.action_type}"]
         if item.target_department:

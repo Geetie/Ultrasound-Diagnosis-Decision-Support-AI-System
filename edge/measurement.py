@@ -19,8 +19,9 @@ DICOM 的 ``PixelSpacing`` (0018,0011) 缺失时，若直接用默认间距算�
 """
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, Dict, Mapping, Optional, Sequence, Tuple
+from typing import Any
 
 import structlog
 
@@ -35,7 +36,7 @@ PIXEL_SPACING_SOURCE_DICOM = "dicom"
 PIXEL_SPACING_SOURCE_DEFAULT = "default"
 
 # DICOM 标签名（按优先级）：PixelSpacing 为首选，ImagerPixelSpacing 为备选。
-_DICOM_SPACING_TAGS: Tuple[str, ...] = ("PixelSpacing", "ImagerPixelSpacing")
+_DICOM_SPACING_TAGS: tuple[str, ...] = ("PixelSpacing", "ImagerPixelSpacing")
 
 
 @dataclass(frozen=True)
@@ -51,7 +52,7 @@ class PixelSpacing:
             raise ValueError("像素间距必须为正数")
 
     @classmethod
-    def default(cls) -> "PixelSpacing":
+    def default(cls) -> PixelSpacing:
         return cls(
             row_mm=DEFAULT_PIXEL_SPACING_MM,
             column_mm=DEFAULT_PIXEL_SPACING_MM,
@@ -104,10 +105,10 @@ def from_dicom_metadata(metadata: Any) -> PixelSpacing:
 
 def measurement_from_bbox(
     bbox: Sequence[float],
-    frame_shape: Tuple[int, int],
-    spacing: Optional[PixelSpacing] = None,
-    plane_type: Optional[str] = None,
-) -> Optional[Dict[str, Any]]:
+    frame_shape: tuple[int, int],
+    spacing: PixelSpacing | None = None,
+    plane_type: str | None = None,
+) -> dict[str, Any] | None:
     """把归一化标注框换算为物理尺寸。
 
     Args:
@@ -169,16 +170,16 @@ def measurement_from_bbox(
 
 def measure_labels(
     labels: Sequence[Any],
-    frame_shape: Tuple[int, int],
-    spacing: Optional[PixelSpacing] = None,
-    plane_type: Optional[str] = None,
-) -> Dict[str, Dict[str, Any]]:
+    frame_shape: tuple[int, int],
+    spacing: PixelSpacing | None = None,
+    plane_type: str | None = None,
+) -> dict[str, dict[str, Any]]:
     """按标注名批量测量，返回 ``{label: measurement}``。
 
     同一标签名多次出现时保留**最大**的测量（导航流是逐帧上报的，同一病灶
     会反复出现；取最大值避免逐帧抖动导致尺寸忽大忽小）。
     """
-    results: Dict[str, Dict[str, Any]] = {}
+    results: dict[str, dict[str, Any]] = {}
     for label in labels or ():
         name = getattr(label, "label", None)
         if not name:

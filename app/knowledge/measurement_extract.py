@@ -21,7 +21,6 @@
 from __future__ import annotations
 
 import re
-from typing import List, Optional, Tuple
 
 import structlog
 
@@ -49,7 +48,7 @@ _DIMENSION_RE = re.compile(
 )
 
 # "距包膜 0.3cm" / "距皮肤0.5 cm" / "距脏器边缘约 3mm"
-_DISTANCE_PATTERNS: Tuple[Tuple[str, re.Pattern], ...] = (
+_DISTANCE_PATTERNS: tuple[tuple[str, re.Pattern], ...] = (
     (
         "distance_to_capsule_mm",
         re.compile(r"距\s*(?:甲状腺)?包膜\s*(?:约)?\s*(\d+(?:\.\d+)?)\s*(mm|cm)?", re.IGNORECASE),
@@ -70,11 +69,11 @@ _DEFAULT_UNIT = "cm"
 _UNIT_TO_MM = {"mm": 1.0, "cm": 10.0}
 
 
-def _to_mm(value: float, unit: Optional[str]) -> float:
+def _to_mm(value: float, unit: str | None) -> float:
     return round(value * _UNIT_TO_MM.get((unit or _DEFAULT_UNIT).lower(), 10.0), 3)
 
 
-def parse_dimensions(text: Optional[str]) -> Optional[Tuple[float, float, Optional[float]]]:
+def parse_dimensions(text: str | None) -> tuple[float, float, float | None] | None:
     """抽取第一组尺寸（mm）。
 
     Returns:
@@ -97,7 +96,7 @@ def parse_dimensions(text: Optional[str]) -> Optional[Tuple[float, float, Option
     return values[0], values[1], anteroposterior
 
 
-def parse_distances(text: Optional[str]) -> dict:
+def parse_distances(text: str | None) -> dict:
     """抽取"到包膜/脏器边缘/皮肤"的距离（mm）。未提及的键不出现在结果中。"""
     if not text:
         return {}
@@ -110,9 +109,9 @@ def parse_distances(text: Optional[str]) -> dict:
 
 
 def structured_measurement_from_text(
-    text: Optional[str],
-    organ: Optional[str] = None,
-) -> Optional[Measurement]:
+    text: str | None,
+    organ: str | None = None,
+) -> Measurement | None:
     """把报告文本结构化为 :class:`Measurement`。
 
     Returns:
@@ -144,7 +143,7 @@ def structured_measurement_from_text(
     return Measurement(pixel_spacing_source=PIXEL_SPACING_SOURCE_TEXT, **payload)
 
 
-def measurement_features(measurement: Optional[Measurement]) -> List[str]:
+def measurement_features(measurement: Measurement | None) -> list[str]:
     """把测量结果转成参与 M5 风险计算的特征（目前只有"纵横比>1"）。"""
     if measurement is None or measurement.aspect_ratio is None:
         return []

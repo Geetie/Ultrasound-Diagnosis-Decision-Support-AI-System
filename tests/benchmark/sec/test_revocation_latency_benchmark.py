@@ -1,14 +1,14 @@
 import time
-from unittest.mock import AsyncMock, patch, MagicMock
 from datetime import datetime, timezone
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
 pytestmark = [pytest.mark.track_sec, pytest.mark.track_inf, pytest.mark.benchmark]
 
 from app.security.consent_withdrawal_consumer import (
-    ConsentWithdrawalConsumer,
-    SafetyActionHandler,
     ConsentWithdrawalEvent,
+    SafetyActionHandler,
 )
 
 

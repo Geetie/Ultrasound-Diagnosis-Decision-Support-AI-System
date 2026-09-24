@@ -1,10 +1,11 @@
 import asyncio
 
 from fastapi import APIRouter, HTTPException
-from app.config.redis import RedisPool
-from app.config.database import async_engine
-from app.security.hsm import hsm_manager
 from sqlalchemy import text
+
+from app.config.database import async_engine
+from app.config.redis import RedisPool
+from app.security.hsm import hsm_manager
 
 router = APIRouter(tags=["health"])
 
@@ -14,7 +15,7 @@ async def _check_redis():
         healthy = await RedisPool.health_check()
         return healthy, ""
     except Exception as e:
-        return False, f"{type(e).__name__}: {str(e)}"
+        return False, f"{type(e).__name__}: {e!s}"
 
 
 async def _check_db():
@@ -23,7 +24,7 @@ async def _check_db():
             await conn.execute(text("SELECT 1"))
         return True, ""
     except Exception as e:
-        return False, f"{type(e).__name__}: {str(e)}"
+        return False, f"{type(e).__name__}: {e!s}"
 
 
 @router.get("/health")
@@ -109,5 +110,5 @@ async def get_hsm_health():
     except Exception as e:
         return {
             "status": "error",
-            "error": f"{type(e).__name__}: {str(e)}"
+            "error": f"{type(e).__name__}: {e!s}"
         }

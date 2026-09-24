@@ -59,22 +59,33 @@ jobs:
           echo "changed python files:"; echo "$FILES"
 
       - name: 正确性门禁（仅改动文件：未定义名/重复定义/语法/字面量比较）
-        # 仓库存在历史风格债（ruff 全量 5000+ 条，主要是注解与导入排序），
-        # 本次不一并重写；但"新代码引入未定义名/重复定义"这类真实缺陷必须挡住。
+        # 即便有债务清单，"新代码引入未定义名/重复定义"这类真实缺陷也必须无条件挡住。
         if: steps.changed.outputs.files != ''
         run: |
           ruff check --select F821,F822,F823,F811,E9,F632 \
             ${{ steps.changed.outputs.files }}
 
-      - name: 全量风格报告（仅报告，不阻断）
+      - name: 全量风格门禁（阻断：债务清单之外的违规一律红）
+        # 存量债务登记在 .ruff-debt.txt，由 CLI --ignore 排除；该清单**只减不增**，
+        # 计数棘轮由 tests/unit/quality/test_ruff_ratchet.py 守卫。
+        # 另外排除 RUF100：被 CLI ignore 的规则会让既有 noqa 变成"无用指令"，
+        # 这是 ignore 机制本身的副作用，不是代码问题。
+        run: |
+          set -euo pipefail
+          DEBT=$(tr '\n' ',' < .ruff-debt.txt | sed 's/,$//')
+          ruff check . --ignore "${DEBT},RUF100" | tee ruff-report.txt
+
+      - name: 全量风格报告（留存完整存量，供人工对照债务清单）
         continue-on-error: true
-        run: ruff check app safety_gateway edge tests scripts > ruff-report.txt || true
+        run: ruff check . --statistics > ruff-statistics.txt || true
 
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: ruff-report
-          path: ruff-report.txt
+          path: |
+            ruff-report.txt
+            ruff-statistics.txt
           if-no-files-found: ignore
 
   backend-test:

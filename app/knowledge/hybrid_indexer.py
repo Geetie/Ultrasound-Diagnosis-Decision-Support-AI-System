@@ -16,7 +16,7 @@ without changing the builder.
 """
 from __future__ import annotations
 
-from typing import List, Optional, Protocol
+from typing import Protocol
 
 import structlog
 from sqlalchemy import delete, select
@@ -32,7 +32,7 @@ logger = structlog.get_logger("app.knowledge.hybrid_indexer")
 class HybridIndexer(Protocol):
     """Protocol for hybrid indexers (PGVector now; Qdrant later)."""
     async def upsert(
-        self, chunks: List[KnowledgeChunk], session: AsyncSession
+        self, chunks: list[KnowledgeChunk], session: AsyncSession
     ) -> int:
         ...
 
@@ -46,16 +46,16 @@ class HybridIndexer(Protocol):
 
     async def get_by_id(
         self, chunk_id: str, session: AsyncSession
-    ) -> Optional[KnowledgeChunk]:
+    ) -> KnowledgeChunk | None:
         ...
 
     async def vector_search(
         self,
-        query_embedding: List[float],
+        query_embedding: list[float],
         k: int,
-        organ: Optional[str],
+        organ: str | None,
         session: AsyncSession,
-    ) -> List[KnowledgeChunk]:
+    ) -> list[KnowledgeChunk]:
         ...
 
 
@@ -108,7 +108,7 @@ class PGVectorHybridIndexer:
         self.batch_flush_size = batch_flush_size
 
     async def upsert(
-        self, chunks: List[KnowledgeChunk], session: AsyncSession
+        self, chunks: list[KnowledgeChunk], session: AsyncSession
     ) -> int:
         """Insert or update chunks in batches. Returns count written."""
         if not chunks:
@@ -164,7 +164,7 @@ class PGVectorHybridIndexer:
 
     async def get_by_id(
         self, chunk_id: str, session: AsyncSession
-    ) -> Optional[KnowledgeChunk]:
+    ) -> KnowledgeChunk | None:
         stmt = select(KnowledgeChunkModel).where(
             KnowledgeChunkModel.chunk_id == chunk_id
         )
@@ -174,11 +174,11 @@ class PGVectorHybridIndexer:
 
     async def vector_search(
         self,
-        query_embedding: List[float],
+        query_embedding: list[float],
         k: int,
-        organ: Optional[str],
+        organ: str | None,
         session: AsyncSession,
-    ) -> List[KnowledgeChunk]:
+    ) -> list[KnowledgeChunk]:
         """Return top-k chunks by cosine similarity. Optionally filter by organ.
 
         Note: this returns ALL chunks whose embedding is not None; downstream

@@ -18,9 +18,9 @@
 """
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from typing import Optional, Sequence
 
 import structlog
 
@@ -77,7 +77,7 @@ def _as_aware(moment: datetime) -> datetime:
 
 
 def compute_idle_periods(
-    last_referenced_at: Optional[datetime], now: Optional[datetime] = None
+    last_referenced_at: datetime | None, now: datetime | None = None
 ) -> int:
     """返回空闲期数（每 ``IDLE_DECAY_DAYS`` 天为一期，上限见 ``MAX_DECAY_PERIODS``）。
 
@@ -95,9 +95,9 @@ def compute_idle_periods(
 
 def compute_confidence_score(
     *,
-    last_referenced_at: Optional[datetime] = None,
+    last_referenced_at: datetime | None = None,
     dispute_count: int = 0,
-    now: Optional[datetime] = None,
+    now: datetime | None = None,
 ) -> float:
     """由客观事实算出目标置信度（幂等：与当前值无关）。"""
     periods = compute_idle_periods(last_referenced_at, now)
@@ -109,9 +109,9 @@ def compute_confidence_score(
 
 def assess_decay(
     *,
-    last_referenced_at: Optional[datetime] = None,
+    last_referenced_at: datetime | None = None,
     dispute_count: int = 0,
-    now: Optional[datetime] = None,
+    now: datetime | None = None,
 ) -> DecayAssessment:
     """给出完整评估（含复审提示与成因）。"""
     current = now or datetime.now(timezone.utc)
@@ -139,7 +139,7 @@ def assess_decay(
     )
 
 
-def should_update(current_score: Optional[float], target_score: float) -> bool:
+def should_update(current_score: float | None, target_score: float) -> bool:
     """只在真的变化时写库，避免周期性作业把整张表无谓刷一遍。"""
     if current_score is None:
         return True
@@ -177,7 +177,7 @@ WHERE confidence_score IS DISTINCT FROM GREATEST(
 """
 
 
-def decay_sql_params(now: Optional[datetime] = None) -> dict:
+def decay_sql_params(now: datetime | None = None) -> dict:
     return {
         "now": _as_aware(now or datetime.now(timezone.utc)),
         "floor": CONFIDENCE_FLOOR,
@@ -191,7 +191,7 @@ def decay_sql_params(now: Optional[datetime] = None) -> dict:
 
 
 async def record_references(
-    session, chunk_ids: Sequence[str], now: Optional[datetime] = None
+    session, chunk_ids: Sequence[str], now: datetime | None = None
 ) -> int:
     """批量记录一次检索引用。返回受影响行数。"""
     ids = [chunk_id for chunk_id in chunk_ids if chunk_id]
@@ -207,7 +207,7 @@ async def record_references(
     return int(affected) if affected is not None else len(ids)
 
 
-async def apply_decay(session, now: Optional[datetime] = None) -> int:
+async def apply_decay(session, now: datetime | None = None) -> int:
     """全表重算衰减目标值（幂等），返回被更新的行数。"""
     from sqlalchemy import text
 
@@ -234,11 +234,11 @@ async def record_retrieval_references(chunk_ids: Sequence[str]) -> int:
             if commit is not None:
                 await commit()
             return affected
-    except Exception as exc:  # noqa: BLE001 - 埋点失败不得影响检索
+    except Exception as exc:
         logger.warning("knowledge_reference_record_failed", error=str(exc))
         return 0
 
 
-def idle_deadline(now: Optional[datetime] = None) -> datetime:
+def idle_deadline(now: datetime | None = None) -> datetime:
     """空闲判定线（便于导出给看板/告警用）。"""
     return _as_aware(now or datetime.now(timezone.utc)) - timedelta(days=IDLE_DECAY_DAYS)

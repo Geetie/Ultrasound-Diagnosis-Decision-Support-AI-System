@@ -1,17 +1,18 @@
 import asyncio
 import logging
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
-from safety_gateway.validation_result import ConsentStatus, ThresholdCheckResult
+import pytest
+
 from safety_gateway.checker import (
-    SafetyGatewayChecker,
     CheckResultStatus,
     DegradedReason,
+    SafetyGatewayChecker,
     get_safety_gateway_checker,
 )
 from safety_gateway.consent_checker import ConsentCheckResult
 from safety_gateway.desensitization import sg_desensitization_engine
+from safety_gateway.validation_result import ConsentStatus
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +34,7 @@ class TestFullCheckIntegration:
 
     def setup_method(self):
         from unittest.mock import patch
+
         from safety_gateway.validation_result import ConsentStatus
 
         self.checker = get_safety_gateway_checker()
@@ -123,8 +125,9 @@ class TestFullCheckIntegration:
 
     @pytest.mark.asyncio
     async def test_full_check_execution_order(self):
+        from unittest.mock import AsyncMock
+
         from safety_gateway.validation_result import ConsentStatus
-        from unittest.mock import AsyncMock, MagicMock
 
         test_data = {
             "organ": "thyroid",
@@ -304,8 +307,8 @@ class TestRulesSyncSubscriber:
 
     @pytest.mark.asyncio
     async def test_rules_sync_subscriber_start_stop(self):
-        from safety_gateway.redis_subscriber import RedisSubscriber
         from safety_gateway.redis_pool import SafetyGatewayRedisPool
+        from safety_gateway.redis_subscriber import RedisSubscriber
         handler_calls = []
 
         async def mock_handler(data):

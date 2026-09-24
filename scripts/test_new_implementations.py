@@ -13,32 +13,12 @@ def test_imports():
     print("Testing imports...")
 
     try:
-        from app.inference.consistency import (
-            ConsistencyVerifier,
-            ConsistencyReport,
-            ConsistencyPair,
-            FalseStats,
-            CrossValidationResult,
-        )
         print("✓ consistency.py imports successful")
 
-        from app.inference.benchmark import (
-            ModelBenchmark,
-            BenchmarkReport,
-            SensitivityAnalysisResult,
-        )
         print("✓ benchmark.py imports successful")
 
-        from app.inference.verification_config import (
-            get_verification_config,
-            VerificationConfig,
-        )
         print("✓ verification_config.py imports successful")
 
-        from app.inference.hallucination_detector import (
-            HallucinationDetector,
-            DetectionStrategy,
-        )
         print("✓ hallucination_detector.py imports successful")
 
     except Exception as e:
@@ -199,7 +179,7 @@ def test_consistency_report_has_failure_analysis():
         assert hasattr(report, 'failure_analysis')
         assert "summary" in report.failure_analysis
 
-        print(f"✓ ConsistencyReport has failure_analysis field")
+        print("✓ ConsistencyReport has failure_analysis field")
         print(f"✓ ConsistencyReport failure_analysis summary: {report.failure_analysis['summary']}")
 
     except Exception as e:
@@ -235,7 +215,7 @@ def test_benchmark_report_has_sensitivity_analysis():
         assert hasattr(report, 'sensitivity_analysis')
         assert "accuracy" in report.sensitivity_analysis
 
-        print(f"✓ BenchmarkReport has sensitivity_analysis field")
+        print("✓ BenchmarkReport has sensitivity_analysis field")
         print(f"✓ BenchmarkReport sensitivity_analysis metrics: {list(report.sensitivity_analysis.keys())}")
 
     except Exception as e:

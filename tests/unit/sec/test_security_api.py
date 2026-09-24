@@ -1,7 +1,9 @@
+
 import pytest
-from unittest.mock import patch, MagicMock
-from app.security.auth import get_current_active_user, RoleChecker
 from fastapi import HTTPException
+
+from app.security.auth import RoleChecker
+
 pytestmark = [pytest.mark.track_sec, pytest.mark.track_api, pytest.mark.sec_domain_auth]
 
 

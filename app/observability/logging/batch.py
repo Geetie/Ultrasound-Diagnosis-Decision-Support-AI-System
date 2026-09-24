@@ -3,14 +3,15 @@ import statistics
 import threading
 import time
 from collections import deque
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import structlog
+
+from app.observability.utils import calculate_percentile
 
 from .backend import LogStorageBackend
 from .file import FileLogStorage
 from .record import LogRecord
-from app.observability.utils import calculate_percentile
 
 _logger = structlog.get_logger("app.observability.logging")
 
@@ -32,9 +33,9 @@ class BatchLogStorageWrapper(LogStorageBackend):
         self._flush_interval = flush_interval
         self._max_queue_size = max_queue_size
         self._queue: deque = deque()
-        self._flush_task: Optional[asyncio.Task] = None
+        self._flush_task: asyncio.Task | None = None
         self._lock = threading.Lock()
-        self._async_lock: Optional[asyncio.Lock] = None
+        self._async_lock: asyncio.Lock | None = None
         self._shutdown_event = asyncio.Event()
 
         self._metrics = {
@@ -88,7 +89,7 @@ class BatchLogStorageWrapper(LogStorageBackend):
                     await self._degrade_to_file(batch[single_success:])
                 self._metrics["total_flushed"] += single_success
 
-    async def _degrade_to_file(self, records: List[LogRecord]) -> None:
+    async def _degrade_to_file(self, records: list[LogRecord]) -> None:
         try:
             fallback = FileLogStorage(
                 log_dir="logs/fallback",
@@ -141,7 +142,7 @@ class BatchLogStorageWrapper(LogStorageBackend):
                 except RuntimeError:
                     pass
 
-    async def awrite_batch(self, records: List[LogRecord]) -> None:
+    async def awrite_batch(self, records: list[LogRecord]) -> None:
         for record in records:
             self._enqueue(record)
         self._start_flush_task()
@@ -154,7 +155,7 @@ class BatchLogStorageWrapper(LogStorageBackend):
         await self._flush_batch()
         await self._backend.close()
 
-    def get_metrics(self) -> Dict[str, Any]:
+    def get_metrics(self) -> dict[str, Any]:
         result = self._metrics.copy()
         if self._metrics["flush_latencies"]:
             result["flush_latency_p99"] = calculate_percentile(self._metrics["flush_latencies"], 99.0) * 1000

@@ -17,9 +17,10 @@
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from collections.abc import Callable
+from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Callable, Dict, Optional, Protocol
+from typing import Any, Protocol
 
 import structlog
 
@@ -46,7 +47,7 @@ class DeviceState(str, Enum):
 class DeviceTransport(Protocol):
     """与主服务通信的最小契约（可注入，便于测试）。"""
 
-    async def post(self, path: str, payload: Dict[str, Any]) -> Any:
+    async def post(self, path: str, payload: dict[str, Any]) -> Any:
         ...
 
 
@@ -56,15 +57,15 @@ class DeviceHealth:
 
     state: DeviceState
     consecutive_failures: int
-    last_error: Optional[str] = None
-    isolated_reason: Optional[str] = None
+    last_error: str | None = None
+    isolated_reason: str | None = None
 
     @property
     def should_uplink(self) -> bool:
         """是否允许向上行推送数据（隔离/恢复中一律不允许）。"""
         return self.state in (DeviceState.ONLINE, DeviceState.DEGRADED)
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         return {
             "state": self.state.value,
             "consecutive_failures": self.consecutive_failures,
@@ -103,10 +104,10 @@ class EdgeDeviceManager:
 
         self._state = DeviceState.REGISTERED
         self._consecutive_failures = 0
-        self._last_error: Optional[str] = None
-        self._isolated_reason: Optional[str] = None
-        self._last_heartbeat_at: Optional[float] = None
-        self._last_health_check_at: Optional[float] = None
+        self._last_error: str | None = None
+        self._isolated_reason: str | None = None
+        self._last_heartbeat_at: float | None = None
+        self._last_health_check_at: float | None = None
 
     # ---- 状态查询 ----
     @property

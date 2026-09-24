@@ -14,22 +14,22 @@
 """
 
 import os
-import asyncio
-from typing import Optional, Dict, Any, List
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta
+from typing import Any
 
 import structlog
 
-from app.security.hsm.enums import (
-    DegradedPhase, KeySlot, DegradedBehavior,
-    DEGRADED_BEHAVIORS, get_key_slot,
-)
 from app.security.hsm.degradation_manager import DegradationManager
-from app.security.hsm.task_scheduler import TaskScheduler
-from app.security.hsm.soft_hsm_manager import SoftHSMManager
-from app.security.hsm.persistence_manager import PersistenceManager
-from app.security.hsm.key_manager import KeyManager
 from app.security.hsm.encryption_service import EncryptionService
+from app.security.hsm.enums import (
+    DegradedPhase,
+    KeySlot,
+    get_key_slot,
+)
+from app.security.hsm.key_manager import KeyManager
+from app.security.hsm.persistence_manager import PersistenceManager
+from app.security.hsm.soft_hsm_manager import SoftHSMManager
+from app.security.hsm.task_scheduler import TaskScheduler
 
 logger = structlog.get_logger()
 
@@ -145,12 +145,12 @@ class HSMManager:
         return timedelta(minutes=settings.hsm_degraded_phase_2_threshold_minutes)
 
     @property
-    def _key_slots(self) -> Dict[KeySlot, Dict[str, Dict[str, Any]]]:
+    def _key_slots(self) -> dict[KeySlot, dict[str, dict[str, Any]]]:
         """密钥槽位（向后兼容测试访问）。"""
         return self._key_manager.key_slots
 
     @_key_slots.setter
-    def _key_slots(self, value: Dict[KeySlot, Dict[str, Dict[str, Any]]]) -> None:
+    def _key_slots(self, value: dict[KeySlot, dict[str, dict[str, Any]]]) -> None:
         """密钥槽位设置器（向后兼容测试访问）。"""
         self._key_manager._key_slots = value
 
@@ -180,12 +180,12 @@ class HSMManager:
         return self._soft_hsm_manager.is_enabled
 
     @property
-    def _degraded_at(self) -> Optional[datetime]:
+    def _degraded_at(self) -> datetime | None:
         """降级时间（向后兼容测试访问）。"""
         return self._degradation_manager.degraded_at
 
     @_degraded_at.setter
-    def _degraded_at(self, value: Optional[datetime]) -> None:
+    def _degraded_at(self, value: datetime | None) -> None:
         """降级时间设置器（向后兼容测试访问）。"""
         self._degradation_manager._degraded_at = value
 
@@ -210,12 +210,12 @@ class HSMManager:
         self._degradation_manager._is_degraded = False
 
     @property
-    def _degraded_reason(self) -> Optional[str]:
+    def _degraded_reason(self) -> str | None:
         """降级原因（向后兼容测试访问）。"""
         return self._degradation_manager.degraded_reason
 
     @_degraded_reason.setter
-    def _degraded_reason(self, value: Optional[str]) -> None:
+    def _degraded_reason(self, value: str | None) -> None:
         """降级原因设置器（向后兼容测试访问）。"""
         self._degradation_manager._degraded_reason = value
 
@@ -225,12 +225,12 @@ class HSMManager:
         self._degradation_manager._degraded_reason = None
 
     @property
-    def _soft_hsm_enabled_at(self) -> Optional[datetime]:
+    def _soft_hsm_enabled_at(self) -> datetime | None:
         """SoftHSM 启用时间（向后兼容测试访问）。"""
         return self._soft_hsm_manager.enabled_at
 
     @_soft_hsm_enabled_at.setter
-    def _soft_hsm_enabled_at(self, value: Optional[datetime]) -> None:
+    def _soft_hsm_enabled_at(self, value: datetime | None) -> None:
         """SoftHSM 启用时间设置器（向后兼容测试访问）。"""
         self._soft_hsm_manager._soft_hsm_enabled_at = value
 
@@ -326,11 +326,11 @@ class HSMManager:
         return get_key_slot(key_name)
 
     def generate_key_pair(self, key_name: str, key_size: int = 2048,
-                          slot: Optional[KeySlot] = None) -> Dict[str, Any]:
+                          slot: KeySlot | None = None) -> dict[str, Any]:
         """生成 RSA 密钥对。"""
         return self._key_manager.generate_key_pair(key_name, key_size, slot)
 
-    def rotate_key(self, key_name: str, parallel_days: int = 7) -> Dict[str, Any]:
+    def rotate_key(self, key_name: str, parallel_days: int = 7) -> dict[str, Any]:
         """轮换密钥。"""
         return self._key_manager.rotate_key(key_name, parallel_days)
 
@@ -338,19 +338,19 @@ class HSMManager:
         """清理过期密钥。"""
         return self._key_manager.cleanup_expired_keys()
 
-    def get_key_info(self, key_name: str) -> Optional[Dict[str, Any]]:
+    def get_key_info(self, key_name: str) -> dict[str, Any] | None:
         """获取密钥信息。"""
         return self._key_manager.get_key_info(key_name)
 
-    def list_keys(self) -> List[str]:
+    def list_keys(self) -> list[str]:
         """列出所有密钥。"""
         return self._key_manager.list_keys()
 
-    def list_keys_by_slot(self, slot: KeySlot) -> List[str]:
+    def list_keys_by_slot(self, slot: KeySlot) -> list[str]:
         """列出指定槽位的密钥。"""
         return self._key_manager.list_keys_by_slot(slot)
 
-    def get_public_key(self, key_name: str) -> Optional[str]:
+    def get_public_key(self, key_name: str) -> str | None:
         """获取公钥 PEM 字符串。"""
         return self._key_manager.get_public_key(key_name)
 
@@ -378,8 +378,8 @@ class HSMManager:
         """解密数据。"""
         return self._encryption_service.decrypt(key_name, ciphertext)
 
-    def sign_jwt(self, key_name: str, header: Dict[str, Any],
-                 payload: Dict[str, Any], algorithm: str = "RS256") -> str:
+    def sign_jwt(self, key_name: str, header: dict[str, Any],
+                 payload: dict[str, Any], algorithm: str = "RS256") -> str:
         """签名 JWT。"""
         return self._encryption_service.sign_jwt(key_name, header, payload, algorithm)
 
@@ -391,7 +391,7 @@ class HSMManager:
         """是否处于降级状态。"""
         return self._degradation_manager.is_degraded
 
-    def get_degraded_at(self) -> Optional[datetime]:
+    def get_degraded_at(self) -> datetime | None:
         """获取降级开始时间。"""
         return self._degradation_manager.degraded_at
 
@@ -424,7 +424,7 @@ class HSMManager:
     #  公共 API：SoftHSM 管理（委托给 SoftHSMManager）
     # ================================================================
 
-    def get_soft_hsm_status(self) -> Dict[str, Any]:
+    def get_soft_hsm_status(self) -> dict[str, Any]:
         """获取 SoftHSM 状态信息。"""
         return self._soft_hsm_manager.get_status()
 

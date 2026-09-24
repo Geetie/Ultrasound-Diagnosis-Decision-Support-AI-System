@@ -4,9 +4,8 @@
 作为独立模块供各子管理器共享使用。
 """
 
-from typing import Optional, Dict
-from enum import Enum
 from dataclasses import dataclass
+from enum import Enum
 
 
 class DegradedPhase(str, Enum):
@@ -36,10 +35,10 @@ class DegradedBehavior:
     allow_data_encryption: bool
     allow_desensitization_restore: bool
     allow_emergency_signing: bool
-    max_signature_count: Optional[int] = None
+    max_signature_count: int | None = None
 
 
-DEGRADED_BEHAVIORS: Dict[DegradedPhase, DegradedBehavior] = {
+DEGRADED_BEHAVIORS: dict[DegradedPhase, DegradedBehavior] = {
     DegradedPhase.NORMAL: DegradedBehavior(
         allow_jwt_signing=True,
         allow_data_encryption=True,

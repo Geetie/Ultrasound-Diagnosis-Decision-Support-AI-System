@@ -1,6 +1,6 @@
 import time
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Any
 
 from app.observability.enums import LogCategory, NtpSyncStatus
 
@@ -10,8 +10,8 @@ class LogRecord:
         self,
         category: LogCategory,
         message: str,
-        extra: Optional[Dict[str, Any]] = None,
-        ntp_sync_status: Optional[NtpSyncStatus] = None,
+        extra: dict[str, Any] | None = None,
+        ntp_sync_status: NtpSyncStatus | None = None,
         **kwargs,
     ):
         self.timestamp = datetime.now(timezone.utc).isoformat()
@@ -22,7 +22,7 @@ class LogRecord:
         self.kwargs = kwargs
         self._enqueue_time = time.time()
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         result = {
             "timestamp": self.timestamp,
             "category": self.category,

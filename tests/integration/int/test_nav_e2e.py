@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import numpy as np
@@ -45,7 +45,7 @@ class _FakeBackend:
 
     name = "fake_nav"
 
-    def __init__(self, infer_cost_ms: float = 3.0, labels: Optional[List[NavLabel]] = None) -> None:
+    def __init__(self, infer_cost_ms: float = 3.0, labels: list[NavLabel] | None = None) -> None:
         self.loaded = 0
         self.calls = 0
         self._cost = infer_cost_ms
@@ -58,7 +58,7 @@ class _FakeBackend:
     def load(self) -> None:
         self.loaded += 1
 
-    def infer(self, frame: Frame) -> List[NavLabel]:
+    def infer(self, frame: Frame) -> list[NavLabel]:
         self.calls += 1
         # 模拟 TensorRT 同步推理耗时（真实耗时在真机；此处只验证链路与预算）
         deadline = time.perf_counter() + self._cost / 1000.0
@@ -74,7 +74,7 @@ class _RecordingSink:
     """上行通道替身：记录边缘端推上来的导航结果。"""
 
     def __init__(self) -> None:
-        self.results: List[Any] = []
+        self.results: list[Any] = []
 
     async def push_nav_result(self, result) -> bool:
         self.results.append(result)
@@ -97,7 +97,7 @@ def _frame(index: int, *, session_id: str = "sess_nav") -> Frame:
     )
 
 
-def _percentile(values: List[float], pct: float) -> float:
+def _percentile(values: list[float], pct: float) -> float:
     ordered = sorted(values)
     if not ordered:
         return 0.0
@@ -122,11 +122,11 @@ class TestEdgeToBackend:
         sink = _RecordingSink()
         pipeline = EdgePipeline(nav, uplink=sink)
 
-        edge_metrics: List[float] = []
+        edge_metrics: list[float] = []
         collector = MagicMock()
         collector.record_edge_nav_latency = MagicMock(side_effect=edge_metrics.append)
 
-        latencies_ms: List[float] = []
+        latencies_ms: list[float] = []
         with patch(
             "app.observability.metrics_collector.get_metrics_collector",
             lambda: collector,
@@ -196,7 +196,7 @@ class TestEdgeToBackend:
 
 class TestBackendLatencyInstrumentation:
     def _collector(self):
-        recorded: List[float] = []
+        recorded: list[float] = []
         collector = MagicMock()
         collector.record_nav_latency = MagicMock(side_effect=recorded.append)
         return collector, recorded
@@ -301,13 +301,13 @@ class TestBackendLatencyInstrumentation:
 
 class _FakeWebSocket:
     def __init__(self) -> None:
-        self.sent: List[Dict[str, Any]] = []
+        self.sent: list[dict[str, Any]] = []
         self.accepted = False
 
     async def accept(self) -> None:
         self.accepted = True
 
-    async def send_json(self, payload: Dict[str, Any]) -> None:
+    async def send_json(self, payload: dict[str, Any]) -> None:
         self.sent.append(payload)
 
 

@@ -12,12 +12,12 @@
 """
 
 import asyncio
-import redis.asyncio as aioredis
-from redis.retry import Retry
-from redis.backoff import ExponentialBackoff
 from typing import Any, ClassVar
 
+import redis.asyncio as aioredis
 import structlog
+from redis.backoff import ExponentialBackoff
+from redis.retry import Retry
 
 from safety_gateway.sg_config import sg_settings as settings
 

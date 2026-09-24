@@ -1,6 +1,5 @@
 import json
 from functools import wraps
-from typing import Optional
 
 import structlog
 
@@ -13,7 +12,7 @@ logger = structlog.get_logger()
 def idempotency_check(ttl_seconds: int, key_prefix: str = "diagnosis"):
     def decorator(func):
         @wraps(func)
-        async def wrapper(*args, idempotency_key: Optional[str] = None, **kwargs):
+        async def wrapper(*args, idempotency_key: str | None = None, **kwargs):
             if not idempotency_key:
                 return await func(*args, idempotency_key=idempotency_key, **kwargs)
 

@@ -1,6 +1,8 @@
-import pytest
 import time
-from tests.utils.step_tracker import StepTracker, StepStatus
+
+import pytest
+
+from tests.utils.step_tracker import StepStatus, StepTracker
 
 _tracker = StepTracker()
 

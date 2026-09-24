@@ -1,19 +1,15 @@
+
 import pytest
-from unittest.mock import AsyncMock, Mock, patch
-from datetime import datetime, timezone
-from io import BytesIO
 
 from app.api.v1.imaging import (
-    validate_dicom_format,
-    parse_and_validate_dicom,
+    REQUIRED_DICOM_TAGS,
     _desensitize_patient_id,
     _desensitize_patient_name,
-    extract_metadata_from_dataset,
-    REQUIRED_DICOM_TAGS,
-    generate_image_id,
     generate_frame_id,
+    generate_image_id,
+    parse_and_validate_dicom,
+    validate_dicom_format,
 )
-from app.api.v1.errors import MissingDICOMTagException
 
 pytestmark = pytest.mark.track_api
 

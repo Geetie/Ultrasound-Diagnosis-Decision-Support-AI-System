@@ -192,21 +192,20 @@ class PgvectorVectorIndex(VectorIndexClient):
         table_name = _validate_collection_name(collection)
         pool = await self._get_pool()
         try:
-            async with pool.acquire() as conn:
-                async with conn.transaction():
-                    for record in vectors:
-                        await conn.execute(
-                            f"""
+            async with pool.acquire() as conn, conn.transaction():
+                for record in vectors:
+                    await conn.execute(
+                        f"""
                             INSERT INTO {table_name} (id, embedding, metadata)
                             VALUES ($1, $2::vector, $3::jsonb)
                             ON CONFLICT (id) DO UPDATE
                             SET embedding = EXCLUDED.embedding,
                                 metadata = EXCLUDED.metadata
                             """,
-                            record.id,
-                            record.vector,
-                            json.dumps(record.metadata, ensure_ascii=False),
-                        )
+                        record.id,
+                        record.vector,
+                        json.dumps(record.metadata, ensure_ascii=False),
+                    )
             logger.info(
                 "pgvector_upsert_completed",
                 table=table_name,

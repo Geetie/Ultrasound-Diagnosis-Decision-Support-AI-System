@@ -1,7 +1,6 @@
+from unittest.mock import AsyncMock
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock
-import json
-from datetime import datetime
 
 from app.tools.redis_key_migration.mapper import KeyMapper
 from app.tools.redis_key_migration.migrator import RedisKeyMigrator
@@ -93,12 +92,12 @@ class TestRedisKeyMigrator:
     @pytest.mark.asyncio
     async def test_migrate_single_key(self, migrator, mock_redis_client):
         stats = await migrator.migrate()
-        
+
         assert stats['scanned'] == 1
         assert stats['migrated'] == 1
         assert stats['failed'] == 0
         assert stats['skipped'] == 0
-        
+
         mock_redis_client.setex.assert_called_once_with(
             ':auth:token:abc123', 3600, b'{"data": "test"}'
         )
@@ -106,27 +105,27 @@ class TestRedisKeyMigrator:
     @pytest.mark.asyncio
     async def test_migrate_empty_redis(self, migrator, mock_redis_client):
         mock_redis_client.scan.return_value = (0, [])
-        
+
         stats = await migrator.migrate()
-        
+
         assert stats['scanned'] == 0
         assert stats['migrated'] == 0
 
     @pytest.mark.asyncio
     async def test_migrate_key_not_found(self, migrator, mock_redis_client):
         mock_redis_client.get.return_value = None
-        
+
         stats = await migrator.migrate()
-        
+
         assert stats['migrated'] == 0
         mock_redis_client.setex.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_verify_migration(self, migrator, mock_redis_client):
         mock_redis_client.get.side_effect = [b'{"data": "test"}', b'{"data": "test"}']
-        
+
         stats = await migrator.verify()
-        
+
         assert stats['checked'] == 1
         assert stats['matched'] == 1
         assert stats['mismatched'] == 0
@@ -134,6 +133,6 @@ class TestRedisKeyMigrator:
     @pytest.mark.asyncio
     async def test_cleanup_old_keys(self, migrator, mock_redis_client):
         stats = await migrator.cleanup_old_keys()
-        
+
         assert stats['deleted'] == 1
         mock_redis_client.delete.assert_called_once_with('refresh_token:abc123')

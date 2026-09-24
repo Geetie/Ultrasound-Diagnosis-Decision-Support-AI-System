@@ -36,8 +36,9 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+from typing import Any
 
 import structlog
 
@@ -47,11 +48,8 @@ from app.fusion.protocols import (
     ConsistencySeverity,
     FusionRequest,
 )
-from app.models.schemas import Organ
 from app.rag.protocols import (
-    KnowledgeChunk,
     RAGService,
-    RetrievalMethod,
     RetrievalRequest,
 )
 
@@ -104,12 +102,12 @@ class UDTHierarchy:
 
     def __init__(
         self,
-        parents: Optional[Dict[str, List[str]]] = None,
+        parents: dict[str, list[str]] | None = None,
     ) -> None:
         # 父编码 → 子编码集合（直接 + 间接）
-        self._parents: Dict[str, Set[str]] = {}
+        self._parents: dict[str, set[str]] = {}
         # 反向索引：子编码 → 父编码集合
-        self._children: Dict[str, Set[str]] = {}
+        self._children: dict[str, set[str]] = {}
         if parents:
             for parent, children in parents.items():
                 for child in children:
@@ -122,11 +120,11 @@ class UDTHierarchy:
         self._children.setdefault(c, set()).add(p)
         self._parents.setdefault(p, set()).add(c)
 
-    def children_of(self, parent: str) -> Set[str]:
+    def children_of(self, parent: str) -> set[str]:
         """获取父编码的所有直接 + 间接子类。"""
         return set(self._parents.get(parent.lower(), set()))
 
-    def parents_of(self, child: str) -> Set[str]:
+    def parents_of(self, child: str) -> set[str]:
         """获取子编码的所有父编码。"""
         return set(self._children.get(child.lower(), set()))
 
@@ -153,9 +151,9 @@ class UDTHierarchy:
                 return True
         return False
 
-    def expand_with_subclasses(self, *trigger_codes: str) -> Set[str]:
+    def expand_with_subclasses(self, *trigger_codes: str) -> set[str]:
         """展开 ``trigger_codes`` 为包含所有子类编码的集合。"""
-        result: Set[str] = set()
+        result: set[str] = set()
         for trig in trigger_codes:
             t = trig.lower()
             result.add(t)
@@ -167,7 +165,7 @@ class UDTHierarchy:
 # 一期三器官 UDT 层级初始集（02-核心流程与知识库.md:469-475）
 # ----------------------------------------------------------------------
 
-DEFAULT_UDT_HIERARCHY_PARENTS: Dict[str, List[str]] = {
+DEFAULT_UDT_HIERARCHY_PARENTS: dict[str, list[str]] = {
     # 甲状腺
     "thyroid_hyperthyroidism": [
         "thyroid_toxic_diffuse_goiter",   # Graves 病
@@ -271,7 +269,7 @@ def _content_matches(resp: AgentResponse, *keywords: str) -> bool:
     return any(kw.lower() in content_lower for kw in keywords)
 
 
-def _extract_lvef(text: str) -> Optional[int]:
+def _extract_lvef(text: str) -> int | None:
     """从文本中抽取 LVEF 数值（仅 fallback 用）。"""
     if not text:
         return None
@@ -285,9 +283,9 @@ def _extract_lvef(text: str) -> Optional[int]:
 
 
 def _make_udt_condition(
-    primary_codes: Tuple[str, ...],
+    primary_codes: tuple[str, ...],
     udt: UDTHierarchy,
-    keyword_fallback: Tuple[str, ...] = (),
+    keyword_fallback: tuple[str, ...] = (),
 ) -> Callable[[AgentResponse], bool]:
     """构造 UDT 优先 + 关键词 fallback 的条件函数。"""
 
@@ -515,8 +513,8 @@ def _rule_amiodarone_thyroid_dysfunction(udt: UDTHierarchy) -> CrossOrganRule:
 
 
 def build_default_cross_organ_rules(
-    udt: Optional[UDTHierarchy] = None,
-) -> List[CrossOrganRule]:
+    udt: UDTHierarchy | None = None,
+) -> list[CrossOrganRule]:
     """构造默认的 7 条跨器官规则（可注入 UDT 层级实例）。"""
     u = udt or DEFAULT_UDT_HIERARCHY
     return [
@@ -531,7 +529,7 @@ def build_default_cross_organ_rules(
 
 
 # 向后兼容：覆盖占位的 DEFAULT_CROSS_ORGAN_RULES
-DEFAULT_CROSS_ORGAN_RULES: List[CrossOrganRule] = build_default_cross_organ_rules()
+DEFAULT_CROSS_ORGAN_RULES: list[CrossOrganRule] = build_default_cross_organ_rules()
 
 
 # ----------------------------------------------------------------------
@@ -559,13 +557,13 @@ class ConsistencyChecker:
 
     def __init__(
         self,
-        rag_service: Optional[RAGService] = None,
+        rag_service: RAGService | None = None,
         prior_confidence_gap_warning: float = DEFAULT_PRIOR_CONFIDENCE_GAP_WARNING,
         prior_confidence_gap_critical: float = DEFAULT_PRIOR_CONFIDENCE_GAP_CRITICAL,
         prior_grade_diff_warning: int = DEFAULT_PRIOR_GRADE_DIFF_WARNING,
         prior_grade_diff_critical: int = DEFAULT_PRIOR_GRADE_DIFF_CRITICAL,
         guideline_top_k: int = DEFAULT_GUIDELINE_TOP_K,
-        cross_organ_rules: Optional[List[CrossOrganRule]] = None,
+        cross_organ_rules: list[CrossOrganRule] | None = None,
     ) -> None:
         if prior_confidence_gap_critical < prior_confidence_gap_warning:
             raise ValueError(
@@ -585,7 +583,7 @@ class ConsistencyChecker:
         self._prior_grade_diff_critical = prior_grade_diff_critical
         self._guideline_top_k = guideline_top_k
         # P1-4 修复：跨器官规则可注入
-        self._cross_organ_rules: List[CrossOrganRule] = (
+        self._cross_organ_rules: list[CrossOrganRule] = (
             list(cross_organ_rules) if cross_organ_rules is not None else DEFAULT_CROSS_ORGAN_RULES
         )
 
@@ -603,8 +601,8 @@ class ConsistencyChecker:
             :class:`ConsistencyCheckResult`：一致性校验结果。``is_consistent``
             为 True 当且仅当 ``severity != CRITICAL``。
         """
-        details: List[str] = []
-        inconsistent_pairs: List[Tuple[str, str]] = []
+        details: list[str] = []
+        inconsistent_pairs: list[tuple[str, str]] = []
         severity = ConsistencySeverity.INFO
         compared_with_prior = False
         compared_with_guidelines = False
@@ -633,7 +631,7 @@ class ConsistencyChecker:
                 if guideline_detail:
                     details.append(guideline_detail)
                 inconsistent_pairs.extend(guideline_pairs)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.warning(
                     "consistency_guideline_check_failed",
                     error=str(exc),
@@ -672,9 +670,9 @@ class ConsistencyChecker:
 
     def _compare_with_prior(
         self,
-        responses: List[AgentResponse],
-        prior: Dict[str, Any],
-    ) -> Tuple[ConsistencySeverity, str, List[Tuple[str, str]]]:
+        responses: list[AgentResponse],
+        prior: dict[str, Any],
+    ) -> tuple[ConsistencySeverity, str, list[tuple[str, str]]]:
         """与既往诊断对比。
 
         既往诊断格式约定（``prior_diagnosis`` dict）：
@@ -725,8 +723,8 @@ class ConsistencyChecker:
             )
 
         worst_severity = ConsistencySeverity.INFO
-        details: List[str] = []
-        pairs: List[Tuple[str, str]] = []
+        details: list[str] = []
+        pairs: list[tuple[str, str]] = []
         for resp in matching:
             # confidence 差距
             if prior_confidence is not None:
@@ -783,9 +781,9 @@ class ConsistencyChecker:
 
     async def _compare_with_guidelines(
         self,
-        responses: List[AgentResponse],
+        responses: list[AgentResponse],
         request: FusionRequest,
-    ) -> Tuple[ConsistencySeverity, str, List[Tuple[str, str]]]:
+    ) -> tuple[ConsistencySeverity, str, list[tuple[str, str]]]:
         """与临床指南对比（P2-4 修复：语义级比对）。
 
         实现：
@@ -814,8 +812,8 @@ class ConsistencyChecker:
             return ConsistencySeverity.INFO, "", []
 
         worst_severity = ConsistencySeverity.INFO
-        details: List[str] = []
-        pairs: List[Tuple[str, str]] = []
+        details: list[str] = []
+        pairs: list[tuple[str, str]] = []
 
         for resp in responses:
             if not resp.organ:
@@ -838,7 +836,7 @@ class ConsistencyChecker:
                     session_id=request.session_id or None,
                 )
                 result = await self._rag_service.retrieve(retrieval_request)  # type: ignore[union-attr]
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.warning(
                     "consistency_rag_retrieval_failed",
                     organ=organ_value,
@@ -891,8 +889,8 @@ class ConsistencyChecker:
 
     def _check_cross_organ(
         self,
-        responses: List[AgentResponse],
-    ) -> Tuple[ConsistencySeverity, str, List[Tuple[str, str]]]:
+        responses: list[AgentResponse],
+    ) -> tuple[ConsistencySeverity, str, list[tuple[str, str]]]:
         """跨器官一致性：基础互斥矩阵 + 临床关联规则（P1-4 完整实现）。
 
         检查项：
@@ -908,15 +906,15 @@ class ConsistencyChecker:
             return ConsistencySeverity.INFO, "", []
 
         severity = ConsistencySeverity.INFO
-        details: List[str] = []
-        pairs: List[Tuple[str, str]] = []
+        details: list[str] = []
+        pairs: list[tuple[str, str]] = []
 
         # 1) 基础互斥矩阵：严重 vs 完全正常
         severe_keywords = ("严重", "critical", "malignant", "恶性", "重度")
         normal_keywords = ("正常", "normal", "no abnormality", "未见异常")
 
-        severe_organs: List[str] = []
-        normal_organs: List[str] = []
+        severe_organs: list[str] = []
+        normal_organs: list[str] = []
         for r in responses:
             if not r.organ:
                 continue
@@ -948,8 +946,8 @@ class ConsistencyChecker:
 
     def _apply_cross_organ_rules(
         self,
-        responses: List[AgentResponse],
-    ) -> Tuple[ConsistencySeverity, List[str], List[Tuple[str, str]]]:
+        responses: list[AgentResponse],
+    ) -> tuple[ConsistencySeverity, list[str], list[tuple[str, str]]]:
         """应用 P1-4 跨器官关联规则集。
 
         遍历 ``self._cross_organ_rules``，对每条规则查找匹配的响应对
@@ -959,11 +957,11 @@ class ConsistencyChecker:
             ``(severity, details, pairs)``：合并所有规则触发的结果。
         """
         severity = ConsistencySeverity.INFO
-        details: List[str] = []
-        pairs: List[Tuple[str, str]] = []
+        details: list[str] = []
+        pairs: list[tuple[str, str]] = []
 
         # 按 organ 索引响应，便于规则查找
-        by_organ: Dict[str, List[AgentResponse]] = {}
+        by_organ: dict[str, list[AgentResponse]] = {}
         for r in responses:
             if r.organ is None:
                 continue
@@ -980,7 +978,7 @@ class ConsistencyChecker:
                     try:
                         match_a = bool(rule.condition_a(ra))
                         match_b = bool(rule.condition_b(rb))
-                    except Exception as exc:  # noqa: BLE001
+                    except Exception as exc:
                         logger.warning(
                             "cross_organ_rule_eval_failed",
                             rule_id=rule.rule_id,
@@ -1021,7 +1019,7 @@ def _max_severity(a: ConsistencySeverity, b: ConsistencySeverity) -> Consistency
 _GRADE_NUM_RE = re.compile(r"(\d+)")
 
 
-def _extract_simple_grade(text: str) -> Optional[str]:
+def _extract_simple_grade(text: str) -> str | None:
     """从文本中抽取「数字」形式分级（最后出现的数字）。"""
     if not text:
         return None
@@ -1031,7 +1029,7 @@ def _extract_simple_grade(text: str) -> Optional[str]:
     return matches[-1]
 
 
-def _grade_diff(prior: str, current: str) -> Optional[int]:
+def _grade_diff(prior: str, current: str) -> int | None:
     """两个分级码的数字差（绝对值）。无法解析 → 返回 None。"""
     p = _extract_simple_grade(prior)
     c = _extract_simple_grade(current)
@@ -1048,7 +1046,7 @@ def _grade_diff(prior: str, current: str) -> Optional[int]:
 # ----------------------------------------------------------------------
 
 #: 建议类型 → 关键词集合（中文 + 英文）
-_RECOMMENDATION_KEYWORDS: Dict[str, Tuple[str, ...]] = {
+_RECOMMENDATION_KEYWORDS: dict[str, tuple[str, ...]] = {
     "biopsy": ("活检", "FNA", "穿刺", "biopsy", "FNAB"),
     "follow_up": ("随访", "复查", "观察", "follow-up", "followup", "monitor"),
     "surgery": ("手术", "切除", "甲状腺全切", "surgery", "resection", "thyroidectomy"),
@@ -1057,7 +1055,7 @@ _RECOMMENDATION_KEYWORDS: Dict[str, Tuple[str, ...]] = {
 }
 
 #: 禁忌关键词（出现这些词 + 否定/避免语境 → 提示该建议为禁忌）
-_CONTRAINDICATION_KEYWORDS: Tuple[str, ...] = (
+_CONTRAINDICATION_KEYWORDS: tuple[str, ...] = (
     "禁忌", "禁忌症", "禁用", "慎用", "避免", "不宜", "不可", "无需",
     "contraindication", "contraindicated", "avoid", "do not",
 )
@@ -1065,13 +1063,13 @@ _CONTRAINDICATION_KEYWORDS: Tuple[str, ...] = (
 #: **硬禁忌**关键词：仅出现这些词才视为真正禁忌冲突 → CRITICAL。
 #: 软否定（如"无需"/"避免"）若 chunk 同时有正向替代建议，则属于偏好
 #: 而非禁忌（已在 #1 建议不匹配分支 WARNING）。
-_HARD_CONTRAINDICATION_KEYWORDS: Tuple[str, ...] = (
+_HARD_CONTRAINDICATION_KEYWORDS: tuple[str, ...] = (
     "禁忌", "禁忌症", "禁用", "不可",
     "contraindication", "contraindicated",
 )
 
 #: 抗凝 / 出血风险相关关键词（高风险操作）
-_ANTICOAGULANT_RISK_KEYWORDS: Tuple[str, ...] = (
+_ANTICOAGULANT_RISK_KEYWORDS: tuple[str, ...] = (
     "抗凝", "抗血小板", "阿司匹林", "华法林", "肝素",
     "anticoagulation", "anticoagulant", "aspirin", "warfarin", "heparin",
     "出血风险", "bleeding risk", "coagulopathy",
@@ -1097,7 +1095,7 @@ def _is_keyword_negated(
     return any(neg.lower() in window_text for neg in _CONTRAINDICATION_KEYWORDS)
 
 
-def _extract_recommendation(text: str) -> Optional[str]:
+def _extract_recommendation(text: str) -> str | None:
     """从文本中抽取主要建议类型（否定感知）。
 
     优先级：biopsy > surgery > ablation > medication > follow_up（前者更具
@@ -1120,7 +1118,7 @@ def _extract_recommendation(text: str) -> Optional[str]:
     return None
 
 
-def _extract_grade_label(text: str) -> Optional[str]:
+def _extract_grade_label(text: str) -> str | None:
     """从文本中抽取器官分级标签（保留长前缀形式）。
 
     优先匹配器官特定分级（TI-RADS / TR / LI-RADS / LR / LVEF / EF），
@@ -1203,9 +1201,9 @@ def _has_anticoagulant_risk(text: str) -> bool:
 
 def _semantic_compare(
     response: AgentResponse,
-    guideline_chunks: List[Dict[str, str]],
+    guideline_chunks: list[dict[str, str]],
     organ: str,
-) -> Tuple[ConsistencySeverity, str, List[Tuple[str, str]]]:
+) -> tuple[ConsistencySeverity, str, list[tuple[str, str]]]:
     """对单条 response 与其 guideline chunks 做关键字级语义比对。
 
     Args:
@@ -1227,8 +1225,8 @@ def _semantic_compare(
     resp_rec_keyword = _first_recommendation_keyword(resp_text, resp_rec) if resp_rec else None
 
     worst_severity = ConsistencySeverity.INFO
-    details: List[str] = []
-    pairs: List[Tuple[str, str]] = []
+    details: list[str] = []
+    pairs: list[tuple[str, str]] = []
 
     for chunk in guideline_chunks:
         chunk_text = chunk.get("content", "")
@@ -1333,8 +1331,8 @@ def _semantic_compare(
 
 
 def _first_recommendation_keyword(
-    text: str, rec_type: Optional[str]
-) -> Optional[str]:
+    text: str, rec_type: str | None
+) -> str | None:
     """返回 text 中第一个属于 rec_type 的关键词（用于禁忌窗口搜索）。"""
     if not text or not rec_type or rec_type not in _RECOMMENDATION_KEYWORDS:
         return None
@@ -1374,7 +1372,7 @@ def _same_grade_family(grade_a: str, grade_b: str) -> bool:
 
 
 #: 分级前缀 → 族别名（用于 _same_grade_family）
-_GRADE_FAMILY_ALIASES: Dict[str, str] = {
+_GRADE_FAMILY_ALIASES: dict[str, str] = {
     "ti-rads": "thyroid",
     "tr": "thyroid",
     "li-rads": "liver",
@@ -1398,12 +1396,12 @@ def _normalize_grade_family(grade: str) -> str:
 
 
 __all__ = [
+    "DEFAULT_CROSS_ORGAN_RULES",
+    "DEFAULT_GUIDELINE_TOP_K",
+    "DEFAULT_PRIOR_CONFIDENCE_GAP_CRITICAL",
+    "DEFAULT_PRIOR_CONFIDENCE_GAP_WARNING",
+    "DEFAULT_PRIOR_GRADE_DIFF_CRITICAL",
+    "DEFAULT_PRIOR_GRADE_DIFF_WARNING",
     "ConsistencyChecker",
     "CrossOrganRule",
-    "DEFAULT_CROSS_ORGAN_RULES",
-    "DEFAULT_PRIOR_CONFIDENCE_GAP_WARNING",
-    "DEFAULT_PRIOR_CONFIDENCE_GAP_CRITICAL",
-    "DEFAULT_PRIOR_GRADE_DIFF_WARNING",
-    "DEFAULT_PRIOR_GRADE_DIFF_CRITICAL",
-    "DEFAULT_GUIDELINE_TOP_K",
 ]

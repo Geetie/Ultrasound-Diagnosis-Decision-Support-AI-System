@@ -20,11 +20,10 @@ import re
 import threading
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
-
-import yaml
+from typing import Any
 
 import structlog
+import yaml
 
 logger = structlog.get_logger(__name__)
 
@@ -50,8 +49,8 @@ class DesensitizeResult:
     """
 
     sanitized: str
-    applied_rules: List[str] = field(default_factory=list)
-    disagreements: List[str] = field(default_factory=list)
+    applied_rules: list[str] = field(default_factory=list)
+    disagreements: list[str] = field(default_factory=list)
     skipped: bool = False
 
 
@@ -68,8 +67,8 @@ class DesensitizationRuleSet:
     def __init__(self, file_path: str | Path):
         self._path = Path(file_path)
         self._name = self._path.stem
-        self._rules: List[Dict[str, Any]] = []
-        self._compiled: List[Tuple[str, re.Pattern, str]] = []
+        self._rules: list[dict[str, Any]] = []
+        self._compiled: list[tuple[str, re.Pattern, str]] = []
         self._load_lock = threading.Lock()
         self.reload()
 
@@ -103,11 +102,11 @@ class DesensitizationRuleSet:
                     continue
                 self._compiled.append((name, compiled, label))
 
-    def apply(self, text: str) -> Tuple[str, List[str]]:
+    def apply(self, text: str) -> tuple[str, list[str]]:
         """Apply all rules to text. Returns (sanitized_text, hit_rule_names)."""
         if not self._compiled:
             return text, []
-        hit_rules: List[str] = []
+        hit_rules: list[str] = []
         sanitized = text
         for name, compiled, label in self._compiled:
             new_text, n = compiled.subn(label, sanitized)
@@ -135,7 +134,7 @@ class Desensitizer:
         # 注意: 18 位身份证号的前 11 位恰好可能命中手机号模式 (1[3-9]\d{9}),
         # 所以用 (?!\\d) 断言避免 phone 误吞 ID card 头部. 顺序也关键:
         # ID card 先于 phone, 这样 ID card 把整段打码, phone 不会重复命中.
-        self._fallback_patterns: List[Tuple[str, re.Pattern, str]] = [
+        self._fallback_patterns: list[tuple[str, re.Pattern, str]] = [
             (
                 "id_card_18_chars_fb",
                 re.compile(r"(?<!\d)\d{17}[\dXx](?!\d)"),
@@ -174,7 +173,7 @@ class Desensitizer:
         sanitized_b, hits_b = self._rules_default.apply(sanitized_a)
 
         # Apply fallback patterns (always-on safety net).
-        applied_fb: List[str] = []
+        applied_fb: list[str] = []
         for name, compiled, label in self._fallback_patterns:
             new_text, n = compiled.subn(label, sanitized_b)
             if n > 0:
@@ -184,7 +183,7 @@ class Desensitizer:
         all_hits = set(hits_a) | set(hits_b) | set(applied_fb)
         # Disagreement detection: 2 套 YAML 命中数差异 > 1 触发告警
         # (例如 A 命中 N 个, B 命中 M 个, |N-M|>1)
-        disagreements: List[str] = []
+        disagreements: list[str] = []
         only_a = set(hits_a) - set(hits_b)
         only_b = set(hits_b) - set(hits_a)
         if only_a:
@@ -211,7 +210,7 @@ class Desensitizer:
         )
 
 
-_default_desensitizer: Optional[Desensitizer] = None
+_default_desensitizer: Desensitizer | None = None
 
 
 def get_default_desensitizer() -> Desensitizer:

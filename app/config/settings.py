@@ -1,4 +1,4 @@
-from typing import List
+
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -16,7 +16,7 @@ class Settings(BaseSettings):
 
     safety_gateway_host: str = 'localhost'
     safety_gateway_port: int = 9001
-    safety_gateway_whitelist_fields: List[str] = Field(
+    safety_gateway_whitelist_fields: list[str] = Field(
         default=['organ_name', 'anatomical_location', 'echogenicity', 'boundary', 'morphology', 'vascularity', 'calcification', 'measurement'],
         alias='safety_gateway_whitelist_fields',
     )
@@ -94,7 +94,7 @@ class Settings(BaseSettings):
     consent_withdrawal_consumer_enabled: bool = True
     consent_withdrawal_consumer_group: str = "consent_withdrawal_consumers"
     consent_withdrawal_consumer_name: str = "sec_consumer_01"
-    consent_withdrawal_handlers: List[str] = Field(default_factory=lambda: ["safety_action", "data_cleanup"])
+    consent_withdrawal_handlers: list[str] = Field(default_factory=lambda: ["safety_action", "data_cleanup"])
     consent_withdrawal_batch_size: int = 10
     consent_withdrawal_poll_timeout_ms: int = 5000
     # T-G1-INT-06：撤回生效端到端时延验收线（撤回动作 -> 各处理器执行完毕）
@@ -151,17 +151,17 @@ class Settings(BaseSettings):
     inference_timeout_seconds: float = 30.0
     inference_health_check_timeout_seconds: float = 5.0
     inference_connect_timeout_seconds: float = 10.0
-    
+
     # 重试配置
     inference_max_retries: int = 3
     inference_retry_delay_base: float = 1.0
     inference_retry_delay_max: float = 10.0
-    
+
     # 熔断配置
     inference_circuit_breaker_timeout: float = 30.0
     inference_circuit_breaker_failure_threshold: int = 5
     inference_circuit_breaker_success_threshold: int = 3
-    
+
     # 连接池配置
     inference_pool_max_connections: int = 10
     inference_pool_keepalive_expiry: float = 300.0
@@ -390,7 +390,7 @@ class Settings(BaseSettings):
     obs_tracing_otlp_endpoint: str = 'http://jaeger:4317'
     obs_tracing_sample_rate: float = 0.1
     obs_audit_cross_chain_interval_hours: int = 1
-    obs_audit_critical_operations: List[str] = Field(
+    obs_audit_critical_operations: list[str] = Field(
         default_factory=lambda: [
             'threshold_adjustment', 'model_version_change',
             'kb_update', 'desensitization_rule_update',

@@ -19,13 +19,12 @@ from __future__ import annotations
 
 import argparse
 import json
-import statistics
 import subprocess
 import sys
 import time
+from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Callable, Dict, List, Optional
 
 ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
@@ -47,7 +46,7 @@ class BenchResult:
     passed: bool
     note: str = ""
 
-    def as_dict(self) -> Dict[str, object]:
+    def as_dict(self) -> dict[str, object]:
         return asdict(self)
 
 
@@ -67,20 +66,20 @@ class MetricResult:
     passed: bool
     note: str = ""
 
-    def as_dict(self) -> Dict[str, object]:
+    def as_dict(self) -> dict[str, object]:
         return asdict(self)
 
 
 @dataclass
 class SuiteReport:
     passed: bool = True
-    results: List[BenchResult] = field(default_factory=list)
-    metrics: List[MetricResult] = field(default_factory=list)
-    errors: List[str] = field(default_factory=list)
-    skipped: List[str] = field(default_factory=list)
+    results: list[BenchResult] = field(default_factory=list)
+    metrics: list[MetricResult] = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
+    skipped: list[str] = field(default_factory=list)
 
 
-def _percentile(ordered: List[float], pct: float) -> float:
+def _percentile(ordered: list[float], pct: float) -> float:
     if not ordered:
         return 0.0
     index = min(len(ordered) - 1, int(len(ordered) * pct / 100.0))
@@ -101,7 +100,7 @@ def measure(
     for _ in range(warmup):
         func()
 
-    samples: List[float] = []
+    samples: list[float] = []
     for _ in range(iterations):
         started = time.perf_counter()
         func()
@@ -134,9 +133,9 @@ def suite_inline(iterations: int) -> SuiteReport:
     阈值取"远高于实测、但足以挡住数量级退化"的量级：
     这些操作都在请求热路径上，一旦退化成秒级会直接拖垮接口 P99。
     """
+    from app.models.database import AuditLog
     from app.services import report_service
     from app.services.cold_archive import CATEGORY_AUDIT_LOGS, _serialize_row, _to_jsonl
-    from app.models.database import AuditLog
 
     report = SuiteReport()
     content = report_service.build_report_content(
@@ -267,8 +266,8 @@ def suite_concurrency(
 
     serial_batches = max(1, iterations // concurrency)
 
-    async def _run_concurrent() -> List[float]:
-        samples: List[float] = []
+    async def _run_concurrent() -> list[float]:
+        samples: list[float] = []
         for _ in range(serial_batches):
             started = time.perf_counter()
             await asyncio.gather(*[asyncio.to_thread(_hot_path) for _ in range(concurrency)])
@@ -279,7 +278,7 @@ def suite_concurrency(
         _hot_path()  # warmup，避免把首次导入/缓存填充算进并发基线
 
     serial = measure(
-        f"档位判定串行基线(C=1)",
+        "档位判定串行基线(C=1)",
         suite="concurrency",
         func=_hot_path,
         iterations=iterations,
@@ -380,7 +379,7 @@ def suite_vram() -> SuiteReport:
     return report
 
 
-def _vram_fragmentation_rate(snapshot: Dict[str, object]) -> Optional[float]:
+def _vram_fragmentation_rate(snapshot: dict[str, object]) -> float | None:
     """从快照里取碎片率；缺字段或估算不可用时返回 None。"""
     for key in ("fragmentation_rate", "fragmentation", "fragmentation_percent"):
         raw = snapshot.get(key)
@@ -393,7 +392,7 @@ def _vram_fragmentation_rate(snapshot: Dict[str, object]) -> Optional[float]:
 # 子脚本基准（复用既有脚本，避免重复实现）
 # ----------------------------------------------------------------------
 
-SUB_SCRIPTS: Dict[str, List[str]] = {
+SUB_SCRIPTS: dict[str, list[str]] = {
     "sg": ["bench_p99.py"],
     "http": ["bench_http_p99.py"],
     "memory": ["scripts/memory_profile.py"],
@@ -401,7 +400,7 @@ SUB_SCRIPTS: Dict[str, List[str]] = {
 }
 
 
-def suite_subprocess(name: str, extra_args: List[str]) -> SuiteReport:
+def suite_subprocess(name: str, extra_args: list[str]) -> SuiteReport:
     """运行既有的基准脚本（它们自带阈值与报告）。"""
     report = SuiteReport()
     scripts = SUB_SCRIPTS[name]
@@ -454,7 +453,7 @@ def print_report(report: SuiteReport) -> None:
     print(f"结论：{'全部达标' if report.passed else '存在未达标项'}（真机基准需现场硬件，不在此入口）")
 
 
-def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="统一性能基准入口")
     parser.add_argument(
         "--suite",
@@ -474,7 +473,7 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
 
     # 基准循环里每次迭代都会触发业务日志（如档位判定 INFO），默认静默，

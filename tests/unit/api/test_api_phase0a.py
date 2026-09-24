@@ -1,4 +1,4 @@
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, Mock
 
 import pytest
@@ -260,7 +260,7 @@ class TestSessionRenew:
 
 class TestSessionTTLRemaining:
     def test_calc_ttl_remaining_fresh(self):
-        from app.api.v1.session import _calc_ttl_remaining, SESSION_TTL_SECONDS
+        from app.api.v1.session import SESSION_TTL_SECONDS, _calc_ttl_remaining
         now = datetime.now(timezone.utc)
         ttl = _calc_ttl_remaining(now)
         assert ttl is not None

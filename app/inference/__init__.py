@@ -1,42 +1,49 @@
 from app.inference.base import BaseHttpInferenceEngine
-from app.inference.benchmark import ModelBenchmark, ModelCandidate, BenchmarkResult, BenchmarkReport, SensitivityAnalysisResult
+from app.inference.benchmark import (
+    BenchmarkReport,
+    BenchmarkResult,
+    ModelBenchmark,
+    ModelCandidate,
+    SensitivityAnalysisResult,
+)
 from app.inference.consistency import (
-    ConsistencyVerifier,
-    ConsistencyReport,
     ConsistencyPair,
+    ConsistencyReport,
+    ConsistencyVerifier,
+    CrossValidationResult,
+    FalseStats,
     GradingResult,
     extract_grading,
-    FalseStats,
-    CrossValidationResult,
 )
 from app.inference.drift_detector import (
+    DriftAlert,
     DriftDetector,
     DriftReport,
-    DriftAlert,
     DriftSeverity,
+    MetricSnapshot,
     MetricType,
     PerformanceBaseline,
-    MetricSnapshot,
 )
 from app.inference.factory import create_inference_engine, create_inference_engine_from_settings
 from app.inference.gpu_monitor import (
+    FragmentationReport,
     GPUMemoryMonitor,
     GPUMemorySnapshot,
     GPUScheduleStrategy,
-    SystemMemoryProfiler,
-    FragmentationReport,
     MemoryProfileReport,
+    SystemMemoryProfiler,
 )
 from app.inference.hallucination_detector import (
-    HallucinationDetector,
-    DetectionStrategy,
-    DetectionResult,
     DetectionIssue,
-    get_default_detector,
+    DetectionResult,
+    DetectionStrategy,
+    HallucinationDetector,
     detect_hallucination,
+    get_default_detector,
 )
 from app.inference.llama_cpp import LlamaCppEngine
 from app.inference.protocols import (
+    DeprecatedErrorCode,
     InferenceEngine,
     InferenceError,
     InferenceErrorCode,
@@ -44,18 +51,17 @@ from app.inference.protocols import (
     InferenceResponse,
     ModelInfo,
     TokenUsage,
-    DeprecatedErrorCode,
-)
-from app.inference.verification_config import (
-    get_verification_config,
-    get_default_verification_config,
-    VerificationConfig,
-    BoundaryConfig,
-    ForbiddenTermsConfig,
-    StrategyWeightConfig,
-    NumericalValidationConfig,
 )
 from app.inference.utils import percentile
+from app.inference.verification_config import (
+    BoundaryConfig,
+    ForbiddenTermsConfig,
+    NumericalValidationConfig,
+    StrategyWeightConfig,
+    VerificationConfig,
+    get_default_verification_config,
+    get_verification_config,
+)
 from app.inference.vllm import VLLMEngine
 
 __all__ = [
@@ -66,6 +72,7 @@ __all__ = [
     "ConsistencyReport",
     "ConsistencyVerifier",
     "CrossValidationResult",
+    "DeprecatedErrorCode",
     "DetectionIssue",
     "DetectionResult",
     "DetectionStrategy",
@@ -101,7 +108,6 @@ __all__ = [
     "TokenUsage",
     "VLLMEngine",
     "VerificationConfig",
-    "DeprecatedErrorCode",
     "create_inference_engine",
     "create_inference_engine_from_settings",
     "detect_hallucination",

@@ -14,7 +14,7 @@
 """
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -46,7 +46,7 @@ async def test_full_chain_and_adaptive_profile_reaches_specialist():
     from app.services import diagnosis_pipeline as pipeline
 
     # ---- 外部边界替身 ----
-    captured: Dict[str, Any] = {}
+    captured: dict[str, Any] = {}
 
     async def _specialist_invoke(context):
         captured["agent_context"] = context

@@ -29,7 +29,6 @@ from app.services.multi_organ_orchestrator import (
     run_multi_organ_diagnosis,
 )
 
-
 # ----------------------------------------------------------------------
 # 测试替身
 # ----------------------------------------------------------------------
@@ -402,9 +401,8 @@ class TestRunMultiOrganDiagnosis:
 
     @pytest.mark.asyncio
     async def test_session_not_found_raises(self):
-        with _orchestrator_env(exists=False):
-            with pytest.raises(SessionNotFoundError):
-                await run_multi_organ_diagnosis("sess_missing")
+        with _orchestrator_env(exists=False), pytest.raises(SessionNotFoundError):
+            await run_multi_organ_diagnosis("sess_missing")
 
     @pytest.mark.asyncio
     async def test_empty_organs_returns_early(self):

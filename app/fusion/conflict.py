@@ -26,7 +26,6 @@ from __future__ import annotations
 
 import re
 from collections import defaultdict
-from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 
 import structlog
 
@@ -36,7 +35,6 @@ from app.fusion.protocols import (
     ConflictResolution,
     ConflictType,
 )
-from app.models.schemas import Organ
 
 logger = structlog.get_logger("app.fusion.conflict")
 
@@ -50,7 +48,7 @@ DEFAULT_CONFIDENCE_GAP_THRESHOLD = 0.4
 
 #: 分级抽取正则（覆盖三器官：thyroid TI-RADS / liver LI-RADS / cardiac LVEF）
 # 优先级：先匹配完整 "TI-RADS N" / "LI-RADS N" 形式，再 fallback 到简化 "TR N" / "LR N"
-_GRADING_PATTERNS: Dict[str, Tuple[re.Pattern, str]] = {
+_GRADING_PATTERNS: dict[str, tuple[re.Pattern, str]] = {
     "thyroid": (
         re.compile(
             r"\bT[\s\-_]?I[\s\-_]?R[\s\-_]?A[\s\-_]?D[\s\-_]?S?\s*[\-:]?\s*([1-5])\b"
@@ -96,7 +94,7 @@ _URGENT_TOKENS = (
     "emergent",
     "asap",
 )
-_RECOMMENDATION_GROUPS: List[Tuple[str, ...]] = [
+_RECOMMENDATION_GROUPS: list[tuple[str, ...]] = [
     _BIOPSY_TOKENS,
     _FOLLOWUP_TOKENS,
     _URGENT_TOKENS,
@@ -133,18 +131,18 @@ class ConflictDetector:
     def __init__(
         self,
         confidence_gap_threshold: float = DEFAULT_CONFIDENCE_GAP_THRESHOLD,
-        recommendation_groups: Optional[List[Tuple[str, ...]]] = None,
-        grading_extractors: Optional[Dict[str, Tuple[re.Pattern, str]]] = None,
+        recommendation_groups: list[tuple[str, ...]] | None = None,
+        grading_extractors: dict[str, tuple[re.Pattern, str]] | None = None,
     ) -> None:
         if not (0.0 <= confidence_gap_threshold <= 1.0):
             raise ValueError(
                 f"confidence_gap_threshold must be in [0.0, 1.0], got {confidence_gap_threshold}"
             )
         self._confidence_gap_threshold = confidence_gap_threshold
-        self._recommendation_groups: List[Tuple[str, ...]] = (
+        self._recommendation_groups: list[tuple[str, ...]] = (
             list(recommendation_groups) if recommendation_groups else _RECOMMENDATION_GROUPS
         )
-        self._grading_extractors: Dict[str, Tuple[re.Pattern, str]] = (
+        self._grading_extractors: dict[str, tuple[re.Pattern, str]] = (
             dict(grading_extractors) if grading_extractors else _GRADING_PATTERNS
         )
 
@@ -152,7 +150,7 @@ class ConflictDetector:
     # 公开 API
     # ------------------------------------------------------------------
 
-    def detect(self, responses: List[AgentResponse]) -> ConflictReport:
+    def detect(self, responses: list[AgentResponse]) -> ConflictReport:
         """执行冲突检测。
 
         Args:
@@ -175,9 +173,9 @@ class ConflictDetector:
                 detail="no responses to check",
             )
 
-        conflict_types: List[ConflictType] = []
-        conflicting: List[AgentResponse] = []
-        details: List[str] = []
+        conflict_types: list[ConflictType] = []
+        conflicting: list[AgentResponse] = []
+        details: list[str] = []
 
         # 1) GRADING_CONFLICT：同器官不同分级
         grading_conflicts = self._detect_grading_conflicts(responses)
@@ -247,8 +245,8 @@ class ConflictDetector:
             resolution = ConflictResolution.REQUIRE_HUMAN_REVIEW
 
         # 去重 conflicting 列表（按 agent_name 保留首次出现）
-        seen: Set[str] = set()
-        unique_conflicting: List[AgentResponse] = []
+        seen: set[str] = set()
+        unique_conflicting: list[AgentResponse] = []
         for r in conflicting:
             if r.agent_name not in seen:
                 seen.add(r.agent_name)
@@ -268,8 +266,8 @@ class ConflictDetector:
 
     def _detect_grading_conflicts(
         self,
-        responses: List[AgentResponse],
-    ) -> List[Tuple[str, List[AgentResponse]]]:
+        responses: list[AgentResponse],
+    ) -> list[tuple[str, list[AgentResponse]]]:
         """检测同器官内的分级冲突。
 
         逻辑：按 organ 分组 → 对同器官的多条响应抽取分级码 → 出现 ≥2 种不同
@@ -279,22 +277,22 @@ class ConflictDetector:
             ``[(organ_value, [conflicting_responses, ...]), ...]`` 列表。
         """
         # 1) 按 organ 分组（None organ 归入 "__none__" 不参与器官内冲突）
-        by_organ: Dict[str, List[AgentResponse]] = defaultdict(list)
+        by_organ: dict[str, list[AgentResponse]] = defaultdict(list)
         for r in responses:
             organ_key = r.organ.value if r.organ is not None else "__none__"
             by_organ[organ_key].append(r)
 
-        conflicts: List[Tuple[str, List[AgentResponse]]] = []
+        conflicts: list[tuple[str, list[AgentResponse]]] = []
         for organ_value, group in by_organ.items():
             if organ_value == "__none__" or len(group) < 2:
                 # 单条响应 / 缺失 organ → 无法形成器官内冲突
                 continue
             # 抽取每条响应的分级码（用 list[(resp, grade)] 避免 AgentResponse
             # 作为 dict key 的可哈希性问题）
-            grade_by_resp: List[Tuple[AgentResponse, Optional[str]]] = [
+            grade_by_resp: list[tuple[AgentResponse, str | None]] = [
                 (r, _extract_grade(r, organ_value, self._grading_extractors)) for r in group
             ]
-            distinct_grades: Set[str] = {
+            distinct_grades: set[str] = {
                 g for _, g in grade_by_resp if g is not None
             }
             # 至少有 2 条响应能抽出分级码 + 至少 2 种不同的分级码
@@ -305,8 +303,8 @@ class ConflictDetector:
 
     def _detect_confidence_conflict(
         self,
-        responses: List[AgentResponse],
-    ) -> List[AgentResponse]:
+        responses: list[AgentResponse],
+    ) -> list[AgentResponse]:
         """检测置信度冲突。
 
         逻辑：max - min > 阈值 → 把 max 和 min 对应的响应都列为冲突响应。
@@ -327,8 +325,8 @@ class ConflictDetector:
 
     def _detect_recommendation_conflict(
         self,
-        responses: List[AgentResponse],
-    ) -> List[AgentResponse]:
+        responses: list[AgentResponse],
+    ) -> list[AgentResponse]:
         """检测处置建议冲突。
 
         逻辑：扫描每条响应的 ``content``，按 ``_RECOMMENDATION_GROUPS`` 分类
@@ -336,16 +334,16 @@ class ConflictDetector:
         """
         if len(responses) < 2:
             return []
-        by_organ: Dict[str, List[AgentResponse]] = defaultdict(list)
+        by_organ: dict[str, list[AgentResponse]] = defaultdict(list)
         for r in responses:
             organ_key = r.organ.value if r.organ is not None else "__none__"
             by_organ[organ_key].append(r)
 
-        conflict_responses: List[AgentResponse] = []
+        conflict_responses: list[AgentResponse] = []
         for organ_value, group in by_organ.items():
             if len(group) < 2:
                 continue
-            groups_present: Set[int] = set()
+            groups_present: set[int] = set()
             for r in group:
                 content_lower = (r.content or "").lower()
                 for idx, tokens in enumerate(self._recommendation_groups):
@@ -357,8 +355,8 @@ class ConflictDetector:
 
     def _detect_evidence_conflict(
         self,
-        responses: List[AgentResponse],
-    ) -> List[AgentResponse]:
+        responses: list[AgentResponse],
+    ) -> list[AgentResponse]:
         """检测证据冲突（P0-3 修复：从 no-op 升级为真实检测）。
 
         触发条件（满足任一即触发 EVIDENCE_CONFLICT）：
@@ -386,8 +384,8 @@ class ConflictDetector:
         if len(responses) < 2:
             return []
 
-        conflict_responses: List[AgentResponse] = []
-        seen: Set[str] = set()  # 去重 by agent_name
+        conflict_responses: list[AgentResponse] = []
+        seen: set[str] = set()  # 去重 by agent_name
 
         # 对每对 (i, j) 响应进行配对检查
         for i, ri in enumerate(responses):
@@ -463,8 +461,8 @@ class ConflictDetector:
 def _extract_grade(
     response: AgentResponse,
     organ_value: str,
-    extractors: Dict[str, Tuple[re.Pattern, str]],
-) -> Optional[str]:
+    extractors: dict[str, tuple[re.Pattern, str]],
+) -> str | None:
     """从响应的 ``content`` 抽取器官级分级码。
 
     Args:
@@ -482,7 +480,7 @@ def _extract_grade(
     text = response.content or ""
     try:
         m = pattern.search(text)
-    except Exception:  # noqa: BLE001
+    except Exception:
         return None
     if m is None:
         return None
@@ -496,44 +494,44 @@ def _extract_grade(
         return None
     try:
         return fmt.format(captured)
-    except Exception:  # noqa: BLE001
+    except Exception:
         return None
 
 
 def _recommendation_groups_in(
     response: AgentResponse,
-    recommendation_groups: List[Tuple[str, ...]],
-) -> Set[int]:
+    recommendation_groups: list[tuple[str, ...]],
+) -> set[int]:
     """返回 response.content 命中的 recommendation group 索引集合。"""
     content_lower = (response.content or "").lower()
-    groups: Set[int] = set()
+    groups: set[int] = set()
     for idx, tokens in enumerate(recommendation_groups):
         if any(tok.lower() in content_lower for tok in tokens):
             groups.add(idx)
     return groups
 
 
-def _extract_negated_objects(content: str) -> Set[str]:
+def _extract_negated_objects(content: str) -> set[str]:
     """抽取 content 中被否定的对象 token 集合（小写化）。
 
     用途：P0-3 EVIDENCE_CONFLICT 条件 3 — 检测"排除 X" vs "排除 Y"
     的自相矛盾。
     """
-    negated: Set[str] = set()
+    negated: set[str] = set()
     for pattern in _NEGATION_PATTERNS:
         try:
             for m in pattern.finditer(content):
                 token = m.group(1).strip().lower()
                 if 1 <= len(token) <= 20:
                     negated.add(token)
-        except Exception:  # noqa: BLE001
+        except Exception:
             continue
     return negated
 
 
 def _add_unique(
-    acc: List[AgentResponse],
-    seen: Set[str],
+    acc: list[AgentResponse],
+    seen: set[str],
     response: AgentResponse,
 ) -> None:
     """去重添加到列表（按 agent_name）。"""
@@ -543,9 +541,9 @@ def _add_unique(
 
 
 __all__ = [
-    "ConflictDetector",
     "DEFAULT_CONFIDENCE_GAP_THRESHOLD",
     "DEFAULT_GRADING_PATTERNS",
+    "ConflictDetector",
 ]
 
 

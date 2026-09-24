@@ -1,13 +1,13 @@
-from typing import Optional
+
 import structlog
 
+from app.api.v1.errors import PatientConsentWithdrawnException, PatientNotConsentedException
 from app.models.schemas import ConsentStatus
-from app.api.v1.errors import PatientNotConsentedException, PatientConsentWithdrawnException
 
 logger = structlog.get_logger()
 
 
-def get_actor_id(current_user: Optional[dict]) -> str:
+def get_actor_id(current_user: dict | None) -> str:
     if not current_user:
         return "system"
     return current_user.get("user_id", "system")

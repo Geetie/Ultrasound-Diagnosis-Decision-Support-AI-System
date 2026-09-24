@@ -1,43 +1,40 @@
 import asyncio
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import structlog
 
+from app.inference.grading_definitions import extract_grading_with_conflict
+from app.inference.hallucination_detector import (
+    DetectionStrategy,
+    get_default_detector,
+)
 from app.inference.protocols import InferenceEngine, InferenceRequest
 from app.inference.utils import percentile as _percentile
-from app.inference.hallucination_detector import (
-    HallucinationDetector,
-    get_default_detector,
-    DetectionStrategy,
-)
 from app.inference.verification_config import (
-    get_verification_config,
     VerificationConfig,
+    get_verification_config,
 )
-from app.inference.grading_definitions import extract_grading, extract_grading_with_conflict
 
-from .statistics import (
-    wilson_confidence_interval,
-    grading_semantic_equivalent,
-    grading_clinically_equivalent,
-    text_similarity,
-    text_consistency_with_grading,
-    _grades_cross_clinical_boundary,
-)
+from .failure_analysis import generate_failure_analysis
+from .organ_breakdown import compute_organ_breakdown
 from .report import (
-    ConsistencyMetric,
+    ConsistencyPair,
+    ConsistencyReport,
+    CrossValidationResult,
+    FalseStats,
     GateStatus,
     GradingResult,
-    ConsistencyPair,
-    FalseStats,
     StrategyFalseStats,
-    CrossValidationResult,
-    ConsistencyReport,
 )
-from .organ_breakdown import compute_organ_breakdown
-from .failure_analysis import generate_failure_analysis, suggest_for_trace
 from .serialization import report_to_dict, report_to_json
+from .statistics import (
+    grading_clinically_equivalent,
+    grading_semantic_equivalent,
+    text_consistency_with_grading,
+    text_similarity,
+    wilson_confidence_interval,
+)
 
 logger = structlog.get_logger("app.inference.consistency")
 
@@ -51,9 +48,9 @@ class ConsistencyVerifier:
         engine_b_name: str = "engine_b",
         concurrency: int = 4,
         request_timeout_seconds: float = 30.0,
-        config: Optional[VerificationConfig] = None,
-        historical_pass_rates: Optional[Dict[str, List[float]]] = None,
-        overall_timeout_seconds: Optional[float] = None,
+        config: VerificationConfig | None = None,
+        historical_pass_rates: dict[str, list[float]] | None = None,
+        overall_timeout_seconds: float | None = None,
     ):
         self._engine_a = engine_a
         self._engine_b = engine_b
@@ -76,7 +73,7 @@ class ConsistencyVerifier:
 
     async def verify(
         self,
-        cases: List[Dict[str, Any]],
+        cases: list[dict[str, Any]],
     ) -> ConsistencyReport:
         start_time = time.monotonic()
         request_temperature = 0.0
@@ -97,7 +94,7 @@ class ConsistencyVerifier:
 
         semaphore = asyncio.Semaphore(self._concurrency)
 
-        async def _run_case(case: Dict[str, Any]) -> ConsistencyPair:
+        async def _run_case(case: dict[str, Any]) -> ConsistencyPair:
             async with semaphore:
                 return await self._verify_single_case(case)
 
@@ -119,7 +116,7 @@ class ConsistencyVerifier:
         else:
             pairs = await asyncio.gather(*tasks, return_exceptions=True)
 
-        valid_pairs: List[ConsistencyPair] = []
+        valid_pairs: list[ConsistencyPair] = []
         error_count = 0
         for p in pairs:
             if isinstance(p, Exception):
@@ -133,7 +130,7 @@ class ConsistencyVerifier:
         min_cases = self.config.consistency_thresholds.phase2_min_cases_per_organ \
             if self.config.consistency_thresholds.verification_phase == "phase2" else 100
 
-        organ_counts: Dict[str, int] = {}
+        organ_counts: dict[str, int] = {}
         for p in valid_pairs:
             organ_counts[p.organ] = organ_counts.get(p.organ, 0) + 1
         all_organs_meet_phase2 = all(
@@ -190,7 +187,7 @@ class ConsistencyVerifier:
 
         return report
 
-    async def _verify_single_case(self, case: Dict[str, Any]) -> ConsistencyPair:
+    async def _verify_single_case(self, case: dict[str, Any]) -> ConsistencyPair:
         case_id = case.get("case_id", "")
         organ = case.get("organ", "")
         prompt = case.get("prompt", "")
@@ -346,7 +343,7 @@ class ConsistencyVerifier:
     def _compute_report(
         self,
         report: ConsistencyReport,
-        pairs: List[ConsistencyPair],
+        pairs: list[ConsistencyPair],
         error_count: int = 0,
     ) -> None:
         report.total_cases = len(pairs) + error_count
@@ -363,12 +360,12 @@ class ConsistencyVerifier:
         self._compute_anomaly_cases(report, pairs)
         report.failure_analysis = generate_failure_analysis(report, pairs)
 
-    def _compute_basic_stats(self, report: ConsistencyReport, pairs: List[ConsistencyPair]) -> None:
+    def _compute_basic_stats(self, report: ConsistencyReport, pairs: list[ConsistencyPair]) -> None:
         grading_consistent = sum(1 for p in pairs if p.grading_consistent)
         report.grading_consistent_count = grading_consistent
         report.grading_consistency_rate = grading_consistent / len(pairs)
 
-    def _compute_boundary_stats(self, report: ConsistencyReport, pairs: List[ConsistencyPair]) -> None:
+    def _compute_boundary_stats(self, report: ConsistencyReport, pairs: list[ConsistencyPair]) -> None:
         boundary_diff = sum(1 for p in pairs if p.is_boundary_crossing)
         total_boundary_weight = sum(p.boundary_weight for p in pairs if p.is_boundary_crossing)
         critical_boundary_diff = sum(1 for p in pairs if p.is_boundary_crossing and p.boundary_severity == "critical")
@@ -390,7 +387,7 @@ class ConsistencyVerifier:
             if actual_boundary_weight_sum > 0 else 0.0
         )
 
-    def _compute_hallucination_stats(self, report: ConsistencyReport, pairs: List[ConsistencyPair]) -> None:
+    def _compute_hallucination_stats(self, report: ConsistencyReport, pairs: list[ConsistencyPair]) -> None:
         halluc_a = sum(
             1 for p in pairs
             if p.engine_a_result and p.engine_a_result.is_hallucination
@@ -419,7 +416,7 @@ class ConsistencyVerifier:
         )
         report.lvef_conflict_count = lvef_conflicts
 
-        strategy_diff: Dict[str, float] = {}
+        strategy_diff: dict[str, float] = {}
         for strategy in DetectionStrategy:
             a_count = sum(
                 1 for p in pairs
@@ -475,7 +472,7 @@ class ConsistencyVerifier:
             report.hallucination_rate_b_gt = gt_halluc_b / len(gt_pairs)
             report.hallucination_rate_diff_gt = abs(report.hallucination_rate_a_gt - report.hallucination_rate_b_gt)
 
-    def _compute_text_stats(self, report: ConsistencyReport, pairs: List[ConsistencyPair]) -> None:
+    def _compute_text_stats(self, report: ConsistencyReport, pairs: list[ConsistencyPair]) -> None:
         text_consistent = sum(
             1 for p in pairs
             if p.engine_a_result and p.engine_b_result
@@ -531,11 +528,11 @@ class ConsistencyVerifier:
         ]
         report.text_similarity_avg = sum(similarity_scores) / len(similarity_scores) if similarity_scores else 0.0
 
-    def _compute_false_stats(self, report: ConsistencyReport, pairs: List[ConsistencyPair]) -> None:
+    def _compute_false_stats(self, report: ConsistencyReport, pairs: list[ConsistencyPair]) -> None:
         a_fp, a_fn, a_tp, a_tn = 0, 0, 0, 0
         b_fp, b_fn, b_tp, b_tn = 0, 0, 0, 0
         cases_with_ground_truth = 0
-        strategy_stats: Dict[str, Dict[str, int]] = {}
+        strategy_stats: dict[str, dict[str, int]] = {}
 
         for p in pairs:
             if p.expected_hallucination is None:
@@ -651,7 +648,7 @@ class ConsistencyVerifier:
             r_ci = wilson_confidence_interval(combined_tp, total_actual_positive)
             report.false_stats.recall_ci_lower, report.false_stats.recall_ci_upper = r_ci
 
-    def _compute_latency_stats(self, report: ConsistencyReport, pairs: List[ConsistencyPair]) -> None:
+    def _compute_latency_stats(self, report: ConsistencyReport, pairs: list[ConsistencyPair]) -> None:
         latencies_a = [
             p.engine_a_result.latency_ms
             for p in pairs
@@ -693,7 +690,7 @@ class ConsistencyVerifier:
             elif report.latency_b_p99_ms < report.latency_a_p99_ms:
                 report.latency_faster_engine = self._engine_b_name
 
-    def _compute_anomaly_cases(self, report: ConsistencyReport, pairs: List[ConsistencyPair]) -> None:
+    def _compute_anomaly_cases(self, report: ConsistencyReport, pairs: list[ConsistencyPair]) -> None:
         for p in pairs:
             if p.is_boundary_crossing:
                 report.boundary_cases.append({
@@ -720,10 +717,10 @@ class ConsistencyVerifier:
 
     async def cross_validate(
         self,
-        cases: List[Dict[str, Any]],
+        cases: list[dict[str, Any]],
         n_folds: int = 5,
-        seed: Optional[int] = 42,
-    ) -> List[CrossValidationResult]:
+        seed: int | None = 42,
+    ) -> list[CrossValidationResult]:
         """K-Fold交叉验证用于稳定性评估。
 
         此方法实现K-Fold交叉验证用于**稳定性评估**，而非传统ML的模型选择。
@@ -745,7 +742,7 @@ class ConsistencyVerifier:
                 f"n_folds ({n_folds}) cannot exceed number of cases ({len(cases)})"
             )
 
-        results: List[CrossValidationResult] = []
+        results: list[CrossValidationResult] = []
         shuffled_cases = cases.copy()
         rng = random.Random(seed)
         rng.shuffle(shuffled_cases)
@@ -821,7 +818,7 @@ class ConsistencyVerifier:
 
         return results
 
-    def report_to_dict(self, report: ConsistencyReport) -> Dict[str, Any]:
+    def report_to_dict(self, report: ConsistencyReport) -> dict[str, Any]:
         return report_to_dict(report)
 
     def report_to_json(self, report: ConsistencyReport, indent: int = 2) -> str:

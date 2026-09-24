@@ -18,9 +18,8 @@
 from __future__ import annotations
 
 import asyncio
-import time
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -46,8 +45,8 @@ class ClinicalCase:
     case_id: str
     organ: str
     clinical_text: str
-    voice_text: Optional[str]
-    target_grade: Optional[str] = None
+    voice_text: str | None
+    target_grade: str | None = None
     expected_source: str = "dense"  # dense / hybrid / bm25_fallback
     expected_min_chunks: int = 1
     design_ref: str = ""
@@ -55,7 +54,7 @@ class ClinicalCase:
 
 
 # 真实临床场景数据 —— 与 §5.5 一期三器官初始集对齐
-THYROID_CASES: List[ClinicalCase] = [
+THYROID_CASES: list[ClinicalCase] = [
     ClinicalCase(
         case_id="thy-tirads-4b",
         organ="thyroid",
@@ -97,7 +96,7 @@ THYROID_CASES: List[ClinicalCase] = [
     ),
 ]
 
-LIVER_CASES: List[ClinicalCase] = [
+LIVER_CASES: list[ClinicalCase] = [
     ClinicalCase(
         case_id="liv-hcc-cirrhosis",
         organ="liver",
@@ -128,7 +127,7 @@ LIVER_CASES: List[ClinicalCase] = [
     ),
 ]
 
-HEART_CASES: List[ClinicalCase] = [
+HEART_CASES: list[ClinicalCase] = [
     ClinicalCase(
         case_id="heart-thyrotoxic",
         organ="heart",
@@ -147,7 +146,7 @@ HEART_CASES: List[ClinicalCase] = [
     ),
 ]
 
-CROSS_ORGAN_CASES: List[ClinicalCase] = [
+CROSS_ORGAN_CASES: list[ClinicalCase] = [
     ClinicalCase(
         case_id="cross-hyperthyroid-liver",
         organ="thyroid",
@@ -198,16 +197,16 @@ class MockKBEntry:
     kb_version: str
     organ: str
     content: str
-    embedding: List[float] = field(default_factory=list)
-    parent_chunk_id: Optional[str] = None
+    embedding: list[float] = field(default_factory=list)
+    parent_chunk_id: str | None = None
     chunk_type: str = "child"
-    metadata: Dict[str, Any] = field(default_factory=dict)
-    ti_rads_level: Optional[str] = None
-    li_rads_level: Optional[str] = None
-    disease_code: Optional[str] = None
+    metadata: dict[str, Any] = field(default_factory=dict)
+    ti_rads_level: str | None = None
+    li_rads_level: str | None = None
+    disease_code: str | None = None
 
 
-def _build_mock_kb_v1_0_0() -> List[MockKBEntry]:
+def _build_mock_kb_v1_0_0() -> list[MockKBEntry]:
     """构造符合 §5.5 一期三器官初始集的 mock 知识库。
 
     嵌入向量设计原则：3 个语义维度用于差异化（thyroid 主导 / liver 主导 /
@@ -390,7 +389,8 @@ class MockEmbeddingService:
         else:
             vec = [0.33, 0.33, 0.34] + [0.0] * (self.dimension - 3)
         from app.embedding.protocols import (
-            EmbeddingResponse, EmbeddingModality,
+            EmbeddingModality,
+            EmbeddingResponse,
         )
         return EmbeddingResponse(
             embeddings=[vec],
@@ -408,7 +408,8 @@ class MockEmbeddingService:
 
     async def get_model_info(self):
         from app.embedding.protocols import (
-            EmbeddingModelInfo, EmbeddingModelType,
+            EmbeddingModelInfo,
+            EmbeddingModelType,
         )
         return EmbeddingModelInfo(
             model_name="bge-m3-medical-mock",
@@ -434,7 +435,8 @@ class MockUltrasoundClipService:
                 retryable=True,
             )
         from app.embedding.protocols import (
-            EmbeddingResponse, EmbeddingModality,
+            EmbeddingModality,
+            EmbeddingResponse,
         )
         return EmbeddingResponse(
             embeddings=[[0.5] * 768],
@@ -448,7 +450,8 @@ class MockUltrasoundClipService:
         # 主方案 CLIP 也支持文本
         text = request.texts[0] if request.texts else ""
         from app.embedding.protocols import (
-            EmbeddingResponse, EmbeddingModality,
+            EmbeddingModality,
+            EmbeddingResponse,
         )
         if "甲状腺" in text:
             vec = [0.80, 0.15, 0.05] + [0.0] * 765
@@ -472,7 +475,8 @@ class MockUltrasoundClipService:
 
     async def get_model_info(self):
         from app.embedding.protocols import (
-            EmbeddingModelInfo, EmbeddingModelType,
+            EmbeddingModelInfo,
+            EmbeddingModelType,
         )
         return EmbeddingModelInfo(
             model_name="ultrasound-clip-mock",
@@ -486,7 +490,7 @@ class MockUltrasoundClipService:
 class MockVectorIndexClient:
     """模拟 Qdrant/PGVector 检索。"""
 
-    def __init__(self, kb_entries: List[MockKBEntry], healthy: bool = True):
+    def __init__(self, kb_entries: list[MockKBEntry], healthy: bool = True):
         self._entries = {e.chunk_id: e for e in kb_entries}
         self.healthy = healthy
         self._collection = "kb_v1_0_0"
@@ -496,7 +500,8 @@ class MockVectorIndexClient:
     ):
         if not self.healthy:
             from app.embedding.protocols import (
-                VectorIndexError, VectorIndexErrorCode,
+                VectorIndexError,
+                VectorIndexErrorCode,
             )
             raise VectorIndexError(
                 error_code=VectorIndexErrorCode.CONNECTION_FAILED,
@@ -558,7 +563,7 @@ class MockBgeReranker:
         if not self.healthy:
             from app.rag.reranker import RerankError
             raise RerankError("Mock bge-reranker unavailable", detail="MockError")
-        from app.rag.protocols import ScoredChunk, RetrievalMethod
+        from app.rag.protocols import RetrievalMethod, ScoredChunk
         # 真实场景：query 中器官名命中则加权
         scored = []
         for ch in chunks:
@@ -593,7 +598,7 @@ class MockBgeReranker:
 # =====================================================================
 
 @pytest.fixture
-def mock_kb_v1_0_0() -> List[MockKBEntry]:
+def mock_kb_v1_0_0() -> list[MockKBEntry]:
     return _build_mock_kb_v1_0_0()
 
 
@@ -638,8 +643,6 @@ class TestClinicalRetrievalScenarios:
         query_text = case.clinical_text + (f" {case.voice_text}" if case.voice_text else "")
 
         async def run():
-            from app.embedding.protocols import EmbeddingResponse, EmbeddingModality
-            from app.rag.retriever import Retriever
 
             emb = MockEmbeddingService()
             req = TextEmbeddingRequest(
@@ -771,9 +774,10 @@ class TestRerankFallbackScenarios:
         本测试模拟该生产配置：cosine 让"甲状腺结节"查询与甲状腺知识
         条目相似度最高，从而 top1 为甲状腺。
         """
+        from unittest.mock import patch
+
         from app.knowledge.protocols import KnowledgeChunk
-        from app.rag.reranker import HeuristicReranker, BgeRerankerService, RerankError
-        from unittest.mock import AsyncMock, patch
+        from app.rag.reranker import BgeRerankerService, HeuristicReranker, RerankError
 
         chunks = [
             KnowledgeChunk(
@@ -920,7 +924,7 @@ class TestBM25FallbackScenarios:
     def test_bm25_fallback_should_trigger_no_results(self):
         """真实场景：retriever 返回 0 条结果 → 必须触发 BM25。"""
         from app.rag.bm25_fallback import BM25Fallback
-        from app.rag.protocols import RetrievalResult, RetrievalMethod
+        from app.rag.protocols import RetrievalMethod, RetrievalResult
 
         result = RetrievalResult(
             chunks=[], retrieval_method=RetrievalMethod.HYBRID
@@ -935,9 +939,9 @@ class TestBM25FallbackScenarios:
 
     def test_bm25_fallback_should_trigger_low_top1(self):
         """真实场景：top1 分数低于阈值 → 触发 BM25。"""
-        from app.rag.bm25_fallback import BM25Fallback
-        from app.rag.protocols import RetrievalResult, RetrievalMethod, ScoredChunk
         from app.knowledge.protocols import KnowledgeChunk
+        from app.rag.bm25_fallback import BM25Fallback
+        from app.rag.protocols import RetrievalMethod, RetrievalResult, ScoredChunk
 
         chunk = KnowledgeChunk(
             chunk_id="x", kb_version="kb_v1.0.0", organ="thyroid",
@@ -958,9 +962,9 @@ class TestBM25FallbackScenarios:
 
     def test_bm25_fallback_should_trigger_too_few(self):
         """真实场景：结果数 < min_results → 触发 BM25。"""
-        from app.rag.bm25_fallback import BM25Fallback
-        from app.rag.protocols import RetrievalResult, RetrievalMethod, ScoredChunk
         from app.knowledge.protocols import KnowledgeChunk
+        from app.rag.bm25_fallback import BM25Fallback
+        from app.rag.protocols import RetrievalMethod, RetrievalResult, ScoredChunk
 
         chunk = KnowledgeChunk(
             chunk_id="x", kb_version="kb_v1.0.0", organ="thyroid",
@@ -981,9 +985,9 @@ class TestBM25FallbackScenarios:
 
     def test_bm25_fallback_no_trigger_when_healthy(self):
         """真实场景：检索充分 → 不触发 BM25。"""
-        from app.rag.bm25_fallback import BM25Fallback
-        from app.rag.protocols import RetrievalResult, RetrievalMethod, ScoredChunk
         from app.knowledge.protocols import KnowledgeChunk
+        from app.rag.bm25_fallback import BM25Fallback
+        from app.rag.protocols import RetrievalMethod, RetrievalResult, ScoredChunk
 
         chunks = [
             ScoredChunk(
@@ -1093,7 +1097,8 @@ class TestKBVersionScenarios:
         设计对照：[02-核心流程 §2.4] 词条修复类 vs 逻辑规则类区分。
         """
         from app.knowledge.version_policy import (
-            KBVersionPolicy, UpdateSeverity,
+            KBVersionPolicy,
+            UpdateSeverity,
         )
 
         policy = KBVersionPolicy(
@@ -1119,7 +1124,8 @@ class TestKBVersionScenarios:
     def test_non_safety_critical_update_preserves_session_locks(self):
         """真实场景：非 safety_critical 更新不应终止会话（但会切换默认版本）。"""
         from app.knowledge.version_policy import (
-            KBVersionPolicy, UpdateSeverity,
+            KBVersionPolicy,
+            UpdateSeverity,
         )
 
         policy = KBVersionPolicy(
@@ -1141,7 +1147,8 @@ class TestKBVersionScenarios:
     def test_resolve_version_4step_priority(self):
         """真实场景：[02-核心流程 §2.4] 4 步缓存读取判定链。"""
         from app.knowledge.version_policy import (
-            KBVersionPolicy, UpdateSeverity,
+            KBVersionPolicy,
+            UpdateSeverity,
         )
 
         policy = KBVersionPolicy(
@@ -1185,7 +1192,8 @@ class TestEmbeddingPipelineScenarios:
         """
         from app.embedding.index_factory import create_index_client
         from app.embedding.protocols import (
-            VectorIndexBackend, VectorIndexError,
+            VectorIndexBackend,
+            VectorIndexError,
         )
 
         async def run():
@@ -1205,11 +1213,11 @@ class TestEmbeddingPipelineScenarios:
 
     def test_pgvector_dimension_mismatch_raises_specific_error(self):
         """真实场景：PGVector 集合维度与查询向量不匹配。"""
+
         from app.embedding.protocols import (
-            VectorIndexError, VectorIndexErrorCode, VectorRecord,
-            SearchResult,
+            VectorIndexError,
+            VectorIndexErrorCode,
         )
-        from unittest.mock import AsyncMock
 
         async def run():
             mock = AsyncMock()
@@ -1238,10 +1246,11 @@ class TestEmbeddingPipelineScenarios:
 
         设计对照：[02-核心流程 §5.2] retry_after_5s 重试退避。
         """
-        from app.embedding.protocols import (
-            EmbeddingError, EmbeddingErrorCode, TextEmbeddingRequest,
-        )
         from app.embedding.base import BaseHttpEmbeddingService
+        from app.embedding.protocols import (
+            EmbeddingError,
+            EmbeddingErrorCode,
+        )
 
         # 真实场景：第一次连接失败，第二次成功
         call_count = 0
@@ -1256,7 +1265,8 @@ class TestEmbeddingPipelineScenarios:
                 )
             def _build_fallback_model_info(self):
                 from app.embedding.protocols import (
-                    EmbeddingModelInfo, EmbeddingModelType,
+                    EmbeddingModelInfo,
+                    EmbeddingModelType,
                 )
                 return EmbeddingModelInfo(
                     model_name="flaky", dimension=768,
@@ -1282,7 +1292,8 @@ class TestEmbeddingPipelineScenarios:
                     retry_strategy="retry_after_5s",
                 )
             from app.embedding.protocols import (
-                EmbeddingResponse, EmbeddingModality,
+                EmbeddingModality,
+                EmbeddingResponse,
             )
             return EmbeddingResponse(
                 embeddings=[[0.0] * 768],
@@ -1311,10 +1322,11 @@ class TestEmbeddingPipelineScenarios:
 
     def test_embedding_service_no_retry_on_permanent_error(self):
         """真实场景：EMB 永久错误（dimension mismatch）不应重试。"""
-        from app.embedding.protocols import (
-            EmbeddingError, EmbeddingErrorCode,
-        )
         from app.embedding.base import BaseHttpEmbeddingService
+        from app.embedding.protocols import (
+            EmbeddingError,
+            EmbeddingErrorCode,
+        )
 
         call_count = 0
 
@@ -1327,7 +1339,8 @@ class TestEmbeddingPipelineScenarios:
                 )
             def _build_fallback_model_info(self):
                 from app.embedding.protocols import (
-                    EmbeddingModelInfo, EmbeddingModelType,
+                    EmbeddingModelInfo,
+                    EmbeddingModelType,
                 )
                 return EmbeddingModelInfo(
                     model_name="p", dimension=768,
@@ -1372,10 +1385,10 @@ class TestEmbeddingPipelineScenarios:
                 await clip.embed_image(
                     ImageEmbeddingRequest(image_data=b"fake-dicom", image_format="dicom")
                 )
-            except Exception as exc:
+            except Exception:
                 # 真实场景：捕获到 EmbeddingError，降级到 bge-m3-medical
                 from app.embedding.protocols import (
-                    TextEmbeddingRequest, EmbeddingResponse,
+                    TextEmbeddingRequest,
                 )
                 fallback = MockEmbeddingService()
                 req = TextEmbeddingRequest(texts=["甲状腺右叶结节"], request_id="fb")
@@ -1400,8 +1413,8 @@ class TestCrossOrganRuleScenarios:
         """真实场景：甲亢肝损害关联规则。
         触发条件：甲状腺诊断含甲亢 + 肝功能异常。
         """
-        from app.knowledge.protocols import KnowledgeChunk
         from app.embedding.protocols import TextEmbeddingRequest
+        from app.knowledge.protocols import KnowledgeChunk
         from app.rag.reranker import HeuristicReranker
 
         async def get_emb(q):
@@ -1511,7 +1524,6 @@ class TestParentChildChunkScenarios:
     def test_child_chunk_hit_returns_parent_context(self):
         """真实场景：子块检索命中后，父块被关联到结果。"""
         from app.knowledge.protocols import KnowledgeChunk
-        from app.embedding.protocols import TextEmbeddingRequest
 
         # 模拟知识库：1 个父块 + 2 个子块
         parent = KnowledgeChunk(
@@ -1560,7 +1572,7 @@ class TestDegradationScenarios:
     def test_evidence_insufficient_returns_no_chunks(self):
         """真实场景：检索无结果 → evidence_insufficient 标记。"""
         from app.rag.bm25_fallback import BM25Fallback
-        from app.rag.protocols import RetrievalResult, RetrievalMethod
+        from app.rag.protocols import RetrievalMethod, RetrievalResult
 
         result = RetrievalResult(
             chunks=[],
@@ -1580,10 +1592,11 @@ class TestDegradationScenarios:
 
     def test_dense_search_failure_logs_and_degrades(self, mock_kb_v1_0_0):
         """真实场景：dense 检索失败 → 稀疏检索仍能工作。"""
+
         from app.embedding.protocols import (
-            VectorIndexError, VectorIndexErrorCode,
+            VectorIndexError,
+            VectorIndexErrorCode,
         )
-        from unittest.mock import AsyncMock, patch
 
         async def run():
             emb = MockEmbeddingService()

@@ -4,6 +4,7 @@ from app.inference.factory import create_inference_engine, create_inference_engi
 from app.inference.llama_cpp import LlamaCppEngine
 from app.inference.protocols import InferenceError
 from app.inference.vllm import VLLMEngine
+
 pytestmark = [pytest.mark.track_llm, pytest.mark.track_inf]
 
 

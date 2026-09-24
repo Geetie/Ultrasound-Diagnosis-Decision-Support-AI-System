@@ -1,33 +1,34 @@
 import asyncio
 import functools
+import os
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Any, Literal
 
 import structlog
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
-from safety_gateway.validation_result import ConsentStatus
+from safety_gateway.checker import CheckResultStatus, DegradedReason, get_safety_gateway_checker
+from safety_gateway.desensitization import sg_desensitization_engine
 from safety_gateway.errors import (
-    SafetyGatewayError,
-    ServiceUnavailableError,
-    HealthCheckFailureError,
-    DesensitizationSafetyViolationError,
+    CombinedUnavailableError,
     ConsentSafetyViolationError,
     DatabaseUnavailableError,
-    CombinedUnavailableError,
+    DesensitizationSafetyViolationError,
+    HealthCheckFailureError,
+    SafetyGatewayError,
+    ServiceUnavailableError,
 )
 from safety_gateway.redis_pool import SafetyGatewayRedisPool
 from safety_gateway.redis_subscriber import RedisSubscriber
 from safety_gateway.sg_config import sg_settings as settings
-from safety_gateway.health.latency_tracker import LatencyTracker
-from safety_gateway.sg_validator import SGConfigValidationError as ConfigValidationError, validate_sg_config as validate_config
-from safety_gateway.checker import CheckResultStatus, DegradedReason, get_safety_gateway_checker
-from safety_gateway.desensitization import sg_desensitization_engine
+from safety_gateway.sg_validator import SGConfigValidationError as ConfigValidationError
+from safety_gateway.sg_validator import validate_sg_config as validate_config
 from safety_gateway.threshold import start_threshold_subscribe, stop_threshold_subscribe
+from safety_gateway.validation_result import ConsentStatus
 
 logger = structlog.get_logger()
 
@@ -137,7 +138,6 @@ class ConsentStatusResponse(BaseModel):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     import os
-    import sys
 
     workers_env = os.environ.get("UVICORN_WORKERS", os.environ.get("WEB_CONCURRENCY", None))
     if workers_env is not None and workers_env != "1":
@@ -320,9 +320,9 @@ async def get_consent_status(patient_id: str):
 @app.post("/api/v1/safety/check", response_model=SafetyCheckResponse)
 @sg_endpoint_handler("safety_check")
 async def perform_safety_check(request: SafetyCheckRequest):
+    from safety_gateway.checker import _get_health_checker
     from safety_gateway.health.memory_monitor import MemoryMonitor
     from safety_gateway.sg_config import sg_settings as _settings
-    from safety_gateway.checker import _get_health_checker
 
     if MemoryMonitor.is_over_budget():
         raise ServiceUnavailableError(
@@ -397,13 +397,11 @@ async def _perform_safety_check_inner(request: SafetyCheckRequest) -> SafetyChec
 
     if check_result.degraded_mode:
         reason = check_result.degraded_reason or DegradedReason.SENSITIVE_DATA_DETECTED
-        fusion_actually_available = not (
-            check_result.degraded_reason in (
+        fusion_actually_available = check_result.degraded_reason not in (
                 DegradedReason.FUSION_UNAVAILABLE,
                 DegradedReason.FUSION_UNAVAILABLE_SENSITIVE_DETECTED,
                 DegradedReason.DUAL_DEGRADATION_FUSION_AND_SG_UNAVAILABLE,
             )
-        )
         response.degraded_output = checker.apply_degraded_output(request.output_data, reason=reason, fusion_available=fusion_actually_available)
 
     logger.info(

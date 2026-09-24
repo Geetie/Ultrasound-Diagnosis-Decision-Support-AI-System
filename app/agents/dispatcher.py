@@ -24,7 +24,6 @@ from __future__ import annotations
 
 import asyncio
 import time
-from typing import Dict, List, Optional
 
 import structlog
 
@@ -51,7 +50,7 @@ logger = structlog.get_logger("app.agents.dispatcher")
 #
 # 注意：本映射仅用于日志/审计/能力发现，**不**用于运行时类型检查
 # （运行时通过 ``DispatcherAgentImpl._specialists`` 字典直接索引）。
-ORGAN_TO_SPECIALIST: Dict[Organ, str] = {
+ORGAN_TO_SPECIALIST: dict[Organ, str] = {
     Organ.THYROID: "thyroid_specialist",
     Organ.LIVER: "liver_specialist",
     Organ.CARDIAC: "cardiac_specialist",
@@ -78,15 +77,15 @@ class DispatcherAgentImpl(DispatcherAgent, Agent):
 
     def __init__(
         self,
-        specialists: Dict[Organ, Agent],
-        knowledge_agent: Optional[KnowledgeAgent] = None,
+        specialists: dict[Organ, Agent],
+        knowledge_agent: KnowledgeAgent | None = None,
         name: str = "dispatcher",
     ) -> None:
         if not specialists:
             raise ValueError("specialists dict must not be empty")
-        self._specialists: Dict[Organ, Agent] = dict(specialists)
+        self._specialists: dict[Organ, Agent] = dict(specialists)
         # P2-8 修复：保存 knowledge_agent 引用，供 route_crag_query 使用
-        self._knowledge_agent: Optional[KnowledgeAgent] = knowledge_agent
+        self._knowledge_agent: KnowledgeAgent | None = knowledge_agent
         self._name = name
 
     # ------------------------------------------------------------------
@@ -131,7 +130,7 @@ class DispatcherAgentImpl(DispatcherAgent, Agent):
 
         try:
             return await specialist.invoke(context)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning(
                 "dispatcher_specialist_failed",
                 organ=organ.value,
@@ -153,7 +152,7 @@ class DispatcherAgentImpl(DispatcherAgent, Agent):
         organ: Organ,
         reason: str,
         include_route: bool,
-    ) -> List[str]:
+    ) -> list[str]:
         """构造降级响应的 ``reasoning_trace``。"""
         if include_route:
             return [
@@ -176,12 +175,12 @@ class DispatcherAgentImpl(DispatcherAgent, Agent):
         """
         start = time.monotonic()
         response = await self._call_one_safe(context.organ, context)
-        responses: List[AgentResponse] = [response]
+        responses: list[AgentResponse] = [response]
         aggregated = await self.aggregate(responses)
         aggregated.latency_ms = (time.monotonic() - start) * 1000.0
         return aggregated
 
-    def get_capability_tags(self) -> List[str]:
+    def get_capability_tags(self) -> list[str]:
         return ["dispatcher", "routing", "aggregation"]
 
     async def health_check(self) -> bool:
@@ -189,7 +188,7 @@ class DispatcherAgentImpl(DispatcherAgent, Agent):
         for organ, specialist in self._specialists.items():
             try:
                 ok = await specialist.health_check()
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.warning(
                     "dispatcher_specialist_health_error",
                     organ=organ.value,
@@ -205,7 +204,7 @@ class DispatcherAgentImpl(DispatcherAgent, Agent):
         for organ, specialist in list(self._specialists.items()):
             try:
                 await specialist.close()
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.warning(
                     "dispatcher_specialist_close_error",
                     organ=organ.value,
@@ -227,7 +226,7 @@ class DispatcherAgentImpl(DispatcherAgent, Agent):
         """
         return request.target_organ
 
-    async def aggregate(self, specialist_responses: List[AgentResponse]) -> AgentResponse:
+    async def aggregate(self, specialist_responses: list[AgentResponse]) -> AgentResponse:
         """融合多条 specialist 响应。
 
         规则：
@@ -245,10 +244,10 @@ class DispatcherAgentImpl(DispatcherAgent, Agent):
                 reasoning_trace=["aggregated 0 specialist(s)"],
             )
 
-        contents: List[str] = []
-        confidences: List[float] = []
-        evidence_ids: List[str] = []
-        trace: List[str] = []
+        contents: list[str] = []
+        confidences: list[float] = []
+        evidence_ids: list[str] = []
+        trace: list[str] = []
         seen_evidence: set[str] = set()
 
         for resp in specialist_responses:
@@ -282,7 +281,7 @@ class DispatcherAgentImpl(DispatcherAgent, Agent):
         query: str,
         top_k: int = 20,
         failure_category: str = "unknown",
-    ) -> List[KnowledgeChunk]:
+    ) -> list[KnowledgeChunk]:
         """CRAG 补充检索的中央路由（P2-8 修复实现）。
 
         链路：``Self-RAG 失败 → Dispatcher.route_crag_query → KnowledgeAgent
@@ -341,8 +340,8 @@ class DispatcherAgentImpl(DispatcherAgent, Agent):
 async def dispatch_all(
     dispatcher: DispatcherAgentImpl,
     context: AgentContext,
-    organs: List[Organ],
-) -> List[AgentResponse]:
+    organs: list[Organ],
+) -> list[AgentResponse]:
     """对 ``organs`` 列表中的每个器官并行调用对应 specialist，并收集响应。
 
     当任一 specialist 抛异常时，对应响应为 ``confidence=0.0`` 的占位响应
@@ -371,7 +370,7 @@ async def dispatch_all(
 
 
 __all__ = [
-    "DispatcherAgentImpl",
     "ORGAN_TO_SPECIALIST",
+    "DispatcherAgentImpl",
     "dispatch_all",
 ]

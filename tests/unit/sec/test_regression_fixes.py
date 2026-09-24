@@ -4,69 +4,73 @@ Phase 0A SEC 安全合规 - 合并回归修复测试套件
 合并自: test_sec_craft_fixes, test_k1_fixes, test_white_fixes, test_white_round2_fixes
 覆盖: HSM签名/降级, Refresh Token, 降级语义, 错误码, 脱敏规则, 审计哈希链, E2E等
 """
-import re
-import time
-import threading
-import pytest
-import os
-import inspect
-import tempfile
-import yaml
-import json
 import asyncio
 import hashlib
-from datetime import datetime, timezone, timedelta
+import inspect
+import json
+import os
+import re
+import tempfile
+import threading
+import time
+from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+import yaml
 
 pytestmark = [pytest.mark.track_sec, pytest.mark.sec_regression]
 
 os.environ["USE_REDIS_REFRESH_TOKEN"] = "false"
 os.environ["USE_SOFT_HSM"] = "true"
 
-from app.security.hsm import HSMManager, hsm_manager, KeySlot, DegradedPhase
+from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import padding as asym_padding
+
+from app.api.v1.errors import (
+    BadRequestException,
+    HSMUnavailableException,
+    PatientConsentWithdrawnException,
+    PatientNotConsentedException,
+    SafetyGatewayUnavailableException,
+)
+from app.config.settings import settings
+from app.fusion.desensitization import FusionDesensitizationEngine
+from app.models.desensitization_mapping import DesensitizationMapping
+from app.models.schemas import (
+    ConsentAction,
+    ConsentQueryResponse,
+    ConsentStatus,
+    ConsentUpdateRequest,
+    SafetyEventType,
+    SafetySeverity,
+)
+from app.repositories.consent_repository import record_hsm_degradation_if_needed
+from app.security.consent_withdrawal_consumer import CONSENT_WITHDRAWAL_STREAM
+from app.security.desensitization import get_desensitization_engine
+from app.security.desensitization_restore import DesensitizationRestoreService
+from app.security.emergency_signing import EmergencySigningManager
+from app.security.hsm import DegradedPhase, HSMManager, KeySlot, hsm_manager
 from app.security.refresh_token import (
-    MemoryRefreshTokenStore,
-    refresh_token_store,
     create_refresh_token,
-    verify_refresh_token,
+    get_storage_mode,
+    refresh_token_store,
+    reset_storage,
     revoke_refresh_token,
     revoke_token_family,
-    revoke_all_user_tokens,
-    get_refresh_token_count,
-    reset_storage,
-    get_storage_mode,
+    verify_refresh_token,
 )
+from app.services.audit_service import AuditService
 from safety_gateway.checker import (
-    SafetyGatewayChecker,
+    CheckResult,
     CheckResultStatus,
     DegradedReason,
-    CheckResult,
+    SafetyGatewayChecker,
     get_safety_gateway_checker,
 )
 from safety_gateway.checker.desensitization_phase import MAX_RECURSION_DEPTH
 from safety_gateway.desensitization import SafetyGatewayDesensitizationEngine, sg_desensitization_engine
-from safety_gateway.consent_checker import ConsentCheckResult
-from app.models.schemas import ConsentStatus, SafetyEventType, SafetySeverity, ConsentAction, ConsentUpdateRequest, ConsentQueryResponse
-from app.api.v1.errors import (
-    PatientNotConsentedException,
-    PatientConsentWithdrawnException,
-    SafetyGatewayUnavailableException,
-    HSMUnavailableException,
-    BadRequestException,
-    ERROR_CODE_MAP,
-)
-from app.security.consent_withdrawal_consumer import CONSENT_WITHDRAWAL_STREAM
-from app.services.audit_service import AuditService
-from app.repositories.consent_repository import record_hsm_degradation_if_needed
-from cryptography.hazmat.primitives.asymmetric import padding as asym_padding
-from cryptography.hazmat.primitives import hashes
-from cryptography.exceptions import InvalidSignature
-from app.security.desensitization import DesensitizationEngine, get_desensitization_engine
-from app.security.desensitization_restore import DesensitizationRestoreService
-from app.security.emergency_signing import EmergencySigningManager
-from app.fusion.desensitization import FusionDesensitizationEngine
-from app.config.settings import settings
-from app.models.desensitization_mapping import DesensitizationMapping
 
 PATIENT_TOKEN_PATTERN = re.compile(r'PATIENT_\d{3}')
 
@@ -635,7 +639,6 @@ class TestSGUnavailableInChecker:
 
     def test_db_error_raises_database_unavailable(self):
         """DB异常时ConsentPhase应能抛出DatabaseUnavailableError"""
-        from safety_gateway.errors import DatabaseUnavailableError
         from safety_gateway.checker.consent_phase import ConsentPhase
         source = inspect.getsource(ConsentPhase)
         assert "DatabaseUnavailableError" in source
@@ -965,13 +968,13 @@ class TestYAMLRuleSync:
 
     def test_yaml_file_has_11_rules(self):
         """YAML文件应包含11条规则，与默认规则数一致"""
-        with open(_YAML_PATH, "r", encoding="utf-8") as f:
+        with open(_YAML_PATH, encoding="utf-8") as f:
             data = yaml.safe_load(f)
         assert len(data["rules"]) == 11
 
     def test_yaml_contains_all_enhanced_rule_names(self):
         """YAML应包含所有增强规则名"""
-        with open(_YAML_PATH, "r", encoding="utf-8") as f:
+        with open(_YAML_PATH, encoding="utf-8") as f:
             data = yaml.safe_load(f)
         yaml_rule_names = {r["name"] for r in data["rules"]}
 
@@ -985,7 +988,7 @@ class TestYAMLRuleSync:
 
     def test_yaml_no_passport_or_bank_card_rules(self):
         """YAML不应包含护照和银行卡规则（默认规则中无此两条）"""
-        with open(_YAML_PATH, "r", encoding="utf-8") as f:
+        with open(_YAML_PATH, encoding="utf-8") as f:
             data = yaml.safe_load(f)
         yaml_rule_names = {r["name"] for r in data["rules"]}
         assert "sg_passport" not in yaml_rule_names
@@ -993,7 +996,7 @@ class TestYAMLRuleSync:
 
     def test_yaml_phone_rule_uses_heterogeneous_pattern(self):
         """YAML手机号规则应使用异构模式（整体匹配+号段校验，非分组模式）"""
-        with open(_YAML_PATH, "r", encoding="utf-8") as f:
+        with open(_YAML_PATH, encoding="utf-8") as f:
             data = yaml.safe_load(f)
         phone_rule = next(r for r in data["rules"] if r["name"] == "sg_phone")
         assert "1[3-9]" in phone_rule["pattern"]
@@ -1739,7 +1742,6 @@ class TestEmergencySigningBoundary:
 
     @pytest.mark.asyncio
     async def test_daily_limit_boundary_at_49(self):
-        from app.security.emergency_signing import EmergencySigningManager
         manager = EmergencySigningManager()
         manager._is_active = True
         with patch("app.config.redis.RedisPool") as mock_pool:
@@ -1751,7 +1753,6 @@ class TestEmergencySigningBoundary:
 
     @pytest.mark.asyncio
     async def test_daily_limit_boundary_at_50(self):
-        from app.security.emergency_signing import EmergencySigningManager
         manager = EmergencySigningManager()
         manager._is_active = True
         with patch("app.config.redis.RedisPool") as mock_pool:
@@ -1787,7 +1788,6 @@ class TestDesensitizationRestoreKeyVersionMismatch:
 
     @pytest.mark.asyncio
     async def test_decrypt_with_wrong_key_version_raises(self):
-        from app.security.desensitization_restore import DesensitizationRestoreService
         service = DesensitizationRestoreService()
         plaintext = "测试数据"
         ciphertext, iv, key_version = await service._encrypt_value(plaintext)
@@ -1834,6 +1834,7 @@ class TestAuditChainIntegritySupplementary:
 
     def test_audit_service_verify_chain_signature(self):
         import inspect
+
         from app.services.audit_service import AuditService
         sig = inspect.signature(AuditService.verify_chain)
         params = list(sig.parameters.keys())
@@ -1844,7 +1845,7 @@ class TestAuditChainIntegritySupplementary:
         assert hasattr(AuditService, 'verify_all_chains')
 
     def test_per_session_lock_not_global(self):
-        from app.services.audit_service import _chain_locks, _get_chain_lock
+        from app.services.audit_service import _chain_locks
         assert isinstance(_chain_locks, dict), "Expected per-session lock dict"
 
 
@@ -2108,7 +2109,6 @@ class TestDesensitizationRestoreRateLimitExtended:
 
     @pytest.mark.asyncio
     async def test_rate_limit_counter_increments(self):
-        from app.security.desensitization_restore import DesensitizationRestoreService
         service = DesensitizationRestoreService()
         assert await service._check_rate_limit() is True
         assert await service._check_rate_limit() is True
@@ -2117,7 +2117,6 @@ class TestDesensitizationRestoreRateLimitExtended:
 
     @pytest.mark.asyncio
     async def test_rate_limit_window_reset(self):
-        from app.security.desensitization_restore import DesensitizationRestoreService
         service = DesensitizationRestoreService()
         service._rate_limit_counter = {"old_window": 9999}
         service._rate_limit_window_start = datetime.now(timezone.utc) - timedelta(hours=2)

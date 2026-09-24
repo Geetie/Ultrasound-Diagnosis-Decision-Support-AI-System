@@ -1,9 +1,9 @@
 import asyncio
-import structlog
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import List, Optional
+
+import structlog
 
 logger = structlog.get_logger()
 
@@ -54,9 +54,10 @@ class SafetyActionHandler(ConsentWithdrawalHandler):
 
         if redis_client is not None:
             try:
+                from sqlalchemy import select
+
                 from app.config.database import get_session
                 from app.models.database import DiagnosisSession
-                from sqlalchemy import select, update
 
                 async for db_session in get_session():
                     result = await db_session.execute(
@@ -133,8 +134,8 @@ class SafetyActionHandler(ConsentWithdrawalHandler):
                         patient_id=event.patient_id, error=str(e))
 
         try:
-            from app.services.audit_service import AuditService
             from app.config.database import get_session
+            from app.services.audit_service import AuditService
             async for _db in get_session():
                 audit_svc = AuditService(_db)
                 await audit_svc.log_action(
@@ -198,9 +199,10 @@ class DataCleanupHandler(ConsentWithdrawalHandler):
                         patient_id=event.patient_id, error=str(e))
 
         try:
+            from sqlalchemy import select
+
             from app.config.database import get_session
             from app.models.database import DiagnosisSession
-            from sqlalchemy import select, update
 
             async for db_session in get_session():
                 result = await db_session.execute(
@@ -223,8 +225,8 @@ class DataCleanupHandler(ConsentWithdrawalHandler):
                         patient_id=event.patient_id, error=str(e))
 
         try:
-            from app.services.audit_service import AuditService
             from app.config.database import get_session
+            from app.services.audit_service import AuditService
             async for _db in get_session():
                 audit_svc = AuditService(_db)
                 await audit_svc.log_action(
@@ -247,10 +249,10 @@ class DataCleanupHandler(ConsentWithdrawalHandler):
 
 
 class ConsentWithdrawalConsumer:
-    def __init__(self, handlers: List[ConsentWithdrawalHandler]) -> None:
+    def __init__(self, handlers: list[ConsentWithdrawalHandler]) -> None:
         self._handlers = handlers
         self._running = False
-        self._consumer_task: Optional[asyncio.Task] = None
+        self._consumer_task: asyncio.Task | None = None
 
     async def start(self) -> None:
         if self._running:
@@ -388,7 +390,7 @@ class ConsentWithdrawalConsumer:
             get_metrics_collector().record_consent_withdrawal_latency(
                 elapsed_seconds, target_seconds
             )
-        except Exception as exc:  # noqa: BLE001 - 埋点失败不得影响撤回本身
+        except Exception as exc:
             logger.warning("consent_withdrawal_metric_failed", error=str(exc))
 
         if elapsed_seconds > target_seconds:
@@ -434,7 +436,7 @@ class ConsentWithdrawalConsumer:
 async def create_consent_withdrawal_consumer() -> ConsentWithdrawalConsumer:
     from app.config.settings import settings
 
-    handlers: List[ConsentWithdrawalHandler] = []
+    handlers: list[ConsentWithdrawalHandler] = []
     handler_names = getattr(settings, 'consent_withdrawal_handlers', None)
     if handler_names is None:
         handler_names = ["safety_action", "data_cleanup"]

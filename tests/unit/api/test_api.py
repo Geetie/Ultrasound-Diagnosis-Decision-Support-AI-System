@@ -1,16 +1,20 @@
 """Unit tests for API endpoints"""
-from unittest.mock import Mock, AsyncMock
 from datetime import datetime, timezone
+from unittest.mock import AsyncMock, Mock
 
 import pytest
+
 pytestmark = [pytest.mark.track_api, pytest.mark.track_sec]
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.schemas import (
-    SessionStatus, ConsentStatus, OrganStatus,
+    ConsentStatus,
+    DiagnosisRequest,
+    FeedbackSubmission,
+    OrganStatus,
     SessionCreateRequest,
-    DiagnosisRequest, FeedbackSubmission,
+    SessionStatus,
 )
 
 
@@ -239,7 +243,7 @@ class TestSchemas:
 
     def test_diagnosis_request(self):
         """Test DiagnosisRequest schema"""
-        from app.models.schemas import ResponseTier, PatientContext
+        from app.models.schemas import PatientContext, ResponseTier
 
         request = DiagnosisRequest(
             session_id="session_001",
@@ -258,7 +262,7 @@ class TestSchemas:
 
     def test_feedback_submission(self):
         """Test FeedbackSubmission schema"""
-        from app.models.schemas import FeedbackType, FeedbackLevel, FeedbackContent
+        from app.models.schemas import FeedbackContent, FeedbackLevel, FeedbackType
 
         feedback = FeedbackSubmission(
             request_id="req_001",

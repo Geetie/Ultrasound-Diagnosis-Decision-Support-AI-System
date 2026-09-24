@@ -11,23 +11,21 @@ Covers:
 from __future__ import annotations
 
 import json
-from typing import Any, List, Optional
+from typing import Any
 
 import httpx
-import numpy as np
 import pytest
 
 pytestmark = [pytest.mark.track_rag]
 
 from app.knowledge.protocols import KnowledgeChunk
 from app.rag.bm25_fallback import tokenize
-from app.rag.protocols import RetrievalMethod, ScoredChunk
+from app.rag.protocols import RetrievalMethod
 from app.rag.reranker import (
     BgeRerankerService,
     HeuristicReranker,
     RerankError,
 )
-
 
 # ----------------------------------------------------------------------
 # helpers
@@ -37,7 +35,7 @@ from app.rag.reranker import (
 def _make_chunk(
     chunk_id: str,
     content: str = "x",
-    embedding: Optional[List[float]] = None,
+    embedding: list[float] | None = None,
 ) -> KnowledgeChunk:
     return KnowledgeChunk(
         chunk_id=chunk_id,
@@ -53,8 +51,8 @@ def _make_chunk(
 
 
 def _make_mock_handler(
-    response: Optional[httpx.Response] = None,
-    exc: Optional[Exception] = None,
+    response: httpx.Response | None = None,
+    exc: Exception | None = None,
 ):
     async def handler(request: httpx.Request) -> httpx.Response:
         if exc is not None:

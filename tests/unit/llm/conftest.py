@@ -50,7 +50,7 @@ def reset_verification_config():
 
 @pytest.fixture
 def mock_inference_engine():
-    from app.inference.protocols import InferenceEngine, InferenceRequest, InferenceResponse, TokenUsage
+    from app.inference.protocols import InferenceEngine, InferenceResponse, TokenUsage
 
     class MockInferenceEngine(InferenceEngine):
         def __init__(self, responses=None, name="mock", latency_ms=100.0):

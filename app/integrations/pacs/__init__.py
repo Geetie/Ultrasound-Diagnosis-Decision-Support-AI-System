@@ -34,9 +34,9 @@ class PushResult:
     message: str = ""
     attempts: int = 1
     skipped: bool = False
-    status_code: Optional[int] = None
+    status_code: int | None = None
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         return {
             "success": self.success,
             "adapter": self.adapter,
@@ -62,8 +62,8 @@ class PacsPushAdapter(Protocol):
         report_id: str,
         payload: bytes,
         idempotency_key: str,
-        patient_id: Optional[str] = None,
-        organ: Optional[str] = None,
+        patient_id: str | None = None,
+        organ: str | None = None,
         content_type: str = "text/plain; charset=utf-8",
     ) -> PushResult:
         """推送一份已签名的报告。"""
@@ -78,7 +78,7 @@ class LocalFakePacsAdapter:
     """本地假实现：记录推送内容并返回成功。"""
 
     def __init__(self, fail_times: int = 0) -> None:
-        self.pushes: List[Dict[str, Any]] = []
+        self.pushes: list[dict[str, Any]] = []
         # 前 N 次推送失败（用于验证重试/降级路径）
         self._fail_times = fail_times
         self._attempts_seen = 0
@@ -93,8 +93,8 @@ class LocalFakePacsAdapter:
         report_id: str,
         payload: bytes,
         idempotency_key: str,
-        patient_id: Optional[str] = None,
-        organ: Optional[str] = None,
+        patient_id: str | None = None,
+        organ: str | None = None,
         content_type: str = "text/plain; charset=utf-8",
     ) -> PushResult:
         self._attempts_seen += 1
@@ -160,15 +160,15 @@ class HttpPacsAdapter:
         report_id: str,
         payload: bytes,
         idempotency_key: str,
-        patient_id: Optional[str] = None,
-        organ: Optional[str] = None,
+        patient_id: str | None = None,
+        organ: str | None = None,
         content_type: str = "text/plain; charset=utf-8",
     ) -> PushResult:
         import httpx
 
         attempt = 0
         last_message = ""
-        last_status: Optional[int] = None
+        last_status: int | None = None
         while attempt < self._max_attempts:
             attempt += 1
             try:
@@ -229,10 +229,10 @@ class HttpPacsAdapter:
         return True
 
 
-_adapter: Optional[PacsPushAdapter] = None
+_adapter: PacsPushAdapter | None = None
 
 
-def set_pacs_adapter(adapter: Optional[PacsPushAdapter]) -> None:
+def set_pacs_adapter(adapter: PacsPushAdapter | None) -> None:
     """注入（或清除）进程级 PACS 适配器。"""
     global _adapter
     _adapter = adapter
@@ -281,7 +281,7 @@ def encode_payload(text: str) -> bytes:
     return text.encode("utf-8")
 
 
-def decode_signature(signature: Optional[str]) -> Optional[bytes]:
+def decode_signature(signature: str | None) -> bytes | None:
     """base64 签名 → 原始字节（校验用）。"""
     if not signature:
         return None

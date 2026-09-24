@@ -1,22 +1,22 @@
-from fastapi import APIRouter, Depends
-from typing import Optional
 import json
-import structlog
 
-from app.models.schemas import (
-    FeedbackSubmission,
-    FeedbackType,
-    FeedbackLevel,
-    FeedbackSubmitResponse,
-)
+import structlog
+from fastapi import APIRouter, Depends
+
 from app.api.v1.errors import BadRequestException, NotFoundException
+from app.api.v1.utils import get_actor_id, try_renew_session
 from app.config.redis import RedisPool
 from app.config.redis_keys import RedisKey
-from app.dependencies import get_feedback_repo, get_diagnosis_repo, get_session_repo, get_audit_service
-from app.api.v1.utils import get_actor_id, try_renew_session
-from app.repositories import FeedbackRepository, DiagnosisRepository, SessionRepository
-from app.services.audit_service import AuditService
+from app.dependencies import get_audit_service, get_diagnosis_repo, get_feedback_repo, get_session_repo
+from app.models.schemas import (
+    FeedbackLevel,
+    FeedbackSubmission,
+    FeedbackSubmitResponse,
+    FeedbackType,
+)
+from app.repositories import DiagnosisRepository, FeedbackRepository, SessionRepository
 from app.security.auth import get_current_active_user
+from app.services.audit_service import AuditService
 
 router = APIRouter(tags=["feedback"])
 logger = structlog.get_logger()
@@ -31,7 +31,7 @@ async def submit_feedback(
     diagnosis_repo: DiagnosisRepository = Depends(get_diagnosis_repo),
     session_repo: SessionRepository = Depends(get_session_repo),
     audit_service: AuditService = Depends(get_audit_service),
-    current_user: Optional[dict] = Depends(get_current_active_user),
+    current_user: dict | None = Depends(get_current_active_user),
 ):
 
     if request.idempotency_key:

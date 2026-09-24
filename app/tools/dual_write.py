@@ -1,6 +1,7 @@
-from typing import Callable, Any, Tuple
 import asyncio
 import logging
+from collections.abc import Callable
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +33,7 @@ dual_write_manager = DualWriteManager()
 def dual_write(old_key_func: Callable[..., str], new_key_func: Callable[..., str]):
     """
     双写装饰器 - 在迁移阶段同时写入新旧键
-    
+
     :param old_key_func: 获取旧键名的函数
     :param new_key_func: 获取新键名的函数
     """
@@ -40,36 +41,36 @@ def dual_write(old_key_func: Callable[..., str], new_key_func: Callable[..., str
         async def async_wrapper(*args, **kwargs) -> Any:
             old_key = old_key_func(*args, **kwargs)
             new_key = new_key_func(*args, **kwargs)
-            
+
             result = await func(*args, **kwargs)
-            
+
             if dual_write_manager.enabled and old_key != new_key:
                 await _sync_to_old_key(func, args, kwargs, old_key, new_key)
-            
+
             return result
-        
+
         def sync_wrapper(*args, **kwargs) -> Any:
             old_key = old_key_func(*args, **kwargs)
             new_key = new_key_func(*args, **kwargs)
-            
+
             result = func(*args, **kwargs)
-            
+
             if dual_write_manager.enabled and old_key != new_key:
                 _sync_to_old_key_sync(func, args, kwargs, old_key, new_key)
-            
+
             return result
-        
+
         if asyncio.iscoroutinefunction(func):
             return async_wrapper
         else:
             return sync_wrapper
-    
+
     return decorator
 
 
 async def _sync_to_old_key(
     func: Callable[..., Any],
-    args: Tuple[Any, ...],
+    args: tuple[Any, ...],
     kwargs: dict,
     old_key: str,
     new_key: str
@@ -81,11 +82,11 @@ async def _sync_to_old_key(
             if hasattr(arg, '_redis_client'):
                 redis_client = arg._redis_client
                 break
-        
+
         if redis_client:
             ttl = await redis_client.ttl(new_key)
             data = await redis_client.get(new_key)
-            
+
             if data is not None:
                 if ttl > 0:
                     await redis_client.setex(old_key, ttl, data)
@@ -98,7 +99,7 @@ async def _sync_to_old_key(
 
 def _sync_to_old_key_sync(
     func: Callable[..., Any],
-    args: Tuple[Any, ...],
+    args: tuple[Any, ...],
     kwargs: dict,
     old_key: str,
     new_key: str
@@ -110,11 +111,11 @@ def _sync_to_old_key_sync(
             if hasattr(arg, '_redis_client'):
                 redis_client = arg._redis_client
                 break
-        
+
         if redis_client:
             ttl = redis_client.ttl(new_key)
             data = redis_client.get(new_key)
-            
+
             if data is not None:
                 if ttl > 0:
                     redis_client.setex(old_key, ttl, data)

@@ -4,16 +4,17 @@ from typing import Optional
 
 import structlog
 from prometheus_client import (
+    CONTENT_TYPE_LATEST,
+    CollectorRegistry,
     Gauge,
     Histogram,
-    CollectorRegistry,
     generate_latest,
-    CONTENT_TYPE_LATEST,
     start_http_server,
 )
 
 from app.config.settings import settings
 from app.observability.enums import DeploymentProfile
+
 from .definitions import MetricsDefinitions
 
 _logger = structlog.get_logger("app.observability.metrics_collector")
@@ -23,16 +24,16 @@ class MetricsCollector(MetricsDefinitions):
     _instance: Optional["MetricsCollector"] = None
     _lock = threading.Lock()
 
-    def __init__(self, profile: Optional[DeploymentProfile] = None):
+    def __init__(self, profile: DeploymentProfile | None = None):
         self._profile = profile or DeploymentProfile(settings.deployment_profile)
         self._registry = CollectorRegistry()
         self._server_started = False
-        self._pusher_task: Optional[asyncio.Task] = None
+        self._pusher_task: asyncio.Task | None = None
         self._shutdown_event = asyncio.Event()
         self._init_metrics()
 
     @classmethod
-    def get_instance(cls, profile: Optional[DeploymentProfile] = None) -> "MetricsCollector":
+    def get_instance(cls, profile: DeploymentProfile | None = None) -> "MetricsCollector":
         if cls._instance is None:
             with cls._lock:
                 if cls._instance is None:
@@ -55,7 +56,7 @@ class MetricsCollector(MetricsDefinitions):
         self._init_diagnosis_metrics()
         self._init_infrastructure_metrics()
 
-    def start_metrics_server(self, port: Optional[int] = None) -> None:
+    def start_metrics_server(self, port: int | None = None) -> None:
         if self._server_started:
             return
         p = port or settings.obs_metrics_port
@@ -247,7 +248,7 @@ class MetricsCollector(MetricsDefinitions):
     def record_consent_cache_warmup_latency(self, seconds: float) -> None:
         self.consent_cache_warmup_latency_seconds.observe(seconds)
 
-    def get_gauge_value(self, metric_name: str) -> Optional[float]:
+    def get_gauge_value(self, metric_name: str) -> float | None:
         gauge = getattr(self, metric_name, None)
         if gauge is None or not isinstance(gauge, Gauge):
             return None
@@ -256,14 +257,14 @@ class MetricsCollector(MetricsDefinitions):
         except Exception:
             return None
 
-    def get_histogram_p99(self, metric_name: str) -> Optional[float]:
+    def get_histogram_p99(self, metric_name: str) -> float | None:
         hist = getattr(self, metric_name, None)
         if hist is None or not isinstance(hist, Histogram):
             return None
         return self._calculate_histogram_p99(hist)
 
     @staticmethod
-    def _calculate_histogram_p99(hist: Histogram) -> Optional[float]:
+    def _calculate_histogram_p99(hist: Histogram) -> float | None:
         try:
             buckets = list(hist._buckets.values())
             if not buckets:

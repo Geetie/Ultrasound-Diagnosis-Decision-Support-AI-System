@@ -1,7 +1,7 @@
 import structlog
 
+from safety_gateway.checker.phase_base import CheckContext, CheckPhase
 from safety_gateway.validation_result import CheckResult, DegradedReason
-from safety_gateway.checker.phase_base import CheckPhase, CheckContext
 
 logger = structlog.get_logger()
 

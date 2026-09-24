@@ -4,27 +4,27 @@ Unit tests for the observability logging framework.
 """
 
 import asyncio
-import pytest
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+
 pytestmark = [pytest.mark.track_obs, pytest.mark.track_inf]
 
-from app.observability.enums import LogCategory, NtpSyncStatus, DeploymentProfile
 from app.config.settings import settings
+from app.observability.enums import DeploymentProfile, LogCategory, NtpSyncStatus
 from app.observability.logging import (
-    LogStorage,
-    LogStorageBackend,
-    PostgreSQLLogStorage,
-    FileLogStorage,
-    ElasticsearchLogStorage,
     BatchLogStorageWrapper,
+    ElasticsearchLogStorage,
+    FileLogStorage,
     LogRecord,
+    LogStorage,
+    PostgreSQLLogStorage,
+    add_ntp_context,
+    classify_and_bind_logger,
     create_audit_logger,
     create_diagnostic_logger,
     create_operational_logger,
-    classify_and_bind_logger,
-    add_ntp_context,
     get_log_storage,
 )
 
@@ -109,13 +109,13 @@ class TestPostgreSQLLogStorage:
         from app.observability.logging import _logger
         storage = PostgreSQLLogStorage(database_url="postgresql://invalid:5432/test")
         record = LogRecord(category=LogCategory.AUDIT, message="test")
-        
+
         with patch.object(_logger, 'error') as mock_error:
             try:
                 await storage.awrite(record)
             except Exception:
                 pytest.fail("awrite should handle exceptions silently")
-            
+
             mock_error.assert_called_once()
             call_args = mock_error.call_args
             assert call_args[0][0] == "Failed to write log to PostgreSQL"
@@ -190,7 +190,7 @@ class TestFileLogStorage:
         # 使用系统目录（通常没有写入权限）
         storage = FileLogStorage(log_dir="/system/cannot/write/here")
         record = LogRecord(category=LogCategory.AUDIT, message="test")
-        
+
         # 验证OS错误被静默处理，不抛出异常
         try:
             await storage.awrite(record)

@@ -1,9 +1,10 @@
+import asyncio
 import os
 import time
-import asyncio
+
 import pytest
 
-from app.inference.vram_fragmentation import VRAMFragmentationVerifier, VRAMSnapshot
+from app.inference.vram_fragmentation import VRAMFragmentationVerifier
 
 SUSTAINED_RUN_ENABLED = os.environ.get("SUSTAINED_RUN_ENABLED", "0") == "1"
 QUICK_MODE = os.environ.get("SUSTAINED_RUN_QUICK", "0") == "1"
@@ -52,7 +53,7 @@ class TestVRAMFragmentationSustained:
         assert report.max_fragmentation_ratio < critical_threshold, \
             f"最大碎片化率{report.max_fragmentation_ratio:.2%}超过严重阈值{critical_threshold:.0%}"
 
-        print(f"\n=== VRAM碎片化持续运行测试报告 ===")
+        print("\n=== VRAM碎片化持续运行测试报告 ===")
         print(f"运行时长: {duration_seconds/3600:.1f}小时")
         print(f"快照数量: {len(snapshots)}")
         print(f"最大碎片化率: {report.max_fragmentation_ratio:.2%}")

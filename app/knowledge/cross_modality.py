@@ -16,7 +16,7 @@
 """
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Sequence, Tuple
+from collections.abc import Sequence
 
 from app.knowledge.risk_rules import FEATURE_ASPECT_RATIO_TALLER_THAN_WIDE
 from app.models.schemas import CrossModalityHint, Organ
@@ -29,7 +29,7 @@ REFERENCE_CARDIAC = "ASE 指南：超声与其它模态对照（定性）"
 
 
 # (器官, 征象) → 对照提示
-_HINT_TABLE: Dict[Tuple[str, str], Tuple[CrossModalityHint, ...]] = {
+_HINT_TABLE: dict[tuple[str, str], tuple[CrossModalityHint, ...]] = {
     (Organ.THYROID.value, "micro"): (
         CrossModalityHint(
             modality="CT",
@@ -102,16 +102,16 @@ _HINT_TABLE: Dict[Tuple[str, str], Tuple[CrossModalityHint, ...]] = {
 
 
 def hints_for(
-    organ_code: Optional[str],
+    organ_code: str | None,
     features: Sequence[str] = (),
     max_hints: int = MAX_HINTS,
-) -> List[CrossModalityHint]:
+) -> list[CrossModalityHint]:
     """按器官与征象取跨模态对照提示（未命中返回空列表）。"""
     if not organ_code:
         return []
     organ_key = organ_code.strip().lower()
 
-    collected: List[CrossModalityHint] = []
+    collected: list[CrossModalityHint] = []
     seen: set = set()
     for feature in features:
         for hint in _HINT_TABLE.get((organ_key, feature), ()):

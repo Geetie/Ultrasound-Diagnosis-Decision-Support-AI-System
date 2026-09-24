@@ -6,8 +6,8 @@ PACS 结果累计）没有直接覆盖。
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, List, Optional
-from unittest.mock import AsyncMock, MagicMock
+from typing import Any
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -18,8 +18,8 @@ from app.repositories.report_repository import ReportRepository
 class _FakeSession:
     """最小 AsyncSession 替身：支持 add / flush / execute(select)。"""
 
-    def __init__(self, rows: Optional[List[DiagnosisReport]] = None) -> None:
-        self.rows: List[DiagnosisReport] = list(rows or [])
+    def __init__(self, rows: list[DiagnosisReport] | None = None) -> None:
+        self.rows: list[DiagnosisReport] = list(rows or [])
         self.flushed = 0
 
     def add(self, obj: Any) -> None:

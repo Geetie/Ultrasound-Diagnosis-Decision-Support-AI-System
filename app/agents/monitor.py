@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
-from typing import Any, Deque, Dict, List, Optional
+from typing import Any
 
 import structlog
 
@@ -48,7 +48,7 @@ TAG_IMAGE_QUALITY_POOR_STREAK = "image_quality_poor_streak"
 
 # 各器官"标准切面应可见的关键结构"。真机口径应由现场标定/知识库覆盖，
 # 此处只作为未标定时的保守默认。
-EXPECTED_STRUCTURES_BY_ORGAN: Dict[str, tuple] = {
+EXPECTED_STRUCTURES_BY_ORGAN: dict[str, tuple] = {
     "thyroid": ("left_lobe", "right_lobe", "isthmus"),
     "liver": ("right_lobe", "left_lobe", "portal_vein"),
     "cardiac": ("left_ventricle", "left_atrium", "aortic_valve"),
@@ -64,9 +64,9 @@ class NavigationQualityState:
 
     non_standard_streak: int = 0
     poor_quality_streak: int = 0
-    last_plane_type: Optional[str] = None
+    last_plane_type: str | None = None
     # 上一次报告缺失的结构集合（用于边沿触发，避免逐帧刷日志）
-    missing_structures: List[str] = field(default_factory=list)
+    missing_structures: list[str] = field(default_factory=list)
 
 
 class MonitorAgentImpl(MonitorAgent):
@@ -89,11 +89,11 @@ class MonitorAgentImpl(MonitorAgent):
         self._window = consecutive_failure_window
         self._metrics_factory = metrics_collector_factory
         # 滑动窗口：organ -> 最近 N 次结果（True=成功，False=失败）
-        self._failure_windows: Dict[Organ, Deque[bool]] = defaultdict(
+        self._failure_windows: dict[Organ, deque[bool]] = defaultdict(
             lambda: deque(maxlen=self._window)
         )
         # M1/M6：会话级导航质量状态（纯内存 + 同步操作，可在导航热路径直接调用）
-        self._nav_states: Dict[str, NavigationQualityState] = {}
+        self._nav_states: dict[str, NavigationQualityState] = {}
         self._plane_streak_threshold = settings.nav_plane_non_standard_streak_threshold
         self._quality_streak_threshold = settings.nav_image_quality_poor_streak_threshold
 
@@ -106,7 +106,7 @@ class MonitorAgentImpl(MonitorAgent):
             from app.observability.metrics_collector import get_metrics_collector
             collector = (self._metrics_factory or get_metrics_collector)()
             collector.record_diagnosis_latency(seconds, with_retry=with_retry)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning(
                 "monitor_metrics_latency_failed",
                 error=str(exc),
@@ -118,7 +118,7 @@ class MonitorAgentImpl(MonitorAgent):
             from app.observability.metrics_collector import get_metrics_collector
             collector = (self._metrics_factory or get_metrics_collector)()
             collector.set_service_health_rate(rate)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning(
                 "monitor_metrics_health_failed",
                 error=str(exc),
@@ -244,7 +244,7 @@ class MonitorAgentImpl(MonitorAgent):
                 processing_time_ms=response.processing_time_ms,
             )
 
-    async def detect_anomaly(self, request: DiagnosisRequest) -> Optional[str]:
+    async def detect_anomaly(self, request: DiagnosisRequest) -> str | None:
         """对入参做最简预检。
 
         Phase 0A 只检查：
@@ -268,8 +268,8 @@ class MonitorAgentImpl(MonitorAgent):
         session_id: str,
         plane_assessment: Any = None,
         image_quality: Any = None,
-        frame_id: Optional[str] = None,
-    ) -> List[str]:
+        frame_id: str | None = None,
+    ) -> list[str]:
         """观察一帧导航的切面/质量，返回本次**新触发**的告警标签。
 
         设计要点：
@@ -294,7 +294,7 @@ class MonitorAgentImpl(MonitorAgent):
             return []
 
         state = self._nav_states.setdefault(session_id, NavigationQualityState())
-        tags: List[str] = []
+        tags: list[str] = []
 
         if plane_assessment is not None:
             tags.extend(
@@ -319,10 +319,10 @@ class MonitorAgentImpl(MonitorAgent):
         state: NavigationQualityState,
         *,
         session_id: str,
-        frame_id: Optional[str],
+        frame_id: str | None,
         plane_assessment: Any,
-    ) -> List[str]:
-        tags: List[str] = []
+    ) -> list[str]:
+        tags: list[str] = []
         is_standard = bool(getattr(plane_assessment, "is_standard", True))
         state.last_plane_type = getattr(plane_assessment, "plane_type", None)
 
@@ -370,10 +370,10 @@ class MonitorAgentImpl(MonitorAgent):
         state: NavigationQualityState,
         *,
         session_id: str,
-        frame_id: Optional[str],
+        frame_id: str | None,
         image_quality: Any,
-    ) -> List[str]:
-        tags: List[str] = []
+    ) -> list[str]:
+        tags: list[str] = []
         overall = getattr(image_quality, "overall_score", None)
         if overall is None:
             return tags
@@ -396,11 +396,11 @@ class MonitorAgentImpl(MonitorAgent):
             )
         return tags
 
-    def get_navigation_state(self, session_id: str) -> Optional[NavigationQualityState]:
+    def get_navigation_state(self, session_id: str) -> NavigationQualityState | None:
         """返回指定会话的导航质量状态（测试/运维用）。"""
         return self._nav_states.get(session_id)
 
-    def reset_navigation_state(self, session_id: Optional[str] = None) -> None:
+    def reset_navigation_state(self, session_id: str | None = None) -> None:
         """清空导航质量状态（传 None 清空全部）。"""
         if session_id is None:
             self._nav_states.clear()
@@ -421,7 +421,7 @@ class MonitorAgentImpl(MonitorAgent):
         try:
             self.reset()
             self.reset_navigation_state()
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning(
                 "monitor_close_failed",
                 error=str(exc),
@@ -433,7 +433,7 @@ class MonitorAgentImpl(MonitorAgent):
     # 测试 / 运维辅助
     # ------------------------------------------------------------------
 
-    def get_failure_window(self, organ: Organ) -> Deque[bool]:
+    def get_failure_window(self, organ: Organ) -> deque[bool]:
         """返回指定 organ 的最近 N 次结果状态（True=成功，False=失败）。"""
         return self._failure_windows[organ]
 
@@ -443,17 +443,17 @@ class MonitorAgentImpl(MonitorAgent):
 
 
 __all__ = [
-    "MonitorAgentImpl",
-    "NavigationQualityState",
     "CONFIDENCE_REVIEW_THRESHOLD",
-    "LATENCY_DEGRADED_THRESHOLD_MS",
     "CONSECUTIVE_FAILURE_WINDOW",
     "EXPECTED_STRUCTURES_BY_ORGAN",
     "IMAGE_QUALITY_POOR_THRESHOLD",
+    "LATENCY_DEGRADED_THRESHOLD_MS",
+    "TAG_IMAGE_QUALITY_POOR_STREAK",
     "TAG_NEEDS_REVIEW",
     "TAG_PERFORMANCE_DEGRADED",
-    "TAG_SYSTEM_ANOMALY",
-    "TAG_PLANE_NON_STANDARD_STREAK",
     "TAG_PLANE_KEY_STRUCTURE_MISSING",
-    "TAG_IMAGE_QUALITY_POOR_STREAK",
+    "TAG_PLANE_NON_STANDARD_STREAK",
+    "TAG_SYSTEM_ANOMALY",
+    "MonitorAgentImpl",
+    "NavigationQualityState",
 ]

@@ -211,9 +211,7 @@ def apply_degraded_output(
                             processed.append(result)
                     elif isinstance(item, dict):
                         processed.append(sg_desensitization_engine.desensitize_dict(item))
-                    elif isinstance(item, bool):
-                        processed.append(item)
-                    elif isinstance(item, (int, float)):
+                    elif isinstance(item, bool) or isinstance(item, (int, float)):
                         processed.append(item)
                     elif item is not None:
                         logger.warning("sg_degraded_output_unknown_list_item_type", key=key, type=type(item).__name__)

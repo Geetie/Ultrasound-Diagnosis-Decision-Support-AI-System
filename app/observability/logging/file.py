@@ -1,9 +1,8 @@
 import asyncio
 import json
 import threading
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Dict, List, Optional
 
 import aiofiles
 import structlog
@@ -24,7 +23,7 @@ class FileLogStorage(LogStorageBackend):
 
     def __init__(
         self,
-        log_dir: Optional[str] = None,
+        log_dir: str | None = None,
         max_file_size: int = MAX_FILE_SIZE,
         retention_days: int = 7,
     ):
@@ -32,9 +31,9 @@ class FileLogStorage(LogStorageBackend):
         self.max_file_size = max_file_size
         self.retention_days = retention_days
         self._write_count = 0
-        self._current_files: Dict[str, Path] = {}
+        self._current_files: dict[str, Path] = {}
         self._lock = threading.Lock()
-        self._async_lock: Optional[asyncio.Lock] = None
+        self._async_lock: asyncio.Lock | None = None
         self._ensure_log_dir()
 
     def _ensure_log_dir(self) -> None:
@@ -98,7 +97,7 @@ class FileLogStorage(LogStorageBackend):
                     _logger.error("Failed to write to fallback log directory",
                                   error=str(fallback_e))
 
-    async def awrite_batch(self, records: List[LogRecord]) -> None:
+    async def awrite_batch(self, records: list[LogRecord]) -> None:
         if not records:
             return
 

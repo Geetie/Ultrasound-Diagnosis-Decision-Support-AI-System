@@ -12,7 +12,6 @@
 from __future__ import annotations
 
 import re
-from typing import List, Optional, Tuple
 
 import structlog
 
@@ -81,7 +80,7 @@ class CardiacSpecialistAgent(RAGSpecialistAgent):
     def _parse_response(
         self,
         llm_text: str,
-        chunks: List[KnowledgeChunk],
+        chunks: list[KnowledgeChunk],
     ) -> AgentResponse:
         """从 LLM 输出中抽取 LVEF 百分比和严重程度。
 
@@ -104,9 +103,9 @@ class CardiacSpecialistAgent(RAGSpecialistAgent):
         保留 LLM 原始输出供 FUS 轨道做最终决策。
         """
         normalized = normalize_grading_text(llm_text)
-        lvef_value: Optional[float] = None
-        severity: Optional[str] = None
-        trace_extra: List[str] = []  # 矛盾检测标签（追加到 reasoning_trace）
+        lvef_value: float | None = None
+        severity: str | None = None
+        trace_extra: list[str] = []  # 矛盾检测标签（追加到 reasoning_trace）
 
         # 1) 数值抽取
         for match in _LVEF_NUMBER_PATTERN.finditer(normalized):
@@ -129,7 +128,7 @@ class CardiacSpecialistAgent(RAGSpecialistAgent):
                     break
 
         # 3) 数值 → 严重程度推算
-        computed_severity: Optional[str] = None
+        computed_severity: str | None = None
         if lvef_value is not None:
             computed_severity = _lvef_to_severity(lvef_value)
             if severity is None:
@@ -236,7 +235,7 @@ class CardiacSpecialistAgent(RAGSpecialistAgent):
 
 
 __all__ = [
-    "CardiacSpecialistAgent",
     "LVEF_SEVERITY_LEVELS",
+    "CardiacSpecialistAgent",
     "_lvef_to_severity",
 ]

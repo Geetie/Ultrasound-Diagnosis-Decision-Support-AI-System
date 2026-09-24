@@ -4,13 +4,14 @@
 第二层：融合层 - LLM输出后额外校验脱敏
 第三层：SafetyGateway - 最终输出前脱敏兜底
 """
-import structlog
 import threading
-from typing import Any
 from enum import Enum
+from typing import Any
 
-from app.security.desensitization import desensitization_engine
+import structlog
+
 from app.fusion.desensitization import fusion_desensitization_engine
+from app.security.desensitization import desensitization_engine
 from app.services.safety_gateway_client import safety_gateway_client
 
 logger = structlog.get_logger()
@@ -30,10 +31,10 @@ class ThreeLayerDesensitizationResult:
         self.all_passed: bool = True
         self.security_check_failed: bool = False
         self.degraded_mode: bool = False
-    
+
     def add_layer_result(self, layer: DesensitizationLayer, result: dict[str, Any]):
         self.layer_results[layer] = result
-    
+
     def set_final_data(self, data: dict[str, Any]):
         self.final_data = data
 
@@ -44,7 +45,7 @@ class ThreeLayerDesensitizationResult:
 
 class ThreeLayerDesensitizationManager:
     """三层脱敏管理器"""
-    
+
     def __init__(self):
         logger.info("three_layer_desensitization_manager_initialized")
 
@@ -70,21 +71,21 @@ class ThreeLayerDesensitizationManager:
                     original_value=original_value,
                     desensitized_value=desens_value,
                 )
-    
+
     async def process_standardization_layer(
-        self, 
+        self,
         data: dict[str, Any],
         session_id: str | None = None,
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         """
         第一层：标准化层脱敏
-        
+
         在数据进入系统时立即执行，防止敏感数据在内部流转
         """
         logger.debug("standardization_layer_processing")
-        
+
         desensitized_data = desensitization_engine.desensitize_dict(data)
-        
+
         if session_id and desensitized_data != data:
             try:
                 from app.security.desensitization_restore import get_desensitization_restore_service
@@ -94,44 +95,44 @@ class ThreeLayerDesensitizationManager:
                 )
             except Exception as e:
                 logger.warning("failed_to_store_desensitization_mapping", error=str(e))
-        
+
         result = {
             "layer": DesensitizationLayer.STANDARDIZATION,
             "desensitized": desensitized_data,
             "modified": data != desensitized_data,
             "degraded": False,
         }
-        
+
         return desensitized_data, result
-    
+
     async def process_fusion_layer(
-        self, 
+        self,
         data: dict[str, Any],
         fusion_desensitization_degraded: bool = False,
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         """
         第二层：融合层脱敏
-        
+
         在LLM输出后执行，防止推理过程中意外生成的身份信息
-        
+
         Args:
             data: 待脱敏数据
             fusion_desensitization_degraded: 融合层脱敏服务是否降级
                 （由调用方根据融合层脱敏服务状态传入，True表示脱敏服务超时/不可用）
         """
         logger.debug("fusion_layer_processing")
-        
+
         desensitized_data = fusion_desensitization_engine.desensitize_dict(data)
-        
+
         result = {
             "layer": DesensitizationLayer.FUSION,
             "desensitized": desensitized_data,
             "modified": data != desensitized_data,
             "degraded": fusion_desensitization_degraded,
         }
-        
+
         return desensitized_data, result
-    
+
     async def process_safety_gateway_layer(
         self,
         patient_id: str,
@@ -167,7 +168,7 @@ class ThreeLayerDesensitizationManager:
         }
 
         return final_data, result
-    
+
     async def process_full_pipeline(
         self,
         patient_id: str,
@@ -178,7 +179,7 @@ class ThreeLayerDesensitizationManager:
     ) -> ThreeLayerDesensitizationResult:
         """
         执行完整的三层脱敏流程
-        
+
         Args:
             patient_id: 患者ID
             input_data: 原始输入数据（用于第一层）
@@ -189,17 +190,17 @@ class ThreeLayerDesensitizationManager:
                 True时SG将触发DESENSITIZATION_DEGRADED_SENSITIVE_DETECTED→E4005A1）
         """
         result = ThreeLayerDesensitizationResult()
-        
+
         # 第一层：标准化层 - 处理输入数据
         if input_data:
             standardized_data, layer1_result = await self.process_standardization_layer(input_data)
             result.add_layer_result(DesensitizationLayer.STANDARDIZATION, layer1_result)
         else:
             standardized_data = {}
-        
+
         # 使用LLM输出或标准化后的数据
         current_data = llm_output_data if llm_output_data is not None else (standardized_data if input_data else {})
-        
+
         # 第二层：融合层 - 处理LLM输出
         layer2_degraded = False
         if current_data:
@@ -211,7 +212,7 @@ class ThreeLayerDesensitizationManager:
             layer2_degraded = layer2_result.get("degraded", False)
         else:
             fused_data = current_data
-        
+
         # 第三层：SafetyGateway - 最终校验
         # desensitization_degraded语义：融合层脱敏服务是否降级（第2层），
         # 而非标准化层是否修改了数据（第1层modified≠降级）。
@@ -224,7 +225,7 @@ class ThreeLayerDesensitizationManager:
             )
             result.add_layer_result(DesensitizationLayer.SAFETY_GATEWAY, layer3_result)
             result.set_final_data(final_data)
-        
+
         # 语义修正：区分"已执行脱敏(modified)"与"安全校验失败(allowed=False)"
         # - 第1/2层 modified=True 表示脱敏引擎正常工作（预期行为）
         # - 第3层(SafetyGateway) check_result.allowed=False 表示安全校验未通过（真正失败）
@@ -243,14 +244,14 @@ class ThreeLayerDesensitizationManager:
         result.all_passed = not has_security_violation and not has_degradation
         result.security_check_failed = has_security_violation or has_degradation
         result.degraded_mode = has_degradation
-        
+
         logger.info(
             "three_layer_desensitization_completed",
             patient_id=patient_id,
             all_passed=result.all_passed,
             layers_processed=len(result.layer_results)
         )
-        
+
         return result
 
 

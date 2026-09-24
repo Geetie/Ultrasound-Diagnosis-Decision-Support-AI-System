@@ -19,7 +19,6 @@ import hmac
 import secrets
 import time
 from dataclasses import dataclass
-from typing import Optional
 
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
@@ -80,8 +79,8 @@ class EdgeDeviceAuth:
 
     def make_token(
         self,
-        now: Optional[float] = None,
-        nonce: Optional[str] = None,
+        now: float | None = None,
+        nonce: str | None = None,
     ) -> str:
         """生成短期认证 token。
 
@@ -96,7 +95,7 @@ class EdgeDeviceAuth:
         ).digest()
         return f"{payload}.{_b64url_encode(signature)}"
 
-    def verify_token(self, token: str, now: Optional[float] = None) -> bool:
+    def verify_token(self, token: str, now: float | None = None) -> bool:
         """校验 token（签名 + 设备绑定 + 过期）。"""
         now = time.time() if now is None else now
         try:
@@ -125,7 +124,7 @@ class EdgeDeviceAuth:
             return False
         return hmac.compare_digest(expected, provided)
 
-    def build_headers(self, now: Optional[float] = None) -> dict:
+    def build_headers(self, now: float | None = None) -> dict:
         """构建握手/请求认证头。"""
         return {
             HEADER_DEVICE_ID: self.device_id,
@@ -137,9 +136,9 @@ def verify_auth_headers(
     headers: dict,
     api_key_lookup,
     *,
-    now: Optional[float] = None,
+    now: float | None = None,
     salt: bytes = DEFAULT_HKDF_SALT,
-) -> Optional[str]:
+) -> str | None:
     """服务端校验认证头。
 
     Args:
@@ -167,10 +166,10 @@ def verify_auth_headers(
 __all__ = [
     "DEFAULT_HKDF_SALT",
     "DEFAULT_TOKEN_TTL_SECONDS",
-    "EdgeAuthError",
-    "EdgeDeviceAuth",
     "HEADER_DEVICE_ID",
     "HEADER_DEVICE_TOKEN",
+    "EdgeAuthError",
+    "EdgeDeviceAuth",
     "derive_session_key",
     "verify_auth_headers",
 ]

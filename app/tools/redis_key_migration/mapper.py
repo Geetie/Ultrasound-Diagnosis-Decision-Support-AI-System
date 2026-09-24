@@ -1,10 +1,6 @@
-from typing import Optional, List, Dict, Any
-import re
-import json
-import asyncio
-import time
-from datetime import datetime
 import logging
+import re
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -12,10 +8,10 @@ logger = logging.getLogger(__name__)
 class KeyMapper:
     """键名映射器 - 负责新旧键名转换"""
 
-    def __init__(self, mappings: List[Dict[str, Any]]):
+    def __init__(self, mappings: list[dict[str, Any]]):
         self.mappings = mappings
 
-    def get_new_key(self, old_key: str) -> Optional[str]:
+    def get_new_key(self, old_key: str) -> str | None:
         """根据旧键名获取新键名"""
         for mapping in self.mappings:
             pattern = mapping['old_pattern']
@@ -40,7 +36,7 @@ class KeyMapper:
             return new_pattern.replace('*', suffix)
         return new_pattern
 
-    def get_old_key(self, new_key: str) -> Optional[str]:
+    def get_old_key(self, new_key: str) -> str | None:
         """根据新键名获取旧键名（反向映射）"""
         for mapping in self.mappings:
             pattern = mapping['new_pattern']

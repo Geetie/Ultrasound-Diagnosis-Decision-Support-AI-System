@@ -1,11 +1,12 @@
-import time
 import logging
-import pytest
+import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from safety_gateway.health import HealthChecker
-from safety_gateway.desensitization import sg_desensitization_engine
+import pytest
+
 from safety_gateway.checker import get_safety_gateway_checker
+from safety_gateway.desensitization import sg_desensitization_engine
+from safety_gateway.health import HealthChecker
 
 logger = logging.getLogger(__name__)
 
@@ -84,8 +85,9 @@ class TestP99LatencyAlert:
 class TestOOMProtectionScenario:
 
     def test_oom_score_adj_configuration(self):
-        import yaml
         from pathlib import Path
+
+        import yaml
 
         compose_path = Path(__file__).parent.parent.parent / "docker-compose.dev.yml"
         if compose_path.exists():
@@ -102,7 +104,6 @@ class TestOOMProtectionScenario:
 
         health_checker = HealthChecker()
 
-        import time
         start = time.time()
         result = health_checker._check_rules_engine()
         elapsed = time.time() - start
@@ -141,7 +142,7 @@ class TestOOMProtectionScenario:
             pytest.skip(f"{oom_score_adj_path}不存在，跳过测试")
 
         try:
-            with open(oom_score_adj_path, "r") as f:
+            with open(oom_score_adj_path) as f:
                 oom_value = int(f.read().strip())
 
             assert oom_value == -1000, f"Expected oom_score_adj=-1000, got {oom_value}"
@@ -149,8 +150,8 @@ class TestOOMProtectionScenario:
             pytest.skip("无权限读取oom_score_adj")
 
     def test_memory_pressure_with_tracemalloc(self):
-        import tracemalloc
         import gc
+        import tracemalloc
 
         gc.collect()
         tracemalloc.start()
@@ -188,8 +189,9 @@ class TestDatabaseHealthCheck:
 
     @pytest.mark.asyncio
     async def test_check_database_healthy(self):
-        from safety_gateway.health import HealthChecker
         from unittest.mock import AsyncMock, MagicMock
+
+        from safety_gateway.health import HealthChecker
 
         checker = HealthChecker()
         mock_engine = MagicMock()
@@ -439,6 +441,7 @@ class TestFusionLayerHealthCheck:
     @pytest.mark.asyncio
     async def test_fusion_layer_timeout(self):
         import httpx
+
         from safety_gateway.health import HealthChecker
         checker = HealthChecker()
         with patch("safety_gateway.health.fusion_probe.httpx.AsyncClient") as mock_client_cls:
@@ -454,6 +457,7 @@ class TestFusionLayerHealthCheck:
     @pytest.mark.asyncio
     async def test_fusion_layer_connection_refused(self):
         import httpx
+
         from safety_gateway.health import HealthChecker
         checker = HealthChecker()
         with patch("safety_gateway.health.fusion_probe.httpx.AsyncClient") as mock_client_cls:
@@ -468,7 +472,7 @@ class TestFusionLayerHealthCheck:
 
     @pytest.mark.asyncio
     async def test_get_fusion_availability_cache(self):
-        import time
+
         from safety_gateway.health import HealthChecker
         checker = HealthChecker()
         checker._fusion_probe._available = True
@@ -478,7 +482,7 @@ class TestFusionLayerHealthCheck:
 
     @pytest.mark.asyncio
     async def test_get_fusion_availability_cache_expired(self):
-        import time
+
         from safety_gateway.health import HealthChecker
         checker = HealthChecker()
         checker._fusion_probe._available = True
@@ -497,8 +501,8 @@ class TestFusionLayerHealthCheck:
     @pytest.mark.asyncio
     async def test_fusion_self_detected_unavailable_in_full_check(self):
         from safety_gateway.checker import SafetyGatewayChecker, _reset_safety_gateway_checker
-        from safety_gateway.validation_result import ConsentStatus
         from safety_gateway.consent_checker import ConsentCheckResult
+        from safety_gateway.validation_result import ConsentStatus
         _reset_safety_gateway_checker()
         try:
             checker = SafetyGatewayChecker()

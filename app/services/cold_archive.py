@@ -22,9 +22,10 @@ from __future__ import annotations
 import json
 import time
 import uuid
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any
 
 import structlog
 from sqlalchemy import delete, func, select
@@ -91,9 +92,9 @@ class ColdArchiveResult:
     failed: bool = False
     adapter: str = ""
     message: str = ""
-    manifest_ids: List[str] = field(default_factory=list)
+    manifest_ids: list[str] = field(default_factory=list)
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         return {
             "category": self.category,
             "archived": self.archived,
@@ -106,8 +107,8 @@ class ColdArchiveResult:
         }
 
 
-def _serialize_row(row: Any, columns: Sequence[str]) -> Dict[str, Any]:
-    payload: Dict[str, Any] = {}
+def _serialize_row(row: Any, columns: Sequence[str]) -> dict[str, Any]:
+    payload: dict[str, Any] = {}
     for column in columns:
         value = getattr(row, column, None)
         if isinstance(value, datetime):
@@ -116,7 +117,7 @@ def _serialize_row(row: Any, columns: Sequence[str]) -> Dict[str, Any]:
     return payload
 
 
-def _to_jsonl(payloads: Sequence[Dict[str, Any]]) -> bytes:
+def _to_jsonl(payloads: Sequence[dict[str, Any]]) -> bytes:
     return "\n".join(
         json.dumps(item, ensure_ascii=False, default=str) for item in payloads
     ).encode("utf-8")
@@ -135,8 +136,8 @@ class ColdArchiveService:
         self,
         db: AsyncSession,
         *,
-        storage: Optional[ObjectStorageAdapter] = None,
-        batch_size: Optional[int] = None,
+        storage: ObjectStorageAdapter | None = None,
+        batch_size: int | None = None,
     ) -> None:
         self.db = db
         self._storage = storage
@@ -154,9 +155,9 @@ class ColdArchiveService:
     async def archive_audit_logs(
         self,
         *,
-        before: Optional[datetime] = None,
+        before: datetime | None = None,
         purge: bool = True,
-        max_sessions: Optional[int] = None,
+        max_sessions: int | None = None,
     ) -> ColdArchiveResult:
         """把超期会话的审计链移入冷层（每链保留创世记录作锚点）。
 
@@ -231,7 +232,7 @@ class ColdArchiveService:
 
     async def _find_archivable_sessions(
         self, threshold: datetime, limit_sessions: int
-    ) -> List[str]:
+    ) -> list[str]:
         """找出"整条链都已超期"的会话（避免链被时间切分）。
 
         关键操作记录不参与冷归档（其链路需实时可验）。
@@ -252,7 +253,7 @@ class ColdArchiveService:
 
     async def _collect_session_chain(
         self, session_id: str, threshold: datetime
-    ) -> tuple[List[Dict[str, Any]], List[AuditLog]]:
+    ) -> tuple[list[dict[str, Any]], list[AuditLog]]:
         """取某会话的全部超期记录（跳过创世记录作热层锚点）。"""
         stmt = (
             select(AuditLog)
@@ -280,8 +281,8 @@ class ColdArchiveService:
     async def archive_session_archives(
         self,
         *,
-        before: Optional[datetime] = None,
-        patient_type: Optional[str] = None,
+        before: datetime | None = None,
+        patient_type: str | None = None,
         purge: bool = True,
     ) -> ColdArchiveResult:
         """把到期的会话归档记录移入冷层。
@@ -362,12 +363,12 @@ class ColdArchiveService:
         self,
         *,
         category: str,
-        records: List[Dict[str, Any]],
-        rows: List[Any],
+        records: list[dict[str, Any]],
+        rows: list[Any],
         purge: bool,
         model: Any,
-        time_range: tuple[Optional[str], Optional[str]],
-    ) -> Optional[tuple[ColdArchiveManifest, int]]:
+        time_range: tuple[str | None, str | None],
+    ) -> tuple[ColdArchiveManifest, int] | None:
         """上传一批记录并（可选）清理热数据。
 
         Returns:
@@ -439,7 +440,7 @@ class ColdArchiveService:
     # 清单读取 / 恢复 / 校验
     # ------------------------------------------------------------------
 
-    async def get_manifest(self, manifest_id: str) -> Optional[ColdArchiveManifest]:
+    async def get_manifest(self, manifest_id: str) -> ColdArchiveManifest | None:
         stmt = select(ColdArchiveManifest).where(
             ColdArchiveManifest.manifest_id == manifest_id
         )
@@ -448,10 +449,10 @@ class ColdArchiveService:
     async def list_manifests(
         self,
         *,
-        category: Optional[str] = None,
-        status: Optional[str] = None,
+        category: str | None = None,
+        status: str | None = None,
         limit: int = 100,
-    ) -> List[ColdArchiveManifest]:
+    ) -> list[ColdArchiveManifest]:
         conditions = []
         if category:
             conditions.append(ColdArchiveManifest.category == category)
@@ -465,7 +466,7 @@ class ColdArchiveService:
         )
         return list((await self.db.execute(stmt)).scalars().all())
 
-    async def restore_manifest(self, manifest_id: str) -> List[Dict[str, Any]]:
+    async def restore_manifest(self, manifest_id: str) -> list[dict[str, Any]]:
         """从冷层读回一批记录（校验 checksum 后再返回）。"""
         manifest = await self.get_manifest(manifest_id)
         if manifest is None:
@@ -487,7 +488,7 @@ class ColdArchiveService:
         text = payload.decode("utf-8")
         return [json.loads(line) for line in text.splitlines() if line.strip()]
 
-    async def verify_manifest(self, manifest_id: str) -> Dict[str, Any]:
+    async def verify_manifest(self, manifest_id: str) -> dict[str, Any]:
         """校验冷层对象的存在性 / 校验和 / 记录数。"""
         manifest = await self.get_manifest(manifest_id)
         if manifest is None:
@@ -521,7 +522,7 @@ class ColdArchiveService:
             "status": manifest.status,
         }
 
-    async def stats(self) -> Dict[str, Any]:
+    async def stats(self) -> dict[str, Any]:
         """冷归档总览（运维面板口径）。"""
         stmt = select(
             ColdArchiveManifest.category,
@@ -530,7 +531,7 @@ class ColdArchiveService:
             func.coalesce(func.sum(ColdArchiveManifest.record_count), 0),
         ).group_by(ColdArchiveManifest.category, ColdArchiveManifest.status)
         rows = (await self.db.execute(stmt)).all()
-        by_category: Dict[str, Dict[str, int]] = {}
+        by_category: dict[str, dict[str, int]] = {}
         for category, status, count, records in rows:
             entry = by_category.setdefault(str(category), {})
             entry[str(status)] = int(count)
@@ -538,7 +539,7 @@ class ColdArchiveService:
         return {"by_category": by_category}
 
 
-def _parse_iso(value: Optional[str]) -> Optional[datetime]:
+def _parse_iso(value: str | None) -> datetime | None:
     if not value:
         return None
     try:

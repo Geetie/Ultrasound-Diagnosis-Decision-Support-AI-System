@@ -11,9 +11,6 @@ matching per the §5.5 design spec.
 from __future__ import annotations
 
 import re
-from typing import List, Optional
-
-from app.knowledge.protocols import KnowledgeChunk
 
 # Lazy import to avoid circular dependency at module level.
 # UDAFVocabulary is in app.knowledge.vocabulary which is safe to import.
@@ -27,7 +24,7 @@ _CJK_RE = re.compile(r"[\u4e00-\u9fff]+")
 _NON_WORD_RE = re.compile(r"[^A-Za-z0-9]+")
 
 
-def tokenize_simple(text: str) -> List[str]:
+def tokenize_simple(text: str) -> list[str]:
     """Simple CJK+alphanumeric tokenizer with 2-char window for CJK.
 
     This is the baseline tokenizer used when no UDAFVocabulary is available.
@@ -43,7 +40,7 @@ def tokenize_simple(text: str) -> List[str]:
     if not text:
         return []
     text = text.lower()
-    tokens: List[str] = []
+    tokens: list[str] = []
     for cjk_match in _CJK_RE.finditer(text):
         cjk = cjk_match.group(0)
         tokens.append(cjk)
@@ -82,7 +79,7 @@ class UDAFMaxMatchTokenizer:
 
     def __init__(
         self,
-        vocabulary: Optional[object] = None,
+        vocabulary: object | None = None,
         max_term_len: int = 10,
     ):
         self._vocab = vocabulary
@@ -98,7 +95,7 @@ class UDAFMaxMatchTokenizer:
             except Exception:
                 pass  # Graceful degradation if vocabulary API differs.
 
-    def tokenize(self, text: str) -> List[str]:
+    def tokenize(self, text: str) -> list[str]:
         """Tokenize using forward maximum matching + synonym expansion."""
         if not text:
             return []
@@ -106,7 +103,7 @@ class UDAFMaxMatchTokenizer:
             return tokenize_simple(text)
 
         text_lower = text.lower()
-        tokens: List[str] = []
+        tokens: list[str] = []
         i = 0
         n = len(text_lower)
 
@@ -161,7 +158,7 @@ class UDAFMaxMatchTokenizer:
         return tokens
 
 
-def extract_chinese_phrases(text: str) -> List[str]:
+def extract_chinese_phrases(text: str) -> list[str]:
     """Extract Chinese phrases with 2-char sliding window + full phrases.
 
     CJK-only: this function only extracts Chinese character sequences,
@@ -172,7 +169,7 @@ def extract_chinese_phrases(text: str) -> List[str]:
     """
     if not text:
         return []
-    phrases: List[str] = []
+    phrases: list[str] = []
     for m in _CJK_RE.finditer(text):
         cjk = m.group(0)
         for i in range(len(cjk) - 1):

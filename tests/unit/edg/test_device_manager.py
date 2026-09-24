@@ -1,5 +1,5 @@
 """T-GB-EDG-02 边缘端设备管理（心跳 + 健康探测 + 隔离恢复）单测。"""
-from typing import Any, Dict, List
+from typing import Any
 
 import pytest
 
@@ -13,10 +13,10 @@ class _FakeTransport:
     """记录调用；可切换为持续失败。"""
 
     def __init__(self, fail=False):
-        self.calls: List[Dict[str, Any]] = []
+        self.calls: list[dict[str, Any]] = []
         self.fail = fail
 
-    async def post(self, path: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+    async def post(self, path: str, payload: dict[str, Any]) -> dict[str, Any]:
         self.calls.append({"path": path, "payload": payload})
         if self.fail:
             raise ConnectionError("backend unreachable")

@@ -1,31 +1,29 @@
-import pytest
-from unittest.mock import AsyncMock, Mock, patch, MagicMock
 from datetime import datetime, timezone
+from unittest.mock import AsyncMock, Mock, patch
+
+import pytest
 
 from app.api.v1.diagnosis import (
-    _generate_request_id,
-    _push_diagnosis_result,
     IDEMPOTENCY_TTL_SECONDS,
     RESULT_CACHE_TTL_SECONDS,
     RESULT_TIMEOUT_SECONDS,
+    _generate_request_id,
+    _push_diagnosis_result,
 )
-from app.config.settings import settings as app_settings
 from app.api.v1.errors import (
-    PatientNotConsentedException,
     PatientConsentWithdrawnException,
-    NotFoundException,
-    RateLimitExceededException,
+    PatientNotConsentedException,
     SafetyGatewayUnavailableException,
 )
+from app.config.settings import settings as app_settings
 from app.models.schemas import (
-    DiagnosisRequest,
-    DiagnosisRequestResponse,
-    DiagnosisResult,
-    ResponseTier,
     ConsentStatus,
-    FusionStatus,
-    DesensitizationStatus,
     ConsistencyFlag,
+    DesensitizationStatus,
+    DiagnosisRequest,
+    DiagnosisResult,
+    FusionStatus,
+    ResponseTier,
     RetryStrategy,
 )
 

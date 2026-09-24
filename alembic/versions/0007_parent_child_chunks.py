@@ -10,9 +10,9 @@ Adds Parent-Child Chunking support per §5.5 design spec:
 
 Existing rows are backfilled with chunk_type='child' (the default for flat chunks).
 """
-from alembic import op
 import sqlalchemy as sa
 
+from alembic import op
 
 revision = '0007'
 down_revision = '0006'

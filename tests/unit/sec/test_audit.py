@@ -1,21 +1,21 @@
 import asyncio
 import hashlib
 import json
-import threading
 import time
-import pytest
 from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
+import pytest
+
 pytestmark = [pytest.mark.track_sec, pytest.mark.sec_domain_audit]
 
-from app.security.refresh_token import MemoryRefreshTokenStore
-from app.security.hsm import HSMManager, DegradedPhase
-from app.security.desensitization import DesensitizationEngine
 from app.fusion.desensitization import FusionDesensitizationEngine
+from app.security.desensitization import DesensitizationEngine
+from app.security.hsm import DegradedPhase, HSMManager
+from app.security.refresh_token import MemoryRefreshTokenStore
 from app.security.three_layer_desensitization import (
-    ThreeLayerDesensitizationManager,
     DesensitizationLayer,
+    ThreeLayerDesensitizationManager,
 )
 
 
@@ -23,6 +23,7 @@ class TestAuditChainIntegrity:
 
     def test_audit_service_verify_chain_signature(self):
         import inspect
+
         from app.services.audit_service import AuditService
         sig = inspect.signature(AuditService.verify_chain)
         params = list(sig.parameters.keys())
@@ -108,8 +109,9 @@ class TestDeterministicHashSerialization:
         assert h1 == h2
 
     def test_audit_service_uses_json_dumps(self):
-        from app.services.audit_service import AuditService
         import inspect
+
+        from app.services.audit_service import AuditService
         source = inspect.getsource(AuditService)
         assert "json.dumps" in source
 
@@ -118,6 +120,7 @@ class TestRecordIdNoCollision:
 
     def test_record_id_uses_full_uuid_format(self):
         import uuid
+
         from app.security.desensitization_restore import DesensitizationRestoreService
         service = DesensitizationRestoreService()
         record_id = str(uuid.uuid4())
@@ -217,7 +220,7 @@ class TestAuthRedisModeAwait:
 class TestDeviceRepositoryApiKeyHashing:
 
     def test_hash_api_key_deterministic(self):
-        from app.repositories.device_repository import _hash_api_key, _verify_api_key
+        from app.repositories.device_repository import _hash_api_key
         result1 = _hash_api_key("test_key_123", salt="fixed_salt")
         result2 = _hash_api_key("test_key_123", salt="fixed_salt")
         assert result1 == result2
@@ -249,12 +252,11 @@ class TestDeviceRepositoryApiKeyHashing:
 
     def test_verify_api_key_legacy_no_salt(self):
         from app.repositories.device_repository import _verify_api_key
-        legacy_hash = hashlib.sha256("test_key_123".encode()).hexdigest()
+        legacy_hash = hashlib.sha256(b"test_key_123").hexdigest()
         assert _verify_api_key(legacy_hash, "test_key_123") is True
 
     async def test_register_device_returns_raw_key_stores_hash(self):
-        from app.repositories.device_repository import DeviceRepository
-        from app.repositories.device_repository import _hash_api_key, _verify_api_key
+        from app.repositories.device_repository import DeviceRepository, _verify_api_key
         db = AsyncMock()
         repo = DeviceRepository(db)
         device = Mock()
@@ -284,8 +286,7 @@ class TestDeviceRepositoryApiKeyHashing:
         assert _verify_api_key(stored_hash, raw_key) is True
 
     async def test_authenticate_device_uses_hash_comparison(self):
-        from app.repositories.device_repository import DeviceRepository
-        from app.repositories.device_repository import _hash_api_key
+        from app.repositories.device_repository import DeviceRepository, _hash_api_key
         db = AsyncMock()
         repo = DeviceRepository(db)
 
@@ -417,7 +418,6 @@ class TestHSMRedisRestorationPrefix:
 
     @pytest.mark.asyncio
     async def test_restore_keys_prefix_stripping_logic(self):
-        from app.config.redis_keys import RedisKey
         from app.config.settings import settings
 
         prefix = settings.redis_key_prefix
@@ -434,8 +434,8 @@ class TestHSMRedisRestorationPrefix:
 
     @pytest.mark.asyncio
     async def test_restore_keys_all_slot_prefixes(self):
-        from app.security.hsm import KeySlot
         from app.config.settings import settings
+        from app.security.hsm import KeySlot
 
         prefix = settings.redis_key_prefix
         prefix_to_strip = f"{prefix}:hsm:keys:"
@@ -454,8 +454,9 @@ class TestDesensKeyRotation:
         assert hasattr(HSMManager, '_check_desensitization_key_rotation')
 
     def test_desens_key_rotation_called_in_cleanup(self):
-        from app.security.hsm import HSMManager
         import inspect
+
+        from app.security.hsm import HSMManager
         source = inspect.getsource(HSMManager._start_key_cleanup_timer)
         assert "_check_desensitization_key_rotation" in source, "Desens key rotation check should be called in cleanup timer"
 
@@ -612,8 +613,9 @@ class TestDesensitizationMappingKeySpec:
 class TestReEncryptKeyVersion:
 
     def test_re_encrypt_uses_actual_version(self):
-        from app.security.desensitization_restore import DesensitizationRestoreService
         import inspect
+
+        from app.security.desensitization_restore import DesensitizationRestoreService
         source = inspect.getsource(DesensitizationRestoreService.re_encrypt_with_new_key)
         assert "actual_version" in source, "re_encrypt_with_new_key should use actual_version"
         lines = source.split('\n')
@@ -807,6 +809,7 @@ class TestConsentAPIPermissionControl:
 
     def test_consent_update_requires_admin_role(self):
         import inspect
+
         from app.api.v1.consent import update_consent
         source = inspect.getsource(update_consent)
         assert "RoleChecker" in source, "update_consent should use RoleChecker dependency"
@@ -814,6 +817,7 @@ class TestConsentAPIPermissionControl:
 
     def test_consent_query_requires_admin_role(self):
         import inspect
+
         from app.api.v1.consent import get_consent
         source = inspect.getsource(get_consent)
         assert "RoleChecker" in source, "get_consent should use RoleChecker dependency"
@@ -825,7 +829,6 @@ class TestConsentTimeoutReturnsDenied:
     @pytest.mark.asyncio
     async def test_timeout_returns_none_with_timeout_flag(self):
         from safety_gateway.consent_checker import ConsentChecker
-        from safety_gateway.validation_result import ConsentStatus
         from safety_gateway.errors import DatabaseQueryTimeoutError
 
         checker = ConsentChecker()
@@ -862,14 +865,13 @@ class TestConsentWithdrawalBroadcastRetry:
         mock_pool = AsyncMock()
         mock_pool.get_client = AsyncMock(return_value=mock_redis)
 
-        with patch('app.config.redis.RedisPool', mock_pool):
-            with patch('asyncio.sleep', new_callable=AsyncMock):
-                await repo._publish_consent_withdrawal(
-                    patient_id="P001",
-                    operator_id="admin",
-                    withdrawn_at=datetime.now(timezone.utc),
-                    consent_version="1.0",
-                )
+        with patch('app.config.redis.RedisPool', mock_pool), patch('asyncio.sleep', new_callable=AsyncMock):
+            await repo._publish_consent_withdrawal(
+                patient_id="P001",
+                operator_id="admin",
+                withdrawn_at=datetime.now(timezone.utc),
+                consent_version="1.0",
+            )
 
         assert call_count == 3, f"应重试3次，实际调用{call_count}次"
         mock_db.add.assert_called()
@@ -881,7 +883,6 @@ class TestConsentWithdrawalBoundaryConditions:
     async def test_timeout_triggers_degraded_not_failed(self):
         from safety_gateway.checker import SafetyGatewayChecker
         from safety_gateway.consent_checker import ConsentCheckResult
-        from safety_gateway.validation_result import CheckResultStatus
 
         checker = SafetyGatewayChecker()
         with patch.object(checker._consent_checker, 'check_consent_status',
@@ -897,9 +898,8 @@ class TestConsentWithdrawalBoundaryConditions:
     @pytest.mark.asyncio
     async def test_withdrawn_always_fails(self):
         from safety_gateway.checker import SafetyGatewayChecker
-        from safety_gateway.validation_result import ConsentStatus
         from safety_gateway.consent_checker import ConsentCheckResult
-        from safety_gateway.validation_result import CheckResultStatus
+        from safety_gateway.validation_result import CheckResultStatus, ConsentStatus
 
         checker = SafetyGatewayChecker()
         with patch.object(checker._consent_checker, 'check_consent_status',
@@ -914,9 +914,8 @@ class TestConsentWithdrawalBoundaryConditions:
     @pytest.mark.asyncio
     async def test_withdrawn_overrides_timeout(self):
         from safety_gateway.checker import SafetyGatewayChecker
-        from safety_gateway.validation_result import ConsentStatus
         from safety_gateway.consent_checker import ConsentCheckResult
-        from safety_gateway.validation_result import CheckResultStatus
+        from safety_gateway.validation_result import CheckResultStatus, ConsentStatus
 
         checker = SafetyGatewayChecker()
         with patch.object(checker._consent_checker, 'check_consent_status',
@@ -933,7 +932,7 @@ class TestConsentWithdrawalBoundaryConditions:
 class TestConsentUpdateNoOperatorIdInBody:
 
     def test_consent_update_request_no_operator_id(self):
-        from app.models.schemas import ConsentUpdateRequest, ConsentAction
+        from app.models.schemas import ConsentUpdateRequest
         fields = ConsentUpdateRequest.model_fields
         assert "patient_id" in fields
         assert "action" in fields
@@ -942,8 +941,8 @@ class TestConsentUpdateNoOperatorIdInBody:
 class TestIdGeneration:
 
     async def test_consent_record_id_not_timestamp(self):
-        from app.repositories.consent_repository import ConsentRepository
         from app.models.schemas import ConsentStatus
+        from app.repositories.consent_repository import ConsentRepository
         db = AsyncMock()
         db.flush = AsyncMock()
         db.add = Mock()
@@ -979,8 +978,8 @@ class TestDataCleanupHandlerScanPattern:
 
     @pytest.mark.asyncio
     async def test_scan_pattern_includes_prefix(self):
-        from app.security.consent_withdrawal_consumer import DataCleanupHandler, ConsentWithdrawalEvent
         from app.config.redis_keys import RedisKey
+        from app.security.consent_withdrawal_consumer import ConsentWithdrawalEvent, DataCleanupHandler
 
         handler = DataCleanupHandler()
         event = ConsentWithdrawalEvent(
@@ -1010,8 +1009,8 @@ class TestCircuitBreakerThreadSafety:
 
     @pytest.mark.asyncio
     async def test_concurrent_record_failure(self):
+
         from safety_gateway.circuit_breaker import CircuitBreaker, CircuitBreakerState
-        import asyncio
 
         breaker = CircuitBreaker(failure_threshold=100)
 
@@ -1024,8 +1023,8 @@ class TestCircuitBreakerThreadSafety:
 class TestSafetyGatewayHeterogeneousRedundancy:
 
     def test_sg_phone_pattern_differs_from_main(self):
-        from safety_gateway.desensitization import sg_desensitization_engine
         from app.security.desensitization import get_desensitization_engine
+        from safety_gateway.desensitization import sg_desensitization_engine
         main_engine = get_desensitization_engine()
 
         main_phone_rule = None
@@ -1089,8 +1088,9 @@ class TestSafetyGatewayClient:
         assert response["degraded_mode"] is True
 
     async def test_check_output_timeout_returns_degraded(self):
-        from app.services.safety_gateway_client import SafetyGatewayClient
         import httpx
+
+        from app.services.safety_gateway_client import SafetyGatewayClient
         with patch("app.services.safety_gateway_client.settings") as mock_settings:
             mock_settings.safety_gateway_host = "0.0.0.0"
             mock_settings.safety_gateway_port = 9001
@@ -1132,20 +1132,23 @@ class TestErrorCodeDeep:
 class TestHttpErrorCodeMapping:
 
     def test_401_maps_to_e1003(self):
-        from app.api.v1.errors import http_exception_handler
         import inspect
+
+        from app.api.v1.errors import http_exception_handler
         source = inspect.getsource(http_exception_handler)
         assert '"401": "E1003"' in source or "401: \"E1003\"" in source
 
     def test_403_maps_to_e1004(self):
-        from app.api.v1.errors import http_exception_handler
         import inspect
+
+        from app.api.v1.errors import http_exception_handler
         source = inspect.getsource(http_exception_handler)
         assert "403" in source and "E1008" in source
 
     def test_422_maps_to_e1006(self):
-        from app.api.v1.errors import http_exception_handler
         import inspect
+
+        from app.api.v1.errors import http_exception_handler
         source = inspect.getsource(http_exception_handler)
         assert '"422": "E1006"' in source or "422: \"E1006\"" in source
 
@@ -1154,6 +1157,7 @@ class TestGeneralExceptionHandlerNoLeak:
 
     def test_general_exception_handler_detail_is_none(self):
         import inspect
+
         from app.api.v1.errors import general_exception_handler
         source = inspect.getsource(general_exception_handler)
         assert 'detail=str(exc)' not in source
@@ -1196,8 +1200,13 @@ class TestRateLimitBucketCleanup:
         assert bucket.last_access > old_access
 
     def test_cleanup_expired_buckets(self):
-        from app.config.rate_limit import TokenBucket, BUCKET_MAX_AGE_SECONDS, _buckets, _last_cleanup, _cleanup_expired_buckets
         import app.config.rate_limit as rl_module
+        from app.config.rate_limit import (
+            BUCKET_MAX_AGE_SECONDS,
+            TokenBucket,
+            _buckets,
+            _cleanup_expired_buckets,
+        )
 
         old_bucket = TokenBucket(capacity=10, refill_rate=1.0)
         old_bucket.last_access = time.monotonic() - BUCKET_MAX_AGE_SECONDS - 100
@@ -1220,8 +1229,8 @@ class TestRateLimitBucketCleanup:
         _buckets.clear()
 
     def test_cleanup_interval_respected(self):
-        from app.config.rate_limit import BUCKET_CLEANUP_INTERVAL_SECONDS, _buckets, _last_cleanup
         import app.config.rate_limit as rl_module
+        from app.config.rate_limit import _buckets
 
         rl_module._last_cleanup = time.monotonic()
 
@@ -1241,12 +1250,14 @@ class TestRateLimitUserIdHashing:
 
     def test_get_user_id_uses_sha256(self):
         import inspect
+
         from app.config.rate_limit import _get_user_id_from_request
         source = inspect.getsource(_get_user_id_from_request)
         assert "hashlib.sha256" in source
 
     def test_get_user_id_no_truncation(self):
         import inspect
+
         from app.config.rate_limit import _get_user_id_from_request
         source = inspect.getsource(_get_user_id_from_request)
         assert "auth_header[7:20]" not in source
@@ -1368,42 +1379,49 @@ class TestDoubleCommitFix:
 
     def test_diagnosis_submit_no_manual_commit(self):
         import inspect
+
         from app.api.v1 import diagnosis
         source = inspect.getsource(diagnosis.submit_diagnosis_request)
         assert "await db.commit()" not in source
 
     def test_consent_update_no_manual_commit(self):
         import inspect
+
         from app.api.v1 import consent
         source = inspect.getsource(consent.update_consent)
         assert "await db.commit()" not in source
 
     def test_feedback_submit_no_manual_commit(self):
         import inspect
+
         from app.api.v1 import feedback
         source = inspect.getsource(feedback.submit_feedback)
         assert "await db.commit()" not in source
 
     def test_session_create_no_manual_commit(self):
         import inspect
+
         from app.api.v1 import session
         source = inspect.getsource(session.create_session)
         assert "await db.commit()" not in source
 
     def test_session_update_no_manual_commit(self):
         import inspect
+
         from app.api.v1 import session
         source = inspect.getsource(session.update_session)
         assert "await db.commit()" not in source
 
     def test_imaging_upload_no_manual_commit(self):
         import inspect
+
         from app.api.v1 import imaging
         source = inspect.getsource(imaging.upload_dicom)
         assert "await db.commit()" not in source
 
     def test_imaging_stream_no_manual_commit(self):
         import inspect
+
         from app.api.v1 import imaging
         source = inspect.getsource(imaging.stream_dicom_frame)
         assert "await db.commit()" not in source
@@ -1417,8 +1435,9 @@ class TestConfigUsedInConnections:
         assert pool.size() > 0
 
     def test_redis_client_uses_max_connections(self):
-        from app.config.redis import RedisPool
         import redis.asyncio as redis
+
+        from app.config.redis import RedisPool
         with patch("app.config.redis.settings") as mock_settings:
             mock_settings.redis_url = "redis://localhost:6379/0"
             mock_settings.redis_pool_max_connections = 42
@@ -1440,6 +1459,7 @@ class TestHealthCheckReusesConnections:
 
     def test_health_check_imports_redis_pool(self):
         import inspect
+
         from app.api.v1 import health
         source = inspect.getsource(health)
         assert "RedisPool" in source
@@ -1447,6 +1467,7 @@ class TestHealthCheckReusesConnections:
 
     def test_health_check_imports_async_engine(self):
         import inspect
+
         from app.api.v1 import health
         source = inspect.getsource(health)
         assert "async_engine" in source
@@ -1457,6 +1478,7 @@ class TestValidatorNoUnusedImport:
 
     def test_validator_no_validation_error_import(self):
         import inspect
+
         from app.config import validator
         source = inspect.getsource(validator)
         assert "from pydantic import ValidationError" not in source
@@ -1466,6 +1488,7 @@ class TestDatabaseInitDbIncludesFeedbackRecord:
 
     def test_init_db_imports_feedback_record(self):
         import inspect
+
         from app.config.database import init_db
         source = inspect.getsource(init_db)
         assert "FeedbackRecord" in source
@@ -1475,6 +1498,7 @@ class TestDiagnosisKnowledgeBaseVersion:
 
     def test_diagnosis_result_no_knowledge_ids_index(self):
         import inspect
+
         from app.api.v1 import diagnosis
         source = inspect.getsource(diagnosis.get_diagnosis_result)
         assert "knowledge_ids[0]" not in source
@@ -1488,6 +1512,7 @@ class TestDuplicateSafetyEventCodeRemoved:
 
     def test_consent_repo_uses_safety_service(self):
         import inspect
+
         from app.repositories.consent_repository import ConsentRepository
         source = inspect.getsource(ConsentRepository.create_consent)
         assert "SafetyService" in source
@@ -1555,18 +1580,21 @@ class TestDicomStorageService:
 
     def test_imaging_uses_dicom_storage(self):
         import inspect
+
         from app.api.v1 import imaging
         source = inspect.getsource(imaging.upload_dicom)
         assert "dicom_storage" in source
 
     def test_imaging_has_file_size_check(self):
         import inspect
+
         from app.api.v1 import imaging
         source = inspect.getsource(imaging.upload_dicom)
         assert "dicom_storage_max_file_size" in source
 
     def test_imaging_uses_bytesio_for_pydicom(self):
         import inspect
+
         from app.api.v1 import imaging
         source = inspect.getsource(imaging.parse_and_validate_dicom)
         assert "BytesIO" in source
@@ -1598,7 +1626,7 @@ class TestDicomStorageConfig:
 class TestFeedbackReviewerIdFromJWT:
 
     def test_feedback_submission_reviewer_id_optional(self):
-        from app.models.schemas import FeedbackSubmission, FeedbackType, FeedbackLevel, FeedbackContent
+        from app.models.schemas import FeedbackContent, FeedbackLevel, FeedbackSubmission, FeedbackType
         fb = FeedbackSubmission(
             request_id="req_001",
             session_id="s001",
@@ -1618,12 +1646,14 @@ class TestWebSocketShortSession:
 
     def test_nav_endpoint_no_depends_get_db_session(self):
         import inspect
+
         from app.api.websocket import nav
         source = inspect.getsource(nav.websocket_nav_endpoint)
         assert "Depends(get_db_session)" not in source
 
     def test_nav_endpoint_uses_async_session_local(self):
         import inspect
+
         from app.api.websocket import nav
         source = inspect.getsource(nav.websocket_nav_endpoint)
         assert "AsyncSessionLocal" in source
@@ -1634,6 +1664,7 @@ class TestWebSocketShortSession:
 
     def test_nav_no_long_lived_db_parameter(self):
         import inspect
+
         from app.api.websocket import nav
         sig = inspect.signature(nav.websocket_nav_endpoint)
         param_names = list(sig.parameters.keys())
@@ -1657,6 +1688,7 @@ class TestAuditServiceDeepV2:
 
     def test_verify_chain_accepts_session_id(self):
         import inspect
+
         from app.services.audit_service import AuditService
         sig = inspect.signature(AuditService.verify_chain)
         params = list(sig.parameters.keys())

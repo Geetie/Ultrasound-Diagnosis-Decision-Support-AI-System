@@ -4,9 +4,6 @@
 """
 
 import json
-import math
-import os
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -14,11 +11,8 @@ import pytest
 pytestmark = [pytest.mark.track_llm, pytest.mark.track_obs]
 
 from app.inference.drift_detector import (
-    DriftAlert,
     DriftDetector,
-    DriftReport,
     DriftSeverity,
-    MetricSnapshot,
     MetricType,
     PerformanceBaseline,
 )

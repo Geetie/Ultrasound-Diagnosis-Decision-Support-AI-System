@@ -11,10 +11,10 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 from app.inference.verification_config import (
-    get_default_verification_config,
-    save_config_to_json,
     get_default_boundary_config,
     get_default_forbidden_terms_config,
+    get_default_verification_config,
+    save_config_to_json,
 )
 
 

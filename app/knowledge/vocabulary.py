@@ -6,19 +6,18 @@ TODO(Phase0A): DESIGN-001 - Implement UHAT 4-level hierarchy (organ->system->fea
 TODO(Phase0A): DESIGN-002 - Add term review/approval workflow
 TODO(Phase0A): DESIGN-003 - Add unmapped term review queue for continuous vocabulary improvement
 """
-from enum import Enum
-from typing import Dict, List, Optional, Set
 from dataclasses import dataclass
+from enum import Enum
 
 
 @dataclass
 class TermMapping:
     """Term mapping with synonyms and related terms."""
     standard: str
-    synonyms: List[str]
-    related_terms: List[str]
-    organ: Optional[str] = None
-    category: Optional[str] = None
+    synonyms: list[str]
+    related_terms: list[str]
+    organ: str | None = None
+    category: str | None = None
 
 
 class Organ(str, Enum):
@@ -92,7 +91,7 @@ class MeasurementType(str, Enum):
 # 而 ``none`` / ``mixed`` / ``irregular`` 等短名已被既有类别占用（既有实现是
 # 后注册者覆盖先注册者：``calcification.none``、``vascularity.mixed`` 即如此）。
 # 直接复用短名会静默夺走这些类别的术语，破坏既有抽取行为。
-POSTERIOR_ACOUSTIC_ENUM_MAP: Dict[str, str] = {
+POSTERIOR_ACOUSTIC_ENUM_MAP: dict[str, str] = {
     "posterior_enhancement": "enhancement",
     "posterior_attenuation": "attenuation",
     "posterior_shadowing": "shadowing",
@@ -105,7 +104,7 @@ POSTERIOR_ACOUSTIC_ENUM_MAP: Dict[str, str] = {
 DERIVED_MEASUREMENT_CATEGORY = "derived_measurement"
 
 
-def posterior_acoustic_value(standard_term: Optional[str]) -> Optional[str]:
+def posterior_acoustic_value(standard_term: str | None) -> str | None:
     """把 UDAF 标准术语映射为契约枚举值（``app.models.schemas.PosteriorAcoustic``）。
 
     非后方回声术语（含 ``None``）返回 ``None``，调用方据此判断"未识别"。
@@ -197,8 +196,8 @@ class UDAFVocabulary:
     """
 
     def __init__(self):
-        self._vocab: Dict[str, TermMapping] = {}
-        self._reverse_lookup: Dict[str, str] = {}
+        self._vocab: dict[str, TermMapping] = {}
+        self._reverse_lookup: dict[str, str] = {}
         self._initialize_vocabulary()
 
     def _initialize_vocabulary(self):
@@ -406,8 +405,8 @@ class UDAFVocabulary:
         for standard in standards:
             self._add_mapping(standard, [], [], category=DERIVED_MEASUREMENT_CATEGORY)
 
-    def _add_mapping(self, standard: str, synonyms: List[str], related_terms: List[str],
-                     organ: Optional[str] = None, category: Optional[str] = None):
+    def _add_mapping(self, standard: str, synonyms: list[str], related_terms: list[str],
+                     organ: str | None = None, category: str | None = None):
         """Add a term mapping to the vocabulary."""
         mapping = TermMapping(
             standard=standard,
@@ -421,7 +420,7 @@ class UDAFVocabulary:
             self._reverse_lookup[synonym] = standard
 
     # BUG-001 fix: type annotation changed from str to Optional[str]
-    def normalize(self, term: Optional[str]) -> Optional[str]:
+    def normalize(self, term: str | None) -> str | None:
         """
         Normalize a term to its standard form.
 
@@ -438,7 +437,7 @@ class UDAFVocabulary:
             return term_clean
         return self._reverse_lookup.get(term_clean)
 
-    def get_mapping(self, standard_term: str) -> Optional[TermMapping]:
+    def get_mapping(self, standard_term: str) -> TermMapping | None:
         """
         Get the full mapping for a standard term.
 
@@ -450,7 +449,7 @@ class UDAFVocabulary:
         """
         return self._vocab.get(standard_term)
 
-    def get_synonyms(self, term: str) -> List[str]:
+    def get_synonyms(self, term: str) -> list[str]:
         """
         Get all synonyms for a term (standard or synonym).
 
@@ -466,7 +465,7 @@ class UDAFVocabulary:
         mapping = self._vocab.get(normalized)
         return mapping.synonyms if mapping else []
 
-    def get_terms_by_category(self, category: str) -> List[str]:
+    def get_terms_by_category(self, category: str) -> list[str]:
         """
         Get all standard terms in a category.
 
@@ -482,7 +481,7 @@ class UDAFVocabulary:
         ]
 
     # BUG-003 fix: handle both Organ enum and plain string comparison
-    def get_terms_by_organ(self, organ: str) -> List[str]:
+    def get_terms_by_organ(self, organ: str) -> list[str]:
         """
         Get all standard terms for an organ.
 
@@ -498,7 +497,7 @@ class UDAFVocabulary:
             if mapping.organ == organ_value
         ]
 
-    def coverage_rate(self, terms: List[str]) -> float:
+    def coverage_rate(self, terms: list[str]) -> float:
         """
         Calculate terminology mapping coverage rate.
 
@@ -514,7 +513,7 @@ class UDAFVocabulary:
         return normalized_count / len(terms)
 
     @property
-    def all_standard_terms(self) -> Set[str]:
+    def all_standard_terms(self) -> set[str]:
         """Get all standard terms in the vocabulary."""
         return set(self._vocab.keys())
 
@@ -535,7 +534,7 @@ class UDAFVocabulary:
         return False
 
     # STYLE-004 fix: public API for iterating all synonyms
-    def get_all_synonyms(self) -> Set[str]:
+    def get_all_synonyms(self) -> set[str]:
         """
         Get all synonym strings in the vocabulary.
 

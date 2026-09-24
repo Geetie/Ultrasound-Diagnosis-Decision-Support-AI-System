@@ -1,24 +1,24 @@
-from typing import Any, Dict, Optional
+from typing import Any
 
 import structlog
 from fastapi import APIRouter
 from prometheus_client import Gauge
 
-from app.observability.metrics_collector import get_metrics_collector
 from app.observability.cache_monitor import get_cache_monitor
+from app.observability.metrics_collector import get_metrics_collector
 
 _logger = structlog.get_logger("app.observability.dashboard")
 
 router = APIRouter()
 
 
-def _get_labeled_gauge_values(metric_name: str) -> Dict[str, float]:
+def _get_labeled_gauge_values(metric_name: str) -> dict[str, float]:
     collector = get_metrics_collector()
     gauge = getattr(collector, metric_name, None)
     if gauge is None or not isinstance(gauge, Gauge):
         return {}
     try:
-        result: Dict[str, float] = {}
+        result: dict[str, float] = {}
         for labels, child in gauge._metrics.items():
             key = labels[0] if labels else "unknown"
             result[key] = child._value.get()
@@ -28,7 +28,7 @@ def _get_labeled_gauge_values(metric_name: str) -> Dict[str, float]:
 
 
 @router.get("/summary")
-async def get_summary() -> Dict[str, Any]:
+async def get_summary() -> dict[str, Any]:
     collector = get_metrics_collector()
     cache_mon = get_cache_monitor()
     return {
@@ -41,37 +41,37 @@ async def get_summary() -> Dict[str, Any]:
 
 
 @router.get("/gpu")
-async def get_gpu() -> Dict[str, Any]:
+async def get_gpu() -> dict[str, Any]:
     collector = get_metrics_collector()
     return _build_gpu_metrics(collector)
 
 
 @router.get("/hallucination")
-async def get_hallucination() -> Dict[str, Any]:
+async def get_hallucination() -> dict[str, Any]:
     collector = get_metrics_collector()
     return _build_hallucination_metrics(collector)
 
 
 @router.get("/latency")
-async def get_latency() -> Dict[str, Any]:
+async def get_latency() -> dict[str, Any]:
     collector = get_metrics_collector()
     return _build_latency_metrics(collector)
 
 
 @router.get("/cache")
-async def get_cache() -> Dict[str, Any]:
+async def get_cache() -> dict[str, Any]:
     collector = get_metrics_collector()
     cache_mon = get_cache_monitor()
     return _build_cache_metrics(collector, cache_mon)
 
 
 @router.get("/infra")
-async def get_infra() -> Dict[str, Any]:
+async def get_infra() -> dict[str, Any]:
     collector = get_metrics_collector()
     return _build_infra_metrics(collector)
 
 
-def _build_gpu_metrics(collector) -> Dict[str, Any]:
+def _build_gpu_metrics(collector) -> dict[str, Any]:
     try:
         return {
             "memory_utilization": _get_labeled_gauge_values("gpu_memory_utilization"),
@@ -85,7 +85,7 @@ def _build_gpu_metrics(collector) -> Dict[str, Any]:
         return {}
 
 
-def _build_hallucination_metrics(collector) -> Dict[str, Any]:
+def _build_hallucination_metrics(collector) -> dict[str, Any]:
     try:
         return {
             "severe_rate": collector.get_gauge_value("severe_hallucination_rate"),
@@ -98,7 +98,7 @@ def _build_hallucination_metrics(collector) -> Dict[str, Any]:
         return {}
 
 
-def _build_latency_metrics(collector) -> Dict[str, Any]:
+def _build_latency_metrics(collector) -> dict[str, Any]:
     try:
         return {
             "nav_p99_seconds": collector.get_histogram_p99("nav_latency"),
@@ -112,7 +112,7 @@ def _build_latency_metrics(collector) -> Dict[str, Any]:
         return {}
 
 
-def _build_cache_metrics(collector, cache_mon) -> Dict[str, Any]:
+def _build_cache_metrics(collector, cache_mon) -> dict[str, Any]:
     try:
         cache_data = cache_mon.get_all_metrics()
         return {
@@ -137,7 +137,7 @@ def _build_cache_metrics(collector, cache_mon) -> Dict[str, Any]:
         return {}
 
 
-def _build_infra_metrics(collector) -> Dict[str, Any]:
+def _build_infra_metrics(collector) -> dict[str, Any]:
     try:
         return {
             "service_health_rate": collector.get_gauge_value("service_health_rate"),

@@ -21,7 +21,8 @@ from __future__ import annotations
 
 import hashlib
 import re
-from typing import Any, Dict, List, Optional, Sequence
+from collections.abc import Sequence
+from typing import Any
 
 import structlog
 
@@ -46,7 +47,7 @@ _BLOOD_FLOW_PATTERNS = {
 _ELASTICITY_RE = re.compile(r"弹性(?:评分|指数|值)?\s*[:：]?\s*(\d+(?:\.\d+)?)", re.IGNORECASE)
 
 
-def _to_float(value: Any) -> Optional[float]:
+def _to_float(value: Any) -> float | None:
     try:
         return float(value)
     except (TypeError, ValueError):
@@ -54,8 +55,8 @@ def _to_float(value: Any) -> Optional[float]:
 
 
 def parse_blood_flow(
-    text: Optional[str], organ: Optional[str] = None
-) -> Optional[BloodFlowParameters]:
+    text: str | None, organ: str | None = None
+) -> BloodFlowParameters | None:
     """从文本提取血流参数（需显式带单位）。
 
     单位统一换算为 cm/s（m/s → ×100）。未提及则返回 ``None``。
@@ -64,7 +65,7 @@ def parse_blood_flow(
     if not text:
         return None
 
-    params: Dict[str, Optional[float]] = {}
+    params: dict[str, float | None] = {}
     unit = "cm/s"
     for key in ("psv", "edv"):
         match = _BLOOD_FLOW_PATTERNS[key].search(text)
@@ -90,7 +91,7 @@ def parse_blood_flow(
     )
 
 
-def parse_elasticity_score(text: Optional[str]) -> tuple:
+def parse_elasticity_score(text: str | None) -> tuple:
     """从文本提取弹性评分（返回 ``(score, unit)``；未提及返回 ``(None, None)``）。"""
     if not text:
         return None, None
@@ -102,12 +103,12 @@ def parse_elasticity_score(text: Optional[str]) -> tuple:
 
 def build_feature_vector_hash(
     features: Sequence[str],
-    measurement: Optional[Measurement] = None,
-    model_version: Optional[str] = None,
-    kb_version: Optional[str] = None,
-) -> Optional[str]:
+    measurement: Measurement | None = None,
+    model_version: str | None = None,
+    kb_version: str | None = None,
+) -> str | None:
     """特征集指纹（排序后哈希，保证同输入同输出）。"""
-    parts: List[str] = sorted({item for item in features if item})
+    parts: list[str] = sorted({item for item in features if item})
     if measurement is not None:
         for key in ("long_mm", "short_mm", "anteroposterior_mm", "aspect_ratio", "volume_mm3"):
             value = getattr(measurement, key, None)
@@ -122,9 +123,9 @@ def build_feature_vector_hash(
 
 
 def build_confidence_distribution(
-    probability: Optional[float],
-    confidence: Optional[float],
-) -> Optional[ModelConfidenceDistribution]:
+    probability: float | None,
+    confidence: float | None,
+) -> ModelConfidenceDistribution | None:
     """由恶性概率与置信度派生"良性/恶性/不确定"三元分布（**派生视图**）。
 
     变换规则（确定性、可复算）：
@@ -157,13 +158,13 @@ def build_confidence_distribution(
 def build_research_metrics(
     features: Sequence[str],
     *,
-    measurement: Optional[Measurement] = None,
-    probability: Optional[float] = None,
-    confidence: Optional[float] = None,
-    text: Optional[str] = None,
-    model_version: Optional[str] = None,
-    kb_version: Optional[str] = None,
-) -> Optional[ResearchMetrics]:
+    measurement: Measurement | None = None,
+    probability: float | None = None,
+    confidence: float | None = None,
+    text: str | None = None,
+    model_version: str | None = None,
+    kb_version: str | None = None,
+) -> ResearchMetrics | None:
     """组装科研量化指标；没有任何可用内容时返回 ``None``。"""
     try:
         feature_hash = build_feature_vector_hash(
@@ -187,7 +188,7 @@ def build_research_metrics(
             ),
             confidence_distribution=distribution,
         )
-    except Exception as exc:  # noqa: BLE001 - 科研指标是附加能力
+    except Exception as exc:
         logger.warning(
             "research_metrics_build_failed",
             error=str(exc),

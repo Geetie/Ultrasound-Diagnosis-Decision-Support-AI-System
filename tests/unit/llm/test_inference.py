@@ -4,6 +4,7 @@ import time
 from unittest.mock import AsyncMock, patch
 
 import pytest
+
 pytestmark = [pytest.mark.track_llm, pytest.mark.track_inf]
 
 import httpx
@@ -12,6 +13,7 @@ from pydantic import ValidationError
 from app.inference.base import BaseHttpInferenceEngine
 from app.inference.llama_cpp import LlamaCppEngine
 from app.inference.protocols import (
+    DeprecatedErrorCode,
     InferenceEngine,
     InferenceError,
     InferenceErrorCode,
@@ -19,7 +21,6 @@ from app.inference.protocols import (
     InferenceResponse,
     ModelInfo,
     TokenUsage,
-    DeprecatedErrorCode,
 )
 from app.inference.vllm import VLLMEngine
 

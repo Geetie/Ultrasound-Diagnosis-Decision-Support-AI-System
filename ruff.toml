@@ -3,10 +3,38 @@ target-version = "py310"
 
 [lint]
 select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF"]
-ignore = ["E501", "RUF001", "RUF002", "RUF003"]
+
+# 这里只放**永久性质**的豁免（中文文案的标点与行宽），不放任何"存量未修"的规则。
+# 存量债务统一在仓库根目录 .ruff-debt.txt 里登记：CI 用它做 CLI ignore 实现阻断，
+# tests/unit/quality/test_ruff_ratchet.py 用它做"只减不增"的计数棘轮。
+# 这样 ruff.toml 的完整检查结果永远反映真实存量（不会因 ignore 而"看不见"债务）。
+ignore = [
+    "E501",   # 行宽：由 formatter 管理
+    "RUF001", # 中文标点/全角字符：本项目文案为中文，非笔误
+    "RUF002", # 同上（docstring 内）
+    "RUF003", # 同上（注释内）
+]
 
 [lint.isort]
 known-first-party = ["app"]
+
+[lint.flake8-bugbear]
+# FastAPI 的 Depends()/Query() 等作为默认参数值是**框架要求的写法**，不是 bugbear
+# 想抓的"可变的默认参数"。这里按官方建议把它们列为 immutable calls，
+# 否则 128 条 B008 全是噪声，真正的可变默认参数缺陷会被淹没。
+extend-immutable-calls = [
+    "fastapi.Depends",
+    "fastapi.Query",
+    "fastapi.Path",
+    "fastapi.Body",
+    "fastapi.Header",
+    "fastapi.Cookie",
+    "fastapi.File",
+    "fastapi.Form",
+    "fastapi.Security",
+    # 项目自有的 FastAPI 依赖类，同样是框架要求的默认参数写法
+    "app.security.auth.RoleChecker",
+]
 
 [format]
 quote-style = "double"

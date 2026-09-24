@@ -31,7 +31,7 @@ from app.agents.protocols import (
     KnowledgeAgent,
     MonitorAgent,
 )
-from app.agents.specialist import build_dispatcher  # noqa: F401  工厂
+from app.agents.specialist import build_dispatcher
 
 __all__ = [
     "Agent",

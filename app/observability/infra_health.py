@@ -1,8 +1,9 @@
 import asyncio
 import shutil
 import time
+from collections.abc import Sequence
+
 import structlog
-from typing import Optional, Sequence
 
 from app.observability.constants import DiskAlertThresholds, EdgeGPUConstants
 from app.observability.metrics_collector import get_metrics_collector
@@ -10,10 +11,10 @@ from app.observability.metrics_collector import get_metrics_collector
 _logger = structlog.get_logger("app.observability.infra_health")
 
 # 巡检循环的停止信号（在运行中的事件循环内创建，避免导入期绑定循环）
-_infra_shutdown_event: Optional[asyncio.Event] = None
+_infra_shutdown_event: asyncio.Event | None = None
 
 # 边缘 GPU 连续过热起始时间戳（None 表示当前未过热）
-_edge_gpu_overheat_since: Optional[float] = None
+_edge_gpu_overheat_since: float | None = None
 
 
 async def check_redis_health(redis_url: str = "redis://localhost:6379") -> bool:

@@ -21,10 +21,11 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any
 
 import structlog
 
@@ -51,7 +52,7 @@ class CorrectionRecord:
     corrected_value: str
 
     @classmethod
-    def from_feedback_row(cls, row: Any) -> Optional["CorrectionRecord"]:
+    def from_feedback_row(cls, row: Any) -> CorrectionRecord | None:
         """从 ``FeedbackRecord`` ORM 行构造；非修正类或载荷不完整返回 None。"""
         try:
             feedback_type = str(getattr(row, "feedback_type", "") or "")
@@ -70,11 +71,11 @@ class CorrectionRecord:
                 original_value=str(original),
                 corrected_value=str(corrected),
             )
-        except Exception:  # noqa: BLE001 - 单条脏数据不得让整次统计失败
+        except Exception:
             return None
 
 
-def _parse_level(value: str) -> Optional[int]:
+def _parse_level(value: str) -> int | None:
     match = _GRADE_PATTERN.match(value or "")
     if match is None:
         return None
@@ -108,7 +109,7 @@ class ReviewerStats:
             return 0.0
         return self.corrected / self.considered
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         return {
             "reviewer_id": self.reviewer_id,
             "considered": self.considered,
@@ -125,10 +126,10 @@ class CorrectionRateReport:
 
     considered: int = 0
     corrected: int = 0
-    direction_counts: Dict[str, int] = field(default_factory=dict)
-    reviewer_stats: Dict[str, ReviewerStats] = field(default_factory=dict)
-    directional_bias_alert: Optional[Dict[str, Any]] = None
-    reviewer_outlier_alerts: List[Dict[str, Any]] = field(default_factory=list)
+    direction_counts: dict[str, int] = field(default_factory=dict)
+    reviewer_stats: dict[str, ReviewerStats] = field(default_factory=dict)
+    directional_bias_alert: dict[str, Any] | None = None
+    reviewer_outlier_alerts: list[dict[str, Any]] = field(default_factory=list)
     insufficient_samples: bool = False
 
     @property
@@ -145,7 +146,7 @@ class CorrectionRateReport:
             return 0.0
         return self.direction_counts.get(direction.value, 0) / gradable
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         return {
             "considered": self.considered,
             "corrected": self.corrected,
@@ -242,7 +243,7 @@ class CorrectionRateMonitor:
         return report
 
     @staticmethod
-    def _directional_alert(report: CorrectionRateReport) -> Optional[Dict[str, Any]]:
+    def _directional_alert(report: CorrectionRateReport) -> dict[str, Any] | None:
         """单方向占比越线**且确实是占优方向**才告警。
 
         只看"越线"会自相矛盾：50/50 时两个方向都 >20%，难道 AI 既系统性偏高又
@@ -272,14 +273,14 @@ class CorrectionRateMonitor:
         return None
 
     @staticmethod
-    def _reviewer_outliers(report: CorrectionRateReport) -> List[Dict[str, Any]]:
+    def _reviewer_outliers(report: CorrectionRateReport) -> list[dict[str, Any]]:
         from app.config.settings import settings
 
         high = settings.correction_rate_reviewer_alert_threshold
         peer_max = settings.correction_rate_peer_baseline_threshold
         min_samples = settings.correction_rate_min_samples
 
-        alerts: List[Dict[str, Any]] = []
+        alerts: list[dict[str, Any]] = []
         for stats in report.reviewer_stats.values():
             if stats.considered < min_samples:
                 continue
@@ -309,8 +310,8 @@ class CorrectionRateMonitor:
 
 
 async def collect_correction_records(
-    session, *, since: Optional[datetime] = None
-) -> tuple[List[Any], List[Any]]:
+    session, *, since: datetime | None = None
+) -> tuple[list[Any], list[Any]]:
     """一次查询取出修正反馈与纳入统计的反馈全集（不做 N+1）。
 
     Returns:
@@ -341,7 +342,7 @@ async def collect_correction_records(
 
 
 async def assess_recent_corrections(
-    session, *, window_days: Optional[int] = None
+    session, *, window_days: int | None = None
 ) -> CorrectionRateReport:
     """按时间窗评估最近修正率（供看板与定时作业调用）。"""
     from app.config.settings import settings

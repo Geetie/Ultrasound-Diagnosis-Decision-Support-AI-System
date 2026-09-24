@@ -22,20 +22,16 @@
 """
 from __future__ import annotations
 
-from typing import List
-from unittest.mock import AsyncMock, MagicMock
-
 import pytest
 
 pytestmark = [pytest.mark.track_fus]
 
-from app.agents.protocols import AgentResponse, KnowledgeAgent
 from app.fusion.conflict import ConflictDetector
 from app.fusion.consistency import ConsistencyChecker
 from app.fusion.crag import CRAGHandler
 from app.fusion.protocols import (
-    ConsistencySeverity,
     ConflictType,
+    ConsistencySeverity,
     FusionRequest,
 )
 from app.fusion.self_rag import SelfRAGEvaluator
@@ -51,9 +47,7 @@ from tests.unit.fus.conftest import (
     FakeRAGService,
     make_chunk,
     make_response,
-    make_scored,
 )
-
 
 # ======================================================================
 # 真实临床场景 1：跨器官关联规则（3 条关键规则）
@@ -522,14 +516,14 @@ class TestRealClinicalCRAGRouting:
         """
         # 模拟 KnowledgeAgent
         class FakeKnowledgeAgent:
-            def __init__(self, chunks: List[KnowledgeChunk]):
+            def __init__(self, chunks: list[KnowledgeChunk]):
                 self._chunks = chunks
                 self.query_call_count = 0
                 self.last_query = None
                 self.last_organ = None
                 self.last_top_k = None
 
-            async def query(self, query, organ=None, top_k=10) -> List[KnowledgeChunk]:
+            async def query(self, query, organ=None, top_k=10) -> list[KnowledgeChunk]:
                 self.query_call_count += 1
                 self.last_query = query
                 self.last_organ = organ

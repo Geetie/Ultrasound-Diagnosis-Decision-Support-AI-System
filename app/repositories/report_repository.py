@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import structlog
 from sqlalchemy import select
@@ -29,14 +29,14 @@ class ReportRepository:
         self,
         *,
         request_id: str,
-        content: Dict[str, Any],
+        content: dict[str, Any],
         rendered: str,
         content_digest: str,
         template_version: str,
-        session_id: Optional[str] = None,
-        patient_id: Optional[str] = None,
-        organ: Optional[str] = None,
-        report_id: Optional[str] = None,
+        session_id: str | None = None,
+        patient_id: str | None = None,
+        organ: str | None = None,
+        report_id: str | None = None,
     ) -> DiagnosisReport:
         """落一份草稿报告。"""
         report = DiagnosisReport(
@@ -63,13 +63,13 @@ class ReportRepository:
         )
         return report
 
-    async def get_report(self, report_id: str) -> Optional[DiagnosisReport]:
+    async def get_report(self, report_id: str) -> DiagnosisReport | None:
         result = await self.db.execute(
             select(DiagnosisReport).where(DiagnosisReport.report_id == report_id)
         )
         return result.scalar_one_or_none()
 
-    async def get_latest_by_request(self, request_id: str) -> Optional[DiagnosisReport]:
+    async def get_latest_by_request(self, request_id: str) -> DiagnosisReport | None:
         result = await self.db.execute(
             select(DiagnosisReport)
             .where(DiagnosisReport.request_id == request_id)
@@ -80,7 +80,7 @@ class ReportRepository:
 
     async def list_by_request(
         self, request_id: str, limit: int = 50
-    ) -> List[DiagnosisReport]:
+    ) -> list[DiagnosisReport]:
         result = await self.db.execute(
             select(DiagnosisReport)
             .where(DiagnosisReport.request_id == request_id)
@@ -95,8 +95,8 @@ class ReportRepository:
         *,
         signature: str,
         signing_key_name: str,
-        signed_by: Optional[str] = None,
-    ) -> Optional[DiagnosisReport]:
+        signed_by: str | None = None,
+    ) -> DiagnosisReport | None:
         """写入数字签名并置为 signed。"""
         report = await self.get_report(report_id)
         if report is None:
@@ -119,7 +119,7 @@ class ReportRepository:
         message: str = "",
         attempts: int = 1,
         skipped: bool = False,
-    ) -> Optional[DiagnosisReport]:
+    ) -> DiagnosisReport | None:
         """写入 PACS/HIS 推送结果。
 
         推送失败**不改变**报告本身的 signed 状态（签名已生效，重推即可），
@@ -151,7 +151,7 @@ class ReportRepository:
 
     async def mark_failed(
         self, report_id: str, message: str = ""
-    ) -> Optional[DiagnosisReport]:
+    ) -> DiagnosisReport | None:
         report = await self.get_report(report_id)
         if report is None:
             return None

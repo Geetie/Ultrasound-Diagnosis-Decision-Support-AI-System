@@ -22,20 +22,19 @@ import threading
 from datetime import datetime, timezone
 from typing import Any, ClassVar
 
-from sqlalchemy import select
 import structlog
 from pydantic import BaseModel
+from sqlalchemy import select
 
-from safety_gateway.sg_db import get_db_session
-from safety_gateway.sg_config import sg_settings as settings
 from safety_gateway.retry import retry_with_backoff
+from safety_gateway.sg_config import sg_settings as settings
+from safety_gateway.sg_db import get_db_session
 from safety_gateway.sg_models import OrganDiseaseThreshold
-from safety_gateway.validation_result import ThresholdCheckResult
 from safety_gateway.threshold_persistence import ThresholdPersistence
 from safety_gateway.threshold_subscriber import (
     ThresholdSubscriber,
-    REDIS_CHANNEL_THRESHOLD_UPDATE,
 )
+from safety_gateway.validation_result import ThresholdCheckResult
 
 logger = structlog.get_logger()
 

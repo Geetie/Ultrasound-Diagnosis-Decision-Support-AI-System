@@ -1,5 +1,6 @@
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
 
 from safety_gateway.validation_result import CheckResult, CheckResultStatus, ConsentStatus, DegradedReason
 
@@ -27,6 +28,7 @@ class TestSafetyCheckHTTPRoute:
 
     def test_safety_check_endpoint_returns_passed(self, mock_checker, mock_health_checker):
         from fastapi.testclient import TestClient
+
         from safety_gateway.main import app
 
         mock_checker.perform_full_check.return_value = CheckResult(
@@ -59,6 +61,7 @@ class TestSafetyCheckHTTPRoute:
 
     def test_safety_check_endpoint_returns_degraded(self, mock_checker, mock_health_checker):
         from fastapi.testclient import TestClient
+
         from safety_gateway.main import app
 
         mock_checker.perform_full_check.return_value = CheckResult(
@@ -95,6 +98,7 @@ class TestSafetyCheckHTTPRoute:
 
     def test_health_endpoint_structure(self, mock_health_checker):
         from fastapi.testclient import TestClient
+
         from safety_gateway.main import app
 
         with patch("safety_gateway.checker._get_health_checker", return_value=mock_health_checker):
@@ -108,6 +112,7 @@ class TestSafetyCheckHTTPRoute:
 
     def test_root_endpoint(self):
         from fastapi.testclient import TestClient
+
         from safety_gateway.main import app
 
         client = TestClient(app)

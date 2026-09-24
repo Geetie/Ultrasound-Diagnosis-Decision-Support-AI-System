@@ -66,8 +66,8 @@ def downgrade() -> None:
     op.execute(
         f"ALTER TABLE {_TABLE} DROP CONSTRAINT IF EXISTS ck_kc_confidence_score_range"
     )
-    op.execute(f"DROP INDEX IF EXISTS idx_kc_confidence_score")
-    op.execute(f"DROP INDEX IF EXISTS idx_kc_last_referenced_at")
+    op.execute("DROP INDEX IF EXISTS idx_kc_confidence_score")
+    op.execute("DROP INDEX IF EXISTS idx_kc_last_referenced_at")
     op.execute(
         f"""
         ALTER TABLE {_TABLE}

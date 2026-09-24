@@ -1,8 +1,8 @@
 import os
+
 import pytest
 
 from app.inference.sustained_load_test import SustainedLoadTest, SustainedLoadTestReport
-
 
 SUSTAINED_LOAD_ENABLED = os.environ.get("SUSTAINED_LOAD_ENABLED", "0") == "1"
 

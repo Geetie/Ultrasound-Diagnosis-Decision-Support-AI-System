@@ -9,10 +9,7 @@
 """
 from __future__ import annotations
 
-import asyncio
-import statistics
 import time
-from typing import List
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -21,7 +18,7 @@ from app.agents.protocols import AgentResponse
 from app.fusion.protocols import FusionResult
 
 
-def _percentile(values: List[float], p: float) -> float:
+def _percentile(values: list[float], p: float) -> float:
     """计算 P 分位数（线性插值）。"""
     if not values:
         return 0.0
@@ -76,7 +73,7 @@ class TestE2ELatencyBaseline:
             mock_write.return_value = True
             mock_nav.send_diagnosis_result = AsyncMock()
 
-            latencies_ms: List[float] = []
+            latencies_ms: list[float] = []
             for i in range(50):  # 50 次而非 100 次以减少测试耗时（mock 环境下）
                 t_start = time.monotonic()
                 result = await run_diagnosis_pipeline(f"req_lat_{i:03d}")
@@ -121,7 +118,7 @@ class TestE2ELatencyBaseline:
             mock_write.return_value = True
             mock_nav.send_diagnosis_result = AsyncMock()
 
-            latencies_ms: List[float] = []
+            latencies_ms: list[float] = []
             for i in range(10):  # 10 次减少测试耗时
                 t_start = time.monotonic()
                 result = await run_diagnosis_pipeline(f"req_self_rag_{i:03d}")

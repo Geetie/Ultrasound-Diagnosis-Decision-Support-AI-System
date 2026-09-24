@@ -27,7 +27,7 @@ P2-KB-08 STATUS: 一期 STUB（接入条件明确化）
 """
 from __future__ import annotations
 
-from typing import Any, List, Optional, Protocol
+from typing import Any, Protocol
 
 import structlog
 
@@ -48,9 +48,9 @@ class GraphQueryAdapter(Protocol):
     async def query_neighbors(
         self,
         chunk_id: str,
-        relation_type: Optional[str] = None,
+        relation_type: str | None = None,
         max_depth: int = 1,
-    ) -> List[KnowledgeChunk]:
+    ) -> list[KnowledgeChunk]:
         """查询与指定 chunk 相邻的节点。
 
         Args:
@@ -68,7 +68,7 @@ class GraphQueryAdapter(Protocol):
         from_chunk_id: str,
         to_chunk_id: str,
         max_hops: int = 5,
-    ) -> List[KnowledgeChunk]:
+    ) -> list[KnowledgeChunk]:
         """沿关系路径遍历两个 chunk 之间的路径。
 
         Args:
@@ -83,8 +83,8 @@ class GraphQueryAdapter(Protocol):
 
     async def check_contradictions(
         self,
-        chunk_ids: List[str],
-    ) -> List[tuple[str, str, str]]:
+        chunk_ids: list[str],
+    ) -> list[tuple[str, str, str]]:
         """检查给定 chunks 之间是否存在矛盾关系。
 
         Args:
@@ -162,9 +162,9 @@ class PgVectorGraphAdapter:
     async def query_neighbors(
         self,
         chunk_id: str,
-        relation_type: Optional[str] = None,
+        relation_type: str | None = None,
         max_depth: int = 1,
-    ) -> List[KnowledgeChunk]:
+    ) -> list[KnowledgeChunk]:
         """返回 depth <= max_depth 的可达邻居块（不含起点自身）。"""
         if not await self._enabled():
             logger.debug("graph_query_disabled", method="query_neighbors")
@@ -206,7 +206,7 @@ class PgVectorGraphAdapter:
         from_chunk_id: str,
         to_chunk_id: str,
         max_hops: int = 5,
-    ) -> List[KnowledgeChunk]:
+    ) -> list[KnowledgeChunk]:
         """返回从起点到终点的路径上的块（按深度升序）。"""
         if not await self._enabled():
             logger.debug("graph_query_disabled", method="traverse_path")
@@ -254,8 +254,8 @@ class PgVectorGraphAdapter:
 
     async def check_contradictions(
         self,
-        chunk_ids: List[str],
-    ) -> List[tuple[str, str, str]]:
+        chunk_ids: list[str],
+    ) -> list[tuple[str, str, str]]:
         """找出对同一目标持相反关系的块对，返回 ``(target_id, a, b)``。
 
         矛盾判据只取"明确对立"的关系对（supports vs excludes），不做语义推断——
@@ -293,7 +293,7 @@ class PgVectorGraphAdapter:
             },
             method="check_contradictions",
         )
-        result: List[tuple[str, str, str]] = []
+        result: list[tuple[str, str, str]] = []
         for row in rows:
             mapping = _row_mapping(row)
             result.append(
@@ -305,7 +305,7 @@ class PgVectorGraphAdapter:
             )
         return result
 
-    async def _fetch(self, sql: str, params: dict, *, method: str) -> List[Any]:
+    async def _fetch(self, sql: str, params: dict, *, method: str) -> list[Any]:
         """执行单条查询；任何异常降级为空结果（图查询不在关键路径上）。"""
         from sqlalchemy import text
 
@@ -313,7 +313,7 @@ class PgVectorGraphAdapter:
             async with await self._open_session() as session:
                 result = await session.execute(text(sql), params)
                 return list(result.fetchall())
-        except Exception as exc:  # noqa: BLE001 - 图查询失败不得影响诊断
+        except Exception as exc:
             logger.warning(
                 "graph_query_failed",
                 method=method,
@@ -345,7 +345,7 @@ def _row_mapping(row: Any) -> dict:
     return {}
 
 
-def _row_to_chunk(row: Any) -> Optional[KnowledgeChunk]:
+def _row_to_chunk(row: Any) -> KnowledgeChunk | None:
     """行 -> ``KnowledgeChunk``；无法映射时返回 None 由调用方丢弃。
 
     ``KnowledgeChunk`` 要求 chunk_id/organ/content 非空。造一个"空块"塞进结果集，会在
@@ -377,7 +377,7 @@ def _row_to_chunk(row: Any) -> Optional[KnowledgeChunk]:
             section_path=str(data.get("section_path") or ""),
             token_count=int(data.get("token_count") or 0),
         )
-    except Exception as exc:  # noqa: BLE001 - 单行脏数据不得让整次查询失败
+    except Exception as exc:
         logger.warning("graph_query_row_invalid", chunk_id=chunk_id, error=str(exc))
         return None
 
