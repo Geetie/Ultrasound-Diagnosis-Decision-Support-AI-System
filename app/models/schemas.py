@@ -715,6 +715,8 @@ class ReportResponse(BaseModel):
     created_at: Optional[datetime] = None
     content: Optional[Dict[str, Any]] = None
     rendered: Optional[str] = None
+    # M8 完整性校验：{organ, template, required, missing, passed}
+    completeness: Optional[Dict[str, Any]] = None
 
 
 class ReportSignRequest(BaseModel):

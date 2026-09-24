@@ -53,6 +53,7 @@ import structlog
 from app.agents.protocols import Agent, AgentContext, AgentResponse
 from app.agents.protocols import KnowledgeAgent as KnowledgeAgentProtocol
 from app.inference.protocols import InferenceEngine, InferenceRequest
+from app.knowledge.clinical_actions import actions_for
 from app.knowledge.differential import (
     differential_summary,
     parse_differential_diagnoses,
@@ -742,6 +743,19 @@ class RAGSpecialistAgent(SpecialistAgent):
                 response.malignancy_risk = risk
                 response.reasoning_trace.append(
                     f"malignancy_risk -> {risk.probability} ({risk.level.value})"
+                )
+
+            # M7：处置建议由显式规则表给出（不允许模型自由发挥），
+            # 风险等级与特征作为输入；未建模器官返回空列表（表示"无内置规则"）
+            actions = actions_for(
+                organ,
+                features,
+                risk.level.value if risk is not None else None,
+            )
+            if actions:
+                response.clinical_actions = actions
+                response.reasoning_trace.append(
+                    "clinical_actions -> " + "、".join(item.action_type for item in actions)
                 )
         except Exception as exc:  # noqa: BLE001 - 增强失败不得影响诊断
             logger.warning(

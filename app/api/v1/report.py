@@ -39,8 +39,18 @@ router = APIRouter(tags=["report"])
 
 
 def _to_response(report, *, verify: bool = False) -> ReportResponse:
-    """报告 ORM 行 → 响应模型。"""
+    """报告 ORM 行 → 响应模型。
+
+    M8：附带完整性校验结果，供报告页高亮缺失段落（医生可直接看到"还差
+    哪一段"），而不是签发后才发现报告缺内容。
+    """
     verified = report_service.verify_report_signature(report) if verify else False
+    content = report.content if isinstance(report.content, dict) else None
+    completeness = (
+        report_service.check_completeness(content, organ=report.organ)
+        if content
+        else None
+    )
     return ReportResponse(
         report_id=report.report_id,
         request_id=report.request_id,
@@ -61,8 +71,9 @@ def _to_response(report, *, verify: bool = False) -> ReportResponse:
         pacs_attempts=report.pacs_attempts,
         pushed_at=report.pushed_at,
         created_at=report.created_at,
-        content=report.content if isinstance(report.content, dict) else None,
+        content=content,
         rendered=report.rendered,
+        completeness=completeness,
     )
 
 

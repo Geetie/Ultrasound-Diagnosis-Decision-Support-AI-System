@@ -52,6 +52,27 @@ ORGAN_LABELS: Dict[str, str] = {
     "cardiac": "心脏",
 }
 
+# M8 报告模板库：器官 → 模板文件名。未登记的器官回退
+# settings.report_template_name（默认 default.md）。
+ORGAN_TEMPLATES: Dict[str, str] = {
+    "thyroid": "thyroid_standard.md",
+    "liver": "liver_standard.md",
+    "cardiac": "cardiac_standard.md",
+}
+
+# M8 完整性校验：通用必需字段 + 器官级必需字段。
+# 通用字段缺失说明报告"根本没有内容"；器官级字段缺失说明"该器官该有的段落
+# 没填"（例如甲状腺报告缺测量数据），两者都要在完整性面板里显示出来。
+REQUIRED_FIELDS_COMMON: tuple = ("request_id", "organ", "generated_at", "template_version")
+REQUIRED_FIELDS_BY_ORGAN: Dict[str, tuple] = {
+    "thyroid": ("findings", "diagnosis", "measurement_summary", "clinical_actions"),
+    "liver": ("findings", "diagnosis", "measurement_summary", "clinical_actions"),
+    "cardiac": ("findings", "diagnosis", "clinical_actions"),
+}
+
+# 视为"未填写"的占位前缀（build_report_content 用它们标注缺内容的情况）
+_PLACEHOLDER_PREFIXES: tuple = ("（未提供", "（模型未产出", "（本次")
+
 # 模板文件缺失时的兜底（内容与 app/templates/report/default.md 一致）
 _FALLBACK_TEMPLATE = """# 超声诊断报告
 
@@ -95,9 +116,30 @@ _FALLBACK_TEMPLATE = """# 超声诊断报告
 # ----------------------------------------------------------------------
 
 
-def load_template(name: Optional[str] = None) -> str:
+def select_template_name(
+    organ: Optional[str] = None, name: Optional[str] = None
+) -> str:
+    """选定模板文件名。
+
+    优先级：显式 ``name`` > 器官模板 > ``settings.report_template_name``。
+    显式指定优先，便于运维临时指定模板排查问题。
+    """
+    if name:
+        return name
+    organ_key = (organ or "").strip().lower()
+    organ_template = ORGAN_TEMPLATES.get(organ_key)
+    if organ_template and (TEMPLATE_DIR / organ_template).exists():
+        return organ_template
+    if organ_template:
+        logger.warning(
+            "report_organ_template_missing", organ=organ_key, template=organ_template
+        )
+    return settings.report_template_name
+
+
+def load_template(name: Optional[str] = None, organ: Optional[str] = None) -> str:
     """加载报告模板；文件缺失/不可读时回退内置模板。"""
-    template_name = name or settings.report_template_name
+    template_name = select_template_name(organ=organ, name=name)
     path = TEMPLATE_DIR / template_name
     try:
         return path.read_text(encoding="utf-8")
@@ -109,6 +151,37 @@ def load_template(name: Optional[str] = None) -> str:
             error_type=type(exc).__name__,
         )
         return _FALLBACK_TEMPLATE
+
+
+def _is_missing(value: Any) -> bool:
+    if value is None:
+        return True
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return True
+        return text.startswith(_PLACEHOLDER_PREFIXES)
+    if isinstance(value, (list, dict, tuple)):
+        return len(value) == 0
+    return False
+
+
+def check_completeness(content: Mapping[str, Any], organ: Optional[str] = None) -> Dict[str, Any]:
+    """M8 报告完整性校验：必需段落/字段是否齐备。
+
+    返回结构直接供接口与前端完整性面板使用：``passed`` 为 False 时前端高亮
+    缺失项，医生可回到诊断页补录（例如补上临床描述或测量数据）。
+    """
+    organ_key = (organ or str(content.get("organ") or "")).strip().lower()
+    required = list(REQUIRED_FIELDS_COMMON) + list(REQUIRED_FIELDS_BY_ORGAN.get(organ_key, ()))
+    missing = [field for field in required if _is_missing(content.get(field))]
+    return {
+        "organ": organ_key,
+        "template": select_template_name(organ=organ_key),
+        "required": required,
+        "missing": missing,
+        "passed": not missing,
+    }
 
 
 def render_template(template: str, mapping: Mapping[str, Any]) -> str:
@@ -133,6 +206,73 @@ def render_template(template: str, mapping: Mapping[str, Any]) -> str:
 # ----------------------------------------------------------------------
 
 
+_MEASUREMENT_ROW_LABELS: tuple = (
+    ("long_mm", "长径", "mm"),
+    ("short_mm", "短径", "mm"),
+    ("anteroposterior_mm", "前后径", "mm"),
+    ("aspect_ratio", "纵横比", ""),
+    ("volume_mm3", "体积", "mm³"),
+    ("distance_to_capsule_mm", "距包膜", "mm"),
+    ("distance_to_organ_edge_mm", "距脏器边缘", "mm"),
+    ("distance_to_skin_mm", "距皮肤", "mm"),
+)
+
+_PIXEL_SPACING_SOURCE_LABELS: Dict[str, str] = {
+    "dicom": "DICOM 像素间距",
+    "default": "估算（缺 PixelSpacing）",
+    "text": "报告文本",
+}
+
+
+def _format_measurement(measurement: Any) -> str:
+    """M3 测量摘要文本。"""
+    if not isinstance(measurement, Mapping) or not measurement:
+        return "（未提供测量数据）"
+    parts = [
+        f"{label} {measurement[key]}{unit}"
+        for key, label, unit in _MEASUREMENT_ROW_LABELS
+        if measurement.get(key) is not None
+    ]
+    if not parts:
+        return "（未提供测量数据）"
+    source = _PIXEL_SPACING_SOURCE_LABELS.get(str(measurement.get("pixel_spacing_source")))
+    if source:
+        parts.append(f"来源：{source}")
+    return "；".join(parts)
+
+
+def _format_actions(actions: Any) -> str:
+    """M7 处置建议段落文本。"""
+    placeholder = "（本次未生成结构化处置建议，请结合临床判断）"
+    if not isinstance(actions, (list, tuple)) or not actions:
+        return placeholder
+    lines = []
+    for index, item in enumerate(actions, start=1):
+        if not isinstance(item, Mapping):
+            continue
+        segments = [f"{index}. {item.get('action_type', '')}"]
+        if item.get("target_department"):
+            segments.append(f"科室：{item['target_department']}")
+        if item.get("urgency"):
+            segments.append(f"紧急度：{item['urgency']}")
+        level = item.get("applicable_level")
+        if level and level != "通用":
+            segments.append(f"适用：{level}")
+        if item.get("description"):
+            segments.append(str(item["description"]))
+        lines.append(" | ".join(segments))
+    return "\n".join(lines) if lines else placeholder
+
+
+def _format_recommendation(needs_review: bool, actions: Any) -> str:
+    """建议段：有结构化处置建议时以它为准，否则保持原有兜底文案。"""
+    if needs_review:
+        return "建议执业医师复核后再行签发。"
+    if isinstance(actions, (list, tuple)) and actions:
+        return "处置建议由规则表给出（详见「处置建议」段落），请结合临床判断。"
+    return "建议结合临床与随访观察。"
+
+
 def build_report_content(result: Any, session: Any = None) -> Dict[str, Any]:
     """把诊断结果 + 会话组装为结构化报告内容。
 
@@ -150,6 +290,13 @@ def build_report_content(result: Any, session: Any = None) -> Dict[str, Any]:
 
     clinical_text = str(getattr(result, "clinical_text", "") or "").strip()
     conclusion = str(getattr(result, "recommendations", "") or "").strip()
+
+    # M3/M7：结构化测量与处置建议来自管线写入的 clinical_attributes。
+    # 这里按普通 dict 处理（findings 是 JSON），不做模型校验——报告渲染
+    # 不该因为某个字段格式问题而失败，缺字段时按"未提供"如实标注。
+    clinical = findings_raw.get("clinical_attributes") or {}
+    measurement = clinical.get("measurement") or {}
+    actions = clinical.get("clinical_actions") or []
 
     return {
         "request_id": str(getattr(result, "request_id", "") or ""),
@@ -169,9 +316,10 @@ def build_report_content(result: Any, session: Any = None) -> Dict[str, Any]:
         "findings": clinical_text or "（未提供临床描述）",
         # 诊断意见：融合层输出
         "diagnosis": conclusion or "（模型未产出结论，请人工评估）",
-        "recommendation": (
-            "建议执业医师复核后再行签发。" if needs_review else "建议结合临床与随访观察。"
-        ),
+        "recommendation": _format_recommendation(needs_review, actions),
+        # M3 测量摘要 / M7 处置建议（器官模板中的独立段落）
+        "measurement_summary": _format_measurement(measurement),
+        "clinical_actions": _format_actions(actions),
         "evidence": (
             "、".join(knowledge_ids) if knowledge_ids else "（本次结论无引用知识条目）"
         ),
@@ -185,8 +333,9 @@ def build_report_content(result: Any, session: Any = None) -> Dict[str, Any]:
 
 
 def render_report(content: Mapping[str, Any]) -> str:
-    """按模板渲染报告正文。"""
-    return render_template(load_template(), content)
+    """按模板渲染报告正文（M8：按器官选择模板）。"""
+    organ = str(content.get("organ") or "") if isinstance(content, Mapping) else ""
+    return render_template(load_template(organ=organ), content)
 
 
 def report_payload(rendered: str) -> bytes:
