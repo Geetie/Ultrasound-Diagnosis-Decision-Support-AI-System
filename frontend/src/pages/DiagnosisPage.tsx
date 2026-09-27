@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, Typography, Button, Spin, Empty, Progress, Tag } from 'antd';
 import { ReloadOutlined, ClockCircleOutlined, LoadingOutlined } from '@ant-design/icons';
 import { tokens } from '@/styles/tokens';
@@ -30,7 +31,12 @@ export default function DiagnosisPage() {
   const touch = useTouchAdaptation();
   const [result, setResult] = useState<DiagnosisResult | null>(null);
   const [phase, setPhase] = useState<LoadingPhase>('idle');
-  const [requestId] = useState<string | null>(null);
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  // 结果页的数据来源是 URL 上的 request_id（由检查主界面或语音控件在提交成功后带上）。
+  // **这里原先写的是 `useState<string | null>(null)` 且没有 setter**：于是 requestId 恒为
+  // null，`handleRetry` 永远提前返回、轮询入口是死代码，页面拿不到任何诊断结果。
+  const requestId = searchParams.get('request_id');
   const [reviewAcknowledged, setReviewAcknowledged] = useState(false);
   const [responseTier] = useState<'realtime' | 'standard' | 'full'>('standard');
   const [stage, setStage] = useState<DiagnosisStageEvent | null>(null);
@@ -74,6 +80,14 @@ export default function DiagnosisPage() {
     },
     [handleResult, handleTimeout, responseTier],
   );
+
+  // 带上 request_id 进入本页即开始轮询（提交方负责把它放进 URL）。
+  // 放进 then 回调触发：既与"轮询是异步过程"的语义一致，也避免在 effect 体内同步
+  // setState 引发的级联渲染告警。
+  useEffect(() => {
+    if (!requestId) return;
+    Promise.resolve().then(() => startPolling(requestId));
+  }, [requestId, startPolling]);
 
   const handleRetry = useCallback(() => {
     if (!requestId) return;
@@ -454,6 +468,45 @@ export default function DiagnosisPage() {
         {/* M10 患者解释话术：默认折叠在底部，标注为非正式报告内容 */}
         {result.patient_explanation && (
           <PatientExplanation explanation={result.patient_explanation} />
+        )}
+
+        {/* M8：报告查看与签发入口。放在结果页——医生看完结论，最自然的下一步就是出报告 */}
+        {result.status === 'completed' && (
+          <Card
+            size="small"
+            style={{
+              background: tokens.color.bg.secondary,
+              border: `1px solid ${tokens.color.border.default}`,
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: tokens.spacing.md,
+                flexWrap: 'wrap',
+              }}
+            >
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <Text style={{ color: tokens.color.text.primary, fontSize: 13 }}>
+                  报告查看与签发
+                </Text>
+                <Text style={{ color: tokens.color.text.muted, fontSize: 12 }}>
+                  按器官模板生成草稿 → 签发（HSM 数字签名）→ 推送 PACS/HIS
+                </Text>
+              </div>
+              <Button
+                type="primary"
+                onClick={() =>
+                  navigate(`/report?request_id=${encodeURIComponent(result.request_id)}`)
+                }
+                style={{ minHeight: tokens.touch.hitTarget }}
+              >
+                打开报告
+              </Button>
+            </div>
+          </Card>
         )}
 
         {/* 真实阶段耗时：来自后端 findings.timings_ms，仅在有数据时展示 */}

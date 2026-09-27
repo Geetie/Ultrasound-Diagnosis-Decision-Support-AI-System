@@ -82,7 +82,8 @@ export default function AppLayout() {
       <VoiceControl
         onExecuted={(result) => {
           if (result.request_id) {
-            navigate('/diagnosis');
+            // 带上 request_id：结果页据此轮询取数（不带参数的话该页无从知道要取哪一次）
+            navigate(`/diagnosis?request_id=${encodeURIComponent(result.request_id)}`);
           }
         }}
       />

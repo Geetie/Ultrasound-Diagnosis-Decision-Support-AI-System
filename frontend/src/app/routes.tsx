@@ -13,6 +13,7 @@ const QcReportPage = lazy(() => import('@/pages/QcReportPage'));
 const KbManagementPage = lazy(() => import('@/pages/KbManagementPage'));
 const ConsentPage = lazy(() => import('@/pages/ConsentPage'));
 const FeedbackPage = lazy(() => import('@/pages/FeedbackPage'));
+const ReportPage = lazy(() => import('@/pages/ReportPage'));
 
 function PageSuspense({ children }: { children: React.ReactNode }) {
   return (
@@ -35,6 +36,7 @@ export default function AppRoutes() {
         <Route path="/kb-management" element={<PageSuspense><KbManagementPage /></PageSuspense>} />
         <Route path="/consent" element={<PageSuspense><ConsentPage /></PageSuspense>} />
         <Route path="/feedback" element={<PageSuspense><FeedbackPage /></PageSuspense>} />
+        <Route path="/report" element={<PageSuspense><ReportPage /></PageSuspense>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
