@@ -11,22 +11,24 @@ omit = [
 
 [tool.coverage.report]
 # T-G1-INT-01 目标：整体 ≥80%，核心模块 ≥90%。
-# 棘轮记录（只进不退，每轮按实测上调，并留出约 0.5pt 的环境波动余量）：
-#   整体：76% -> 78% -> 79% -> 80% -> **81%**（实测 78.26 -> 79.08 -> 80.07 -> 80.53 -> 80.90 -> 81.57 -> 81.78）
-#   核心：75% -> 76% -> 78% -> 79% -> 80% -> 81% -> 83% -> **84%**（实测 77.06 -> ... -> 83.81 -> 84.42）
-# 达标情况：整体已达标（80%）；核心距 90% 还差约 5.58pt。剩余缺口多为周期任务体（由 lifespan
-# 驱动、强跑需全局替换 asyncio.sleep，侵入性大于收益）与已登记的真机/外部依赖项
-# （见 docs/合规/覆盖率豁免清单.json）。
-# 缺口最大的模块（按缺失行数排序，来自 coverage.json 实测，已排除已补完项）：
-#   app/inference/gpu_monitor.py(52.5%/538)、app/security/refresh_token.py(77.7%/584)、
-#   app/api/websocket/nav.py(67.3%/341)、app/inference/gpu_memory_monitor.py(41.8%/184)、
-#   app/security/hsm/persistence_manager.py(55.8%/224，余下多为 SoftHSM 真机路径)、
-#   app/security/desensitization_restore.py(68.6%/303，余下为 DB 路径)、
-#   app/inference/sustained_load_test.py(0%/95)
+# 棘轮记录（只进不退，每轮按实测上调，并留出约 0.3~0.5pt 的环境波动余量）：
+#   整体：76% -> 78% -> 79% -> 80% -> 81% -> **82%**
+#     实测 78.26 -> 79.08 -> 80.07 -> 80.53 -> 80.90 -> 81.57 -> 81.78 -> 82.01 -> **82.39**
+#   核心：75% -> 76% -> 78% -> 79% -> 80% -> 81% -> 83% -> 84% -> 85% -> **86%**
+#     实测 77.06 -> ... -> 83.81 -> 84.42 -> 85.14 -> **86.30**
+# 达标情况：整体已达标（80%）；核心距 90% 还差约 3.70pt。剩余缺口集中在**已登记的真机/外部依赖项**
+# （SoftHSM 签名字节、真实 Redis 语义、GPU 真机；见 docs/合规/覆盖率豁免清单.json）与少量编排分支。
+# 缺口最大的模块（按缺失行数排序，来自全量 coverage.json 实测，已排除已补完项）：
+#   app/security/refresh_token.py(77.7%/584，真机登记：scan_iter/Lua 配额/TTL 原子性)、
+#   app/security/hsm/persistence_manager.py(55.8%/224，SoftHSM 真机)、
+#   app/security/hsm/manager.py(76.2%/266)、app/fusion/consistency.py(85.6%/437)、
+#   app/security/emergency_signing.py(72.4%/214，SoftHSM 真机)、app/security/hsm/key_manager.py(74.4%/165)
 # 已补完：rag/tokenizer_utils(0%->100%)、services/safety_gateway_client、obs/logging/file、
 #         obs/metrics_collector/collector(56.8%->82.7%)、obs/metrics_collector/pusher(32.2%->97.7%)、
-#         security/desensitization(64.0%->96%)
-# 注：上一轮曾把 hsm/persistence_manager 记为"->高位"，那是只看 sec 单目录的测量值；
+#         security/desensitization(64.0%->96%)、security/desensitization_restore(44.6%->99%)、
+#         services/dicom_storage(46.9%->95%)、agents/specialist/base(76.1%->98.6%)、
+#         fusion/service(53.6%->99.1%)、services/diagnosis_worker(64.6%->96.9%)
+# 注：早期曾把 hsm/persistence_manager 记为"->高位"，那是只看 sec 单目录的测量值；
 #     全量口径下实际为 55.8%，此处按实测更正。
 # 覆盖率达到目标后把这里与 CI 的阈值一并提到 80 / 90。
 fail_under = 82
