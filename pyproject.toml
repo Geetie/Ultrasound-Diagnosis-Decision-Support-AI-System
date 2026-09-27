@@ -29,7 +29,7 @@ omit = [
 # 注：上一轮曾把 hsm/persistence_manager 记为"->高位"，那是只看 sec 单目录的测量值；
 #     全量口径下实际为 55.8%，此处按实测更正。
 # 覆盖率达到目标后把这里与 CI 的阈值一并提到 80 / 90。
-fail_under = 81
+fail_under = 82
 show_missing = true
 exclude_lines = [
     "pragma: no cover",

@@ -40,6 +40,15 @@ class _RecordingNotifier:
         return self.ok
 
 
+@pytest.fixture(autouse=True)
+def _reset_monitor_singleton():
+    """模块单例跨用例残留时，会带着上一批的 notifier 与**已占位的去重集合**，
+    使"首次必然告警"的断言时好时坏。逐条清掉，让每个用例从干净状态开始。"""
+    reset_restore_rate_monitor()
+    yield
+    reset_restore_rate_monitor()
+
+
 def _patch_audit(success: bool = True):
     """把审计写入替换为可控替身（monitor 内部用独立会话）。"""
     service = MagicMock()
@@ -117,15 +126,20 @@ class TestAlerting:
     async def test_dedup_same_hour(self):
         notifier = _RecordingNotifier()
         monitor = RestoreRateMonitor(hour_limit=100, notifier=notifier)
-        # hour_key 必须**每次唯一**：去重键是 (profile, hour_key)，而"占位"可能落在
-        # 同一 worker 更早用例留下的 Redis 状态上（本项目对真实 Redis 是 fast-fail，
-        # 但某些用例会注入假客户端）。写死字面量会让本用例时好时坏——
-        # "首次必然告警"的断言在别人已占位时直接失败（CI 上就是随机红）。
+        # hour_key 每次唯一：避免与同一 worker 更早的用例在去重存储里撞键。
         hour_key = f"{id(monitor) % 100000000:08d}"
         next_hour_key = f"{(id(monitor) + 1) % 100000000:08d}"
 
         session_ctx, audit_patch, _service = _patch_audit()
-        with session_ctx, audit_patch:
+        # **必须显式切断 Redis 去重**（与下面 test_dedup_falls_back_to_memory 同一手法）。
+        #
+        # 真因（我先前判断错了两次，记在这里）：`_acquire_alert_slot` 优先走
+        # `SET NX`，而同一 worker 里更早的用例可能留下 Redis 替身、或替身的 nx
+        # 语义实现不正确 —— 那样"每次都拿到名额"，去重整体失效，`second` 不再是
+        # None。表现就是**单文件跑 19 passed、全量跑必红**。
+        # 唯一 hour_key 只挡住了"存储里撞键"这一种机制，挡不住替身这一种。
+        with patch("app.config.redis.RedisPool") as pool, session_ctx, audit_patch:
+            pool.get_client = AsyncMock(side_effect=RuntimeError("redis down"))
             first = await monitor.evaluate(count=120, hour_key=hour_key)
             second = await monitor.evaluate(count=180, hour_key=hour_key)
             next_hour = await monitor.evaluate(count=130, hour_key=next_hour_key)
