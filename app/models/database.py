@@ -90,6 +90,11 @@ class DiagnosisResult(Base):
     # 医生提交的临床文本（含语音转写）。此前未落库，导致后台管线读取
     # ``request.clinical_text`` 抛 AttributeError → 调度阶段恒失败。
     clinical_text = Column(Text, nullable=True)
+    # 请求携带的患者上下文（age/gender/relevant_history/**conditions**）。
+    # 2026-09-29 真机暴露：`create_request(patient_context=...)` 收了这个参数却**从不写库**
+    # （模型里甚至没有对应列），于是后台管线拿不到患者条件，安全网关的禁忌判定只能走
+    # "缺条件数据 → 保守判命中"分支 → 每次诊断恒 requires_manual_review。
+    patient_context = Column(JSONB, nullable=True)
     confidence = Column(Float, nullable=False)
     findings = Column(JSONB)
     recommendations = Column(Text)

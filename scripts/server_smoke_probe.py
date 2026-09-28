@@ -132,6 +132,11 @@ def main() -> int:
             "image_ids": [],
             "clinical_text": CLINICAL_TEXT,
             "target_organ": "thyroid",
+            # 患者条件必须显式给出：SG 的禁忌判定在**拿不到条件数据**时按设计判"命中"
+            # （保守），于是任何不带条件的诊断都会 requires_manual_review。
+            # 这里 `conditions: []` 的含义是"接诊医生已确认无相关条件"，属正常输入；
+            # 注意**不能省略该键**（省略 ≠ 空列表，前者会让 SG 走保守分支）。
+            "patient_context": {"age": 45, "gender": "female", "conditions": []},
         },
         token=token,
     )

@@ -156,6 +156,20 @@ class PatientContext(BaseModel):
     age: Optional[int] = Field(None, ge=0, le=150)
     gender: Optional[str] = None
     relevant_history: Optional[str] = None
+    # 结构化患者条件，供安全网关的**禁忌判定**使用（例如 ["pregnancy"]、
+    # ["contrast_allergy"]、["anticoagulant_therapy"]）。
+    #
+    # 2026-09-29 真机暴露：此前 PatientContext 只有 age/gender/relevant_history 三个
+    # 自由文本字段，而 SG 的 `_match_condition` 认的是**结构化的
+    # `patient_conditions` 列表**（别名见 safety_gateway/contraindication.py）
+    # → 应用侧结构上就送不出条件 → 每次诊断都命中"缺条件数据"的保守分支
+    # （缺数据即判命中）→ 恒 requires_manual_review，系统永远给不出自动结论。
+    #
+    # 语义约定（重要，决定判定的方向）：
+    #   * `None`（未提供）  → 不转发该键，SG 维持**保守**行为（缺数据即视为命中）；
+    #   * `[]`（确认无条件）→ 如实转发空列表，SG 正常评估 → 不命中；
+    #   * `["pregnancy"]`  → 如实转发，按别名匹配。
+    conditions: Optional[list[str]] = None
 
 
 class BaseResponse(BaseModel):

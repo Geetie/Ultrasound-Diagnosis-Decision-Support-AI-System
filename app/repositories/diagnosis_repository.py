@@ -76,6 +76,10 @@ class DiagnosisRepository:
             # 临床文本必须落库：后台管线以它作为 AgentContext.user_query，
             # 此前只写 findings={"status": "processing"} 导致文本丢失。
             clinical_text=clinical_text,
+            # 患者上下文必须落库：后台管线据此把 `conditions` 转发给安全网关做禁忌判定。
+            # 此前这个入参**收了就丢**（模型无对应列），导致禁忌判定永远拿不到条件数据
+            # → 每次诊断都保守判"命中禁忌" → 恒 requires_manual_review。
+            patient_context=patient_context,
             confidence=0.0,  # 初始置信度
             findings={"status": "processing"},
             status="processing",

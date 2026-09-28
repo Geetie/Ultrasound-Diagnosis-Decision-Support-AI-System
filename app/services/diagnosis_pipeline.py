@@ -58,6 +58,7 @@ from app.services.rollout_router import (
     get_rollout_router,
 )
 from app.services.safety_gateway_client import safety_gateway_client
+from app.services.sg_output_data import build_sg_output_data, extract_findings_text
 
 logger = structlog.get_logger("app.services.diagnosis_pipeline")
 
@@ -522,12 +523,23 @@ async def _safe_safety_check(
         ``(sg_result: dict | None, sg_ok: bool)``
     """
     try:
-        # 收集 fusion_result 的 findings 作为 sg 输出
-        output_data: dict[str, Any] = {
-            "organ": request.organ,
-            "findings": _extract_findings(fusion_result),
-            "recommendation": _extract_recommendation(fusion_result),
-        }
+        # 发给安全网关的载荷**只允许由 app/services/sg_output_data.py 构造**。
+        # 读路径（GET /api/v1/diagnosis/result/{id}）也会调一次 SG，两边形状一旦不同，
+        # 同一份诊断会在"写"处 pass、在"读"处被判命中禁忌 —— 2026-09-29 真机实测。
+        output_data: dict[str, Any] = build_sg_output_data(
+            organ=request.organ,
+            findings=_extract_findings(fusion_result),
+            recommendation=_extract_recommendation(fusion_result),
+            patient_context=getattr(request, "patient_context", None),
+        )
+        if output_data.get("diagnosis_data"):
+            logger.info(
+                "pipeline_patient_conditions_forwarded",
+                request_id=request_id,
+                patient_condition_count=len(
+                    output_data["diagnosis_data"]["patient_conditions"]
+                ),
+            )
         # 查询同意状态（2026-09-28 接线审计修复）。
         # 此前这里硬编码 `"granted"`（原注释自述"简化"），三重后果：
         # ① 安全网关层的 `consent_status_at_input is None → raise`（fail-closed）
@@ -1014,18 +1026,18 @@ def _make_failed_fusion_result(specialist_responses):
 
 
 def _extract_findings(fusion_result) -> str:
-    """从 fusion_result 抽取 findings 文本。"""
-    if fusion_result is None:
-        return ""
-    final = getattr(fusion_result, "final_response", None)
-    if final is None:
-        return ""
-    return getattr(final, "content", "") or ""
+    """从 fusion_result 抽取 findings 文本。
+
+    实现委托给 ``app/services/sg_output_data.extract_findings_text``：
+    该函数同时认**对象**（写路径）与 **dict**（读路径拿到的是落库后的 dict），
+    避免两处各写一份抽取逻辑而漂移。
+    """
+    return extract_findings_text(fusion_result)
 
 
 def _extract_recommendation(fusion_result) -> str | None:
     """从 fusion_result 抽取建议（简化为截断 content 前 500 字符）。"""
-    content = _extract_findings(fusion_result)
+    content = extract_findings_text(fusion_result)
     if not content:
         return None
     return content[:500]

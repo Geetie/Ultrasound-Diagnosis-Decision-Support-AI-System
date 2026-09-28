@@ -53,6 +53,7 @@ from app.services.multi_organ_orchestrator import (
     run_multi_organ_diagnosis,
 )
 from app.services.safety_gateway_client import safety_gateway_client
+from app.services.sg_output_data import build_sg_output_data, extract_findings_text
 
 router = APIRouter(tags=["diagnosis"])
 logger = structlog.get_logger()
@@ -509,10 +510,20 @@ async def get_diagnosis_result(
     consent_record = await consent_repo.get_latest_consent(patient_id)
     consent_status = check_consent_status(consent_record, patient_id)
 
+    # 读路径的载荷必须与写路径（app/services/diagnosis_pipeline.py）**同一个构造函数**。
+    # 2026-09-29 真机暴露：这里原先直接把 worker 落库的整包 findings
+    # （organ/fusion_result/sg_result/timings_ms）当 output_data，且**不带患者条件** ——
+    # 于是同一份诊断在写处 pass、在读处被判"检测到禁忌"，
+    # 响应里的 `requires_manual_review` 恒为真、系统永远给不出自动结论。
+    _stored = result.findings if isinstance(result.findings, dict) else {}
     sg_result = await safety_gateway_client.check_output(
         session_id=result.session_id,
         patient_id=patient_id,
-        output_data=result.findings or {},
+        output_data=build_sg_output_data(
+            organ=result.organ,
+            findings=extract_findings_text(_stored.get("fusion_result")),
+            patient_context=getattr(result, "patient_context", None),
+        ),
         consent_status_at_input=consent_status.value,
     )
 

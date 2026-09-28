@@ -259,6 +259,32 @@ python 包 → 真机报 `FileNotFoundError: [Errno 2] No such file or directory
    少一个 JIT 环节（本机 nvcc 12.4 而 torch 是 cu130，JIT 编译链本就错配）。
 处理后 `/health` 200（约 28s 就绪）、chat completion 返回非空文本。
 
+## 12.7 让诊断真正跑通到 `completed`（2026-09-29，第 1 例真实诊断的最后一公里）
+
+按顺序踩掉的坑（**每一条都是"单测全绿、真机必炸"**）：
+
+| 症状 | 根因 | 位置 |
+|---|---|---|
+| `requires_manual_review` 恒真，`review=检测到禁忌条件：检测到4条禁忌` | 应用**从不发送** `diagnosis_data`；而 SG 的禁忌判定在拿不到条件数据时**按设计判命中**（`tests/unit/sg/test_sg_contraindication.py` 钉住了这条保守语义） | 管线原本只发 organ/findings/recommendation |
+| 同上一份诊断在写处 pass、读处判禁忌 | **两个** `check_output` 调用点各自拼 payload：读路径（`GET /api/v1/diagnosis/result/{id}`）直接把 worker 落库的整包 findings 当 `output_data` | `app/api/v1/diagnosis.py` + `diagnosis_pipeline.py` |
+| `dense_search_failed [E2003_VEC_COLLECTION_NOT_FOUND] table vector_index_knowledge_chunks not found` → `self_rag_retries_exhausted` | 向量表由**建库索引路径**创建，而知识库是空的（0 chunk） | 需先建库/建集合 |
+
+**处置（已固化）**：
+1. `patient_context` 新增结构化 `conditions`（`None` = 未提供 → 不转发，保持 SG 保守；`[]` = 已确认无条件 → 转发）；
+2. 落库补列（迁移 **0014**）——此前 `create_request(patient_context=...)` **收了就丢**；
+3. 发往 SG 的 `output_data` 收敛到**唯一构造点** `app/services/sg_output_data.build_sg_output_data()`，
+   写路径与读路径共用（守卫：凡调用 `check_output` 的函数都必须调用它）；
+4. 冒烟前置：`bash ~/server_run_bootstrap_kb.sh`（建 `vector_index_knowledge_chunks` + 灌 3 条
+   **自造、已标注 `smoke_fixture=true`** 的条目 + 同步写 `knowledge_chunks`，让稀疏腿也有内容）。
+
+**结果**：`status=completed`、`ai_diagnosis_failed=False`、`requires_manual_review=False`、
+`desensitization_status=full`，段内 error/critical=0。
+残留 warning（不阻塞）：`dense_search_failed [E2003_VEC_SEARCH_FAILED]`（表已存在、客户端自己回查也成功，
+但应用侧带 filter 的检索仍失败 —— 待查 filter/类型细节）。
+
+**冒烟请求必须显式给 `patient_context.conditions`**（现在是 `{"age":45,"gender":"female","conditions":[]}`）；
+省略该键 ≠ 空列表，前者会让 SG 走保守分支。
+
 ## 13. 现场/未完成项（别把它当成"已做完"）
 
 | 项 | 状态 |
