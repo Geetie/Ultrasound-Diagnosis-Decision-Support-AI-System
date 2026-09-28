@@ -1,4 +1,22 @@
+"""llama.cpp 本地推理服务（OpenAI 风格的 `/v1/completions` 与 `/v1/chat/completions`）。
+
+## 2026-09-28 真机修复：支持本地 GGUF 路径
+
+原实现把模型**硬编码**为 `Llama.from_pretrained(repo_id="Qwen/Qwen2.5-1.5B-Instruct-GGUF")`
+—— 那需要运行期能访问 huggingface.co。校内 GPU 机上 huggingface.co **不可达**
+（只有 hf-mirror.com 可达，而 `from_pretrained` 不走我们的镜像配置），
+于是该脚本在真机上**根本起不来**。现支持 `--model`：
+
+    # 本地 GGUF（权重已下好，推荐）
+    python scripts/llama_cpp_server.py --model ~/uai/models/.../xxx-q4_k_m.gguf \
+        --host 127.0.0.1 --port 8001 --n_ctx 4096 --n_gpu_layers -1
+    # 不传 --model 时保持原行为（走 HF repo_id，需能访问 HF）
+
+另加 `--n_gpu_layers`（-1 = 全部层上 GPU）并打印 GPU offload 能力，便于确认没退化成 CPU。
+注意 `--host` 默认仍是 `0.0.0.0`（容器内映射需要）；共享机部署请显式传 `127.0.0.1`。
+"""
 import argparse
+import os
 
 import uvicorn
 from llama_cpp import Llama
@@ -54,17 +72,42 @@ app = Starlette(routes=[
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--host", default="0.0.0.0")
+    parser.add_argument("--host", default="0.0.0.0", help="共享机部署请传 127.0.0.1")
     parser.add_argument("--port", type=int, default=8001)
     parser.add_argument("--n_ctx", type=int, default=512)
+    parser.add_argument(
+        "--model",
+        default="",
+        help="本地 GGUF 文件路径；留空则回退到 HF repo_id（需能访问 huggingface.co）",
+    )
+    parser.add_argument(
+        "--n_gpu_layers",
+        type=int,
+        default=-1,
+        help="-1 = 全部层交给 GPU（需 CUDA 版 llama-cpp-python）",
+    )
     args = parser.parse_args()
 
+    import llama_cpp
+
+    print(f"GPU offload supported: {llama_cpp.llama_supports_gpu_offload()}")
     print("Loading model...")
-    llm = Llama.from_pretrained(
-        repo_id="Qwen/Qwen2.5-1.5B-Instruct-GGUF",
-        filename="qwen2.5-1.5b-instruct-q4_k_m.gguf",
-        n_ctx=args.n_ctx,
-        verbose=False,
-    )
+    if args.model and os.path.isfile(args.model):
+        llm = Llama(
+            model_path=args.model,
+            n_ctx=args.n_ctx,
+            n_gpu_layers=args.n_gpu_layers,
+            verbose=False,
+        )
+    else:
+        if args.model:
+            print(f"WARN: {args.model} 不是本地文件，按 HF repo_id 处理")
+        llm = Llama.from_pretrained(
+            repo_id=args.model or "Qwen/Qwen2.5-1.5B-Instruct-GGUF",
+            filename="qwen2.5-1.5b-instruct-q4_k_m.gguf",
+            n_ctx=args.n_ctx,
+            n_gpu_layers=args.n_gpu_layers,
+            verbose=False,
+        )
     print(f"Model loaded. Starting server on {args.host}:{args.port}")
     uvicorn.run(app, host=args.host, port=args.port)
