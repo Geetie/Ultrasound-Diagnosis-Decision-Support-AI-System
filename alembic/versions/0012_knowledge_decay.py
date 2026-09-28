@@ -53,6 +53,10 @@ def upgrade() -> None:
         """
     )
     # 约束兜住写入方的手误：置信度是检索加权依据，越界值会放大或抹掉条目的影响力。
+    # 2026-09-28 真机修复：`ADD CONSTRAINT` **没有 IF NOT EXISTS**，重跑即报
+    # "constraint already exists"；先 DROP IF EXISTS 再 ADD，使这一步幂等
+    # （同文件里列与索引都已是 IF NOT EXISTS，只差这一处）。
+    op.execute(f"ALTER TABLE {_TABLE} DROP CONSTRAINT IF EXISTS ck_kc_confidence_score_range")
     op.execute(
         f"""
         ALTER TABLE {_TABLE}
