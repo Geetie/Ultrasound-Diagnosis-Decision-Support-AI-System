@@ -10,12 +10,11 @@
 | ① Redis 不可用 → 降级 | 是 | `RedisPool.get_client` 抛错时 `_apply_rollout_gate` 不得中断诊断，并留告警 |
 | ② 融合层不可用 → 降级结论 | 是 | `_safe_fuse` 返回 `needs_review` 占位；`_write_result_to_db` 落 `needs_review` |
 | ③ SG 不可用 → 拒绝输出 | 是（主服务崩溃+SG 存活除外） | `_safe_safety_check` → `(None, False)` → `status="failed"` |
+| ④ 边缘端后端断连 → 本地降级 | 是 | 连续失败隔离后**停止上行**，本地仍可用；探活成功**半开→恢复上行** |
 | ⑤ Redis + 融合层同时不可用 | 是 | 组合故障下终态仍为 `needs_review`（不是 failed） |
 | ⑥ 融合层不可用 + SG 短暂不可用 | 是 | SG 客户端"排队等待恢复"与"超时拒绝（E4005）"两条路径 |
 
 **未纳入本文件**（见提交信息与豁免清单）：
-- ④ 边缘端后端断连 → 本地降级：契约在 `edge/device_manager.py`（ONLINE→DEGRADED
-  隔离期"宁可不上行，也不让脏数据进入后端"），待单独一批补测；
 - ⑦ Redis 主从切换秒级接管：**无离线层可言**（mock 无法验证切换时序），已在
   `docs/合规/覆盖率豁免清单.json` 的 `excluded_by_design` 登记；
 - ③(b) "主服务崩溃 + SG 存活"：属现场演练，已登记。
@@ -406,3 +405,111 @@ class TestSafetyGatewayQueueAndTimeout:
         )
 
         assert result.get("allowed") is True
+
+
+class TestEdgeBackhaulDisconnect:
+    """场景 ④：边缘端后端断连 → 本地降级（停上行），恢复后自动重新上行。
+
+    契约见 `edge/device_manager.py:6-17` 的状态机与设计取舍：
+    "**宁可不上行，也不让脏数据进入后端**" —— 隔离/恢复中一律 `should_uplink=False`，
+    但本地仍保留 DICOM 采集与本地安全校验（医生可继续操作设备）。
+
+    注意：边缘模块在仓库根目录 `edge/`，不在 `app/` 下。
+    """
+
+    @staticmethod
+    def _manager(transport, failure_threshold: int = 3):
+        from edge.device_manager import EdgeDeviceManager
+
+        return EdgeDeviceManager(
+            auth=SimpleNamespace(device_id="edge-001"),
+            transport=transport,
+            failure_threshold=failure_threshold,
+        )
+
+    @staticmethod
+    def _transport(failing: bool):
+        class _Transport:
+            async def post(self, path, payload):
+                if failing["value"]:
+                    raise RuntimeError("backhaul down")
+                return {"ok": True}
+
+        return _Transport()
+
+    async def test_occasional_failure_degrades_but_still_uplinks(self):
+        transport = self._transport({"value": True})
+        manager = self._manager(transport, failure_threshold=3)
+
+        manager.record_success()  # REGISTERED → ONLINE
+        state = manager.record_failure("heartbeat_failed")
+
+        assert state.value == "degraded"
+        assert manager.should_uplink is True, "偶发失败只降级，不禁用上行"
+        assert manager.is_isolated is False
+
+    async def test_consecutive_failures_isolate_and_stop_uplink(self):
+        transport = self._transport({"value": True})
+        manager = self._manager(transport, failure_threshold=3)
+        manager.record_success()
+
+        for _ in range(3):
+            manager.record_failure("health_probe_failed")
+
+        assert manager.state.value == "isolated"
+        assert manager.is_isolated is True
+        assert manager.should_uplink is False, "隔离期必须停止上行（宁可不上行）"
+        assert manager.health.isolated_reason is not None
+
+    async def test_recovery_is_half_open_then_online(self):
+        """恢复断言：隔离后一次成功只到"半开"（仍不上行），再次成功才恢复上行。"""
+        transport = self._transport({"value": True})
+        manager = self._manager(transport, failure_threshold=2)
+        manager.record_success()
+        manager.record_failure("x")
+        manager.record_failure("x")
+        assert manager.should_uplink is False
+
+        manager.record_success()
+        assert manager.state.value == "recovering"
+        assert manager.should_uplink is False, "半开态仍不得上行"
+
+        manager.record_success()
+        assert manager.state.value == "online"
+        assert manager.should_uplink is True, "恢复后必须重新上行"
+        assert manager.health.isolated_reason is None
+
+    async def test_failure_during_recovery_reisolates_immediately(self):
+        """半开期再失败 → 立即回到隔离（不能像 ONLINE 那样累积到阈值）。"""
+        transport = self._transport({"value": True})
+        manager = self._manager(transport, failure_threshold=2)
+        manager.record_success()
+        manager.record_failure("x")
+        manager.record_failure("x")
+        manager.record_success()
+        assert manager.state.value == "recovering"
+
+        manager.record_failure("probe failed again")
+
+        assert manager.state.value == "isolated"
+        assert manager.should_uplink is False
+
+    async def test_real_transport_outage_drives_isolation_then_recovery(self):
+        """端到端：真实 transport 断连 → 心跳连续失败 → 隔离；恢复 → 心跳成功 → 上线。"""
+        failing = {"value": True}
+        manager = self._manager(self._transport(failing), failure_threshold=3)
+
+        assert await manager.send_heartbeat() is False
+        assert await manager.send_heartbeat() is False
+        assert await manager.send_heartbeat() is False
+        assert manager.is_isolated is True
+        assert manager.should_uplink is False
+
+        failing["value"] = False
+        assert await manager.health_probe() is True
+        assert manager.state.value == "recovering"
+        assert manager.should_uplink is False
+
+        assert await manager.send_heartbeat() is True
+        assert manager.state.value == "online"
+        assert manager.should_uplink is True, "后端恢复后必须自动重新上行"

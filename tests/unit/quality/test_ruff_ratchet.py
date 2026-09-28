@@ -49,7 +49,10 @@ RUFF_BASELINE = {
     "E701": 12,     # 单行多语句
     "B017": 11,     # assertRaises(Exception)
     "RUF046": 9,    # 多余的 int() 转换
-    "B905": 8,      # zip 未指定 strict
+    # 8 -> 7：本会话的 `ruff check --fix` 批处理顺手修掉 1 处（zip 未指定 strict ->
+    # 显式 strict=False，语义与原行为一致、只是把意图写明）。棘轮守卫要求
+    # "计数低于基线就必须把基线调小以锁住成果"，故此处同步下调。
+    "B905": 7,      # zip 未指定 strict
     "RUF043": 6,    # pytest.raises 模式未转义
     "RUF005": 5,    # 集合字面量拼接
     "RUF006": 5,    # asyncio 悬挂任务
