@@ -171,3 +171,54 @@ SOFT_HSM_TIMESTAMP_PATH=/mnt/ee16/home/student03/uai/src/soft_hsm_enabled_at.txt
 **健康路由**：主服务 `/api/v1/health`（**不是** `/health`）；SG `/health`。
 **已知可接受的 degraded**：SG 的 `oom_protection=warning`（需特权容器 `--oom-score-adj=-1000`，本机无 sudo 无法设置）→ SG 整体显示 `degraded` 属正常，主服务只记一条 warning。
 **日志含 NUL**：`api.log` 会被 grep 判成二进制，统一 `tr -d '\000' < api.log > api.clean.log` 后再读。
+
+## 11. 权重下载（hf-mirror 三个必踩的坑，2026-09-28 实测）
+
+`scripts/server_download_models.sh` + `server_verify_models.py`（只做结构校验，不出数值）：
+
+1. **必须 `HF_HUB_DISABLE_XET=1`**：huggingface_hub ≥0.32 默认走 Xet 存储后端，它要访问
+   `cas-server.xethub.hf.co` —— **hf-mirror 不镜像该域名**，报
+   `CAS Client Error: HTTP status client error (401 Unauthorized)` 并中断下载。关掉即回退常规 HTTP。
+2. **`--exclude` 每个 pattern 都要单独写一次**：多值形式只吃第一个，其余会被当"显式文件名"
+   （警告 `Ignoring --exclude since filenames have been explicitly set.`），于是
+   `BAAI/bge-m3` 里的 `imgs/.DS_Store` 照样被请求 → `403 Forbidden` → **整次下载中断，
+   config.json 都没落地**（表现为"下了 2.2G 但目录里没有权重文件"）。
+3. bge-m3 的 `onnx/`（约 2GB）本项目用不到，一并 `--exclude`。
+
+已下好并校验：`~/uai/models/{qwen2.5-1.5b-instruct-gguf,bge-m3,bge-reranker-base}`
+（GGUF 魔数+元数据可读、HF config/tokenizer 可解析）。
+**Ultrasound-CLIP（768d 图像嵌入）是项目自有产物**（由 `finetune_ultrasound_clip.py` 训练，
+公开源没有）—— 图像嵌入服务暂时无法独立起。
+
+## 12. 真机端到端冒烟（`scripts/server_link_smoke.sh` + `server_smoke_probe.py`）
+
+**它一次就抓出两个阻断级缺陷**（都是"提交 200 但请求永远停在 processing、结果接口 404"）：
+
+1. **request_id 双 ID 分叉**：端点先 `_generate_request_id()` 用于"入队+响应+查询"，
+   而 `DiagnosisRepository.create_request()` 内部**又生成一个**并落库 → worker 拿队列里的 id
+   查库永远查不到（`pipeline_request_not_found`）。判据：端点里 `created_id` 从未被使用。
+2. **入队早于提交**：`create_request` 只 `flush()`，worker 用**另一个会话**读库，
+   未提交的行看不见；worker 空转（BLPOP 立刻返回）时必然踩中。
+
+**关键操作事实**：
+- `POST /api/v1/diagnosis/request` **需要鉴权**（无 token → 401 E1003），`users` 表迁移后是空的
+  → 冒烟脚本运行时生成口令写 `~/uai/.smoke_pw`(600) 并建 `smoke-doctor`（明文不进 argv/仓库）；
+- 前置数据（patients/sessions/consent_records）由脚本直接 INSERT（幂等），不去猜会话/同意 API 的 payload；
+- `python /path/to/script.py` 会把**脚本所在目录**而非 CWD 放进 `sys.path` → 从 `$HOME` 跑
+  那些 `import app.*` 的脚本必须在文件里显式 `sys.path.insert(0, "~/uai/src")`；
+- 当前终态（无 LLM/嵌入服务时）：`status=failed`、`ai_diagnosis_failed=True`、
+  `requires_manual_review=True`、`review=安全校验服务不可用，请转为人工诊断` —— 即**控制面全通、
+  按设计 fail-closed**，这不是故障而是缺推理后端的预期表现。
+
+## 13. 现场/未完成项（别把它当成"已做完"）
+
+| 项 | 状态 |
+|---|---|
+| LLM 推理后端 | **未起**：需要 `llama-cpp-python`（PyPI 默认 wheel 是 CPU-only，CUDA 需第三方 wheel 源）或 vLLM（`full` 档强制、pip 重且与 torch/cu130 有冲突风险） |
+| 嵌入/重排服务 | 权重已就位，**HTTP 服务未起**（`ultrasound_clip_port`/`bge_m3_port`/`bge_reranker_port`） |
+| Ultrasound-CLIP 权重 | **公开源没有**（项目自有产物），图像嵌入腿无法端到端验证 |
+| SG 的 `oom_protection` | `warning`（需 `--oom-score-adj=-1000`，无 sudo 设不了）→ SG 整体恒 `degraded`，主服务只记一条 warning（已按设计区分） |
+| 需权重的口径测试 | 未开始（双引擎一致性 ≥100 例/器官、分级一致率 ≥95%） |
+
+**验收口径提醒**：`tests/unit` 全绿（5779）与覆盖率 82.22% ≥ 82% 只证明"离线可测的那一层"；
+真正的"能出诊断结论"取决于上表前两项。
