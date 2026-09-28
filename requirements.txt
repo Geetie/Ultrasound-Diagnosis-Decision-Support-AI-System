@@ -1,5 +1,10 @@
 fastapi==0.110.0
 uvicorn==0.29.0
+# pydantic / starlette 是 fastapi 的传递依赖，但 **app/ 里有 20+ 处直接 import**
+# （pydantic 24 处、starlette 2 处）—— 直接依赖必须显式声明，否则上游换实现/降级时
+# 会以"运行期 ImportError"的形式炸在启动路径上（2026-09-28 真机部署暴露同类问题）。
+pydantic==2.6.4
+starlette>=0.36.3,<0.37
 pydantic-settings==2.2.1
 sqlalchemy==2.0.27
 asyncpg==0.29.0
@@ -25,3 +30,32 @@ opentelemetry-instrumentation-redis==0.45b0
 numpy>=1.24.0
 minio>=7.2.0
 rank-bm25==0.2.2
+
+# ======================================================================
+# 启动期依赖补登（2026-09-28 真机部署暴露）
+# ======================================================================
+# 以下 10 个包被 app/ 直接 import，却**从来不在任何依赖清单里** —— 后果是：
+# 全新环境按 requirements.txt 装完，应用启动即 ModuleNotFoundError
+# （真机首个报错就是 `ModuleNotFoundError: pydicom`，来自 app/api/v1/imaging.py），
+# 而在长期开发用的那台机器上它们早已"顺手装过"，所以一直没暴露。
+#
+# 本清单现由 tests/unit/quality/test_requirements_cover_startup_imports.py 守卫：
+# 它静态扫描 app/ 与 safety_gateway/ 的第三方导入，断言每一个都被清单覆盖
+# （或显式登记为"软依赖"且导入点确实包在 try/except ImportError 里）。
+# 版本下限取真机（Ubuntu 24.04 / Python 3.12.3）实测可用的版本。
+cachetools>=7.2.0
+elasticsearch>=9.5.0
+gmssl>=3.2.2
+jieba>=0.42.1
+onnxruntime>=1.30.0
+pydicom>=3.0.2
+pynvml>=13.0.1
+qdrant-client>=1.12.0
+scipy>=1.18.0
+zstandard>=0.25.0
+
+# pkuseg 刻意**不列入**：PyPI 无 py3.12 wheel，源码构建需要 C++ 工具链且在本机
+# 构建失败。代码侧是软依赖（app/knowledge/segmentation_validation.py 的
+# `try: import pkuseg / except ImportError` → 退回 jieba），
+# 由上述守卫测试的 OPTIONAL_UNDECLARED 显式登记并校验其"确实是软依赖"。
+

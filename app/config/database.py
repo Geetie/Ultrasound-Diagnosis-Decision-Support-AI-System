@@ -16,9 +16,22 @@ async_engine = create_async_engine(
     pool_timeout=settings.db_pool_timeout,
     pool_recycle=1800,
     connect_args={
-        "statement_timeout": f"{settings.db_query_timeout * 1000}",
+        # `command_timeout` 是 asyncpg 真正支持的**连接参数**，留在 connect_args。
         "command_timeout": settings.db_query_timeout,
-        "options": f"-c idle_in_transaction_session_timeout={settings.db_idle_in_transaction_timeout * 1000}",
+        # 而 `statement_timeout` 与 `idle_in_transaction_session_timeout` 是
+        # **PostgreSQL 运行时参数（GUC）**，必须经 server_settings 传递。
+        #
+        # 2026-09-28 现场部署暴露：原实现把它们（以及一个 `options` 字符串）直接放进
+        # connect_args，asyncpg 会直接报
+        #   TypeError: connect() got an unexpected keyword argument 'statement_timeout'
+        # —— 即**应用侧根本连不上 PostgreSQL**。之所以长期未被发现：单测走 mock/SQLite，
+        # alembic 自建 engine（不带这些参数）能连，把问题挡住了。
+        "server_settings": {
+            "statement_timeout": f"{settings.db_query_timeout * 1000}",
+            "idle_in_transaction_session_timeout": (
+                f"{settings.db_idle_in_transaction_timeout * 1000}"
+            ),
+        },
     },
 )
 

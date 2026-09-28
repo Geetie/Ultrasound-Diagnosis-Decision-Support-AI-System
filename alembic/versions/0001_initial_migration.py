@@ -7,6 +7,7 @@ Create Date: 2026-05-07 14:00:00.000000
 """
 import sqlalchemy as sa
 from pgvector.sqlalchemy import Vector
+from sqlalchemy.dialects.postgresql import JSONB  # JSONB 是 PG 方言类型，JSONB 不存在（2026-09-28 现场部署暴露）
 
 from alembic import op
 
@@ -45,7 +46,7 @@ def upgrade() -> None:
     )
 
     op.create_table(
-        'diagnosis_sessions',
+        'sessions',
         sa.Column('id', sa.Integer(), nullable=False),
         sa.Column('session_id', sa.String(length=64), nullable=False),
         sa.Column('patient_id', sa.String(length=64), nullable=True),
@@ -72,7 +73,7 @@ def upgrade() -> None:
         sa.Column('knowledge_ids', sa.ARRAY(sa.Text()), nullable=True),
         sa.Column('created_at', sa.TIMESTAMP(), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=True),
         sa.PrimaryKeyConstraint('id'),
-        sa.ForeignKeyConstraint(['session_id'], ['diagnosis_sessions.session_id'], )
+        sa.ForeignKeyConstraint(['session_id'], ['sessions.session_id'], )
     )
 
     op.create_table(
@@ -97,14 +98,14 @@ def upgrade() -> None:
         sa.Column('session_id', sa.String(length=64), nullable=True),
         sa.Column('operation', sa.String(length=64), nullable=False),
         sa.Column('operator', sa.String(length=64), nullable=True),
-        sa.Column('details', sa.JSONB(), nullable=True),
+        sa.Column('details', JSONB(), nullable=True),
         sa.Column('hash_chain', sa.String(length=64), nullable=True),
         sa.Column('created_at', sa.TIMESTAMP(), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=True),
         sa.PrimaryKeyConstraint('id')
     )
 
     op.create_index('idx_knowledge_embedding', 'knowledge_base', ['embedding'], unique=False, postgresql_using='hnsw', postgresql_ops={'embedding': 'vector_cosine_ops'})
-    op.create_index('idx_diagnosis_sessions_session_id', 'diagnosis_sessions', ['session_id'], unique=False)
+    op.create_index('idx_diagnosis_sessions_session_id', 'sessions', ['session_id'], unique=False)
     op.create_index('idx_consent_patient_id', 'consent_records', ['patient_id'], unique=False)
     op.create_index('idx_audit_logs_session_id', 'audit_logs', ['session_id'], unique=False)
 
@@ -112,11 +113,11 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.drop_index('idx_audit_logs_session_id', table_name='audit_logs')
     op.drop_index('idx_consent_patient_id', table_name='consent_records')
-    op.drop_index('idx_diagnosis_sessions_session_id', table_name='diagnosis_sessions')
+    op.drop_index('idx_diagnosis_sessions_session_id', table_name='sessions')
     op.drop_index('idx_knowledge_embedding', table_name='knowledge_base')
     op.drop_table('audit_logs')
     op.drop_table('knowledge_base')
     op.drop_table('diagnosis_results')
-    op.drop_table('diagnosis_sessions')
+    op.drop_table('sessions')
     op.drop_table('consent_records')
     op.drop_table('patients')

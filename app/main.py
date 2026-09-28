@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -30,6 +31,14 @@ from app.config.redis import RedisPool
 from app.config.settings import settings
 from app.config.validator import ConfigValidationError, validate_config
 from app.security.security_headers import SecurityHeadersMiddleware
+
+# 启动/关闭路径的诊断必须走 structlog。
+# ## 为什么（2026-09-28 真机部署暴露）
+# 原先这些地方用的是 `logger.warning("xxx_failed", extra={"error": ...})`，
+# 而本项目配置的日志渲染器是 structlog，stdlib 侧没有能渲染 `extra` 的 formatter ——
+# 于是真机上只剩一行光秃秃的 `rag_service_init_failed`，**失败原因被整个丢掉**，
+# 排查全靠猜。改成 structlog 后 `error=...` 才会真正出现在日志里。
+logger = structlog.get_logger(__name__)
 
 
 @asynccontextmanager
@@ -66,8 +75,7 @@ async def lifespan(app: FastAPI):
             await consent_consumer.start()
             app.state.consent_consumer = consent_consumer
         except Exception as e:
-            import logging
-            logging.getLogger(__name__).error("failed_to_start_consent_withdrawal_consumer", error=str(e))
+            logger.error("failed_to_start_consent_withdrawal_consumer", error=str(e))
 
     await safety_gateway_client.warmup()
     await safety_gateway_client.start_health_probe()
@@ -102,6 +110,19 @@ async def lifespan(app: FastAPI):
     from app.api.websocket.nav import manager as nav_manager
     await nav_manager.start_redis_subscriber()
 
+    # SEC：脱敏引擎的 HMAC 密钥 / 令牌映射 / 计数器必须从 Redis 恢复。
+    # 这件事**不能**在 import 期做（那时已有事件循环，见
+    # `get_desensitization_engine` 的说明），否则每次重启都换一把随机 HMAC 密钥，
+    # 历史令牌与还原映射全部失配。这里 best-effort：载入失败只告警，
+    # 引擎会退化为进程内状态（不阻断诊断）。
+    try:
+        from app.security.desensitization import get_desensitization_engine
+
+        await get_desensitization_engine().ensure_state_loaded()
+    except Exception as e:
+
+        logger.warning("desens_state_load_on_startup_failed", error=str(e))
+
     # T-GA-INT-01: 启动后台诊断 worker 池
     # N 个 worker 协程持续 BLPop 队列，调用 run_diagnosis_pipeline 执行完整管线。
     # 任何启动失败都吞掉 — worker 池是可选组件，不阻塞主服务。
@@ -109,8 +130,7 @@ async def lifespan(app: FastAPI):
         from app.services.diagnosis_worker import start_worker_pool
         await start_worker_pool(app, n=settings.int_worker_pool_size)
     except Exception as e:
-        import logging
-        logging.getLogger(__name__).warning("worker_pool_start_failed", extra={"error": str(e)})
+        logger.warning("worker_pool_start_failed", error=str(e))
 
     # OBS: 基础设施巡检循环（Redis / PG / 磁盘）。与 worker 池同样按
     # best-effort 处理——启动失败不阻塞主服务；关闭时经 shutdown event 退出，
@@ -124,8 +144,7 @@ async def lifespan(app: FastAPI):
             run_infra_health_checks()
         )
     except Exception as e:
-        import logging
-        logging.getLogger(__name__).warning("infra_health_start_failed", extra={"error": str(e)})
+        logger.warning("infra_health_start_failed", error=str(e))
         app.state.infra_health_task = None
 
     # OBS: 指标导出链路接线（/metrics 暴露 + VictoriaMetrics 推送）。
@@ -137,9 +156,8 @@ async def lifespan(app: FastAPI):
 
         await start_obs_export(app)
     except Exception as e:
-        import logging
-        logging.getLogger(__name__).warning(
-            "obs_export_start_failed", extra={"error": str(e)}
+        logger.warning(
+            "obs_export_start_failed", error=str(e)
         )
         app.state.vm_pusher = None
 
@@ -193,12 +211,20 @@ async def lifespan(app: FastAPI):
                 health_check_timeout_seconds=settings.bge_reranker_health_check_timeout_seconds,
             )
 
-            # P0-RAG-01 fix: inject real AsyncSessionLocal + UDAFVocabulary.
+            # P0-RAG-01 fix: 注入真实的 AsyncSessionLocal。
             # Shared singleton so the retriever's sparse leg and the BM25
             # fallback path operate on the same in-memory index instance.
+            #
+            # 2026-09-28 真机部署暴露两处接线错误（RAG 因此从未初始化成功，
+            # 启动期只留一行 `rag_service_init_failed`）：
+            #   1) `BM25Index` **不接受** `vocabulary=` —— 它的分词是模块内自带的
+            #      确定性实现（CJK 连续串 + 字母数字切分，见 bm25_fallback 模块
+            #      docstring），传这个 kwarg 直接 `TypeError`，整个 RAG 装配失败；
+            #   2) `Retriever` 的 `session_factory` 没传 —— 它据此把检索命中的
+            #      chunk 回表取正文，缺了它只会走 "placeholder content" 分支
+            #      （`retriever.py` 里标注为"测试用"的那条），线上等于检索出空壳。
             shared_bm25_index = BM25Index(
                 session_factory=AsyncSessionLocal,
-                vocabulary=UDAFVocabulary(),
             )
 
             rag_service = RAGServiceImpl(
@@ -212,6 +238,9 @@ async def lifespan(app: FastAPI):
                     embedding_service=embedding_svc,
                     ultrasound_clip=clip_svc,
                     bm25_index=shared_bm25_index,
+                    # 必须注入：否则命中的 chunk 无法回表取正文，检索会退化成
+                    # "placeholder content"（见上面 2026-09-28 的说明）。
+                    session_factory=AsyncSessionLocal,
                 ),
                 reranker=reranker_svc,
                 heuristic_reranker=HeuristicReranker(),
@@ -237,20 +266,15 @@ async def lifespan(app: FastAPI):
             )
             try:
                 healthy = await rag_service.health_check()
-                import logging
-                logging.getLogger(__name__).info(
-                    "rag_service_health_check", extra={"healthy": healthy}
-                )
+                logger.info("rag_service_health_check", healthy=healthy)
             except Exception as e:
-                import logging
-                logging.getLogger(__name__).warning(
-                    "rag_service_health_check_failed", extra={"error": str(e)}
+                logger.warning(
+                    "rag_service_health_check_failed", error=str(e)
                 )
             app.state.rag_service = rag_service
         except Exception as e:
-            import logging
-            logging.getLogger(__name__).warning(
-                "rag_service_init_failed", extra={"error": str(e)}
+            logger.warning(
+                "rag_service_init_failed", error=str(e)
             )
             app.state.rag_service = None
     else:
@@ -265,8 +289,7 @@ async def lifespan(app: FastAPI):
     # knowledge_agent 依赖 RAG Service（见上文 app.state.rag_service），
     # RAG 不可用时降级为「无 RAG」的占位实现（query 会直接抛 RuntimeError）。
     # 任何初始化失败都被吞掉 — AGT 模块在 Phase 0A 是可选项，不应阻塞主服务启动。
-    import logging
-    _logger = logging.getLogger(__name__)
+    _logger = logger
     try:
         from app.agents.knowledge import KnowledgeAgentImpl
         from app.agents.monitor import MonitorAgentImpl
@@ -329,7 +352,7 @@ async def lifespan(app: FastAPI):
             inference_engine = create_inference_engine_from_settings()
         except Exception as e:
             _logger.warning(
-                "inference_engine_init_failed", extra={"error": str(e)}
+                "inference_engine_init_failed", error=str(e)
             )
         app.state.inference_engine = inference_engine
 
@@ -363,27 +386,25 @@ async def lifespan(app: FastAPI):
             dispatcher_ok = await dispatcher.health_check()
         except Exception as e:
             dispatcher_ok = False
-            _logger.warning("dispatcher_health_check_failed", extra={"error": str(e)})
+            _logger.warning("dispatcher_health_check_failed", error=str(e))
         try:
             knowledge_ok = await knowledge_agent.health_check()
         except Exception as e:
             knowledge_ok = False
-            _logger.warning("knowledge_agent_health_check_failed", extra={"error": str(e)})
+            _logger.warning("knowledge_agent_health_check_failed", error=str(e))
         try:
             monitor_ok = await monitor_agent.health_check()
         except Exception as e:
             monitor_ok = False
-            _logger.warning("monitor_agent_health_check_failed", extra={"error": str(e)})
+            _logger.warning("monitor_agent_health_check_failed", error=str(e))
         _logger.info(
             "agents_health_check",
-            extra={
-                "dispatcher": dispatcher_ok,
-                "knowledge_agent": knowledge_ok,
-                "monitor_agent": monitor_ok,
-            },
+            dispatcher=dispatcher_ok,
+            knowledge_agent=knowledge_ok,
+            monitor_agent=monitor_ok,
         )
     except Exception as e:
-        _logger.warning("agents_init_failed", extra={"error": str(e)})
+        _logger.warning("agents_init_failed", error=str(e))
         app.state.dispatcher = None
         app.state.knowledge_agent = None
         app.state.monitor_agent = None
@@ -454,7 +475,7 @@ async def lifespan(app: FastAPI):
             crag_specialist_reinvoke=specialist_invoker is not None,
         )
     except Exception as e:
-        _logger.warning("fusion_engine_init_failed", extra={"error": str(e)})
+        _logger.warning("fusion_engine_init_failed", error=str(e))
         app.state.fusion_engine = None
 
     yield
@@ -466,8 +487,7 @@ async def lifespan(app: FastAPI):
         from app.services.diagnosis_worker import stop_worker_pool
         await stop_worker_pool(timeout=5.0)
     except Exception as e:
-        import logging
-        logging.getLogger(__name__).warning("worker_pool_stop_failed", extra={"error": str(e)})
+        logger.warning("worker_pool_stop_failed", error=str(e))
     # OBS: 停止基础设施巡检（置位 shutdown event → 等待 task 退出 → 兜底取消）
     try:
         import asyncio as _asyncio
@@ -479,8 +499,7 @@ async def lifespan(app: FastAPI):
         if infra_task is not None and not infra_task.done():
             await _asyncio.wait_for(infra_task, timeout=5.0)
     except Exception as e:
-        import logging
-        logging.getLogger(__name__).warning("infra_health_stop_failed", extra={"error": str(e)})
+        logger.warning("infra_health_stop_failed", error=str(e))
         infra_task = getattr(app.state, "infra_health_task", None)
         if infra_task is not None and not infra_task.done():
             infra_task.cancel()
@@ -490,9 +509,8 @@ async def lifespan(app: FastAPI):
 
         await stop_obs_export(app)
     except Exception as e:
-        import logging
-        logging.getLogger(__name__).warning(
-            "obs_export_stop_failed", extra={"error": str(e)}
+        logger.warning(
+            "obs_export_stop_failed", error=str(e)
         )
     await safety_gateway_client.close()
     if consent_consumer:
@@ -500,8 +518,7 @@ async def lifespan(app: FastAPI):
     # AGT 智能体显式关闭阶段（按 monitor → knowledge → dispatcher 顺序）：
     # 反向拓扑序关闭，先释放依赖方，再释放被依赖方，确保每个 close()
     # 看到的依赖状态都是有效的。
-    import logging
-    _shutdown_logger = logging.getLogger(__name__)
+    _shutdown_logger = logger
     for agent_attr in ("monitor_agent", "knowledge_agent", "dispatcher"):
         agent = getattr(app.state, agent_attr, None)
         if agent is not None and hasattr(agent, "close"):
@@ -509,7 +526,7 @@ async def lifespan(app: FastAPI):
                 await agent.close()
             except Exception as e:
                 _shutdown_logger.warning(
-                    "agents_close_failed", extra={"agent": agent_attr, "error": str(e)}
+                    "agents_close_failed", agent=agent_attr, error=str(e)
                 )
     if hasattr(app.state, "inference_engine") and app.state.inference_engine:
         await app.state.inference_engine.close()
@@ -519,17 +536,15 @@ async def lifespan(app: FastAPI):
         try:
             await app.state.fusion_engine.close()
         except Exception as e:
-            import logging
-            logging.getLogger(__name__).warning(
-                "fusion_engine_close_failed", extra={"error": str(e)}
+            logger.warning(
+                "fusion_engine_close_failed", error=str(e)
             )
     if hasattr(app.state, "rag_service") and app.state.rag_service:
         try:
             await app.state.rag_service.close()
         except Exception as e:
-            import logging
-            logging.getLogger(__name__).warning(
-                "rag_service_close_failed", extra={"error": str(e)}
+            logger.warning(
+                "rag_service_close_failed", error=str(e)
             )
     await RedisPool.close()
 

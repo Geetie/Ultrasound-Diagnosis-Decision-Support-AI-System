@@ -17,6 +17,7 @@ from typing import Any
 
 import structlog
 
+from app.config.dsn import to_asyncpg_dsn
 from app.embedding.protocols import (
     SearchResult,
     VectorIndexClient,
@@ -93,7 +94,9 @@ class PgvectorVectorIndex(VectorIndexClient):
                 message="database_url is required for PGVector backend",
                 retryable=False,
             )
-        self._database_url = database_url
+        # 归一掉 SQLAlchemy 方言后缀（`postgresql+asyncpg://` → `postgresql://`），
+        # 否则 asyncpg 建池必失败，见 _normalize_dsn 的说明。
+        self._database_url = to_asyncpg_dsn(database_url)
         self._pool_min_size = pool_min_size
         self._pool_max_size = pool_max_size
         self._pool: asyncpg.Pool | None = None
@@ -304,9 +307,16 @@ class PgvectorVectorIndex(VectorIndexClient):
                 await conn.fetchval("SELECT 1")
             return True
         except Exception as exc:
+            # 必须同时打 `detail`：`VectorIndexError.__str__` 只输出
+            # `[错误码] message`，真正的原因（DSN 非法、密码错、库不存在…）在 detail 里。
+            # 真机上就是因为这里只打 __str__，日志只剩一行
+            # `pgvector_health_check_failed error=[E2003_VEC_CONNECTION_FAILED]`，
+            # 真因被完全吞掉，排查只能靠猜。
             logger.warning(
                 "pgvector_health_check_failed",
                 error=str(exc),
+                error_detail=getattr(exc, "detail", None),
+                error_type=type(exc).__name__,
             )
             return False
 

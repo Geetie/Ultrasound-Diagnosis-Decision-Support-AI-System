@@ -66,23 +66,49 @@ class SafetyGatewayClient:
 
     async def _health_probe_loop(self) -> None:
         consecutive_unhealthy = 0
+        was_degraded = False
         while True:
             try:
                 result = await self.health_check()
-                is_healthy = result.get("status") == "healthy"
+                status = result.get("status")
+                # SG 的 `degraded` 是**设计内的可服务状态**：SG 自己的健康聚合文档写明
+                # "融合层不可用时 SG 仍可提供降级输出，由调用方决定策略"。把它当成
+                # unhealthy 会让主服务每 4s 记一条 critical —— 2026-09-28 真机上
+                # SG 因 `oom_protection=unknown`（非 compose 部署无法验证 OOM 保护）
+                # 恒为 degraded，主服务的 consecutive_unhealthy 一路涨到 14 并持续增长，
+                # 完全掩盖了真正需要告警的情形。因此分级：
+                #   healthy  → 正常
+                #   degraded → 可服务但降级：warning（仅在进入该状态时记一次）+ 不计数
+                #   其它/异常 → 不可服务：error + 计数（≥3 触发 critical）
+                is_healthy = status == "healthy"
+                is_degraded = status == "degraded"
+                serving = is_healthy or is_degraded
                 async with self._lock:
                     prev = self._sg_healthy
-                    self._sg_healthy = is_healthy
+                    self._sg_healthy = serving
                     self._last_health_check_time = asyncio.get_running_loop().time()
-                if prev and not is_healthy:
+                if prev and not serving:
                     logger.error("safety_gateway_health_probe_detected_unhealthy")
                     consecutive_unhealthy = 1
-                elif not prev and is_healthy:
+                elif not prev and serving:
                     logger.info("safety_gateway_health_probe_recovered")
                     consecutive_unhealthy = 0
-                elif not is_healthy:
+                elif is_degraded:
+                    if not was_degraded:
+                        degraded_components = {
+                            name: comp.get("status")
+                            for name, comp in (result.get("components") or {}).items()
+                            if isinstance(comp, dict) and comp.get("status") != "healthy"
+                        }
+                        logger.warning(
+                            "safety_gateway_health_probe_degraded",
+                            components=degraded_components,
+                        )
+                    consecutive_unhealthy = 0
+                elif not serving:
                     consecutive_unhealthy += 1
-                self._publish_health_metric(is_healthy, consecutive_unhealthy)
+                was_degraded = is_degraded
+                self._publish_health_metric(serving, consecutive_unhealthy)
             except Exception as e:
                 logger.warning("safety_gateway_health_probe_error", error=str(e))
                 async with self._lock:

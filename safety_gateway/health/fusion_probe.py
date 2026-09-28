@@ -57,7 +57,17 @@ class FusionProbe:
             return {"status": "unhealthy", "error": "probe_closed"}
         self._ensure_loop_bound()
         try:
-            fusion_url = f"http://{settings.fusion_layer_host}:{settings.fusion_layer_port}/health"
+            # 路径必须是主服务**真实**的健康路由。
+            # 2026-09-28 真机部署暴露：这里原写 `/health`，而主服务的健康接口挂在
+            # `/api/v1/health`（见 app/main.py 的 `health_router` include 前缀），
+            # 于是探测恒 404 → SG 总判自己 `degraded` → 主服务又把 SG 的 `degraded`
+            # 视为 unhealthy（`safety_gateway_client.health_check` 要求 `healthy`）
+            # → 双方各报各的：SG 每 4s 刷 fusion 404，主服务每 4s 刷
+            # `safety_gateway_consecutive_unhealthy_critical`，形成永久告警环。
+            fusion_url = (
+                f"http://{settings.fusion_layer_host}:{settings.fusion_layer_port}"
+                "/api/v1/health"
+            )
             client = self._ensure_client()
             start = datetime.now(timezone.utc)
             response = await client.get(fusion_url)

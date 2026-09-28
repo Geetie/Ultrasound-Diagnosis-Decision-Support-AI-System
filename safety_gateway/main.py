@@ -144,16 +144,25 @@ async def lifespan(app: FastAPI):
         logger.error("sg_workers_must_be_1_from_env", workers=workers_env)
         raise ConfigValidationError([f"SafetyGateway must run with exactly 1 worker (got {workers_env}). Use uvicorn --workers 1."])
 
-    actual_workers = _get_actual_worker_count()
-    if actual_workers is not None and actual_workers != 1:
-        logger.error("sg_workers_must_be_1_actual", actual_workers=actual_workers)
-        raise ConfigValidationError([f"SafetyGateway must run with exactly 1 worker (detected {actual_workers}). SafetyGateway is not designed for multi-worker deployment."])
+    _assert_single_process(_get_actual_worker_count())
 
     errors = validate_config()
     if errors:
         raise ConfigValidationError(errors)
 
     await SafetyGatewayRedisPool.get_client()
+
+    # 阈值引擎是**懒加载**的：不预热，`/health` 会一直报
+    # threshold_engine=degraded（loaded=False），即使它随时能服务
+    # （库里没有阈值时自动回落内置默认值 —— 见 ThresholdEngine._lazy_load）。
+    # 健康状态应反映"能否服务"，而不是"是否碰巧已被用过"。
+    # 2026-09-28 真机：主服务把 SG 的 degraded 当 unhealthy，导致永久 critical 告警。
+    try:
+        from safety_gateway.threshold import get_threshold_engine
+
+        await get_threshold_engine().ensure_loaded()
+    except Exception as e:
+        logger.warning("sg_threshold_warmup_failed", error=str(e))
 
     logger.info(
         "safety_gateway_starting",
@@ -189,6 +198,36 @@ async def lifespan(app: FastAPI):
     from safety_gateway.sg_db import close_db
     await close_db()
     logger.info("safety_gateway_shutdown_complete")
+
+
+def _assert_single_process(actual_children: int | None) -> None:
+    """校验"以单进程方式运行"，与 :func:`_get_actual_worker_count` 的文档语义一致。
+
+    子进程数语义：
+    * ``0``  → 当前进程**就是**那个唯一的服务进程（单 worker，正常）；
+    * ``>=1``→ 当前进程在充当"父/监管进程"，说明以多 worker 方式拉起 → 拒绝；
+    * ``None`` → 无法判定（无 psutil / 无权限），不阻断。
+
+    ## 为什么不是 `!= 1`（2026-09-28 真机部署暴露）
+
+    原实现写成 `actual_workers != 1`，等于要求"必须有恰好 1 个子进程"，而它自己的
+    文档写着"正常情况下应该只有 0 个子进程" —— 自相矛盾。后果是
+    **SafetyGateway 在干净环境下永远无法启动**，真机实测：
+
+        sg_workers_must_be_1_actual  actual_workers=0
+        → lifespan 抛 ConfigValidationError → "Application startup failed. Exiting."
+
+    属典型"能力从未在真实环境跑过"缺陷：单测绕过了 lifespan，所以一直没暴露。
+    """
+    if actual_children is not None and actual_children >= 1:
+        logger.error("sg_workers_must_be_1_actual", actual_workers=actual_children)
+        raise ConfigValidationError(
+            [
+                "SafetyGateway must run as a single process, "
+                f"but {actual_children} child process(es) were detected. "
+                "It is not designed for multi-worker deployment.",
+            ]
+        )
 
 
 def _get_actual_worker_count() -> int | None:

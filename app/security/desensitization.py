@@ -446,6 +446,20 @@ class DesensitizationEngine:
         except Exception as e:
             logger.warning("desens_state_load_from_redis_failed", error=str(e))
 
+    async def ensure_state_loaded(self) -> None:
+        """幂等地把 Redis 侧状态（HMAC 密钥 / 令牌映射 / 计数器）载入本进程。
+
+        必须在**事件循环内**调用（本项目的落点是 lifespan 启动期）。原实现在
+        同步工厂里用 ``asyncio.new_event_loop().run_until_complete()`` 硬跑，
+        一旦进程已有事件循环就抛 ``RuntimeError: Cannot run the event loop while
+        another loop is running`` 并丢弃协程 —— 于是 HMAC 密钥**永远没从 Redis
+        恢复**，每次重启都换一把随机密钥，历史令牌与还原映射全部失配。
+        详见 :func:`get_desensitization_engine` 的说明。
+        """
+        if self._redis_loaded:
+            return
+        await self.load_state_from_redis()
+
     def _persist_token_to_redis(self, name_hash: str, token: str):
         if not self._redis_loaded:
             return
@@ -473,15 +487,25 @@ class DesensitizationEngine:
             logger.warning("desens_token_persist_failed", error=str(e))
 
 def get_desensitization_engine() -> DesensitizationEngine:
+    """返回进程内单例（只加载规则；Redis 状态改由启动期 ``ensure_state_loaded`` 载入）。
+
+    ## 为什么这里不再"顺手"跑一次异步载入（2026-09-28 真机部署暴露）
+
+    原实现为了在同步工厂里调用 ``load_state_from_redis()``，临时
+    ``asyncio.new_event_loop().run_until_complete(...)``。而本模块在 **import 期**
+    就以 ``desensitization_engine = get_desensitization_engine()`` 触发这段代码，
+    那时进程往往已有事件循环 → 抛
+    ``RuntimeError: Cannot run the event loop while another loop is running``，
+    协程被丢弃（真机日志同时出现 ``RuntimeWarning: coroutine
+    'DesensitizationEngine.load_state_from_redis' was never awaited``）。
+
+    后果不是"少了个优化"，而是**正确性**：``_name_hmac_key`` 保持
+    ``os.urandom(32)`` 的随机初值，每次重启都换一把密钥 —— 同一个患者姓名前后两次
+    跑出的令牌不同，历史令牌与还原映射全部对不上（restore 服务形同失效）。
+    因此改为在 lifespan 启动期显式 ``await ensure_state_loaded()``。
+    """
     engine = DesensitizationEngine()
     engine.load_rules()
-    try:
-        import asyncio
-        loop = asyncio.new_event_loop()
-        loop.run_until_complete(engine.load_state_from_redis())
-        loop.close()
-    except Exception as e:
-        logger.warning("desens_hmac_key_load_on_init_failed", error=str(e))
     return engine
 
 desensitization_engine = get_desensitization_engine()

@@ -5,6 +5,7 @@ Revises: 0003
 Create Date: 2026-05-13
 """
 import sqlalchemy as sa
+from sqlalchemy.dialects.postgresql import JSONB  # JSONB 是 PG 方言类型，JSONB 不存在（2026-09-28 现场部署暴露）
 
 from alembic import op
 
@@ -22,7 +23,7 @@ def upgrade() -> None:
         sa.Column('period_end', sa.TIMESTAMP(timezone=True), nullable=False),
         sa.Column('prev_cross_hash', sa.String(64)),
         sa.Column('cross_hash_self', sa.String(64), nullable=False),
-        sa.Column('session_hashes', sa.JSONB),
+        sa.Column('session_hashes', JSONB),
         sa.Column('created_at', sa.TIMESTAMP(timezone=True), nullable=False,
                   server_default=sa.func.current_timestamp()),
     )

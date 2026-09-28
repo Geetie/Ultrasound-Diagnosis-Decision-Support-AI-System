@@ -104,6 +104,8 @@ class SafetyGatewayRedisPool:
             async with cls._get_lock():
                 if cls._client is None:
                     from urllib.parse import urlparse, urlunparse
+
+                    from app.config.dsn import redact_url
                     parsed = urlparse(settings.redis_url)
                     path_parts = parsed.path.rsplit("/", 1)
                     new_path = "/1" if len(path_parts) <= 1 else f"{path_parts[0]}/1"
@@ -111,7 +113,13 @@ class SafetyGatewayRedisPool:
 
                     connection_kwargs = dict(
                         max_connections=settings.redis_pool_max_connections,
-                        socket_timeout=settings.redis_pool_timeout,
+                        # `socket_timeout` 必须**严格大于**任何阻塞读的 block 上限
+                        # （本服务最长的是 xreadgroup 的 5000ms，见 redis_subscriber.py）。
+                        # 原实现直接取 redis_pool_timeout=5 → 阻塞读每次都在同一秒上
+                        # 与 socket 读超时打平，真机上每 ~6s 一条
+                        #   sg_redis_stream_consume_error error=Timeout reading from ...
+                        # 并触发重连重试（既刷日志又拖慢阈值下发）。
+                        socket_timeout=max(settings.redis_pool_timeout, 8),
                         socket_connect_timeout=settings.redis_pool_timeout,
                         retry_on_timeout=True,
                         retry=Retry(
@@ -124,7 +132,9 @@ class SafetyGatewayRedisPool:
 
                     cls._client = aioredis.Redis.from_url(sg_redis_url, **connection_kwargs)
                     cls._consecutive_failures = 0
-                    logger.info("sg_redis_pool_initialized", url=sg_redis_url)
+                    # 必须脱敏：sg_redis_url 里带 requirepass 口令，
+                    # 原实现把明文口令写进了日志文件（合规红线）。
+                    logger.info("sg_redis_pool_initialized", url=redact_url(sg_redis_url))
         else:
             await cls._ensure_connected()
             if cls._client is None:

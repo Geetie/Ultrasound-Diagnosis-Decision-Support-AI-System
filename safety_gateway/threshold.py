@@ -82,6 +82,15 @@ class ThresholdEngine:
             db_thresholds = result.scalars().all()
 
             with self._thresholds_lock:
+                # 先用内置默认值铺底，再用库里的行覆盖。
+                # 2026-09-28 真机部署暴露：原先只灌 DB 行，**"库里没有阈值"就什么都不灌**，
+                # 于是 `_get_threshold` 对每个器官都落到
+                # `sg_default_unknown_organ_threshold`（0.95）并打
+                # `sg_unknown_organ_threshold` 告警 —— 设计里 thyroid 0.85 /
+                # liver 0.88 / cardiac 0.92 的**分级阈值全部失效**，安全校验口径被悄悄收紧。
+                # 注意加载顺序：默认值在前、DB 行在后，保证"库里配的"优先级更高
+                # （与 `_load_sync_fallback` 的语义一致）。
+                self._load_default_thresholds()
                 for threshold in db_thresholds:
                     key = threshold.organ
                     if threshold.disease_type:

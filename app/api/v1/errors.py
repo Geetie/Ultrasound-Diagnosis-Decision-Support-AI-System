@@ -1,3 +1,5 @@
+import json
+from http import HTTPStatus
 from typing import Any
 
 import structlog
@@ -7,6 +9,44 @@ from fastapi.responses import JSONResponse
 from app.models.schemas import ErrorResponse
 
 logger = structlog.get_logger()
+
+
+def _coerce_detail(detail: Any) -> str | None:
+    """把 ``HTTPException.detail`` 归一为字符串（``ErrorResponse`` 的字段都是 str）。
+
+    ## 为什么必须归一（2026-09-28 真机部署暴露）
+
+    FastAPI 允许 ``detail`` 是任意 JSON 可序列化对象，项目里**确实**这么用：
+    ``app/api/v1/health.py`` 在 unhealthy 时把整份健康报告 dict 作为 detail 抛出。
+
+    而原实现是 ``error_message=exc.detail or "Request error"`` 直接塞进 ``str``
+    字段，于是**异常处理器自己抛 pydantic ValidationError**：
+
+        pydantic_core.ValidationError: 1 validation error for ErrorResponse
+        error_message
+          Input should be a valid string [input_value={'status': 'unhealthy', ...}]
+
+    处理器一崩，响应根本没有机会发出；异常再穿过 ``BaseHTTPMiddleware``
+    （rate_limit）的 task group 抛出 ExceptionGroup —— 客户端看到的是**连接被重置**
+    （curl ``http=000``），而不是 503 + 健康报告。真机表现极具误导性：
+    "端口在 LISTEN，但任何非 2xx 请求都像被黑洞吞掉"。
+    """
+    if detail is None:
+        return None
+    if isinstance(detail, str):
+        return detail
+    try:
+        return json.dumps(detail, ensure_ascii=False, default=str)
+    except Exception:
+        return str(detail)
+
+
+def _default_message(status_code: int) -> str:
+    """按状态码给出可读的兜底描述（结构化 detail 不适合放进 error_message）。"""
+    try:
+        return HTTPStatus(status_code).phrase
+    except ValueError:
+        return "Request error"
 
 
 _ERROR_CODE_REGISTRY: dict[str, str] = {}
@@ -795,10 +835,15 @@ async def http_exception_handler(request: Request, exc: HTTPException):
         503: "E4005",
     }
     error_code = status_to_error_code.get(exc.status_code, "E2000")
+    # `detail` 可能是 dict（健康检查就拿它当结构化载荷用）。必须先归一为字符串，
+    # 否则 pydantic 拒收 → 处理器自身崩溃 → 响应根本发不出去（详见 _coerce_detail）。
+    detail_text = _coerce_detail(exc.detail)
     error_response = ErrorResponse(
         error_code=error_code,
-        error_message=exc.detail or "Request error",
-        detail=str(exc.detail),
+        error_message=(
+            detail_text if isinstance(exc.detail, str) else _default_message(exc.status_code)
+        ) or "Request error",
+        detail=detail_text,
     )
     return JSONResponse(
         status_code=exc.status_code,
