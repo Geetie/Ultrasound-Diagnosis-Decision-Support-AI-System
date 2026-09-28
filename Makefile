@@ -40,15 +40,18 @@ test-int:
 test-perf:
 	$(PY) -m pytest -m perf -n0 --tb=short
 
-# Gate 1 目标：整体 80%、核心 90%；当前基线 整体 76%、核心 75%，
-# 故先按棘轮设门（75/74）防止倒退，达标后再提高。
+# 覆盖率门禁：**与 CI 同口径**（整体 82 / 核心 86），实测 整体 82.39% / 核心 86.30%。
+#
+# 修正记录：此前这里写的是 `--fail-under=75/74` 且注释为"基线 整体76/核心75"，
+# 比 CI 的 82/86 **宽松** —— 会出现"`make cov` 绿、CI 红"的假绿灯（本地自测失真）。
+# 棘轮历史与当前实测值见 pyproject.toml 的注释块。
 cov:
 	$(PY) -m pytest $(TRACKS_UNIT) $(TRACKS_INT) $(PYTEST_FLAGS) --tb=short \
 		--cov=app --cov-report=term-missing
-	$(PY) -m coverage report --fail-under=75
+	$(PY) -m coverage report --fail-under=82
 	$(PY) -m coverage report \
 		--include='app/security/*,app/services/*,app/fusion/*,app/agents/*' \
-		--fail-under=74
+		--fail-under=86
 
 # 性能基准统一入口（真机基准需现场硬件）
 bench:
