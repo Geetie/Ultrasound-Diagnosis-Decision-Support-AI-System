@@ -481,6 +481,20 @@ class CRAGHandler:
                 # 降级到占位实现
 
         # 3) Fallback：占位实现（仅合并 evidence + +0.2 confidence）
+        #
+        # 2026-09-28 接线审计：该分支此前**完全静默** —— 由于 `main.py` 的 invoker
+        # 能力探测恒失败，它成了事实上的唯一路径，但既无日志也无计数，
+        # 外部无法识别"CRAG 其实没有做真实重生成"。现在改为留痕。
+        logger.warning(
+            "crag_reinvoke_placeholder_used",
+            reason=(
+                "specialist_invoker_not_configured"
+                if self._specialist_invoker is None
+                else "specialist_reinvoke_failed"
+            ),
+            agent=original.agent_name,
+            added_evidence=len(new_evidence),
+        )
         new_conf = min(float(original.confidence or 0.0) + 0.2, 1.0)
         new_trace = list(original.reasoning_trace or [])
         new_trace.append(

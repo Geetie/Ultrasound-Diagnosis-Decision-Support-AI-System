@@ -414,17 +414,18 @@ async def lifespan(app: FastAPI):
         )
 
         # P2-8 修复：注入 dispatcher（优先路径）+ knowledge_agent
-        # P2-6 修复：注入 specialist_invoker（真实重生成 LLM）
+        # P2-6 修复：注入 specialist_invoker（真实重生成）
+        #
+        # 2026-09-28 接线审计修复：此前用 `hasattr(dispatcher, "invoke_specialist")`
+        # 与 `hasattr(dispatcher, "dispatch")` **探测**能力，而 `DispatcherAgentImpl`
+        # 这两个方法都不存在 —— 于是 specialist_invoker 恒为 None，CRAG **永远**
+        # 走"仅合并证据 +0.2"的占位分支（`fusion/crag.py:483`），"真实重生成"从未发生。
+        #
+        # crag 期望的形状是 `Callable[[AgentContext], Awaitable[AgentResponse]]`
+        # （`crag.py:93 SpecialistInvoker`），而 `DispatcherAgentImpl.invoke(context)`
+        # 与之完全匹配，因此改为**直接取入口**，不再做能力探测（探测失败是静默的）。
         knowledge_agent = getattr(app.state, "knowledge_agent", None)
-        specialist_invoker = None
-        if dispatcher is not None and hasattr(dispatcher, "invoke_specialist"):
-            specialist_invoker = dispatcher.invoke_specialist
-        elif dispatcher is not None and hasattr(dispatcher, "dispatch"):
-            # 兼容占位 dispatcher：使用 dispatch 路径
-            async def _placeholder_specialist_invoker(context):  # type: ignore[no-untyped-def]
-                return await dispatcher.dispatch(context)
-
-            specialist_invoker = _placeholder_specialist_invoker
+        specialist_invoker = dispatcher.invoke if dispatcher is not None else None
 
         crag_handler = (
             CRAGHandler(
