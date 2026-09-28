@@ -169,6 +169,41 @@ class ThreeLayerDesensitizationManager:
 
         return final_data, result
 
+    def record_safety_gateway_existing_check(
+        self,
+        data: dict[str, Any],
+        check_result: dict[str, Any],
+    ) -> dict[str, Any]:
+        """把**既有**的 SG ``check_output`` 结果登记为第三层（不重复调用 SG）。
+
+        背景（2026-09-28 接线审计）：诊断管线已自行调用
+        ``safety_gateway_client.check_output``（输入侧同意直查 + 输出侧校验）。
+        若第三层改走 :meth:`process_safety_gateway_layer`，会对**同一个请求第二次**
+        调用 SG —— 重复审计事件 + 额外延迟 + 双份 E4005 语义。
+
+        因此第三层改为"登记既有结果"：语义（``degraded_mode`` / ``degraded_output``
+        / ``final``）与 :meth:`process_safety_gateway_layer` 保持一致，
+        但不产生新的 SG 调用。
+        """
+        degraded_mode = bool(check_result.get("degraded_mode", False))
+        degraded_output = check_result.get("degraded_output")
+        final_data = degraded_output if degraded_output else data
+
+        result = {
+            "layer": DesensitizationLayer.SAFETY_GATEWAY,
+            "desensitized": data,
+            "final": final_data,
+            "check_result": check_result,
+            "modified": data != final_data,
+            "degraded": degraded_mode,
+        }
+        logger.info(
+            "safety_gateway_layer_registered_existing_check",
+            passed=check_result.get("passed", check_result.get("allowed")),
+            degraded=degraded_mode,
+        )
+        return result
+
     async def process_full_pipeline(
         self,
         patient_id: str,

@@ -48,6 +48,9 @@ from app.models.schemas import (
 from app.repositories import (
     DiagnosisRepository,
 )
+from app.security.three_layer_desensitization import (
+    get_three_layer_desensitization_manager,
+)
 from app.services.inflight_diagnosis import get_inflight_registry
 from app.services.rollout_router import (
     RolloutDecision,
@@ -355,6 +358,8 @@ async def run_diagnosis_pipeline(request_id: str) -> bool:
         # 无论成功、失败还是被取消，都必须摘牌，否则登记表会把已结束的任务
         # 一直留着，后续同患者的撤回会去 cancel 一个早已完成的任务
         get_inflight_registry().unregister(request_id)
+        # 三层脱敏的按运行缓存同样必须清账（否则长跑进程里按 request_id 无界增长）
+        _clear_desens_run(request_id)
 
 
 # ----------------------------------------------------------------------
@@ -387,15 +392,21 @@ async def _safe_dispatch(
             return [_make_failed_response("dispatcher_unavailable")]
 
         organ = Organ(request.organ) if request.organ else Organ.THYROID
+        # 三层脱敏 L1（标准化层）：clinical_text 由 create_request 落库（0009 迁移
+        # 补列），**落的是原文**；此处脱敏后才交给智能体，避免原文进入 LLM 与 RAG。
+        # getattr 兜底兼容测试替身与历史 NULL 行。
+        user_query = await _desensitize_input_text(
+            request_id=request_id,
+            raw_text=str(
+                getattr(request, "clinical_text", None) or "请基于提供的影像给出诊断"
+            ),
+            session_id=getattr(request, "session_id", None),
+        )
         context = AgentContext(
             request_id=request_id,
             session_id=request.session_id,
             organ=organ,
-            # clinical_text 由 create_request 落库（0009 迁移补列）；此处用
-            # getattr 兜底，兼容测试替身与历史 NULL 行
-            user_query=str(
-                getattr(request, "clinical_text", None) or "请基于提供的影像给出诊断"
-            ),
+            user_query=user_query,
             retrieval_profile=(
                 routing.retrieval_profile.as_retrieval_kwargs()
                 if routing is not None
@@ -483,6 +494,11 @@ async def _safe_safety_check(request, fusion_result, request_id: str):
             patient_id=getattr(request, "patient_id", "unknown"),
             output_data=output_data,
             consent_status_at_input=consent_status_at_input,
+        )
+        # 三层脱敏 L3（SafetyGateway 兜底）：**复用**本次 SG check_output 的结果
+        # 登记为第三层，不重复调用 SG（重复调用会产生双份审计事件与额外延迟）。
+        await _register_l3_existing_sg_check(
+            request_id=request_id, payload=output_data, sg_result=sg_result
         )
         return sg_result, True
     except Exception as exc:
@@ -591,6 +607,13 @@ async def _write_result_to_db(
         "rollout": rollout.as_dict() if rollout is not None else None,
     }
 
+    # 三层脱敏 L2（融合层）：对**即将持久化**的输出载荷再脱敏一次。
+    # 位置在"组装完成、写库之前"：这是 PII 真正落库的最后一个关口，
+    # 也是"LLM 意外生成身份信息"的拦截点。
+    findings = await _desensitize_output_payload(
+        request_id=request.request_id, payload=findings
+    )
+
     # 3) 写 DB
     try:
         await diagnosis_repo.update_result(
@@ -645,6 +668,166 @@ async def _write_result_to_db(
 # ----------------------------------------------------------------------
 # 辅助函数
 # ----------------------------------------------------------------------
+
+
+# ----------------------------------------------------------------------
+# 三层脱敏（T-GA-SEC-03）接线
+# ----------------------------------------------------------------------
+#
+# 2026-09-28 接线审计：`ThreeLayerDesensitizationManager` 此前**只被测试引用**，
+# `run_diagnosis_pipeline` 未调用任何 `process_*` —— 合规意义上的"三层纵深"从未
+# 生效，且临床原文（`request.clinical_text`）未经第一层就直接进入智能体与 RAG。
+#
+# ## 幂等为什么用"进程内、按运行"的缓存，而不是 Redis 跳过门
+#
+# 管线每次运行都从 DB **重新读原始行**（`clinical_text` 落库的是原文，脱敏结果
+# 不回写；原文展示由 restore 服务按授权还原）。因此"用 Redis 标记跳过 L1"在重试 /
+# 重复投递场景下会让**未脱敏的原文**直接进入智能体 —— 那是安全回退，不是幂等。
+# 缓存要防的是另一件事：**同一次运行内把同一份载荷重复脱敏**（对同一份文本再跑
+# 一次 L1/L2 会破坏语义）。Redis 侧只写**审计留痕**，明确不作为跳过判据。
+#
+# ## 缓存为什么必须带上"来源"一起比对（2026-09-28 由既有集成测试抓出）
+#
+# 第一版只按 `request_id` 存"脱敏后的结果"。当**同一 request_id 出现第二次运行**
+# （测试里是同一 stub id 的相邻用例；生产里是重复投递/并发同请求）时，第二次会拿到
+# **上一次运行的载荷** —— L2 因此把 A 次的输出当成 B 次的输出写库
+# （`tests/integration/int/test_routing_wiring.py` 立刻抓到了：B 次的 findings 里
+# 出现了 A 次的 routing 标记）。
+# 现在缓存存 `(来源, 结果)`，**来源一致才复用**；来源不同一律重算。
+# `finally` 里的 `_clear_desens_run` 仍保留，用于长跑进程的按运行清账。
+_desens_l1_cache: dict[str, tuple[str, str]] = {}
+_desens_l2_cache: dict[str, tuple[dict[str, Any], dict[str, Any]]] = {}
+_desens_l3_done: set[str] = set()
+
+DESENS_AUDIT_TTL_SECONDS = 3600
+
+
+def _clear_desens_run(request_id: str) -> None:
+    """运行结束清缓存（长跑进程里避免无界增长）。"""
+    _desens_l1_cache.pop(request_id, None)
+    _desens_l2_cache.pop(request_id, None)
+    _desens_l3_done.discard(request_id)
+
+
+async def _mark_desens_audit(
+    request_id: str, layer: str, *, degraded: bool = False
+) -> None:
+    """把"该层已生效"写入 Redis 供运维审计（best-effort，**不作为跳过判据**）。"""
+    try:
+        await RedisPool.setex(
+            RedisKey.custom_idempotency("desens", f"{layer}:{request_id}"),
+            DESENS_AUDIT_TTL_SECONDS,
+            "degraded" if degraded else "applied",
+        )
+    except Exception as exc:
+        logger.warning(
+            "desens_audit_mark_failed",
+            request_id=request_id,
+            layer=layer,
+            error=str(exc),
+        )
+
+
+async def _desensitize_input_text(
+    *, request_id: str, raw_text: str, session_id: str | None = None
+) -> str:
+    """L1 标准化层：临床文本脱敏后才交给智能体（``AgentContext.user_query``）。
+
+    失败安全：引擎异常时**原文透传**并 error 留痕 —— 与既有降级矩阵一致
+    （第三层 SG 仍是最终兜底），但绝不静默。
+    """
+    cached = _desens_l1_cache.get(request_id)
+    if cached is not None and cached[0] == raw_text:
+        logger.info("desens_l1_reused", request_id=request_id)
+        return cached[1]
+    try:
+        manager = get_three_layer_desensitization_manager()
+        masked, layer_result = await manager.process_standardization_layer(
+            {"clinical_text": raw_text}, session_id=session_id
+        )
+        masked_text = str(masked.get("clinical_text", raw_text))
+        _desens_l1_cache[request_id] = (raw_text, masked_text)
+        await _mark_desens_audit(request_id, "l1")
+        logger.info(
+            "desens_l1_applied",
+            request_id=request_id,
+            modified=bool(layer_result.get("modified")),
+        )
+        return masked_text
+    except Exception as exc:
+        logger.error(
+            "desens_l1_failed_passthrough",
+            request_id=request_id,
+            error=str(exc),
+            error_type=type(exc).__name__,
+        )
+        _desens_l1_cache[request_id] = (raw_text, raw_text)
+        await _mark_desens_audit(request_id, "l1", degraded=True)
+        return raw_text
+
+
+async def _desensitize_output_payload(
+    *, request_id: str, payload: dict[str, Any]
+) -> dict[str, Any]:
+    """L2 融合层脱敏：对**即将持久化**的输出载荷再脱敏。
+
+    目标是 LLM/融合层产出的内容（``findings``）—— 防止推理过程意外生成的身份
+    信息（姓名/手机号/证件号）落库。
+
+    失败安全：引擎异常时**原样返回**并 error 留痕（不阻断诊断，L3 仍在 SG 侧兜底）。
+    """
+    cached = _desens_l2_cache.get(request_id)
+    if cached is not None and cached[0] == payload:
+        logger.info("desens_l2_reused", request_id=request_id)
+        return cached[1]
+    try:
+        manager = get_three_layer_desensitization_manager()
+        masked, layer_result = await manager.process_fusion_layer(payload)
+        _desens_l2_cache[request_id] = (payload, masked)
+        await _mark_desens_audit(request_id, "l2")
+        logger.info(
+            "desens_l2_applied",
+            request_id=request_id,
+            modified=bool(layer_result.get("modified")),
+        )
+        return masked
+    except Exception as exc:
+        logger.error(
+            "desens_l2_failed_passthrough",
+            request_id=request_id,
+            error=str(exc),
+            error_type=type(exc).__name__,
+        )
+        _desens_l2_cache[request_id] = (payload, payload)
+        await _mark_desens_audit(request_id, "l2", degraded=True)
+        return payload
+
+
+async def _register_l3_existing_sg_check(
+    *, request_id: str, payload: dict[str, Any], sg_result: dict[str, Any]
+) -> None:
+    """L3：把**既有** SG ``check_output`` 结果登记为第三层，**不重复调用 SG**。
+
+    管线已自行调用 ``safety_gateway_client.check_output``（输入侧同意直查 +
+    输出侧校验）。若改走 ``process_safety_gateway_layer``，会对同一请求**第二次**
+    调用 SG —— 重复审计事件 + 额外延迟。
+    """
+    if request_id in _desens_l3_done:
+        logger.info("desens_l3_reused", request_id=request_id)
+        return
+    try:
+        manager = get_three_layer_desensitization_manager()
+        manager.record_safety_gateway_existing_check(payload, sg_result)
+        _desens_l3_done.add(request_id)
+        await _mark_desens_audit(request_id, "l3")
+        logger.info("desens_l3_registered", request_id=request_id)
+    except Exception as exc:
+        logger.error(
+            "desens_l3_register_failed",
+            request_id=request_id,
+            error=str(exc),
+            error_type=type(exc).__name__,
+        )
 
 
 # MonitorAgent 的 R1（低置信度）/R2（性能降级）判据是 `status == "completed"`。
