@@ -62,8 +62,15 @@ class TestFlagDefaultsToOff:
 
         assert args.allow_synthetic is True
 
-    def test_finetune_allow_synthetic_defaults_false(self, finetune_cli, monkeypatch):
-        args = _parse(finetune_cli, monkeypatch, ["--dataset-path", "d"])
+    def test_finetune_allow_synthetic_defaults_false(
+        self, finetune_cli, monkeypatch, tmp_path
+    ):
+        # 微调 CLI 的 --output-dir 是必填项（不给会 SystemExit:2，第一版就栽在这）
+        args = _parse(
+            finetune_cli,
+            monkeypatch,
+            ["--dataset-path", "d", "--output-dir", str(tmp_path / "out")],
+        )
 
         assert args.allow_synthetic is False
 
