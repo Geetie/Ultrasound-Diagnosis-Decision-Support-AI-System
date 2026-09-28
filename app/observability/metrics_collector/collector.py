@@ -64,9 +64,14 @@ class MetricsCollector(MetricsDefinitions):
             _logger.info("Metrics server disabled by config")
             return
         try:
-            start_http_server(p, registry=self._registry)
+            # `addr` 必须显式给：prometheus_client 不传时默认 `0.0.0.0`，
+            # 共享机/边缘端上等于把 `/metrics` 暴露给整个网络
+            # （2026-09-29 真机实测 `ss -ltn` 里是 `0.0.0.0:9090`）。
+            start_http_server(p, addr=settings.obs_metrics_host, registry=self._registry)
             self._server_started = True
-            _logger.info("Metrics server started", port=p)
+            _logger.info(
+                "Metrics server started", port=p, addr=settings.obs_metrics_host
+            )
         except OSError as e:
             _logger.error("Failed to start metrics server", port=p, error=str(e))
 

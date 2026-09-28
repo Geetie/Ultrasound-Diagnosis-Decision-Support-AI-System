@@ -123,7 +123,10 @@
     "VictoriaMetrics 推送关闭（OBS_VM_PUSH_ENABLED=false）：本机未部署 VM，指标服务器（9090）本身已启动。",
     "pkuseg 未安装：PyPI 无 py3.12 wheel、源码构建失败；代码侧是软依赖（`app/knowledge/segmentation_validation.py` try/except → 回落 jieba），已登记为 OPTIONAL_UNDECLARED 并由守卫测试校验其确为软依赖。",
     "知识库当前仅为**冒烟基线**：3 条自造条目（metadata 标记 smoke_fixture=true，内容带『冒烟用自造条目，非临床依据』前缀），不含真实患者数据、不冒充权威知识；真实知识库需按 scripts/init_knowledge_base.py 的 manifest+per-organ JSON 路径重建。",
-    "模型权重未下载：需经 HF_ENDPOINT=https://hf-mirror.com 拉取（huggingface.co 在本机不可达）；因此**所有需权重的口径测试（双引擎一致性 ≥100 例/器官、分级一致率 ≥95%）尚未开始**，本轮未产出任何精度/一致性数值。"
+    "模型权重**已就位**（经 HF_ENDPOINT=https://hf-mirror.com 下载，~/uai/models 共 9.2G：bge-m3、bge-reranker-base、Qwen2.5-1.5B-Instruct 与 qwen2.5-1.5b-instruct-q4_k_m.gguf），且 4 个模型服务实测在跑：8001 llama.cpp（Q4_K_M，n_gpu_layers=-1）、8002 vLLM（device cuda，gpu-memory-utilization 0.3）、8004 bge-m3、8005 reranker —— 全部绑 127.0.0.1。",
+    "Ultrasound-CLIP（8003）**尚未就位**：真机 `pgrep`/`ss -ltn` 均无该服务与端口。因此设计里的超声图像 embedding 腿当前不可用（诊断链路仍可跑通到 completed，但不含图像向量检索）。",
+    "需权重的口径测试（双引擎一致性 ≥100 例/器官、分级一致率 ≥95%）**具备执行条件但尚未开始** —— 本轮任务范围止于部署修复与链路冒烟，未产出任何精度/一致性/时延数值结论。",
+    "指标端口曾绑 `0.0.0.0`：`prometheus_client.start_http_server` 不传 `addr` 的默认行为，真机 `ss -ltn` 实测为 `0.0.0.0:9090`（其余端口均已绑回环）。已修：新增 `OBS_METRICS_HOST`（默认 `127.0.0.1`）并显式传给 `start_http_server`，真机复核为 `127.0.0.1:9090`；守卫见 `tests/unit/obs/test_metrics_bind_loopback.py`。"
   ],
   "excluded_by_design": [
     {

@@ -384,6 +384,12 @@ class Settings(BaseSettings):
 
     obs_metrics_enabled: bool = True
     obs_metrics_port: int = 9090
+    # 指标服务器的**绑定地址**。默认只绑回环：`prometheus_client.start_http_server`
+    # 不传 `addr` 时默认 `0.0.0.0`，在共享机/边缘端等于把 `/metrics` 暴露到整个网络
+    # （2026-09-29 真机实测 `ss -ltn` 显示 `0.0.0.0:9090`）。
+    # 需要被**同机之外的抓取端**拉取时（例如容器编排里由另一个容器抓）
+    # 显式设 `OBS_METRICS_HOST=0.0.0.0`；仓库内当前的部署编排没有这种用法。
+    obs_metrics_host: str = '127.0.0.1'
     obs_metrics_scrape_interval: float = 15.0
     obs_victoriametrics_url: str = 'http://victoriametrics:8428'
     # 指标导出链路的开关（2026-09-28 接线修复新增）。
