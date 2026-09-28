@@ -238,6 +238,27 @@ bash ~/server_check_embedding.sh              # 只打印形状/状态码/健康
 知识库为空时 `ready=False` 是正确语义——要 `bm25=True` 得先真正建知识库
 （`scripts/init_knowledge_base.py`，现在嵌入服务已就绪，这是它第一次可用）。
 
+## 12.6 vLLM 引擎（8002，独立 venv）
+
+```bash
+bash ~/server_install_vllm_isolated.sh   # 装到 ~/uai/venv-vllm（8G）
+bash ~/server_start_vllm_engine.sh       # 起 8002（只绑回环）
+```
+
+**为什么要独立 venv**：vLLM 会拉自己的 torch（实测 `vllm 0.30.0` + `torch 2.13.0+cu130`，venv 8.1G），
+装进主 venv 会覆盖/降级主 venv 的 torch —— 而 8004/8005 两个嵌入服务正在用主 venv 的 torch。
+
+**必踩的坑**：vLLM 0.30 的采样默认走 **flashinfer，首次调用要 JIT 编译**，它调的是
+**PATH 上的 `ninja` 可执行文件**；本机无 sudo 装不了 apt 的 ninja-build，只有 venv 里的
+python 包 → 真机报 `FileNotFoundError: [Errno 2] No such file or directory: 'ninja'`
+（栈：`v1/worker/gpu/sample/sampler.py` → `flashinfer/jit/cpp_ext.py run_ninja`），
+且整条链最终只抛一句 `RuntimeError: Engine core initialization failed. See root cause above.`。
+处置（脚本里已做）：
+1. `export PATH="$UAI/venv-vllm/bin:$PATH"`（pip 的 ninja 包自带可执行文件）；
+2. `export VLLM_USE_FLASHINFER_SAMPLER=0` 关掉 flashinfer 采样，退到原生 torch 采样 ——
+   少一个 JIT 环节（本机 nvcc 12.4 而 torch 是 cu130，JIT 编译链本就错配）。
+处理后 `/health` 200（约 28s 就绪）、chat completion 返回非空文本。
+
 ## 13. 现场/未完成项（别把它当成"已做完"）
 
 | 项 | 状态 |
