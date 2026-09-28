@@ -10,6 +10,28 @@ from app.config.settings import settings
 logger = structlog.get_logger()
 
 
+_CONSENT_STATUS_LITERALS = frozenset({"granted", "denied", "withdrawn", "pending"})
+
+
+def _normalize_consent_status(raw: Any) -> str | None:
+    """把对端返回的同意状态归一为契约值（`granted` / `denied` / ...）。
+
+    对端可能给出**枚举 repr**（`"ConsentStatus.GRANTED"`）。SG 侧已改为返回 `.value`，
+    但跨服务契约不能只靠对端守规矩：2026-09-29 真机上这个 repr 被原样回传给 SG 的
+    `Literal["granted","denied","withdrawn","pending"]` → **422** → 主服务连续失败进入
+    快速失败，表面症状是"安全网关不可用"，实际是两端对同一个字段的理解不同。
+
+    未知值一律返回 `None`（调用方按"拿不到同意状态"fail-closed），**不猜测**。
+    """
+    if not raw:
+        return None
+    value = str(raw).strip()
+    if "." in value:
+        value = value.rsplit(".", 1)[-1]
+    value = value.lower()
+    return value if value in _CONSENT_STATUS_LITERALS else None
+
+
 class SafetyGatewayClient:
 
     FAST_FAIL_THRESHOLD = settings.safety_gateway_client_fast_fail_threshold
@@ -290,7 +312,9 @@ class SafetyGatewayClient:
                 f"{self._base_url}/api/v1/consent-status/{patient_id}",
             )
             if response.status_code == 200:
-                return response.json().get("consent_status")
+                return _normalize_consent_status(
+                    response.json().get("consent_status")
+                )
             return None
         except Exception as e:
             logger.error("safety_gateway_consent_check_error", error=str(e), patient_id=patient_id)

@@ -331,6 +331,20 @@ async def watchdog_check():
     }
 
 
+def _consent_status_value(status: Any) -> str | None:
+    """把同意状态归一为**枚举值字符串**（"granted"），而不是枚举 repr（"ConsentStatus.GRANTED"）。
+
+    见 `get_consent_status` 里的说明：repr 形态会让调用方回传时触发 422。
+    """
+    from enum import Enum
+
+    if status is None:
+        return None
+    if isinstance(status, Enum):
+        return str(status.value)
+    return str(status)
+
+
 @app.get("/api/v1/consent-status/{patient_id}", response_model=ConsentStatusResponse)
 async def get_consent_status(patient_id: str):
     checker = get_safety_gateway_checker()
@@ -350,7 +364,14 @@ async def get_consent_status(patient_id: str):
 
     return ConsentStatusResponse(
         patient_id=patient_id,
-        consent_status=str(consent_status) if consent_status else None,
+        # ⚠️ 不能写 `str(consent_status)`：`ConsentStatus` 是 `(str, Enum)`，而 py3.11+
+        # 的默认 `__str__` 给出的是 **"ConsentStatus.GRANTED"**（不是 "granted"）。
+        # 调用方（主服务）会把这个值原样回传给 `SafetyCheckRequest.consent_status_at_input`
+        # 的 `Literal["granted","denied","withdrawn","pending"]` → **必 422**
+        # （2026-09-29 真机：主服务 `safety_gateway_check_failed status_code=422`
+        #  → 连续失败进入快速失败 → 诊断恒 failed 且看起来像"网关不可用"）。
+        # 本接口的契约是**枚举值**，一律取 `.value`。
+        consent_status=_consent_status_value(consent_status),
         checked_at=datetime.now(timezone.utc).isoformat(),
         source="postgresql",
     )

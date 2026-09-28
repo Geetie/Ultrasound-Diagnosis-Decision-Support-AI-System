@@ -24,6 +24,19 @@ from safety_gateway.sg_config import sg_settings as settings
 logger = structlog.get_logger()
 
 
+def effective_socket_timeout() -> int:
+    """本服务 Redis 连接的 socket 读超时（**单一事实源**）。
+
+    不变量：**任何阻塞读的等待时长都必须严格小于它**，否则每次读都以
+    `TimeoutError: Timeout reading from ...` 收场 —— 真机上已先后踩到两处：
+    `xreadgroup(block=5000)`（阈值流消费者）与 `pubsub.listen()` 的无限阻塞读
+    （脱敏规则订阅）。这类"读超时"会被上层判成依赖不可用（SG 回 E4005B），
+    进而让主服务进入快速失败。
+    下游（subscriber / consumer）请从本函数取值推导自己的 block / poll 时长。
+    """
+    return max(settings.redis_pool_timeout, 8)
+
+
 class SafetyGatewayRedisPool:
     """SafetyGateway独立Redis连接池管理器
 
@@ -119,7 +132,7 @@ class SafetyGatewayRedisPool:
                         # 与 socket 读超时打平，真机上每 ~6s 一条
                         #   sg_redis_stream_consume_error error=Timeout reading from ...
                         # 并触发重连重试（既刷日志又拖慢阈值下发）。
-                        socket_timeout=max(settings.redis_pool_timeout, 8),
+                        socket_timeout=effective_socket_timeout(),
                         socket_connect_timeout=settings.redis_pool_timeout,
                         retry_on_timeout=True,
                         retry=Retry(

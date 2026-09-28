@@ -59,17 +59,33 @@ class RedisSubscriber:
                     await pubsub.subscribe(self._channel)
                     logger.info("sg_redis_pubsub_subscribed", channel=self._channel)
                     delay = base_delay
-                    async for message in pubsub.listen():
-                        if message["type"] == "message":
-                            try:
-                                data = json.loads(message["data"])
-                                await self._handler(data)
-                            except Exception as e:
-                                logger.error(
-                                    "sg_redis_pubsub_handler_error",
-                                    channel=self._channel,
-                                    error=str(e),
-                                )
+                    # ⚠️ 不能用 `async for message in pubsub.listen()`：它等价于
+                    # `get_message(timeout=None)` —— **无限阻塞读**，必然撞上连接池的
+                    # socket_timeout，真机每 ~9s 一条
+                    #   sg_redis_pubsub_error channel=desensitization_rules_update
+                    #   error=Timeout reading from 127.0.0.1:16379
+                    # 这类"读超时"会被判成依赖不可用 → SG 回 E4005B（核心数据服务不可用）
+                    # → 主服务连续失败进入快速失败（`safety_gateway_fast_fail_threshold_reached`）。
+                    # 改为**有界轮询**：单次等待严格小于 socket 读超时（同一事实源推导），
+                    # 空闲时循环取到 None 即可（与 RedisStreamConsumer 的处置同一思路）。
+                    from safety_gateway.redis_pool import effective_socket_timeout
+
+                    poll_timeout = max(1.0, effective_socket_timeout() - 3.0)
+                    while True:
+                        message = await pubsub.get_message(
+                            ignore_subscribe_messages=True, timeout=poll_timeout
+                        )
+                        if message is None:
+                            continue
+                        try:
+                            data = json.loads(message["data"])
+                            await self._handler(data)
+                        except Exception as e:
+                            logger.error(
+                                "sg_redis_pubsub_handler_error",
+                                channel=self._channel,
+                                error=str(e),
+                            )
             except asyncio.CancelledError:
                 raise
             except Exception as e:
