@@ -70,6 +70,16 @@
       "module": "app/inference/sustained_load_test.py",
       "percent": 0.0,
       "reason": "纯现场长稳压测脚本（本机无 GPU 时其前置检查即退出）。它没有『离线可覆盖的那一层』可言，写在豁免清单里只会稀释清单的可信度；其验证动作归入现场验收清单，不进本清单。"
+    },
+    {
+      "module": "app/config/redis.py",
+      "percent": 0.0,
+      "reason": "降级场景⑦『Redis 主从切换秒级接管』没有离线层可言：离线只能验证『Redis 不可用时降级』，该层已覆盖 3 条（灰度计数退化为进程内计数、必须留痕、Redis 恢复后同一实例立刻改走 Redis，见 tests/integration/int/test_degradation_scenarios.py 的 TestRedisUnavailableDegradesWithoutBreakingDiagnosis）。『主从切换的秒级接管时序 + 切换期间计数连续性』必须由真实 Redis 主从演练证明，属现场验收动作，不是覆盖率缺口。现场动作：做一次主从切换演练，记录切换耗时与切换前后计数是否连续。"
+    },
+    {
+      "module": "app/services/safety_gateway_client.py",
+      "percent": 0.0,
+      "reason": "降级场景③(b)『主服务崩溃 + SG 存活』属现场演练：其**可离线层**已覆盖（SG 不可用→fail-closed 拒绝输出、短暂不可用→队列等待恢复、持续不可用→超时/熔断 E4005，见 test_degradation_scenarios.py 的 TestSafetyGatewayUnavailable 与 TestSafetyGatewayQueueAndTimeout）。剩余部分（主服务进程整体崩溃期间，独立进程的 SG 仍拒绝输出）依赖真实进程编排，不是覆盖率缺口。现场动作：kill 主服务进程，验证 SG 仍存活并返回 E4005 拒绝。"
     }
   ]
 }
