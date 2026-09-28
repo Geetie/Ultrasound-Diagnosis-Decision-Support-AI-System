@@ -35,7 +35,16 @@ from app.agents.routing import AdaptiveRAGRouter, RetrievalProfile, RoutingDecis
 from app.config.database import AsyncSessionLocal
 from app.config.redis import RedisPool
 from app.config.redis_keys import RedisKey
-from app.models.schemas import Organ, ResponseTier
+from app.models.schemas import (
+    ConsentStatus,
+    DesensitizationStatus,
+    DiagnosisQualityControl,
+    DiagnosisRequest,
+    DiagnosisResult,
+    FusionStatus,
+    Organ,
+    ResponseTier,
+)
 from app.repositories import (
     DiagnosisRepository,
 )
@@ -176,6 +185,9 @@ async def run_diagnosis_pipeline(request_id: str) -> bool:
     """
     t_start = time.monotonic()
     timings: dict[str, float] = {}
+    # 预置 None：DB 读取本身也可能抛异常，而异常/取消处理分支需要判断
+    # "是否已经读到请求行"（有行才谈得上把它交给监控追踪）。
+    request = None
 
     try:
         async with AsyncSessionLocal() as db:
@@ -296,6 +308,16 @@ async def run_diagnosis_pipeline(request_id: str) -> bool:
                 request_id=request_id,
                 error=str(exc),
             )
+        # 监控：取消同样是终态（同意撤回/策略停止），延迟要计入指标。
+        # 注意 `_is_failure` 不把 cancelled 当失败 —— 这是有意为之：
+        # R3 度量的是"AI 连续失败"，不是"被政策叫停"。
+        if request is not None:
+            await _safe_track_diagnosis(
+                request,
+                request_id=request_id,
+                status="cancelled",
+                processing_time_ms=int((time.monotonic() - t_start) * 1000.0),
+            )
         raise
 
     except Exception as exc:
@@ -318,6 +340,15 @@ async def run_diagnosis_pipeline(request_id: str) -> bool:
                 await _commit_if_possible(db)
         except Exception:
             pass
+        # 监控：管线级失败必须计入 R3 的滑动窗口，否则"连续失败"永远不会触发。
+        if request is not None:
+            await _safe_track_diagnosis(
+                request,
+                request_id=request_id,
+                status="failed",
+                processing_time_ms=int((time.monotonic() - t_start) * 1000.0),
+                confidence=0.0,
+            )
         return False
 
     finally:
@@ -589,6 +620,17 @@ async def _write_result_to_db(
             pass  # best-effort
         # 5) 提交事务（见 _commit_if_possible 说明：不提交则写库被回滚）
         await _commit_if_possible(getattr(diagnosis_repo, "db", None))
+        # 6) 交MonitorAgent 追踪（R1/R2/R3 + 延迟埋点）。
+        #    放在**提交之后**：只追踪已真正落库的终态，避免"写失败也计入监控"。
+        await _safe_track_diagnosis(
+            request,
+            request_id=request.request_id,
+            status=status,
+            processing_time_ms=int(timings_ms.get("pipeline.total_ms") or 0),
+            confidence=confidence,
+            sg_ok=sg_ok,
+            review_reason=review_reason,
+        )
         return True
     except Exception as exc:
         logger.error(
@@ -603,6 +645,110 @@ async def _write_result_to_db(
 # ----------------------------------------------------------------------
 # 辅助函数
 # ----------------------------------------------------------------------
+
+
+# MonitorAgent 的 R1（低置信度）/R2（性能降级）判据是 `status == "completed"`。
+# 管线的终态除 completed 还有一个 `needs_review`（融合层已标记需复核）——两者
+# 都是"已出结论"的终态，而 needs_review 恰恰是低置信度最常见的情形。若原样传入，
+# R1/R2 会被静默跳过，因此这里把 needs_review 归一为 completed 再交给监控。
+# 失败/超时/取消保持原值，以保证 R3（连续失败）的判定不被污染。
+_MONITOR_TERMINAL_COMPLETED = ("completed", "needs_review")
+
+
+def _get_monitor_agent():
+    """取进程内的 MonitorAgent（lifespan 装配于 ``app.state.monitor_agent``）。"""
+    try:
+        from app.main import app as _app_instance
+
+        return getattr(_app_instance.state, "monitor_agent", None)
+    except Exception:
+        return None
+
+
+async def _safe_track_diagnosis(
+    request_row: Any,
+    *,
+    request_id: str,
+    status: str,
+    processing_time_ms: int,
+    confidence: float | None = None,
+    sg_ok: bool | None = None,
+    review_reason: str | None = None,
+) -> None:
+    """把一次诊断交给 :class:`MonitorAgent` 追踪（R1/R2/R3 + 延迟埋点）。
+
+    ## 为什么需要这个接线（2026-09-28 接线审计）
+
+    ``MonitorAgent.track_diagnosis`` 早已实现，但**没有任何生产调用方** ——
+    R1（低置信度）/R2（性能降级）/R3（同器官连续失败）三条规则从未在诊断链路上
+    运行过。`agents/monitor.py` 的单测只证明"规则本身正确"，证明不了"规则被调用"
+    （本会话同类缺陷已出现多次：指标导出、告警回调、前端 WS、CRAG、三层脱敏）。
+
+    ## 失败安全
+
+    监控是**旁路**：任何异常（取不到代理、器官无法解析、代理内部报错）都只告警，
+    **绝不影响诊断结论**与落库结果。
+
+    ## 字段说明
+
+    ``desensitization_status`` / ``consent_status_at_output`` 只为满足
+    :class:`DiagnosisResult` 的必填契约（MonitorAgent 不读这两个字段），
+    权威值由接口层 ``api/v1/diagnosis.py`` 从 ``sg_result`` 真实推导。
+    """
+    monitor = _get_monitor_agent()
+    if monitor is None:
+        logger.warning("monitor_agent_unavailable", request_id=request_id)
+        return
+
+    organ_raw = getattr(request_row, "organ", None)
+    try:
+        organ = organ_raw if isinstance(organ_raw, Organ) else Organ(organ_raw)
+    except (TypeError, ValueError):
+        logger.warning(
+            "monitor_organ_unresolved",
+            request_id=request_id,
+            organ=str(organ_raw),
+        )
+        return
+
+    # failed / timeout 与结果接口的 ai_diagnosis_failed 判据同源（见 73f5d1f），
+    # 否则 MonitorAgent 的 R3 滑动窗口永远收不到失败。
+    is_failure = status in ("failed", "timeout")
+    monitor_status = "completed" if status in _MONITOR_TERMINAL_COMPLETED else status
+
+    monitor_request = DiagnosisRequest(
+        session_id=str(getattr(request_row, "session_id", "") or ""),
+        image_ids=[],
+        target_organ=organ,
+        retry=bool(getattr(request_row, "retry", False)),
+    )
+    monitor_response = DiagnosisResult(
+        request_id=request_id,
+        status=monitor_status,
+        desensitization_status=(
+            DesensitizationStatus.DEGRADED if sg_ok is False else DesensitizationStatus.FULL
+        ),
+        consent_status_at_output=(
+            ConsentStatus.DENIED if sg_ok is False else ConsentStatus.GRANTED
+        ),
+        fusion_status=FusionStatus.NORMAL,
+        diagnosis={},
+        quality_control=DiagnosisQualityControl(confidence_score=confidence),
+        ai_diagnosis_failed=is_failure,
+        requires_manual_review=status == "needs_review",
+        review_reason=review_reason,
+        processing_time_ms=processing_time_ms,
+    )
+
+    try:
+        await monitor.track_diagnosis(monitor_request, monitor_response)
+    except Exception as exc:
+        logger.warning(
+            "monitor_track_diagnosis_failed",
+            request_id=request_id,
+            error=str(exc),
+            error_type=type(exc).__name__,
+        )
 
 
 def _make_failed_response(reason: str) -> AgentResponse:
