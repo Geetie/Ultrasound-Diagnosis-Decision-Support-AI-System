@@ -35,7 +35,9 @@ RUFF_BASELINE = {
     # 把它们纳入版本控制后统计里多出 53 条（已自动修掉 52 条，仅剩 1 条 E402）。
     # 这是"存量从看不见变成看得见"，不是新写的债。
     "E402": 226,    # conftest 的 env-before-import 与 main.py 的延迟导入都是刻意为之
-    "F841": 62,     # 未使用局部变量
+    # 62 -> 61：修 `POST /api/v1/diagnosis/request` 的"双 ID 分叉"时删掉了
+    # 那个从未被使用的 `created_id =`（它本就该是 `request_id` 的下游，不是独立变量）。
+    "F841": 61,     # 未使用局部变量
     "RUF013": 48,   # 隐式 Optional
     "RUF012": 47,   # 类级可变默认值
     "B904": 42,     # except 中 raise 未用 from

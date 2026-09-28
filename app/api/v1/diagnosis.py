@@ -200,14 +200,26 @@ async def submit_diagnosis_request(
 
     request_id = _generate_request_id()
 
-    created_id = await diagnosis_repo.create_request(
+    # request_id 必须由端点生成并**贯穿全链**（落库 / 入队 / 响应 / 结果查询）。
+    # 若让 `create_request` 自己再生成一个，库里存的与队列里传的就是两个不同 id
+    # → worker 永远 `pipeline_request_not_found`、请求永久停在 processing（真机实测）。
+    await diagnosis_repo.create_request(
         session_id=request.session_id,
         organ=request.target_organ,
         response_tier=request.response_tier,
         patient_context=request.patient_context.model_dump() if request.patient_context else None,
         image_ids=request.image_ids,
         clinical_text=request.clinical_text,
+        request_id=request_id,
     )
+
+    # 必须先**提交**再入队（2026-09-28 真机链路冒烟暴露的阻断级缺陷）：
+    # `create_request` 只 `flush()` 不提交，而 worker 一旦 BLPOP 到 request_id，
+    # 是用**另一个会话**去读库 —— 未提交的行对它不可见，于是报
+    #   pipeline_request_not_found → 请求永久停在 `status=processing`、
+    #   结果接口一直 404，且**没有任何重试**能把它救回来。
+    # 顺序不能颠倒：先提交（行可见）→ 再入队（worker 才可能读到）。
+    await diagnosis_repo.db.commit()
 
     # T-GA-INT-01: 把 request_id 入队到后台 worker 池
     # 入队失败不阻塞端点返回 — worker 池有 fallback 处理

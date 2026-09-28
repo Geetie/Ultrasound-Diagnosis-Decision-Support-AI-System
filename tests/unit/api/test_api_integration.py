@@ -109,6 +109,10 @@ class TestDiagnosisEndpointsIntegration:
         from app.services.audit_service import AuditService
 
         mock_diagnosis_repo = AsyncMock(spec=DiagnosisRepository)
+        # 端点在入队前会 `await diagnosis_repo.db.commit()`（见
+        # app/api/v1/diagnosis.py 的"必须先提交再入队"注释）——`db` 是实例属性、
+        # 不在 `spec=DiagnosisRepository` 里，必须显式补上可等待的替身。
+        mock_diagnosis_repo.db = AsyncMock()
         mock_consent_repo = AsyncMock(spec=ConsentRepository)
         mock_session_repo = AsyncMock(spec=SessionRepository)
         mock_audit_service = AsyncMock(spec=AuditService)
@@ -713,6 +717,10 @@ class TestDiagnosisResultEndpoint:
 
         mock_db = AsyncMock(spec=AsyncSession)
         mock_diagnosis_repo = AsyncMock(spec=DiagnosisRepository)
+        # 端点在入队前会 `await diagnosis_repo.db.commit()`（见
+        # app/api/v1/diagnosis.py 的"必须先提交再入队"注释）——`db` 是实例属性、
+        # 不在 `spec=DiagnosisRepository` 里，必须显式补上可等待的替身。
+        mock_diagnosis_repo.db = AsyncMock()
         mock_consent_repo = AsyncMock(spec=ConsentRepository)
         mock_session_repo = AsyncMock(spec=SessionRepository)
 
@@ -799,6 +807,10 @@ class TestDiagnosisResultEndpoint:
 
         mock_db = AsyncMock(spec=AsyncSession)
         mock_diagnosis_repo = AsyncMock(spec=DiagnosisRepository)
+        # 端点在入队前会 `await diagnosis_repo.db.commit()`（见
+        # app/api/v1/diagnosis.py 的"必须先提交再入队"注释）——`db` 是实例属性、
+        # 不在 `spec=DiagnosisRepository` 里，必须显式补上可等待的替身。
+        mock_diagnosis_repo.db = AsyncMock()
         mock_consent_repo = AsyncMock(spec=ConsentRepository)
         mock_session_repo = AsyncMock(spec=SessionRepository)
 
@@ -883,6 +895,10 @@ class TestIdempotencyCacheHit:
         from app.services.audit_service import AuditService
 
         mock_diagnosis_repo = AsyncMock(spec=DiagnosisRepository)
+        # 端点在入队前会 `await diagnosis_repo.db.commit()`（见
+        # app/api/v1/diagnosis.py 的"必须先提交再入队"注释）——`db` 是实例属性、
+        # 不在 `spec=DiagnosisRepository` 里，必须显式补上可等待的替身。
+        mock_diagnosis_repo.db = AsyncMock()
         mock_consent_repo = AsyncMock(spec=ConsentRepository)
         mock_session_repo = AsyncMock(spec=SessionRepository)
         mock_audit_service = AsyncMock(spec=AuditService)

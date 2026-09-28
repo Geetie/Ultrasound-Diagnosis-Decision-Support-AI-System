@@ -39,16 +39,33 @@ class DiagnosisRepository:
         patient_context: dict[str, Any] | None = None,
         image_ids: list | None = None,
         clinical_text: str | None = None,
+        request_id: str | None = None,
     ) -> str:
         """
         创建诊断请求（在队列系统中实际使用）
 
-        这里先只生成request_id，实际的诊断处理会在异步任务中完成
+        Args:
+            request_id: 由调用方指定的请求 ID。**必须与入队、响应、后续查询用的是
+                同一个 ID** —— 不传时本方法自行生成（仅适合脱离端点的调用）。
 
         Returns:
             str: request_id
+
+        ## 为什么要有这个参数（2026-09-28 真机链路冒烟暴露的阻断级缺陷）
+
+        端点在调用本方法**之前**就用 `_generate_request_id()` 生成了 `request_id`，
+        并把它用于"入队 + 响应 + 后续按 id 查询"；而本方法内部**又生成了一个**并落库。
+        两个 ID 从此分叉：
+
+            22:47:02 [error] pipeline_request_not_found  request_id=req_..._bb033915
+            22:47:02 [info]  diagnosis_request_created    request_id=req_..._e3e87f1d
+
+        队列里传的是 ①，库里存的是 ② → worker 永远找不到请求行 →
+        请求永久停在 `status=processing`、结果接口一直 404。
+        （端点里 `created_id` 从未被使用，正是这个分叉留下的痕迹。）
         """
-        request_id = self._generate_request_id()
+        if request_id is None:
+            request_id = self._generate_request_id()
 
         # 创建一个初步的诊断结果记录（状态为processing）
         diagnosis_result = DiagnosisResult(
