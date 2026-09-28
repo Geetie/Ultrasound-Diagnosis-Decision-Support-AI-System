@@ -124,6 +124,15 @@ async def test_full_chain_and_adaptive_profile_reaches_specialist():
     ), patch.object(
         pipeline, "DiagnosisRepository", MagicMock(return_value=diagnosis_repo)
     ), patch.object(
+        # 2026-09-29：管线在调 SG 前必须先解析患者 ID，解析不出即 fail-closed
+        # （不拿 "unknown" 去查同意记录）。这里把解析固定成确定值，让本用例
+        # 真正走到它要检验的那一段（档位 → 专科 → 融合 → SG），
+        # 而不是被患者解析这一前置守卫挡住（那样会以"SG 没被调用"的形式失败，
+        # 或"因错误的原因通过"）。
+        pipeline,
+        "_resolve_patient_id",
+        AsyncMock(return_value="P-chain"),
+    ), patch.object(
         pipeline, "get_routing_router"
     ) as router_factory, patch.object(
         pipeline, "safety_gateway_client", sg_client
@@ -208,6 +217,15 @@ async def test_full_chain_sg_unavailable_marks_failed_but_completes():
         pipeline, "AsyncSessionLocal", MagicMock(return_value=_AsyncCtx(MagicMock()))
     ), patch.object(
         pipeline, "DiagnosisRepository", MagicMock(return_value=diagnosis_repo)
+    ), patch.object(
+        # 2026-09-29：管线在调 SG 前必须先解析患者 ID，解析不出即 fail-closed
+        # （不拿 "unknown" 去查同意记录）。这里把解析固定成确定值，让本用例
+        # 真正走到它要检验的那一段（档位 → 专科 → 融合 → SG），
+        # 而不是被患者解析这一前置守卫挡住（那样会以"SG 没被调用"的形式失败，
+        # 或"因错误的原因通过"）。
+        pipeline,
+        "_resolve_patient_id",
+        AsyncMock(return_value="P-chain"),
     ), patch.object(
         pipeline, "get_routing_router"
     ) as router_factory, patch.object(

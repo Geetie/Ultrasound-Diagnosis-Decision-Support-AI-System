@@ -102,6 +102,10 @@ class TestPipelineFailurePaths:
                 request=MagicMock(),
                 fusion_result=MagicMock(),
                 request_id="req_test_sg1",
+                # 2026-09-29：`patient_id` 解析不出时管线**先** fail-closed
+                # （不拿 "unknown" 去查同意记录），不提供它就会在到达 SG 之前返回，
+                # 使这条用例"因错误的原因通过"（测的是患者守卫，不是 SG 异常）。
+                patient_id="P001",
             )
 
         assert sg_result is None
@@ -121,6 +125,7 @@ class TestPipelineFailurePaths:
                 request=MagicMock(),
                 fusion_result=MagicMock(),
                 request_id="req_test_sg2",
+                patient_id="P001",
             )
 
         assert sg_result is not None

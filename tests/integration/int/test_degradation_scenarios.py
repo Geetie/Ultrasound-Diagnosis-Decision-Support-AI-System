@@ -228,7 +228,7 @@ class TestSafetyGatewayUnavailable:
         fake_logger = MagicMock()
         monkeypatch.setattr(pipeline_module, "logger", fake_logger)
 
-        sg_result, sg_ok = await _safe_safety_check(_request(), None, RID)
+        sg_result, sg_ok = await _safe_safety_check(_request(), None, RID, "P001")
 
         assert sg_ok is False
         assert sg_result is None
@@ -257,7 +257,7 @@ class TestSafetyGatewayUnavailable:
             AsyncMock(side_effect=RuntimeError("sg process gone")),
         )
 
-        sg_result, sg_ok = await _safe_safety_check(_request(), None, RID)
+        sg_result, sg_ok = await _safe_safety_check(_request(), None, RID, "P001")
 
         assert (sg_result, sg_ok) == (None, False)
 
@@ -274,7 +274,7 @@ class TestSafetyGatewayUnavailable:
             AsyncMock(return_value={"passed": True, "allowed": True}),
         )
 
-        sg_result, sg_ok = await _safe_safety_check(_request(), None, RID)
+        sg_result, sg_ok = await _safe_safety_check(_request(), None, RID, "P001")
         assert sg_ok is True
 
         from app.fusion.protocols import FusionResult

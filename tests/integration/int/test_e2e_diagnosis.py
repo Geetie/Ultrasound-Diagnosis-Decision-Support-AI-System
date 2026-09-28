@@ -207,6 +207,8 @@ class TestE2EScenarioT6ConsentWithdrawn:
                 request=MagicMock(),
                 fusion_result=MagicMock(),
                 request_id="req_t6_001",
+                # 必须先解析出患者：解析不出时管线 fail-closed，本用例就走不到 SG。
+                patient_id="P001",
             )
 
         # 当前实现下 sg_ok 仍为 True; 端点 / 业务层应根据 consent_status_at_output 阻断
