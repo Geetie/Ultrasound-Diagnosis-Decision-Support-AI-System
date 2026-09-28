@@ -206,10 +206,22 @@ async def run_diagnosis_pipeline(request_id: str) -> bool:
                 )
                 return False
 
+            # 患者身份只能从**会话**解析：`diagnosis_results` 表没有 patient_id 列，
+            # 原先这里（与 `_safe_safety_check`）用 `getattr(request, "patient_id", ...)`
+            # 取，恒为 "unknown" → 2026-09-29 真机：SG 查不到该患者的同意记录
+            # → `pipeline_consent_status_unavailable` → 保守 fail-closed，诊断必 failed。
+            patient_id = await _resolve_patient_id(db, getattr(request, "session_id", None))
+            if patient_id is None:
+                logger.error(
+                    "pipeline_patient_id_unresolved",
+                    request_id=request_id,
+                    session_id=getattr(request, "session_id", None),
+                )
+
             # T-G1-INT-06：登记在途诊断。撤回同意时由消费端取消同一患者的
             # 在途任务（见 app/services/inflight_diagnosis.py）。
             get_inflight_registry().register(
-                patient_id=getattr(request, "patient_id", "unknown"),
+                patient_id=patient_id or "unknown",
                 request_id=request_id,
             )
 
@@ -248,6 +260,7 @@ async def run_diagnosis_pipeline(request_id: str) -> bool:
                 request=request,
                 fusion_result=fusion_result,
                 request_id=request_id,
+                patient_id=patient_id,
             )
             timings["sg.check_output_ms"] = (time.monotonic() - t) * 1000.0
 
@@ -459,8 +472,51 @@ async def _safe_fuse(request, specialist_responses, request_id: str):
         return _make_failed_fusion_result(specialist_responses)
 
 
-async def _safe_safety_check(request, fusion_result, request_id: str):
+async def _resolve_patient_id(db: Any, session_id: str | None) -> str | None:
+    """从 `sessions` 表解析患者 ID。
+
+    为什么不在结果行上取：`diagnosis_results` **没有 patient_id 列**（患者身份属于会话），
+    原先 `getattr(request, "patient_id", "unknown")` 因此恒为 `"unknown"`，导致
+    SG 查不到该患者的同意记录 → `pipeline_consent_status_unavailable` → 保守 fail-closed。
+    2026-09-29 真机（第 1 例真实诊断）正是卡在这里。
+
+    失败安全：解析不出（无 session_id / 查询异常 / 该会话不存在）返回 `None`，
+    由调用方决定 fail-closed，不编造患者 ID。
+    """
+    if not session_id:
+        return None
+    try:
+        from sqlalchemy import select
+
+        from app.models.database import DiagnosisSession
+
+        result = await db.execute(
+            select(DiagnosisSession.patient_id).where(
+                DiagnosisSession.session_id == session_id
+            )
+        )
+        value = result.scalar_one_or_none()
+        return str(value) if value else None
+    except Exception as exc:
+        logger.warning(
+            "pipeline_patient_id_resolve_failed",
+            session_id=session_id,
+            error=str(exc),
+            error_type=type(exc).__name__,
+        )
+        return None
+
+
+async def _safe_safety_check(
+    request, fusion_result, request_id: str, patient_id: str | None = None
+):
     """调用 sg.check_output；失败时返回 ``(None, False)`` 表示 SG 不可用。
+
+    Args:
+        patient_id: 由会话解析出的患者 ID（见 :func:`_resolve_patient_id`）。
+            **为 None 时直接 fail-closed**：不能拿 `"unknown"` 去查同意记录 ——
+            既必然查不到（等价于把患者当成无同意），又会在 SG 审计里留下一个
+            不存在的患者 ID。
 
     Returns:
         ``(sg_result: dict | None, sg_ok: bool)``
@@ -480,7 +536,13 @@ async def _safe_safety_check(request, fusion_result, request_id: str):
         # ③ 审计链里"输入时同意状态"是伪造的。
         # 现在改为向 SG **直查**（与 SG 的 consent_checker 同源、无缓存）；
         # **拿不到就 fail-closed**（`(None, False)` → 调用方置 failed）。
-        patient_id = getattr(request, "patient_id", None) or "unknown"
+        if not patient_id:
+            logger.error(
+                "pipeline_patient_id_unresolved_fail_closed",
+                request_id=request_id,
+                session_id=getattr(request, "session_id", None),
+            )
+            return None, False
         consent_status_at_input = await safety_gateway_client.get_consent_status(patient_id)
         if consent_status_at_input is None:
             logger.error(
@@ -491,7 +553,7 @@ async def _safe_safety_check(request, fusion_result, request_id: str):
             return None, False
         sg_result = await safety_gateway_client.check_output(
             session_id=request.session_id,
-            patient_id=getattr(request, "patient_id", "unknown"),
+            patient_id=patient_id,
             output_data=output_data,
             consent_status_at_input=consent_status_at_input,
         )
@@ -632,16 +694,7 @@ async def _write_result_to_db(
                 else None
             ),
         )
-        # 4) 写 Redis 缓存（短 TTL 30s，便于客户端轮询立即看到 completed）
-        try:
-            await RedisPool.setex(
-                RedisKey.diagnosis_result(request.request_id),
-                30,
-                str(findings).encode("utf-8") if isinstance(findings, str) else str(findings),
-            )
-        except Exception:
-            pass  # best-effort
-        # 5) 提交事务（见 _commit_if_possible 说明：不提交则写库被回滚）
+        # 4) 提交事务（见 _commit_if_possible 说明：不提交则写库被回滚）
         await _commit_if_possible(getattr(diagnosis_repo, "db", None))
         # 6) 交MonitorAgent 追踪（R1/R2/R3 + 延迟埋点）。
         #    放在**提交之后**：只追踪已真正落库的终态，避免"写失败也计入监控"。

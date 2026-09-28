@@ -42,7 +42,9 @@ RUFF_BASELINE = {
     "RUF012": 47,   # 类级可变默认值
     "B904": 42,     # except 中 raise 未用 from
     "F401": 42,     # 多为 __init__.py 的再导出
-    "SIM105": 39,   # 可用 contextlib.suppress
+    # 39 -> 38：修"结果缓存被写成 Python repr"时删掉了管线里那处
+    # `try: setex(...) except Exception: pass`（那正是 SIM105 的典型形态）。
+    "SIM105": 38,   # 可用 contextlib.suppress
     "SIM117": 34,   # 可合并的 with
     "RUF059": 32,   # 解包后未使用的变量
     "SIM102": 22,   # 可折叠的 if

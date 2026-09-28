@@ -1,16 +1,27 @@
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
-    Column, Integer, String, Text, Float, Date, TIMESTAMP, Boolean,
-    ARRAY, JSON, ForeignKey, BigInteger, Index, CheckConstraint
+    ARRAY,
+    TIMESTAMP,
+    BigInteger,
+    Boolean,
+    CheckConstraint,
+    Column,
+    Date,
+    Float,
+    Index,
+    Integer,
+    String,
+    Text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.sql import func
-from pgvector.sqlalchemy import Vector
+
 from app.config.database import Base
 
 
 class Patient(Base):
     __tablename__ = 'patients'
-    
+
     id = Column(Integer, primary_key=True, autoincrement=True)
     patient_id = Column(String(64), unique=True, nullable=False, index=True)
     name = Column(Text)
@@ -22,7 +33,7 @@ class Patient(Base):
 
 class ConsentRecord(Base):
     __tablename__ = 'consent_records'
-    
+
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     record_id = Column(BigInteger, unique=True, nullable=False, index=True)
     patient_id = Column(String(64), nullable=False, index=True)
@@ -31,6 +42,18 @@ class ConsentRecord(Base):
     withdrawn_at = Column(TIMESTAMP(timezone=True))
     consent_version = Column(String(16), nullable=False, default="1.0")
     created_at = Column(TIMESTAMP(timezone=True), nullable=False, default=func.current_timestamp())
+    # 2026-09-29 真机（第 1 例真实诊断）暴露：`consent_records` 被**两个服务各自声明**——
+    # app 这里是"表的所有者"（迁移建表），而 `safety_gateway/sg_models.py` 用自己的 Base
+    # 也声明了同名表，且**多出 updated_at**。SG 的同意查询是 `SELECT *`（ORM 全列），
+    # 于是真机报：`UndefinedColumnError: column consent_records.updated_at does not exist`
+    # → 503 `consent_check_db_error` → 主服务 fail-closed，诊断必 failed。
+    # 共享表必须取**双方所需列的并集**，故补上这一列（迁移 0013）。
+    updated_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+    )
 
     __table_args__ = (
         Index('idx_consent_patient_status', 'patient_id', 'status'),
@@ -58,7 +81,7 @@ class DiagnosisSession(Base):
 
 class DiagnosisResult(Base):
     __tablename__ = 'diagnosis_results'
-    
+
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     request_id = Column(String(64), unique=True, nullable=False, index=True)
     session_id = Column(String(64), index=True)
@@ -159,7 +182,7 @@ class ColdArchiveManifest(Base):
 
 class KnowledgeBase(Base):
     __tablename__ = 'knowledge_base'
-    
+
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     kb_id = Column(String(64), unique=True, nullable=False, index=True)
     content = Column(Text, nullable=False)
@@ -174,7 +197,7 @@ class KnowledgeBase(Base):
 
 class SafetyEvent(Base):
     __tablename__ = 'safety_events'
-    
+
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     event_id = Column(BigInteger, unique=True, nullable=False, index=True)
     event_type = Column(String(64), nullable=False, index=True)
@@ -193,7 +216,7 @@ class SafetyEvent(Base):
 
 class AuditLog(Base):
     __tablename__ = 'audit_logs'
-    
+
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     log_id = Column(String(36), unique=True, nullable=False, index=True)
     session_id = Column(String(64), index=True)
@@ -232,7 +255,7 @@ class AuditCrossChain(Base):
 
 class SessionArchive(Base):
     __tablename__ = 'sessions_archive'
-    
+
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     session_id = Column(String(64), unique=True, nullable=False, index=True)
     patient_id = Column(String(64), nullable=False)
@@ -250,7 +273,7 @@ class SessionArchive(Base):
 
 class Device(Base):
     __tablename__ = 'devices'
-    
+
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     device_id = Column(String(64), unique=True, nullable=False, index=True)
     device_name = Column(String(128), nullable=False)
@@ -265,7 +288,7 @@ class Device(Base):
 
 class FeedbackRecord(Base):
     __tablename__ = 'feedback_records'
-    
+
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     feedback_id = Column(String(64), unique=True, nullable=False, index=True)
     request_id = Column(String(64), nullable=False, index=True)
@@ -293,7 +316,7 @@ class User(Base):
 
 class OrganDiseaseThreshold(Base):
     __tablename__ = 'organ_disease_thresholds'
-    
+
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     organ = Column(String(32), nullable=False, index=True)
     disease_type = Column(String(64), index=True)

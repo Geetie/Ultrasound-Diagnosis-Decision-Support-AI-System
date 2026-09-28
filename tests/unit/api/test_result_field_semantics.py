@@ -49,8 +49,9 @@ class TestConsentStatusIsActuallyQueried:
         client.check_output = AsyncMock(return_value={"passed": True})
         monkeypatch.setattr(pipeline_module, "safety_gateway_client", client)
 
+        # 患者身份不再从结果行取（该表没有 patient_id 列），而是由调用方按会话解析后传入。
         sg_result, ok = await _safe_safety_check(
-            _request(), MagicMock(), "req-1"
+            _request(), MagicMock(), "req-1", patient_id="P-1"
         )
 
         client.get_consent_status.assert_awaited_once_with("P-1")
@@ -65,7 +66,9 @@ class TestConsentStatusIsActuallyQueried:
         client.check_output = AsyncMock(return_value={"passed": False})
         monkeypatch.setattr(pipeline_module, "safety_gateway_client", client)
 
-        _, ok = await _safe_safety_check(_request(), MagicMock(), "req-1")
+        _, ok = await _safe_safety_check(
+            _request(), MagicMock(), "req-1", patient_id="P-1"
+        )
 
         assert ok is True
         assert client.check_output.await_args.kwargs["consent_status_at_input"] == "withdrawn"
@@ -77,7 +80,9 @@ class TestConsentStatusIsActuallyQueried:
         client.check_output = AsyncMock(return_value={"passed": True})
         monkeypatch.setattr(pipeline_module, "safety_gateway_client", client)
 
-        sg_result, ok = await _safe_safety_check(_request(), MagicMock(), "req-1")
+        sg_result, ok = await _safe_safety_check(
+            _request(), MagicMock(), "req-1", patient_id="P-1"
+        )
 
         assert (sg_result, ok) == (None, False)
         client.check_output.assert_not_awaited()
