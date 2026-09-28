@@ -430,8 +430,23 @@ async def _safe_safety_check(request, fusion_result, request_id: str):
             "findings": _extract_findings(fusion_result),
             "recommendation": _extract_recommendation(fusion_result),
         }
-        # 查询同意状态（简化：默认 granted；真实流程由 check_consent_status 处理）
-        consent_status_at_input = "granted"
+        # 查询同意状态（2026-09-28 接线审计修复）。
+        # 此前这里硬编码 `"granted"`（原注释自述"简化"），三重后果：
+        # ① 安全网关层的 `consent_status_at_input is None → raise`（fail-closed）
+        #    永远不触发，输入侧同意校验形同虚设；
+        # ② 三层脱敏 L3 依赖该值，接上后会拿到假状态（见 batch 4）；
+        # ③ 审计链里"输入时同意状态"是伪造的。
+        # 现在改为向 SG **直查**（与 SG 的 consent_checker 同源、无缓存）；
+        # **拿不到就 fail-closed**（`(None, False)` → 调用方置 failed）。
+        patient_id = getattr(request, "patient_id", None) or "unknown"
+        consent_status_at_input = await safety_gateway_client.get_consent_status(patient_id)
+        if consent_status_at_input is None:
+            logger.error(
+                "pipeline_consent_status_unavailable",
+                request_id=request_id,
+                patient_id=patient_id,
+            )
+            return None, False
         sg_result = await safety_gateway_client.check_output(
             session_id=request.session_id,
             patient_id=getattr(request, "patient_id", "unknown"),

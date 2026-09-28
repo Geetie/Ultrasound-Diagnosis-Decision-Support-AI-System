@@ -79,6 +79,8 @@ async def test_full_chain_and_adaptive_profile_reaches_specialist():
     fusion_engine.fuse = AsyncMock(side_effect=_fuse)
 
     sg_client = MagicMock()
+    # 2026-09-28：管线改为真实查询同意状态（拿不到即 fail-closed），替身必须提供该入口
+    sg_client.get_consent_status = AsyncMock(return_value="granted")
     sg_client.check_output = AsyncMock(
         return_value={
             "passed": True,
@@ -185,6 +187,8 @@ async def test_full_chain_sg_unavailable_marks_failed_but_completes():
     fusion_engine.fuse = AsyncMock(return_value=FusionResult(needs_review=False))
 
     sg_client = MagicMock()
+    # 2026-09-28：管线改为真实查询同意状态（拿不到即 fail-closed），替身必须提供该入口
+    sg_client.get_consent_status = AsyncMock(return_value="granted")
     sg_client.check_output = AsyncMock(side_effect=RuntimeError("sg down"))
 
     request_row = MagicMock()

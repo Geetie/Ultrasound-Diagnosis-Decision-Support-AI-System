@@ -555,6 +555,30 @@ async def get_diagnosis_result(
         model_version = settings.phase0a_mock_model_version
         knowledge_base_version = settings.phase0a_mock_kb_version
 
+    # 2026-09-28 接线审计修复：`quality_control` 与 `ai_diagnosis_failed` 此前是**硬编码占位**
+    # （`self_rag_passed=False`、`consistency_check_passed=True`、`ai_diagnosis_failed=False`），
+    # 会造成两个方向的误导：把"未评估"写成"未通过"、把"没检查过"写成"检查通过"。
+    # 现在一律从管线写回的真实信号推导（`diagnosis_pipeline.py` 的 fusion_result）。
+    #
+    # 契约限制：`DiagnosisQualityControl` 的两个字段是**非可选 bool**（`schemas.py:206-207`），
+    # 因此无法表达"未评估"这一第三态；本实现按"未评估 → 不得声称通过（False 保守）"处理。
+    # 如需真正的三态语义，需要把契约改成 `bool | None`（影响面较大，另行排期）。
+    fusion_payload = diagnosis_payload.get("fusion_result")
+    if isinstance(fusion_payload, dict) and fusion_payload:
+        self_rag_passed = bool(fusion_payload.get("self_rag_passed"))
+        # 真实信号：融合层在一致性 CRITICAL 时置 review_reason="consistency_failed"
+        # （见 app/fusion/layered_validator.py）。没有该 reason 才认为一致性未失败。
+        consistency_check_passed = (
+            fusion_payload.get("review_reason") != "consistency_failed"
+        )
+    else:
+        # 没有融合结果（worker 未写入 / 占位 payload）→ 不得声称质检通过
+        self_rag_passed = False
+        consistency_check_passed = False
+    # 真实失败语义：与 MonitorAgent._is_failure 的判据保持一致（monitor.py:138-142），
+    # 否则 R3"同器官连续失败"窗口永远不会被写入。
+    ai_diagnosis_failed = result_status in ("failed", "timeout")
+
     diagnosis_result = DiagnosisResult(
         request_id=request_id,
         status="completed" if result_status == "completed" else result_status,
@@ -570,12 +594,12 @@ async def get_diagnosis_result(
         ),
         quality_control=DiagnosisQualityControl(
             confidence_score=result.confidence if hasattr(result, "confidence") and result.confidence else None,
-            self_rag_passed=False,
-            consistency_check_passed=True,
+            self_rag_passed=self_rag_passed,
+            consistency_check_passed=consistency_check_passed,
         ),
         requires_manual_review=requires_manual_review,
         review_reason=review_reason,
-        ai_diagnosis_failed=False,
+        ai_diagnosis_failed=ai_diagnosis_failed,
         hallucination_severity=None,
         # T-G1-DATA-02：按兼容矩阵真实计算，不再是恒为 "compatible" 的占位值
         version_compatibility=check_version_compatibility(

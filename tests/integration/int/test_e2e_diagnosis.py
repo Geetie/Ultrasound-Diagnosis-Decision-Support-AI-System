@@ -198,6 +198,7 @@ class TestE2EScenarioT6ConsentWithdrawn:
         from app.services.diagnosis_pipeline import _safe_safety_check
 
         with patch("app.services.diagnosis_pipeline.safety_gateway_client") as mock_sg:
+            mock_sg.get_consent_status = AsyncMock(return_value="granted")
             mock_sg.check_output = AsyncMock(return_value={
                 "passed": True,  # SG 同意通过
                 "consent_status_at_output": "withdrawn",  # 但同意被撤回

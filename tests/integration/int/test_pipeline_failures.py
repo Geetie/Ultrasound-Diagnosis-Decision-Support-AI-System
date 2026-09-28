@@ -96,6 +96,7 @@ class TestPipelineFailurePaths:
         from app.services.diagnosis_pipeline import _safe_safety_check
 
         with patch("app.services.diagnosis_pipeline.safety_gateway_client") as mock_sg:
+            mock_sg.get_consent_status = AsyncMock(return_value="granted")
             mock_sg.check_output = AsyncMock(side_effect=RuntimeError("SG down"))
             sg_result, sg_ok = await _safe_safety_check(
                 request=MagicMock(),
@@ -112,6 +113,7 @@ class TestPipelineFailurePaths:
         from app.services.diagnosis_pipeline import _safe_safety_check
 
         with patch("app.services.diagnosis_pipeline.safety_gateway_client") as mock_sg:
+            mock_sg.get_consent_status = AsyncMock(return_value="granted")
             mock_sg.check_output = AsyncMock(
                 return_value={"passed": True, "consent_status_at_output": "granted"}
             )
