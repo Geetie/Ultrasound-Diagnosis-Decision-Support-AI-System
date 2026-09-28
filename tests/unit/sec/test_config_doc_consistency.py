@@ -10,7 +10,7 @@ class TestConfigDocConsistency:
     CONFIG_MISMATCH_ITEMS = [
         {
             "item": "db_query_timeout",
-            "doc_value": "5s (04-安全合规)",
+            "doc_value": "5s (00b §5.8 / 04-安全合规 §6)",
             "sg_code_value": 2,
             "main_code_value": 5,
             "severity": "P1",
@@ -18,7 +18,7 @@ class TestConfigDocConsistency:
         },
         {
             "item": "sg_db_retry_max_attempts",
-            "doc_value": "3 (04-安全合规)",
+            "doc_value": "3 (00b §5.8)",
             "sg_code_value": 2,
             "main_code_value": 3,
             "severity": "P1",
@@ -26,7 +26,7 @@ class TestConfigDocConsistency:
         },
         {
             "item": "sg_db_retry_delay_base",
-            "doc_value": "0.5s (04-安全合规)",
+            "doc_value": "0.5s (00b §5.8 / 04-安全合规 §6)",
             "sg_code_value": 0.1,
             "main_code_value": 0.5,
             "severity": "P2",
@@ -34,7 +34,7 @@ class TestConfigDocConsistency:
         },
         {
             "item": "sg_db_retry_max_total_time_seconds",
-            "doc_value": "10s (04-安全合规)",
+            "doc_value": "10s (00b §5.8)",
             "sg_code_value": 5.0,
             "main_code_value": 10.0,
             "severity": "P1",
@@ -42,7 +42,7 @@ class TestConfigDocConsistency:
         },
         {
             "item": "sg_consent_cache_ttl_seconds",
-            "doc_value": "60s (01-架构§3.4 Redis只读缓存TTL 60s)",
+            "doc_value": "60s (00b §4；SG 直查 PG 无缓存)",
             "sg_code_value": 60,
             "main_code_value": None,
             "severity": "OK",
@@ -50,7 +50,7 @@ class TestConfigDocConsistency:
         },
         {
             "item": "safety_gateway_port",
-            "doc_value": "9001 (01-架构§3.4 SAFETY_GATEWAY_PORT)",
+            "doc_value": "9001 (00b §5.8)",
             "sg_code_value": 9001,
             "main_code_value": 9001,
             "severity": "OK",
@@ -58,7 +58,7 @@ class TestConfigDocConsistency:
         },
         {
             "item": "hsm_emergency_signing_max_daily",
-            "doc_value": "50 (04-安全合规§2.1.1)",
+            "doc_value": "50 (00b §5.3)",
             "sg_code_value": None,
             "main_code_value": 50,
             "severity": "OK",
@@ -66,7 +66,7 @@ class TestConfigDocConsistency:
         },
         {
             "item": "jwt_algorithm",
-            "doc_value": "RS256 (04-安全合规§2)",
+            "doc_value": "RS256 (00b §5.1)",
             "sg_code_value": None,
             "main_code_value": "RS256",
             "severity": "OK",
@@ -74,7 +74,7 @@ class TestConfigDocConsistency:
         },
         {
             "item": "jwt_refresh_expire_days",
-            "doc_value": "7 (04-安全合规§2)",
+            "doc_value": "7 (00b §5.1)",
             "sg_code_value": None,
             "main_code_value": 7,
             "severity": "OK",
@@ -82,7 +82,7 @@ class TestConfigDocConsistency:
         },
         {
             "item": "max_concurrent_sessions_per_user",
-            "doc_value": "5 (04-安全合规§2)",
+            "doc_value": "5 (00b §5.1)",
             "sg_code_value": None,
             "main_code_value": 5,
             "severity": "OK",
@@ -90,7 +90,7 @@ class TestConfigDocConsistency:
         },
         {
             "item": "deployment_profile",
-            "doc_value": "compact/full (01-架构§5.8)",
+            "doc_value": "compact/full (00b §3)",
             "sg_code_value": "compact",
             "main_code_value": "compact",
             "severity": "OK",
@@ -98,7 +98,7 @@ class TestConfigDocConsistency:
         },
         {
             "item": "sg_p99_latency_critical_threshold_ms",
-            "doc_value": "5ms (00-项目总览)",
+            "doc_value": "5ms (00b §5.8 / 00-项目总览 §2.2)",
             "sg_code_value": 5.0,
             "main_code_value": 5.0,
             "severity": "OK",
