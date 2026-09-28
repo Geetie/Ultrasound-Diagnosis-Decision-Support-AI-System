@@ -429,9 +429,16 @@ class UltrasoundCLIPModel:
         device: str = "cuda",
         use_lora: bool = True,
         max_samples: int | None = None,
+        allow_synthetic: bool = False,
     ) -> tuple[UltrasoundCLIPModel, list[CLIPSample]]:
-        """便捷方法:加载模型并加载数据集样本。"""
-        adapter = BUSIAdapter(dataset_path=dataset_path)
+        """便捷方法:加载模型并加载数据集样本。
+
+        `allow_synthetic` 默认 False（与 `BUSIAdapter` 一致）：数据集路径不存在时
+        **拒绝**，而不是悄悄造合成样本让调用方以为"加载成功"。
+        """
+        adapter = BUSIAdapter(
+            dataset_path=dataset_path, allow_synthetic=allow_synthetic
+        )
         samples = adapter.load(max_samples=max_samples)
         model = cls(model_name=model_name, device=device, use_lora=use_lora)
         return model, samples
