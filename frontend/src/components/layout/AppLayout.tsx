@@ -7,6 +7,7 @@ import StatusBar from './StatusBar';
 import VoiceControl from '@/components/voice/VoiceControl';
 import { useUiStore } from '@/stores/uiStore';
 import { useTouchAdaptation } from '@/hooks/useTouchAdaptation';
+import { useRealtimeConnection } from '@/hooks/useRealtimeConnection';
 import { tokens } from '@/styles/tokens';
 
 const { Sider, Header, Content, Footer } = Layout;
@@ -16,6 +17,9 @@ export default function AppLayout() {
   // T-GB-FE-04：触摸设备放大热区与字号（结果写入 <body> 的 touch-mode 类）
   const touch = useTouchAdaptation();
   const navigate = useNavigate();
+  // 实时双通道（nav + dicom）的连接/释放：这是 wsManager.connect() 的唯一调用点。
+  // 接线审计发现此前没有任何调用点，导致实时导航与结果推送实际不可用。
+  useRealtimeConnection();
 
   // 暗室模式同样以 body 类呈现，便于 CSS 统一压低亮度与提高对比
   useEffect(() => {

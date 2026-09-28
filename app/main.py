@@ -7,6 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.api.v1.alert_admin import router as alert_admin_router
+from app.api.v1.alerts import router as internal_alerts_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.consent import router as consent_router
 from app.api.v1.device import router as device_router
@@ -126,6 +127,21 @@ async def lifespan(app: FastAPI):
         import logging
         logging.getLogger(__name__).warning("infra_health_start_failed", extra={"error": str(e)})
         app.state.infra_health_task = None
+
+    # OBS: 指标导出链路接线（/metrics 暴露 + VictoriaMetrics 推送）。
+    # 此前 `start_metrics_server()` 只被测试调用、`VictoriaMetricsPusher` 在 app 内
+    # 从未实例化 —— 运行期 Prometheus 抓不到、VM 收不到推送，看板再正确也没有数据。
+    # 停启逻辑集中在 app.observability.wiring（可单测），此处只做调用与兜底。
+    try:
+        from app.observability.wiring import start_obs_export
+
+        await start_obs_export(app)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(
+            "obs_export_start_failed", extra={"error": str(e)}
+        )
+        app.state.vm_pusher = None
 
     # RAG service (T-GA-RAG-01/02/03): query enhancement + multi-modal
     # retrieval + cross-encoder reranking + BM25 fallback. Best-effort
@@ -464,6 +480,16 @@ async def lifespan(app: FastAPI):
         infra_task = getattr(app.state, "infra_health_task", None)
         if infra_task is not None and not infra_task.done():
             infra_task.cancel()
+    # OBS: 停止 VictoriaMetrics 推送器（指标 HTTP server 由进程退出回收）
+    try:
+        from app.observability.wiring import stop_obs_export
+
+        await stop_obs_export(app)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(
+            "obs_export_stop_failed", extra={"error": str(e)}
+        )
     await safety_gateway_client.close()
     if consent_consumer:
         await consent_consumer.stop()
@@ -544,6 +570,8 @@ app.include_router(voice_router, prefix="/api/v1/voice")
 app.include_router(security_router, prefix="/api/v1/security")
 app.include_router(alert_admin_router, prefix="/api/v1/admin/alert")
 app.include_router(obs_dashboard_router, prefix="/api/v1/internal/obs")
+# 告警回调（Alertmanager / vmbackup）——此前配置指向该路径但路由不存在，回调一直 404
+app.include_router(internal_alerts_router, prefix="/api/v1/internal/alerts")
 app.include_router(ws_nav_router)
 app.include_router(ws_dicom_router)
 app.include_router(fhir_router, prefix="/fhir")

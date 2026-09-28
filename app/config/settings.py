@@ -386,6 +386,12 @@ class Settings(BaseSettings):
     obs_metrics_port: int = 9090
     obs_metrics_scrape_interval: float = 15.0
     obs_victoriametrics_url: str = 'http://victoriametrics:8428'
+    # 指标导出链路的开关（2026-09-28 接线修复新增）。
+    # 此前这两条链路**只定义、从未接线**：`start_metrics_server()` 只被测试调用、
+    # `VictoriaMetricsPusher` 在 app 内从未实例化，导致运行期 Prometheus 抓不到
+    # `/metrics`、VictoriaMetrics 收不到推送 —— 看板面板再正确也没有数据。
+    obs_metrics_server_enabled: bool = True
+    obs_vm_push_enabled: bool = True
     obs_tracing_enabled: bool = False
     obs_tracing_otlp_endpoint: str = 'http://jaeger:4317'
     obs_tracing_sample_rate: float = 0.1
@@ -410,6 +416,9 @@ class Settings(BaseSettings):
     alert_escalation_warning_escalate_seconds: int = 86400
     alert_escalation_critical_escalate_seconds: int = 3600
     alert_webhook_url: str = ''
+    # 内部告警回调（Alertmanager / vmbackup → /api/v1/internal/alerts/webhook）的共享令牌。
+    # 为空表示不校验（内网部署）；**一旦配置即强制校验**，缺失/错误返回 401（fail-closed）。
+    alert_webhook_token: str = ''
 
     data_retention_outpatient_years: int = 15
     data_retention_inpatient_years: int = 30
