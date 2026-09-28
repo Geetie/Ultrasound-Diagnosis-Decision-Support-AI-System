@@ -226,6 +226,19 @@ async def lifespan(app: FastAPI):
             shared_bm25_index = BM25Index(
                 session_factory=AsyncSessionLocal,
             )
+            # BM25 索引是**懒构建**的，而 `BM25Index.health_check()` 只看 `_built`
+            # 是否就绪；生产链路此前从不调用 `ensure_built` → 真机上
+            # `rag_health_partial_failure` 的 `bm25` 恒为 False、稀疏腿恒空
+            # （2026-09-28：embedding/reranker 修好后仍剩 bm25=False）。
+            # 启动期预热一次；知识库为空或构建失败都只告警，不阻断启动。
+            try:
+                await shared_bm25_index.ensure_built()
+                logger.info(
+                    "bm25_index_warmed_up",
+                    ready=await shared_bm25_index.health_check(),
+                )
+            except Exception as exc:
+                logger.warning("bm25_index_warmup_failed", error=str(exc))
 
             rag_service = RAGServiceImpl(
                 query_enhancer=QueryEnhancer(

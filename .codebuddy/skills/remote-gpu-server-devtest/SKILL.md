@@ -210,6 +210,34 @@ SOFT_HSM_TIMESTAMP_PATH=/mnt/ee16/home/student03/uai/src/soft_hsm_enabled_at.txt
   `requires_manual_review=True`、`review=安全校验服务不可用，请转为人工诊断` —— 即**控制面全通、
   按设计 fail-closed**，这不是故障而是缺推理后端的预期表现。
 
+## 12.5 嵌入/重排薄服务（2026-09-28 新增，补齐仓库缺失的服务端）
+
+仓库里 `app/main.py:199-212` 把 8003/8004/8005 当 HTTP 客户端连，但**全仓库没有服务端实现**
+（scripts/、compose、`deploy/supervisor/` 都没有）→ 现在由
+`scripts/start_embedding_services.py` 补上（transformers 直载官方权重，只绑回环）：
+
+```bash
+# 启动（在 ~/uai/src 下；脚本自动 export CUDA_VISIBLE_DEVICES=0）
+bash ~/server_start_embedding_services.sh     # 8004 bge-m3 / 8005 bge-reranker
+bash ~/server_check_embedding.sh              # 只打印形状/状态码/健康布尔，不出数值
+```
+
+**契约（照客户端源码，改服务端前先读它）**：
+| 端点 | 请求 | 响应 |
+|---|---|---|
+| `POST /v1/embeddings` (bge-m3) | `{"texts":[...],"return_dense":true,"return_sparse":bool}` | `dense_embeddings`（**必须 1024 维、条数==texts 数**）|
+| `POST /v1/rerank` | `{"query":str,"documents":[...],"top_k":int,"model":str}` | `results:[{index,relevance_score}]`，`index` 是 documents **原始下标** |
+| `GET /health` | — | 200 即视为可用（客户端只看状态码）|
+| `GET /v1/model/info` | — | `model_name/dimension/max_input_length/version` |
+
+实测结果：`rag_health_partial_failure bm25=False embedding=True reranker=True vector_index=True`
+（修好前 embedding/reranker 全为 False，日志里是 `E2002_EMB_CONNECTION_FAILED`）。
+
+**`bm25` 为什么仍是 False**：`BM25Index` 懒构建、**生产代码此前从不调 `ensure_built`**
+（已在 `app/main.py` 启动期补上预热，真机日志 `bm25_index_built num_chunks=0`）；
+知识库为空时 `ready=False` 是正确语义——要 `bm25=True` 得先真正建知识库
+（`scripts/init_knowledge_base.py`，现在嵌入服务已就绪，这是它第一次可用）。
+
 ## 13. 现场/未完成项（别把它当成"已做完"）
 
 | 项 | 状态 |
