@@ -175,13 +175,16 @@ async def lifespan(app: FastAPI):
                 )
 
             vector_client = await create_index_client_from_settings()
+            # 2026-09-28 接线审计修复：这两个服务只接受 `base_url`，此前传 `host=/port=`
+            # 必然抛 TypeError，而本块在 try 内 → **整个 RAG 初始化从未成功**
+            # （rag_service 恒为 None，检索链路静默缺失，且只在日志里留一行 warning）。
             embedding_svc = BgeM3MedicalService(
-                host=settings.bge_m3_host,
-                port=settings.bge_m3_port,
+                base_url=f"http://{settings.bge_m3_host}:{settings.bge_m3_port}",
             )
             clip_svc = UltrasoundClipService(
-                host=settings.ultrasound_clip_host,
-                port=settings.ultrasound_clip_port,
+                base_url=(
+                    f"http://{settings.ultrasound_clip_host}:{settings.ultrasound_clip_port}"
+                ),
             )
             reranker_svc = BgeRerankerService(
                 base_url=f"http://{settings.bge_reranker_host}:{settings.bge_reranker_port}",

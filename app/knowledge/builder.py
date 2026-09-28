@@ -29,6 +29,8 @@ import structlog
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.config.database import AsyncSessionLocal
+from app.config.settings import settings
+from app.embedding.bge_m3 import BgeM3MedicalService
 from app.embedding.protocols import (
     EmbeddingResponse,
     EmbeddingService,
@@ -165,11 +167,32 @@ def _resolve_chunker(strategy: str) -> Chunker:
         return create_chunker(ChunkerStrategy.SENTENCE_BOUNDARY)
 
 
+def _resolve_real_embedding_service() -> EmbeddingService:
+    """构造**真实** embedding 服务（BgeM3）。
+
+    ## 为什么默认不再是 Mock（2026-09-28 接线审计）
+
+    本模块此前在未注入 `embedding_service` 时默认返回 `MockEmbeddingService`
+    （`sha256(text)` 展开 768 维、**无任何语义**），而 CLI `scripts/init_knowledge_base.py`
+    正是走这条默认路径 —— 也就是说**默认建出的知识库不具备语义检索能力**，
+    所有"召回率/准确率"指标都建立在假向量上，且下游只表现为"效果差"而非"构建失败"。
+
+    现在：默认走真实服务；**Mock 只能显式注入**（单测或 CLI `--allow-mock-embedding`）。
+    真实服务不可用时由 `_assert_embedding_available()` 在构建前抛错，**不做静默降级**。
+    """
+    return BgeM3MedicalService(
+        base_url=f"http://{settings.bge_m3_host}:{settings.bge_m3_port}",
+    )
+
+
 class MockEmbeddingService:
-    """Deterministic offline embedding service used by the CLI default path.
+    """确定性离线 embedding 服务 —— **仅限显式注入**（单测 / CLI `--allow-mock-embedding`）。
 
     Produces a 768-dim vector derived from a hash of the input text. This is
-    not semantically meaningful but is stable, cheap, and unit-testable.
+    **not semantically meaningful** but is stable, cheap, and unit-testable.
+
+    ⚠️ 任何默认路径都**不得**使用本服务：用它建出的知识库无语义检索能力，
+    会污染检索召回率与一致性评估结论。
     """
 
     DIMENSION = 768
@@ -247,18 +270,41 @@ class KnowledgeIndexBuilderImpl(KnowledgeIndexBuilder):
         self.session_factory = session_factory or AsyncSessionLocal
         self.feature_extractor = feature_extractor or FeatureExtractor()
         self.indexer = indexer or PGVectorHybridIndexer()
+        # 显式注入优先（**Mock 只能显式注入**）；否则构造真实 embedding 服务。
         self.embedding_service: EmbeddingService = (
-            embedding_service  # type: ignore[assignment]
+            embedding_service
             if embedding_service is not None
-            else MockEmbeddingService()  # type: ignore[assignment]
+            else _resolve_real_embedding_service()
         )
         self._chunker_factory: Callable[[str], Chunker] = lambda s: (
             chunker if chunker is not None else _resolve_chunker(s)
         )
         self._default_strategy = strategy
 
+    async def _assert_embedding_available(self) -> None:
+        """建库前对 embedding 服务做一次**真实探活**，不可用即失败。
+
+        刻意**不做任何降级**：静默退回假向量会让知识库的检索能力整体失真，
+        且这种失真在下游表现为"召回率偏低"而不是"构建失败"，极难归因。
+        """
+        try:
+            await self.embedding_service.embed_text(
+                TextEmbeddingRequest(texts=["embedding probe"])
+            )
+        except Exception as exc:
+            raise IndexBuildError(
+                IndexBuildErrorCode.EMBEDDING_FAILED,
+                "embedding service unavailable; refusing to build the knowledge base "
+                "(mock vectors are forbidden on the default path)",
+                detail=f"{type(exc).__name__}: {exc}",
+                retryable=True,
+            ) from exc
+
     async def build(self, request: IndexBuildRequest) -> IndexBuildResult:
         started = time.monotonic()
+
+        # 0. 真实 embedding 探活：必须在**任何破坏性操作**（清库/写库）之前。
+        await self._assert_embedding_available()
 
         # 1. Validate kb_version format up front.
         kb_version_obj = parse_kb_version(request.kb_version)
@@ -362,7 +408,7 @@ class KnowledgeIndexBuilderImpl(KnowledgeIndexBuilder):
                             ),
                             retryable=True,
                         )
-                    for c, emb in zip(batch, embed_response.embeddings):
+                    for c, emb in zip(batch, embed_response.embeddings, strict=False):
                         c.embedding = list(emb) if emb is not None else None
                     await self.indexer.upsert(batch, session)
 

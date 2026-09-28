@@ -74,6 +74,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=50,
         help="Embed/index batch size (default: 50)",
     )
+    parser.add_argument(
+        "--allow-mock-embedding",
+        action="store_true",
+        help=(
+            "[测试/离线专用] 显式启用 Mock 哈希向量。默认**关闭**：默认路径必须接真实 "
+            "embedding 服务，不可用即失败（假向量建出的知识库无语义检索能力）。"
+        ),
+    )
     return parser.parse_args(argv)
 
 
@@ -96,7 +104,21 @@ async def _run(args: argparse.Namespace) -> int:
     from app.knowledge.protocols import IndexBuildError
 
     request = _build_request(args)
-    builder = KnowledgeIndexBuilderImpl(strategy=args.strategy)
+    if args.allow_mock_embedding:
+        # 测试/离线专用：显式注入 Mock（确定性哈希向量，**无语义**）。
+        # 默认路径绝不产出假向量 —— 见 app/knowledge/builder._resolve_real_embedding_service。
+        from app.knowledge.builder import MockEmbeddingService
+
+        print(
+            "[WARN] --allow-mock-embedding 已启用：本次构建使用无语义的哈希向量，"
+            "产物仅可用于链路验证，**不得用于检索/一致性评估**。",
+            file=sys.stderr,
+        )
+        builder = KnowledgeIndexBuilderImpl(
+            strategy=args.strategy, embedding_service=MockEmbeddingService()
+        )
+    else:
+        builder = KnowledgeIndexBuilderImpl(strategy=args.strategy)
     try:
         result = await builder.build(request)
     except IndexBuildError as e:
