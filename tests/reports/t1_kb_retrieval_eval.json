@@ -1,0 +1,30 @@
+{
+  "golden_set": "/mnt/ee16/home/student03/uai/data/golden/kb_golden_v1.json",
+  "corpus_size": 433,
+  "num_queries": 200,
+  "candidate_depth": 100,
+  "metrics": {
+    "dense": {
+      "recall@5": 0.945,
+      "recall@10": 0.965,
+      "mrr@10": 0.8763,
+      "ndcg@10": 0.8982
+    },
+    "bm25": {
+      "recall@5": 0.95,
+      "recall@10": 0.97,
+      "mrr@10": 0.9006,
+      "ndcg@10": 0.9178
+    },
+    "hybrid_rrf": {
+      "recall@5": 0.98,
+      "recall@10": 0.98,
+      "mrr@10": 0.9328,
+      "ndcg@10": 0.9447
+    }
+  },
+  "gates": {
+    "hybrid_recall@10": "≥ 0.90（Gate 0 混合检索召回率）",
+    "dense_recall@10": "≥ 0.88（bge-m3-medical 纯文本降级 Top10）"
+  }
+}

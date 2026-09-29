@@ -376,8 +376,41 @@ CUDA 栈 / SQL 文本里。第一步永远是"用生产代码路径最小复现 
   需项目组决策（边界/常规分开统计或语义等价口径），详见 16 号文档 A.2.1。
 - 报告：`tests/reports/consistency_780_report.json`（基线）、
   `..._a2_report.json`、`..._a3_7b_report.json`
-- **引擎基座现状**：8001/8002 已升级为 Qwen2.5-**7B**-Instruct（GGUF Q4_K_M + fp16，
-  `bash ~/server_upgrade_engines_7b.sh` 幂等切换；vLLM gpu-memory-utilization 0.3→0.4）。
-  8002 的 model 名相应变为 `Qwen2.5-7B-Instruct`。
+- **引擎基座现状**：8001/8002 已升级为 Qwen2.5-**7B**-Instruct（GGUF Q8_0 + fp16，
+  vLLM gpu-memory-utilization 0.4）。8002 的 model 名为 `Qwen2.5-7B-Instruct`。
+  llama.cpp `--n_ctx 8192`（4096 会在 KB 知识注入后溢出，见 §18）。
 - 数据：US-365K（71,919 test 图文对 + images 36.4 万张，`~/uai/data/us365k`）与
   AUL（肝脏，CC BY 4.0，`~/uai/data/aul`）已就位；台账见 `docs/合规/数据源台账/`
+
+## 18. 真实知识库（kb_v1.0.0）与三颗"从未接线"钉子（2026-09-29）
+
+**KB 现状**：409 文档（甲状腺癌诊疗规范 2018 九章节 9 份 + 中文医疗对话甲状腺
+QA 400 份，Apache 2.0，源码 `Toyhom/Chinese-medical-dialogue-data`）→ 433 chunks
+（bge-m3 1024 维）。Gate 1 检索准确率 hybrid Recall@10 = **98% ≥ 85% ✅**
+（报告 `tests/reports/t1_kb_retrieval_eval.json`）。语料组装：
+`scripts/server_assemble_kb_v1.sh`（PDF 章节 + `scripts/t1b_build_dialogue_docs.py`）。
+
+**三颗钉子（全部"实现了但从未跑通"类，建库时实测拔出）**：
+1. `knowledge_chunks.embedding` ORM 是 `Vector(768)`，bge-m3 是 1024 → 已改 ORM
+   + 真机 `ALTER TABLE ... TYPE vector(1024)`（正式 alembic 迁移文件待补）；
+2. `hybrid_indexer.py` 的 `on_conflict_do_update(set_=…)` 字符串键是**数据库列名**，
+   写 ORM 属性名 "meta" 而物理列是 `metadata` → 首次建库即崩（已修 +
+   `build_upsert_statement()` 编译级守卫 `tests/unit/knowledge/test_hybrid_indexer_upsert.py`）；
+3. **接线缺口**：`init_knowledge_base.py` 只写 `knowledge_chunks`，生产检索器读
+   `vector_index_knowledge_chunks` → 建库后向量索引表为空。灌数：
+   `PYTHONPATH=~/uai/src python scripts/server_populate_vector_index.py
+   --kb-version kb_v1.0.0 --organ thyroid`（幂等，经生产客户端）。
+
+**vLLM V1 孤儿进程大坑**：`VLLM::EngineCore` 是**独立子进程**，`pkill -f
+vllm_server.py` 杀不死它——两个孤儿曾占 33GB 显存导致 llama.cpp 8k ctx 分配失败
+段错误。重启 vLLM 必须两条都执行：`pkill -f vllm_server.py; pkill -9 -f
+'VLLM::EngineCore'`。显存核对：vLLM 0.40（19GB）+ llama.cpp 8k（8.4GB）+
+三个嵌入服务（~6GB）≈ 34GB / 48GB。
+
+**上下文窗口上线级教训**：KB 知识注入后诊断 prompt 达 5943 tokens > 4096 →
+`generation_failed`（且检索腿真正生效的副作用恰恰是 prompt 变长）。
+llama_cpp_server 必须 `--n_ctx 8192` 起。
+
+**KB 级 golden set**：从建好的 chunks 直接构造（语料=chunks，查询=chunk 首句
+截断），评测器同 `t1_eval_retrieval.py`——见 `scripts/_t1b_kb_eval.sh` 已删，
+重建姿势在 16 号 A.5。
