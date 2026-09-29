@@ -191,6 +191,45 @@ _TINY_PNG = base64.b64decode(
 )
 
 
+class TestOpenClipBackendDimension:
+    """守卫：open_clip 权重的真实维度必须以权重为准（BiomedCLIP=512，声明 768 无效）。"""
+
+    def test_以权重真实维度为准(self, service_module, tmp_path, monkeypatch):
+        import types
+
+        # BiomedCLIP 这类 hf_text 模型是 CustomTextCLIP：没有顶层 embed_dim，
+        # 维度挂在文本塔上（transformers 5.x 真机实测 AttributeError）。
+        fake_model = types.SimpleNamespace(
+            text=types.SimpleNamespace(output_dim=512), eval=lambda: None
+        )
+        fake_tokenizer = types.SimpleNamespace(return_tensors=None)
+        fake_open_clip = types.SimpleNamespace(
+            create_model_and_transforms=lambda *a, **k: (fake_model, None, None),
+            get_tokenizer=lambda name: fake_tokenizer,
+        )
+        monkeypatch.setitem(sys.modules, "open_clip", fake_open_clip)
+
+        backend = service_module.OpenClipBackend(
+            str(tmp_path), "cpu", "float16", 256, dimension=768
+        )
+        assert backend.dimension == 512
+
+    def test_顶层embed_dim优先(self, service_module, tmp_path, monkeypatch):
+        import types
+
+        fake_model = types.SimpleNamespace(embed_dim=768, eval=lambda: None)
+        fake_open_clip = types.SimpleNamespace(
+            create_model_and_transforms=lambda *a, **k: (fake_model, None, None),
+            get_tokenizer=lambda name: types.SimpleNamespace(),
+        )
+        monkeypatch.setitem(sys.modules, "open_clip", fake_open_clip)
+
+        backend = service_module.OpenClipBackend(
+            str(tmp_path), "cpu", "float16", 256, dimension=768
+        )
+        assert backend.dimension == 768
+
+
 class TestRerankerMaxLengthClamp:
     """守卫：max_length 必须钳制到模型位置嵌入上限内（真机 CUDA assert 死锁修复）。"""
 

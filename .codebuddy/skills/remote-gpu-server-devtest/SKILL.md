@@ -298,28 +298,51 @@ python 包 → 真机报 `FileNotFoundError: [Errno 2] No such file or directory
 **验收口径提醒**：`tests/unit` 全绿（5779）与覆盖率 82.22% ≥ 82% 只证明"离线可测的那一层"；
 真正的"能出诊断结论"取决于上表前两项。
 
-## 14. 图像嵌入腿（8003）与官方 Ultrasound-CLIP（2026-09-29 新增）
+## 14. 图像嵌入腿（8003）与模型底座（2026-09-29）
 
-**重大更正**：§11/§13 里"Ultrasound-CLIP 是项目自有产物、公开源没有"的判断**已过时**——
-官方 Ultrasound-CLIP（CVPR 2026，浙大，GitHub `ZJUDataIntelligence/Ultrasound-CLIP`）已开源，
-README 提供预训练权重。但权重在 **OneDrive 且已迁移 SharePoint（`migratedtospo=true`），
-API 自动化下载不可行 → 必须浏览器手动下载后 scp** 到 `~/uai/models/ultrasound-clip-official/`。
-⚠️ 该仓库与 US-365K 均**未声明 license**（研发/评测可用，注册商用前必须向作者确认）。
+**官方 Ultrasound-CLIP 权重当前不可达（结论固定）**：HF 仓库 `JJY-0823/Ultrasound-CLIP`
+是**空壳**（仅 .gitattributes，所以作者把权重放 OneDrive）；OneDrive 分享链接
+`1drv.ms/f/c/48250be4328ce7ab/IgCnIA0-...` 经 301 → `onedrive.live.com`（带
+`migratedtospo=true`）——**本机与学校服务器均无法连接 onedrive.live.com（被墙）**；
+api.onedrive.com / SPO v2.0 autoredeem 全部 401；download.aspx 返回 SharePoint 错误页；
+本机无可用代理端口；workers.dev 等海外中转全 000。要拿官方权重只能：有代理时浏览器手动
+下载，或等作者把权重传到 HF。⚠️ 该仓库与 US-365K 均**未声明 license**（注册商用前必须确认）。
 
-**先行方案（已落地）**：`scripts/server_download_official_clip.sh` 经 hf-mirror 下基座
-`openai/clip-vit-large-patch14`（ViT-L/14，图像投影 768 维 = `settings.embedding_dim`），
-`scripts/server_start_ultrasound_clip.sh` 起 8003（幂等、自动探活、`CUDA_VISIBLE_DEVICES=0`）。
+**现行底座：BiomedCLIP（MIT 许可，微软官方）**，已接入真机 8003：
+- 权重 `microsoft/BiomedCLIP-PubMedBERT_256-vit_base_patch16_224`（open_clip 格式
+  784MB）经 hf-mirror 下载到 `~/uai/models/biomedclip-base-patch16-224`；
+  ⚠️ 仓库名不是 `microsoft/biomedclip-base-patch16-224`（hf-mirror 会 401）；
+- 其 HF 格式第三方转换版（`chuhac/BiomedCLIP-vit-bert-hf`）在 transformers 5.17 下
+  加载即崩（`CLIPConfig accepts only keyword arguments` 位置参数问题）——**别用它**；
+- **I2T@10 = 23.6%**（US-365K test 500 样本，随机基线 2%；通用基座
+  clip-vit-large-patch14 = 9.6%）——BiomedCLIP 是基座的 2.5 倍，采纳为现行底座；
+- 维度 512 ≠ 768：`~/uai/.env` 加 `EMBEDDING_DIM=512`（客户端声明维度只来自
+  settings.embedding_dim，向量表以实际写入向量建表）。
 
-**基座 I2T@10 基线**：US-365K test split 500 样本 → **9.6%**（随机基线 2%）。
-零样本通用 CLIP 对长医学 caption 即此水平；官方超声预训练权重是否显著更高 = 待用户手动下载后复测。
-
-**8003 服务端**：`scripts/start_embedding_services.py --service ultrasound-clip`（端点契约照
-`app/embedding/ultrasound_clip.py` 客户端：JSON 文本 / multipart `image` / multipart `images`+texts JSON 串）。
-功能冒烟：`scripts/server_check_ultrasound_clip.py`（文本/图像 768 维 + 匹配对余弦 > 不匹配对）。
+**open_clip 3.3 加载要点**（`scripts/eval_i2t_openclip.py` + 服务端 OpenClipBackend）：
+- 用 **`local-dir:` schema**：`create_model_and_transforms(f"local-dir:{dir}")` +
+  `get_tokenizer(f"local-dir:{dir}")` —— 从目录里 open_clip_config.json 读配置，
+  tokenizer 同源（BiomedBERT）。临时文件 `add_model_config` 方案有两个坑：
+  配置顶层是 `{"model_cfg":...}` 需剥壳，且注册名是 stem，`get_tokenizer` 用
+  basename（带 .json）会查不到 → **静默回退 SimpleTokenizer**（BiomedBERT 词表
+  完全对不上，文本嵌入全废）；
+- `CustomTextCLIP`（hf_text 类模型）**没有顶层 `embed_dim`**，维度在
+  `model.text.output_dim`（HFTextEncoder）；
+- `HFTokenizer.__call__` 直接返回**纯张量**（input_ids，padding='max_length'），
+  没有 attention_mask 键——token_count 只能近似 numel；
+- 服务启动必须带 `HF_ENDPOINT=https://hf-mirror.com`，否则 get_tokenizer 下载
+  BiomedBERT tokenizer 时卡死在被墙的 huggingface.co（表现为"Waiting for
+  application startup"挂 4 分钟+）。
 
 **transformers 5.x 大坑**：服务器 venv 是 **transformers 5.17.0**，`get_text_features`/
 `get_image_features` 从"返回张量"改为**返回 `BaseModelOutputWithPooling`**（投影特征在
 `pooler_output`）——`clip_model.py` 与服务端都已做版本兼容（`_features_tensor`）。
+
+**8003 服务端**：`scripts/start_embedding_services.py --service ultrasound-clip`
+（`--clip-format hf|open_clip` 选加载器；端点契约照 `app/embedding/ultrasound_clip.py`
+客户端：JSON 文本 / multipart `image` / multipart `images`+texts JSON 串）。
+真机启动：`bash ~/server_start_ultrasound_clip.sh [model_dir]`（自动识别格式，
+幂等，探活）。功能冒烟：`scripts/server_check_ultrasound_clip.py`。
 
 ## 15. 真机第二轮三连坑（2026-09-29，全部已修 + 守卫测试）
 

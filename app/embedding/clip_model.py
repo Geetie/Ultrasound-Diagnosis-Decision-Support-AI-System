@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 import json
+import os
 import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -150,9 +151,15 @@ class UltrasoundCLIPModel:
             torch_dtype = torch.float32
 
         try:
-            self._processor = AutoProcessor.from_pretrained(target_path)
+            # trust_remote_code：第三方转换的模型（如 BiomedCLIP 的 HF 格式版）
+            # 带自定义 modeling/processing 代码，需要显式信任；环境变量开关
+            # 避免无条件开启（官方 openai/clip-vit-large-patch14 不需要）。
+            trust_remote_code = os.environ.get("CLIP_TRUST_REMOTE_CODE", "") == "1"
+            self._processor = AutoProcessor.from_pretrained(
+                target_path, trust_remote_code=trust_remote_code
+            )
             self._model = AutoModel.from_pretrained(
-                target_path, torch_dtype=torch_dtype
+                target_path, torch_dtype=torch_dtype, trust_remote_code=trust_remote_code
             ).to(device)
         except Exception as exc:
             logger.error(

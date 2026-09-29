@@ -5,7 +5,10 @@
 `app/main.py:199-212` 把三个外部服务当 HTTP 客户端连：
 
     8004 bge-m3        ← BgeM3MedicalService
-    8003 ultrasound-clip ← UltrasoundClipService（权重为项目自有产物，公开源没有）
+    8003 ultrasound-clip ← UltrasoundClipService（官方权重为 open_clip 格式，见
+      `--clip-format open_clip`；HF 格式走默认后端。官方 Ultrasound-CLIP（CVPR 2026）
+      权重在 OneDrive 无法自动化下载，先行底座为 BiomedCLIP（MIT，I2T@10 23.6%
+      vs 通用基座 9.6%，US-365K test 500 样本，2026-09-29 真机实测））
     8005 bge-reranker  ← BgeRerankerService
 
 但**全仓库没有任何服务端实现**（scripts/、docker-compose*.yml、deploy/supervisor 全无），
@@ -60,6 +63,7 @@ import asyncio
 import json
 import time
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any
 
 import structlog
@@ -228,6 +232,107 @@ class UltrasoundClipBackend:
         return self._normalize(features)
 
 
+class OpenClipBackend:
+    """open_clip 格式 CLIP 权重（如 BiomedCLIP 官方仓库）的图文嵌入。
+
+    为什么存在：BiomedCLIP 官方只发 open_clip 格式（open_clip_pytorch_model.bin），
+    其 HF 格式第三方转换版在 transformers 5.x 下加载即崩（CLIPConfig 位置参数
+    不兼容，真机 2026-09-29 实测）→ 走 open_clip 库加载官方权重。
+    与 UltrasoundClipBackend 同接口（encode_texts/encode_images）。
+    """
+
+    name = "ultrasound-clip"
+
+    def __init__(
+        self,
+        model_dir: str,
+        device: str,
+        dtype: str,
+        max_length: int,
+        dimension: int = 768,
+    ) -> None:
+        import open_clip
+        from PIL import Image  # noqa: F401  前置校验：图像路径缺 Pillow 应在加载期报错
+
+        del dtype  # open_clip 自行管理精度（fp32 权重；推理可在 GPU 上）
+        self.device = torch.device(device)
+        model_dir_path = Path(model_dir)
+
+        # open_clip 3.3 的 `local-dir:` schema：从目录里的 open_clip_config.json
+        # 读模型配置与 tokenizer（text_cfg.hf_model_name 的 tokenizer 需可达 HF，
+        # 真机经 HF_ENDPOINT=hf-mirror）。比临时注册 add_model_config 干净。
+        uri = f"local-dir:{model_dir_path}"
+        self.model, _, self.preprocess = open_clip.create_model_and_transforms(
+            uri, device=str(self.device)
+        )
+        self.model.eval()
+        self.tokenizer = open_clip.get_tokenizer(uri)
+
+        # 维度以权重真实值为准（如 BiomedCLIP=512）；与调用方声明不一致时告警并取真值。
+        # 注意：BiomedCLIP 这类 hf_text 的模型是 CustomTextCLIP，embed_dim 挂在两座塔上
+        # （CustomTextCLIP 没有顶层 embed_dim，真机 2026-09-29 实测 AttributeError）。
+        actual_dim = getattr(self.model, "embed_dim", None)
+        if actual_dim is None:
+            # open_clip 3.x：CLIP 有顶层 embed_dim；CustomTextCLIP 没有，
+            # 其文本塔（HFTextEncoder）的维度属性是 output_dim（真机实测）。
+            text_tower = self.model.text
+            actual_dim = int(
+                getattr(text_tower, "embed_dim", None)
+                or getattr(text_tower, "output_dim", None)
+            )
+        if dimension and actual_dim != dimension:
+            logger.warning(
+                "openclip_dimension_mismatch_declared_vs_actual",
+                declared=dimension,
+                actual=actual_dim,
+            )
+        self.dimension = actual_dim
+        self.max_length = max_length
+        logger.info(
+            "clip_service_loaded",
+            service=self.name,
+            backend="open_clip",
+            device=str(self.device),
+            dimension=self.dimension,
+        )
+
+    def _normalize(self, tensor: Any) -> list[list[float]]:
+        return (
+            torch.nn.functional.normalize(tensor.float(), p=2, dim=1)
+            .cpu()
+            .numpy()
+            .tolist()
+        )
+
+    def encode_texts(self, texts: list[str]) -> tuple[list[list[float]], int]:
+        toks = self.tokenizer(texts)
+        if hasattr(toks, "attention_mask"):
+            # transformers BatchEncoding 形态
+            token_count = int(toks["attention_mask"].sum().item())
+            toks = toks.to(self.device)
+        else:
+            # open_clip 3.x 直接返回张量（无 attention_mask）
+            toks = toks.to(self.device)
+            token_count = int(toks.numel())
+        with torch.inference_mode():
+            features = self.model.encode_text(toks)
+        return self._normalize(features), token_count
+
+    def encode_images(self, image_bytes_list: list[bytes]) -> list[list[float]]:
+        from io import BytesIO
+
+        from PIL import Image
+
+        images = [
+            self.preprocess(Image.open(BytesIO(raw)).convert("RGB"))
+            for raw in image_bytes_list
+        ]
+        batch = torch.stack(images).to(self.device)
+        with torch.inference_mode():
+            features = self.model.encode_image(batch)
+        return self._normalize(features)
+
+
 class RerankerBackend:
     """bge-reranker-base 交叉编码器打分（返回原始 logit，供排序使用）。"""
 
@@ -306,6 +411,7 @@ def build_app(
     max_length: int,
     dimension: int | None = None,
     backend_factory: Any | None = None,
+    clip_format: str = "hf",
 ) -> FastAPI:
     """构造服务应用。`backend_factory` 仅供测试注入替身（不加载真模型）。"""
     state: dict[str, Any] = {"backend": None, "ready_at": None}
@@ -316,6 +422,10 @@ def build_app(
         if service == "bge-m3":
             return BgeM3Backend(model_dir, device, dtype, max_length)
         if service == "ultrasound-clip":
+            if clip_format == "open_clip":
+                return OpenClipBackend(
+                    model_dir, device, dtype, max_length, dimension=dimension or 768
+                )
             return UltrasoundClipBackend(
                 model_dir, device, dtype, max_length, dimension=dimension or 768
             )
@@ -356,7 +466,8 @@ def build_app(
     @app.get("/v1/model/info")
     async def model_info() -> dict[str, Any]:
         backend = _backend()
-        dim = dimension or getattr(backend, "dimension", 0)
+        # 后端上报的真实维度优先（open_clip 权重的 embed_dim 以权重为准，如 BiomedCLIP=512）
+        dim = getattr(backend, "dimension", None) or dimension or 0
         return {
             "model_name": service,
             "dimension": dim,
@@ -503,6 +614,12 @@ def main() -> int:
         default=None,
         help="覆盖服务默认维度（ultrasound-clip 默认 768，须与 settings.embedding_dim 一致）",
     )
+    parser.add_argument(
+        "--clip-format",
+        choices=["hf", "open_clip"],
+        default="hf",
+        help="ultrasound-clip 权重格式：hf=transformers CLIP（默认），open_clip=open_clip 官方仓库格式（如 BiomedCLIP）",
+    )
     parser.add_argument("--log-level", default="info")
     args = parser.parse_args()
 
@@ -515,6 +632,7 @@ def main() -> int:
         dtype=args.dtype,
         max_length=args.max_length,
         dimension=args.dimension,
+        clip_format=args.clip_format,
     )
     uvicorn.run(app, host=args.host, port=args.port, log_level=args.log_level)
     return 0
