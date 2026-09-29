@@ -603,6 +603,72 @@ class TestLlamaCppEngine:
         assert body.get("stop") == ["\n", "###"]
 
 
+class TestLlamaCppEngineChatEndpoint:
+    """守卫：use_chat=True 时 llama.cpp 走 /v1/chat/completions（与 vLLM 同形态）。
+
+    背景（2026-09-29 双引擎一致性达标攻关）：vLLM 走 chat 模板而 llama.cpp 默认
+    裸 prompt，同一 prompt 在两栈上形态不同是模板级差异源。
+    """
+
+    def test_chat_endpoint_default_off(self):
+        engine = LlamaCppEngine()
+        assert engine._generate_endpoint == "/v1/completions"
+
+    def test_chat_endpoint_enabled(self):
+        engine = LlamaCppEngine(use_chat=True)
+        assert engine._generate_endpoint == "/v1/chat/completions"
+
+    @pytest.mark.asyncio
+    async def test_chat_payload_uses_messages(self):
+        captured = None
+
+        async def capture_handler(request: httpx.Request) -> httpx.Response:
+            nonlocal captured
+            captured = request
+            return httpx.Response(
+                200,
+                json={
+                    "choices": [{"message": {"content": "分级: 4a"}, "finish_reason": "stop"}],
+                    "model": "qwen2.5-7b-q4km",
+                },
+                request=httpx.Request("POST", "http://localhost:8001/v1/chat/completions"),
+            )
+
+        engine = LlamaCppEngine(use_chat=True, default_temperature=0.0)
+        engine._client = httpx.AsyncClient(
+            transport=httpx.MockTransport(capture_handler),
+            base_url=engine._base_url,
+        )
+        request = InferenceRequest(prompt="甲状腺结节，请给出TI-RADS分级。", temperature=0.0)
+        response = await engine.generate(request)
+
+        body = json.loads(captured.content)
+        assert captured.url.path == "/v1/chat/completions"
+        assert body["messages"] == [
+            {"role": "user", "content": "甲状腺结节，请给出TI-RADS分级。"}
+        ]
+        assert "prompt" not in body
+        assert body["temperature"] == 0.0
+        assert response.text == "分级: 4a"
+
+    @pytest.mark.asyncio
+    async def test_parse_tolerates_completions_shape(self):
+        """chat 端点返回 text 形态时也应解析（解析与端点解耦）。"""
+        mock_response = httpx.Response(
+            200,
+            json={"choices": [{"text": "Result", "finish_reason": "stop"}]},
+            request=httpx.Request("POST", "http://localhost:8001/v1/chat/completions"),
+        )
+        engine = LlamaCppEngine(use_chat=True)
+        engine._client = httpx.AsyncClient(
+            transport=httpx.MockTransport(_make_mock_handler(mock_response)),
+            base_url=engine._base_url,
+        )
+        request = InferenceRequest(prompt="test")
+        response = await engine.generate(request)
+        assert response.text == "Result"
+
+
 class TestVLLMEngine:
     def test_init_default_values(self):
         engine = VLLMEngine(default_model="test-model")

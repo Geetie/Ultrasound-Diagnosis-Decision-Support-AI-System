@@ -38,6 +38,31 @@ from .statistics import (
 
 logger = structlog.get_logger("app.inference.consistency")
 
+# 结构化输出指令段（2026-09-29 真机 780 例达标攻关）：两引擎收到**完全相同**的
+# 指令文本，要求末行以 "分级: <值>" 收束——抽取器（grading_definitions）对该
+# 行有专用模式，正则兜底仍在。格式随器官的分级体系而定（与 07 号文档口径一致）。
+_STRUCTURED_OUTPUT_INSTRUCTIONS: dict[str, str] = {
+    "thyroid": (
+        "\n\n输出要求：先给出简要依据（不超过3条），最后必须以单独一行"
+        "`分级: TI-RADS X` 结束（X 为 2/3/4a/4b/5 之一），不要输出其他分级体系。"
+    ),
+    "liver": (
+        "\n\n输出要求：先给出简要依据（不超过3条），最后必须以单独一行"
+        "`分级: LI-RADS X` 结束（X 为 1/2/3/4/5 之一），不要输出其他分级体系。"
+    ),
+    "cardiac": (
+        "\n\n输出要求：先给出简要依据（不超过3条），最后必须以单独一行"
+        "`分级: X` 结束（X 为 normal/mild/moderate/severe 之一，与 LVEF 阈值"
+        " ≥55/≥45/≥30 对应），不要输出其他分级体系。"
+    ),
+}
+
+# 器官名兜底：未知器官不加指令段（保持裸 prompt，抽取失败会如实计 extraction_failure）
+_STRUCTURED_OUTPUT_FALLBACK = (
+    "\n\n输出要求：先给出简要依据（不超过3条），最后必须以单独一行"
+    "`分级: <分级结论>` 结束。"
+)
+
 
 class ConsistencyVerifier:
     def __init__(
@@ -51,6 +76,7 @@ class ConsistencyVerifier:
         config: VerificationConfig | None = None,
         historical_pass_rates: dict[str, list[float]] | None = None,
         overall_timeout_seconds: float | None = None,
+        structured_output: bool = False,
     ):
         self._engine_a = engine_a
         self._engine_b = engine_b
@@ -62,6 +88,9 @@ class ConsistencyVerifier:
         self.config = config or get_verification_config()
         self._historical_pass_rates = historical_pass_rates or {}
         self._hallucination_detector = get_default_detector()
+        # 结构化输出（2026-09-29 真机 780 例达标攻关）：两引擎收到完全相同的
+        # 输出格式指令段，消除"自由文本分级"的表述噪音。默认关闭保持兼容。
+        self._structured_output = structured_output
 
         logger.info(
             "consistency_verifier_initialized",
@@ -69,6 +98,7 @@ class ConsistencyVerifier:
             engine_b=engine_b_name,
             concurrency=concurrency,
             test_data_version=self.config.test_data_version,
+            structured_output=structured_output,
         )
 
     async def verify(
@@ -82,6 +112,7 @@ class ConsistencyVerifier:
             engine_b_name=self._engine_b_name,
             test_data_version=self.config.test_data_version,
             verification_temperature=request_temperature,
+            structured_output=self._structured_output,
             _config=self.config,
         )
 
@@ -187,6 +218,13 @@ class ConsistencyVerifier:
 
         return report
 
+    def _apply_structured_output(self, prompt: str, organ: str) -> str:
+        """按器官追加输出格式指令段（未启用时原样返回）。"""
+        if not self._structured_output:
+            return prompt
+        suffix = _STRUCTURED_OUTPUT_INSTRUCTIONS.get(organ, _STRUCTURED_OUTPUT_FALLBACK)
+        return prompt + suffix
+
     async def _verify_single_case(self, case: dict[str, Any]) -> ConsistencyPair:
         case_id = case.get("case_id", "")
         organ = case.get("organ", "")
@@ -205,7 +243,7 @@ class ConsistencyVerifier:
         )
 
         request = InferenceRequest(
-            prompt=prompt,
+            prompt=self._apply_structured_output(prompt, organ),
             max_tokens=512,
             temperature=0.0,
             top_p=0.95,

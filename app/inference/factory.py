@@ -26,6 +26,7 @@ def create_inference_engine(
     circuit_breaker_success_threshold: int = 3,
     pool_max_connections: int = 10,
     pool_keepalive_expiry: float = 300.0,
+    llama_cpp_use_chat: bool = False,
 ) -> InferenceEngine:
     if engine_type == "llama.cpp":
         return LlamaCppEngine(
@@ -44,6 +45,7 @@ def create_inference_engine(
             circuit_breaker_success_threshold=circuit_breaker_success_threshold,
             pool_max_connections=pool_max_connections,
             pool_keepalive_expiry=pool_keepalive_expiry,
+            use_chat=llama_cpp_use_chat,
         )
     elif engine_type == "vllm":
         return VLLMEngine(

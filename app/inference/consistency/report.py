@@ -246,6 +246,7 @@ class ConsistencyReport:
     phase_upgrade_from: str = ""
     phase_upgrade_to: str = ""
     verification_temperature: float = 0.0
+    structured_output: bool = False
     lvef_conflict_count: int = 0
     hallucination_rate_a: float = 0.0
     hallucination_rate_b: float = 0.0

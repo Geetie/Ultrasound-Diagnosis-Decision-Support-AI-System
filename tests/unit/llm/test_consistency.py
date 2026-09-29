@@ -170,6 +170,74 @@ class TestExtractGrading:
         text = "甲状腺结节，随访3月后复查"
         assert extract_grading(text, "thyroid") is None
 
+    # ------------------------------------------------------------------
+    # 2026-09-29 真机 780 例评测：61 例提取失败的实际输出形态
+    # （专项 prompt 输出 TR 码、结构化分级行、括号体系名、英文 cardiac 表述）
+    # ------------------------------------------------------------------
+
+    def test_thyroid_tr_code(self):
+        text = "分级: TR4a。随访建议 6-12 个月复查超声。"
+        assert extract_grading(text, "thyroid") == "4a"
+
+    def test_thyroid_tr_code_plain(self):
+        text = "超声表现典型，TR3，良性可能大"
+        assert extract_grading(text, "thyroid") == "3"
+
+    def test_thyroid_structured_grading_line(self):
+        text = "总分: 2 置信度: 0.78\n分级: 4a"
+        assert extract_grading(text, "thyroid") == "4a"
+
+    def test_thyroid_json_grading(self):
+        text = '根据 ACR TI-RADS 2017 评分规则：\n{"grading": "4b", "confidence": 0.8}'
+        assert extract_grading(text, "thyroid") == "4b"
+
+    def test_thyroid_colon_after_tirads(self):
+        text = "根据上述特征，TI-RADS: 4a。"
+        assert extract_grading(text, "thyroid") == "4a"
+
+    def test_thyroid_digit_level_with_paren_system(self):
+        text = "综上所述，该结节评为 3 级（TI-RADS）。"
+        assert extract_grading(text, "thyroid") == "3"
+
+    def test_liver_lr_numeric_compact(self):
+        text = "肝脏超声表现符合 LR3，中等风险"
+        assert extract_grading(text, "liver") == "3"
+
+    def test_liver_structured_grading_line(self):
+        text = "分级: 4，建议增强 MRI"
+        assert extract_grading(text, "liver") == "4"
+
+    def test_liver_json_grading(self):
+        text = '{"grading": "LR-3"}'
+        assert extract_grading(text, "liver") == "3"
+
+    def test_liver_colon_after_lirads(self):
+        text = "结论：LI-RADS: 4 类"
+        assert extract_grading(text, "liver") == "4"
+
+    def test_cardiac_english_mildly_reduced(self):
+        text = "LVEF 47%，practice: mildly_reduced"
+        assert extract_grading(text, "cardiac") == "mild"
+
+    def test_cardiac_english_normal(self):
+        text = "Contractility is normal, LVEF 62%"
+        assert extract_grading(text, "cardiac") == "normal"
+
+    def test_cardiac_json_grading(self):
+        text = '{"grading": "severe"}'
+        assert extract_grading(text, "cardiac") == "severe"
+
+    def test_cardiac_english_conflict_with_lvef(self):
+        # 英文描述与 LVEF 冲突时与中文同规则：LVEF 不优先（prefer_lvef=False）
+        text = "LVEF: 60%，moderately_reduced"
+        assert extract_grading(text, "cardiac") == "moderate"
+
+    def test_tr_code_negative_no_false_positive(self):
+        # 反例：随访/测量值/普通数字不得因新模式误抽
+        assert extract_grading("甲状腺结节，随访3月后复查", "thyroid") is None
+        assert extract_grading("结节大小约3mm，边界清晰", "thyroid") is None
+        assert extract_grading("建议3次复查，定期随访", "thyroid") is None
+
     def test_weeks_not_extracted(self):
         text = "甲状腺结节TI-RADS 4a类可能，建议4-6周复查"
         assert extract_grading(text, "thyroid") == "4a"
@@ -2904,3 +2972,70 @@ class TestPhase1GateCriteria:
         report.organ_breakdown = {"thyroid": {"total": 300, "grading_consistency_rate": 0.96, "clinical_boundary_diff_rate": 0.015}}
         report._gate_status_cache = None
         assert report.gate_status != GateStatus.PASSED
+
+
+class _CapturingEngine(InferenceEngine):
+    """记录收到的 InferenceRequest，返回固定文本（验证结构化输出注入）。"""
+
+    def __init__(self, response: str):
+        self.requests: list[InferenceRequest] = []
+        self._response = response
+
+    async def generate(self, request: InferenceRequest) -> InferenceResponse:
+        self.requests.append(request)
+        return InferenceResponse(
+            text=self._response,
+            model="capture",
+            usage=TokenUsage(prompt_tokens=1, completion_tokens=1, total_tokens=2),
+            finish_reason="stop",
+            request_id=request.request_id,
+            latency_ms=1.0,
+        )
+
+    async def health_check(self) -> bool:
+        return True
+
+    async def get_model_info(self):
+        from app.inference.protocols import ModelInfo
+        return ModelInfo(model_name="capture")
+
+    async def close(self) -> None:
+        pass
+
+
+class TestVerifierStructuredOutput:
+    """守卫：结构化输出开关（两引擎追加完全相同的指令段；默认关闭零侵入）。"""
+
+    @pytest.mark.asyncio
+    async def test_default_off_keeps_prompt_untouched(self):
+        ea = _CapturingEngine("分级: 3")
+        eb = _CapturingEngine("分级: 3")
+        verifier = ConsistencyVerifier(engine_a=ea, engine_b=eb)
+        await verifier.verify([{"case_id": "T1", "organ": "thyroid", "prompt": "P"}])
+        assert ea.requests[0].prompt == "P"
+        assert eb.requests[0].prompt == "P"
+
+    @pytest.mark.asyncio
+    async def test_on_appends_identical_suffix_to_both_engines(self):
+        ea = _CapturingEngine("分级: 3")
+        eb = _CapturingEngine("分级: 3")
+        verifier = ConsistencyVerifier(engine_a=ea, engine_b=eb, structured_output=True)
+        await verifier.verify([{"case_id": "T1", "organ": "thyroid", "prompt": "P"}])
+        assert ea.requests[0].prompt != "P"
+        assert ea.requests[0].prompt == eb.requests[0].prompt
+        assert "分级: TI-RADS X" in ea.requests[0].prompt
+
+    @pytest.mark.asyncio
+    async def test_report_records_structured_flag(self):
+        from app.inference.consistency.serialization import report_to_dict
+
+        verifier = ConsistencyVerifier(
+            engine_a=_CapturingEngine("分级: 3"),
+            engine_b=_CapturingEngine("分级: 3"),
+            structured_output=True,
+        )
+        report = await verifier.verify(
+            [{"case_id": "T1", "organ": "thyroid", "prompt": "P"}]
+        )
+        assert report.structured_output is True
+        assert report_to_dict(report)["structured_output"] is True

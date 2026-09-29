@@ -65,6 +65,7 @@ class LlamaCppEngine(BaseHttpInferenceEngine):
         circuit_breaker_success_threshold: int = 3,
         pool_max_connections: int = 10,
         pool_keepalive_expiry: float = 300.0,
+        use_chat: bool = False,
     ):
         super().__init__(
             base_url=base_url,
@@ -84,14 +85,21 @@ class LlamaCppEngine(BaseHttpInferenceEngine):
             pool_max_connections=pool_max_connections,
             pool_keepalive_expiry=pool_keepalive_expiry,
         )
+        # 双引擎一致性评测（2026-09-29）：vLLM 走 /v1/chat/completions（chat 模板），
+        # llama.cpp 默认走 /v1/completions（裸 prompt）——同一 prompt 在两栈上的
+        # 形态不同是模板级差异源。use_chat=True 时 llama.cpp 也走 chat 端点
+        # （llama.cpp server 原生支持），使两引擎收到完全相同的消息形态。
+        self._use_chat = use_chat
 
     @property
     def _generate_endpoint(self) -> str:
         """获取生成端点路径。
 
         Returns:
-            str: /v1/completions（OpenAI兼容端点）
+            str: /v1/completions（默认，裸 prompt）或 /v1/chat/completions（use_chat）
         """
+        if self._use_chat:
+            return "/v1/chat/completions"
         return "/v1/completions"
 
     def _build_payload(self, request: InferenceRequest) -> dict[str, Any]:
@@ -103,17 +111,21 @@ class LlamaCppEngine(BaseHttpInferenceEngine):
             request: 推理请求对象
 
         Returns:
-            dict: 包含prompt、max_tokens、temperature、top_p等参数的请求体
+            dict: 包含prompt（或 messages）、max_tokens、temperature、top_p等参数的请求体
         """
-        payload: dict[str, Any] = {
-            "prompt": request.prompt,
+        params: dict[str, Any] = {
             "max_tokens": request.max_tokens if request.max_tokens is not None else self._default_max_tokens,
             "temperature": request.temperature if request.temperature is not None else self._default_temperature,
             "top_p": request.top_p if request.top_p is not None else self._default_top_p,
         }
         if request.stop:
-            payload["stop"] = request.stop
-        return payload
+            params["stop"] = request.stop
+        if self._use_chat:
+            return {
+                "messages": [{"role": "user", "content": request.prompt}],
+                **params,
+            }
+        return {"prompt": request.prompt, **params}
 
     def _parse_response(self, data: dict[str, Any], request: InferenceRequest) -> InferenceResponse:
         """解析llama.cpp响应。
@@ -140,7 +152,10 @@ class LlamaCppEngine(BaseHttpInferenceEngine):
             )
 
         choice = choices[0]
-        text = choice.get("text", "")
+        # chat 端点返回 choices[0].message.content；completions 返回 choices[0].text。
+        # 两种形态都兼容解析（解析与端点解耦，避免 mock/服务差异导致的静默空文本）。
+        message = choice.get("message")
+        text = message.get("content", "") if isinstance(message, dict) else choice.get("text", "")
         finish_reason = choice.get("finish_reason", "stop")
 
         usage_data = data.get("usage", {})

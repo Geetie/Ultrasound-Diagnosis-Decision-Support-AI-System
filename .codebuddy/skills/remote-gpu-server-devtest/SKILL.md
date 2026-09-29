@@ -363,11 +363,21 @@ CUDA 栈 / SQL 文本里。第一步永远是"用生产代码路径最小复现 
 剩余 warning 均为设计内：`safety_gateway_health_probe_degraded`（oom 保护无 sudo 设不了）、
 `qdrant_unhealthy_falling_back_to_pgvector`（真机无 Qdrant，pgvector 是设计降级路径）。
 
-## 17. 双引擎一致性评测（≥700 例）
+## 17. 双引擎一致性评测（≥700 例，三轮已完成）
 
 - 用例：`scripts/server_build_eval_cases.py` → `app/inference/data/consistency_test_cases.json`
   （780 例 = 常规 240 + 边界 440 + 高风险 100；甲状腺/肝脏/心脏）
-- 跑批：`python scripts/consistency_verify.py --cases ... --vllm-model 'Qwen2.5-1.5B-Instruct'
-  --concurrency 4 --timeout 120 --output ~/uai/reports/consistency_780_report.json`
+- 跑批：`python scripts/consistency_verify.py --cases ... --vllm-model 'Qwen2.5-7B-Instruct'
+  --structured-output --use-chat --concurrency 4 --timeout 120 --output ~/uai/reports/...`
+  （PYTHONPATH=~/uai/src 必须带，见 §12 的 sys.path 坑）
+- **三轮结果（2026-09-29）**：基线 1.5B 23.33%（提取失败 61）→ A2 1.5B+结构化+chat
+  **80.51%**（提取失败 6）→ A3 **7B** +同设置 80.38%（提取失败 0）。
+  **基座规模无净收益**——剩余 ~19.6% 是边界模糊用例的设计内分歧，≥95% 门控口径
+  需项目组决策（边界/常规分开统计或语义等价口径），详见 16 号文档 A.2.1。
+- 报告：`tests/reports/consistency_780_report.json`（基线）、
+  `..._a2_report.json`、`..._a3_7b_report.json`
+- **引擎基座现状**：8001/8002 已升级为 Qwen2.5-**7B**-Instruct（GGUF Q4_K_M + fp16，
+  `bash ~/server_upgrade_engines_7b.sh` 幂等切换；vLLM gpu-memory-utilization 0.3→0.4）。
+  8002 的 model 名相应变为 `Qwen2.5-7B-Instruct`。
 - 数据：US-365K（71,919 test 图文对 + images 36.4 万张，`~/uai/data/us365k`）与
   AUL（肝脏，CC BY 4.0，`~/uai/data/aul`）已就位；台账见 `docs/合规/数据源台账/`

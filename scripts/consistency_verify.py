@@ -18,6 +18,16 @@ async def main() -> None:
     parser.add_argument("--concurrency", type=int, default=4)
     parser.add_argument("--output", default="consistency_report.json")
     parser.add_argument("--timeout", type=float, default=30.0)
+    parser.add_argument(
+        "--structured-output",
+        action="store_true",
+        help="给两引擎追加完全相同的输出格式指令段（末行 `分级: X`），消除自由文本噪音",
+    )
+    parser.add_argument(
+        "--use-chat",
+        action="store_true",
+        help="llama.cpp 也走 /v1/chat/completions（与 vLLM 同形态，消除模板差异）",
+    )
     args = parser.parse_args()
 
     with open(args.cases, encoding="utf-8") as f:
@@ -33,6 +43,7 @@ async def main() -> None:
         llama_cpp_host=args.llama_cpp_host,
         llama_cpp_port=args.llama_cpp_port,
         timeout_seconds=args.timeout,
+        llama_cpp_use_chat=args.use_chat,
     )
     vllm_engine = create_inference_engine(
         engine_type="vllm",
@@ -49,6 +60,7 @@ async def main() -> None:
         engine_b_name="vLLM",
         concurrency=args.concurrency,
         request_timeout_seconds=args.timeout,
+        structured_output=args.structured_output,
     )
 
     report = await verifier.verify(cases)

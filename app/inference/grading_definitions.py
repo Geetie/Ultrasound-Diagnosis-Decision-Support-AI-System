@@ -2,7 +2,27 @@ import re
 import threading
 
 _GRADING_PATTERNS: dict[str, list[re.Pattern]] = {
+    # 2026-09-29 真机 780 例评测：61 例提取失败的实际输出形态——
+    # 专项 prompt 输出 "TR4a"（而非 TI-RADS 4a）、"**分级: 4a**"（结构化行）、
+    # "3 级（TI-RADS）"（数字级+括号体系名）、"TI-RADS: 4a"（冒号分隔）。
+    # 新模式一律放在列表前部（精确优先）；既有模式与反例守卫
+    # （"随访3月"/"大小约3mm" 不得误抽）保持不动。
     "thyroid": [
+        # 结构化/分级行：{"grading": "4a"}、grading: TR4a、分级: 4a、分级: TR 4a
+        re.compile(
+            r'["\']?grading["\']?\s*[:：]\s*["\']?(?:TR\s*[-_ ]?)?(\d[a-zA-Z]?)["\']?',
+            re.IGNORECASE,
+        ),
+        re.compile(r'分级\s*[:：]\s*(?:TR\s*[-_ ]?)?(\d[a-zA-Z]?)', re.IGNORECASE),
+        # TR 码（专项 prompt 的输出格式，与 TI-RADS 数字码同义）
+        re.compile(r'\bTR\s*[-_ ]?\s*(\d[a-zA-Z]?)\b', re.IGNORECASE),
+        # "TI-RADS: 4a" / "TI-RADS grade 3"（冒号/英文 grade 分隔，原模式吃不到）
+        re.compile(
+            r'TI[-_]?RADS\s*(?:grade|分级|级别)?\s*[:：]\s*(\d[a-zA-Z]?)\b',
+            re.IGNORECASE,
+        ),
+        # "3 级（TI-RADS）"（数字级在前、体系名在括号里）
+        re.compile(r'(\d[a-zA-Z]?)\s*级\s*[（(]\s*TI[-_]?RADS', re.IGNORECASE),
         re.compile(r'TI[-_]?RADS\s*(\d[a-zA-Z]?)', re.IGNORECASE),
         re.compile(r'TI[-_]?RADS[^\d]*?(\d[a-zA-Z]?)\s*(?:类|级|category)', re.IGNORECASE),
         re.compile(r'RADS\s*(\d[a-zA-Z]?)\s*(?:类|级)', re.IGNORECASE),
@@ -11,6 +31,21 @@ _GRADING_PATTERNS: dict[str, list[re.Pattern]] = {
         re.compile(r'分类\s*(\d[a-zA-Z]?)\s*(?:类|级)?', re.IGNORECASE),
     ],
     "liver": [
+        # 结构化/分级行：{"grading": "LR-3"}、grading: 3、分级: LR 3
+        re.compile(
+            r'["\']?grading["\']?\s*[:：]\s*["\']?(?:LR\s*[-_ ]?|LI[-_]?RADS\s*)?(\d[a-zA-Z]?)["\']?',
+            re.IGNORECASE,
+        ),
+        re.compile(r'分级\s*[:：]\s*(?:LR\s*[-_ ]?)?(\d[a-zA-Z]?)', re.IGNORECASE),
+        # LR3 / LR-3 / LR 3（LR-TR 变体已有模式覆盖）
+        re.compile(r'\bLR\s*[-_ ]?\s*(\d[a-zA-Z]?)\b', re.IGNORECASE),
+        # "LI-RADS: 3"（冒号分隔）
+        re.compile(
+            r'LI[-_]?RADS\s*(?:grade|分级|级别)?\s*[:：]\s*(\d[a-zA-Z]?)\b',
+            re.IGNORECASE,
+        ),
+        # "3 级（LI-RADS）"
+        re.compile(r'(\d[a-zA-Z]?)\s*级\s*[（(]\s*LI[-_]?RADS', re.IGNORECASE),
         re.compile(r'LI[-_]?RADS\s*(\d[a-zA-Z]?)', re.IGNORECASE),
         re.compile(r'LI[-_]?RADS[^\d]*?(\d[a-zA-Z]?)\s*(?:类|级|category)', re.IGNORECASE),
         re.compile(r'LR[-_]?TR\s*(\w+)', re.IGNORECASE),
@@ -19,6 +54,17 @@ _GRADING_PATTERNS: dict[str, list[re.Pattern]] = {
         re.compile(r'分类\s*(\d[a-zA-Z]?)\s*(?:类|级)?', re.IGNORECASE),
     ],
     "cardiac": [
+        # 结构化行：{"grading": "mild"}、grading: mildly_reduced、分级: mild
+        re.compile(
+            r'["\']?grading["\']?\s*[:：]\s*["\']?(正常|轻度|中度|重度|normal|mild|moderate|severe|mildly[ _-]?reduced|moderately[ _-]?reduced|severely[ _-]?reduced)["\']?',
+            re.IGNORECASE,
+        ),
+        # 英文表述（专项 prompt 输出 mildly_reduced 等，原模式只认中文）
+        re.compile(
+            r'\b(mildly[ _-]?reduced|moderately[ _-]?reduced|severely[ _-]?reduced)\b',
+            re.IGNORECASE,
+        ),
+        re.compile(r'\b(normal|mild|moderate|severe)\b', re.IGNORECASE),
         re.compile(r'(轻度|中度|重度)\s*(?:减低|降低|异常|功能障碍|受损)?', re.IGNORECASE),
         re.compile(r'(正常)(?!减低|降低|异常|功能障碍|受损)', re.IGNORECASE),
         re.compile(r'LVEF\s*[:=]?\s*(\d+(?:\.\d+)?)\s*%', re.IGNORECASE),
@@ -100,6 +146,20 @@ _CN_CARDIAC_TO_GRADING: dict[str, str] = {
     "重度": "severe",
 }
 
+# 英文表述归一化（专项 prompt 输出 mildly_reduced 等；真机 780 例提取失败形态之一）
+_EN_CARDIAC_TO_GRADING: dict[str, str] = {
+    "normal": "normal",
+    "mild": "mild",
+    "moderate": "moderate",
+    "severe": "severe",
+    "mildly_reduced": "mild",
+    "mildly reduced": "mild",
+    "moderately_reduced": "moderate",
+    "moderately reduced": "moderate",
+    "severely_reduced": "severe",
+    "severely reduced": "severe",
+}
+
 _CN_CARDIAC_CLASS_TO_GRADING: dict[str, str] = {
     "Ⅰ": "normal",
     "1": "normal",
@@ -163,8 +223,11 @@ def extract_grading_with_conflict(text: str, organ: str) -> tuple[str, bool] | N
         for match in pattern.finditer(text):
             raw = match.group(1)
             if organ == "cardiac":
+                raw_norm = raw.lower()
                 if raw in _CN_CARDIAC_TO_GRADING:
                     all_gradings.append(_CN_CARDIAC_TO_GRADING[raw])
+                elif raw_norm in _EN_CARDIAC_TO_GRADING:
+                    all_gradings.append(_EN_CARDIAC_TO_GRADING[raw_norm])
                 elif raw in _CN_CARDIAC_CLASS_TO_GRADING:
                     all_gradings.append(_CN_CARDIAC_CLASS_TO_GRADING[raw])
                 else:
@@ -181,8 +244,11 @@ def extract_grading_with_conflict(text: str, organ: str) -> tuple[str, bool] | N
             match = pattern.search(text)
             if match:
                 raw = match.group(1)
+                raw_norm = raw.lower()
                 if raw in _CN_CARDIAC_TO_GRADING:
                     cn_grading = _CN_CARDIAC_TO_GRADING[raw]
+                elif raw_norm in _EN_CARDIAC_TO_GRADING:
+                    cn_grading = _EN_CARDIAC_TO_GRADING[raw_norm]
                 elif raw in _CN_CARDIAC_CLASS_TO_GRADING:
                     cn_grading = _CN_CARDIAC_CLASS_TO_GRADING[raw]
                 if cn_grading is not None:
