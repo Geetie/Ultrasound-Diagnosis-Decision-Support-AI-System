@@ -79,6 +79,13 @@ class SGSettings(BaseSettings):
     # 启动期样本只有 2~3 个（冷启动慢请求），p99≈max 必然超阈值 → 节流 →
     # 新请求被拒 → 永远没有新样本 → p99 冻结在超限值 → 自持锁死。
     # 样本数不足时 p99 不具统计意义，只报 unknown，绝不触发节流。
+    # ⚠️ 2026-09-30 二次死锁（T2c 并发评测实测）：负载上升（并发 6）时真机
+    # SG p99 天然 8.7→41.75ms，任何静态阈值都会再次自持锁死——基于延迟
+    # 的节流在真机硬件档位不可用。**处置走部署配置**（真机 .env 设
+    # SG_P99_MIN_SAMPLES_FOR_THROTTLE=10^9 语义停用节流，p99 仍监控上报），
+    # 代码默认值保持开发语义 20；正式修复须改为错误率/饱和度熔断
+    # （二期设计决策项，记 16 号 A.7）。测试不得读此默认值做循环量
+    # （见 test_sg_p99_throttling.py helper 注释）。
     sg_p99_min_samples_for_throttle: int = 20
     sg_max_concurrent_checks: int = 100
     deployment_profile: str = "compact"

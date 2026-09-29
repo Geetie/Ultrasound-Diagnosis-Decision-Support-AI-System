@@ -431,3 +431,22 @@ llama_cpp_server 必须 `--n_ctx 8192` 起。
   重建后必须 `server_populate_vector_index.py --purge` 清向量索引旧行。
 - **pkill 自杀坑**：`ssh ... "pkill -f <模式>; nohup ..."` 当命令行自身含
   模式串时 pkill 会杀掉自己的 shell——后台任务要么分开两次 ssh，要么前台跑。
+
+## 20. T2 系列评测（2026-09-30，数据见 16 号 A.7）
+
+- **数据渠道三连堵**：TNSCUI Zenodo 只有 PDF；CACTUS FRDR http=000；
+  ALN-ULTRA Zenodo files=0；CARDIACUDC 需 Kaggle 凭证。**AUL（~/uai/data/aul，
+  Benign/Malignant/Normal 目录天然分类）与 US-365K caption 词标注是唯二
+  可用的带标注真实数据**。
+- **SG p99 节流已停用**（sg_config `sg_p99_min_samples_for_throttle=10^9`）：
+  串行 p99 8.7ms、并发 41ms，任何静态阈值都自持死锁——负载波动下基于延迟
+  的节流不可用，须改错误率熔断。恢复节流前 T2 类批量评测必挂。
+- **管线吞吐硬上限 ≈1 例/26s**：fusion 19.6s（Self-RAG/CRAG 串行 LLM 链）
+  × llama.cpp 单并发（无 --parallel）。**并发提交只会积压超时**，评测必须
+  串行 + 轮询窗口 ≥240s。llama.cpp 无 --parallel/--flash-attn 参数。
+- **端到端响应无结论文本**：completed 响应的 patient_explanation/
+  malignancy_risk/measurement 全 null，全 JSON 无诊断文本（KB 检索腿正常）。
+  任何"评 AI 结论"的评测在此修复前都不可执行。
+- 主服务 API 端口是 **18000**（不是 8000）；评测用户 smoke-doctor 密码在
+  `~/uai/.smoke_pw`；session 必须先 INSERT（E1002 强校验，模板抄
+  server_link_smoke.sh）。

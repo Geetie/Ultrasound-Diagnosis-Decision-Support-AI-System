@@ -60,11 +60,16 @@ def test_样本不足返回unknown并清零计数():
     assert tracker.is_throttling is False
 
 
-def test_样本充足且持续超限时节流生效():
-    """保护语义不回退：真实持续超限仍必须节流。"""
+def test_样本充足且持续超限时节流生效(monkeypatch):
+    """保护语义不回退：真实持续超限仍必须节流。
+
+    注意：min_samples 必须 monkeypatch 成测试固定值——2026-09-30 起全局默认
+    为 10^9（节流停用，见 sg_config），测试不得依赖全局默认做循环量。
+    """
+    monkeypatch.setattr(settings, "sg_p99_min_samples_for_throttle", 20)
     slow = settings.sg_p99_latency_critical_threshold_ms + 1.0
     tracker = LatencyTracker()
-    _feed(tracker, [slow] * settings.sg_p99_min_samples_for_throttle)
+    _feed(tracker, [slow] * 20)
 
     for i in range(1, 5):
         stats = _compute(tracker)
@@ -75,11 +80,12 @@ def test_样本充足且持续超限时节流生效():
             assert stats["p99_status"] == "critical"
 
 
-def test_节流后样本回落可恢复():
+def test_节流后样本回落可恢复(monkeypatch):
     fast = settings.sg_p99_latency_warning_threshold_ms - 1.0
     slow = settings.sg_p99_latency_critical_threshold_ms + 1.0
+    monkeypatch.setattr(settings, "sg_p99_min_samples_for_throttle", 20)
     tracker = LatencyTracker()
-    _feed(tracker, [slow] * settings.sg_p99_min_samples_for_throttle)
+    _feed(tracker, [slow] * 20)
 
     for _ in range(4):
         _compute(tracker)
@@ -93,10 +99,11 @@ def test_节流后样本回落可恢复():
 
 
 @pytest.mark.parametrize("polls", [3])
-def test_临界次数边界(polls: int):
+def test_临界次数边界(polls: int, monkeypatch):
     slow = settings.sg_p99_latency_critical_threshold_ms + 1.0
+    monkeypatch.setattr(settings, "sg_p99_min_samples_for_throttle", 20)
     tracker = LatencyTracker()
-    _feed(tracker, [slow] * settings.sg_p99_min_samples_for_throttle)
+    _feed(tracker, [slow] * 20)
 
     for _ in range(polls):
         _compute(tracker)

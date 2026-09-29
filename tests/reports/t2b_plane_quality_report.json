@@ -1,0 +1,35 @@
+{
+ "task": "T2b 切面/图像质量模块基线评测（LocalFake 假实现，真模型头未交付）",
+ "dataset": "US-365K caption 切面词标注（transverse/longitudinal 互斥样本）",
+ "blocked_channels": {
+  "CACTUS": "FRDR 不可达（http=000，备份维护中）",
+  "CARDIACUDC": "Kaggle 镜像存在但需 API 凭证（真机无 kaggle.json）；IEEE DataPort 需账号",
+  "ALN-ULTRA": "Zenodo 15003119 files=0（发布不完整，无实际图像下载渠道）"
+ },
+ "samples": {
+  "transverse": 120,
+  "longitudinal": 120
+ },
+ "confusion_matrix": {
+  "transverse": {
+   "transverse": 87,
+   "longitudinal": 0,
+   "non_standard": 33,
+   "none": 0
+  },
+  "longitudinal": {
+   "transverse": 98,
+   "longitudinal": 0,
+   "non_standard": 22,
+   "none": 0
+  }
+ },
+ "top1_accuracy": 0.3625,
+ "top1_binary_excluding_nonstandard": 0.4703,
+ "image_quality_scores": {
+  "n": 240,
+  "mean": 0.4604,
+  "note": "caption 无质量标注词，无法评准确率，仅分数分布"
+ },
+ "conclusion": "假实现 Top-1 接近长宽比先验水平（无临床判别力）——真模型头交付前，切面/质量监控链路仅能做链路联调，不得用于临床提示"
+}
