@@ -297,3 +297,54 @@ python 包 → 真机报 `FileNotFoundError: [Errno 2] No such file or directory
 
 **验收口径提醒**：`tests/unit` 全绿（5779）与覆盖率 82.22% ≥ 82% 只证明"离线可测的那一层"；
 真正的"能出诊断结论"取决于上表前两项。
+
+## 14. 图像嵌入腿（8003）与官方 Ultrasound-CLIP（2026-09-29 新增）
+
+**重大更正**：§11/§13 里"Ultrasound-CLIP 是项目自有产物、公开源没有"的判断**已过时**——
+官方 Ultrasound-CLIP（CVPR 2026，浙大，GitHub `ZJUDataIntelligence/Ultrasound-CLIP`）已开源，
+README 提供预训练权重。但权重在 **OneDrive 且已迁移 SharePoint（`migratedtospo=true`），
+API 自动化下载不可行 → 必须浏览器手动下载后 scp** 到 `~/uai/models/ultrasound-clip-official/`。
+⚠️ 该仓库与 US-365K 均**未声明 license**（研发/评测可用，注册商用前必须向作者确认）。
+
+**先行方案（已落地）**：`scripts/server_download_official_clip.sh` 经 hf-mirror 下基座
+`openai/clip-vit-large-patch14`（ViT-L/14，图像投影 768 维 = `settings.embedding_dim`），
+`scripts/server_start_ultrasound_clip.sh` 起 8003（幂等、自动探活、`CUDA_VISIBLE_DEVICES=0`）。
+
+**基座 I2T@10 基线**：US-365K test split 500 样本 → **9.6%**（随机基线 2%）。
+零样本通用 CLIP 对长医学 caption 即此水平；官方超声预训练权重是否显著更高 = 待用户手动下载后复测。
+
+**8003 服务端**：`scripts/start_embedding_services.py --service ultrasound-clip`（端点契约照
+`app/embedding/ultrasound_clip.py` 客户端：JSON 文本 / multipart `image` / multipart `images`+texts JSON 串）。
+功能冒烟：`scripts/server_check_ultrasound_clip.py`（文本/图像 768 维 + 匹配对余弦 > 不匹配对）。
+
+**transformers 5.x 大坑**：服务器 venv 是 **transformers 5.17.0**，`get_text_features`/
+`get_image_features` 从"返回张量"改为**返回 `BaseModelOutputWithPooling`**（投影特征在
+`pooler_output`）——`clip_model.py` 与服务端都已做版本兼容（`_features_tensor`）。
+
+## 15. 真机第二轮三连坑（2026-09-29，全部已修 + 守卫测试）
+
+| 症状 | 根因 | 修复 |
+|---|---|---|
+| 重启后第 1 例诊断 `completed`，第 2 例起恒 `needs_review`（review=安全校验服务不可用），SG `POST /api/v1/safety/check` 全 503（E4005 sg_p99_throttling） | **SG p99 节流自持死锁**：启动期样本只有 2 个（冷启动 8.11ms）→ p99≈max 超 5ms critical 阈值 → 3 次轮询后节流 → 新请求被拒 → 永远没有新样本 → p99 冻结在超限值 | `latency_tracker.py`：样本数 < `sg_p99_min_samples_for_throttle`（默认 20）时 p99_status=unknown、清零计数，绝不节流。测试 `tests/unit/sg/test_latency_tracker_throttle_min_samples.py`（原 `test_sg_p99_throttling.py` 的 helper 同步改为整窗同值样本） |
+| `rerank_failed_using_heuristic`（bge-reranker 8005 返回 500）且此后所有请求 500（进程粘性毒化） | **max_length 超过模型位置嵌入上限**：bge-reranker-base 是 XLM-R 架构（max_position_embeddings=512），服务默认 `--max-length 1024` → 序列 >512 时 transformers 5 在 `torch.gather(buffered_token_type_ids, index=position_ids)` 处 scatter-gather 越界 → **CUDA device-side assert**（粘性，只能重启进程）。实测触发阈值在 125~500 字符之间 | `start_embedding_services.py`：三个后端（reranker/bge-m3/clip）加载后统一把 max_length 钳制到 `max_position_embeddings - 2`（守卫测试在契约测试文件里）。调试姿势：`CUDA_LAUNCH_BLOCKING=1` 重启后请求一次，日志直接给出越界算子 |
+| `dense_search_failed [E2003_VEC_SEARCH_FAILED] pgvector search failed`（表存在、客户端直查成功、应用侧带 filter 检索必失败） | `pgvector_client.py` 生成 SQL 漏单引号：`metadata->>organ = $1::text` —— PG 把 `organ` 当**列名**解析 → `column "organ" does not exist`。`detail` 里有真实错误但 retriever 日志只打了 `str(exc)`，长期查不到 | 补上引号：`metadata->>'{safe_key}'`（safe_key 已过白名单正则，无注入）。**守卫教训**：原测试把带 bug 的 SQL 形状 `metadata->>organ` 钉进了断言 —— 断言"能跑通的 SQL"之前先验证它真的能跑。复现姿势：用生产客户端 + `.env` 的 DATABASE_URL 直调 `PgvectorVectorIndex.search`，打印 `exc.detail` |
+
+**调试通用教训**：这三条的日志都只给 generic message，真实错误藏在 `exc.detail` /
+CUDA 栈 / SQL 文本里。第一步永远是"用生产代码路径最小复现 + 打印完整异常"，
+而不是反复重启碰运气。
+
+## 16. 真机端到端冒烟（本轮后终态，2026-09-29）
+
+`bash ~/server_link_smoke.sh`：`status=completed`、`ai_diagnosis_failed=False`、
+`requires_manual_review=False`、`desensitization_status=full`，**error=0**。
+剩余 warning 均为设计内：`safety_gateway_health_probe_degraded`（oom 保护无 sudo 设不了）、
+`qdrant_unhealthy_falling_back_to_pgvector`（真机无 Qdrant，pgvector 是设计降级路径）。
+
+## 17. 双引擎一致性评测（≥700 例）
+
+- 用例：`scripts/server_build_eval_cases.py` → `app/inference/data/consistency_test_cases.json`
+  （780 例 = 常规 240 + 边界 440 + 高风险 100；甲状腺/肝脏/心脏）
+- 跑批：`python scripts/consistency_verify.py --cases ... --vllm-model 'Qwen2.5-1.5B-Instruct'
+  --concurrency 4 --timeout 120 --output ~/uai/reports/consistency_780_report.json`
+- 数据：US-365K（71,919 test 图文对 + images 36.4 万张，`~/uai/data/us365k`）与
+  AUL（肝脏，CC BY 4.0，`~/uai/data/aul`）已就位；台账见 `docs/合规/数据源台账/`

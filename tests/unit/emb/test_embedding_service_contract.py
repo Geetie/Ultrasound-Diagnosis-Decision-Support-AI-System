@@ -16,6 +16,7 @@
 """
 from __future__ import annotations
 
+import base64
 import importlib.util
 import pathlib
 import sys
@@ -58,6 +59,17 @@ class _StubReranker:
     def score(self, query: str, documents: list[str]) -> list[float]:
         # 故意让最后一个文档分数最高，用于验证排序与 index 回填
         return [float(i) for i in range(len(documents))]
+
+
+class _StubUltrasoundClip:
+    dimension = 768
+    max_length = 77
+
+    def encode_texts(self, texts: list[str]) -> tuple[list[list[float]], int]:
+        return [[0.02] * 768 for _ in texts], sum(len(t) for t in texts)
+
+    def encode_images(self, image_bytes_list: list[bytes]) -> list[list[float]]:
+        return [[0.03] * 768 for _ in image_bytes_list]
 
 
 def _client(service_module, service: str, stub) -> TestClient:
@@ -158,7 +170,7 @@ class TestRerankerContract:
 
 
 class TestServiceContractSurface:
-    """两个服务都不能缺少客户端会打的端点。"""
+    """三个服务都不能缺少客户端会打的端点。"""
 
     @pytest.mark.parametrize(
         ("service", "stub"),
@@ -170,3 +182,139 @@ class TestServiceContractSurface:
 
         assert "/health" in paths
         assert "/v1/model/info" in paths
+
+
+# 1x1 透明 PNG（不依赖 Pillow，客户端上传只透传字节）
+_TINY_PNG = base64.b64decode(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGBgAAAABQAB"
+    "h6FO1AAAAABJRU5ErkJggg=="
+)
+
+
+class TestRerankerMaxLengthClamp:
+    """守卫：max_length 必须钳制到模型位置嵌入上限内（真机 CUDA assert 死锁修复）。"""
+
+    def test_超过位置上限时钳制并留特殊token余量(self, service_module):
+        clamp = service_module.RerankerBackend._effective_max_length
+        # bge-reranker-base：XLM-R，max_position_embeddings=512
+        assert clamp(1024, 512) == 510
+
+    def test_上限内不钳制(self, service_module):
+        clamp = service_module.RerankerBackend._effective_max_length
+        # bge-m3：max_position_embeddings=8192，默认 1024 不受影响
+        assert clamp(1024, 8192) == 1024
+
+    def test_配置缺失时原样返回(self, service_module):
+        clamp = service_module.RerankerBackend._effective_max_length
+        assert clamp(1024, None) == 1024
+        assert clamp(1024, 0) == 1024
+
+    def test_恰好等于上限时留余量(self, service_module):
+        clamp = service_module.RerankerBackend._effective_max_length
+        assert clamp(77, 77) == 75
+
+
+class TestUltrasoundClipContract:
+    def test_健康检查与模型信息(self, service_module):
+        with _client(service_module, "ultrasound-clip", _StubUltrasoundClip()) as client:
+            assert client.get("/health").status_code == 200
+            info = client.get("/v1/model/info").json()
+
+        # _build_model_info 读这几个键（app/embedding/ultrasound_clip.py:52-60）
+        for key in ("model_name", "dimension", "max_input_length", "version"):
+            assert key in info
+        assert info["dimension"] == 768
+
+    def test_文本响应能被真实客户端解析(self, service_module):
+        """关键：把响应喂给 UltrasoundClipService 的真实解析函数。"""
+        from app.embedding.ultrasound_clip import UltrasoundClipService
+
+        with _client(service_module, "ultrasound-clip", _StubUltrasoundClip()) as client:
+            response = client.post(
+                "/v1/embeddings",
+                json={"texts": ["甲状腺低回声结节"], "modality": "text"},
+            )
+
+        assert response.status_code == 200
+        payload = response.json()
+
+        client_svc = UltrasoundClipService(base_url="http://127.0.0.1:8003")
+        # 客户端按 expected_count=len(texts) 校验（ultrasound_clip.py:76）
+        vectors = client_svc._parse_embeddings(payload, expected_count=1)
+
+        assert len(vectors) == 1
+        assert vectors[0].shape[0] == 768
+
+    def test_图像端点返回单条向量(self, service_module):
+        from app.embedding.ultrasound_clip import UltrasoundClipService
+
+        with _client(service_module, "ultrasound-clip", _StubUltrasoundClip()) as client:
+            response = client.post(
+                "/v1/embeddings/image",
+                files={"image": ("image.png", _TINY_PNG, "image/png")},
+                data={"modality": "image"},
+            )
+
+        assert response.status_code == 200
+        payload = response.json()
+
+        client_svc = UltrasoundClipService(base_url="http://127.0.0.1:8003")
+        vectors = client_svc._parse_embeddings(payload, expected_count=1)
+        assert vectors[0].shape[0] == 768
+
+    def test_多模态端点条数为文本加图像(self, service_module):
+        from app.embedding.ultrasound_clip import UltrasoundClipService
+
+        with _client(service_module, "ultrasound-clip", _StubUltrasoundClip()) as client:
+            response = client.post(
+                "/v1/embeddings/multimodal",
+                files=[
+                    ("images", ("a.png", _TINY_PNG, "image/png")),
+                    ("images", ("b.png", _TINY_PNG, "image/png")),
+                ],
+                # 客户端把 texts 以 JSON 字符串塞进表单（ultrasound_clip.py:154-157）
+                data={"texts": '["甲状腺结节"]', "modality": "multimodal"},
+            )
+
+        assert response.status_code == 200
+        payload = response.json()
+
+        client_svc = UltrasoundClipService(base_url="http://127.0.0.1:8003")
+        # 客户端按 expected_count=len(texts)+len(images) 校验（ultrasound_clip.py:167-168）
+        vectors = client_svc._parse_embeddings(payload, expected_count=3)
+        assert len(vectors) == 3
+
+    def test_模态字段不符被拒绝(self, service_module):
+        with _client(service_module, "ultrasound-clip", _StubUltrasoundClip()) as client:
+            assert (
+                client.post(
+                    "/v1/embeddings/image",
+                    files={"image": ("image.png", _TINY_PNG, "image/png")},
+                    data={"modality": "text"},
+                ).status_code
+                == 400
+            )
+            assert (
+                client.post(
+                    "/v1/embeddings/multimodal",
+                    files=[("images", ("a.png", _TINY_PNG, "image/png"))],
+                    data={"texts": "[]", "modality": "image"},
+                ).status_code
+                == 400
+            )
+
+    def test_文本与图像全空的multimodal被拒绝(self, service_module):
+        with _client(service_module, "ultrasound-clip", _StubUltrasoundClip()) as client:
+            response = client.post(
+                "/v1/embeddings/multimodal", data={"texts": "[]"}
+            )
+
+        assert response.status_code == 400
+
+    def test_clip必需端点存在(self, service_module):
+        with _client(service_module, "ultrasound-clip", _StubUltrasoundClip()) as client:
+            paths = set(client.get("/openapi.json").json()["paths"])
+
+        assert "/v1/embeddings" in paths
+        assert "/v1/embeddings/image" in paths
+        assert "/v1/embeddings/multimodal" in paths

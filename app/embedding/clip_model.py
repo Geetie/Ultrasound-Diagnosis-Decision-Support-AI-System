@@ -205,6 +205,18 @@ class UltrasoundCLIPModel:
             return vec
         return vec / norm
 
+    @staticmethod
+    def _features_tensor(features: Any) -> Any:
+        """取出投影特征张量（transformers 版本兼容）。
+
+        v4 的 ``get_text_features``/``get_image_features`` 直接返回投影后的张量；
+        v5（实测 5.17.0）返回 ``BaseModelOutputWithPooling``，投影特征在
+        ``pooler_output``（图像/文本塔分别经 image/text projection 后的 768 维）。
+        """
+        if hasattr(features, "pooler_output"):
+            return features.pooler_output
+        return features
+
     def encode_text(self, texts: list[str]) -> np.ndarray:
         """编码文本为向量。
 
@@ -222,7 +234,7 @@ class UltrasoundCLIPModel:
         inputs = {k: v.to(self._model.device) for k, v in inputs.items()}
         with torch.no_grad():
             text_features = self._model.get_text_features(**inputs)
-        arr = text_features.cpu().float().numpy()
+        arr = self._features_tensor(text_features).cpu().float().numpy()
         arr = np.stack([self._normalize(v) for v in arr])
         return arr
 
@@ -246,7 +258,7 @@ class UltrasoundCLIPModel:
         inputs = {k: v.to(self._model.device) for k, v in inputs.items()}
         with torch.no_grad():
             image_features = self._model.get_image_features(**inputs)
-        arr = image_features.cpu().float().numpy()
+        arr = self._features_tensor(image_features).cpu().float().numpy()
         arr = np.stack([self._normalize(v) for v in arr])
         return arr
 

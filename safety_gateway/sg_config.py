@@ -75,6 +75,11 @@ class SGSettings(BaseSettings):
     sg_consistency_confidence_divergence_threshold: float = 0.3
     sg_consent_cache_ttl_seconds: int = 10  # 一期未使用，二期降级路径预留（对齐00b-统一配置参考手册）
     sg_latency_tracker_max_samples: int = 500
+    # 节流判定的最小样本数（2026-09-29 真机死锁修复）：
+    # 启动期样本只有 2~3 个（冷启动慢请求），p99≈max 必然超阈值 → 节流 →
+    # 新请求被拒 → 永远没有新样本 → p99 冻结在超限值 → 自持锁死。
+    # 样本数不足时 p99 不具统计意义，只报 unknown，绝不触发节流。
+    sg_p99_min_samples_for_throttle: int = 20
     sg_max_concurrent_checks: int = 100
     deployment_profile: str = "compact"
     log_level: str = "INFO"

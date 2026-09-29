@@ -21,7 +21,10 @@ async def main() -> None:
     args = parser.parse_args()
 
     with open(args.cases, encoding="utf-8") as f:
-        cases = json.load(f)
+        loaded = json.load(f)
+    # 兼容两种格式：裸列表，或 generate_test_cases/server_build_eval_cases 的
+    # {"dataset_version":..., "total_cases":..., "cases": [...]} 包裹结构。
+    cases = loaded["cases"] if isinstance(loaded, dict) else loaded
 
     print(f"Loaded {len(cases)} test cases from {args.cases}")
 

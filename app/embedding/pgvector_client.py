@@ -237,7 +237,10 @@ class PgvectorVectorIndex(VectorIndexClient):
             for key, value in filter.items():
                 safe_key = _validate_meta_key(key)
                 where_params.append(json.dumps(value, ensure_ascii=False) if not isinstance(value, (str, int, float, bool)) else value)
-                where_clauses.append(f"metadata->>{safe_key} = ${len(where_params)}::text")
+                # ⚠️ 键必须带单引号（JSON 字符串字面量）：`metadata->>organ` 会被 PG
+                # 当成**列名**解析 → `column "organ" does not exist`（真机 2026-09-29
+                # 实测的 dense_search_failed 根因）。safe_key 已过白名单正则，可安全内插。
+                where_clauses.append(f"metadata->>'{safe_key}' = ${len(where_params)}::text")
 
         where_sql = (" WHERE " + " AND ".join(where_clauses)) if where_clauses else ""
         query = (
