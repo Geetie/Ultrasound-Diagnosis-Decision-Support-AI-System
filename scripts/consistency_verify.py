@@ -28,6 +28,12 @@ async def main() -> None:
         action="store_true",
         help="llama.cpp 也走 /v1/chat/completions（与 vLLM 同形态，消除模板差异）",
     )
+    parser.add_argument(
+        "--guided-json",
+        action="store_true",
+        help="P0-2 约束解码：采样层 schema 强制（vLLM guided_json / llama.cpp GBNF），"
+        "分级输出 {\"grading\": \"<枚举>\"}；启用时不追加 prompt 指令段",
+    )
     args = parser.parse_args()
 
     with open(args.cases, encoding="utf-8") as f:
@@ -61,6 +67,7 @@ async def main() -> None:
         concurrency=args.concurrency,
         request_timeout_seconds=args.timeout,
         structured_output=args.structured_output,
+        guided_json=args.guided_json,
     )
 
     report = await verifier.verify(cases)
@@ -69,6 +76,34 @@ async def main() -> None:
     with open(args.output, "w", encoding="utf-8") as f:
         f.write(report_json)
 
+    # P0-2 分层口径（16 号 A.2.2 管理决策项）：常规+高风险 与 边界模糊用例
+    # 分开统计——边界用例为刻意 ±1.5 抖动构造，两引擎分歧是设计内行为。
+    rows = report.case_rows or []
+
+    def _tier(cats: list[str | None]) -> dict:
+        sub = [r for r in rows if (r.get("category") or "") in cats or
+               (cats == ["boundary"] and (r.get("category") or "").startswith("boundary_"))]
+        if not sub:
+            return {}
+        consistent = sum(1 for r in sub if r.get("consistent"))
+        return {
+            "total": len(sub),
+            "grading_consistency_rate": round(consistent / len(sub), 4),
+        }
+
+    categories = {r.get("category") for r in rows}
+    non_boundary = sorted(c for c in categories if c and not c.startswith("boundary"))
+    report_dict = json.loads(report_json)
+    report_dict["stratified_criteria"] = {
+        "regular_high_risk": _tier(non_boundary),
+        "boundary_fuzzy": _tier(["boundary"]),
+        "note": "分层口径依据 10 号 v1.3 修订：边界模糊用例（刻意阈值抖动构造）"
+        "两引擎分歧属设计内行为，≥95% 门控适用于常规+高风险层",
+    }
+    with open(args.output, "w", encoding="utf-8") as f:
+        f.write(json.dumps(report_dict, ensure_ascii=False, indent=2))
+
+    strat = report_dict["stratified_criteria"]
     print("\nConsistency Report:")
     print(f"  Total cases: {report.total_cases}")
     print(f"  Grading consistency: {report.grading_consistency_rate:.2%} (target: ≥95%)")
@@ -76,6 +111,13 @@ async def main() -> None:
     print(f"  Hallucination rate diff: {report.hallucination_rate_diff:.2%} (target: ≤0.5%)")
     print(f"  Latency diff: {report.latency_diff_pct:.1f}% (target: ≤20%)")
     print(f"  PASSED: {report.passed}")
+    if strat:
+        print(
+            f"  分层口径: 常规+高风险={strat['regular_high_risk'].get('grading_consistency_rate')} "
+            f"(n={strat['regular_high_risk'].get('total')}) | "
+            f"边界模糊={strat['boundary_fuzzy'].get('grading_consistency_rate')} "
+            f"(n={strat['boundary_fuzzy'].get('total')})"
+        )
     print(f"\nReport saved to {args.output}")
 
     await llama_engine.close()

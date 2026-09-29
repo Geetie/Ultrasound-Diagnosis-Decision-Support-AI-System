@@ -120,6 +120,10 @@ class LlamaCppEngine(BaseHttpInferenceEngine):
         }
         if request.stop:
             params["stop"] = request.stop
+        # P0-2 约束解码：extra["grammar"]（GBNF 字符串）透传给 llama.cpp server
+        grammar = request.extra.get("grammar")
+        if grammar:
+            params["grammar"] = grammar
         if self._use_chat:
             return {
                 "messages": [{"role": "user", "content": request.prompt}],

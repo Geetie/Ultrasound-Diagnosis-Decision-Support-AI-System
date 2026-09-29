@@ -32,6 +32,24 @@ async def health(request: Request) -> JSONResponse:
     return JSONResponse({"status": "ok"})
 
 
+_grammar_cache: dict[str, object] = {}
+
+
+def _grammar(body: dict):
+    """请求体 `grammar`（GBNF 字符串）→ LlamaGrammar（带缓存）。
+
+    P0-2 约束解码：llama.cpp 侧按 GBNF 在采样层强制输出语法。
+    """
+    gbnf = body.get("grammar")
+    if not gbnf:
+        return None
+    if gbnf not in _grammar_cache:
+        from llama_cpp import LlamaGrammar
+
+        _grammar_cache[gbnf] = LlamaGrammar.from_string(gbnf, verbose=False)
+    return _grammar_cache[gbnf]
+
+
 async def completions(request: Request) -> JSONResponse:
     body = await request.json()
     prompt = body.get("prompt", "")
@@ -46,6 +64,7 @@ async def completions(request: Request) -> JSONResponse:
         temperature=temperature,
         top_p=top_p,
         stop=stop,
+        grammar=_grammar(body),
     )
     return JSONResponse(response)
 
@@ -60,6 +79,7 @@ async def chat_completions(request: Request) -> JSONResponse:
         messages=messages,
         max_tokens=max_tokens,
         temperature=temperature,
+        grammar=_grammar(body),
     )
     return JSONResponse(response)
 

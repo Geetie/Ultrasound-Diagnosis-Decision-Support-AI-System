@@ -47,6 +47,33 @@ async def completions(request: Request) -> JSONResponse:
     })
 
 
+def _guided_param(body: dict) -> dict:
+    """把请求里的约束解码参数映射到 SamplingParams（兼容新旧两代 API）。
+
+    - 请求体 `guided_json`（旧 vLLM extra 别名）或
+      `structured_outputs: {"json": ...}`（新形态）统一接入。
+    - vLLM>=0.10 用 structured_outputs=StructuredOutputsParams(json=...)；
+      旧版回退 guided_decoding=GuidedDecodingParams(json=...)。
+    """
+    schema = body.get("guided_json")
+    if schema is None:
+        so = body.get("structured_outputs")
+        if isinstance(so, dict):
+            schema = so.get("json")
+    if schema is None:
+        return {}
+    from vllm import SamplingParams  # noqa: F401  确认可导入
+
+    try:
+        from vllm.sampling_params import StructuredOutputsParams
+
+        return {"structured_outputs": StructuredOutputsParams(json=schema)}
+    except ImportError:
+        from vllm.sampling_params import GuidedDecodingParams
+
+        return {"guided_decoding": GuidedDecodingParams(json=schema)}
+
+
 async def chat_completions(request: Request) -> JSONResponse:
     body = await request.json()
     messages = body.get("messages", [])
@@ -67,10 +94,12 @@ async def chat_completions(request: Request) -> JSONResponse:
     prompt = "\n".join(prompt_parts)
 
     from vllm import SamplingParams
-    sampling_params = SamplingParams(
-        max_tokens=max_tokens,
-        temperature=temperature,
-    )
+    sampling_kwargs: dict = {
+        "max_tokens": max_tokens,
+        "temperature": temperature,
+    }
+    sampling_kwargs.update(_guided_param(body))
+    sampling_params = SamplingParams(**sampling_kwargs)
     outputs = llm.generate([prompt], sampling_params)
     generated_text = outputs[0].outputs[0].text
 

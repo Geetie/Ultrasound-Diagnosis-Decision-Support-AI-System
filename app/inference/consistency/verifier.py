@@ -5,6 +5,11 @@ from typing import Any
 import structlog
 
 from app.inference.grading_definitions import extract_grading_with_conflict
+from app.inference.grading_schema import (
+    extract_guided_grading,
+    grading_gbnf,
+    grading_json_schema,
+)
 from app.inference.hallucination_detector import (
     DetectionStrategy,
     get_default_detector,
@@ -77,6 +82,7 @@ class ConsistencyVerifier:
         historical_pass_rates: dict[str, list[float]] | None = None,
         overall_timeout_seconds: float | None = None,
         structured_output: bool = False,
+        guided_json: bool = False,
     ):
         self._engine_a = engine_a
         self._engine_b = engine_b
@@ -91,6 +97,9 @@ class ConsistencyVerifier:
         # 结构化输出（2026-09-29 真机 780 例达标攻关）：两引擎收到完全相同的
         # 输出格式指令段，消除"自由文本分级"的表述噪音。默认关闭保持兼容。
         self._structured_output = structured_output
+        # P0-2 约束解码（2026-09-30）：采样层 schema 强制（vLLM guided_json /
+        # llama.cpp GBNF），优于 prompt 级指令——guided 启用时不再追加指令段。
+        self._guided_json = guided_json
 
         logger.info(
             "consistency_verifier_initialized",
@@ -236,11 +245,36 @@ class ConsistencyVerifier:
         return report
 
     def _apply_structured_output(self, prompt: str, organ: str) -> str:
-        """按器官追加输出格式指令段（未启用时原样返回）。"""
-        if not self._structured_output:
+        """按器官追加输出格式指令段（未启用时原样返回）。
+
+        guided_json 启用时不追加（采样层已强制 JSON 语法，指令段冗余）。
+        """
+        if self._guided_json or not self._structured_output:
             return prompt
         suffix = _STRUCTURED_OUTPUT_INSTRUCTIONS.get(organ, _STRUCTURED_OUTPUT_FALLBACK)
         return prompt + suffix
+
+    def _apply_guided(self, request: InferenceRequest, organ: str) -> InferenceRequest:
+        """guided 模式：把 organ 对应的 schema/GBNF 注入请求 extra。"""
+        if not self._guided_json:
+            return request
+        schema = grading_json_schema(organ)
+        if schema is None:
+            return request
+        request.extra["guided_json"] = schema
+        gbnf = grading_gbnf(organ)
+        if gbnf:
+            request.extra["grammar"] = gbnf
+        return request
+
+    def _extract_grading(self, text: str, organ: str) -> tuple[str | None, bool]:
+        """抽取分级：guided 优先 JSON 字段，回退正则抽取器。"""
+        if self._guided_json:
+            grading = extract_guided_grading(text)
+            if grading:
+                return grading, False
+        conflict_result = extract_grading_with_conflict(text, organ)
+        return (conflict_result[0], conflict_result[1]) if conflict_result else (None, False)
 
     async def _verify_single_case(self, case: dict[str, Any]) -> ConsistencyPair:
         case_id = case.get("case_id", "")
@@ -260,13 +294,16 @@ class ConsistencyVerifier:
             category=case.get("category"),
         )
 
-        request = InferenceRequest(
-            prompt=self._apply_structured_output(prompt, organ),
-            max_tokens=512,
-            temperature=0.0,
-            top_p=0.95,
-            request_id=f"consistency-{case_id}",
-            session_id="consistency-verification",
+        request = self._apply_guided(
+            InferenceRequest(
+                prompt=self._apply_structured_output(prompt, organ),
+                max_tokens=512,
+                temperature=0.0,
+                top_p=0.95,
+                request_id=f"consistency-{case_id}",
+                session_id="consistency-verification",
+            ),
+            organ,
         )
 
         try:
@@ -274,9 +311,7 @@ class ConsistencyVerifier:
                 self._engine_a.generate(request),
                 timeout=self._request_timeout_seconds,
             )
-            conflict_result_a = extract_grading_with_conflict(resp_a.text, organ)
-            grading_a = conflict_result_a[0] if conflict_result_a else None
-            has_conflict_a = conflict_result_a[1] if conflict_result_a else False
+            grading_a, has_conflict_a = self._extract_grading(resp_a.text, organ)
             detection_result_a = self._hallucination_detector.detect(resp_a.text, organ)
             is_hallucination_a = detection_result_a.is_hallucination
             hallucination_issues_a = [
@@ -306,9 +341,7 @@ class ConsistencyVerifier:
                 self._engine_b.generate(request),
                 timeout=self._request_timeout_seconds,
             )
-            conflict_result_b = extract_grading_with_conflict(resp_b.text, organ)
-            grading_b = conflict_result_b[0] if conflict_result_b else None
-            has_conflict_b = conflict_result_b[1] if conflict_result_b else False
+            grading_b, has_conflict_b = self._extract_grading(resp_b.text, organ)
             detection_result_b = self._hallucination_detector.detect(resp_b.text, organ)
             is_hallucination_b = detection_result_b.is_hallucination
             hallucination_issues_b = [
