@@ -10,6 +10,7 @@ def report_to_dict(report: ConsistencyReport) -> dict[str, Any]:
         "engine_b": report.engine_b_name,
         "structured_output": report.structured_output,
         "total_cases": report.total_cases,
+        "case_rows": report.case_rows,
         "grading_consistency_rate": f"{report.grading_consistency_rate:.4f}",
         "grading_consistent_count": report.grading_consistent_count,
         "clinical_boundary_diff_rate": f"{report.clinical_boundary_diff_rate:.4f}",

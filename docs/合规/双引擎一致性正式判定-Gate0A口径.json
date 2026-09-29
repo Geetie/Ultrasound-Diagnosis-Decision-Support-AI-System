@@ -1,0 +1,222 @@
+{
+  "criteria_source": "01-系统架构设计.md §5.7 + 07-数据标注与模型评估.md §1",
+  "historical_verdicts": [
+    {
+      "label": "1.5B基线(裸prompt)",
+      "total_cases": 780,
+      "criteria": [
+        {
+          "criterion": "语义分级一致率（'4'='4a' 同类算一致）",
+          "threshold": "≥ 98%",
+          "actual": "24.74%",
+          "passed": false
+        },
+        {
+          "criterion": "完整文本一致率（同模型同输入 temp=0）",
+          "threshold": "≥ 90%",
+          "actual": "0.00%",
+          "passed": false
+        },
+        {
+          "criterion": "幻觉率差异（两框架幻觉率之差，07 号一致性表）",
+          "threshold": "≤ 0.5%",
+          "actual": "7.05%",
+          "passed": false
+        },
+        {
+          "criterion": "量化幻觉增量（同栈 Q4 vs fp16 基线对照）",
+          "threshold": "≤ 0.5%",
+          "actual": "未计算",
+          "passed": null
+        },
+        {
+          "criterion": "临床决策边界差异率（Gate 0B 正式）",
+          "threshold": "≤ 1%",
+          "actual": "44.74%",
+          "passed": false
+        },
+        {
+          "criterion": "临床决策边界差异率（Gate 0A 阶段一点估计）",
+          "threshold": "≤ 3%",
+          "actual": "44.74%",
+          "passed": false
+        }
+      ],
+      "gate_status": "failed",
+      "disposition": "不通过：分级一致率 <90% 或边界差异率 >2% → 按原设计须统一使用单一推理框架，或完成整改后复测",
+      "disposition_hallucination_diff": "两框架幻觉率差异超标 → 按原设计处置：切换更高精度量化（Q5_K_M → Q8_0）重测；量化幻觉增量（同栈对照）当前 CLI 未计算，需补 QuantizationHallucinationVerifier 基线对照"
+    },
+    {
+      "label": "A2: 1.5B+结构化+chat",
+      "total_cases": 780,
+      "criteria": [
+        {
+          "criterion": "语义分级一致率（'4'='4a' 同类算一致）",
+          "threshold": "≥ 98%",
+          "actual": "80.51%",
+          "passed": false
+        },
+        {
+          "criterion": "完整文本一致率（同模型同输入 temp=0）",
+          "threshold": "≥ 90%",
+          "actual": "18.46%",
+          "passed": false
+        },
+        {
+          "criterion": "幻觉率差异（两框架幻觉率之差，07 号一致性表）",
+          "threshold": "≤ 0.5%",
+          "actual": "0.77%",
+          "passed": false
+        },
+        {
+          "criterion": "量化幻觉增量（同栈 Q4 vs fp16 基线对照）",
+          "threshold": "≤ 0.5%",
+          "actual": "未计算",
+          "passed": null
+        },
+        {
+          "criterion": "临床决策边界差异率（Gate 0B 正式）",
+          "threshold": "≤ 1%",
+          "actual": "17.44%",
+          "passed": false
+        },
+        {
+          "criterion": "临床决策边界差异率（Gate 0A 阶段一点估计）",
+          "threshold": "≤ 3%",
+          "actual": "17.44%",
+          "passed": false
+        }
+      ],
+      "gate_status": "failed",
+      "disposition": "不通过：分级一致率 <90% 或边界差异率 >2% → 按原设计须统一使用单一推理框架，或完成整改后复测",
+      "disposition_hallucination_diff": "两框架幻觉率差异超标 → 按原设计处置：切换更高精度量化（Q5_K_M → Q8_0）重测；量化幻觉增量（同栈对照）当前 CLI 未计算，需补 QuantizationHallucinationVerifier 基线对照"
+    }
+  ],
+  "current_verdict": {
+    "label": "7B+结构化+chat（T0）",
+    "total_cases": 780,
+    "criteria": [
+      {
+        "criterion": "语义分级一致率（'4'='4a' 同类算一致）",
+        "threshold": "≥ 98%",
+        "actual": "80.38%",
+        "passed": false
+      },
+      {
+        "criterion": "完整文本一致率（同模型同输入 temp=0）",
+        "threshold": "≥ 90%",
+        "actual": "20.51%",
+        "passed": false
+      },
+      {
+        "criterion": "幻觉率差异（两框架幻觉率之差，07 号一致性表）",
+        "threshold": "≤ 0.5%",
+        "actual": "6.41%",
+        "passed": false
+      },
+      {
+        "criterion": "量化幻觉增量（同栈 Q4 vs fp16 基线对照）",
+        "threshold": "≤ 0.5%",
+        "actual": "未计算",
+        "passed": null
+      },
+      {
+        "criterion": "临床决策边界差异率（Gate 0B 正式）",
+        "threshold": "≤ 1%",
+        "actual": "16.15%",
+        "passed": false
+      },
+      {
+        "criterion": "临床决策边界差异率（Gate 0A 阶段一点估计）",
+        "threshold": "≤ 3%",
+        "actual": "16.15%",
+        "passed": false
+      }
+    ],
+    "gate_status": "failed",
+    "disposition": "不通过：分级一致率 <90% 或边界差异率 >2% → 按原设计须统一使用单一推理框架，或完成整改后复测",
+    "disposition_hallucination_diff": "两框架幻觉率差异超标 → 按原设计处置：切换更高精度量化（Q5_K_M → Q8_0）重测；量化幻觉增量（同栈对照）当前 CLI 未计算，需补 QuantizationHallucinationVerifier 基线对照"
+  },
+  "expected_vs_actual": {
+    "per_engine": {
+      "engine_a": {
+        "total": 780,
+        "crossed": 172,
+        "critical": 172,
+        "crossing_rate": 0.2205
+      },
+      "engine_b": {
+        "total": 780,
+        "crossed": 204,
+        "critical": 204,
+        "crossing_rate": 0.2615
+      }
+    },
+    "both_engines_same_but_crossed_expected": {
+      "total": 142,
+      "crossed": 142,
+      "examples": [
+        {
+          "case_id": "THY-002",
+          "organ": "thyroid",
+          "expected": "5",
+          "both_grading": "4b"
+        },
+        {
+          "case_id": "THY-009",
+          "organ": "thyroid",
+          "expected": "5",
+          "both_grading": "4b"
+        },
+        {
+          "case_id": "THY-012",
+          "organ": "thyroid",
+          "expected": "5",
+          "both_grading": "4b"
+        },
+        {
+          "case_id": "THY-021",
+          "organ": "thyroid",
+          "expected": "5",
+          "both_grading": "4b"
+        },
+        {
+          "case_id": "THY-026",
+          "organ": "thyroid",
+          "expected": "5",
+          "both_grading": "4b"
+        },
+        {
+          "case_id": "THY-030",
+          "organ": "thyroid",
+          "expected": "5",
+          "both_grading": "4b"
+        },
+        {
+          "case_id": "THY-047",
+          "organ": "thyroid",
+          "expected": "5",
+          "both_grading": "4b"
+        },
+        {
+          "case_id": "THY-053",
+          "organ": "thyroid",
+          "expected": "5",
+          "both_grading": "4b"
+        },
+        {
+          "case_id": "LIV-008",
+          "organ": "liver",
+          "expected": "3",
+          "both_grading": "4"
+        },
+        {
+          "case_id": "LIV-010",
+          "organ": "liver",
+          "expected": "3",
+          "both_grading": "4"
+        }
+      ]
+    }
+  }
+}

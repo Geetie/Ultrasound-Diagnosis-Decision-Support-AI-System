@@ -45,6 +45,7 @@ class ConsistencyPair:
     expected_grading: str | None = None
     expected_hallucination: bool | None = None
     is_high_risk: bool = False
+    category: str | None = None
     engine_a_result: GradingResult | None = None
     engine_b_result: GradingResult | None = None
     boundary_weight: float = 0.0
@@ -247,6 +248,7 @@ class ConsistencyReport:
     phase_upgrade_to: str = ""
     verification_temperature: float = 0.0
     structured_output: bool = False
+    case_rows: list[dict[str, Any]] = field(default_factory=list)
     lvef_conflict_count: int = 0
     hallucination_rate_a: float = 0.0
     hallucination_rate_b: float = 0.0

@@ -158,6 +158,23 @@ class ConsistencyVerifier:
 
         self._compute_report(report, valid_pairs, error_count)
 
+        # 逐例摘要行（T0 原口径重算与"预期 vs 实际"检测需要全量逐例数据；
+        # trace_chain 只含失败例，这里补全量紧凑行。字段见 report_to_dict。）
+        report.case_rows = [
+            {
+                "case_id": p.case_id,
+                "organ": p.organ,
+                "expected_grading": p.expected_grading,
+                "grading_a": p.engine_a_result.grading if p.engine_a_result else None,
+                "grading_b": p.engine_b_result.grading if p.engine_b_result else None,
+                "consistent": p.grading_consistent,
+                "is_hallucination_a": p.engine_a_result.is_hallucination if p.engine_a_result else None,
+                "is_hallucination_b": p.engine_b_result.is_hallucination if p.engine_b_result else None,
+                "category": p.category,
+            }
+            for p in valid_pairs
+        ]
+
         min_cases = self.config.consistency_thresholds.phase2_min_cases_per_organ \
             if self.config.consistency_thresholds.verification_phase == "phase2" else 100
 
@@ -240,6 +257,7 @@ class ConsistencyVerifier:
             expected_grading=expected_grading,
             expected_hallucination=expected_hallucination,
             is_high_risk=is_high_risk,
+            category=case.get("category"),
         )
 
         request = InferenceRequest(
