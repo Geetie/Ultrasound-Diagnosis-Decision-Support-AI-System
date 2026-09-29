@@ -35,11 +35,21 @@ def _parse_vector(raw: object) -> list[float]:
     return [float(x) for x in text.split(",") if x.strip()]
 
 
-async def main_async(kb_version: str, organ: str) -> None:
+async def main_async(kb_version: str, organ: str, purge: bool) -> None:
     import asyncpg
 
     dsn = to_asyncpg_dsn(settings.database_url)
     conn = await asyncpg.connect(dsn)
+    if purge:
+        # 清除该 kb_version 的旧索引行（chunk_id 方案变更/重建后防陈旧残留）
+        deleted = await conn.execute(
+            """
+            DELETE FROM vector_index_knowledge_chunks
+            WHERE metadata->>'kb_version' = $1
+            """,
+            kb_version,
+        )
+        print(f"purged: {deleted}")
     rows = await conn.fetch(
         """
         SELECT chunk_id, embedding, organ, source_doc_id, section_path,
@@ -81,8 +91,13 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="KB chunks → 生产向量索引")
     parser.add_argument("--kb-version", required=True)
     parser.add_argument("--organ", default="", help="过滤器官（空=全部）")
+    parser.add_argument(
+        "--purge",
+        action="store_true",
+        help="灌数前先删除该 kb_version 的旧索引行（重建后防陈旧残留）",
+    )
     args = parser.parse_args()
-    asyncio.run(main_async(args.kb_version, args.organ))
+    asyncio.run(main_async(args.kb_version, args.organ, args.purge))
     return 0
 
 

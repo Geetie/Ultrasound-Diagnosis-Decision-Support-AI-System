@@ -40,8 +40,13 @@ def _approx_tokens(text: str) -> int:
     return max(1, len(text) // 2)
 
 
-def _build_chunk_id(source_doc_id: str, chunk_index: int) -> str:
-    return f"{source_doc_id}#{chunk_index:04d}"
+def _build_chunk_id(kb_version: str, source_doc_id: str, chunk_index: int) -> str:
+    """chunk_id 必须含 kb_version：chunk_id 是表主键，多版本共存时
+    `{source_doc_id}#{index}` 会在版本间撞车——builder 的 resume 逻辑
+    （exists()）会误判"已存在"而整库跳过，upsert 更会静默覆盖其他版本的行
+    （真机 2026-09-29 T1c chunk 变体实验实测）。
+    """
+    return f"{kb_version}:{source_doc_id}#{chunk_index:04d}"
 
 
 @dataclass
@@ -118,7 +123,7 @@ def _to_chunk(
     chunk_index: int,
 ) -> KnowledgeChunk:
     return KnowledgeChunk(
-        chunk_id=_build_chunk_id(source_doc_id, chunk_index),
+        chunk_id=_build_chunk_id(kb_version, source_doc_id, chunk_index),
         kb_version=kb_version,
         organ=organ,
         content=content.strip(),
@@ -249,7 +254,7 @@ class SentenceBoundaryChunker:
                 for sub in self.fallback.chunk(sub_doc, kb_version):
                     # Re-stamp chunk index to keep monotonic sequence.
                     new_chunk = sub.model_copy(update={"chunk_index": next_index})
-                    new_id = _build_chunk_id(doc.source_doc_id, next_index)
+                    new_id = _build_chunk_id(kb_version, doc.source_doc_id, next_index)
                     new_chunk = new_chunk.model_copy(update={"chunk_id": new_id})
                     chunks.append(new_chunk)
                     next_index += 1
@@ -290,7 +295,7 @@ class SentenceBoundaryChunker:
         # Re-stamp chunk indices sequentially to guarantee monotonic order
         # regardless of merge/oversized-split.
         for i, c in enumerate(chunks):
-            c.chunk_id = _build_chunk_id(doc.source_doc_id, i)
+            c.chunk_id = _build_chunk_id(kb_version, doc.source_doc_id, i)
             c.metadata["chunk_index"] = i
 
         return chunks
@@ -365,14 +370,25 @@ class SemanticChunker:
 
         # Re-stamp chunk indices to keep them monotonic across sections.
         for i, c in enumerate(all_chunks):
-            c.chunk_id = _build_chunk_id(doc.source_doc_id, i)
+            c.chunk_id = _build_chunk_id(kb_version, doc.source_doc_id, i)
             c.metadata["chunk_index"] = i
             c.metadata["semantic_title"] = True
         return all_chunks
 
 
-def create_chunker(strategy: ChunkerStrategy | str) -> Chunker:
-    """Factory: return a chunker for the given strategy name or enum."""
+def create_chunker(
+    strategy: ChunkerStrategy | str,
+    *,
+    min_tokens: int | None = None,
+    max_tokens: int | None = None,
+    window_chars: int | None = None,
+) -> Chunker:
+    """Factory: return a chunker for the given strategy name or enum.
+
+    可选尺寸参数（T1c 调优引入）：不传时用各类默认值——sentence_boundary
+    256/512 tokens、fixed_window 1000 字符。主流调优区间 512~1500 tokens、
+    overlap 10~20%（chunker 当前无 overlap，对话语料天然短小，见 16 号 A.6）。
+    """
     if isinstance(strategy, str):
         try:
             strategy = ChunkerStrategy(strategy)
@@ -383,9 +399,20 @@ def create_chunker(strategy: ChunkerStrategy | str) -> Chunker:
             ) from e
 
     if strategy == ChunkerStrategy.FIXED_WINDOW:
-        return FixedWindowChunker()
+        kwargs = {"window_chars": window_chars} if window_chars else {}
+        return FixedWindowChunker(**kwargs)
     if strategy == ChunkerStrategy.SENTENCE_BOUNDARY:
-        return SentenceBoundaryChunker()
+        kwargs: dict = {}
+        if min_tokens is not None:
+            kwargs["min_tokens"] = min_tokens
+        if max_tokens is not None:
+            kwargs["max_tokens"] = max_tokens
+        return SentenceBoundaryChunker(**kwargs)
     if strategy == ChunkerStrategy.SEMANTIC:
-        return SemanticChunker()
+        kwargs = (
+            {"min_tokens": min_tokens, "max_tokens": max_tokens}
+            if min_tokens or max_tokens
+            else {}
+        )
+        return SemanticChunker(**kwargs)
     raise ValueError(f"Unhandled strategy: {strategy}")

@@ -414,3 +414,20 @@ llama_cpp_server 必须 `--n_ctx 8192` 起。
 **KB 级 golden set**：从建好的 chunks 直接构造（语料=chunks，查询=chunk 首句
 截断），评测器同 `t1_eval_retrieval.py`——见 `scripts/_t1b_kb_eval.sh` 已删，
 重建姿势在 16 号 A.5。
+
+## 19. T1c 调优与忠实度（2026-09-29，数据见 16 号 A.6）
+
+- **QA 型 golden**：136 条真实患者问题，gold=来源文档（source_doc 级相关性，
+  chunk 变体可复用）。`scripts/t1b_build_qa_golden.py`（服务器跑，corpus 从
+  PG 取）。QA 集基线 R@10=99.3%（比自指 golden 更真实但同样高）。
+- **调优结论**：等权 RRF(k=60) 已最优；rerank 只加召回不加排序质量；
+  chunk 尺寸不敏感（420~459 chunks 三版本等价）。**检索侧调优可收工**。
+- **faithfulness 基线 56.3% vs 门控 95% ❌**：主因 7B 判官 NLI 过严 +
+  生成腿上下文外扩写。脚本 `scripts/t1_eval_faithfulness.py`（RAGAS 官方
+  prompt 在 `scripts/prompts/ragas_faithfulness.py`）。判官 JSON 必须
+  `json_repair` 兜底（纯 json.loads 首轮 84% 崩）。
+- **chunk_id 跨版本撞车钉子**：`_build_chunk_id` 现含 kb_version 前缀
+  （`kb_v1.0.0:doc#0000`）。**旧版多版本共存会静默覆盖其他版本行（PK 级）**。
+  重建后必须 `server_populate_vector_index.py --purge` 清向量索引旧行。
+- **pkill 自杀坑**：`ssh ... "pkill -f <模式>; nohup ..."` 当命令行自身含
+  模式串时 pkill 会杀掉自己的 shell——后台任务要么分开两次 ssh，要么前台跑。

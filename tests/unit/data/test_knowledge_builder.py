@@ -30,7 +30,8 @@ pytestmark = [pytest.mark.track_data]
 # ----- helpers ---------------------------------------------------------------
 
 def _make_chunk_id(source_doc_id: str, idx: int) -> str:
-    return f"{source_doc_id}#{idx:04d}"
+    # 与 _build_chunk_id 一致：含 kb_version 前缀（多版本防撞车）
+    return f"kb_v1.0.0:{source_doc_id}#{idx:04d}"
 
 
 # ----- protocols -------------------------------------------------------------
@@ -1078,9 +1079,13 @@ class TestCoverageBoosters:
 
     def test_build_chunk_id_format(self):
         from app.knowledge.chunker import _build_chunk_id
-        assert _build_chunk_id("doc1", 0) == "doc1#0000"
-        assert _build_chunk_id("doc1", 42) == "doc1#0042"
-        assert _build_chunk_id("doc-with-dash", 7) == "doc-with-dash#0007"
+        # chunk_id 必须含 kb_version（多版本共存防撞车，真机 2026-09-29 实测）
+        assert _build_chunk_id("kb_v1.0.0", "doc1", 0) == "kb_v1.0.0:doc1#0000"
+        assert _build_chunk_id("kb_v1.0.1", "doc1", 42) == "kb_v1.0.1:doc1#0042"
+        assert (
+            _build_chunk_id("kb_v1.0.0", "doc-with-dash", 7)
+            == "kb_v1.0.0:doc-with-dash#0007"
+        )
 
     def test_split_sentences_cjk(self):
         from app.knowledge.chunker import _split_sentences

@@ -69,6 +69,24 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Chunking strategy (default: sentence_boundary)",
     )
     parser.add_argument(
+        "--chunk-min-tokens",
+        type=int,
+        default=None,
+        help="sentence_boundary/semantic: 最小 chunk tokens（默认 256）",
+    )
+    parser.add_argument(
+        "--chunk-max-tokens",
+        type=int,
+        default=None,
+        help="sentence_boundary/semantic: 最大 chunk tokens（默认 512）",
+    )
+    parser.add_argument(
+        "--chunk-window-chars",
+        type=int,
+        default=None,
+        help="fixed_window: 窗口字符数（默认 1000）",
+    )
+    parser.add_argument(
         "--batch-size",
         type=int,
         default=50,
@@ -118,7 +136,22 @@ async def _run(args: argparse.Namespace) -> int:
             strategy=args.strategy, embedding_service=MockEmbeddingService()
         )
     else:
-        builder = KnowledgeIndexBuilderImpl(strategy=args.strategy)
+        # 尺寸参数（T1c 调优）：任一给出时注入定制 chunker，否则走默认工厂
+        size_kwargs: dict = {}
+        if args.chunk_min_tokens or args.chunk_max_tokens or args.chunk_window_chars:
+            from app.knowledge.chunker import create_chunker
+
+            size_kwargs = {
+                "min_tokens": args.chunk_min_tokens,
+                "max_tokens": args.chunk_max_tokens,
+                "window_chars": args.chunk_window_chars,
+            }
+            builder = KnowledgeIndexBuilderImpl(
+                strategy=args.strategy,
+                chunker=create_chunker(args.strategy, **size_kwargs),
+            )
+        else:
+            builder = KnowledgeIndexBuilderImpl(strategy=args.strategy)
     try:
         result = await builder.build(request)
     except IndexBuildError as e:
