@@ -411,6 +411,41 @@ vllm_server.py` 杀不死它——两个孤儿曾占 33GB 显存导致 llama.cpp
 `generation_failed`（且检索腿真正生效的副作用恰恰是 prompt 变长）。
 llama_cpp_server 必须 `--n_ctx 8192` 起。
 
+## 21. P1：llama-server 迁移与 Langfuse（2026-09-30，数据见 16 号 A.8）
+
+**① 服务载体迁移**：8001 已从 llama-cpp-python 包装换成**官方 llama-server
+二进制**（`~/uai/models/llama-b11272/llama-server`，ubuntu-cuda 预编译，
+编排 `scripts/server_start_llama_server.sh`）。关键参数：
+- `--ctx-size 32768`：**ctx 是总池，`--parallel 4` 会切分**——8192 总池下
+  每 slot 仅 2048，诊断 prompt 5943 tok 直接 400（真机实测）
+- `--threads 8 --flash-attn on`：单请求 56s→20.7s（2.7x，prefill 是大头）
+- 客户端契约不变（OpenAI 风格 + grammar 字段透传）；健康探活同 /health
+
+**② llama.cpp grammar 采样器特性（最终判定）**：官方 server 上 guided
+仍**恒输出枚举首分支**（780 例 thyroid 一致率 0.0，a='2' b='3' ×173）——
+greedy+grammar 掩码下分布坍缩是 llama.cpp 采样器特性，非实现 bug。
+**等价性评测只用 prompt 级口径（A2，87.31%）**；约束解码只用于生产
+单引擎确定性输出。
+
+**③ Langfuse v3 自托管**（~/uai/langfuse，全栈 6 容器，web 127.0.0.1:30100）：
+- `CLICKHOUSE_MIGRATION_URL=clickhouse://clickhouse:9000`——**http:// 和
+  chclickhouse:// 都是无效 driver**（报 unknown driver http/chclickhouse）
+- 首启 org/project 固定 keys：`LANGFUSE_INIT_ORG_ID`（不是 ORGANIZATION_ID）
+  + `LANGFUSE_INIT_PROJECT_PUBLIC_KEY/SECRET_KEY`；验证：
+  `curl -u pk:sk /api/public/projects` 返回 project 即就绪
+- OTLP 接入：主服务 tracing.py 用**显式构造的 OTLPSpanExporter**（gRPC）——
+  显式构造不读 OTEL_EXPORTER_OTLP_HEADERS env，Basic auth 必须经
+  `headers=` 参数传（settings.obs_tracing_otlp_headers）；endpoint 是
+  gRPC channel（无 path）：`http://127.0.0.1:30100`
+- compose 文件改后必须**scp 到 ~/uai/langfuse/docker-compose.yml** 再 up
+  （部署目录与仓库目录不同步是重启不生效的常见原因）
+
+**④ 服务器侧依赖**：另一窗口的 PyJWT 替换只改了 requirements——**服务器
+venv 要手动 `pip install PyJWT`**，否则主服务启动即崩（ModuleNotFoundError: jwt）。
+
+**⑤ 管线时延**：端到端仍 >150s（fusion/Self-RAG 串行 LLM 链），专项待做；
+`RESULT_TIMEOUT_SECONDS` 已放宽 30→150（diagnosis.py），冒烟轮询窗口 150s。
+
 **KB 级 golden set**：从建好的 chunks 直接构造（语料=chunks，查询=chunk 首句
 截断），评测器同 `t1_eval_retrieval.py`——见 `scripts/_t1b_kb_eval.sh` 已删，
 重建姿势在 16 号 A.5。
