@@ -87,17 +87,19 @@ _GENERATION_USER_TMPL = "【参考知识】\n{context}\n\n【问题】\n{questio
 
 def _render_statement_prompt(question: str, answer: str) -> str:
     ex = STATEMENT_GENERATOR_EXAMPLE
+    # /no_think：Qwen3 判官关闭 thinking（评测要确定性短输出）
     return (
         f"{STATEMENT_GENERATOR_INSTRUCTION}\n\n"
         f"Example:\nQuestion: {ex['question']}\nAnswer: {ex['answer']}\n"
         f"Output(JSON): {json.dumps({'statements': ex['statements']}, ensure_ascii=False)}\n\n"
         f"Question: {question}\nAnswer: {answer}\n"
-        "Output(JSON only):"
+        "Output(JSON only): /no_think"
     )
 
 
 def _render_nli_prompt(context: str, statements: list[str]) -> str:
     ex = NLI_STATEMENT_EXAMPLE
+    # /no_think：Qwen3 判官关闭 thinking（评测要确定性短输出）
     return (
         f"{NLI_STATEMENT_INSTRUCTION}\n\n"
         f"Example:\nContext: {ex['context']}\n"
@@ -105,7 +107,7 @@ def _render_nli_prompt(context: str, statements: list[str]) -> str:
         f"Output(JSON): {json.dumps({'statements': ex['verdicts']}, ensure_ascii=False)}\n\n"
         f"Context: {context}\n"
         f"Statements: {json.dumps(statements, ensure_ascii=False)}\n"
-        "Output(JSON only):"
+        "Output(JSON only): /no_think"
     )
 
 

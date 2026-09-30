@@ -78,11 +78,10 @@ async def main() -> None:
 
     # P0-2 分层口径（16 号 A.2.2 管理决策项）：常规+高风险 与 边界模糊用例
     # 分开统计——边界用例为刻意 ±1.5 抖动构造，两引擎分歧是设计内行为。
+    # 注意：常规用例的 category 为 None（build 脚本不设该字段），归入常规层。
     rows = report.case_rows or []
 
-    def _tier(cats: list[str | None]) -> dict:
-        sub = [r for r in rows if (r.get("category") or "") in cats or
-               (cats == ["boundary"] and (r.get("category") or "").startswith("boundary_"))]
+    def _tier(sub: list[dict]) -> dict:
         if not sub:
             return {}
         consistent = sum(1 for r in sub if r.get("consistent"))
@@ -91,14 +90,15 @@ async def main() -> None:
             "grading_consistency_rate": round(consistent / len(sub), 4),
         }
 
-    categories = {r.get("category") for r in rows}
-    non_boundary = sorted(c for c in categories if c and not c.startswith("boundary"))
+    non_boundary = [r for r in rows if not str(r.get("category") or "").startswith("boundary")]
+    boundary = [r for r in rows if str(r.get("category") or "").startswith("boundary")]
     report_dict = json.loads(report_json)
     report_dict["stratified_criteria"] = {
         "regular_high_risk": _tier(non_boundary),
-        "boundary_fuzzy": _tier(["boundary"]),
+        "boundary_fuzzy": _tier(boundary),
         "note": "分层口径依据 10 号 v1.3 修订：边界模糊用例（刻意阈值抖动构造）"
-        "两引擎分歧属设计内行为，≥95% 门控适用于常规+高风险层",
+        "两引擎分歧属设计内行为，≥95% 门控适用于常规+高风险层。"
+        "常规用例 category 为 None，归入常规层。",
     }
     with open(args.output, "w", encoding="utf-8") as f:
         f.write(json.dumps(report_dict, ensure_ascii=False, indent=2))
