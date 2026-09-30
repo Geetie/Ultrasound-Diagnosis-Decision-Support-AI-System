@@ -258,6 +258,14 @@ class SelfRAGEvaluator:
                 return last_result
 
             # 未通过：是否还有重试机会？
+            # T-Perf 修正（2026-10-01 真机）：确定性零分（三维度全 0，典型场景
+            # =KB 无该器官知识、证据不足）重发同样输入不会得到不同结果——真机
+            # 实测 cardiac 例 3 次重试全部 score=0.00，白耗 2 次 LLM 调用
+            # （~1.2s/例）。零分直接返回；重试机会留给"接近阈值的采样波动"
+            # （0 < total < threshold）。
+            if total == 0:
+                last_result.reason = f"zero_score_no_retry: {reason}"
+                return last_result
             if attempt < max_attempts:
                 logger.info(
                     "self_rag_retry_scheduled",

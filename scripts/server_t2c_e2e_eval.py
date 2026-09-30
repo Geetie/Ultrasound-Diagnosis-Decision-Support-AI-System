@@ -235,7 +235,8 @@ async def main() -> int:
         "--concurrency",
         type=int,
         default=None,
-        help="并发数（默认 1：管线吞吐上限 1 例/26s，并发只会积压超时）",
+        help="并发数（默认取 _CONCURRENCY=6；vLLM continuous batching + "
+        "16 worker 下并发无积压，2026-10-01 修正此前默认 1 的配置失效）",
     )
     parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
@@ -273,7 +274,7 @@ async def main() -> int:
 
     if args.sample:
         queries = queries[: args.sample]
-    workers = max(1, args.concurrency or 1)
+    workers = max(1, args.concurrency or _CONCURRENCY)
     print(f"[3/4] 并发 {workers} 跑 {len(queries)} 例...")
     t0 = time.perf_counter()
     results: list[dict] = []

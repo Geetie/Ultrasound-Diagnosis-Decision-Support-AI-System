@@ -1,18 +1,20 @@
-"""T1b v2：按价值优先级筛甲状腺对话 QA（肿瘤科→外科→内科；标题命中优先）。"""
+"""T1b v3：按器官关键词从中文医疗对话筛 QA 生成 KB 文档（JSONL）。
+
+v3（2026-10-01，P1-KB 扩展）：原 v2 硬编码甲状腺；参数化 organ 关键词与
+源科别，支持 liver/cardiac 等新器官 KB 构建（kb_v1.1.0）。
+"""
 from __future__ import annotations
 
+import argparse
 import csv
 import json
-import sys
 from pathlib import Path
 
-SOURCES = [  # 价值优先级：甲状腺癌(肿瘤科) > 结节手术(外科) > 内科(内分泌/甲功)
-    (r"C:\Windows\Temp\medical_dialogue\Data_数据\Oncology_肿瘤科\肿瘤科5-10000.csv", "肿瘤科"),
-    (r"C:\Windows\Temp\medical_dialogue\Data_数据\Surgical_外科\外科5-14000.csv", "外科"),
-    (r"C:\Windows\Temp\medical_dialogue\Data_数据\IM_内科\内科5000-33000.csv", "内科"),
-]
-KEYWORD = "甲状腺"
-MAX_DOCS = 400
+DEFAULT_SOURCES = {  # 服务器路径：科别 label -> csv
+    "肿瘤科": "~/uai/data/chinese_medical_dialogue/Data_数据/Oncology_肿瘤科/肿瘤科5-10000.csv",
+    "外科": "~/uai/data/chinese_medical_dialogue/Data_数据/Surgical_外科/外科5-14000.csv",
+    "内科": "~/uai/data/chinese_medical_dialogue/Data_数据/IM_内科/内科5000-33000.csv",
+}
 MIN_ANSWER_LEN = 60
 
 
@@ -27,13 +29,35 @@ def read_csv_rows(path: Path) -> list[dict]:
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(description="按器官关键词筛对话 QA 生成 KB 文档")
+    parser.add_argument("--organ", required=True, help="器官标识（用于 source_doc_id 前缀，如 liver）")
+    parser.add_argument("--keyword", required=True, help="筛选关键词（如 肝脏；多词用逗号分隔）")
+    parser.add_argument("--max-docs", type=int, default=200)
+    parser.add_argument(
+        "--sources",
+        default=",".join(f"{k}:{v}" for k, v in DEFAULT_SOURCES.items()),
+        help="科别:csv路径 逗号分隔（路径支持 ~）",
+    )
+    parser.add_argument("--out", required=True, help="输出 JSONL 路径")
+    args = parser.parse_args()
+
+    keywords = [k.strip() for k in args.keyword.split(",") if k.strip()]
+    sources: list[tuple[str, Path]] = []
+    for pair in args.sources.split(","):
+        label, _, path = pair.partition(":")
+        if label and path:
+            sources.append((label, Path(path).expanduser()))
+
     title_hits: list[dict] = []
     body_hits: list[dict] = []
     seen_titles: set[str] = set()
+    seq = 0
     stats: dict[str, str] = {}
 
-    for src, dept_label in SOURCES:
-        path = Path(src)
+    def hit(blob: str) -> bool:
+        return any(k in blob for k in keywords)
+
+    for label, path in sources:
         rows = read_csv_rows(path)
         t_count = b_count = 0
         for row in rows:
@@ -43,49 +67,36 @@ def main() -> int:
             if len(answer) < MIN_ANSWER_LEN or title in seen_titles:
                 continue
             blob = title + ask + answer
-            if KEYWORD not in blob:
+            if not hit(blob):
                 continue
+            seq += 1
             doc = {
-                "source_doc_id": f"dialogue_{dept_label}_{len(title_hits) + len(body_hits) + 1:04d}",
+                "source_doc_id": f"dialogue_{args.organ}_{label}_{seq:04d}",
                 "title": title[:80],
                 "source_kind": "case_reports",
-                "section_path": f"医疗对话/{dept_label}",
+                "section_path": f"医疗对话/{label}",
                 "content": f"患者提问：{title}。{ask}\n医生回答：{answer}",
             }
-            if KEYWORD in title:
+            seen_titles.add(title)
+            if hit(title):
                 title_hits.append(doc)
-                seen_titles.add(title)
                 t_count += 1
-            elif b_count + t_count < MAX_DOCS:
+            else:
                 body_hits.append(doc)
-                seen_titles.add(title)
                 b_count += 1
-        stats[dept_label] = f"标题命中 {t_count} / 正文命中 {b_count}"
+        stats[label] = f"标题命中 {t_count} / 正文命中 {b_count}"
 
-    docs = (title_hits + body_hits)[:MAX_DOCS]
+    # 标题命中优先，正文补足
+    docs = (title_hits + body_hits)[: args.max_docs]
 
-    # 按科轮转取满（KB 科室多样性）：全部命中先按科分桶，再轮转取 MAX_DOCS
-    by_source: dict[str, list[dict]] = {}
-    for d in title_hits + body_hits:
-        label = d["section_path"].split("/")[-1]
-        by_source.setdefault(label, []).append(d)
-    docs = []
-    while len(docs) < MAX_DOCS and any(by_source.values()):
-        for label in list(by_source):
-            if by_source[label]:
-                docs.append(by_source[label].pop(0))
-                if len(docs) >= MAX_DOCS:
-                    break
-    for k, v in stats.items():
-        print(k, "->", v)
-    print("total docs:", len(docs))
-
-    out = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("data/kb_sources/dialogue_docs.jsonl")
+    out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     with open(out, "w", encoding="utf-8") as f:
         for d in docs:
             f.write(json.dumps(d, ensure_ascii=False) + "\n")
-    print(f"written: {out}")
+    print(f"[{args.organ}] 共 {len(docs)} 文档 → {out}")
+    for k, v in stats.items():
+        print(f"  {k}: {v}")
     return 0
 
 

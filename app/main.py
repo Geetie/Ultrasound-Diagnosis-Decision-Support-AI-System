@@ -274,6 +274,9 @@ async def lifespan(app: FastAPI):
                     min_top1_score=settings.rag_bm25_min_top1_score,
                     min_results=settings.rag_bm25_min_results,
                 ),
+                # 当前激活 KB 版本（默认回退链的源头；换 KB 走 .env
+                # RAG_KB_VERSION，不再依赖 mock 占位配置）
+                kb_version=settings.rag_kb_version,
                 # 检索结果缓存：fusion 的 consistency / crag 直连检索路径
                 # 绕过知识智能体缓存，这里补齐；Redis 不可用时自动只用 L2。
                 cache=(

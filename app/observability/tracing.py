@@ -105,10 +105,10 @@ def init_tracing() -> None:
 
 
 def _setup_exporter(provider) -> None:
+    """优先 HTTP OTLP（Langfuse v3 只暴露 HTTP：/api/public/otel/v1/traces），
+    HTTP exporter 不可用时回退 gRPC（自建 collector 场景）。
+    """
     try:
-        from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
-            OTLPSpanExporter,
-        )
         from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
         # Langfuse 等接收端要求 Basic auth（pk:sk）时经 headers 传入
@@ -121,16 +121,32 @@ def _setup_exporter(provider) -> None:
                 if "=" in part:
                     k, _, v = part.partition("=")
                     headers[k.strip()] = v.strip()
-        exporter = OTLPSpanExporter(
-            endpoint=settings.obs_tracing_otlp_endpoint,
-            insecure=True,
-            headers=headers,
-        )
+        endpoint = settings.obs_tracing_otlp_endpoint
+        exporter = None
+        try:
+            from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
+                OTLPSpanExporter as _HttpExporter,
+            )
+
+            # HTTP exporter 的 endpoint 需为完整 /v1/traces URL
+            http_endpoint = endpoint.rstrip("/")
+            if not http_endpoint.endswith("/v1/traces"):
+                http_endpoint = f"{http_endpoint}/v1/traces"
+            exporter = _HttpExporter(endpoint=http_endpoint, headers=headers)
+            endpoint = http_endpoint
+        except ImportError:
+            from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
+                OTLPSpanExporter as _GrpcExporter,
+            )
+
+            exporter = _GrpcExporter(
+                endpoint=endpoint, insecure=True, headers=headers
+            )
         processor = BatchSpanProcessor(exporter)
         provider.add_span_processor(processor)
         _logger.info(
             "OTLP exporter configured",
-            endpoint=settings.obs_tracing_otlp_endpoint,
+            endpoint=endpoint,
             auth=bool(headers),
         )
     except ImportError:

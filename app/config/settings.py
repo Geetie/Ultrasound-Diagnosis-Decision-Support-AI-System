@@ -209,6 +209,10 @@ class Settings(BaseSettings):
     phase0a_mock_kb_version: str = "kb_v1.0.0"
 
     # === T-GA-INT-01 端到端集成配置 ===
+    # 当前激活的知识库版本（RAG 检索与知识智能体缓存键共用；换版本走
+    # .env 配置，建库/灌数见 scripts/init_knowledge_base.py 与
+    # server_populate_vector_index.py）
+    rag_kb_version: str = 'kb_v1.0.0'
     int_worker_pool_size: int = 4
     int_pipeline_total_timeout_ms: int = 8000
     int_dlq_max_retries: int = 3
