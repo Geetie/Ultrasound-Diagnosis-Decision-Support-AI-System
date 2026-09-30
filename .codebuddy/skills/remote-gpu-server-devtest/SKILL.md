@@ -521,6 +521,13 @@ venv 要手动 `pip install PyJWT`**，否则主服务启动即崩（ModuleNotFo
 12. **PowerShell 多行 python -c 会静默失败/转义爆炸**——本机向服务
     器传代码一律用 PowerShell here-string 管道：`@'...'@ | ssh host
     "cat > /tmp/x.py && python /tmp/x.py"`。
+13. **并发压测标准姿势**（2026-10-01 实测）：httpx.AsyncClient 全异步
+    （登录/建会话/提交/轮询全程复用连接池）；session 由 API 生成
+    （POST /api/v1/sessions 返回服务端 id）；前置数据（患者/同意）
+    用 asyncpg 直插。结论：16 worker + 官方 server，**8~32 并发下单
+    例 pipeline 时延恒定 9.5~9.7s（batching 生效的铁证）**，吞吐瓶颈
+    =管线内 LLM 串行链（dispatcher 4.7s + fusion 4.7s），属链长问题
+    而非并发机制问题。压测脚本 `/tmp/_load8.py`（服务器）。
 
 ## 20. T2 系列评测（2026-09-30，数据见 16 号 A.7）
 
