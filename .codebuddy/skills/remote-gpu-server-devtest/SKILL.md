@@ -467,6 +467,32 @@ venv 要手动 `pip install PyJWT`**，否则主服务启动即崩（ModuleNotFo
 - **pkill 自杀坑**：`ssh ... "pkill -f <模式>; nohup ..."` 当命令行自身含
   模式串时 pkill 会杀掉自己的 shell——后台任务要么分开两次 ssh，要么前台跑。
 
+## 20. 管线超时四钉子（2026-09-30，T2c 实测，数据见 16 号 A.9）
+
+1. **DB 会话跨 LLM 调用 = 必死**：管线 session 包住分钟级 LLM 链，
+   `idle_in_transaction_session_timeout` 掐断空闲事务连接，写库
+   `underlying connection is closed`。**pool_pre_ping 救不了事务中途
+   断连**。姿势：session 只包读写段，LLM 段无 DB 上下文，写终态用
+   独立短会话（参照 `_mark_result_cancelled` 模式）。
+2. **llama.cpp `--cache-reuse` × `--parallel N` 死锁**：分片 KV
+   （kv_unified=false）下 prefix 缓存跨 slot 查找引发排队风暴——串行
+   TTFT 4.8x 提速的假象，并发后 90s 超时×重试=181s。llama.cpp 要
+   prefix caching 必须 parallel=1+unified KV；多并发走 vLLM。
+3. **诊断轮询路由**：`GET /api/v1/diagnosis/result/{request_id}`
+   （不是 /requests/，probe/脚本写错会全数 404 假超时）。
+4. fusion Layer2（一致性）/Layer3（Self-RAG）输入同输出独立，
+   应 gather 并行——串行是 fusion 19.6s 的主要成分。
+5. **生成引擎已切 vLLM（2026-09-30）**：`~/uai/.env` 设
+   `DEPLOYMENT_PROFILE=full` + `INFERENCE_ENGINE=vllm` +
+   `VLLM_DEFAULT_MODEL=Qwen2.5-7B-Instruct`。vLLM 2677-token 请求
+   1.9s（llama.cpp CPU 同任务 40s，**20x**）；长文本单例端到端 35s。
+   llama-server（8001）已停用（省 8.4GB 显存），回滚=删 .env 两行 +
+   `bash ~/server_start_llama_engine.sh`。**llama.cpp 是 compact 档
+   CPU 病态慢的根源，勿再回切**。
+6. 服务器卫生：/tmp 探针脚本用完即删；评测日志（t2c_*/t2a_*/consistency_*）
+   归档后删；GPU 进程合法清单=嵌入×3+vLLM（8002 必须监听，否则
+   EngineCore 是孤儿要杀）。
+
 ## 20. T2 系列评测（2026-09-30，数据见 16 号 A.7）
 
 - **数据渠道三连堵**：TNSCUI Zenodo 只有 PDF；CACTUS FRDR http=000；

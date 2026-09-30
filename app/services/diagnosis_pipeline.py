@@ -236,52 +236,58 @@ async def run_diagnosis_pipeline(request_id: str) -> bool:
             routing_decision, rollout_decision = await _apply_rollout_gate(
                 request, routing_decision
             )
+        # ← DB session 在此关闭（T-Perf 实测钉子 2026-09-30）：
+        # 原先 async with 包住整条管线，dispatcher/fusion 的分钟级 LLM
+        # 调用期间事务空闲连接被 idle_in_transaction_session_timeout
+        # 掐断，session 退出时隐式 rollback 抛 InterfaceError，整条诊断
+        # 挂掉。读段（request/患者 ID/路由判定）结束后立即归还连接；
+        # expire_on_commit=False 使 request 的已加载属性在分离后可读。
+        # 写库走独立短会话（见 _write_result_to_db）。
 
-            # 1) 调度 (dispatcher.invoke)
-            # T-GB-AGT-02：把路由判定的检索档位一并注入，使"标准/全量"
-            # 真正作用于专科智能体的检索强度（此前判定结果只落库不生效）。
-            t = time.monotonic()
-            specialist_responses = await _safe_dispatch(
-                request, request_id, routing=routing_decision
-            )
-            timings["dispatcher.invoke_ms"] = (time.monotonic() - t) * 1000.0
+        # 1) 调度 (dispatcher.invoke)
+        # T-GB-AGT-02：把路由判定的检索档位一并注入，使"标准/全量"
+        # 真正作用于专科智能体的检索强度（此前判定结果只落库不生效）。
+        t = time.monotonic()
+        specialist_responses = await _safe_dispatch(
+            request, request_id, routing=routing_decision
+        )
+        timings["dispatcher.invoke_ms"] = (time.monotonic() - t) * 1000.0
 
-            # 2) 融合 (fusion.fuse)
-            t = time.monotonic()
-            fusion_result = await _safe_fuse(
-                request=request,
-                specialist_responses=specialist_responses,
-                request_id=request_id,
-            )
-            timings["fusion.fuse_ms"] = (time.monotonic() - t) * 1000.0
+        # 2) 融合 (fusion.fuse)
+        t = time.monotonic()
+        fusion_result = await _safe_fuse(
+            request=request,
+            specialist_responses=specialist_responses,
+            request_id=request_id,
+        )
+        timings["fusion.fuse_ms"] = (time.monotonic() - t) * 1000.0
 
-            # 3) 安全网关 (sg.check_output)
-            t = time.monotonic()
-            sg_result, sg_ok = await _safe_safety_check(
-                request=request,
-                fusion_result=fusion_result,
-                request_id=request_id,
-                patient_id=patient_id,
-            )
-            timings["sg.check_output_ms"] = (time.monotonic() - t) * 1000.0
+        # 3) 安全网关 (sg.check_output)
+        t = time.monotonic()
+        sg_result, sg_ok = await _safe_safety_check(
+            request=request,
+            fusion_result=fusion_result,
+            request_id=request_id,
+            patient_id=patient_id,
+        )
+        timings["sg.check_output_ms"] = (time.monotonic() - t) * 1000.0
 
-            # 4) 组装 DiagnosisResult 并写 DB
-            t = time.monotonic()
-            write_ok = await _write_result_to_db(
-                diagnosis_repo=diagnosis_repo,
-                request=request,
-                fusion_result=fusion_result,
-                sg_result=sg_result,
-                sg_ok=sg_ok,
-                timings=timings,
-                routing=routing_decision,
-                rollout=rollout_decision,
-                # 传入起点，使落库 findings 里带上真实的 pipeline.total_ms
-                # （否则该键只在写库后才出现在本地 timings 中，接口读不到，
-                #  processing_time_ms 会静默回退到 mock 值）
-                t_start=t_start,
-            )
-            timings["db_write_ms"] = (time.monotonic() - t) * 1000.0
+        # 4) 组装 DiagnosisResult 并写 DB（独立短会话，见 _write_result_to_db）
+        t = time.monotonic()
+        write_ok = await _write_result_to_db(
+            request=request,
+            fusion_result=fusion_result,
+            sg_result=sg_result,
+            sg_ok=sg_ok,
+            timings=timings,
+            routing=routing_decision,
+            rollout=rollout_decision,
+            # 传入起点，使落库 findings 里带上真实的 pipeline.total_ms
+            # （否则该键只在写库后才出现在本地 timings 中，接口读不到，
+            #  processing_time_ms 会静默回退到 mock 值）
+            t_start=t_start,
+        )
+        timings["db_write_ms"] = (time.monotonic() - t) * 1000.0
 
         # 5) 推送 WebSocket
         try:
@@ -618,7 +624,6 @@ async def _mark_result_cancelled(request_id: str) -> None:
 
 
 async def _write_result_to_db(
-    diagnosis_repo: DiagnosisRepository,
     request,
     fusion_result,
     sg_result: dict | None,
@@ -688,26 +693,33 @@ async def _write_result_to_db(
         request_id=request.request_id, payload=findings
     )
 
-    # 3) 写 DB
+    # 3) 写 DB —— **独立短会话**（T-Perf 实测钉子）：
+    # 管线主 session（L197）从读请求起持有连接，跨过 dispatcher/fusion 的
+    # 分钟级 LLM 调用后连接已被 PG/网络掐断（asyncpg InterfaceError:
+    # underlying connection is closed，2026-09-30 真机 44/51 超时根因：
+    # 结果写不进 → 请求永远 processing → 轮询查无此单）。pool_pre_ping
+    # 只在借出时检测，救不了事务中途的断连——与 _mark_result_cancelled
+    # 同理，写终态必须用新会话。
     try:
-        await diagnosis_repo.update_result(
-            request_id=request.request_id,
-            status=status,
-            confidence=confidence,
-            findings=findings,
-            recommendations=(
-                _extract_recommendation(fusion_result) if fusion_result else None
-            ),
-            knowledge_ids=(
-                fusion_result.final_response.evidence_chunk_ids
-                if fusion_result
-                and getattr(fusion_result, "final_response", None)
-                and getattr(fusion_result.final_response, "evidence_chunk_ids", None)
-                else None
-            ),
-        )
-        # 4) 提交事务（见 _commit_if_possible 说明：不提交则写库被回滚）
-        await _commit_if_possible(getattr(diagnosis_repo, "db", None))
+        async with AsyncSessionLocal() as db:
+            fresh_repo = DiagnosisRepository(db)
+            await fresh_repo.update_result(
+                request_id=request.request_id,
+                status=status,
+                confidence=confidence,
+                findings=findings,
+                recommendations=(
+                    _extract_recommendation(fusion_result) if fusion_result else None
+                ),
+                knowledge_ids=(
+                    fusion_result.final_response.evidence_chunk_ids
+                    if fusion_result
+                    and getattr(fusion_result, "final_response", None)
+                    and getattr(fusion_result.final_response, "evidence_chunk_ids", None)
+                    else None
+                ),
+            )
+            await db.commit()
         # 6) 交MonitorAgent 追踪（R1/R2/R3 + 延迟埋点）。
         #    放在**提交之后**：只追踪已真正落库的终态，避免"写失败也计入监控"。
         await _safe_track_diagnosis(
