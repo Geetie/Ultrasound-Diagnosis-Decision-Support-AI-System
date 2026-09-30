@@ -492,6 +492,14 @@ venv 要手动 `pip install PyJWT`**，否则主服务启动即崩（ModuleNotFo
 6. 服务器卫生：/tmp 探针脚本用完即删；评测日志（t2c_*/t2a_*/consistency_*）
    归档后删；GPU 进程合法清单=嵌入×3+vLLM（8002 必须监听，否则
    EngineCore 是孤儿要杀）。
+7. **评测器终态口径**：管线终态全集 = completed / failed / needs_review
+   （评测脚本轮询漏 needs_review 会把 2 秒完成的请求"等"成 240s
+   poll_timeout——T2c 的"批次互相影响/124s"假象根源，2026-10-01 实测
+   9/9 全部 1.5~7s 到终态）。写评测器先 curl /diagnosis/result 看真实
+   status 取值。
+8. **worker 池**：int_worker_pool_size 默认 4，并发评测先调 16
+   （.env）——管线是 IO 密集协程，4 worker 必然排队；真正的并发
+   调度在 vLLM 引擎侧（continuous batching）。
 
 ## 20. T2 系列评测（2026-09-30，数据见 16 号 A.7）
 

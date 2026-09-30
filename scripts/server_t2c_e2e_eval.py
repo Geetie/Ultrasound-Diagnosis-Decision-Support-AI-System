@@ -144,12 +144,16 @@ def _run_one(
         final = None
         while time.time() < deadline:
             r = _get_json(f"{BASE}/api/v1/diagnosis/result/{rid}", token)
-            if r.get("status") in ("completed", "failed", "timeout"):
+            # 终态全集以管线实际输出为准：needs_review 也是终态
+            # （真机 2026-10-01 实测：cardiac 例 1.9s 即到 needs_review，
+            # 旧口径漏判导致对着已完成的请求傻等 240s 报 poll_timeout——
+            # 9 例中 6 例"超时"全是这个评测器 bug 的假象）。
+            if r.get("status") in ("completed", "failed", "timeout", "needs_review"):
                 final = r
                 break
             time.sleep(2)
         item["status"] = final["status"] if final else "poll_timeout"
-        if final and final["status"] == "completed":
+        if final and final["status"] in ("completed", "needs_review"):
             item["ai_conclusion"] = _pick_conclusion_text(final)
             item["requires_manual_review"] = final.get("requires_manual_review")
             item["processing_time_ms"] = final.get("processing_time_ms")
