@@ -47,6 +47,12 @@ _PHI_TAGS = [
 
 
 def strip_dicom_phi(content: bytes, patient_id: str) -> tuple[bytes, bool]:
+    """DICOM PHI 去标识化。失败即抛错（fail-closed）——调用方拒绝存储。
+
+    P0-5（15 号计划）：原实现 except 分支 `return content, False` 会把
+    **未脱敏原文**继续落盘（fail-open），患者 PHI 直接入库，真机审计判定
+    为红线缺陷。
+    """
     stripped = False
     try:
         import pydicom
@@ -69,8 +75,10 @@ def strip_dicom_phi(content: bytes, patient_id: str) -> tuple[bytes, bool]:
         ds.save_as(buf)
         return buf.getvalue(), stripped
     except Exception as e:
-        logger.warning("dicom_phi_strip_failed", error=str(e))
-        return content, False
+        logger.error("dicom_phi_strip_failed_fail_closed", error=str(e))
+        raise ValueError(
+            f"DICOM PHI 去标识化失败，拒绝存储（fail-closed）: {e}"
+        ) from e
 
 
 class DicomStorageService:

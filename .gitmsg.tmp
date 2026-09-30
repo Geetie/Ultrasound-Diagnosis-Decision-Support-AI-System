@@ -1,26 +1,23 @@
-feat(p0-1/p0-4): 接线 tracing/request_id + 依赖安全替换（python-jose→PyJWT，passlib→bcrypt）+ import-linter
+feat(p0-5/p0-4): 安全项落地——/internal/obs/* 角色认证 + DICOM 去标识 fail-closed + uv 锁文件
 
-## P0-1 接线（另一窗口实施，本提交收口）
-- tracing：main.py lifespan 接 init_tracing/shutdown_tracing，
-  instrument_fastapi（先于首个 include_router），try/except 兜底不阻断启动
-- logging：storage.py 处理器链加 merge_contextvars + inject_trace_to_structlog
-  → 日志携带 trace_id/span_id/request_id
-- request_id：新增 app/observability/request_id.py（最外层中间件生成/透传
-  X-Request-ID，白名单校验防注入 + structlog contextvars 绑定）；
-  errors.py 三个异常处理器回填 request_id（修复 ErrorResponse.request_id 恒 None）
-- 守卫测试：静态接线断言 9 例 + 行为测试 7 例（tests/unit/obs）
+## P0-5 安全项
+- /api/v1/internal/obs/* 四端点（dashboard/cold-archive/restore-rate/
+  cold-archive/run）加角色认证（SYSTEM_ADMIN/QUALITY_CONTROL）——此前
+  匿名可访问且 POST 可触发归档运行。守卫：匿名/低角色/四端点矩阵测试
+- DICOM PHI 去标识化改 fail-closed：strip_dicom_phi 失败抛 ValueError
+  拒绝存储（原 except 分支把未脱敏原文继续落盘——fail-open 红线缺陷，
+  产品决策按 15 号计划 P0-5 废弃）。守卫测试更新（原"失败开放"用例
+  改为 fail-closed 断言）
 
-## P0-4 依赖安全替换
-- python-jose[cryptography] 3.3.0（停更+CVE史）→ PyJWT；JWTError → jwt.InvalidTokenError
-- passlib[bcrypt] 1.7.4（2022 停更）→ bcrypt 直调
-- 测试映射表同步（jwt→pyjwt、bcrypt→bcrypt）；ci.yml 加 import-linter 校验
-- pip-audit 报告入库（pip_audit_report.md）；.importlinter 分层约束契约化
+## P0-4 收尾：锁文件
+- requirements.lock（uv 生成，254 行全量传递闭包）——消除
+  prometheus_client 锁定 0.20 vs 实装 0.25 类漂移
+- 守卫测试 test_lockfile_alignment.py：lock 存在且 uv 生成、
+  覆盖 requirements.txt 全部直接依赖（历史 loose 约束由 lock 解析钉定）
 
-## 附带清理（RUF100 --fix 连锁恢复 + 债务清偿）
-- 28 处 unused noqa 清除后裸露的 E402（19 处 sys.path 引导脚本/测试）补 noqa
-- t1_eval_retrieval.py E731 lambda → def
-- server_start_judge.sh：Qwen3-8B 判官实例编排（8006，幂等+探活）
+## 附带
+- 28 处 unused noqa（RUF100）清除 + 19 处 sys.path 引导 import 恢复
+  noqa: E402 + t1_eval_retrieval E731 lambda→def
 
 ## 验证
-- sec/obs/quality/inf/api 全量 2382+ passed（quality 2 守卫失败均为
-  untracked/棘轮问题，本提交后消除）；全量单测 2890 passed
+- obs 462 / quality 35 / dicom+lockfile 37 passed；全量单测 2890 passed

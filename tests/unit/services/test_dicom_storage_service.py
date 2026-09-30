@@ -6,9 +6,9 @@
 覆盖要点：
 - `strip_dicom_phi` 真的删掉患者标识标签、改写 PatientID、清私有标签，
   同时**保留**非 PHI 的临床字段（删多了会让影像不可用）；
-- 解析失败时返回**原始字节且 stripped=False**（本文档用专门用例把这条"失败开放"
-  语义显式钉住，见 `test_parse_failure_returns_original_bytes` 的说明——它不是疏漏，
-  但需要产品侧确认是否接受）；
+- 解析失败时**抛错拒存（fail-closed，P0-5 15 号计划落地）**——原"失败开放"
+  语义（fail-open，未脱敏原文继续落盘）已于 2026-09-30 按产品决策废弃，
+  见 `test_parse_failure_is_fail_closed`；
 - `_save_local` 先写 `.tmp` 再原子移动，失败时清掉临时文件（不留垃圾、不留半个文件）；
 - MinIO 分支只断言命令形状（bucket/key/content_type），真实对象存储读写属真机验证项。
 """
@@ -139,12 +139,11 @@ class TestStripDicomPhi:
         assert was_stripped is True
         assert pydicom.dcmread(BytesIO(buffer.getvalue()), force=True).StudyID
 
-    def test_parse_failure_returns_original_bytes(self):
-        """**失败开放**语义（需产品侧确认）：解析失败时返回原始字节且 stripped=False。
+    def test_parse_failure_is_fail_closed(self):
+        """**失败即拒存（fail-closed，P0-5 落地）**：脱敏失败必须抛错，绝不返回原文。
 
-        调用方 `save()` 不会因为 `stripped=False` 而拒绝落盘（dicom_storage.py:121-128），
-        也就是说**一份无法脱敏的文件会带着 PHI 被原样存下**。
-        本条用例把该行为显式记录下来：如果产品要求"脱敏失败即拒存"，改这里会立刻变红。
+        历史：原实现 except 分支 `return content, False`（fail-open）——无法
+        脱敏的文件带着 PHI 原样落盘。15 号计划 P0-5 产品决策改为 fail-closed。
 
         注意：要让异常分支真的走到，必须让 dcmread 抛错——`force=True` 极其宽松，
         垃圾字节也会被"解析"成功（见下一条用例），所以这里直接打桩。
@@ -152,10 +151,8 @@ class TestStripDicomPhi:
         payload = b"not-a-dicom-file"
 
         with patch("pydicom.dcmread", side_effect=RuntimeError("corrupt header")):
-            content, was_stripped = strip_dicom_phi(payload, "P-ANON")
-
-        assert content == payload
-        assert was_stripped is False
+            with pytest.raises(ValueError, match="fail-closed"):
+                strip_dicom_phi(payload, "P-ANON")
 
     def test_garbage_bytes_are_force_parsed_not_rejected(self):
         """`force=True` 的后果：垃圾字节不会被拒绝，而是被改写后照常入库。
