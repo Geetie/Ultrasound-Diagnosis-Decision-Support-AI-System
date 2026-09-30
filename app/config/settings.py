@@ -399,7 +399,9 @@ class Settings(BaseSettings):
     obs_metrics_server_enabled: bool = True
     obs_vm_push_enabled: bool = True
     obs_tracing_enabled: bool = False
-    obs_tracing_otlp_endpoint: str = 'http://jaeger:4317'
+    obs_tracing_otlp_endpoint: str = 'http://127.0.0.1:30100'
+    # OTLP gRPC headers（Langfuse Basic auth：Authorization=Basic base64(pk:sk)）
+    obs_tracing_otlp_headers: str = ''
     obs_tracing_sample_rate: float = 0.1
     obs_audit_cross_chain_interval_hours: int = 1
     obs_audit_critical_operations: list[str] = Field(

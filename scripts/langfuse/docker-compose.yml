@@ -46,6 +46,12 @@ services:
       LANGFUSE_S3_MEDIA_FORCE_PATH_STYLE: "true"
       REDIS_URL: redis://redis:6379
       LANGFUSE_ENABLE_OTLP_TRACES: "true"
+      # 首启自动初始化 org/project + 固定 API keys（评测管线可脚本化引用）
+      LANGFUSE_INIT_ORG_ID: "uai"
+      LANGFUSE_INIT_PROJECT_ID: "uai-prod"
+      LANGFUSE_INIT_PROJECT_NAME: "超声诊疗决策支持系统"
+      LANGFUSE_INIT_PROJECT_PUBLIC_KEY: "pk-lf-uai-prod"
+      LANGFUSE_INIT_PROJECT_SECRET_KEY: "sk-lf-uai-prod-9f2b7c41e8a3d65f0b18c7a92e4d3f56"
 
   langfuse-web:
     image: ghcr.io/langfuse/langfuse:3

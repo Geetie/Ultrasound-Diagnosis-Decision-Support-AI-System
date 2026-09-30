@@ -111,13 +111,28 @@ def _setup_exporter(provider) -> None:
         )
         from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
+        # Langfuse 等接收端要求 Basic auth（pk:sk）时经 headers 传入
+        # （显式构造的 exporter 不会自动读 OTEL_EXPORTER_OTLP_HEADERS env）
+        headers: dict[str, str] | None = None
+        raw_headers = settings.obs_tracing_otlp_headers
+        if raw_headers:
+            headers = {}
+            for part in raw_headers.split(","):
+                if "=" in part:
+                    k, _, v = part.partition("=")
+                    headers[k.strip()] = v.strip()
         exporter = OTLPSpanExporter(
             endpoint=settings.obs_tracing_otlp_endpoint,
             insecure=True,
+            headers=headers,
         )
         processor = BatchSpanProcessor(exporter)
         provider.add_span_processor(processor)
-        _logger.info("OTLP exporter configured", endpoint=settings.obs_tracing_otlp_endpoint)
+        _logger.info(
+            "OTLP exporter configured",
+            endpoint=settings.obs_tracing_otlp_endpoint,
+            auth=bool(headers),
+        )
     except ImportError:
         _logger.warning("OTLP exporter not available, using default")
     except Exception as e:

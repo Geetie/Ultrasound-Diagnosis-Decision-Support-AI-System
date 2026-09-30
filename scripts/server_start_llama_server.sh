@@ -18,7 +18,10 @@ SERVER="$UAI/models/llama-b11272/llama-server"
 MODEL="${1:-$UAI/models/qwen2.5-7b-instruct-gguf/qwen2.5-7b-instruct-q8_0-00001-of-00003.gguf}"
 PORT="${PORT:-8001}"
 PARALLEL="${PARALLEL:-4}"
-CTX="${CTX:-8192}"
+# ⚠️ llama-server 的 ctx-size 是**总池**，--parallel 会切分给各 slot：
+# 诊断 prompt 实测 5943+1024 tokens/slot，4 slot × 8192 才够（总 32768）。
+# 真机 2026-09-30 实测：8192 总池下每 slot 仅 2048 → prompt 超 400。
+CTX="${CTX:-32768}"
 export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0}"
 export LD_LIBRARY_PATH="$UAI/models/llama-b11272:${LD_LIBRARY_PATH:-}"
 
@@ -42,6 +45,7 @@ nohup "$SERVER" \
   --ctx-size "$CTX" \
   --n-gpu-layers 99 \
   --parallel "$PARALLEL" \
+  --flash-attn on \
   --threads-http 4 \
   >> "$UAI/logs/llama_server.log" 2>&1 &
 
