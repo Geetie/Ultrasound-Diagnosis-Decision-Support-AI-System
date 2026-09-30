@@ -270,7 +270,7 @@ class TestDatabaseRetryMechanism:
 
         checker = ConsentChecker()
 
-        with patch.object(checker, '_query_consent_status', side_effect=asyncio.TimeoutError("timeout")):
+        with patch.object(checker, '_query_consent_status', side_effect=asyncio.TimeoutError("timeout")):  # noqa: SIM117
             with pytest.raises(DatabaseQueryTimeoutError):
                 await checker._retry_query("P001")
 

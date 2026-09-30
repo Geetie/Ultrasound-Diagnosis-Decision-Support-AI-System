@@ -18,12 +18,6 @@ def client():
     return TestClient(app, raise_server_exceptions=False)
 
 
-def _override(user: dict | None):
-    app.dependency_overrides[get_current_active_user] = lambda: user or (
-        pytest.fail("dependency should be required")
-    )
-
-
 def test_匿名请求被拒_401(client):
     # 无 token → oauth2_scheme 422/401；核心断言：绝不 200
     resp = client.get("/api/v1/internal/obs/dashboard")
@@ -56,8 +50,5 @@ def test_非授权角色被拒_403(client):
 )
 def test_四端点全部要求认证(client, path, method):
     """即使角色正确，未带凭据也绝不允许匿名 200（守卫：接线不可回退）。"""
-    if method == "get":
-        resp = client.get(path)
-    else:
-        resp = client.post(path)
+    resp = client.get(path) if method == "get" else client.post(path)
     assert resp.status_code != 200, f"{path} 存在匿名访问！"

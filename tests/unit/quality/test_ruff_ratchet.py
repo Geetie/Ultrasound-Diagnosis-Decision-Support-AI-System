@@ -30,50 +30,37 @@ DEBT_FILE = REPO_ROOT / ".ruff-debt.txt"
 
 # 存量基线（2026-09-24 收敛后实测）。**只允许调小。**
 RUFF_BASELINE = {
-    # 225 -> 226：tests/unit/data 与 tests/integration/data 之前被 gitignore 覆盖，
-    # 而 **ruff 默认遵循 .gitignore**，所以这几个文件对 ruff 也一直是"隐形"的。
-    # 把它们纳入版本控制后统计里多出 53 条（已自动修掉 52 条，仅剩 1 条 E402）。
-    # 这是"存量从看不见变成看得见"，不是新写的债。
-    "E402": 226,    # conftest 的 env-before-import 与 main.py 的延迟导入都是刻意为之
-    # 62 -> 61：修 `POST /api/v1/diagnosis/request` 的"双 ID 分叉"时删掉了
-    # 那个从未被使用的 `created_id =`（它本就该是 `request_id` 的下游，不是独立变量）。
-    "F841": 61,     # 未使用局部变量
-    "RUF013": 48,   # 隐式 Optional
-    "RUF012": 47,   # 类级可变默认值
-    "B904": 42,     # except 中 raise 未用 from
-    "F401": 42,     # 多为 __init__.py 的再导出
-    # 39 -> 38：修"结果缓存被写成 Python repr"时删掉了管线里那处
-    # `try: setex(...) except Exception: pass`（那正是 SIM105 的典型形态）。
-    "SIM105": 38,   # 可用 contextlib.suppress
-    "SIM117": 34,   # 可合并的 with
-    "RUF059": 32,   # 解包后未使用的变量
-    "SIM102": 22,   # 可折叠的 if
-    "B007": 20,     # 循环变量未使用
-    "SIM108": 13,   # 可用三元表达式
-    "E701": 12,     # 单行多语句
-    "B017": 11,     # assertRaises(Exception)
-    "RUF046": 9,    # 多余的 int() 转换
-    # 8 -> 7：本会话的 `ruff check --fix` 批处理顺手修掉 1 处（zip 未指定 strict ->
-    # 显式 strict=False，语义与原行为一致、只是把意图写明）。棘轮守卫要求
-    # "计数低于基线就必须把基线调小以锁住成果"，故此处同步下调。
-    "B905": 7,      # zip 未指定 strict
-    "RUF043": 6,    # pytest.raises 模式未转义
-    "RUF005": 5,    # 集合字面量拼接
-    "RUF006": 5,    # asyncio 悬挂任务
-    "SIM103": 5,    # 可直接返回布尔表达式
-    "UP035": 4,     # 已弃用导入
-    "SIM110": 3,    # 可用 any()
-    "E741": 2,      # 易混淆变量名
-    "RUF022": 2,    # __all__ 未排序
-    "E722": 1,      # 裸 except
-    "F811": 1,      # 重复定义
-    "I001": 1,      # 导入未排序
-    "SIM101": 1,    # 重复 isinstance
-    "SIM113": 1,    # 可用 enumerate
-    "SIM118": 1,    # in dict.keys()
-    "SIM222": 1,    # or True 表达式
-    # W291（行尾空白）已归零：重写 0001（对齐模型）时顺手清掉了最后一处，
-    # 按棘轮规则"计数低于基线必须下调基线以锁住成果"移除。
+    "E402": 226,
+    "F841": 61,
+    "RUF013": 48,
+    "RUF012": 47,
+    "B904": 42,
+    "F401": 42,
+    "SIM105": 38,
+    "SIM117": 32,
+    "RUF059": 32,
+    "SIM102": 22,
+    "B007": 20,
+    "SIM108": 13,
+    "E701": 12,
+    "B017": 11,
+    "RUF046": 9,
+    "B905": 7,
+    "RUF043": 6,
+    "RUF005": 5,
+    "RUF006": 5,
+    "SIM103": 5,
+    "UP035": 4,
+    "SIM110": 3,
+    "E741": 2,
+    "RUF022": 2,
+    "E722": 1,
+    "F811": 1,
+    "I001": 1,
+    "SIM101": 1,
+    "SIM113": 1,
+    "SIM118": 1,
+    "SIM222": 1,
 }
 
 

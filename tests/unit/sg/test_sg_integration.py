@@ -187,7 +187,7 @@ class TestServiceIsolation:
         from safety_gateway.errors import DatabaseUnavailableError as SGDatabaseUnavailableError
         checker = get_safety_gateway_checker()
 
-        with patch.object(checker._consent_checker, 'check_consent_status', new_callable=AsyncMock, return_value=ConsentCheckResult(status=None, timeout=False, error=True)):
+        with patch.object(checker._consent_checker, 'check_consent_status', new_callable=AsyncMock, return_value=ConsentCheckResult(status=None, timeout=False, error=True)):  # noqa: SIM117
             with pytest.raises(SGDatabaseUnavailableError):
                 await checker.perform_full_check("P001", {"organ": "thyroid", "diagnosis_data": {}})
 
@@ -273,7 +273,7 @@ class TestSGCombinedUnavailableError:
     async def test_sg_combined_unavailable_e4005c(self):
         from safety_gateway.errors import CombinedUnavailableError as SGCombinedUnavailableError
         checker = get_safety_gateway_checker()
-        with patch.object(checker._consent_checker, 'check_consent_status',
+        with patch.object(checker._consent_checker, 'check_consent_status',  # noqa: SIM117
                          new_callable=AsyncMock,
                          return_value=ConsentCheckResult(status=None, timeout=False, error=True)):
             with patch("safety_gateway.checker.orchestrator._get_health_checker") as mock_hc_getter:
