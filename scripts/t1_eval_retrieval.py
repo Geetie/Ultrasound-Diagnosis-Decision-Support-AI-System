@@ -123,14 +123,12 @@ def bm25_topk(
         from rank_bm25 import BM25Okapi
 
         bm25 = BM25Okapi([_tokenize(t) for t in corpus_texts])
-        get = lambda q: list(  # noqa: E731
-            enumerate(bm25.get_scores(_tokenize(q)))
-        )
     except ImportError:
         bm25 = SimpleBM25([_tokenize(t) for t in corpus_texts])
-        get = lambda q: list(  # noqa: E731
-            enumerate(bm25.get_scores(_tokenize(q)))
-        )
+
+    def get(q: str) -> list[tuple[int, float]]:
+        return list(enumerate(bm25.get_scores(_tokenize(q))))
+
     results: list[list[tuple[int, float]]] = []
     for q in queries:
         scored = get(q)

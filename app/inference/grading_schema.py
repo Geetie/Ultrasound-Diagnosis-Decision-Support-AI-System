@@ -88,7 +88,7 @@ def extract_guided_grading(text: str, organ: str | None = None) -> str | None:
             return None
         try:
             data = json_repair.loads(text[match : end + 1])
-        except Exception:  # noqa: BLE001
+        except Exception:
             return None
     if isinstance(data, dict):
         grading = data.get("grading")

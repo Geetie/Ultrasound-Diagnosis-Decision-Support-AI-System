@@ -10,8 +10,11 @@ sqlalchemy==2.0.27
 asyncpg==0.29.0
 pgvector==0.3.0
 redis==5.0.1
-python-jose[cryptography]==3.3.0
-passlib[bcrypt]==1.7.4
+# JWT 仅用于 RS256 验签（签发走 HSM sign_jwt，见 app/security/auth.py）。
+# python-jose / passlib 已于 2026-09-30 移除：passlib 2022 年停更且生产代码零使用
+# （bcrypt 本就直调），jose 仅剩验签且长期断档 —— 详见 15-技术升级规划 附录D。
+PyJWT[crypto]==2.15.1
+bcrypt==5.0.0
 python-multipart==0.0.9
 aiofiles==23.2.1
 alembic==1.12.1

@@ -62,7 +62,6 @@ def _guided_param(body: dict) -> dict:
             schema = so.get("json")
     if schema is None:
         return {}
-    from vllm import SamplingParams  # noqa: F401  确认可导入
 
     try:
         from vllm.sampling_params import StructuredOutputsParams

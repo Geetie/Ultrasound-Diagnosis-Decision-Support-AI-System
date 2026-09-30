@@ -69,18 +69,6 @@ async def init_db() -> None:
     # 副作用导入：把 ORM 模型注册到 Base.metadata 上，测试期建表才能覆盖全部表。
     # ruff 会把它们判为"未使用"（F401）而自动删除——这是一次真实踩到的坑，
     # tests/unit/sec/test_audit.py 有守护测试钉住这一行，勿删。
-    from app.models.database import (  # noqa: F401
-        AuditLog,
-        ConsentRecord,
-        DiagnosisReport,
-        DiagnosisResult,
-        DiagnosisSession,
-        FeedbackRecord,
-        KnowledgeBase,
-        Patient,
-        SafetyEvent,
-        SessionArchive,
-    )
 
     async with async_engine.begin() as conn:
         # 仅在测试时创建表，生产环境使用Alembic

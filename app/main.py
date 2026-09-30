@@ -30,6 +30,7 @@ from app.config.rate_limit import RateLimitMiddleware
 from app.config.redis import RedisPool
 from app.config.settings import settings
 from app.config.validator import ConfigValidationError, validate_config
+from app.observability.request_id import RequestIdMiddleware
 from app.security.security_headers import SecurityHeadersMiddleware
 
 # 启动/关闭路径的诊断必须走 structlog。
@@ -51,6 +52,17 @@ async def lifespan(app: FastAPI):
     errors = validate_config()
     if errors:
         raise ConfigValidationError(errors)
+
+    # OBS: 分布式追踪接线（OTLP → Jaeger；obs_tracing_enabled 默认关闭，
+    # full Profile 强制采样 ≥0.5）。init_tracing 内部自带开关与全量兜底，
+    # OTel 未安装时只告警不阻断启动 —— 修复 05-可观测性 附录A §7
+    # "init_tracing/instrument_fastapi 在 main.py 无调用" 的断链。
+    try:
+        from app.observability.tracing import init_tracing
+
+        init_tracing()
+    except Exception as e:
+        logger.warning("tracing_init_failed", error=str(e))
 
     await RedisPool.get_client()
 
@@ -525,6 +537,13 @@ async def lifespan(app: FastAPI):
         logger.warning(
             "obs_export_stop_failed", error=str(e)
         )
+    # OBS: 追踪关闭（flush BatchSpanProcessor 后再退出，避免尾部 span 丢失）
+    try:
+        from app.observability.tracing import shutdown_tracing
+
+        shutdown_tracing()
+    except Exception as e:
+        logger.warning("tracing_shutdown_failed", error=str(e))
     await safety_gateway_client.close()
     if consent_consumer:
         await consent_consumer.stop()
@@ -588,6 +607,20 @@ app.add_middleware(
     report_only=settings.csp_report_only,
     hsts_max_age=settings.hsts_max_age_seconds if settings.hsts_enabled else 0,
 )
+
+# OBS: request_id 注入 —— 注册在所有中间件之后（成为最外层），为每个请求
+# 生成/透传 X-Request-ID、写入 structlog contextvars、回填错误响应体
+# （修复 ErrorResponse.request_id 恒 None 的断链，见 15-技术升级规划 P0-1.5）。
+app.add_middleware(RequestIdMiddleware)
+
+# OBS: FastAPI 自动埋点（服务端 span；依赖 obs_tracing_enabled，未启用时内部静默跳过）。
+# 必须在全部 add_middleware 之后、include_router 之前调用。
+try:
+    from app.observability.tracing import instrument_fastapi
+
+    instrument_fastapi(app)
+except Exception as e:
+    logger.warning("tracing_instrument_failed", error=str(e))
 
 app.include_router(health_router, prefix="/api/v1")
 app.include_router(auth_router, prefix="/api/v1/auth")

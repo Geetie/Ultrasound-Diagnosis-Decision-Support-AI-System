@@ -48,7 +48,7 @@ if [ -n "${MISSING// /}" ]; then
   for m in $MISSING; do
     case "$m" in
       yaml) PKGS="$PKGS pyyaml" ;;
-      jose) PKGS="$PKGS python-jose[cryptography]" ;;
+      jwt) PKGS="$PKGS PyJWT[crypto]" ;;
       PIL) PKGS="$PKGS Pillow" ;;
       cv2) PKGS="$PKGS opencv-python-headless" ;;
       sklearn) PKGS="$PKGS scikit-learn" ;;

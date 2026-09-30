@@ -11,6 +11,7 @@ from app.observability.enums import (
     LogCategory,
     NtpSyncStatus,
 )
+from app.observability.tracing import inject_trace_to_structlog
 
 from .backend import LogStorageBackend
 from .batch import BatchLogStorageWrapper
@@ -30,6 +31,11 @@ def _json_serializer(obj: Any) -> str:
 
 structlog.configure(
     processors=[
+        # OBS: structlog contextvars（request_id 中间件 bind 的 request_id）
+        # 与 OTel trace context（trace_id/span_id）注入每条日志 ——
+        # 修复 05-可观测性 附录A §7 "inject_trace_to_structlog 未加入 processors，
+        # 即使打开开关日志也不会有 trace_id" 的断链。
+        structlog.contextvars.merge_contextvars,
         structlog.stdlib.filter_by_level,
         structlog.stdlib.add_logger_name,
         structlog.stdlib.add_log_level,
@@ -37,6 +43,7 @@ structlog.configure(
         structlog.processors.StackInfoRenderer(),
         structlog.processors.format_exc_info,
         structlog.processors.UnicodeDecoder(),
+        inject_trace_to_structlog,
         structlog.processors.JSONRenderer(serializer=_json_serializer)
         if settings.env == "production"
         else structlog.dev.ConsoleRenderer(),

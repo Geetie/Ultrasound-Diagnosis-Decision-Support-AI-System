@@ -253,7 +253,6 @@ def suite_concurrency(
     """
     import asyncio
 
-    from app.agents.routing import RoutingDecision  # noqa: F401  (保持与 inline 同源导入)
     from app.models.schemas import ResponseTier
     from app.services.diagnosis_pipeline import get_routing_router
 

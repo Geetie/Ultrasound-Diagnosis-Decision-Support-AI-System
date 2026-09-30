@@ -169,7 +169,6 @@ class UltrasoundClipBackend:
         max_length: int,
         dimension: int = 768,
     ) -> None:
-        from PIL import Image  # noqa: F401  前置校验：图像路径缺 Pillow 应在加载期报错
 
         self.dimension = dimension
         self.max_length = max_length
@@ -252,7 +251,6 @@ class OpenClipBackend:
         dimension: int = 768,
     ) -> None:
         import open_clip
-        from PIL import Image  # noqa: F401  前置校验：图像路径缺 Pillow 应在加载期报错
 
         del dtype  # open_clip 自行管理精度（fp32 权重；推理可在 GPU 上）
         self.device = torch.device(device)

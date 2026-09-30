@@ -1,0 +1,26 @@
+feat(p0-1/p0-4): 接线 tracing/request_id + 依赖安全替换（python-jose→PyJWT，passlib→bcrypt）+ import-linter
+
+## P0-1 接线（另一窗口实施，本提交收口）
+- tracing：main.py lifespan 接 init_tracing/shutdown_tracing，
+  instrument_fastapi（先于首个 include_router），try/except 兜底不阻断启动
+- logging：storage.py 处理器链加 merge_contextvars + inject_trace_to_structlog
+  → 日志携带 trace_id/span_id/request_id
+- request_id：新增 app/observability/request_id.py（最外层中间件生成/透传
+  X-Request-ID，白名单校验防注入 + structlog contextvars 绑定）；
+  errors.py 三个异常处理器回填 request_id（修复 ErrorResponse.request_id 恒 None）
+- 守卫测试：静态接线断言 9 例 + 行为测试 7 例（tests/unit/obs）
+
+## P0-4 依赖安全替换
+- python-jose[cryptography] 3.3.0（停更+CVE史）→ PyJWT；JWTError → jwt.InvalidTokenError
+- passlib[bcrypt] 1.7.4（2022 停更）→ bcrypt 直调
+- 测试映射表同步（jwt→pyjwt、bcrypt→bcrypt）；ci.yml 加 import-linter 校验
+- pip-audit 报告入库（pip_audit_report.md）；.importlinter 分层约束契约化
+
+## 附带清理（RUF100 --fix 连锁恢复 + 债务清偿）
+- 28 处 unused noqa 清除后裸露的 E402（19 处 sys.path 引导脚本/测试）补 noqa
+- t1_eval_retrieval.py E731 lambda → def
+- server_start_judge.sh：Qwen3-8B 判官实例编排（8006，幂等+探活）
+
+## 验证
+- sec/obs/quality/inf/api 全量 2382+ passed（quality 2 守卫失败均为
+  untracked/棘轮问题，本提交后消除）；全量单测 2890 passed

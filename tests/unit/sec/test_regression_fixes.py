@@ -193,8 +193,9 @@ class TestHSMPaddingFix:
         parts = jwt_token.split(".")
         assert len(parts) == 3, "JWT should have 3 parts"
 
-        from jose import jwt as jose_jwt
-        decoded = jose_jwt.decode(jwt_token, public_pem, algorithms=["RS256"])
+        import jwt
+
+        decoded = jwt.decode(jwt_token, public_pem, algorithms=["RS256"])
         assert decoded["sub"] == "test_user"
         assert decoded["role"] == "doctor"
 

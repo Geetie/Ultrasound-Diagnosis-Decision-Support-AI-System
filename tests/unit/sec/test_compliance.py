@@ -94,7 +94,7 @@ class TestHSMSignaturePadding:
         assert verified is True
 
     def test_signature_compatible_with_jwt_rs256(self):
-        from jose import jwt
+        import jwt
 
         data = {"sub": "test_user", "exp": int((datetime.now(timezone.utc) + timedelta(hours=1)).timestamp())}
 

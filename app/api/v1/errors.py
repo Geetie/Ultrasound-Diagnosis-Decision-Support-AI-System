@@ -7,6 +7,7 @@ from fastapi import HTTPException, Request
 from fastapi.responses import JSONResponse
 
 from app.models.schemas import ErrorResponse
+from app.observability.request_id import get_current_request_id
 
 logger = structlog.get_logger()
 
@@ -810,7 +811,9 @@ async def app_exception_handler(request: Request, exc: AppBaseException):
         error_code=exc.error_code,
         error_message=exc.error_message,
         detail=exc.detail,
-        request_id=exc.request_id,
+        # exc 自带的 request_id 优先（调用方显式指定时语义更准）；缺省时
+        # 回退到 RequestIdMiddleware 注入的请求级 id（P0-1.5 接线）。
+        request_id=exc.request_id or get_current_request_id(),
         suggestion=exc.suggestion,
         retryable=exc.retryable,
         retry_strategy=exc.retry_strategy,
@@ -844,6 +847,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
             detail_text if isinstance(exc.detail, str) else _default_message(exc.status_code)
         ) or "Request error",
         detail=detail_text,
+        request_id=get_current_request_id(),
     )
     return JSONResponse(
         status_code=exc.status_code,
@@ -859,6 +863,7 @@ async def general_exception_handler(request: Request, exc: Exception):
         error_message="Internal server error",
         detail=None,
         suggestion="Please contact administrator",
+        request_id=get_current_request_id(),
     )
     return JSONResponse(
         status_code=500,

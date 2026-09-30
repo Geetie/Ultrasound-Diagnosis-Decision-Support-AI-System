@@ -41,96 +41,89 @@ todos:
 
 ## 任务定位
 
-完成任务 `t1-rag-metrics-loop` 的剩余部分。Recall@K/MRR/nDCG 检索评测脚本与基线（hybrid R@10 = 98% ≥85% Gate 1 已达标）在前几轮已完成，本计划聚焦三个缺口：**faithfulness 生成评测（空缺）、第一轮调优（chunk/混合权重/rerank top-N）、对照过关线的完整报告**。
+接手另一窗口的 P0-2 与 P0-3（其 P0-1/P0-4 已完成但未提交，本计划全程避开其工作树文件）：
 
-## 用户确认的口径
+1. **P0-2 约束解码**：把 A2 轮已验证的 prompt 级结构化输出（一致率 23.33%→80.51%）固化为 **schema 级引擎约束**——vLLM 0.30 guided_json、llama.cpp GBNF grammar。消除提取失败类，重跑 780 例并按分层口径（常规+高风险 340 例 vs 边界模糊 440 例）重算门控（16 号 A.2.2 / 10 号 v1.3 的口径决策落地）。
+2. **P0-3 判官升级**：Qwen3-8B 替代 Qwen2.5-7B 作 faithfulness 判官（RAGAS 口径不变），重跑 100 例对比 56.3% 基线，验证判官过严假设。
 
-1. **faithfulness 评测**：LLM-as-judge（RAGAS 官方口径：答案拆原子断言 → 逐条判是否可从 retrieved context 推断 → score = 支持断言数/总断言数），判官用 8002 vLLM 7B，另有启发式（关键词/数值一致性）作交叉校验；判官 prompt 照抄 RAGAS 官方源码，不自己造
-2. **评测集升级**：QA 型 golden set——从中文医疗对话取真实患者问题（如“甲状腺结节3类严重吗”），gold = 其来源 chunk；服务检索调优与忠实度评测两个场景
-3. **第一轮调优三项全做**（方法论全部对齐权威源，不造轮子）：
+## 完成判据
 
-- 加权 RRF：Elastic 官方公式 `fused(d)=Σ weight_i × 1/(rank_i + rank_constant)`，rank 从 1 起，rank_constant 网格含经典值 60，权重网格覆盖“主导信号 0.6~0.8 / 次要 0.2~0.4”区间
-- 两阶段 rerank：召回 Top-N（N ∈ {20,50,100}）→ 8005 bge-reranker 精排 → 取 Top-k，测 Recall@10/MRR/nDCG 与延迟
-- chunk 策略：主流口径 512~1500 tokens、overlap 10~20%，重建 2-3 个变体（kb_v1.0.1/v1.0.2）对比
-
-4. **过关线对照**：检索侧 Gate 0 ≥90% / Gate 1 检索准确率 ≥85%；生成侧整体幻觉率 ≤5% ↔ faithfulness ≥95%，严重幻觉（结论方向翻转）≤0.5%
-
-## 交付物
-
-- QA 型 golden set 文件 + 构造脚本
-- 扩展后的检索评测脚本（加权 RRF / rerank 两阶段 / chunk 变体全网格）
-- faithfulness 评测脚本 + 报告
-- 调优网格报告（每配置一组指标，含最优配置结论）
-- 16 号进展汇报新增小节 + 测试全绿 + git 提交
+- 双引擎在 schema 约束下输出 100% 可解析（提取失败 = 0）
+- 分层口径报告：常规+高风险档一致率（目标 ≥95%，若达标即首个通过的一致性门控）、边界档单独呈现
+- faithfulness：Qwen3-8B 判官结果 vs 7B 判官 56.3% 基线的对照报告
+- 报告归档 tests/reports/、文档回写、git 提交
 
 ## Tech Stack
 
-- 全部复用现有栈：Python 3.12（服务器 venv）、bge-m3(8004)/bge-reranker(8005)/llama.cpp(8001)/vLLM 7B(8002) 真机服务、PostgreSQL pgvector、纯 stdlib eval 脚本风格（与 t1_eval_retrieval.py 一致）
+- 全部复用现有栈：真机 vLLM 0.30.0（原生 guided_json/structured_outputs）、llama-cpp-python 0.3.35（grammar/GBNF 支持）、bge-m3/bge-reranker 服务、PostgreSQL、pytest + ruff 棘轮
+- 判官：Qwen3-8B GGUF（Q4_K_M ≈5GB，hf-mirror 可得）经 llama.cpp 起独立 8006 实例（GPU 余量 ~14GB 足够；不与 8001/8002 互斥，不影响另一窗口）
+- 评测脚本保持纯 stdlib 风格（与 consistency_verify.py / t1_eval_faithfulness.py 一致）
 
 ## Implementation Approach
 
-1. **QA golden set（对标 BEIR/MS MARCO 查询-文档构造法）**：对话数据自带“问题→回答”天然 QA 对，问题做 query、其来源文档的 chunk 做 gold；取 200 条（肿瘤/外科/内科分层），过滤过短/过泛问题；`scripts/t1b_build_qa_golden.py` 生成 `data/golden/kb_qa_golden_v1.json`
-2. **检索调优（eval 侧模拟，不动生产 retriever）**：扩展 `t1_eval_retrieval.py` 加 `--grid` 模式——离线预计算 dense/bm25 各自 Top-100 排名后，加权 RRF 融合公式纯本地重算（Elastic 口径），网格：weights ∈ {(0.5,0.5) 基线, (0.6,0.4), (0.7,0.3), (0.4,0.6)} × rank_constant ∈ {10,60,100}；rerank 两阶段对每个 query 取融合 Top-N（20/50/100）送 8005 精排再取 Top-10，记录指标与耗时；chunk 变体经 `init_knowledge_base.py --chunking-strategy`（2-3 变体，控制在中段尺寸 sweet spot 区间）重建 + `server_populate_vector_index.py` 灌数 + 复评
-3. **faithfulness（RAGAS 官方实现照抄）**：从 GitHub 取 RAGAS `_faithfulness.py` 官方 prompt（服务器经 ghproxy 可达）；`scripts/t1_eval_faithfulness.py`——生成腿用生产链路（QA 问题 → hybrid 检索 Top-5 → 8001 生成答案），判官用 8002（/v1/chat/completions，temperature=0）逐断言判定；启发式交叉校验（答案数值/关键词在 context 中的覆盖率）；100 例（±~5% CI，够基线结论）
-4. **报告**：`tests/reports/t1_tuning_report.json` + `t1_faithfulness_report.json`；16 号文档新增 A.6 节（调优结论 + faithfulness 基线 vs 门控）
+### 1. 分级 JSON Schema 设计（单一事实源）
+
+按器官定义评分 schema（TI-RADS TR1-TR5 / LI-RADS / LVEF 分级 + confidence + findings 摘要字段），落为 `scripts/grading_schema.py`：同时导出 ①JSON Schema（vLLM guided_json 用）②由 schema 程序化生成的 GBNF 文法（llama.cpp 用，避免手写两份漂移）。schema 字段与 A2 轮抽取器已验证的正则口径严格对齐（TR 码/分级行/括号变体），保证新旧结果可比。
+
+### 2. 引擎接线（最小侵入）
+
+- **vLLM**：consistency_verify 的 vLLM 路径加 `--guided-json` → 请求体注入 `structured_outputs`/`guided_json`（vLLM 0.30 OpenAI 兼容层支持）
+- **llama.cpp**：`scripts/llama_cpp_server.py` 包装层透传 grammar——请求体接受 `grammar` 字段转发给 llama-cpp-python 的 create_completion（0.3.35 原生支持）；consistency_verify 的 llama.cpp 路径发送 schema 生成的 GBNF
+- 守卫测试：schema→GBNF 生成的确定性测试、两种请求体形状断言
+
+### 3. 分层口径统计
+
+consistency_verify.py 汇总段增加按用例 tier（常规/边界/高风险，用例 json 已带分层）分组的一致率——常规+高风险档 vs 边界档分开呈现，直接落地 16 号 A.2.2 的口径决策。
+
+### 4. 判官部署
+
+Qwen3-8B GGUF（Q4_K_M）下载至 `~/uai/models/qwen3-8b-judge/`，llama.cpp 起 **8006 独立实例**（n_ctx 4096 足够判官短输出，显存 ~5-6GB），thinking 模式关闭（Qwen3 支持 /no_think 或启动参数）。t1_eval_faithfulness 经既有 `--judge-url/--judge-model` 参数直接切换，脚本零改动或仅小改。
+
+### 5. 评测执行
+
+- 780 例一致性：串行约束下约 1-1.5 小时/轮（吞吐 1 例/26s），后台跑
+- faithfulness 100 例：约 13 分钟
+- 全程走 remote-gpu-server-devtest 标准姿势（PYTHONPATH、落盘脚本、吞吐串行约束）
 
 ## Performance & Reliability
 
-- 融合网格是纯 CPU 重算（433 chunks × 200 queries × ~12 配置，毫秒级）；重开销在嵌入（每 chunk 变体 ~6s）与 rerank（8005 串行调用，Top-100 × 200 查询需批量化）与 LLM 判官（100 例 × 2 次 LLM 调用，vLLM 并发 4）
-- RAG 缓存 1h TTL：调优实验绕过生产缓存（eval 直连服务），生产配置变更后需 flush Redis RAG 缓存
-- chunk 变体用独立 kb_version，不覆盖 kb_v1.0.0，随时可回滚
+- 约束解码对吞吐影响可忽略（grammar 编译一次复用）
+- GBNF 由 schema 程序化生成（单一事实源），杜绝双份漂移
+- 显存核对：新增 8006 判官 ~6GB 后总占用 ~40/48GB，留 8GB 余量
+- 评测失败重试：consistency_verify 已有 per-case error 记录，报告含失败分析段
 
-## Architecture
+## Architecture Design
 
 ```mermaid
 graph LR
-    A[对话语料 400 QA] --> B[QA golden set 200 条]
-    B --> C[检索调优网格]
-    C --> C1[加权 RRF 权重×k]
-    C --> C2[rerank Top-N 20/50/100]
-    C --> C3[chunk 变体 kb_v1.0.1/2]
-    B --> D[faithfulness 评测]
-    D --> D1[hybrid 检索 Top-5] --> D2[8001 生成] --> D3[8002 RAGAS 判官] 
-    D3 --> D4[启发式交叉校验]
-    C --> E[t1_tuning_report.json]
-    D --> E2[t1_faithfulness_report.json]
-    E & E2 --> F[16号 A.6 + 提交]
+    S[grading_schema.py 单一事实源] -->|JSON Schema| V[vLLM 8002 guided_json]
+    S -->|GBNF 程序化生成| L[llama.cpp 8001 grammar 透传]
+    C[consistency_verify.py --guided-json] --> V
+    C --> L
+    C --> R[780 例重跑 + 分层口径报告]
+    J[Qwen3-8B 8006 判官实例] --> F[t1_eval_faithfulness 重跑]
+    R & F --> D[16 号 A.2.2 更新 + A.8 + 提交]
 ```
-
-## Key Code Structures
-
-新增/扩展脚本签名（保持 t1_eval_retrieval.py 的纯 stdlib 风格）：
-
-- `t1b_build_qa_golden.py --dialogue-dir --kb-version --sample 200 --output`
-- `t1_eval_retrieval.py --golden-set ... --grid-rrf --rerank-topn 20,50,100 --reranker-url`
-- `t1_eval_faithfulness.py --golden-set --generator-url --judge-url --judge-model --sample 100 --output`
 
 ## Directory Structure Summary
 
 ```
 scripts/
-├── t1b_build_qa_golden.py        # [NEW] QA 型 golden set 构造（BEIR 口径）
-├── t1_eval_retrieval.py          # [MODIFY] 加权 RRF 网格 + rerank 两阶段
-├── t1_eval_faithfulness.py       # [NEW] RAGAS 口径忠实度评测
-└── prompts/ragas_faithfulness.py # [NEW] RAGAS 官方 prompt 原文（注明来源 commit）
+├── grading_schema.py              # [NEW] 分级 JSON Schema 单一事实源 + GBNF 程序化生成
+├── llama_cpp_server.py            # [MODIFY] 透传 grammar 参数
+├── consistency_verify.py          # [MODIFY] --guided-json 双引擎路径 + 分层口径统计
+└── server_start_judge.sh          # [NEW] Qwen3-8B 8006 判官实例启动（幂等+探活）
+tests/unit/
+└── scripts/                       # [NEW] schema/GBNF 生成与请求体形状守卫
 tests/reports/
-├── t1_qa_golden_retrieval_eval.json   # [NEW] QA 集检索基线
-├── t1_tuning_report.json              # [NEW] 三项调优网格结果
-└── t1_faithfulness_report.json        # [NEW] 忠实度基线
+├── consistency_780_guided_report.json   # [NEW] 约束解码重测报告（分层口径）
+└── t1_faithfulness_qwen3_judge_report.json  # [NEW] Qwen3-8B 判官对照报告
 docs-for-guiding generating docs/超声诊疗决策支持系统/
-└── 16-开发进展汇报-20260928.md   # [MODIFY] A.6 节
+└── 16-开发进展汇报-20260928.md    # [MODIFY] A.2.2 落地结果 + A.8 判官升级
 ```
-
-## Agent Extensions
 
 ### Skill
 
 - **remote-gpu-server-devtest**
-- Purpose: 全部真机操作的标准姿势——服务器接入、落盘脚本绕 fish 引号坑、PYTHONPATH、EngineCore 孤儿进程、RAG 缓存、显存核对、8005 max_length 钳制现状
-- Expected outcome: 调优实验与 faithfulness 评测在真机顺利执行，规避已知坑，报告与数据正确落盘归档
-
-### SubAgent
-
-- **code-explorer**
-- Purpose: 执行前确认 init_knowledge_base.py 的 chunking 策略可选值与对话数据 QA 字段结构、t1_eval_retrieval.py 现有函数可复用边界
-- Expected outcome: 脚本扩展点与 chunk 变体参数完全对齐现有代码契约，避免返工
+- Purpose：全部真机操作的标准姿势——Qwen3-8B 下载、8006 判官实例启动、约束解码部署、780 例评测执行、显存核对、规避已知坑（PYTHONPATH/EngineCore/pkill/吞吐串行）
+- Expected outcome：P0-2/P0-3 在真机顺利完成，报告正确落盘归档，不干扰另一窗口

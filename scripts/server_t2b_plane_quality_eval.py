@@ -29,7 +29,7 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
-import numpy as np  # noqa: E402  （sys.path 引导后导入）
+import numpy as np  # noqa: E402
 from PIL import Image  # noqa: E402
 
 

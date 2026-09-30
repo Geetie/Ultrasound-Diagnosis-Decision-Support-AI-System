@@ -44,7 +44,6 @@ _LOCAL_TOP_LEVEL = {
 # 导入名（小写）→ PyPI 分发包名（小写、`_`→`-` 后比较）。
 _MODULE_TO_PACKAGE = {
     "pil": "pillow",
-    "jose": "python-jose",
     "yaml": "pyyaml",
     "qdrant_client": "qdrant-client",
     "rank_bm25": "rank-bm25",
@@ -52,8 +51,10 @@ _MODULE_TO_PACKAGE = {
     "prometheus_client": "prometheus-client",
     "pynvml": "pynvml",
     "opentelemetry": "opentelemetry-api",
-    # bcrypt 由 `passlib[bcrypt]` 的 extra 提供（app/security/auth.py 直接 import bcrypt）。
-    "bcrypt": "passlib",
+    # jwt → PyJWT（2026-09-30 替换 python-jose，见 15-技术升级规划 附录D）；
+    # bcrypt 为独立直依赖（app/security/auth.py 直接 import bcrypt）。
+    "jwt": "pyjwt",
+    "bcrypt": "bcrypt",
 }
 
 # 允许"未声明"的模块 —— 每一条都必须给出理由，且被测试校验其确实是软导入。
@@ -62,6 +63,12 @@ _OPTIONAL_UNDECLARED = {
         "PyPI 无 py3.12 wheel，源码构建在本机失败；"
         "app/knowledge/segmentation_validation.py 里是 try/except ImportError 软导入"
         "（退回 jieba → 再退回字符级），故不入清单"
+    ),
+    "json_repair": (
+        "P0-2 约束解码的可选修复库；app/inference/grading_schema.py 里是"
+        " try/except（ImportError + JSONDecodeError 双兜底）软导入——约束输出"
+        "为单字段枚举 JSON，损坏概率极低，缺失时 extract_guided_grading 返回"
+        " None 回退正则抽取器，故不入清单"
     ),
 }
 

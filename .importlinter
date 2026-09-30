@@ -1,0 +1,61 @@
+# import-linter 分层依赖守卫（对应 15-技术升级规划-202609.md §4.7）
+#
+# 背景：01-系统架构设计 附录A §7-11 —— "无分层约束守卫（跨层 import 全靠约定，
+# 无 import-linter/架构测试）"。本文件把约定固化为 CI 门禁。
+#
+# 策略与 .ruff-debt.txt / 覆盖率棘轮一致（只减不增）：
+#   * 第一阶段只立两条经代码校准（2026-09-30）验证可绿的契约；
+#   * 已知存量反向依赖登记在 ignore_imports，编号 D-IL-*，逐条收敛后移出；
+#   * 后续迭代补立 security/services/fusion 解耦契约（见 15 附录 B）。
+#
+# 本地运行：pip install 'import-linter>=4,<5' && lint-imports
+
+[importlinter]
+root_package = app
+# 未命中的 ignore 条目只告警不失败（避免代码重命名导致门禁假红）
+unmatched_ignore_imports_alerting = warning
+
+# ── 契约 1：基础层单向（自下而上：common → config → models → repositories）──
+[importlinter:contract:layers-foundation]
+name = 基础层单向依赖（common → config → models → repositories）
+type = layers
+layers =
+    app.common
+    app.config
+    app.models
+    app.repositories
+ignore_imports =
+    # D-IL-01：仓储层反向引用服务层（审计/安全网关客户端），待收敛
+    app.repositories.consent_repository -> app.services.audit_service
+    app.repositories.consent_repository -> app.services.safety_service
+    # D-IL-02：仓储层反向引用 HSM（同意映射表加密字段场景），待收敛
+    app.repositories.consent_repository -> app.security.hsm
+
+# ── 契约 2：API 顶层（api/main/dependencies/tools 不得被任何下层反向引用）──
+[importlinter:contract:api-is-top]
+name = API 顶层不可反向依赖
+type = forbidden
+source_modules =
+    app.common
+    app.config
+    app.models
+    app.repositories
+    app.security
+    app.observability
+    app.knowledge
+    app.embedding
+    app.inference
+    app.rag
+    app.fusion
+    app.agents
+    app.services
+    app.speech
+    app.evaluation
+forbidden_modules =
+    app.api
+    app.main
+    app.dependencies
+    app.tools
+ignore_imports =
+    # D-IL-03：限流配置引用 API 错误类型（异常定义位置错位），待收敛
+    app.config.rate_limit -> app.api.v1.errors
