@@ -500,6 +500,11 @@ venv 要手动 `pip install PyJWT`**，否则主服务启动即崩（ModuleNotFo
 8. **worker 池**：int_worker_pool_size 默认 4，并发评测先调 16
    （.env）——管线是 IO 密集协程，4 worker 必然排队；真正的并发
    调度在 vLLM 引擎侧（continuous batching）。
+9. **llama.cpp 速度之谜破案**：llama-b11272 预编译包是 **CPU-only
+   构建**（ldd 无 CUDA 库，--n-gpu-layers 被静默忽略）——设计定位
+   是 GPU 引擎，部署包选错了构建，7B 全靠 8 线程 CPU 跑（40s/
+   2677tok）。若要回用 llama.cpp 必须自行编译 CUDA 版或选
+   cuda-linux-x64 官方包。
 
 ## 20. T2 系列评测（2026-09-30，数据见 16 号 A.7）
 

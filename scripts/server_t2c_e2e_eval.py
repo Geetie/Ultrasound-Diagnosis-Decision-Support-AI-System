@@ -97,9 +97,26 @@ def _judge_nli(caption: str, conclusion: str) -> tuple[int, str]:
 
 
 def _pick_conclusion_text(result: dict) -> str:
-    """真机实测顶层字段：patient_explanation/malignancy_risk/等。"""
+    """结论文本取 diagnosis.content（final_response.content，正式结论）。
+
+    2026-10-01 实测修正：patient_explanation 是可选的患者话术（设计上
+    不入正式报告），多数请求为 None——正式结论在 findings JSONB 的
+    fusion_result.content（本次接线后才有）。
+    """
     parts: list[str] = []
-    v = result.get("patient_explanation")
+    dx = result.get("diagnosis")
+    if isinstance(dx, dict):
+        fusion = dx.get("fusion_result")
+        if isinstance(fusion, dict):
+            content = fusion.get("content")
+            if isinstance(content, str) and content.strip():
+                parts.append(content.strip())
+    if not parts:
+        v = result.get("recommendations")
+        if isinstance(v, str) and v.strip():
+            parts.append(v.strip())
+    if not parts:
+        v = result.get("patient_explanation")
     if isinstance(v, str) and v.strip():
         parts.append(v.strip())
     for key in ("malignancy_risk", "measurement", "differential_diagnoses"):

@@ -1120,6 +1120,13 @@ def _fusion_result_to_dict(fusion_result) -> dict:
         "total_latency_ms": getattr(fusion_result, "total_latency_ms", 0.0),
         "final_confidence": getattr(final_response, "confidence", 0.0) if final_response is not None else 0.0,
     }
+    # 主结论文本必须进 findings（响应契约缺口，2026-10-01 T2c 实测）：
+    # 此前 final_response.content（TI-RADS 分级+理由+证据）只经
+    # recommendations 列落库，findings JSONB 与 API 响应的 diagnosis
+    # 字段里都没有它——评测与前端拿不到结论文本。
+    content = extract_findings_text(fusion_result)
+    if content:
+        payload["content"] = content
     clinical = _clinical_attributes_to_dict(final_response)
     if clinical:
         payload["clinical_attributes"] = clinical
