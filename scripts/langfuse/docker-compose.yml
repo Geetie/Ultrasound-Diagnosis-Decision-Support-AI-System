@@ -1,0 +1,124 @@
+# Langfuse v3 自托管栈（15 号计划 2.4：LLM 专属可观测旁路）
+# 安全：全部端口绑 127.0.0.1（对齐真机"端口只绑回环"规范）
+# 端口：web 30100（OTLP: /api/public/otel）
+name: langfuse
+
+services:
+  langfuse-worker:
+    image: ghcr.io/langfuse/langfuse:3
+    restart: unless-stopped
+    depends_on: &langfuse-depends
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+    environment: &langfuse-env
+      TZ: Asia/Shanghai
+      LANGFUSE_WORKER: "true"
+      NEXTAUTH_URL: http://127.0.0.1:30100
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      SALT: ${SALT}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      DATABASE_URL: postgresql://postgres:${LANGFUSE_PG_PASSWORD}@postgres:5432/langfuse
+      LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES: "true"
+      CLICKHOUSE_URL: http://clickhouse:8123
+      CLICKHOUSE_USER: clickhouse
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD}
+      CLICKHOUSE_CLUSTER_ENABLED: "false"
+      LANGFUSE_S3_EVENT_UPLOAD_BUCKET: langfuse
+      LANGFUSE_S3_EVENT_UPLOAD_REGION: auto
+      LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID: minio
+      LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+      LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT: http://minio:9000
+      LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE: "true"
+      LANGFUSE_S3_MEDIA_BUCKET: langfuse-media
+      LANGFUSE_S3_MEDIA_REGION: auto
+      LANGFUSE_S3_MEDIA_ACCESS_KEY_ID: minio
+      LANGFUSE_S3_MEDIA_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+      LANGFUSE_S3_MEDIA_ENDPOINT: http://minio:9000
+      LANGFUSE_S3_MEDIA_FORCE_PATH_STYLE: "true"
+      REDIS_URL: redis://redis:6379
+      LANGFUSE_ENABLE_OTLP_TRACES: "true"
+
+  langfuse-web:
+    image: ghcr.io/langfuse/langfuse:3
+    restart: unless-stopped
+    depends_on: *langfuse-depends
+    ports:
+      - "127.0.0.1:30100:3000"
+    environment:
+      <<: *langfuse-env
+      LANGFUSE_WORKER: "false"
+      LANGFUSE_PORT: "3000"
+
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${LANGFUSE_PG_PASSWORD}
+      POSTGRES_DB: langfuse
+    ports:
+      - "127.0.0.1:30432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    entrypoint: sh
+    command: -c 'mkdir -p /data/langfuse /data/langfuse-media && minio server /data'
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    ports:
+      - "127.0.0.1:30900:9000"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7
+    restart: unless-stopped
+    command: --requirepass ${REDIS_PASSWORD}
+    ports:
+      - "127.0.0.1:30637:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.12
+    restart: unless-stopped
+    environment:
+      CLICKHOUSE_USER: clickhouse
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD}
+    ports:
+      - "127.0.0.1:30812:8123"
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8123/ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres_data:
+  minio_data:
+  clickhouse_data:
