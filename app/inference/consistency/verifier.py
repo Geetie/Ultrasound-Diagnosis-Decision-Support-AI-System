@@ -268,9 +268,9 @@ class ConsistencyVerifier:
         return request
 
     def _extract_grading(self, text: str, organ: str) -> tuple[str | None, bool]:
-        """抽取分级：guided 优先 JSON 字段，回退正则抽取器。"""
+        """抽取分级：guided 优先裸值白名单/JSON 字段，回退正则抽取器。"""
         if self._guided_json:
-            grading = extract_guided_grading(text)
+            grading = extract_guided_grading(text, organ)
             if grading:
                 return grading, False
         conflict_result = extract_grading_with_conflict(text, organ)
