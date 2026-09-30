@@ -1,0 +1,6265 @@
+{
+  "engine": "vllm-official-openai",
+  "total": 780,
+  "matched": 369,
+  "accuracy": 0.4731,
+  "by_organ": {
+    "thyroid": {
+      "accuracy": 0.5073,
+      "total": 274
+    },
+    "liver": {
+      "accuracy": 0.4489,
+      "total": 274
+    },
+    "cardiac": {
+      "accuracy": 0.4612,
+      "total": 232
+    }
+  },
+  "latency_ms_p50": 288.3,
+  "latency_ms_p99": 773.7,
+  "errors": 0,
+  "results": [
+    {
+      "case_id": "THY-004",
+      "organ": "thyroid",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 736.4
+    },
+    {
+      "case_id": "THY-001",
+      "organ": "thyroid",
+      "expected": "5",
+      "got": "5",
+      "match": true,
+      "latency_ms": 753.6
+    },
+    {
+      "case_id": "THY-022",
+      "organ": "thyroid",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 738.9
+    },
+    {
+      "case_id": "THY-011",
+      "organ": "thyroid",
+      "expected": "5",
+      "got": "5",
+      "match": true,
+      "latency_ms": 745.4
+    },
+    {
+      "case_id": "THY-032",
+      "organ": "thyroid",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 734.3
+    },
+    {
+      "case_id": "THY-007",
+      "organ": "thyroid",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 748.3
+    },
+    {
+      "case_id": "THY-029",
+      "organ": "thyroid",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 736.7
+    },
+    {
+      "case_id": "THY-013",
+      "organ": "thyroid",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 745.8
+    },
+    {
+      "case_id": "THY-017",
+      "organ": "thyroid",
+      "expected": "2",
+      "got": "2",
+      "match": true,
+      "latency_ms": 744.0
+    },
+    {
+      "case_id": "THY-003",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4b",
+      "match": true,
+      "latency_ms": 752.0
+    },
+    {
+      "case_id": "THY-015",
+      "organ": "thyroid",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 745.8
+    },
+    {
+      "case_id": "THY-020",
+      "organ": "thyroid",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 749.8
+    },
+    {
+      "case_id": "THY-023",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4b",
+      "match": true,
+      "latency_ms": 748.5
+    },
+    {
+      "case_id": "THY-014",
+      "organ": "thyroid",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 753.8
+    },
+    {
+      "case_id": "THY-002",
+      "organ": "thyroid",
+      "expected": "5",
+      "got": "4b",
+      "match": false,
+      "latency_ms": 773.7
+    },
+    {
+      "case_id": "THY-026",
+      "organ": "thyroid",
+      "expected": "5",
+      "got": "4b",
+      "match": false,
+      "latency_ms": 761.9
+    },
+    {
+      "case_id": "THY-027",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4a",
+      "match": true,
+      "latency_ms": 762.0
+    },
+    {
+      "case_id": "THY-008",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4b",
+      "match": true,
+      "latency_ms": 772.7
+    },
+    {
+      "case_id": "THY-019",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4b",
+      "match": true,
+      "latency_ms": 767.1
+    },
+    {
+      "case_id": "THY-024",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4a",
+      "match": true,
+      "latency_ms": 764.6
+    },
+    {
+      "case_id": "THY-018",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4a",
+      "match": true,
+      "latency_ms": 768.3
+    },
+    {
+      "case_id": "THY-006",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4a",
+      "match": true,
+      "latency_ms": 775.1
+    },
+    {
+      "case_id": "THY-025",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4b",
+      "match": true,
+      "latency_ms": 765.0
+    },
+    {
+      "case_id": "THY-028",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4a",
+      "match": true,
+      "latency_ms": 763.7
+    },
+    {
+      "case_id": "THY-012",
+      "organ": "thyroid",
+      "expected": "5",
+      "got": "4b",
+      "match": false,
+      "latency_ms": 780.1
+    },
+    {
+      "case_id": "THY-005",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4b",
+      "match": true,
+      "latency_ms": 784.2
+    },
+    {
+      "case_id": "THY-010",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4a",
+      "match": true,
+      "latency_ms": 781.9
+    },
+    {
+      "case_id": "THY-016",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4a",
+      "match": true,
+      "latency_ms": 779.0
+    },
+    {
+      "case_id": "THY-031",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4a",
+      "match": true,
+      "latency_ms": 771.0
+    },
+    {
+      "case_id": "THY-009",
+      "organ": "thyroid",
+      "expected": "5",
+      "got": "4b",
+      "match": false,
+      "latency_ms": 783.5
+    },
+    {
+      "case_id": "THY-021",
+      "organ": "thyroid",
+      "expected": "5",
+      "got": "4b",
+      "match": false,
+      "latency_ms": 777.3
+    },
+    {
+      "case_id": "THY-030",
+      "organ": "thyroid",
+      "expected": "5",
+      "got": "4b",
+      "match": false,
+      "latency_ms": 772.6
+    },
+    {
+      "case_id": "THY-034",
+      "organ": "thyroid",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 273.0
+    },
+    {
+      "case_id": "THY-033",
+      "organ": "thyroid",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 274.6
+    },
+    {
+      "case_id": "THY-037",
+      "organ": "thyroid",
+      "expected": "2",
+      "got": "2",
+      "match": true,
+      "latency_ms": 290.4
+    },
+    {
+      "case_id": "THY-038",
+      "organ": "thyroid",
+      "expected": "2",
+      "got": "2",
+      "match": true,
+      "latency_ms": 291.1
+    },
+    {
+      "case_id": "THY-040",
+      "organ": "thyroid",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 290.2
+    },
+    {
+      "case_id": "THY-035",
+      "organ": "thyroid",
+      "expected": "2",
+      "got": "2",
+      "match": true,
+      "latency_ms": 294.0
+    },
+    {
+      "case_id": "THY-045",
+      "organ": "thyroid",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 285.7
+    },
+    {
+      "case_id": "THY-041",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4b",
+      "match": true,
+      "latency_ms": 318.5
+    },
+    {
+      "case_id": "THY-043",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4b",
+      "match": true,
+      "latency_ms": 318.7
+    },
+    {
+      "case_id": "THY-054",
+      "organ": "thyroid",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 294.5
+    },
+    {
+      "case_id": "THY-042",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4b",
+      "match": true,
+      "latency_ms": 320.2
+    },
+    {
+      "case_id": "THY-036",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4a",
+      "match": true,
+      "latency_ms": 324.6
+    },
+    {
+      "case_id": "THY-049",
+      "organ": "thyroid",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 299.3
+    },
+    {
+      "case_id": "THY-063",
+      "organ": "thyroid",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 286.6
+    },
+    {
+      "case_id": "THY-051",
+      "organ": "thyroid",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 299.0
+    },
+    {
+      "case_id": "THY-052",
+      "organ": "thyroid",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 298.7
+    },
+    {
+      "case_id": "THY-056",
+      "organ": "thyroid",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 303.8
+    },
+    {
+      "case_id": "THY-039",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4a",
+      "match": true,
+      "latency_ms": 333.0
+    },
+    {
+      "case_id": "THY-060",
+      "organ": "thyroid",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 298.4
+    },
+    {
+      "case_id": "THY-064",
+      "organ": "thyroid",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 295.9
+    },
+    {
+      "case_id": "THY-061",
+      "organ": "thyroid",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 298.6
+    },
+    {
+      "case_id": "THY-046",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4a",
+      "match": true,
+      "latency_ms": 328.3
+    },
+    {
+      "case_id": "THY-062",
+      "organ": "thyroid",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 298.8
+    },
+    {
+      "case_id": "THY-044",
+      "organ": "thyroid",
+      "expected": "5",
+      "got": "4b",
+      "match": false,
+      "latency_ms": 330.6
+    },
+    {
+      "case_id": "THY-047",
+      "organ": "thyroid",
+      "expected": "5",
+      "got": "4b",
+      "match": false,
+      "latency_ms": 323.4
+    },
+    {
+      "case_id": "THY-055",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4b",
+      "match": true,
+      "latency_ms": 318.1
+    },
+    {
+      "case_id": "THY-053",
+      "organ": "thyroid",
+      "expected": "5",
+      "got": "4b",
+      "match": false,
+      "latency_ms": 320.4
+    },
+    {
+      "case_id": "THY-050",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4a",
+      "match": true,
+      "latency_ms": 322.8
+    },
+    {
+      "case_id": "THY-048",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4b",
+      "match": true,
+      "latency_ms": 324.6
+    },
+    {
+      "case_id": "THY-057",
+      "organ": "thyroid",
+      "expected": "5",
+      "got": "4b",
+      "match": false,
+      "latency_ms": 316.6
+    },
+    {
+      "case_id": "THY-059",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4a",
+      "match": true,
+      "latency_ms": 316.2
+    },
+    {
+      "case_id": "THY-058",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4b",
+      "match": true,
+      "latency_ms": 317.4
+    },
+    {
+      "case_id": "THY-066",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4a",
+      "match": true,
+      "latency_ms": 278.7
+    },
+    {
+      "case_id": "THY-065",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4b",
+      "match": true,
+      "latency_ms": 281.6
+    },
+    {
+      "case_id": "THY-071",
+      "organ": "thyroid",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 262.3
+    },
+    {
+      "case_id": "THY-069",
+      "organ": "thyroid",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 265.1
+    },
+    {
+      "case_id": "THY-068",
+      "organ": "thyroid",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 266.3
+    },
+    {
+      "case_id": "THY-070",
+      "organ": "thyroid",
+      "expected": "2",
+      "got": "2",
+      "match": true,
+      "latency_ms": 265.1
+    },
+    {
+      "case_id": "THY-067",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4b",
+      "match": true,
+      "latency_ms": 283.8
+    },
+    {
+      "case_id": "LIV-007",
+      "organ": "liver",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 233.0
+    },
+    {
+      "case_id": "LIV-003",
+      "organ": "liver",
+      "expected": "2",
+      "got": "2",
+      "match": true,
+      "latency_ms": 236.3
+    },
+    {
+      "case_id": "LIV-001",
+      "organ": "liver",
+      "expected": "2",
+      "got": "2",
+      "match": true,
+      "latency_ms": 238.7
+    },
+    {
+      "case_id": "LIV-008",
+      "organ": "liver",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 232.2
+    },
+    {
+      "case_id": "LIV-004",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 237.3
+    },
+    {
+      "case_id": "LIV-006",
+      "organ": "liver",
+      "expected": "2",
+      "got": "2",
+      "match": true,
+      "latency_ms": 236.5
+    },
+    {
+      "case_id": "LIV-005",
+      "organ": "liver",
+      "expected": "2",
+      "got": "2",
+      "match": true,
+      "latency_ms": 237.7
+    },
+    {
+      "case_id": "LIV-002",
+      "organ": "liver",
+      "expected": "2",
+      "got": "2",
+      "match": true,
+      "latency_ms": 240.3
+    },
+    {
+      "case_id": "THY-080",
+      "organ": "thyroid",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 278.6
+    },
+    {
+      "case_id": "THY-077",
+      "organ": "thyroid",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 282.6
+    },
+    {
+      "case_id": "THY-078",
+      "organ": "thyroid",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 282.8
+    },
+    {
+      "case_id": "THY-076",
+      "organ": "thyroid",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 285.4
+    },
+    {
+      "case_id": "THY-079",
+      "organ": "thyroid",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 283.9
+    },
+    {
+      "case_id": "THY-072",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4a",
+      "match": true,
+      "latency_ms": 312.1
+    },
+    {
+      "case_id": "LIV-009",
+      "organ": "liver",
+      "expected": "1",
+      "got": "2",
+      "match": false,
+      "latency_ms": 281.1
+    },
+    {
+      "case_id": "LIV-016",
+      "organ": "liver",
+      "expected": "1",
+      "got": "2",
+      "match": false,
+      "latency_ms": 221.7
+    },
+    {
+      "case_id": "THY-073",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4b",
+      "match": true,
+      "latency_ms": 308.8
+    },
+    {
+      "case_id": "THY-074",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4a",
+      "match": true,
+      "latency_ms": 308.1
+    },
+    {
+      "case_id": "THY-075",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4b",
+      "match": true,
+      "latency_ms": 307.6
+    },
+    {
+      "case_id": "LIV-015",
+      "organ": "liver",
+      "expected": "5",
+      "got": "4",
+      "match": false,
+      "latency_ms": 277.6
+    },
+    {
+      "case_id": "LIV-014",
+      "organ": "liver",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 278.8
+    },
+    {
+      "case_id": "LIV-011",
+      "organ": "liver",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 281.5
+    },
+    {
+      "case_id": "LIV-010",
+      "organ": "liver",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 282.8
+    },
+    {
+      "case_id": "LIV-013",
+      "organ": "liver",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 280.6
+    },
+    {
+      "case_id": "LIV-012",
+      "organ": "liver",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 281.8
+    },
+    {
+      "case_id": "LIV-018",
+      "organ": "liver",
+      "expected": "1",
+      "got": "2",
+      "match": false,
+      "latency_ms": 205.4
+    },
+    {
+      "case_id": "LIV-017",
+      "organ": "liver",
+      "expected": "3",
+      "got": "4",
+      "match": false,
+      "latency_ms": 207.7
+    },
+    {
+      "case_id": "LIV-022",
+      "organ": "liver",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 223.6
+    },
+    {
+      "case_id": "LIV-020",
+      "organ": "liver",
+      "expected": "1",
+      "got": "2",
+      "match": false,
+      "latency_ms": 225.4
+    },
+    {
+      "case_id": "LIV-019",
+      "organ": "liver",
+      "expected": "4",
+      "got": "3",
+      "match": false,
+      "latency_ms": 226.7
+    },
+    {
+      "case_id": "LIV-021",
+      "organ": "liver",
+      "expected": "5",
+      "got": "4",
+      "match": false,
+      "latency_ms": 225.5
+    },
+    {
+      "case_id": "LIV-023",
+      "organ": "liver",
+      "expected": "1",
+      "got": "2",
+      "match": false,
+      "latency_ms": 226.7
+    },
+    {
+      "case_id": "LIV-030",
+      "organ": "liver",
+      "expected": "2",
+      "got": "2",
+      "match": true,
+      "latency_ms": 222.1
+    },
+    {
+      "case_id": "LIV-026",
+      "organ": "liver",
+      "expected": "1",
+      "got": "2",
+      "match": false,
+      "latency_ms": 225.5
+    },
+    {
+      "case_id": "LIV-024",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 227.2
+    },
+    {
+      "case_id": "LIV-031",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 222.7
+    },
+    {
+      "case_id": "LIV-027",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 226.2
+    },
+    {
+      "case_id": "LIV-029",
+      "organ": "liver",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 225.4
+    },
+    {
+      "case_id": "LIV-028",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 226.5
+    },
+    {
+      "case_id": "LIV-025",
+      "organ": "liver",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 228.7
+    },
+    {
+      "case_id": "LIV-036",
+      "organ": "liver",
+      "expected": "1",
+      "got": "2",
+      "match": false,
+      "latency_ms": 222.8
+    },
+    {
+      "case_id": "LIV-033",
+      "organ": "liver",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 227.2
+    },
+    {
+      "case_id": "LIV-034",
+      "organ": "liver",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 226.9
+    },
+    {
+      "case_id": "LIV-032",
+      "organ": "liver",
+      "expected": "2",
+      "got": "2",
+      "match": true,
+      "latency_ms": 228.7
+    },
+    {
+      "case_id": "LIV-035",
+      "organ": "liver",
+      "expected": "5",
+      "got": "4",
+      "match": false,
+      "latency_ms": 226.9
+    },
+    {
+      "case_id": "LIV-037",
+      "organ": "liver",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 223.0
+    },
+    {
+      "case_id": "LIV-046",
+      "organ": "liver",
+      "expected": "2",
+      "got": "2",
+      "match": true,
+      "latency_ms": 217.2
+    },
+    {
+      "case_id": "LIV-048",
+      "organ": "liver",
+      "expected": "5",
+      "got": "4",
+      "match": false,
+      "latency_ms": 216.4
+    },
+    {
+      "case_id": "LIV-040",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 222.2
+    },
+    {
+      "case_id": "LIV-041",
+      "organ": "liver",
+      "expected": "3",
+      "got": "4",
+      "match": false,
+      "latency_ms": 222.0
+    },
+    {
+      "case_id": "LIV-045",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 219.3
+    },
+    {
+      "case_id": "LIV-047",
+      "organ": "liver",
+      "expected": "1",
+      "got": "2",
+      "match": false,
+      "latency_ms": 218.4
+    },
+    {
+      "case_id": "LIV-044",
+      "organ": "liver",
+      "expected": "1",
+      "got": "2",
+      "match": false,
+      "latency_ms": 220.8
+    },
+    {
+      "case_id": "LIV-039",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 224.7
+    },
+    {
+      "case_id": "LIV-038",
+      "organ": "liver",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 225.7
+    },
+    {
+      "case_id": "LIV-043",
+      "organ": "liver",
+      "expected": "1",
+      "got": "3",
+      "match": false,
+      "latency_ms": 222.9
+    },
+    {
+      "case_id": "LIV-042",
+      "organ": "liver",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 223.9
+    },
+    {
+      "case_id": "LIV-050",
+      "organ": "liver",
+      "expected": "1",
+      "got": "2",
+      "match": false,
+      "latency_ms": 205.8
+    },
+    {
+      "case_id": "LIV-049",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 207.1
+    },
+    {
+      "case_id": "LIV-054",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 222.8
+    },
+    {
+      "case_id": "LIV-052",
+      "organ": "liver",
+      "expected": "5",
+      "got": "4",
+      "match": false,
+      "latency_ms": 224.6
+    },
+    {
+      "case_id": "LIV-051",
+      "organ": "liver",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 225.8
+    },
+    {
+      "case_id": "LIV-053",
+      "organ": "liver",
+      "expected": "1",
+      "got": "2",
+      "match": false,
+      "latency_ms": 224.6
+    },
+    {
+      "case_id": "LIV-055",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 216.9
+    },
+    {
+      "case_id": "LIV-062",
+      "organ": "liver",
+      "expected": "1",
+      "got": "2",
+      "match": false,
+      "latency_ms": 213.2
+    },
+    {
+      "case_id": "LIV-056",
+      "organ": "liver",
+      "expected": "2",
+      "got": "2",
+      "match": true,
+      "latency_ms": 217.8
+    },
+    {
+      "case_id": "LIV-058",
+      "organ": "liver",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 216.8
+    },
+    {
+      "case_id": "LIV-063",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 213.5
+    },
+    {
+      "case_id": "LIV-059",
+      "organ": "liver",
+      "expected": "2",
+      "got": "2",
+      "match": true,
+      "latency_ms": 216.8
+    },
+    {
+      "case_id": "LIV-061",
+      "organ": "liver",
+      "expected": "5",
+      "got": "4",
+      "match": false,
+      "latency_ms": 215.9
+    },
+    {
+      "case_id": "LIV-060",
+      "organ": "liver",
+      "expected": "1",
+      "got": "2",
+      "match": false,
+      "latency_ms": 216.8
+    },
+    {
+      "case_id": "LIV-057",
+      "organ": "liver",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 219.1
+    },
+    {
+      "case_id": "LIV-064",
+      "organ": "liver",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 223.1
+    },
+    {
+      "case_id": "LIV-066",
+      "organ": "liver",
+      "expected": "2",
+      "got": "2",
+      "match": true,
+      "latency_ms": 219.8
+    },
+    {
+      "case_id": "LIV-067",
+      "organ": "liver",
+      "expected": "2",
+      "got": "2",
+      "match": true,
+      "latency_ms": 219.5
+    },
+    {
+      "case_id": "LIV-065",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 221.3
+    },
+    {
+      "case_id": "LIV-068",
+      "organ": "liver",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 219.6
+    },
+    {
+      "case_id": "LIV-069",
+      "organ": "liver",
+      "expected": "1",
+      "got": "2",
+      "match": false,
+      "latency_ms": 225.5
+    },
+    {
+      "case_id": "LIV-078",
+      "organ": "liver",
+      "expected": "2",
+      "got": "2",
+      "match": true,
+      "latency_ms": 219.8
+    },
+    {
+      "case_id": "LIV-080",
+      "organ": "liver",
+      "expected": "1",
+      "got": "2",
+      "match": false,
+      "latency_ms": 219.1
+    },
+    {
+      "case_id": "LIV-072",
+      "organ": "liver",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 225.0
+    },
+    {
+      "case_id": "LIV-073",
+      "organ": "liver",
+      "expected": "2",
+      "got": "2",
+      "match": true,
+      "latency_ms": 224.9
+    },
+    {
+      "case_id": "LIV-077",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 222.5
+    },
+    {
+      "case_id": "LIV-079",
+      "organ": "liver",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 221.8
+    },
+    {
+      "case_id": "LIV-076",
+      "organ": "liver",
+      "expected": "5",
+      "got": "4",
+      "match": false,
+      "latency_ms": 224.2
+    },
+    {
+      "case_id": "LIV-071",
+      "organ": "liver",
+      "expected": "5",
+      "got": "4",
+      "match": false,
+      "latency_ms": 228.0
+    },
+    {
+      "case_id": "LIV-070",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 229.1
+    },
+    {
+      "case_id": "LIV-075",
+      "organ": "liver",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 226.2
+    },
+    {
+      "case_id": "LIV-074",
+      "organ": "liver",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 227.2
+    },
+    {
+      "case_id": "CRD-002",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 288.0
+    },
+    {
+      "case_id": "CRD-001",
+      "organ": "cardiac",
+      "expected": "severe",
+      "got": "severe",
+      "match": true,
+      "latency_ms": 308.4
+    },
+    {
+      "case_id": "CRD-012",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "normal",
+      "match": true,
+      "latency_ms": 267.7
+    },
+    {
+      "case_id": "CRD-005",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 305.4
+    },
+    {
+      "case_id": "CRD-010",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 289.4
+    },
+    {
+      "case_id": "CRD-011",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "mild",
+      "match": false,
+      "latency_ms": 289.1
+    },
+    {
+      "case_id": "CRD-006",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 306.8
+    },
+    {
+      "case_id": "CRD-013",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 288.6
+    },
+    {
+      "case_id": "CRD-009",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 291.4
+    },
+    {
+      "case_id": "CRD-007",
+      "organ": "cardiac",
+      "expected": "severe",
+      "got": "severe",
+      "match": true,
+      "latency_ms": 311.4
+    },
+    {
+      "case_id": "CRD-018",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "normal",
+      "match": true,
+      "latency_ms": 272.0
+    },
+    {
+      "case_id": "CRD-004",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "severe",
+      "match": false,
+      "latency_ms": 327.2
+    },
+    {
+      "case_id": "CRD-016",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "normal",
+      "match": true,
+      "latency_ms": 275.2
+    },
+    {
+      "case_id": "CRD-014",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "severe",
+      "match": false,
+      "latency_ms": 310.3
+    },
+    {
+      "case_id": "CRD-003",
+      "organ": "cardiac",
+      "expected": "severe",
+      "got": "severe",
+      "match": true,
+      "latency_ms": 331.9
+    },
+    {
+      "case_id": "CRD-008",
+      "organ": "cardiac",
+      "expected": "severe",
+      "got": "severe",
+      "match": true,
+      "latency_ms": 315.1
+    },
+    {
+      "case_id": "CRD-015",
+      "organ": "cardiac",
+      "expected": "severe",
+      "got": "severe",
+      "match": true,
+      "latency_ms": 310.4
+    },
+    {
+      "case_id": "CRD-020",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 289.8
+    },
+    {
+      "case_id": "CRD-017",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 293.3
+    },
+    {
+      "case_id": "CRD-030",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "normal",
+      "match": true,
+      "latency_ms": 272.3
+    },
+    {
+      "case_id": "CRD-032",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "normal",
+      "match": true,
+      "latency_ms": 271.7
+    },
+    {
+      "case_id": "CRD-024",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "normal",
+      "match": true,
+      "latency_ms": 277.5
+    },
+    {
+      "case_id": "CRD-029",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "normal",
+      "match": true,
+      "latency_ms": 274.3
+    },
+    {
+      "case_id": "CRD-022",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "normal",
+      "match": true,
+      "latency_ms": 279.5
+    },
+    {
+      "case_id": "CRD-026",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "normal",
+      "match": true,
+      "latency_ms": 277.3
+    },
+    {
+      "case_id": "CRD-019",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "severe",
+      "match": false,
+      "latency_ms": 308.9
+    },
+    {
+      "case_id": "CRD-021",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 300.4
+    },
+    {
+      "case_id": "CRD-027",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 297.5
+    },
+    {
+      "case_id": "CRD-028",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 297.4
+    },
+    {
+      "case_id": "CRD-023",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 301.5
+    },
+    {
+      "case_id": "CRD-025",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "severe",
+      "match": false,
+      "latency_ms": 316.0
+    },
+    {
+      "case_id": "CRD-031",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "severe",
+      "match": false,
+      "latency_ms": 313.3
+    },
+    {
+      "case_id": "CRD-033",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "normal",
+      "match": true,
+      "latency_ms": 269.1
+    },
+    {
+      "case_id": "CRD-034",
+      "organ": "cardiac",
+      "expected": "severe",
+      "got": "severe",
+      "match": true,
+      "latency_ms": 307.3
+    },
+    {
+      "case_id": "CRD-035",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "mild",
+      "match": false,
+      "latency_ms": 285.5
+    },
+    {
+      "case_id": "CRD-036",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "normal",
+      "match": true,
+      "latency_ms": 289.9
+    },
+    {
+      "case_id": "CRD-044",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "normal",
+      "match": true,
+      "latency_ms": 288.1
+    },
+    {
+      "case_id": "CRD-048",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "normal",
+      "match": true,
+      "latency_ms": 285.2
+    },
+    {
+      "case_id": "CRD-046",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "normal",
+      "match": true,
+      "latency_ms": 288.0
+    },
+    {
+      "case_id": "CRD-047",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "normal",
+      "match": true,
+      "latency_ms": 287.5
+    },
+    {
+      "case_id": "CRD-041",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 309.3
+    },
+    {
+      "case_id": "CRD-037",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 312.4
+    },
+    {
+      "case_id": "CRD-042",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 307.4
+    },
+    {
+      "case_id": "CRD-051",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 287.4
+    },
+    {
+      "case_id": "CRD-043",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 307.5
+    },
+    {
+      "case_id": "CRD-038",
+      "organ": "cardiac",
+      "expected": "severe",
+      "got": "severe",
+      "match": true,
+      "latency_ms": 326.6
+    },
+    {
+      "case_id": "CRD-039",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "severe",
+      "match": false,
+      "latency_ms": 326.3
+    },
+    {
+      "case_id": "CRD-040",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "severe",
+      "match": false,
+      "latency_ms": 326.0
+    },
+    {
+      "case_id": "CRD-059",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "normal",
+      "match": true,
+      "latency_ms": 270.2
+    },
+    {
+      "case_id": "CRD-050",
+      "organ": "cardiac",
+      "expected": "severe",
+      "got": "severe",
+      "match": true,
+      "latency_ms": 310.5
+    },
+    {
+      "case_id": "CRD-045",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "severe",
+      "match": false,
+      "latency_ms": 327.9
+    },
+    {
+      "case_id": "CRD-060",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "normal",
+      "match": true,
+      "latency_ms": 271.9
+    },
+    {
+      "case_id": "CRD-049",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "severe",
+      "match": false,
+      "latency_ms": 324.1
+    },
+    {
+      "case_id": "CRD-058",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "normal",
+      "match": true,
+      "latency_ms": 291.4
+    },
+    {
+      "case_id": "CRD-056",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 303.9
+    },
+    {
+      "case_id": "CRD-057",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 303.7
+    },
+    {
+      "case_id": "CRD-053",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 306.6
+    },
+    {
+      "case_id": "CRD-064",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "normal",
+      "match": true,
+      "latency_ms": 268.5
+    },
+    {
+      "case_id": "CRD-061",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 284.7
+    },
+    {
+      "case_id": "CRD-054",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "severe",
+      "match": false,
+      "latency_ms": 328.1
+    },
+    {
+      "case_id": "CRD-055",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "severe",
+      "match": false,
+      "latency_ms": 328.8
+    },
+    {
+      "case_id": "CRD-052",
+      "organ": "cardiac",
+      "expected": "severe",
+      "got": "severe",
+      "match": true,
+      "latency_ms": 331.3
+    },
+    {
+      "case_id": "CRD-062",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "severe",
+      "match": false,
+      "latency_ms": 307.5
+    },
+    {
+      "case_id": "CRD-063",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "severe",
+      "match": false,
+      "latency_ms": 308.7
+    },
+    {
+      "case_id": "CRD-065",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "severe",
+      "match": false,
+      "latency_ms": 311.2
+    },
+    {
+      "case_id": "CRD-066",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "normal",
+      "match": true,
+      "latency_ms": 267.8
+    },
+    {
+      "case_id": "CRD-067",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "normal",
+      "match": true,
+      "latency_ms": 273.6
+    },
+    {
+      "case_id": "CRD-068",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 287.2
+    },
+    {
+      "case_id": "CRD-073",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "normal",
+      "match": true,
+      "latency_ms": 282.2
+    },
+    {
+      "case_id": "CRD-069",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "normal",
+      "match": true,
+      "latency_ms": 285.4
+    },
+    {
+      "case_id": "CRD-079",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "mild",
+      "match": false,
+      "latency_ms": 285.3
+    },
+    {
+      "case_id": "CRD-080",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 285.4
+    },
+    {
+      "case_id": "CRD-070",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 305.6
+    },
+    {
+      "case_id": "CRD-077",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "mild",
+      "match": false,
+      "latency_ms": 289.5
+    },
+    {
+      "case_id": "BND-THY-23001",
+      "organ": "thyroid",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 288.2
+    },
+    {
+      "case_id": "BND-THY-23009",
+      "organ": "thyroid",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 274.4
+    },
+    {
+      "case_id": "CRD-075",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "severe",
+      "match": false,
+      "latency_ms": 310.6
+    },
+    {
+      "case_id": "BND-THY-23003",
+      "organ": "thyroid",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 290.1
+    },
+    {
+      "case_id": "BND-THY-23011",
+      "organ": "thyroid",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 276.5
+    },
+    {
+      "case_id": "BND-THY-23004",
+      "organ": "thyroid",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 290.2
+    },
+    {
+      "case_id": "BND-THY-23007",
+      "organ": "thyroid",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 280.0
+    },
+    {
+      "case_id": "CRD-076",
+      "organ": "cardiac",
+      "expected": "severe",
+      "got": "severe",
+      "match": true,
+      "latency_ms": 313.8
+    },
+    {
+      "case_id": "BND-THY-23005",
+      "organ": "thyroid",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 290.6
+    },
+    {
+      "case_id": "BND-THY-23010",
+      "organ": "thyroid",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 279.0
+    },
+    {
+      "case_id": "CRD-074",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "severe",
+      "match": false,
+      "latency_ms": 328.2
+    },
+    {
+      "case_id": "BND-THY-23002",
+      "organ": "thyroid",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 293.7
+    },
+    {
+      "case_id": "BND-THY-23008",
+      "organ": "thyroid",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 289.3
+    },
+    {
+      "case_id": "BND-THY-23006",
+      "organ": "thyroid",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 299.8
+    },
+    {
+      "case_id": "CRD-078",
+      "organ": "cardiac",
+      "expected": "severe",
+      "got": "severe",
+      "match": true,
+      "latency_ms": 323.0
+    },
+    {
+      "case_id": "CRD-072",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "severe",
+      "match": false,
+      "latency_ms": 339.1
+    },
+    {
+      "case_id": "CRD-071",
+      "organ": "cardiac",
+      "expected": "severe",
+      "got": "severe",
+      "match": true,
+      "latency_ms": 340.1
+    },
+    {
+      "case_id": "BND-THY-23016",
+      "organ": "thyroid",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 273.3
+    },
+    {
+      "case_id": "BND-THY-23015",
+      "organ": "thyroid",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 286.9
+    },
+    {
+      "case_id": "BND-THY-23014",
+      "organ": "thyroid",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 288.2
+    },
+    {
+      "case_id": "BND-THY-23012",
+      "organ": "thyroid",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 290.2
+    },
+    {
+      "case_id": "BND-THY-23013",
+      "organ": "thyroid",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 289.7
+    },
+    {
+      "case_id": "BND-THY-23017",
+      "organ": "thyroid",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 264.0
+    },
+    {
+      "case_id": "BND-THY-23018",
+      "organ": "thyroid",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 268.3
+    },
+    {
+      "case_id": "BND-THY-23019",
+      "organ": "thyroid",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 265.2
+    },
+    {
+      "case_id": "BND-THY-23020",
+      "organ": "thyroid",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 269.8
+    },
+    {
+      "case_id": "BND-THY-23022",
+      "organ": "thyroid",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 262.7
+    },
+    {
+      "case_id": "BND-THY-23021",
+      "organ": "thyroid",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 264.9
+    },
+    {
+      "case_id": "BND-THY-23023",
+      "organ": "thyroid",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 264.5
+    },
+    {
+      "case_id": "BND-THY-23024",
+      "organ": "thyroid",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 264.8
+    },
+    {
+      "case_id": "BND-THY-23026",
+      "organ": "thyroid",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 262.6
+    },
+    {
+      "case_id": "BND-THY-23025",
+      "organ": "thyroid",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 263.9
+    },
+    {
+      "case_id": "BND-THY-23027",
+      "organ": "thyroid",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 303.1
+    },
+    {
+      "case_id": "BND-THY-23029",
+      "organ": "thyroid",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 302.0
+    },
+    {
+      "case_id": "BND-THY-23028",
+      "organ": "thyroid",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 303.0
+    },
+    {
+      "case_id": "BND-THY-23034",
+      "organ": "thyroid",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 295.3
+    },
+    {
+      "case_id": "BND-THY-23035",
+      "organ": "thyroid",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 294.7
+    },
+    {
+      "case_id": "BND-THY-23031",
+      "organ": "thyroid",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 298.0
+    },
+    {
+      "case_id": "BND-THY-23037",
+      "organ": "thyroid",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 293.2
+    },
+    {
+      "case_id": "BND-THY-23032",
+      "organ": "thyroid",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 298.0
+    },
+    {
+      "case_id": "BND-THY-23033",
+      "organ": "thyroid",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 297.7
+    },
+    {
+      "case_id": "BND-THY-23040",
+      "organ": "thyroid",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 289.0
+    },
+    {
+      "case_id": "BND-THY-23030",
+      "organ": "thyroid",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 300.8
+    },
+    {
+      "case_id": "BND-THY-23036",
+      "organ": "thyroid",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 296.4
+    },
+    {
+      "case_id": "BND-THY-23039",
+      "organ": "thyroid",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 291.4
+    },
+    {
+      "case_id": "BND-THY-34a043",
+      "organ": "thyroid",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 287.6
+    },
+    {
+      "case_id": "BND-THY-34a041",
+      "organ": "thyroid",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 289.5
+    },
+    {
+      "case_id": "BND-THY-34a042",
+      "organ": "thyroid",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 289.1
+    },
+    {
+      "case_id": "BND-THY-23038",
+      "organ": "thyroid",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 296.0
+    },
+    {
+      "case_id": "BND-THY-34a045",
+      "organ": "thyroid",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 286.6
+    },
+    {
+      "case_id": "BND-THY-34a048",
+      "organ": "thyroid",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 284.9
+    },
+    {
+      "case_id": "BND-THY-34a047",
+      "organ": "thyroid",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 285.9
+    },
+    {
+      "case_id": "BND-THY-34a044",
+      "organ": "thyroid",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 288.6
+    },
+    {
+      "case_id": "BND-THY-34a046",
+      "organ": "thyroid",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 287.3
+    },
+    {
+      "case_id": "BND-THY-34a049",
+      "organ": "thyroid",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 269.3
+    },
+    {
+      "case_id": "BND-THY-34a050",
+      "organ": "thyroid",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 267.2
+    },
+    {
+      "case_id": "BND-THY-34a051",
+      "organ": "thyroid",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 265.7
+    },
+    {
+      "case_id": "BND-THY-34a054",
+      "organ": "thyroid",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 269.4
+    },
+    {
+      "case_id": "BND-THY-34a053",
+      "organ": "thyroid",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 271.4
+    },
+    {
+      "case_id": "BND-THY-34a052",
+      "organ": "thyroid",
+      "expected": "3",
+      "got": "4a",
+      "match": false,
+      "latency_ms": 288.6
+    },
+    {
+      "case_id": "BND-THY-34a057",
+      "organ": "thyroid",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 283.2
+    },
+    {
+      "case_id": "BND-THY-34a058",
+      "organ": "thyroid",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 283.0
+    },
+    {
+      "case_id": "BND-THY-34a056",
+      "organ": "thyroid",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 284.7
+    },
+    {
+      "case_id": "BND-THY-34a055",
+      "organ": "thyroid",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 286.0
+    },
+    {
+      "case_id": "BND-THY-34a059",
+      "organ": "thyroid",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 302.4
+    },
+    {
+      "case_id": "BND-THY-34a079",
+      "organ": "thyroid",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 282.4
+    },
+    {
+      "case_id": "BND-THY-34a060",
+      "organ": "thyroid",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 303.3
+    },
+    {
+      "case_id": "BND-THY-34a072",
+      "organ": "thyroid",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 292.6
+    },
+    {
+      "case_id": "BND-THY-34a062",
+      "organ": "thyroid",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 302.5
+    },
+    {
+      "case_id": "BND-THY-34a075",
+      "organ": "thyroid",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 291.4
+    },
+    {
+      "case_id": "BND-THY-34a066",
+      "organ": "thyroid",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 300.0
+    },
+    {
+      "case_id": "BND-THY-34a076",
+      "organ": "thyroid",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 287.9
+    },
+    {
+      "case_id": "BND-THY-34a070",
+      "organ": "thyroid",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 295.9
+    },
+    {
+      "case_id": "BND-THY-34a061",
+      "organ": "thyroid",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 305.0
+    },
+    {
+      "case_id": "BND-THY-34a064",
+      "organ": "thyroid",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 303.5
+    },
+    {
+      "case_id": "BND-THY-34a078",
+      "organ": "thyroid",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 288.3
+    },
+    {
+      "case_id": "BND-THY-34a067",
+      "organ": "thyroid",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 302.6
+    },
+    {
+      "case_id": "BND-THY-34a074",
+      "organ": "thyroid",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 296.7
+    },
+    {
+      "case_id": "BND-THY-34a063",
+      "organ": "thyroid",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 307.7
+    },
+    {
+      "case_id": "BND-THY-34a071",
+      "organ": "thyroid",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 300.3
+    },
+    {
+      "case_id": "BND-THY-34a073",
+      "organ": "thyroid",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 310.6
+    },
+    {
+      "case_id": "BND-THY-34a077",
+      "organ": "thyroid",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 304.7
+    },
+    {
+      "case_id": "BND-THY-34a068",
+      "organ": "thyroid",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 315.5
+    },
+    {
+      "case_id": "BND-THY-34a080",
+      "organ": "thyroid",
+      "expected": "3",
+      "got": "4a",
+      "match": false,
+      "latency_ms": 307.6
+    },
+    {
+      "case_id": "BND-THY-34a069",
+      "organ": "thyroid",
+      "expected": "3",
+      "got": "4a",
+      "match": false,
+      "latency_ms": 321.2
+    },
+    {
+      "case_id": "BND-THY-34a065",
+      "organ": "thyroid",
+      "expected": "3",
+      "got": "4a",
+      "match": false,
+      "latency_ms": 326.4
+    },
+    {
+      "case_id": "BND-THY-4A4b081",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "3",
+      "match": false,
+      "latency_ms": 266.6
+    },
+    {
+      "case_id": "BND-THY-4A4b082",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4b",
+      "match": false,
+      "latency_ms": 281.5
+    },
+    {
+      "case_id": "BND-THY-4A4b083",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4a",
+      "match": true,
+      "latency_ms": 285.5
+    },
+    {
+      "case_id": "BND-THY-4A4b086",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4a",
+      "match": true,
+      "latency_ms": 280.2
+    },
+    {
+      "case_id": "BND-THY-4A4b084",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4a",
+      "match": true,
+      "latency_ms": 283.1
+    },
+    {
+      "case_id": "BND-THY-4A4b085",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4a",
+      "match": true,
+      "latency_ms": 282.6
+    },
+    {
+      "case_id": "BND-THY-4A4b090",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "3",
+      "match": false,
+      "latency_ms": 261.8
+    },
+    {
+      "case_id": "BND-THY-4A4b089",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4a",
+      "match": true,
+      "latency_ms": 278.3
+    },
+    {
+      "case_id": "BND-THY-4A4b087",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4a",
+      "match": true,
+      "latency_ms": 281.4
+    },
+    {
+      "case_id": "BND-THY-4A4b088",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4a",
+      "match": true,
+      "latency_ms": 281.0
+    },
+    {
+      "case_id": "BND-THY-4A4b091",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "3",
+      "match": false,
+      "latency_ms": 291.0
+    },
+    {
+      "case_id": "BND-THY-4A4b103",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "3",
+      "match": false,
+      "latency_ms": 282.7
+    },
+    {
+      "case_id": "BND-THY-4A4b098",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "3",
+      "match": false,
+      "latency_ms": 286.3
+    },
+    {
+      "case_id": "BND-THY-4A4b100",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "3",
+      "match": false,
+      "latency_ms": 287.5
+    },
+    {
+      "case_id": "BND-THY-4A4b096",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "3",
+      "match": false,
+      "latency_ms": 291.1
+    },
+    {
+      "case_id": "BND-THY-4A4b101",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4a",
+      "match": true,
+      "latency_ms": 302.5
+    },
+    {
+      "case_id": "BND-THY-4A4b097",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4a",
+      "match": true,
+      "latency_ms": 307.4
+    },
+    {
+      "case_id": "BND-THY-4A4b102",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4a",
+      "match": true,
+      "latency_ms": 303.9
+    },
+    {
+      "case_id": "BND-THY-4A4b094",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4a",
+      "match": true,
+      "latency_ms": 310.0
+    },
+    {
+      "case_id": "BND-THY-4A4b112",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "3",
+      "match": false,
+      "latency_ms": 291.7
+    },
+    {
+      "case_id": "BND-THY-4A4b093",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4a",
+      "match": true,
+      "latency_ms": 311.5
+    },
+    {
+      "case_id": "BND-THY-4A4b106",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "3",
+      "match": false,
+      "latency_ms": 302.9
+    },
+    {
+      "case_id": "BND-THY-4A4b099",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4a",
+      "match": true,
+      "latency_ms": 307.6
+    },
+    {
+      "case_id": "BND-THY-4A4b095",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4a",
+      "match": true,
+      "latency_ms": 311.2
+    },
+    {
+      "case_id": "BND-THY-4A4b110",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "3",
+      "match": false,
+      "latency_ms": 295.0
+    },
+    {
+      "case_id": "BND-THY-4A4b109",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4a",
+      "match": true,
+      "latency_ms": 311.1
+    },
+    {
+      "case_id": "BND-THY-4A4b113",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4a",
+      "match": true,
+      "latency_ms": 284.5
+    },
+    {
+      "case_id": "BND-THY-4A4b107",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4a",
+      "match": true,
+      "latency_ms": 314.7
+    },
+    {
+      "case_id": "BND-THY-4A4b111",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4a",
+      "match": true,
+      "latency_ms": 308.0
+    },
+    {
+      "case_id": "BND-THY-4A4b104",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4a",
+      "match": true,
+      "latency_ms": 319.4
+    },
+    {
+      "case_id": "BND-THY-4A4b092",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4a",
+      "match": true,
+      "latency_ms": 328.2
+    },
+    {
+      "case_id": "BND-THY-4A4b108",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4a",
+      "match": true,
+      "latency_ms": 314.7
+    },
+    {
+      "case_id": "BND-THY-4A4b105",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4a",
+      "match": true,
+      "latency_ms": 319.8
+    },
+    {
+      "case_id": "BND-THY-4A4b114",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "3",
+      "match": false,
+      "latency_ms": 271.1
+    },
+    {
+      "case_id": "BND-THY-4A4b115",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4a",
+      "match": true,
+      "latency_ms": 288.1
+    },
+    {
+      "case_id": "BND-THY-4A4b118",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4a",
+      "match": true,
+      "latency_ms": 283.1
+    },
+    {
+      "case_id": "BND-THY-4A4b116",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4a",
+      "match": true,
+      "latency_ms": 285.1
+    },
+    {
+      "case_id": "BND-THY-4A4b117",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4a",
+      "match": true,
+      "latency_ms": 284.5
+    },
+    {
+      "case_id": "BND-THY-4A4b119",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4a",
+      "match": true,
+      "latency_ms": 283.8
+    },
+    {
+      "case_id": "BND-THY-4B5121",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "3",
+      "match": false,
+      "latency_ms": 265.6
+    },
+    {
+      "case_id": "BND-THY-4B5122",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4a",
+      "match": false,
+      "latency_ms": 284.8
+    },
+    {
+      "case_id": "BND-THY-4A4b120",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4a",
+      "match": true,
+      "latency_ms": 286.8
+    },
+    {
+      "case_id": "BND-THY-4B5123",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4a",
+      "match": false,
+      "latency_ms": 304.3
+    },
+    {
+      "case_id": "BND-THY-4B5125",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4a",
+      "match": false,
+      "latency_ms": 303.1
+    },
+    {
+      "case_id": "BND-THY-4B5124",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4a",
+      "match": false,
+      "latency_ms": 304.1
+    },
+    {
+      "case_id": "BND-THY-4B5127",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4a",
+      "match": false,
+      "latency_ms": 303.4
+    },
+    {
+      "case_id": "BND-THY-4B5126",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4a",
+      "match": false,
+      "latency_ms": 304.7
+    },
+    {
+      "case_id": "BND-THY-4B5131",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4a",
+      "match": false,
+      "latency_ms": 294.9
+    },
+    {
+      "case_id": "BND-THY-4B5129",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4a",
+      "match": false,
+      "latency_ms": 296.8
+    },
+    {
+      "case_id": "BND-THY-4B5130",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4a",
+      "match": false,
+      "latency_ms": 296.5
+    },
+    {
+      "case_id": "BND-THY-4B5128",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4a",
+      "match": false,
+      "latency_ms": 298.5
+    },
+    {
+      "case_id": "BND-THY-4B5134",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4a",
+      "match": false,
+      "latency_ms": 313.4
+    },
+    {
+      "case_id": "BND-THY-4B5136",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4a",
+      "match": false,
+      "latency_ms": 311.8
+    },
+    {
+      "case_id": "BND-THY-4B5144",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4a",
+      "match": false,
+      "latency_ms": 299.1
+    },
+    {
+      "case_id": "BND-THY-4B5138",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4a",
+      "match": false,
+      "latency_ms": 305.8
+    },
+    {
+      "case_id": "BND-THY-4B5140",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4a",
+      "match": false,
+      "latency_ms": 304.6
+    },
+    {
+      "case_id": "BND-THY-4B5145",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4a",
+      "match": false,
+      "latency_ms": 301.6
+    },
+    {
+      "case_id": "BND-THY-4B5141",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4a",
+      "match": false,
+      "latency_ms": 304.6
+    },
+    {
+      "case_id": "BND-THY-4B5135",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4a",
+      "match": false,
+      "latency_ms": 317.0
+    },
+    {
+      "case_id": "BND-THY-4B5143",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4a",
+      "match": false,
+      "latency_ms": 304.1
+    },
+    {
+      "case_id": "BND-THY-4B5139",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4a",
+      "match": false,
+      "latency_ms": 307.0
+    },
+    {
+      "case_id": "BND-THY-4B5137",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4a",
+      "match": false,
+      "latency_ms": 316.5
+    },
+    {
+      "case_id": "BND-THY-4B5133",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4a",
+      "match": false,
+      "latency_ms": 320.3
+    },
+    {
+      "case_id": "BND-THY-4B5142",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4a",
+      "match": false,
+      "latency_ms": 314.0
+    },
+    {
+      "case_id": "BND-THY-4B5146",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4b",
+      "match": true,
+      "latency_ms": 301.4
+    },
+    {
+      "case_id": "BND-THY-4B5132",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4a",
+      "match": false,
+      "latency_ms": 330.0
+    },
+    {
+      "case_id": "BND-THY-4B5147",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4b",
+      "match": true,
+      "latency_ms": 288.2
+    },
+    {
+      "case_id": "BND-THY-4B5150",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4a",
+      "match": false,
+      "latency_ms": 293.6
+    },
+    {
+      "case_id": "BND-THY-4B5148",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4a",
+      "match": false,
+      "latency_ms": 295.6
+    },
+    {
+      "case_id": "BND-THY-4B5149",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4a",
+      "match": false,
+      "latency_ms": 295.2
+    },
+    {
+      "case_id": "BND-THY-4B5152",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4a",
+      "match": false,
+      "latency_ms": 293.8
+    },
+    {
+      "case_id": "BND-THY-4B5151",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4a",
+      "match": false,
+      "latency_ms": 295.1
+    },
+    {
+      "case_id": "BND-THY-4B5154",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4a",
+      "match": false,
+      "latency_ms": 296.8
+    },
+    {
+      "case_id": "BND-THY-4B5153",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4a",
+      "match": false,
+      "latency_ms": 298.4
+    },
+    {
+      "case_id": "BND-LIV-12003",
+      "organ": "liver",
+      "expected": "1",
+      "got": "2",
+      "match": false,
+      "latency_ms": 223.4
+    },
+    {
+      "case_id": "BND-LIV-12002",
+      "organ": "liver",
+      "expected": "1",
+      "got": "2",
+      "match": false,
+      "latency_ms": 224.5
+    },
+    {
+      "case_id": "BND-LIV-12001",
+      "organ": "liver",
+      "expected": "1",
+      "got": "2",
+      "match": false,
+      "latency_ms": 227.3
+    },
+    {
+      "case_id": "BND-LIV-12004",
+      "organ": "liver",
+      "expected": "1",
+      "got": "2",
+      "match": false,
+      "latency_ms": 248.8
+    },
+    {
+      "case_id": "BND-LIV-12005",
+      "organ": "liver",
+      "expected": "1",
+      "got": "2",
+      "match": false,
+      "latency_ms": 248.7
+    },
+    {
+      "case_id": "BND-LIV-12006",
+      "organ": "liver",
+      "expected": "1",
+      "got": "2",
+      "match": false,
+      "latency_ms": 248.7
+    },
+    {
+      "case_id": "BND-LIV-12007",
+      "organ": "liver",
+      "expected": "1",
+      "got": "2",
+      "match": false,
+      "latency_ms": 245.3
+    },
+    {
+      "case_id": "BND-LIV-12009",
+      "organ": "liver",
+      "expected": "1",
+      "got": "2",
+      "match": false,
+      "latency_ms": 244.1
+    },
+    {
+      "case_id": "BND-LIV-12011",
+      "organ": "liver",
+      "expected": "1",
+      "got": "2",
+      "match": false,
+      "latency_ms": 243.5
+    },
+    {
+      "case_id": "BND-LIV-12012",
+      "organ": "liver",
+      "expected": "1",
+      "got": "2",
+      "match": false,
+      "latency_ms": 243.2
+    },
+    {
+      "case_id": "BND-LIV-12017",
+      "organ": "liver",
+      "expected": "1",
+      "got": "2",
+      "match": false,
+      "latency_ms": 236.4
+    },
+    {
+      "case_id": "BND-LIV-12013",
+      "organ": "liver",
+      "expected": "1",
+      "got": "2",
+      "match": false,
+      "latency_ms": 243.0
+    },
+    {
+      "case_id": "BND-LIV-12008",
+      "organ": "liver",
+      "expected": "1",
+      "got": "2",
+      "match": false,
+      "latency_ms": 246.9
+    },
+    {
+      "case_id": "BND-LIV-12015",
+      "organ": "liver",
+      "expected": "1",
+      "got": "2",
+      "match": false,
+      "latency_ms": 241.5
+    },
+    {
+      "case_id": "BND-LIV-12010",
+      "organ": "liver",
+      "expected": "1",
+      "got": "2",
+      "match": false,
+      "latency_ms": 246.2
+    },
+    {
+      "case_id": "BND-LIV-12018",
+      "organ": "liver",
+      "expected": "1",
+      "got": "2",
+      "match": false,
+      "latency_ms": 236.9
+    },
+    {
+      "case_id": "BND-LIV-12016",
+      "organ": "liver",
+      "expected": "1",
+      "got": "2",
+      "match": false,
+      "latency_ms": 239.9
+    },
+    {
+      "case_id": "BND-LIV-12014",
+      "organ": "liver",
+      "expected": "1",
+      "got": "2",
+      "match": false,
+      "latency_ms": 243.6
+    },
+    {
+      "case_id": "BND-LIV-12019",
+      "organ": "liver",
+      "expected": "1",
+      "got": "2",
+      "match": false,
+      "latency_ms": 229.7
+    },
+    {
+      "case_id": "BND-THY-4B5155",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4a",
+      "match": false,
+      "latency_ms": 320.6
+    },
+    {
+      "case_id": "BND-THY-4B5157",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4a",
+      "match": false,
+      "latency_ms": 321.0
+    },
+    {
+      "case_id": "BND-THY-4B5156",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4a",
+      "match": false,
+      "latency_ms": 323.1
+    },
+    {
+      "case_id": "BND-THY-4B5159",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4a",
+      "match": false,
+      "latency_ms": 320.4
+    },
+    {
+      "case_id": "BND-THY-4B5160",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4a",
+      "match": false,
+      "latency_ms": 308.4
+    },
+    {
+      "case_id": "BND-THY-4B5158",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4a",
+      "match": false,
+      "latency_ms": 322.1
+    },
+    {
+      "case_id": "BND-LIV-12022",
+      "organ": "liver",
+      "expected": "1",
+      "got": "2",
+      "match": false,
+      "latency_ms": 211.6
+    },
+    {
+      "case_id": "BND-LIV-12020",
+      "organ": "liver",
+      "expected": "1",
+      "got": "2",
+      "match": false,
+      "latency_ms": 214.2
+    },
+    {
+      "case_id": "BND-LIV-12021",
+      "organ": "liver",
+      "expected": "1",
+      "got": "2",
+      "match": false,
+      "latency_ms": 213.7
+    },
+    {
+      "case_id": "BND-LIV-12024",
+      "organ": "liver",
+      "expected": "1",
+      "got": "2",
+      "match": false,
+      "latency_ms": 227.7
+    },
+    {
+      "case_id": "BND-LIV-12023",
+      "organ": "liver",
+      "expected": "1",
+      "got": "2",
+      "match": false,
+      "latency_ms": 229.2
+    },
+    {
+      "case_id": "BND-LIV-12026",
+      "organ": "liver",
+      "expected": "1",
+      "got": "2",
+      "match": false,
+      "latency_ms": 220.4
+    },
+    {
+      "case_id": "BND-LIV-12025",
+      "organ": "liver",
+      "expected": "1",
+      "got": "2",
+      "match": false,
+      "latency_ms": 222.1
+    },
+    {
+      "case_id": "BND-LIV-12028",
+      "organ": "liver",
+      "expected": "1",
+      "got": "2",
+      "match": false,
+      "latency_ms": 225.9
+    },
+    {
+      "case_id": "BND-LIV-12027",
+      "organ": "liver",
+      "expected": "1",
+      "got": "2",
+      "match": false,
+      "latency_ms": 228.4
+    },
+    {
+      "case_id": "BND-LIV-12029",
+      "organ": "liver",
+      "expected": "1",
+      "got": "2",
+      "match": false,
+      "latency_ms": 226.3
+    },
+    {
+      "case_id": "BND-LIV-12037",
+      "organ": "liver",
+      "expected": "1",
+      "got": "2",
+      "match": false,
+      "latency_ms": 252.8
+    },
+    {
+      "case_id": "BND-LIV-12040",
+      "organ": "liver",
+      "expected": "1",
+      "got": "2",
+      "match": false,
+      "latency_ms": 251.2
+    },
+    {
+      "case_id": "BND-LIV-23042",
+      "organ": "liver",
+      "expected": "2",
+      "got": "2",
+      "match": true,
+      "latency_ms": 250.3
+    },
+    {
+      "case_id": "BND-LIV-12031",
+      "organ": "liver",
+      "expected": "1",
+      "got": "2",
+      "match": false,
+      "latency_ms": 258.4
+    },
+    {
+      "case_id": "BND-LIV-12033",
+      "organ": "liver",
+      "expected": "1",
+      "got": "2",
+      "match": false,
+      "latency_ms": 257.4
+    },
+    {
+      "case_id": "BND-LIV-23043",
+      "organ": "liver",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 250.7
+    },
+    {
+      "case_id": "BND-LIV-12036",
+      "organ": "liver",
+      "expected": "1",
+      "got": "2",
+      "match": false,
+      "latency_ms": 256.2
+    },
+    {
+      "case_id": "BND-LIV-12039",
+      "organ": "liver",
+      "expected": "1",
+      "got": "2",
+      "match": false,
+      "latency_ms": 253.9
+    },
+    {
+      "case_id": "BND-LIV-23041",
+      "organ": "liver",
+      "expected": "2",
+      "got": "2",
+      "match": true,
+      "latency_ms": 253.0
+    },
+    {
+      "case_id": "BND-LIV-12032",
+      "organ": "liver",
+      "expected": "1",
+      "got": "2",
+      "match": false,
+      "latency_ms": 259.8
+    },
+    {
+      "case_id": "BND-LIV-23044",
+      "organ": "liver",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 251.8
+    },
+    {
+      "case_id": "BND-LIV-12035",
+      "organ": "liver",
+      "expected": "1",
+      "got": "2",
+      "match": false,
+      "latency_ms": 258.6
+    },
+    {
+      "case_id": "BND-LIV-12038",
+      "organ": "liver",
+      "expected": "1",
+      "got": "2",
+      "match": false,
+      "latency_ms": 256.4
+    },
+    {
+      "case_id": "BND-LIV-12030",
+      "organ": "liver",
+      "expected": "1",
+      "got": "2",
+      "match": false,
+      "latency_ms": 262.8
+    },
+    {
+      "case_id": "BND-LIV-23045",
+      "organ": "liver",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 250.8
+    },
+    {
+      "case_id": "BND-LIV-12034",
+      "organ": "liver",
+      "expected": "1",
+      "got": "2",
+      "match": false,
+      "latency_ms": 260.7
+    },
+    {
+      "case_id": "BND-LIV-23046",
+      "organ": "liver",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 246.3
+    },
+    {
+      "case_id": "BND-LIV-23051",
+      "organ": "liver",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 243.1
+    },
+    {
+      "case_id": "BND-LIV-23049",
+      "organ": "liver",
+      "expected": "2",
+      "got": "2",
+      "match": true,
+      "latency_ms": 244.7
+    },
+    {
+      "case_id": "BND-LIV-23050",
+      "organ": "liver",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 244.4
+    },
+    {
+      "case_id": "BND-LIV-23047",
+      "organ": "liver",
+      "expected": "2",
+      "got": "2",
+      "match": true,
+      "latency_ms": 246.8
+    },
+    {
+      "case_id": "BND-LIV-23048",
+      "organ": "liver",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 246.5
+    },
+    {
+      "case_id": "BND-LIV-23054",
+      "organ": "liver",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 222.1
+    },
+    {
+      "case_id": "BND-LIV-23052",
+      "organ": "liver",
+      "expected": "2",
+      "got": "2",
+      "match": true,
+      "latency_ms": 224.1
+    },
+    {
+      "case_id": "BND-LIV-23053",
+      "organ": "liver",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 223.6
+    },
+    {
+      "case_id": "BND-LIV-23056",
+      "organ": "liver",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 215.8
+    },
+    {
+      "case_id": "BND-LIV-23055",
+      "organ": "liver",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 220.1
+    },
+    {
+      "case_id": "BND-LIV-23058",
+      "organ": "liver",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 207.4
+    },
+    {
+      "case_id": "BND-LIV-23057",
+      "organ": "liver",
+      "expected": "2",
+      "got": "2",
+      "match": true,
+      "latency_ms": 209.2
+    },
+    {
+      "case_id": "BND-LIV-23059",
+      "organ": "liver",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 209.2
+    },
+    {
+      "case_id": "BND-LIV-23061",
+      "organ": "liver",
+      "expected": "2",
+      "got": "2",
+      "match": true,
+      "latency_ms": 226.9
+    },
+    {
+      "case_id": "BND-LIV-23060",
+      "organ": "liver",
+      "expected": "2",
+      "got": "2",
+      "match": true,
+      "latency_ms": 228.1
+    },
+    {
+      "case_id": "BND-LIV-23078",
+      "organ": "liver",
+      "expected": "2",
+      "got": "2",
+      "match": true,
+      "latency_ms": 225.7
+    },
+    {
+      "case_id": "BND-LIV-23068",
+      "organ": "liver",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 237.3
+    },
+    {
+      "case_id": "BND-LIV-34082",
+      "organ": "liver",
+      "expected": "3",
+      "got": "4",
+      "match": false,
+      "latency_ms": 225.6
+    },
+    {
+      "case_id": "BND-LIV-23074",
+      "organ": "liver",
+      "expected": "2",
+      "got": "2",
+      "match": true,
+      "latency_ms": 235.0
+    },
+    {
+      "case_id": "BND-LIV-23079",
+      "organ": "liver",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 228.2
+    },
+    {
+      "case_id": "BND-LIV-23064",
+      "organ": "liver",
+      "expected": "2",
+      "got": "2",
+      "match": true,
+      "latency_ms": 245.9
+    },
+    {
+      "case_id": "BND-LIV-23077",
+      "organ": "liver",
+      "expected": "2",
+      "got": "2",
+      "match": true,
+      "latency_ms": 234.0
+    },
+    {
+      "case_id": "BND-LIV-23067",
+      "organ": "liver",
+      "expected": "2",
+      "got": "2",
+      "match": true,
+      "latency_ms": 241.9
+    },
+    {
+      "case_id": "BND-LIV-23080",
+      "organ": "liver",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 228.9
+    },
+    {
+      "case_id": "BND-LIV-23073",
+      "organ": "liver",
+      "expected": "2",
+      "got": "2",
+      "match": true,
+      "latency_ms": 237.6
+    },
+    {
+      "case_id": "BND-LIV-23063",
+      "organ": "liver",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 248.2
+    },
+    {
+      "case_id": "BND-LIV-34081",
+      "organ": "liver",
+      "expected": "3",
+      "got": "4",
+      "match": false,
+      "latency_ms": 229.3
+    },
+    {
+      "case_id": "BND-LIV-23062",
+      "organ": "liver",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 249.7
+    },
+    {
+      "case_id": "BND-LIV-23066",
+      "organ": "liver",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 247.3
+    },
+    {
+      "case_id": "BND-LIV-23070",
+      "organ": "liver",
+      "expected": "2",
+      "got": "2",
+      "match": true,
+      "latency_ms": 241.3
+    },
+    {
+      "case_id": "BND-LIV-23069",
+      "organ": "liver",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 242.5
+    },
+    {
+      "case_id": "BND-LIV-23076",
+      "organ": "liver",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 238.1
+    },
+    {
+      "case_id": "BND-LIV-34083",
+      "organ": "liver",
+      "expected": "3",
+      "got": "2",
+      "match": false,
+      "latency_ms": 230.3
+    },
+    {
+      "case_id": "BND-LIV-23075",
+      "organ": "liver",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 239.5
+    },
+    {
+      "case_id": "BND-LIV-23065",
+      "organ": "liver",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 250.2
+    },
+    {
+      "case_id": "BND-LIV-34086",
+      "organ": "liver",
+      "expected": "3",
+      "got": "4",
+      "match": false,
+      "latency_ms": 238.0
+    },
+    {
+      "case_id": "BND-LIV-23072",
+      "organ": "liver",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 255.2
+    },
+    {
+      "case_id": "BND-LIV-34085",
+      "organ": "liver",
+      "expected": "3",
+      "got": "2",
+      "match": false,
+      "latency_ms": 239.4
+    },
+    {
+      "case_id": "BND-LIV-34084",
+      "organ": "liver",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 240.5
+    },
+    {
+      "case_id": "BND-LIV-23071",
+      "organ": "liver",
+      "expected": "2",
+      "got": "3",
+      "match": false,
+      "latency_ms": 256.8
+    },
+    {
+      "case_id": "BND-LIV-34090",
+      "organ": "liver",
+      "expected": "3",
+      "got": "4",
+      "match": false,
+      "latency_ms": 225.5
+    },
+    {
+      "case_id": "BND-LIV-34087",
+      "organ": "liver",
+      "expected": "3",
+      "got": "2",
+      "match": false,
+      "latency_ms": 236.7
+    },
+    {
+      "case_id": "BND-LIV-34088",
+      "organ": "liver",
+      "expected": "3",
+      "got": "2",
+      "match": false,
+      "latency_ms": 234.8
+    },
+    {
+      "case_id": "BND-LIV-34089",
+      "organ": "liver",
+      "expected": "3",
+      "got": "2",
+      "match": false,
+      "latency_ms": 229.7
+    },
+    {
+      "case_id": "BND-LIV-34091",
+      "organ": "liver",
+      "expected": "3",
+      "got": "4",
+      "match": false,
+      "latency_ms": 202.3
+    },
+    {
+      "case_id": "BND-LIV-34093",
+      "organ": "liver",
+      "expected": "3",
+      "got": "2",
+      "match": false,
+      "latency_ms": 214.4
+    },
+    {
+      "case_id": "BND-LIV-34092",
+      "organ": "liver",
+      "expected": "3",
+      "got": "4",
+      "match": false,
+      "latency_ms": 216.3
+    },
+    {
+      "case_id": "BND-LIV-34094",
+      "organ": "liver",
+      "expected": "3",
+      "got": "2",
+      "match": false,
+      "latency_ms": 252.8
+    },
+    {
+      "case_id": "BND-LIV-34097",
+      "organ": "liver",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 244.4
+    },
+    {
+      "case_id": "BND-LIV-34095",
+      "organ": "liver",
+      "expected": "3",
+      "got": "4",
+      "match": false,
+      "latency_ms": 253.2
+    },
+    {
+      "case_id": "BND-LIV-34098",
+      "organ": "liver",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 244.8
+    },
+    {
+      "case_id": "BND-LIV-34096",
+      "organ": "liver",
+      "expected": "3",
+      "got": "4",
+      "match": false,
+      "latency_ms": 247.0
+    },
+    {
+      "case_id": "BND-LIV-34105",
+      "organ": "liver",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 254.2
+    },
+    {
+      "case_id": "BND-LIV-34099",
+      "organ": "liver",
+      "expected": "3",
+      "got": "2",
+      "match": false,
+      "latency_ms": 260.0
+    },
+    {
+      "case_id": "BND-LIV-34110",
+      "organ": "liver",
+      "expected": "3",
+      "got": "4",
+      "match": false,
+      "latency_ms": 252.8
+    },
+    {
+      "case_id": "BND-LIV-34120",
+      "organ": "liver",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 228.5
+    },
+    {
+      "case_id": "BND-LIV-34101",
+      "organ": "liver",
+      "expected": "3",
+      "got": "4",
+      "match": false,
+      "latency_ms": 259.8
+    },
+    {
+      "case_id": "BND-LIV-34113",
+      "organ": "liver",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 252.0
+    },
+    {
+      "case_id": "BND-LIV-34104",
+      "organ": "liver",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 258.0
+    },
+    {
+      "case_id": "BND-LIV-34108",
+      "organ": "liver",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 255.9
+    },
+    {
+      "case_id": "BND-LIV-34102",
+      "organ": "liver",
+      "expected": "3",
+      "got": "4",
+      "match": false,
+      "latency_ms": 260.5
+    },
+    {
+      "case_id": "BND-LIV-34119",
+      "organ": "liver",
+      "expected": "3",
+      "got": "4",
+      "match": false,
+      "latency_ms": 231.5
+    },
+    {
+      "case_id": "BND-LIV-45121",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 230.2
+    },
+    {
+      "case_id": "BND-LIV-34103",
+      "organ": "liver",
+      "expected": "3",
+      "got": "4",
+      "match": false,
+      "latency_ms": 260.5
+    },
+    {
+      "case_id": "BND-LIV-34107",
+      "organ": "liver",
+      "expected": "3",
+      "got": "4",
+      "match": false,
+      "latency_ms": 266.8
+    },
+    {
+      "case_id": "BND-LIV-45122",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 239.2
+    },
+    {
+      "case_id": "BND-LIV-34106",
+      "organ": "liver",
+      "expected": "3",
+      "got": "4",
+      "match": false,
+      "latency_ms": 268.1
+    },
+    {
+      "case_id": "BND-LIV-34112",
+      "organ": "liver",
+      "expected": "3",
+      "got": "4",
+      "match": false,
+      "latency_ms": 264.6
+    },
+    {
+      "case_id": "BND-LIV-34109",
+      "organ": "liver",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 266.8
+    },
+    {
+      "case_id": "BND-LIV-34111",
+      "organ": "liver",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 265.9
+    },
+    {
+      "case_id": "BND-LIV-34100",
+      "organ": "liver",
+      "expected": "3",
+      "got": "4",
+      "match": false,
+      "latency_ms": 273.9
+    },
+    {
+      "case_id": "BND-LIV-34117",
+      "organ": "liver",
+      "expected": "3",
+      "got": "4",
+      "match": false,
+      "latency_ms": 260.0
+    },
+    {
+      "case_id": "BND-LIV-34115",
+      "organ": "liver",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 261.6
+    },
+    {
+      "case_id": "BND-LIV-34118",
+      "organ": "liver",
+      "expected": "3",
+      "got": "4",
+      "match": false,
+      "latency_ms": 260.0
+    },
+    {
+      "case_id": "BND-LIV-34114",
+      "organ": "liver",
+      "expected": "3",
+      "got": "3",
+      "match": true,
+      "latency_ms": 263.2
+    },
+    {
+      "case_id": "BND-LIV-34116",
+      "organ": "liver",
+      "expected": "3",
+      "got": "4",
+      "match": false,
+      "latency_ms": 262.0
+    },
+    {
+      "case_id": "BND-LIV-45123",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 224.2
+    },
+    {
+      "case_id": "BND-LIV-45125",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 209.6
+    },
+    {
+      "case_id": "BND-LIV-45124",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 211.1
+    },
+    {
+      "case_id": "BND-LIV-45127",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 224.6
+    },
+    {
+      "case_id": "BND-LIV-45128",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 225.1
+    },
+    {
+      "case_id": "BND-LIV-45130",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 225.0
+    },
+    {
+      "case_id": "BND-LIV-45129",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 226.2
+    },
+    {
+      "case_id": "BND-LIV-45126",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 228.8
+    },
+    {
+      "case_id": "BND-LIV-45131",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 228.3
+    },
+    {
+      "case_id": "BND-LIV-45132",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 246.1
+    },
+    {
+      "case_id": "BND-LIV-45141",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 240.4
+    },
+    {
+      "case_id": "BND-LIV-45137",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 244.1
+    },
+    {
+      "case_id": "BND-LIV-45133",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 247.1
+    },
+    {
+      "case_id": "BND-LIV-45142",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 240.7
+    },
+    {
+      "case_id": "BND-LIV-45138",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 244.4
+    },
+    {
+      "case_id": "BND-LIV-45140",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 242.6
+    },
+    {
+      "case_id": "BND-LIV-45155",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 216.2
+    },
+    {
+      "case_id": "BND-LIV-45135",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 247.4
+    },
+    {
+      "case_id": "BND-LIV-45134",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 248.4
+    },
+    {
+      "case_id": "BND-LIV-45139",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 244.7
+    },
+    {
+      "case_id": "BND-LIV-45136",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 247.7
+    },
+    {
+      "case_id": "BND-LIV-45147",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 234.9
+    },
+    {
+      "case_id": "BND-LIV-45154",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 230.4
+    },
+    {
+      "case_id": "BND-LIV-45146",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 236.3
+    },
+    {
+      "case_id": "BND-LIV-45153",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 231.7
+    },
+    {
+      "case_id": "BND-LIV-45151",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 233.3
+    },
+    {
+      "case_id": "BND-LIV-45152",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 233.0
+    },
+    {
+      "case_id": "BND-LIV-45144",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 239.0
+    },
+    {
+      "case_id": "BND-LIV-45149",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 236.1
+    },
+    {
+      "case_id": "BND-LIV-45145",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 239.0
+    },
+    {
+      "case_id": "BND-LIV-45150",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 235.8
+    },
+    {
+      "case_id": "BND-LIV-45143",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 241.4
+    },
+    {
+      "case_id": "BND-LIV-45148",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 238.2
+    },
+    {
+      "case_id": "BND-LIV-45157",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 232.9
+    },
+    {
+      "case_id": "BND-LIV-45156",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 234.7
+    },
+    {
+      "case_id": "BND-LIV-45160",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 224.0
+    },
+    {
+      "case_id": "BND-LIV-45159",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 225.2
+    },
+    {
+      "case_id": "BND-LIV-45158",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 226.5
+    },
+    {
+      "case_id": "BND-CRD-NORMIL002",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "mild",
+      "match": false,
+      "latency_ms": 298.5
+    },
+    {
+      "case_id": "BND-CRD-NORMIL001",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "mild",
+      "match": false,
+      "latency_ms": 300.0
+    },
+    {
+      "case_id": "BND-CRD-NORMIL003",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "mild",
+      "match": false,
+      "latency_ms": 288.7
+    },
+    {
+      "case_id": "BND-CRD-NORMIL005",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "mild",
+      "match": false,
+      "latency_ms": 315.2
+    },
+    {
+      "case_id": "BND-CRD-NORMIL023",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "mild",
+      "match": false,
+      "latency_ms": 304.7
+    },
+    {
+      "case_id": "BND-CRD-NORMIL012",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "mild",
+      "match": false,
+      "latency_ms": 311.9
+    },
+    {
+      "case_id": "BND-CRD-NORMIL008",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "mild",
+      "match": false,
+      "latency_ms": 315.3
+    },
+    {
+      "case_id": "BND-CRD-NORMIL013",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "mild",
+      "match": false,
+      "latency_ms": 312.0
+    },
+    {
+      "case_id": "BND-CRD-NORMIL021",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "mild",
+      "match": false,
+      "latency_ms": 307.4
+    },
+    {
+      "case_id": "BND-CRD-NORMIL006",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "mild",
+      "match": false,
+      "latency_ms": 317.7
+    },
+    {
+      "case_id": "BND-CRD-NORMIL010",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "mild",
+      "match": false,
+      "latency_ms": 315.5
+    },
+    {
+      "case_id": "BND-CRD-NORMIL009",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "mild",
+      "match": false,
+      "latency_ms": 316.5
+    },
+    {
+      "case_id": "BND-CRD-NORMIL015",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "mild",
+      "match": false,
+      "latency_ms": 312.6
+    },
+    {
+      "case_id": "BND-CRD-NORMIL011",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "mild",
+      "match": false,
+      "latency_ms": 315.6
+    },
+    {
+      "case_id": "BND-CRD-NORMIL017",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "mild",
+      "match": false,
+      "latency_ms": 312.0
+    },
+    {
+      "case_id": "BND-CRD-NORMIL016",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "mild",
+      "match": false,
+      "latency_ms": 313.1
+    },
+    {
+      "case_id": "BND-CRD-NORMIL022",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "mild",
+      "match": false,
+      "latency_ms": 309.7
+    },
+    {
+      "case_id": "BND-CRD-NORMIL007",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "mild",
+      "match": false,
+      "latency_ms": 320.0
+    },
+    {
+      "case_id": "BND-CRD-NORMIL019",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "mild",
+      "match": false,
+      "latency_ms": 312.1
+    },
+    {
+      "case_id": "BND-CRD-NORMIL014",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "mild",
+      "match": false,
+      "latency_ms": 315.7
+    },
+    {
+      "case_id": "BND-CRD-NORMIL020",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "mild",
+      "match": false,
+      "latency_ms": 312.3
+    },
+    {
+      "case_id": "BND-CRD-NORMIL004",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "mild",
+      "match": false,
+      "latency_ms": 336.3
+    },
+    {
+      "case_id": "BND-CRD-NORMIL018",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "mild",
+      "match": false,
+      "latency_ms": 326.8
+    },
+    {
+      "case_id": "BND-CRD-NORMIL027",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "mild",
+      "match": false,
+      "latency_ms": 325.4
+    },
+    {
+      "case_id": "BND-CRD-NORMIL029",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "mild",
+      "match": false,
+      "latency_ms": 306.1
+    },
+    {
+      "case_id": "BND-CRD-NORMIL024",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "mild",
+      "match": false,
+      "latency_ms": 327.8
+    },
+    {
+      "case_id": "BND-CRD-NORMIL026",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "mild",
+      "match": false,
+      "latency_ms": 327.0
+    },
+    {
+      "case_id": "BND-CRD-NORMIL028",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "mild",
+      "match": false,
+      "latency_ms": 308.5
+    },
+    {
+      "case_id": "BND-CRD-NORMIL025",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "mild",
+      "match": false,
+      "latency_ms": 328.3
+    },
+    {
+      "case_id": "BND-CRD-NORMIL032",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "mild",
+      "match": false,
+      "latency_ms": 275.2
+    },
+    {
+      "case_id": "BND-CRD-NORMIL031",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "mild",
+      "match": false,
+      "latency_ms": 277.4
+    },
+    {
+      "case_id": "BND-CRD-NORMIL030",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "mild",
+      "match": false,
+      "latency_ms": 281.4
+    },
+    {
+      "case_id": "BND-CRD-NORMIL035",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "mild",
+      "match": false,
+      "latency_ms": 276.7
+    },
+    {
+      "case_id": "BND-CRD-NORMIL033",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "mild",
+      "match": false,
+      "latency_ms": 278.6
+    },
+    {
+      "case_id": "BND-CRD-NORMIL034",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "mild",
+      "match": false,
+      "latency_ms": 278.2
+    },
+    {
+      "case_id": "BND-CRD-MILMOD053",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 297.7
+    },
+    {
+      "case_id": "BND-CRD-NORMIL036",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "mild",
+      "match": false,
+      "latency_ms": 310.2
+    },
+    {
+      "case_id": "BND-CRD-MILMOD043",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 305.1
+    },
+    {
+      "case_id": "BND-CRD-NORMIL039",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "mild",
+      "match": false,
+      "latency_ms": 308.6
+    },
+    {
+      "case_id": "BND-CRD-MILMOD060",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 289.4
+    },
+    {
+      "case_id": "BND-CRD-MILMOD044",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 305.3
+    },
+    {
+      "case_id": "BND-CRD-MILMOD051",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 301.2
+    },
+    {
+      "case_id": "BND-CRD-NORMIL037",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "mild",
+      "match": false,
+      "latency_ms": 311.4
+    },
+    {
+      "case_id": "BND-CRD-MILMOD041",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 309.0
+    },
+    {
+      "case_id": "BND-CRD-NORMIL040",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "mild",
+      "match": false,
+      "latency_ms": 310.0
+    },
+    {
+      "case_id": "BND-CRD-MILMOD046",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 305.7
+    },
+    {
+      "case_id": "BND-CRD-MILMOD056",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 294.5
+    },
+    {
+      "case_id": "BND-CRD-MILMOD042",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 309.8
+    },
+    {
+      "case_id": "BND-CRD-MILMOD048",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 305.6
+    },
+    {
+      "case_id": "BND-CRD-MILMOD061",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 292.3
+    },
+    {
+      "case_id": "BND-CRD-MILMOD047",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 306.9
+    },
+    {
+      "case_id": "BND-CRD-MILMOD059",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 294.2
+    },
+    {
+      "case_id": "BND-CRD-MILMOD052",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 304.6
+    },
+    {
+      "case_id": "BND-CRD-MILMOD057",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 296.3
+    },
+    {
+      "case_id": "BND-CRD-MILMOD058",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 296.1
+    },
+    {
+      "case_id": "BND-CRD-NORMIL038",
+      "organ": "cardiac",
+      "expected": "normal",
+      "got": "mild",
+      "match": false,
+      "latency_ms": 315.5
+    },
+    {
+      "case_id": "BND-CRD-MILMOD049",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 308.1
+    },
+    {
+      "case_id": "BND-CRD-MILMOD045",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 310.9
+    },
+    {
+      "case_id": "BND-CRD-MILMOD050",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 308.1
+    },
+    {
+      "case_id": "BND-CRD-MILMOD054",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 304.7
+    },
+    {
+      "case_id": "BND-CRD-MILMOD055",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 304.2
+    },
+    {
+      "case_id": "BND-CRD-MILMOD063",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 279.7
+    },
+    {
+      "case_id": "BND-CRD-MILMOD062",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 281.4
+    },
+    {
+      "case_id": "BND-CRD-MILMOD064",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 278.6
+    },
+    {
+      "case_id": "BND-CRD-MILMOD067",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 277.6
+    },
+    {
+      "case_id": "BND-CRD-MILMOD065",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 279.4
+    },
+    {
+      "case_id": "BND-CRD-MILMOD066",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 280.7
+    },
+    {
+      "case_id": "BND-CRD-MILMOD074",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 306.2
+    },
+    {
+      "case_id": "BND-CRD-MILMOD070",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 309.7
+    },
+    {
+      "case_id": "BND-CRD-MILMOD071",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 309.4
+    },
+    {
+      "case_id": "BND-CRD-MILMOD076",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 305.8
+    },
+    {
+      "case_id": "BND-CRD-MILMOD079",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 304.2
+    },
+    {
+      "case_id": "BND-CRD-MILMOD080",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 303.9
+    },
+    {
+      "case_id": "BND-CRD-MILMOD069",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 312.2
+    },
+    {
+      "case_id": "BND-CRD-MILMOD068",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 313.6
+    },
+    {
+      "case_id": "BND-CRD-MILMOD073",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 310.1
+    },
+    {
+      "case_id": "BND-CRD-MILMOD075",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 308.8
+    },
+    {
+      "case_id": "BND-CRD-MILMOD078",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 306.9
+    },
+    {
+      "case_id": "BND-CRD-MILMOD072",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 311.9
+    },
+    {
+      "case_id": "BND-CRD-MILMOD077",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 308.4
+    },
+    {
+      "case_id": "BND-CRD-MODSEV083",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "severe",
+      "match": false,
+      "latency_ms": 320.9
+    },
+    {
+      "case_id": "BND-CRD-MODSEV087",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "severe",
+      "match": false,
+      "latency_ms": 318.9
+    },
+    {
+      "case_id": "BND-CRD-MODSEV088",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "severe",
+      "match": false,
+      "latency_ms": 318.5
+    },
+    {
+      "case_id": "BND-CRD-MODSEV093",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "severe",
+      "match": false,
+      "latency_ms": 315.8
+    },
+    {
+      "case_id": "BND-CRD-MODSEV090",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "severe",
+      "match": false,
+      "latency_ms": 317.9
+    },
+    {
+      "case_id": "BND-CRD-MODSEV085",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "severe",
+      "match": false,
+      "latency_ms": 321.5
+    },
+    {
+      "case_id": "BND-CRD-MODSEV086",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "severe",
+      "match": false,
+      "latency_ms": 321.2
+    },
+    {
+      "case_id": "BND-CRD-MODSEV089",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "severe",
+      "match": false,
+      "latency_ms": 319.5
+    },
+    {
+      "case_id": "BND-CRD-MODSEV092",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "severe",
+      "match": false,
+      "latency_ms": 318.1
+    },
+    {
+      "case_id": "BND-CRD-MODSEV081",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "severe",
+      "match": false,
+      "latency_ms": 325.5
+    },
+    {
+      "case_id": "BND-CRD-MODSEV084",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "severe",
+      "match": false,
+      "latency_ms": 323.8
+    },
+    {
+      "case_id": "BND-CRD-MODSEV082",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "severe",
+      "match": false,
+      "latency_ms": 325.5
+    },
+    {
+      "case_id": "BND-CRD-MODSEV091",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "severe",
+      "match": false,
+      "latency_ms": 320.1
+    },
+    {
+      "case_id": "BND-CRD-MODSEV096",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "severe",
+      "match": false,
+      "latency_ms": 301.4
+    },
+    {
+      "case_id": "BND-CRD-MODSEV095",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "severe",
+      "match": false,
+      "latency_ms": 302.5
+    },
+    {
+      "case_id": "BND-CRD-MODSEV094",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "severe",
+      "match": false,
+      "latency_ms": 303.6
+    },
+    {
+      "case_id": "BND-CRD-MODSEV098",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "severe",
+      "match": false,
+      "latency_ms": 303.8
+    },
+    {
+      "case_id": "BND-CRD-MODSEV097",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "severe",
+      "match": false,
+      "latency_ms": 305.1
+    },
+    {
+      "case_id": "BND-CRD-MODSEV099",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "severe",
+      "match": false,
+      "latency_ms": 303.2
+    },
+    {
+      "case_id": "HR-LIV-003",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 209.6
+    },
+    {
+      "case_id": "HR-LIV-004",
+      "organ": "liver",
+      "expected": "4",
+      "got": "2",
+      "match": false,
+      "latency_ms": 265.9
+    },
+    {
+      "case_id": "BND-CRD-MODSEV106",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "severe",
+      "match": false,
+      "latency_ms": 311.2
+    },
+    {
+      "case_id": "HR-CAR-005",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "moderate",
+      "match": false,
+      "latency_ms": 286.6
+    },
+    {
+      "case_id": "BND-CRD-MODSEV102",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "severe",
+      "match": false,
+      "latency_ms": 314.6
+    },
+    {
+      "case_id": "HR-THY-002",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4b",
+      "match": false,
+      "latency_ms": 289.4
+    },
+    {
+      "case_id": "BND-CRD-MODSEV103",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "severe",
+      "match": false,
+      "latency_ms": 314.8
+    },
+    {
+      "case_id": "BND-CRD-MODSEV108",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "severe",
+      "match": false,
+      "latency_ms": 311.4
+    },
+    {
+      "case_id": "BND-CRD-MODSEV111",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "severe",
+      "match": false,
+      "latency_ms": 309.9
+    },
+    {
+      "case_id": "BND-CRD-MODSEV112",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "severe",
+      "match": false,
+      "latency_ms": 309.8
+    },
+    {
+      "case_id": "BND-CRD-MODSEV101",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "severe",
+      "match": false,
+      "latency_ms": 317.9
+    },
+    {
+      "case_id": "HR-THY-001",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4a",
+      "match": false,
+      "latency_ms": 292.6
+    },
+    {
+      "case_id": "BND-CRD-MODSEV100",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "severe",
+      "match": false,
+      "latency_ms": 319.7
+    },
+    {
+      "case_id": "BND-CRD-MODSEV105",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "severe",
+      "match": false,
+      "latency_ms": 316.5
+    },
+    {
+      "case_id": "BND-CRD-MODSEV107",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "severe",
+      "match": false,
+      "latency_ms": 315.1
+    },
+    {
+      "case_id": "BND-CRD-MODSEV110",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "severe",
+      "match": false,
+      "latency_ms": 313.3
+    },
+    {
+      "case_id": "BND-CRD-MODSEV104",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "severe",
+      "match": false,
+      "latency_ms": 318.3
+    },
+    {
+      "case_id": "BND-CRD-MODSEV109",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "severe",
+      "match": false,
+      "latency_ms": 314.7
+    },
+    {
+      "case_id": "BND-CRD-MODSEV115",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "severe",
+      "match": false,
+      "latency_ms": 313.2
+    },
+    {
+      "case_id": "BND-CRD-MODSEV119",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "severe",
+      "match": false,
+      "latency_ms": 311.0
+    },
+    {
+      "case_id": "BND-CRD-MODSEV120",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "severe",
+      "match": false,
+      "latency_ms": 310.5
+    },
+    {
+      "case_id": "BND-CRD-MODSEV117",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "severe",
+      "match": false,
+      "latency_ms": 313.0
+    },
+    {
+      "case_id": "BND-CRD-MODSEV118",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "severe",
+      "match": false,
+      "latency_ms": 312.7
+    },
+    {
+      "case_id": "BND-CRD-MODSEV113",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "severe",
+      "match": false,
+      "latency_ms": 316.5
+    },
+    {
+      "case_id": "BND-CRD-MODSEV116",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "severe",
+      "match": false,
+      "latency_ms": 314.6
+    },
+    {
+      "case_id": "BND-CRD-MODSEV114",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "severe",
+      "match": false,
+      "latency_ms": 316.3
+    },
+    {
+      "case_id": "HR-THY-008",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4b",
+      "match": true,
+      "latency_ms": 281.6
+    },
+    {
+      "case_id": "HR-THY-007",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4b",
+      "match": true,
+      "latency_ms": 282.9
+    },
+    {
+      "case_id": "HR-CAR-006",
+      "organ": "cardiac",
+      "expected": "severe",
+      "got": "moderate",
+      "match": false,
+      "latency_ms": 284.4
+    },
+    {
+      "case_id": "HR-LIV-009",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 209.2
+    },
+    {
+      "case_id": "HR-CAR-011",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "normal",
+      "match": false,
+      "latency_ms": 263.7
+    },
+    {
+      "case_id": "HR-LIV-010",
+      "organ": "liver",
+      "expected": "4",
+      "got": "2",
+      "match": false,
+      "latency_ms": 306.2
+    },
+    {
+      "case_id": "HR-CAR-012",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "moderate",
+      "match": true,
+      "latency_ms": 290.4
+    },
+    {
+      "case_id": "HR-LIV-022",
+      "organ": "liver",
+      "expected": "4",
+      "got": "1",
+      "match": false,
+      "latency_ms": 238.6
+    },
+    {
+      "case_id": "HR-LIV-034",
+      "organ": "liver",
+      "expected": "3",
+      "got": "1",
+      "match": false,
+      "latency_ms": 225.9
+    },
+    {
+      "case_id": "HR-LIV-015",
+      "organ": "liver",
+      "expected": "3",
+      "got": "4",
+      "match": false,
+      "latency_ms": 244.7
+    },
+    {
+      "case_id": "HR-LIV-027",
+      "organ": "liver",
+      "expected": "3",
+      "got": "4",
+      "match": false,
+      "latency_ms": 236.5
+    },
+    {
+      "case_id": "HR-LIV-021",
+      "organ": "liver",
+      "expected": "3",
+      "got": "4",
+      "match": false,
+      "latency_ms": 240.9
+    },
+    {
+      "case_id": "HR-LIV-033",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 227.9
+    },
+    {
+      "case_id": "HR-THY-013",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4b",
+      "match": false,
+      "latency_ms": 288.7
+    },
+    {
+      "case_id": "HR-LIV-040",
+      "organ": "liver",
+      "expected": "4",
+      "got": "2",
+      "match": false,
+      "latency_ms": 227.2
+    },
+    {
+      "case_id": "HR-LIV-039",
+      "organ": "liver",
+      "expected": "3",
+      "got": "4",
+      "match": false,
+      "latency_ms": 229.4
+    },
+    {
+      "case_id": "HR-THY-026",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "3",
+      "match": false,
+      "latency_ms": 272.9
+    },
+    {
+      "case_id": "HR-LIV-028",
+      "organ": "liver",
+      "expected": "3",
+      "got": "2",
+      "match": false,
+      "latency_ms": 286.6
+    },
+    {
+      "case_id": "HR-THY-020",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4a",
+      "match": true,
+      "latency_ms": 318.7
+    },
+    {
+      "case_id": "HR-CAR-029",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "moderate",
+      "match": false,
+      "latency_ms": 311.9
+    },
+    {
+      "case_id": "HR-CAR-036",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "moderate",
+      "match": false,
+      "latency_ms": 303.3
+    },
+    {
+      "case_id": "HR-THY-037",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4b",
+      "match": true,
+      "latency_ms": 302.8
+    },
+    {
+      "case_id": "HR-CAR-035",
+      "organ": "cardiac",
+      "expected": "severe",
+      "got": "mild",
+      "match": false,
+      "latency_ms": 304.7
+    },
+    {
+      "case_id": "HR-CAR-024",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "moderate",
+      "match": false,
+      "latency_ms": 317.5
+    },
+    {
+      "case_id": "HR-THY-019",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4a",
+      "match": false,
+      "latency_ms": 321.9
+    },
+    {
+      "case_id": "HR-THY-025",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4b",
+      "match": false,
+      "latency_ms": 317.8
+    },
+    {
+      "case_id": "HR-CAR-030",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "moderate",
+      "match": false,
+      "latency_ms": 309.8
+    },
+    {
+      "case_id": "HR-CAR-018",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "moderate",
+      "match": true,
+      "latency_ms": 323.8
+    },
+    {
+      "case_id": "HR-THY-031",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4b",
+      "match": false,
+      "latency_ms": 309.8
+    },
+    {
+      "case_id": "HR-CAR-017",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "severe",
+      "match": false,
+      "latency_ms": 343.5
+    },
+    {
+      "case_id": "HR-CAR-023",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "severe",
+      "match": false,
+      "latency_ms": 339.6
+    },
+    {
+      "case_id": "HR-THY-032",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4a",
+      "match": true,
+      "latency_ms": 345.1
+    },
+    {
+      "case_id": "HR-LIV-016",
+      "organ": "liver",
+      "expected": "4",
+      "got": "2",
+      "match": false,
+      "latency_ms": 363.1
+    },
+    {
+      "case_id": "HR-THY-014",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4a",
+      "match": true,
+      "latency_ms": 365.4
+    },
+    {
+      "case_id": "HR-CAR-041",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 312.8
+    },
+    {
+      "case_id": "HR-THY-038",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4b",
+      "match": false,
+      "latency_ms": 315.8
+    },
+    {
+      "case_id": "HR-CAR-042",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "moderate",
+      "match": false,
+      "latency_ms": 291.8
+    },
+    {
+      "case_id": "HR-THY-043",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4b",
+      "match": false,
+      "latency_ms": 293.1
+    },
+    {
+      "case_id": "HR-LIV-045",
+      "organ": "liver",
+      "expected": "3",
+      "got": "4",
+      "match": false,
+      "latency_ms": 236.4
+    },
+    {
+      "case_id": "HR-THY-044",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4a",
+      "match": false,
+      "latency_ms": 293.3
+    },
+    {
+      "case_id": "HR-LIV-051",
+      "organ": "liver",
+      "expected": "3",
+      "got": "4",
+      "match": false,
+      "latency_ms": 281.0
+    },
+    {
+      "case_id": "HR-LIV-058",
+      "organ": "liver",
+      "expected": "4",
+      "got": "1",
+      "match": false,
+      "latency_ms": 235.9
+    },
+    {
+      "case_id": "HR-LIV-064",
+      "organ": "liver",
+      "expected": "4",
+      "got": "1",
+      "match": false,
+      "latency_ms": 231.7
+    },
+    {
+      "case_id": "HR-CAR-047",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "mild",
+      "match": true,
+      "latency_ms": 317.8
+    },
+    {
+      "case_id": "HR-THY-049",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4b",
+      "match": true,
+      "latency_ms": 317.0
+    },
+    {
+      "case_id": "HR-LIV-063",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 233.6
+    },
+    {
+      "case_id": "HR-THY-050",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4a",
+      "match": true,
+      "latency_ms": 317.1
+    },
+    {
+      "case_id": "HR-LIV-057",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 239.0
+    },
+    {
+      "case_id": "HR-CAR-048",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "moderate",
+      "match": true,
+      "latency_ms": 319.0
+    },
+    {
+      "case_id": "HR-CAR-053",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "mild",
+      "match": false,
+      "latency_ms": 301.3
+    },
+    {
+      "case_id": "HR-CAR-054",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "moderate",
+      "match": false,
+      "latency_ms": 301.7
+    },
+    {
+      "case_id": "HR-LIV-070",
+      "organ": "liver",
+      "expected": "3",
+      "got": "2",
+      "match": false,
+      "latency_ms": 232.3
+    },
+    {
+      "case_id": "HR-LIV-046",
+      "organ": "liver",
+      "expected": "3",
+      "got": "2",
+      "match": false,
+      "latency_ms": 353.6
+    },
+    {
+      "case_id": "HR-THY-055",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4b",
+      "match": true,
+      "latency_ms": 304.2
+    },
+    {
+      "case_id": "HR-LIV-052",
+      "organ": "liver",
+      "expected": "3",
+      "got": "2",
+      "match": false,
+      "latency_ms": 332.0
+    },
+    {
+      "case_id": "HR-CAR-066",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "moderate",
+      "match": true,
+      "latency_ms": 301.1
+    },
+    {
+      "case_id": "HR-CAR-065",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "moderate",
+      "match": false,
+      "latency_ms": 302.3
+    },
+    {
+      "case_id": "HR-THY-067",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4b",
+      "match": true,
+      "latency_ms": 292.4
+    },
+    {
+      "case_id": "HR-CAR-059",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "moderate",
+      "match": false,
+      "latency_ms": 309.3
+    },
+    {
+      "case_id": "HR-CAR-060",
+      "organ": "cardiac",
+      "expected": "severe",
+      "got": "moderate",
+      "match": false,
+      "latency_ms": 308.9
+    },
+    {
+      "case_id": "HR-THY-061",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4b",
+      "match": false,
+      "latency_ms": 308.5
+    },
+    {
+      "case_id": "HR-THY-068",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4a",
+      "match": true,
+      "latency_ms": 292.9
+    },
+    {
+      "case_id": "HR-LIV-069",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 285.5
+    },
+    {
+      "case_id": "HR-THY-062",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "3",
+      "match": false,
+      "latency_ms": 320.3
+    },
+    {
+      "case_id": "HR-LIV-075",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 211.0
+    },
+    {
+      "case_id": "HR-THY-073",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4a",
+      "match": false,
+      "latency_ms": 304.8
+    },
+    {
+      "case_id": "HR-THY-056",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4a",
+      "match": false,
+      "latency_ms": 350.5
+    },
+    {
+      "case_id": "HR-CAR-071",
+      "organ": "cardiac",
+      "expected": "severe",
+      "got": "severe",
+      "match": true,
+      "latency_ms": 308.7
+    },
+    {
+      "case_id": "HR-CAR-072",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "moderate",
+      "match": true,
+      "latency_ms": 308.0
+    },
+    {
+      "case_id": "HR-THY-074",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4a",
+      "match": false,
+      "latency_ms": 293.8
+    },
+    {
+      "case_id": "HR-LIV-076",
+      "organ": "liver",
+      "expected": "3",
+      "got": "1",
+      "match": false,
+      "latency_ms": 209.8
+    },
+    {
+      "case_id": "HR-CAR-077",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "normal",
+      "match": false,
+      "latency_ms": 267.5
+    },
+    {
+      "case_id": "HR-LIV-087",
+      "organ": "liver",
+      "expected": "3",
+      "got": "4",
+      "match": false,
+      "latency_ms": 202.8
+    },
+    {
+      "case_id": "HR-LIV-088",
+      "organ": "liver",
+      "expected": "4",
+      "got": "2",
+      "match": false,
+      "latency_ms": 201.9
+    },
+    {
+      "case_id": "HR-CAR-078",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "moderate",
+      "match": false,
+      "latency_ms": 280.8
+    },
+    {
+      "case_id": "HR-LIV-081",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 274.6
+    },
+    {
+      "case_id": "HR-THY-080",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4a",
+      "match": true,
+      "latency_ms": 292.1
+    },
+    {
+      "case_id": "HR-THY-085",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4b",
+      "match": false,
+      "latency_ms": 289.6
+    },
+    {
+      "case_id": "HR-LIV-093",
+      "organ": "liver",
+      "expected": "4",
+      "got": "4",
+      "match": true,
+      "latency_ms": 225.0
+    },
+    {
+      "case_id": "HR-LIV-094",
+      "organ": "liver",
+      "expected": "3",
+      "got": "2",
+      "match": false,
+      "latency_ms": 224.6
+    },
+    {
+      "case_id": "HR-CAR-083",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "severe",
+      "match": false,
+      "latency_ms": 292.4
+    },
+    {
+      "case_id": "HR-CAR-084",
+      "organ": "cardiac",
+      "expected": "severe",
+      "got": "moderate",
+      "match": false,
+      "latency_ms": 292.3
+    },
+    {
+      "case_id": "HR-THY-086",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4b",
+      "match": false,
+      "latency_ms": 291.1
+    },
+    {
+      "case_id": "HR-THY-079",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4b",
+      "match": false,
+      "latency_ms": 296.9
+    },
+    {
+      "case_id": "HR-LIV-099",
+      "organ": "liver",
+      "expected": "3",
+      "got": "4",
+      "match": false,
+      "latency_ms": 221.8
+    },
+    {
+      "case_id": "HR-LIV-082",
+      "organ": "liver",
+      "expected": "4",
+      "got": "2",
+      "match": false,
+      "latency_ms": 305.9
+    },
+    {
+      "case_id": "HR-CAR-089",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "mild",
+      "match": false,
+      "latency_ms": 294.2
+    },
+    {
+      "case_id": "HR-CAR-090",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "moderate",
+      "match": false,
+      "latency_ms": 294.6
+    },
+    {
+      "case_id": "HR-THY-091",
+      "organ": "thyroid",
+      "expected": "4a",
+      "got": "4b",
+      "match": false,
+      "latency_ms": 294.7
+    },
+    {
+      "case_id": "HR-THY-092",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "3",
+      "match": false,
+      "latency_ms": 301.0
+    },
+    {
+      "case_id": "HR-THY-098",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4b",
+      "match": true,
+      "latency_ms": 288.4
+    },
+    {
+      "case_id": "HR-THY-097",
+      "organ": "thyroid",
+      "expected": "4b",
+      "got": "4b",
+      "match": true,
+      "latency_ms": 289.7
+    },
+    {
+      "case_id": "HR-CAR-096",
+      "organ": "cardiac",
+      "expected": "mild",
+      "got": "moderate",
+      "match": false,
+      "latency_ms": 290.8
+    },
+    {
+      "case_id": "HR-CAR-095",
+      "organ": "cardiac",
+      "expected": "moderate",
+      "got": "severe",
+      "match": false,
+      "latency_ms": 306.0
+    },
+    {
+      "case_id": "HR-LIV-100",
+      "organ": "liver",
+      "expected": "4",
+      "got": "2",
+      "match": false,
+      "latency_ms": 308.6
+    }
+  ]
+}

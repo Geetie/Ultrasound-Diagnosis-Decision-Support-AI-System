@@ -150,7 +150,8 @@ def main() -> int:
     parser.add_argument("--golden-set", required=True)
     parser.add_argument("--output", required=True)
     parser.add_argument("--sample", type=int, default=100)
-    parser.add_argument("--generator-url", default="http://127.0.0.1:8001")
+    parser.add_argument("--generator-url", default="http://127.0.0.1:8002")
+    parser.add_argument("--generator-model", default="Qwen2.5-7B-Instruct")
     parser.add_argument("--judge-url", default="http://127.0.0.1:8002")
     parser.add_argument("--judge-model", default="Qwen2.5-7B-Instruct")
     args = parser.parse_args()
@@ -185,7 +186,7 @@ def main() -> int:
             # ① 生成
             answer = _chat(
                 args.generator_url,
-                "qwen2.5-7b-instruct",
+                args.generator_model,
                 [
                     {"role": "system", "content": _GENERATION_SYSTEM},
                     {

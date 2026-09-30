@@ -504,7 +504,23 @@ venv 要手动 `pip install PyJWT`**，否则主服务启动即崩（ModuleNotFo
    构建**（ldd 无 CUDA 库，--n-gpu-layers 被静默忽略）——设计定位
    是 GPU 引擎，部署包选错了构建，7B 全靠 8 线程 CPU 跑（40s/
    2677tok）。若要回用 llama.cpp 必须自行编译 CUDA 版或选
-   cuda-linux-x64 官方包。
+   cuda-linux-x64 官方包。**2026-10-01 已彻底弃用 llama.cpp。**
+10. **vLLM 必须用官方 OpenAI server**：`python -m
+    vllm.entrypoints.openai.api_server`（原生 async + continuous
+    batching + prefix caching）。自写 `LLM()`+uvicorn 包装**没有
+    batching**——并发完全串行（GPU 100% 但吞吐 61 tok/s）。官方
+    server + 0.80 显存 + 16384 batched tokens：780 例 3.25h→5min。
+    三个启动必需环境：`export CUDA_VISIBLE_DEVICES=0`（fish 默认
+    指向不存在的卡）、`PATH=venv-vllm/bin:$PATH`（ninja）、
+    `VLLM_USE_FLASHINFER_SAMPLER=0`（flashinfer JIT 需 CUDA 12.8，
+    服务器 12.4）。
+11. **结构化输出用 `response_format: {"type": "json_schema", ...}`**——
+    旧 `extra_body.guided_json` 在新版 vLLM 已静默失效（不报错但
+    不约束）。评测脚本走 `openai.AsyncOpenAI` 官方 SDK，不要手写
+    urllib。
+12. **PowerShell 多行 python -c 会静默失败/转义爆炸**——本机向服务
+    器传代码一律用 PowerShell here-string 管道：`@'...'@ | ssh host
+    "cat > /tmp/x.py && python /tmp/x.py"`。
 
 ## 20. T2 系列评测（2026-09-30，数据见 16 号 A.7）
 

@@ -29,10 +29,13 @@ certifi==2026.7.22
     #   httpcore
     #   httpx
     #   minio
+    #   requests
 cffi==2.1.1
     # via
     #   argon2-cffi-bindings
     #   cryptography
+charset-normalizer==3.5.2
+    # via requests
 click==8.5.0
     # via uvicorn
 cryptography==50.0.1
@@ -43,6 +46,7 @@ deprecated==3.0.0
     # via
     #   opentelemetry-api
     #   opentelemetry-exporter-otlp-proto-grpc
+    #   opentelemetry-exporter-otlp-proto-http
 elastic-transport==9.4.2
     # via elasticsearch
 elasticsearch==9.5.1
@@ -54,7 +58,9 @@ flatbuffers==25.12.19
 gmssl==3.2.2
     # via -r requirements.txt
 googleapis-common-protos==1.75.0
-    # via opentelemetry-exporter-otlp-proto-grpc
+    # via
+    #   opentelemetry-exporter-otlp-proto-grpc
+    #   opentelemetry-exporter-otlp-proto-http
 greenlet==3.5.6
     # via sqlalchemy
 grpcio==1.84.0
@@ -81,6 +87,7 @@ idna==3.20
     # via
     #   anyio
     #   httpx
+    #   requests
 importlib-metadata==7.0.0
     # via opentelemetry-api
 jieba==0.42.1
@@ -107,6 +114,7 @@ opentelemetry-api==1.24.0
     # via
     #   -r requirements.txt
     #   opentelemetry-exporter-otlp-proto-grpc
+    #   opentelemetry-exporter-otlp-proto-http
     #   opentelemetry-instrumentation
     #   opentelemetry-instrumentation-asgi
     #   opentelemetry-instrumentation-asyncpg
@@ -114,8 +122,12 @@ opentelemetry-api==1.24.0
     #   opentelemetry-instrumentation-redis
     #   opentelemetry-sdk
 opentelemetry-exporter-otlp-proto-common==1.24.0
-    # via opentelemetry-exporter-otlp-proto-grpc
+    # via
+    #   opentelemetry-exporter-otlp-proto-grpc
+    #   opentelemetry-exporter-otlp-proto-http
 opentelemetry-exporter-otlp-proto-grpc==1.24.0
+    # via -r requirements.txt
+opentelemetry-exporter-otlp-proto-http==1.24.0
     # via -r requirements.txt
 opentelemetry-instrumentation==0.45b0
     # via
@@ -135,10 +147,12 @@ opentelemetry-proto==1.24.0
     # via
     #   opentelemetry-exporter-otlp-proto-common
     #   opentelemetry-exporter-otlp-proto-grpc
+    #   opentelemetry-exporter-otlp-proto-http
 opentelemetry-sdk==1.24.0
     # via
     #   -r requirements.txt
     #   opentelemetry-exporter-otlp-proto-grpc
+    #   opentelemetry-exporter-otlp-proto-http
 opentelemetry-semantic-conventions==0.45b0
     # via
     #   opentelemetry-instrumentation-asgi
@@ -204,6 +218,8 @@ rank-bm25==0.2.2
     # via -r requirements.txt
 redis==5.0.1
     # via -r requirements.txt
+requests==2.34.2
+    # via opentelemetry-exporter-otlp-proto-http
 scipy==1.18.1
     # via -r requirements.txt
 setuptools==84.0.0
@@ -241,6 +257,7 @@ urllib3==2.8.0
     #   elastic-transport
     #   minio
     #   qdrant-client
+    #   requests
 uvicorn==0.29.0
     # via -r requirements.txt
 wrapt==1.17.3
