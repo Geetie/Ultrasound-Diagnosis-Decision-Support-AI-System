@@ -35,6 +35,7 @@ from app.agents.routing import AdaptiveRAGRouter, RetrievalProfile, RoutingDecis
 from app.config.database import AsyncSessionLocal
 from app.config.redis import RedisPool
 from app.config.redis_keys import RedisKey
+from app.config.settings import settings
 from app.models.schemas import (
     ConsentStatus,
     DesensitizationStatus,

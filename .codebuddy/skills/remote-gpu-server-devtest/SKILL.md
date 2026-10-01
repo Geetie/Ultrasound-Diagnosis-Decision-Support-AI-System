@@ -127,6 +127,7 @@ PYTHONPATH=$HOME/uai/src ~/uai/venv/bin/python scripts/server_populate_vector_in
 | 双 vLLM 同卡启动互踩 | gpu_memory_utilization 是占全卡比例——并发启动各自 memory probe 失败；**串行启动**（前一个 /v1/models 就绪再启下一个），分配：基线 6.8 + 主 0.46 + judge 0.36 ≈ 45GB |
 | HF 下载 Network unreachable | 校园网到 HF/mirror 全断——**先用本地已有模型**（uai/models/Qwen3-8B），AWQ 等量化方案作废 |
 | pkill 与部署脚本同 ssh | 自杀老坑再现：pkill 单独发，部署脚本后台跑 |
+| 部署半成品 NameError/AttributeError | 多文件改动只 scp 了部分——**跨文件改动（代码+settings）必须整组部署**；单测 mock 不触发真实 settings 加载，全绿≠部署完整。部署后先跑 1 例端到端再批量 |
 
 ## 压测结论（2026-10-01）
 

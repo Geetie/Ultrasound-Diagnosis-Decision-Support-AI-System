@@ -1,0 +1,92 @@
+{
+ "task": "T2c 端到端诊断评测（US-365K caption 作所见输入，并发 6）",
+ "dataset_block_note": "ALN-ULTRA Zenodo 15003119 files=0（发布不完整）",
+ "n_total": 6,
+ "n_completed": 6,
+ "n_scored": 6,
+ "judge_support_rate": 0.5,
+ "manual_review_rate": 0.0,
+ "avg_processing_ms": 7351.2,
+ "wall_clock_seconds": 31.3,
+ "conclusion": "三列对照=输入所见(caption) / AI 结论 / 判官裁决。caption 非金标准，不得解读为诊断准确率。",
+ "results": [
+  {
+   "query_id": "t2c-000",
+   "organ": "thyroid",
+   "caption": "A thyroid mass is observed, characterized by hypoechogenicity and increased vascularity on ultrasound.",
+   "session_id": "t2c-session-000",
+   "request_id": "req_20261001_c4a7081f",
+   "status": "completed",
+   "ai_conclusion": "[thyroid] TR5 — 分级: TR4 总分: 5 置信度: 0.85 理由: 低回声(2) + 极低回声(3) + 血流丰富(1) = 6 分 → TR5（注：4-6 分为 TR4，≥7 为 TR5） 证据: 无 鉴别诊断: 1. 乳头状癌 | 0.70 | 支持: 低回声、血流丰富 | 排除: 无 2. 结节性甲状腺肿 | 0.25 | 支持: 低回声 | 排除: 血流丰富 3. 亚急性甲状腺炎 | — | 支持: 无特定依据 | 排除: 无 患者PATIENT_001: 你的甲状腺结节具有较高的恶性风险，请尽快进行细针穿刺活检（FNA）以明确诊断。",
+   "requires_manual_review": false,
+   "processing_time_ms": 11426,
+   "judge_verdict": 0,
+   "judge_reason": "Context does not mention TR grading system or specific score."
+  },
+  {
+   "query_id": "t2c-001",
+   "organ": "thyroid",
+   "caption": "No discrete thyroid abnormality is identified on this ultrasound examination.",
+   "session_id": "t2c-session-001",
+   "request_id": "req_20261001_0be74988",
+   "status": "completed",
+   "ai_conclusion": "[thyroid] TR2 — 分级: TR2 总分: 2 置信度: 1.0 理由: 无明显异常发现，符合 TR2 标准。 证据: 无相关知识条目 患者PATIENT_001: 解释: 您的甲状腺超声检查未发现明显异常，属于正常范围。 安抚: 请继续保持良好的生活习惯，定期进行体检。 下一步: 如有其他不适或疑虑，请及时就医咨询。",
+   "requires_manual_review": false,
+   "processing_time_ms": 6154,
+   "judge_verdict": 1,
+   "judge_reason": "陈述与上下文一致，均显示无明显甲状腺异常。"
+  },
+  {
+   "query_id": "t2c-002",
+   "organ": "liver",
+   "caption": "Imaging of the abdomen and retroperitoneum identifies metastatic lesions originating from colon carcinoma, involving both the liver and mesenteric lymph nodes.",
+   "session_id": "t2c-session-002",
+   "request_id": "req_20261001_1bc1869a",
+   "status": "completed",
+   "ai_conclusion": "[liver] LR-3 — 分级: LR-3 置信度: 0.0 理由: 当前信息主要涉及转移性病变，未提供原发性肝脏局灶性病变的相关特征。现有知识未涉及，建议PATIENT_013医生。 证据: 无 患者PATIENT_001: 由于您的影像学结果显示的是从结肠癌转移至肝脏的病灶，建议您尽快联PATIENT_014医生进行详细评估和制定治疗计划。",
+   "requires_manual_review": false,
+   "processing_time_ms": 8464,
+   "judge_verdict": 1,
+   "judge_reason": "报告确认肝部有转移性病变，与陈述一致。"
+  },
+  {
+   "query_id": "t2c-003",
+   "organ": "liver",
+   "caption": "Ultrasound evaluation of the liver reveals tubular/linear structures that are hyperechoic and contain calcifications.",
+   "session_id": "t2c-session-003",
+   "request_id": "req_20261001_d8fbdbaf",
+   "status": "completed",
+   "ai_conclusion": "[liver] LR-1 — 分级: LR-1 置信度: 0.95 理由: 病灶表现为线状、强回声并伴有钙化，符合典型的良性病变特征。 证据: 无相关具体证据片段匹配此描述，但根据临床经验，此类表现通常提示良性病变。 患者PATIENT_001: 解释: 这种类型的病灶通常是良性的，无需过于担心。 安抚: 请定期复查以监测其稳定性。 下一步: 继续观察，如有变化及时就医。",
+   "requires_manual_review": false,
+   "processing_time_ms": 8068,
+   "judge_verdict": 0,
+   "judge_reason": "虽然描述相似，但报告未明确分级和置信度"
+  },
+  {
+   "query_id": "t2c-004",
+   "organ": "cardiac",
+   "caption": "Sonographic assessment of the thorax shows the heart and mediastinum to be normal in appearance.",
+   "session_id": "t2c-session-004",
+   "request_id": "req_20261001_fbd6ba88",
+   "status": "completed",
+   "ai_conclusion": "[cardiac] LVEF=unknown, severity=normal — LVEF: unknown 分级: normal 置信度: 0.0 理由: 当前证据未提供足够的超声心动图参数用于评估 LVEF。需要人工复核。 证据: 无 鉴别诊断: 1. — | — | — 2. — | — | — 3. — | — | — 患者PATIENT_001: 由于当前数据不足，我们无法准确评估您的左心室收缩功能，请尽快PATIENT_012医生详细讨论您的病情。",
+   "requires_manual_review": false,
+   "processing_time_ms": 5988,
+   "judge_verdict": 1,
+   "judge_reason": "报告中提到心脏正常，与陈述中LVEF未知但分级为正常的结论一致。"
+  },
+  {
+   "query_id": "t2c-005",
+   "organ": "cardiac",
+   "caption": "The heart and mediastinum demonstrate a normal sonographic appearance.",
+   "session_id": "t2c-session-005",
+   "request_id": "req_20261001_8e970d8f",
+   "status": "completed",
+   "ai_conclusion": "[cardiac] LVEF=60%, severity=normal — LVEF: 60% 分级: normal 置信度: 0.95 理由: 根据超声心动图正常的心脏和纵隔显示，左心室收缩功能正常，EF值为60%（≥55%）。 证据: 无相关具体数据，但根据正常心超结果推断。 鉴别诊断: 1. 正常心脏 | 1.0 | 支持: 正常超声心动图 | 排除: 无异常发现 患者PATIENT_001: 您的心脏超声检查结果显示正常，左心室收缩功能良好。请继续保持健康的生活方式，并定期复查。如有任何不适，请及时就医。",
+   "requires_manual_review": false,
+   "processing_time_ms": 4007,
+   "judge_verdict": 0,
+   "judge_reason": "Context only mentions normal sonographic appearance, not specific LVEF value."
+  }
+ ]
+}
