@@ -1,7 +1,7 @@
 {
   "knn_baseline": 0.8557,
   "probe_baseline": 0.835,
-  "knn_us365k_ft": 0.8094,
-  "probe_us365k_ft": 0.8205,
+  "knn_us365k_ft": 0.798,
+  "probe_us365k_ft": 0.8114,
   "gate": 0.75
 }
