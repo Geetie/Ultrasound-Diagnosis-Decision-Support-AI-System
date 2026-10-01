@@ -82,6 +82,12 @@ def main() -> int:
     parser.add_argument("--organ", required=True)
     parser.add_argument("--out", required=True)
     parser.add_argument("--source-kind", default="guidelines")
+    parser.add_argument(
+        "--emit-source-dir",
+        action="store_true",
+        help="输出 init_knowledge_base 的 --source-dir 目录格式"
+             "（manifest.json + <organ>/*.json），--out 为目录根",
+    )
     args = parser.parse_args()
 
     pdf_dir = Path(args.pdf_dir).expanduser()
@@ -113,15 +119,29 @@ def main() -> int:
                 kept += 1
         stats.append(f"{stem}: {len(sections)} 节 → {kept} 文档")
 
-    out = Path(args.out)
-    out.parent.mkdir(parents=True, exist_ok=True)
-    with open(out, "w", encoding="utf-8") as f:
-        for d in docs:
-            f.write(json.dumps(d, ensure_ascii=False) + "\n")
-
     elapsed = time.perf_counter() - t0
-    print(f"[{args.organ}] {len(pdfs)} PDF / {len(docs)} 文档 → {out} "
-          f"({elapsed:.1f}s)")
+    if args.emit_source_dir:
+        root = Path(args.out).expanduser()
+        organ_dir = root / args.organ
+        organ_dir.mkdir(parents=True, exist_ok=True)
+        for d in docs:
+            doc_path = organ_dir / f"{d['source_doc_id']}.json"
+            doc_path.write_text(json.dumps(d, ensure_ascii=False, indent=1),
+                                encoding="utf-8")
+        (root / "manifest.json").write_text(
+            json.dumps({"kb_version": "SET_ME", "organs": [args.organ]},
+                       ensure_ascii=False, indent=2),
+            encoding="utf-8")
+        print(f"[{args.organ}] {len(pdfs)} PDF / {len(docs)} 文档 → {root} "
+              f"(source-dir, {elapsed:.1f}s)")
+    else:
+        out = Path(args.out)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        with open(out, "w", encoding="utf-8") as f:
+            for d in docs:
+                f.write(json.dumps(d, ensure_ascii=False) + "\n")
+        print(f"[{args.organ}] {len(pdfs)} PDF / {len(docs)} 文档 → {out} "
+              f"({elapsed:.1f}s)")
     for s in stats:
         print(" ", s)
     return 0
