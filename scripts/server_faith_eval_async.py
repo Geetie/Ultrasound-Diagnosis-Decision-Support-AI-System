@@ -80,7 +80,8 @@ async def eval_one(gen, judge, sem, qi, q, corpus, corpus_texts, fused,
             item["answer_len"] = len(answer)
             item["answer"] = answer
             stmt_out = _extract_json(await chat(judge, JUDGE_URL, JUDGE_MODEL, [
-                {"role": "user", "content": _render_statement_prompt(q["query_text"], answer)}]))
+                {"role": "user", "content": _render_statement_prompt(q["query_text"], answer)}],
+                max_tokens=512))
             statements = _filter_meta_statements(
                 stmt_out.get("statements", []) if isinstance(stmt_out, dict) else [])
             item["num_statements"] = len(statements)

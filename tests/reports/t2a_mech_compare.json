@@ -1,0 +1,7 @@
+{
+  "knn_baseline": 0.8557,
+  "probe_baseline": 0.835,
+  "knn_finetuned": 0.8668,
+  "probe_finetuned": 0.8751,
+  "gate": 0.75
+}
