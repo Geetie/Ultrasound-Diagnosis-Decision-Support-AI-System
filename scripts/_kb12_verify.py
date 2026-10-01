@@ -10,7 +10,6 @@ load_dotenv("/mnt/ee16/home/student03/uai/.env", override=True)
 
 async def main():
     from app.config.database import AsyncSessionLocal
-    from app.config.settings import settings
     from app.embedding.bge_m3 import BgeM3MedicalService
     from app.embedding.index_factory import create_index_client_from_settings
     from app.embedding.protocols import TextEmbeddingRequest
