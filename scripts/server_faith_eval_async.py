@@ -22,9 +22,9 @@ from t1_eval_faithfulness import (
 from t1_eval_retrieval import bm25_topk, cosine_topk, embed_texts, rrf_fuse
 
 GEN_URL = "http://127.0.0.1:8002"
-JUDGE_URL = "http://127.0.0.1:8002"
+JUDGE_URL = "http://127.0.0.1:8006"
 GEN_MODEL = "Qwen2.5-7B-Instruct"
-JUDGE_MODEL = "Qwen2.5-7B-Instruct"
+JUDGE_MODEL = "Qwen3-8B"
 N = 40
 CONC = 16
 TOP_K = 5
@@ -97,13 +97,14 @@ async def eval_one(gen, judge, sem, qi, q, corpus, corpus_texts, fused,
 async def main():
     gen = AsyncOpenAI(base_url=GEN_URL + "/v1", api_key="EMPTY", timeout=CALL_TIMEOUT)
     judge = AsyncOpenAI(base_url=JUDGE_URL + "/v1", api_key="EMPTY", timeout=CALL_TIMEOUT)
-    models = await gen.models.list()
-    model_ids = [m.id for m in models.data]
-    print("vllm models:", model_ids, flush=True)
-    missing = [m for m in (GEN_MODEL, JUDGE_MODEL) if m not in model_ids]
-    if missing:
-        print(f"FATAL: model(s) {missing} not found on {GEN_URL}.", flush=True)
-        print(f"FATAL: available={model_ids}.", flush=True)
+    gen_models = {m.id for m in (await gen.models.list()).data}
+    judge_models = {m.id for m in (await judge.models.list()).data}
+    print("vllm gen models:", sorted(gen_models), "judge models:", sorted(judge_models), flush=True)
+    if GEN_MODEL not in gen_models:
+        print(f"FATAL: {GEN_MODEL} not found on {GEN_URL}.", flush=True)
+        raise SystemExit(2)
+    if JUDGE_MODEL not in judge_models:
+        print(f"FATAL: {JUDGE_MODEL} not found on {JUDGE_URL}.", flush=True)
         raise SystemExit(2)
 
     raw = json.loads(Path("/mnt/ee16/home/student03/uai/src/data/golden/kb_qa_golden_v1.json").read_text(encoding="utf-8"))

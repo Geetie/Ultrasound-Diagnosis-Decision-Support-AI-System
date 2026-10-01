@@ -124,6 +124,9 @@ PYTHONPATH=$HOME/uai/src ~/uai/venv/bin/python scripts/server_populate_vector_in
 | 评测 completed=9/9 但 support=None/结论空 | 评测器 _pick_conclusion_text 缩进错位 → UnboundLocalError 被主循环 except 吞——跑完必须抽样 ai_conclusion 非空 + 查 report 的 error 字段；单跑评测函数对真实响应 1 分钟定位 |
 | needs_review=6/9 假象 | 旧进程 BM25 索引早于三器官灌数构建；重启自愈——评测前先重启主服务再灌数序 |
 | 并发评测排队 | int_worker_pool_size 默认 4，.env 调 16（IO 密集协程） |
+| 双 vLLM 同卡启动互踩 | gpu_memory_utilization 是占全卡比例——并发启动各自 memory probe 失败；**串行启动**（前一个 /v1/models 就绪再启下一个），分配：基线 6.8 + 主 0.46 + judge 0.36 ≈ 45GB |
+| HF 下载 Network unreachable | 校园网到 HF/mirror 全断——**先用本地已有模型**（uai/models/Qwen3-8B），AWQ 等量化方案作废 |
+| pkill 与部署脚本同 ssh | 自杀老坑再现：pkill 单独发，部署脚本后台跑 |
 
 ## 压测结论（2026-10-01）
 
