@@ -2,7 +2,6 @@ import asyncio
 import json
 import sys
 import time
-from collections import Counter
 from pathlib import Path
 
 sys.path.insert(0, "/mnt/ee16/home/student03/uai/src")
@@ -10,12 +9,11 @@ sys.path.insert(0, "/mnt/ee16/home/student03/uai/src/scripts")
 
 import httpx
 from openai import AsyncOpenAI
-
 from t1_eval_faithfulness import (
-    _extract_json,
-    _filter_meta_statements,
     _GENERATION_SYSTEM,
     _GENERATION_USER_TMPL,
+    _extract_json,
+    _filter_meta_statements,
     _is_refusal,
     _render_nli_prompt,
     _render_statement_prompt,
@@ -76,7 +74,7 @@ async def eval_one(gen, judge, sem, qi, q, corpus, corpus_texts, fused,
             ok, missing = heuristic_numeric_check(answer, context)
             item["numeric_consistent"] = ok
             item["missing_numbers"] = missing
-        except Exception as exc:
+        except Exception:
             import traceback
             item["error"] = traceback.format_exc()[-400:]
         async with lock:

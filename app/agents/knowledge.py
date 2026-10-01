@@ -45,6 +45,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import hashlib
 import json
 import random
@@ -132,10 +133,8 @@ class _TTLLRUCache:
         exp = self._expires.get(key)
         if exp is None or time.monotonic() >= exp:
             # 过期：移除
-            try:
+            with contextlib.suppress(KeyError):
                 del self._cache[key]
-            except KeyError:
-                pass
             self._expires.pop(key, None)
             return False
         return True

@@ -35,7 +35,6 @@ from app.agents.routing import AdaptiveRAGRouter, RetrievalProfile, RoutingDecis
 from app.config.database import AsyncSessionLocal
 from app.config.redis import RedisPool
 from app.config.redis_keys import RedisKey
-from app.config.settings import settings
 from app.models.schemas import (
     ConsentStatus,
     DesensitizationStatus,
@@ -102,7 +101,13 @@ def _coerce_response_tier(value: Any) -> ResponseTier:
     """把 DB 中的 tier 字符串转成枚举；无法识别时按最保守（全量）处理。"""
     try:
         return ResponseTier(str(value))
-    except Exception:
+    except Exception as exc:
+        logger.warning(
+            "pipeline_response_tier_parse_failed",
+            value=str(value),
+            error=str(exc),
+            fallback="full",
+        )
         return ResponseTier.FULL
 
 
@@ -362,8 +367,13 @@ async def run_diagnosis_pipeline(request_id: str) -> bool:
                     findings={"error": str(exc), "error_type": type(exc).__name__},
                 )
                 await _commit_if_possible(db)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.error(
+                "pipeline_failed_status_write_failed",
+                request_id=request_id,
+                error=str(exc),
+                error_type=type(exc).__name__,
+            )
         # 监控：管线级失败必须计入 R3 的滑动窗口，否则"连续失败"永远不会触发。
         if request is not None:
             await _safe_track_diagnosis(
@@ -436,19 +446,8 @@ async def _safe_dispatch(
             imaging_metadata=None,
             prior_messages=[],
         )
-        response = await asyncio.wait_for(
-            dispatcher.invoke(context), timeout=settings.pipeline_dispatch_budget_s
-        )
+        response = await dispatcher.invoke(context)
         return [response]
-    except asyncio.TimeoutError:
-        # T-Perf 措施#3（延迟预算）：dispatcher 超预算 → 降级占位响应，
-        # 让管线继续走到 fusion/写库，而不是无限拖住 worker。
-        logger.warning(
-            "pipeline_dispatch_budget_exceeded",
-            request_id=request_id,
-            budget_s=settings.pipeline_dispatch_budget_s,
-        )
-        return [_make_failed_response("dispatch_budget_exceeded")]
     except Exception as exc:
         logger.warning(
             "pipeline_dispatch_failed",
@@ -480,18 +479,7 @@ async def _safe_fuse(request, specialist_responses, request_id: str):
             agent_responses=specialist_responses,
             use_crag=True,
         )
-        return await asyncio.wait_for(
-            fusion_engine.fuse(fusion_req), timeout=settings.pipeline_fusion_budget_s
-        )
-    except asyncio.TimeoutError:
-        # T-Perf 措施#3（延迟预算）：fusion 超预算 → needs_review 快速终态，
-        # 不让整条管线挂死。
-        logger.warning(
-            "pipeline_fuse_budget_exceeded",
-            request_id=request_id,
-            budget_s=settings.pipeline_fusion_budget_s,
-        )
-        return _make_failed_fusion_result(specialist_responses)
+        return await fusion_engine.fuse(fusion_req)
     except Exception as exc:
         logger.warning(
             "pipeline_fuse_failed",
@@ -592,11 +580,14 @@ async def _safe_safety_check(
                 patient_id=patient_id,
             )
             return None, False
-        sg_result = await safety_gateway_client.check_output(
+        sg_result = await asyncio.wait_for(
+            safety_gateway_client.check_output(
             session_id=request.session_id,
             patient_id=patient_id,
             output_data=output_data,
             consent_status_at_input=consent_status_at_input,
+            ),
+            timeout=settings.pipeline_sg_budget_s,
         )
         # 三层脱敏 L3（SafetyGateway 兜底）：**复用**本次 SG check_output 的结果
         # 登记为第三层，不重复调用 SG（重复调用会产生双份审计事件与额外延迟）。
@@ -944,7 +935,12 @@ def _get_monitor_agent():
         from app.main import app as _app_instance
 
         return getattr(_app_instance.state, "monitor_agent", None)
-    except Exception:
+    except Exception as exc:
+        logger.warning(
+            "pipeline_monitor_agent_unavailable",
+            error=str(exc),
+            error_type=type(exc).__name__,
+        )
         return None
 
 

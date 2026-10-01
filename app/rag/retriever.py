@@ -437,8 +437,8 @@ class Retriever:
             import numpy as np
             if isinstance(emb, np.ndarray):
                 return emb.astype(np.float32).ravel().tolist()
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("retriever_cleanup_failed", error=str(exc))
         if isinstance(emb, list):
             return [float(x) for x in emb]
         if hasattr(emb, "tolist"):
@@ -454,11 +454,13 @@ class Retriever:
         results: dict[str, bool] = {}
         try:
             results["embedding"] = bool(await self._embedding.health_check())
-        except Exception:
+        except Exception as exc:
+            logger.warning("retriever_health_embedding_failed", error=str(exc))
             results["embedding"] = False
         try:
             results["vector_index"] = bool(await self._vector_client.health_check())
-        except Exception:
+        except Exception as exc:
+            logger.warning("retriever_health_vector_index_failed", error=str(exc))
             results["vector_index"] = False
         return results
 
@@ -471,8 +473,8 @@ class Retriever:
                     res = close()
                     if asyncio.iscoroutine(res):
                         await res
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.debug("retriever_close_failed", error=str(exc))
 
 
 def _placeholder_chunk(chunk_id: str) -> KnowledgeChunk:

@@ -150,8 +150,11 @@ class SafetyGatewayClient:
                     "safety_gateway_consecutive_unhealthy_critical",
                     consecutive_unhealthy=consecutive_unhealthy,
                 )
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug(
+                "safety_gateway_metric_publish_failed",
+                error=str(exc),
+            )
 
     @property
     def is_healthy(self) -> bool:

@@ -146,7 +146,12 @@ async def _dequeue_with_timeout(timeout: int) -> str | None:
             return await asyncio.wait_for(q.get(), timeout=1.0)
         except asyncio.TimeoutError:
             return None
-        except Exception:
+        except Exception as exc:
+            logger.warning(
+            "worker_blpop_fallback_failed",
+            error=str(exc),
+            error_type=type(exc).__name__,
+        )
             return None
 
 
@@ -263,8 +268,12 @@ async def _clear_retry_count(request_id: str) -> None:
     try:
         client = await RedisPool.get_client()
         await client.delete(RedisKey.diagnosis_retry_count(request_id))
-    except Exception:
-        pass  # best-effort
+    except Exception as exc:
+        logger.warning(
+            "diagnosis_worker_shutdown_task_failed",
+            error=str(exc),
+            error_type=type(exc).__name__,
+        )  # best-effort
 
 
 # ----------------------------------------------------------------------

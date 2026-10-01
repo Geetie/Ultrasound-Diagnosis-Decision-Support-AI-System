@@ -28,7 +28,11 @@ async def run_all(args):
         timeout=args.timeout,
     )
     models = await client.models.list()
-    print("vllm healthy:", [m.id for m in models.data][:1])
+    model_ids = [m.id for m in models.data]
+    print("vllm models:", model_ids)
+    if args.vllm_model not in model_ids:
+        print(f"FATAL: model {args.vllm_model!r} not found. available={model_ids}", flush=True)
+        raise SystemExit(2)
     sem = asyncio.Semaphore(args.concurrency)
     results = []
     lock = asyncio.Lock()
@@ -71,6 +75,10 @@ async def run_all(args):
                 done += 1
                 if done % 100 == 0:
                     print(f"  {done}/{len(cases)}", flush=True)
+        errs = sum(1 for r in results if "error" in r)
+        if errs >= 3 and done - errs < 1:
+            print(f"FATAL: {errs} consecutive errors, aborting.", flush=True)
+            raise SystemExit(2)
 
     await asyncio.gather(*(run_case(c) for c in cases))
     return results

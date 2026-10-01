@@ -408,7 +408,10 @@ def _parse_self_rag_output(
                 t.strip() for t in re.split(r"[,，;；\n]", missing_text) if t.strip()
             ]
         return sufficiency, consistency, completeness, missing_list
-    except Exception:
+    except Exception as exc:
+        logger.warning(
+            "self_rag_extract_helper_failed", error=str(exc)
+        )
         return None
 
 
