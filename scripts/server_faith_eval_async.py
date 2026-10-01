@@ -85,6 +85,25 @@ async def eval_one(gen, judge, sem, qi, q, corpus, corpus_texts, fused,
                                 if isinstance(v, dict) and v.get("verdict") == 1)
                 item["faithfulness"] = supported / len(statements) if statements else 1.0
                 item["verdicts"] = verdicts
+                # 双轨口径（A.10.6，决策 D）：宽松 NLI 只用于内部观测——
+                # 在官方判定后追加"同义概括不算不支持"修正，不改 verdicts 本体。
+                lenient_verdicts = [
+                    (dict(v) if isinstance(v, dict) else v) for v in verdicts]
+                for v in lenient_verdicts:
+                    if not isinstance(v, dict) or v.get("verdict") != 0:
+                        continue
+                    # 宽松规则：0 分且 reason 未明示「无依据/编造」类，
+                    # 视为风格/概括差异 → 改判支持。
+                    reason = str(v.get("reason", ""))
+                    if not any(k in reason for k in (
+                            "无依据", "未提及", "未涉及", "编造",
+                            "没有提及", "没有相关")):
+                        v["verdict"] = 1
+                        v["lenient_override"] = True
+                sup_l = sum(1 for v in lenient_verdicts
+                            if isinstance(v, dict) and v.get("verdict") == 1)
+                item["faithfulness_lenient"] = (
+                    sup_l / len(statements) if statements else 1.0)
             ok, missing = heuristic_numeric_check(answer, context)
             item["numeric_consistent"] = ok
             item["missing_numbers"] = missing
@@ -154,11 +173,17 @@ async def main():
     report = {"sample": N, "scored": len(scored), "failed": len(failed),
         "methodology": "RAGAS faithfulness (official prompts) + asyncio concurrent",
         "mean_faithfulness": sum(scores) / len(scores) if scores else None,
+        "mean_faithfulness_lenient": (
+            sum(r["faithfulness_lenient"] for r in scored
+                if "faithfulness_lenient" in r)
+            / max(1, sum(1 for r in scored if "faithfulness_lenient" in r))),
         "low_scores": sorted([(r["query_id"], round(r["faithfulness"], 2)) for r in scored if r["faithfulness"] < 0.8]),
         "total_latency_s": round(elapsed, 1), "results": results}
     out = Path("/mnt/ee16/home/student03/uai/src/reports/t1_faith_qwen3judge.json")
     out.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
-    print("DONE mean=", report["mean_faithfulness"], "scored=", len(scored),
+    print("DONE mean=", report["mean_faithfulness"],
+          "mean_lenient=", round(report["mean_faithfulness_lenient"], 4),
+          "scored=", len(scored),
           "elapsed=", round(elapsed, 1), "s", flush=True)
 
 asyncio.run(main())
