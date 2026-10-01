@@ -131,6 +131,7 @@ PYTHONPATH=$HOME/uai/src ~/uai/venv/bin/python scripts/server_populate_vector_in
 | PDF 语料解析 | **pymupdf4llm**（零模型下载）：8.1s/60 页 → Markdown 段落完整+标题+双栏正确；自写分栏启发式会整段乱序勿用；CJK 断行空格用正则合并。pip 走清华源可达，HF/ModelScope 不可达 |
 | open_clip 训练 | 官方 main 参数：`--csv-separator ","`（默认 TSV 的坑）、`--csv-img-key/--csv-caption-key`、`--val-data`（非 valid-data）、`--report-to tensorboard`、`--resume latest`+`--save-most-recent` 续训、`--lock-text`；CSV 必须 pandas 生成（手写引号转义会破列）；**训练慢先查 CPU 解码**（Data t/step 高=加 workers，GPU 不一定是瓶颈）；open_clip_train 需 repo 版 open_clip（pip 3.3.0 无 create_task），覆盖 site-packages 时先 mv 备份 |
 | Qwen3-8B 部署/评测 | 默认思考模式输出 `<think>` 污染 JSON——请求级 `chat_template_kwargs:{"enable_thinking":false}` 关闭；思考判官实测不提升反略降（66.6% vs 69.0%）；A/B 评测口径三查：判官 max_tokens 截断（幸存者偏差）、答案长度偏倚、服务配额差异污染速度结论（单发串行才能测真实速度） |
+| /tmp 探针累积 116 个 | 每轮只删本轮脚本不够——**历次会话探针持续累积**；收尾时 `ls /tmp/_*.py /tmp/_*.sh | wc -l` 全量清点一次清空（正式脚本都在 ~/uai/src/scripts/，/tmp 的 _ 前缀文件全可删） |
 
 ## 压测结论（2026-10-01）
 
