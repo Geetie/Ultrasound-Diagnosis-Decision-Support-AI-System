@@ -35,6 +35,7 @@ from app.agents.routing import AdaptiveRAGRouter, RetrievalProfile, RoutingDecis
 from app.config.database import AsyncSessionLocal
 from app.config.redis import RedisPool
 from app.config.redis_keys import RedisKey
+from app.config.settings import settings
 from app.models.schemas import (
     ConsentStatus,
     DesensitizationStatus,
@@ -435,8 +436,19 @@ async def _safe_dispatch(
             imaging_metadata=None,
             prior_messages=[],
         )
-        response = await dispatcher.invoke(context)
+        response = await asyncio.wait_for(
+            dispatcher.invoke(context), timeout=settings.pipeline_dispatch_budget_s
+        )
         return [response]
+    except asyncio.TimeoutError:
+        # T-Perf 措施#3（延迟预算）：dispatcher 超预算 → 降级占位响应，
+        # 让管线继续走到 fusion/写库，而不是无限拖住 worker。
+        logger.warning(
+            "pipeline_dispatch_budget_exceeded",
+            request_id=request_id,
+            budget_s=settings.pipeline_dispatch_budget_s,
+        )
+        return [_make_failed_response("dispatch_budget_exceeded")]
     except Exception as exc:
         logger.warning(
             "pipeline_dispatch_failed",
@@ -468,7 +480,18 @@ async def _safe_fuse(request, specialist_responses, request_id: str):
             agent_responses=specialist_responses,
             use_crag=True,
         )
-        return await fusion_engine.fuse(fusion_req)
+        return await asyncio.wait_for(
+            fusion_engine.fuse(fusion_req), timeout=settings.pipeline_fusion_budget_s
+        )
+    except asyncio.TimeoutError:
+        # T-Perf 措施#3（延迟预算）：fusion 超预算 → needs_review 快速终态，
+        # 不让整条管线挂死。
+        logger.warning(
+            "pipeline_fuse_budget_exceeded",
+            request_id=request_id,
+            budget_s=settings.pipeline_fusion_budget_s,
+        )
+        return _make_failed_fusion_result(specialist_responses)
     except Exception as exc:
         logger.warning(
             "pipeline_fuse_failed",

@@ -217,6 +217,10 @@ class Settings(BaseSettings):
     int_pipeline_total_timeout_ms: int = 8000
     int_dlq_max_retries: int = 3
     int_worker_blpop_timeout_seconds: int = 5
+    # T-Perf 措施#3：管线各阶段延迟预算（秒，超时降级不挂死）
+    pipeline_dispatch_budget_s: float = 6.0
+    pipeline_fusion_budget_s: float = 6.0
+    pipeline_sg_budget_s: float = 2.0
 
     # === RAG 检索结果缓存（覆盖 fusion 的 consistency / crag 直连检索路径）===
     # 关闭时 RAGServiceImpl 走真实流水线，行为与引入缓存前完全一致。
