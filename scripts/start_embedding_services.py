@@ -330,6 +330,74 @@ class OpenClipBackend:
             features = self.model.encode_image(batch)
         return self._normalize(features)
 
+    # ---- T2a 良恶性分类（方案 C：微调 visual 副本 + 逻辑回归探针）----
+    # 独立副本：加载微调权重不能覆盖基线 visual（基线嵌入供检索管线，
+    # 覆盖会改变检索行为）。懒加载：首次 /v1/classify 调用时才占显存。
+
+    def _ensure_classifier(self) -> None:
+        if getattr(self, "_t2a_ready", False):
+            return
+        import copy
+        import os
+
+        import joblib
+
+        weights = os.environ.get(
+            "T2A_FT_WEIGHTS",
+            "/mnt/ee16/home/student03/uai/src/reports/t2a_finetune.pt",
+        )
+        probe_path = os.environ.get(
+            "T2A_PROBE",
+            "/mnt/ee16/home/student03/uai/models/t2a_v2/t2a_probe_lr.joblib",
+        )
+        if not (Path(weights).exists() and Path(probe_path).exists()):
+            raise HTTPException(
+                status_code=503,
+                detail=f"t2a classifier assets missing: {weights} / {probe_path}",
+            )
+        sd = torch.load(weights, map_location=self.device, weights_only=True)
+        self._t2a_visual = copy.deepcopy(self.model.visual)
+        self._t2a_visual.load_state_dict(sd)
+        self._t2a_visual.to(self.device).eval()
+        self._t2a_probe = joblib.load(probe_path)
+        self._t2a_classes = ["Normal", "Benign", "Malignant"]
+        self._t2a_ready = True
+        logger.info("t2a_classifier_loaded", weights=weights, probe=probe_path)
+
+    def classify_images(self, image_bytes_list: list[bytes]) -> list[dict]:
+        self._ensure_classifier()
+        from io import BytesIO
+
+        from PIL import Image
+
+        images = [
+            self.preprocess(Image.open(BytesIO(raw)).convert("RGB"))
+            for raw in image_bytes_list
+        ]
+        batch = torch.stack(images).to(self.device)
+        with torch.inference_mode(), torch.autocast(
+            self.device.type, dtype=torch.bfloat16
+        ):
+            feats = torch.nn.functional.normalize(
+                self._t2a_visual(batch).float(), p=2, dim=1
+            )
+        probs = self._t2a_probe.predict_proba(feats.cpu().numpy())
+        t2a_classes = ["Normal", "Benign", "Malignant"]
+        class_order = [t2a_classes[int(c)] for c in self._t2a_probe.classes_]
+        mal_idx = class_order.index("Malignant")
+        results = []
+        for p_row in probs:
+            pred_cls = class_order[int(p_row.argmax())]
+            results.append({
+                "probs": {
+                    cls: round(float(p_row[class_order.index(cls)]), 4)
+                    for cls in t2a_classes
+                },
+                "prediction": pred_cls,
+                "malignancy_risk": round(float(p_row[mal_idx]), 4),
+            })
+        return results
+
 
 class RerankerBackend:
     """bge-reranker-base 交叉编码器打分（返回原始 logit，供排序使用）。"""
@@ -541,6 +609,20 @@ def build_app(
                 raise HTTPException(status_code=400, detail="image must not be empty")
             vectors = await asyncio.to_thread(backend.encode_images, [raw])
             return {"embeddings": vectors, "model": service}
+
+        @app.post("/v1/classify")
+        async def t2a_classify(images: list[UploadFile] = File(default=[])) -> dict[str, Any]:
+            """T2a 良恶性分类（方案 C）：微调 visual 副本 + 逻辑回归探针。"""
+            backend = _backend()
+            if not hasattr(backend, "classify_images"):
+                raise HTTPException(
+                    status_code=400, detail=f"service {service} has no classifier"
+                )
+            raws = [await f.read() for f in images]
+            if not raws or any(not r for r in raws):
+                raise HTTPException(status_code=400, detail="images must not be empty")
+            results = await asyncio.to_thread(backend.classify_images, raws)
+            return {"model": "t2a_v2", "results": results}
 
         @app.post("/v1/embeddings/multimodal")
         async def clip_multimodal_embeddings(
