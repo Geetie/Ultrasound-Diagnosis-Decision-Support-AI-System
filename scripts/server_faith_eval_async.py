@@ -10,8 +10,6 @@ sys.path.insert(0, "/mnt/ee16/home/student03/uai/src/scripts")
 import httpx
 from openai import AsyncOpenAI
 from t1_eval_faithfulness import (
-    _GENERATION_SYSTEM,
-    _GENERATION_USER_TMPL,
     _extract_json,
     _filter_meta_statements,
     _is_refusal,
@@ -21,6 +19,10 @@ from t1_eval_faithfulness import (
 )
 from t1_eval_retrieval import bm25_topk, cosine_topk, embed_texts, rrf_fuse
 
+# 生成侧溯源约束 v2（A.10.3）：T1c 基线 prompt 的"复述原文"约束在
+# 对话语料上失分——语料简略，模型补全的医学正确常识在 NLI 逐条判定
+# 下全部记为不支持。v2 改为**分层回答**：有据详述、无据明示"参考知识
+# 未涉及"（meta 标注会被 _filter_meta_statements 过滤，不编造也不硬拒）。
 GEN_URL = "http://127.0.0.1:8002"
 JUDGE_URL = "http://127.0.0.1:8006"
 GEN_MODEL = "Qwen2.5-7B-Instruct"
@@ -29,6 +31,18 @@ N = 40
 CONC = 16
 TOP_K = 5
 CALL_TIMEOUT = 30
+
+_GENERATION_SYSTEM_V2 = (
+    "你是一名超声医学知识助手。请严格只依据【参考知识】回答用户问题，"
+    "并遵守以下分层规则：\n"
+    "1. 答案中的每一条医学事实（原因、数值、分级、处理建议）必须能在"
+    "【参考知识】原文中找到直接依据，用词尽量复述原文，不要同义改写。\n"
+    "2. 用户问到了、但【参考知识】没有涉及的内容，不要用你的医学常识"
+    "补充——明确写一句「此点参考知识未涉及，建议线下咨询医生」。\n"
+    "3. 若整份参考知识都无法回答问题，直接回答「根据现有知识无法回答」。\n"
+    "禁止编造参考知识之外的数值、分级或结论。"
+)
+_GENERATION_USER_TMPL_V2 = "【参考知识】\n{context}\n\n【问题】\n{question}"
 
 
 async def chat(client, url, model, messages, max_tokens=256):
@@ -48,8 +62,8 @@ async def eval_one(gen, judge, sem, qi, q, corpus, corpus_texts, fused,
                 "context_chunk_ids": [corpus[i]["chunk_id"] for i in top5]}
         try:
             answer = await chat(gen, GEN_URL, GEN_MODEL, [
-                {"role": "system", "content": _GENERATION_SYSTEM},
-                {"role": "user", "content": _GENERATION_USER_TMPL.format(
+                {"role": "system", "content": _GENERATION_SYSTEM_V2},
+                {"role": "user", "content": _GENERATION_USER_TMPL_V2.format(
                     context=context, question=q["query_text"])}], max_tokens=512)
             item["answer"] = answer
             stmt_out = _extract_json(await chat(judge, JUDGE_URL, JUDGE_MODEL, [
