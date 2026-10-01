@@ -23,12 +23,17 @@ from t1_eval_retrieval import bm25_topk, cosine_topk, embed_texts, rrf_fuse
 # 对话语料上失分——语料简略，模型补全的医学正确常识在 NLI 逐条判定
 # 下全部记为不支持。v2 改为**分层回答**：有据详述、无据明示"参考知识
 # 未涉及"（meta 标注会被 _filter_meta_statements 过滤，不编造也不硬拒）。
-GEN_URL = "http://127.0.0.1:8002"
-JUDGE_URL = "http://127.0.0.1:8006"
-GEN_MODEL = "Qwen2.5-7B-Instruct"
-JUDGE_MODEL = "Qwen3-8B"
-N = 40
-CONC = 16
+# 主生成 A/B 评估（qwen3-upgrade）：环境变量可覆盖生成端，
+# A 组=生产（Qwen2.5-7B@8002），B 组=候选（Qwen3-8B@8006）。
+import os
+
+GEN_URL = os.environ.get("GEN_URL", "http://127.0.0.1:8002")
+JUDGE_URL = os.environ.get("JUDGE_URL", "http://127.0.0.1:8006")
+GEN_MODEL = os.environ.get("GEN_MODEL", "Qwen2.5-7B-Instruct")
+JUDGE_MODEL = os.environ.get("JUDGE_MODEL", "Qwen3-8B")
+OUT_PATH = os.environ.get("OUT_PATH", "/mnt/ee16/home/student03/uai/src/reports/t1_faith_qwen3judge.json")
+N = int(os.environ.get("N", "40"))
+CONC = int(os.environ.get("CONC", "16"))
 TOP_K = 5
 CALL_TIMEOUT = 30
 
@@ -46,9 +51,13 @@ _GENERATION_USER_TMPL_V2 = "【参考知识】\n{context}\n\n【问题】\n{ques
 
 
 async def chat(client, url, model, messages, max_tokens=256):
+    # Qwen3 判官（8006）默认思考模式会输出 <think> 污染 JSON 且拖延迟——
+    # 统一请求级关闭（Qwen2.5 模型会忽略该参数，无害）。
     r = await client.post(url + "/v1/chat/completions",
         json={"model": model, "messages": messages, "temperature": 0.0,
-              "max_tokens": max_tokens}, timeout=CALL_TIMEOUT)
+              "max_tokens": max_tokens,
+              "chat_template_kwargs": {"enable_thinking": False}},
+        timeout=CALL_TIMEOUT)
     r.raise_for_status()
     return r.json()["choices"][0]["message"]["content"]
 
@@ -61,10 +70,14 @@ async def eval_one(gen, judge, sem, qi, q, corpus, corpus_texts, fused,
         item = {"query_id": q["query_id"], "question": q["query_text"],
                 "context_chunk_ids": [corpus[i]["chunk_id"] for i in top5]}
         try:
+            _t_gen = time.perf_counter()
             answer = await chat(gen, GEN_URL, GEN_MODEL, [
                 {"role": "system", "content": _GENERATION_SYSTEM_V2},
                 {"role": "user", "content": _GENERATION_USER_TMPL_V2.format(
                     context=context, question=q["query_text"])}], max_tokens=512)
+            item["gen_latency_ms"] = round(
+                (time.perf_counter() - _t_gen) * 1000, 1)
+            item["answer_len"] = len(answer)
             item["answer"] = answer
             stmt_out = _extract_json(await chat(judge, JUDGE_URL, JUDGE_MODEL, [
                 {"role": "user", "content": _render_statement_prompt(q["query_text"], answer)}]))
@@ -178,11 +191,19 @@ async def main():
                 if "faithfulness_lenient" in r)
             / max(1, sum(1 for r in scored if "faithfulness_lenient" in r))),
         "low_scores": sorted([(r["query_id"], round(r["faithfulness"], 2)) for r in scored if r["faithfulness"] < 0.8]),
+        "gen_latency_ms_mean": round(
+            sum(r["gen_latency_ms"] for r in scored if "gen_latency_ms" in r)
+            / max(1, sum(1 for r in scored if "gen_latency_ms" in r)), 1),
+        "answer_len_mean": round(
+            sum(r["answer_len"] for r in scored if "answer_len" in r)
+            / max(1, sum(1 for r in scored if "answer_len" in r)), 1),
         "total_latency_s": round(elapsed, 1), "results": results}
-    out = Path("/mnt/ee16/home/student03/uai/src/reports/t1_faith_qwen3judge.json")
+    out = Path(OUT_PATH)
     out.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     print("DONE mean=", report["mean_faithfulness"],
           "mean_lenient=", round(report["mean_faithfulness_lenient"], 4),
+          "gen_ms=", report["gen_latency_ms_mean"],
+          "answer_len=", report["answer_len_mean"],
           "scored=", len(scored),
           "elapsed=", round(elapsed, 1), "s", flush=True)
 
