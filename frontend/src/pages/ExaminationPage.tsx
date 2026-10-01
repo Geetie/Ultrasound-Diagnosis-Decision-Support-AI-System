@@ -9,6 +9,7 @@ import { requestDiagnosis } from '@/services/diagnosisService';
 import { useNavigate } from 'react-router-dom';
 import { generateIdempotencyKey } from '@/utils/idGenerator';
 import { getApiErrorMessage } from '@/utils/apiError';
+import { wadouri } from '@/components/dicom/cornerstone';
 
 const { Title, Text } = Typography;
 
@@ -21,12 +22,9 @@ export default function ExaminationPage() {
   useNavigationAnnotations();
 
   const handleFileUpload = useCallback((file: File) => {
-    if (objectUrlRef.current) {
-      URL.revokeObjectURL(objectUrlRef.current);
-    }
-    const url = URL.createObjectURL(file);
-    objectUrlRef.current = url;
-    const dicomImageId = `wado:uri?url=${encodeURIComponent(url)}&type=DICOM`;
+    // Cornerstone3D：File 直接注册进 wadouri fileManager，返回可加载的 imageId
+    //（旧 wado:uri?url=... 是 cornerstone-wado-image-loader 4.x 专属 scheme）。
+    const dicomImageId = wadouri.fileManager.add(file);
     setImageId(dicomImageId);
     return false;
   }, []);
