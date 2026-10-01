@@ -117,8 +117,8 @@ def _pick_conclusion_text(result: dict) -> str:
             parts.append(v.strip())
     if not parts:
         v = result.get("patient_explanation")
-    if isinstance(v, str) and v.strip():
-        parts.append(v.strip())
+        if isinstance(v, str) and v.strip():
+            parts.append(v.strip())
     for key in ("malignancy_risk", "measurement", "differential_diagnoses"):
         v = result.get(key)
         if v:

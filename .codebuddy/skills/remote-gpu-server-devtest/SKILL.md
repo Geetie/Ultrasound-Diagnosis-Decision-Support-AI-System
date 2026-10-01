@@ -121,6 +121,9 @@ PYTHONPATH=$HOME/uai/src ~/uai/venv/bin/python scripts/server_populate_vector_in
 | api.log 判为二进制 | 含 NUL，先 tr -d |
 | 知识库建完 dense 查不到 | 建库只写 knowledge_chunks，需灌 vector_index（server_populate_vector_index） |
 | guided_json 不生效 | 新版 vLLM 用 response_format json_schema |
+| 评测 completed=9/9 但 support=None/结论空 | 评测器 _pick_conclusion_text 缩进错位 → UnboundLocalError 被主循环 except 吞——跑完必须抽样 ai_conclusion 非空 + 查 report 的 error 字段；单跑评测函数对真实响应 1 分钟定位 |
+| needs_review=6/9 假象 | 旧进程 BM25 索引早于三器官灌数构建；重启自愈——评测前先重启主服务再灌数序 |
+| 并发评测排队 | int_worker_pool_size 默认 4，.env 调 16（IO 密集协程） |
 
 ## 压测结论（2026-10-01）
 
