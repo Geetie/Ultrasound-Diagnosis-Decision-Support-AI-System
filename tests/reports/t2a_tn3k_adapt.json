@@ -1,0 +1,26 @@
+{
+  "baseline_va_auc": 0.8014,
+  "baseline_test_auc": 0.6483,
+  "history": [
+    {
+      "epoch": 1,
+      "loss": 0.6815,
+      "val_auc": 0.8298,
+      "test_auc": 0.6701
+    },
+    {
+      "epoch": 2,
+      "loss": 0.6551,
+      "val_auc": 0.8629,
+      "test_auc": 0.7051
+    },
+    {
+      "epoch": 3,
+      "loss": 0.6149,
+      "val_auc": 0.8944,
+      "test_auc": 0.6979
+    }
+  ],
+  "best_test_auc": 0.7051,
+  "leak_fixed": true
+}

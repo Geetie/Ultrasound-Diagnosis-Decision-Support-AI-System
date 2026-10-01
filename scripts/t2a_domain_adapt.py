@@ -109,10 +109,11 @@ def main():
             continue
         row = {"bytes": p.read_bytes(), "label": label}
         if name in test_labels:
-            test_rows.append(row)
+            # test 图像：标签用官方 label4test 的标注（非 trainval 标注）
+            test_rows.append({"bytes": p.read_bytes(),
+                              "label": test_labels[name]})
         else:
             train_rows.append(row)
-    # test 补齐 label4test 独有（不在 trainval 目录的跳过）
     # 分层切分（按类别分组各 90/10，防 val 类缺失）
     by = {}
     for r in train_rows:
