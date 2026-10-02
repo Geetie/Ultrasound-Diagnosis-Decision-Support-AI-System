@@ -77,7 +77,7 @@ async def backfill(kb_version: str, dry_run: bool = False) -> int:
                 text(
                     """
                     UPDATE knowledge_chunks
-                    SET metadata = metadata || :rel::jsonb
+                    SET metadata = metadata || CAST(:rel AS jsonb)
                     WHERE chunk_id = :cid
                     """
                 ),

@@ -125,7 +125,8 @@ class PgVectorGraphAdapter:
             ) AS rel
             WHERE rel->>'target' IS NOT NULL
               AND rel->>'target' <> ''
-              AND (:relation_type IS NULL OR rel->>'relation' = :relation_type)
+              AND (CAST(:relation_type AS text) IS NULL
+                   OR rel->>'relation' = :relation_type)
         )
     """
 
@@ -272,8 +273,8 @@ class PgVectorGraphAdapter:
                     (e1.relation_type = :positive AND e2.relation_type = :negative)
                  OR (e1.relation_type = :negative AND e2.relation_type = :positive)
                  )
-            WHERE e1.source_id = ANY(:chunk_ids)
-              AND e2.source_id = ANY(:chunk_ids)
+            WHERE e1.source_id = ANY(CAST(:chunk_ids AS text[]))
+              AND e2.source_id = ANY(CAST(:chunk_ids AS text[]))
         """
         positive, negative = self._OPPOSING_RELATIONS[0]
         rows = await self._fetch(
