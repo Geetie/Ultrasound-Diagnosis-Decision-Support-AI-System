@@ -1,0 +1,55 @@
+{
+  "gate": "P99（不含重试）< 8s（A.13 记分牌 #6 口径）；Gate 0 原口径 诊断<5s",
+  "model": "Qwen2.5-7B-Instruct",
+  "levels": [
+    {
+      "concurrency": 5,
+      "n": 60,
+      "ok": 60,
+      "errors": 0,
+      "wall_s": 7.8,
+      "throughput_rps": 7.74,
+      "p50_s": 0.62,
+      "p95_s": 0.72,
+      "p99_s": 0.73,
+      "mean_s": 0.62
+    },
+    {
+      "concurrency": 10,
+      "n": 60,
+      "ok": 60,
+      "errors": 0,
+      "wall_s": 4.1,
+      "throughput_rps": 14.69,
+      "p50_s": 0.63,
+      "p95_s": 0.74,
+      "p99_s": 0.74,
+      "mean_s": 0.63
+    },
+    {
+      "concurrency": 15,
+      "n": 60,
+      "ok": 60,
+      "errors": 0,
+      "wall_s": 2.8,
+      "throughput_rps": 21.12,
+      "p50_s": 0.63,
+      "p95_s": 0.74,
+      "p99_s": 0.75,
+      "mean_s": 0.63
+    },
+    {
+      "concurrency": 20,
+      "n": 60,
+      "ok": 60,
+      "errors": 0,
+      "wall_s": 2.2,
+      "throughput_rps": 26.69,
+      "p50_s": 0.67,
+      "p95_s": 0.78,
+      "p99_s": 0.79,
+      "mean_s": 0.67
+    }
+  ],
+  "gate_pass": true
+}
