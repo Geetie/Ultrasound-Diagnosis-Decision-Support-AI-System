@@ -47,6 +47,11 @@ data/
 # 忽略了，导致 3 个测试文件只存在于本机、**CI 从未运行过它们**；本地覆盖率因此虚高于 CI。
 !tests/unit/data/
 !tests/integration/data/
+# 例外：app 内置资产词表目录同样不能被 `data/` 无锚点模式吞掉
+# （vocab_v2_final.json / hallucination_vocab.json / crisis_terms_cardiac.json 等
+#  属于随仓库分发的运行时资产，非本地数据）。
+!app/knowledge/data/
+!app/inference/data/
 keys/
 secrets/
 *.pem

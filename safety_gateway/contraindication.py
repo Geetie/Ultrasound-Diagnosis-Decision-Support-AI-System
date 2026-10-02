@@ -31,6 +31,7 @@ class ContraindicationRule(BaseModel):
     description: str
     severity: str = "high"
     enabled: bool = True
+    source_reference: str | None = None
 
 
 class ContraindicationMatch(BaseModel):

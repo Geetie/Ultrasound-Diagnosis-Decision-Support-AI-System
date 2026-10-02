@@ -1,0 +1,15 @@
+{
+  "version": "v1",
+  "updated": "2026-10-02",
+  "source": "code defaults (ContextAwareDetector) + UDT task2 cardiac crisis-term extraction (corpus pdf_cardiac_* via 8002) + canonical crisis terms",
+  "context_aware": {
+    "benign_desc": ["边界清晰", "形态规则", "边界尚清晰", "形态尚规则", "无钙化", "无血流", "囊性"],
+    "malignant_desc": ["边界模糊", "边界不清", "形态不规则", "微钙化", "丰富血流", "实性低回声", "纵横比大于1"],
+    "benign_conclusion": ["良性", "考虑良性", "倾向良性", "TI-RADS 2", "TI-RADS 3", "LI-RADS 2", "LI-RADS 3", "BI-RADS 2", "BI-RADS 3"],
+    "malignant_conclusion": ["恶性", "考虑恶性", "倾向恶性", "TI-RADS 5", "LI-RADS 5", "BI-RADS 5", "建议穿刺", "建议手术"],
+    "cardiac_benign_desc": ["收缩功能正常", "舒张功能正常", "室壁运动正常", "瓣膜正常", "心包正常"],
+    "cardiac_crisis_desc": ["收缩功能减低", "室壁运动异常", "心包积液", "瓣膜重度反流", "全心扩大", "主动脉夹层", "主动脉瘤破裂", "心包填塞", "心脏压塞", "心包积液合并心脏压塞", "大量心包积液", "心脏破裂", "左心室穿破", "右心室穿破", "室间隔穿孔", "室壁穿孔", "腱索断裂", "瓣膜赘生物", "赘生物", "血栓", "血栓形成", "心脏游离血栓", "感染性心内膜炎", "瓣叶穿孔", "瓣周漏", "瓣叶瘤", "重度瓣膜反流"],
+    "cardiac_benign_conclusion": ["正常", "功能正常", "mild", "轻度"],
+    "cardiac_crisis_conclusion": ["严重", "重度", "severe", "心衰", "心力衰竭"]
+  }
+}

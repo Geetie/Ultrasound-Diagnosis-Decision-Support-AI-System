@@ -3,6 +3,7 @@
 # 规则按器官分类，organ为"global"时表示全局禁忌规则。
 # severity: high=高严重度（必须拦截），medium=中等严重度（需警告）
 # enabled: 是否启用该规则
+# source_reference: 规则医学依据出处（可追溯性要求；未填则为 null，向后兼容）
 
 rules:
 - id: thyroid_pregnancy_fna
@@ -11,6 +12,7 @@ rules:
   description: "妊娠期甲状腺结节FNA需谨慎评估"
   severity: high
   enabled: true
+  source_reference: "《妊娠期甲状腺疾病诊治指南》；ATA 甲状腺结节与分化型甲状腺癌诊治指南"
 
 - id: thyroid_anticoagulant_biopsy
   organ: thyroid
@@ -18,6 +20,7 @@ rules:
   description: "抗凝治疗期间穿刺活检出血风险增加"
   severity: high
   enabled: true
+  source_reference: "甲状腺结节穿刺活检技术操作规范（抗凝药物停药条款）"
 
 - id: liver_coagulopathy_biopsy
   organ: liver
@@ -25,6 +28,7 @@ rules:
   description: "凝血功能障碍肝脏活检禁忌"
   severity: high
   enabled: true
+  source_reference: "肝穿刺活检技术操作规范（凝血功能要求条款）"
 
 - id: liver_pregnancy_ct
   organ: liver
@@ -32,6 +36,7 @@ rules:
   description: "妊娠期肝脏CT增强扫描需谨慎"
   severity: medium
   enabled: true
+  source_reference: "ACR 妊娠期电离辐射暴露原则"
 
 - id: cardiac_pregnancy_stress_echo
   organ: cardiac
@@ -39,6 +44,7 @@ rules:
   description: "妊娠期负荷超声心动图需谨慎"
   severity: medium
   enabled: true
+  source_reference: "ASE 妊娠期心血管影像检查指南"
 
 - id: cardiac_severe_aortic_stenosis
   organ: cardiac
@@ -46,6 +52,7 @@ rules:
   description: "严重主动脉瓣狭窄运动负荷禁忌"
   severity: high
   enabled: true
+  source_reference: "ASE/EACVI 负荷超声心动图指南（严重主动脉瓣狭窄为运动负荷禁忌证）"
 
 - id: kidney_contrast_nephropathy
   organ: kidney
@@ -53,6 +60,7 @@ rules:
   description: "造影剂过敏史患者肾脏超声造影禁忌"
   severity: high
   enabled: true
+  source_reference: "ESUR 造影剂指南（过敏史筛查条款）；中华医学会造影剂临床应用指导原则"
 
 - id: kidney_single_kidney_biopsy
   organ: kidney
@@ -60,6 +68,7 @@ rules:
   description: "凝血功能障碍肾脏穿刺活检出血风险增加"
   severity: high
   enabled: true
+  source_reference: "肾脏穿刺活检技术操作规范（凝血功能要求条款）"
 
 - id: breast_pregnancy_radiation
   organ: breast
@@ -67,6 +76,7 @@ rules:
   description: "妊娠期乳腺放射检查需谨慎评估"
   severity: high
   enabled: true
+  source_reference: "ACR 妊娠期电离辐射暴露原则"
 
 - id: gallbladder_coagulopathy_puncture
   organ: gallbladder
@@ -74,6 +84,7 @@ rules:
   description: "凝血功能障碍胆囊穿刺禁忌"
   severity: high
   enabled: true
+  source_reference: "超声引导胆囊穿刺引流技术操作规范（凝血功能要求条款）"
 
 - id: spleen_coagulopathy_puncture
   organ: spleen
@@ -81,6 +92,7 @@ rules:
   description: "凝血功能障碍脾脏穿刺禁忌"
   severity: high
   enabled: true
+  source_reference: "脾脏穿刺活检技术操作规范（凝血功能要求条款）"
 
 - id: pancreas_coagulopathy_biopsy
   organ: pancreas
@@ -88,6 +100,7 @@ rules:
   description: "凝血功能障碍胰腺穿刺活检禁忌"
   severity: high
   enabled: true
+  source_reference: "胰腺穿刺活检技术操作规范（凝血功能要求条款）"
 
 - id: vascular_contrast_allergy
   organ: vascular
@@ -95,6 +108,7 @@ rules:
   description: "造影剂过敏史患者血管超声造影禁忌"
   severity: high
   enabled: true
+  source_reference: "ESUR 造影剂指南（过敏史筛查条款）"
 
 - id: global_pregnancy_radiation
   organ: global
@@ -102,6 +116,7 @@ rules:
   description: "妊娠期放射性检查需严格评估风险收益比"
   severity: high
   enabled: true
+  source_reference: "ACR 妊娠期电离辐射暴露原则"
 
 - id: global_contrast_allergy
   organ: global
@@ -109,3 +124,4 @@ rules:
   description: "造影剂过敏史患者增强扫描禁忌"
   severity: high
   enabled: true
+  source_reference: "ESUR 造影剂指南（过敏史筛查条款）"

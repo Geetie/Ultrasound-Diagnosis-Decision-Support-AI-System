@@ -12,12 +12,14 @@
 - 执行日志记录
 """
 
+import json
 import re
 import threading
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
+from pathlib import Path
 from typing import Any
 
 import structlog
@@ -312,18 +314,66 @@ class NumericalValidityDetector(BaseDetector):
                 pass
 
 
+# ---------------------------------------------------------------------------
+# 上下文感知词表资产（v1, 2026-10-02）：JSON 资产加载，失败回退内置默认
+# ---------------------------------------------------------------------------
+
+_VOCAB_ASSET_PATH = Path(__file__).parent / "data" / "hallucination_vocab.json"
+
+_DEFAULT_CONTEXT_AWARE_VOCAB: dict[str, set[str]] = {
+    "benign_desc": {"边界清晰", "形态规则", "边界尚清晰", "形态尚规则", "无钙化", "无血流", "囊性"},
+    "malignant_desc": {"边界模糊", "边界不清", "形态不规则", "微钙化", "丰富血流", "实性低回声", "纵横比大于1"},
+    "benign_conclusion": {"良性", "考虑良性", "倾向良性", "TI-RADS 2", "TI-RADS 3", "LI-RADS 2", "LI-RADS 3", "BI-RADS 2", "BI-RADS 3"},
+    "malignant_conclusion": {"恶性", "考虑恶性", "倾向恶性", "TI-RADS 5", "LI-RADS 5", "BI-RADS 5", "建议穿刺", "建议手术"},
+    "cardiac_benign_desc": {"收缩功能正常", "舒张功能正常", "室壁运动正常", "瓣膜正常", "心包正常"},
+    "cardiac_crisis_desc": {
+        # 原 cardiac 恶性描述词
+        "收缩功能减低", "室壁运动异常", "心包积液", "瓣膜重度反流", "全心扩大",
+        # UDT 任务2 危象词（语料实证 + 规范危象术语）
+        "主动脉夹层", "主动脉瘤破裂", "心包填塞", "心脏压塞", "心包积液合并心脏压塞",
+        "大量心包积液", "心脏破裂", "左心室穿破", "右心室穿破", "室间隔穿孔",
+        "室壁穿孔", "腱索断裂", "瓣膜赘生物", "赘生物", "血栓", "血栓形成",
+        "心脏游离血栓", "感染性心内膜炎", "瓣叶穿孔", "瓣周漏", "瓣叶瘤", "重度瓣膜反流",
+    },
+    "cardiac_benign_conclusion": {"正常", "功能正常", "mild", "轻度"},
+    "cardiac_crisis_conclusion": {"严重", "重度", "severe", "心衰", "心力衰竭"},
+}
+
+
+def _load_context_aware_vocab() -> dict[str, set[str]]:
+    """从 JSON 资产加载上下文感知词表；失败时回退内置默认。"""
+    try:
+        raw = json.loads(_VOCAB_ASSET_PATH.read_text(encoding="utf-8"))
+        section = raw.get("context_aware") or {}
+        vocab: dict[str, set[str]] = {}
+        for key, default in _DEFAULT_CONTEXT_AWARE_VOCAB.items():
+            words = section.get(key)
+            vocab[key] = set(words) if isinstance(words, list) and words else set(default)
+        return vocab
+    except Exception as exc:
+        logger.warning(
+            "hallucination_vocab_asset_load_failed",
+            path=str(_VOCAB_ASSET_PATH),
+            error=str(exc),
+        )
+        return {key: set(default) for key, default in _DEFAULT_CONTEXT_AWARE_VOCAB.items()}
+
+
 class ContextAwareDetector(BaseDetector):
     """上下文感知检测器"""
 
-    _BENIGN_DESC_KEYWORDS = {"边界清晰", "形态规则", "边界尚清晰", "形态尚规则", "无钙化", "无血流", "囊性"}
-    _MALIGNANT_DESC_KEYWORDS = {"边界模糊", "边界不清", "形态不规则", "微钙化", "丰富血流", "实性低回声", "纵横比大于1"}
-    _BENIGN_CONCLUSION_KEYWORDS = {"良性", "考虑良性", "倾向良性", "TI-RADS 2", "TI-RADS 3", "LI-RADS 2", "LI-RADS 3", "BI-RADS 2", "BI-RADS 3"}
-    _MALIGNANT_CONCLUSION_KEYWORDS = {"恶性", "考虑恶性", "倾向恶性", "TI-RADS 5", "LI-RADS 5", "BI-RADS 5", "建议穿刺", "建议手术"}
+    _VOCAB = _load_context_aware_vocab()
+    _BENIGN_DESC_KEYWORDS = _VOCAB["benign_desc"]
+    _MALIGNANT_DESC_KEYWORDS = _VOCAB["malignant_desc"]
+    _BENIGN_CONCLUSION_KEYWORDS = _VOCAB["benign_conclusion"]
+    _MALIGNANT_CONCLUSION_KEYWORDS = _VOCAB["malignant_conclusion"]
 
-    _CARDIAC_BENIGN_DESC_KEYWORDS = {"收缩功能正常", "舒张功能正常", "室壁运动正常", "瓣膜正常", "心包正常"}
-    _CARDIAC_MALIGNANT_DESC_KEYWORDS = {"收缩功能减低", "室壁运动异常", "心包积液", "瓣膜重度反流", "全心扩大"}
-    _CARDIAC_BENIGN_CONCLUSION_KEYWORDS = {"正常", "功能正常", "mild", "轻度"}
-    _CARDIAC_MALIGNANT_CONCLUSION_KEYWORDS = {"严重", "重度", "severe", "心衰", "心力衰竭"}
+    _CARDIAC_BENIGN_DESC_KEYWORDS = _VOCAB["cardiac_benign_desc"]
+    # cardiac 语义切换：原"恶性描述"并入危象词，现按"危象描述"检测
+    _CARDIAC_CRISIS_DESC_KEYWORDS = _VOCAB["cardiac_crisis_desc"]
+    _CARDIAC_BENIGN_CONCLUSION_KEYWORDS = _VOCAB["cardiac_benign_conclusion"]
+    # cardiac 语义切换："恶性结论"改为"危象结论"
+    _CARDIAC_CRISIS_CONCLUSION_KEYWORDS = _VOCAB["cardiac_crisis_conclusion"]
 
     _OVERREACTION_PATTERNS = [
         (re.compile(r'TI[-_]?RADS\s*2', re.IGNORECASE), re.compile(r'立即手术|紧急手术|穿刺活检|尽快手术')),
@@ -384,11 +434,11 @@ class ContextAwareDetector(BaseDetector):
 
     def _check_cardiac_description_conclusion_conflict(self, text: str, issues: list[DetectionIssue]):
         has_benign_desc = any(kw in text for kw in self._CARDIAC_BENIGN_DESC_KEYWORDS)
-        has_malignant_desc = any(kw in text for kw in self._CARDIAC_MALIGNANT_DESC_KEYWORDS)
+        has_crisis_desc = any(kw in text for kw in self._CARDIAC_CRISIS_DESC_KEYWORDS)
         has_benign_conclusion = any(kw in text for kw in self._CARDIAC_BENIGN_CONCLUSION_KEYWORDS)
-        has_malignant_conclusion = any(kw in text for kw in self._CARDIAC_MALIGNANT_CONCLUSION_KEYWORDS)
+        has_crisis_conclusion = any(kw in text for kw in self._CARDIAC_CRISIS_CONCLUSION_KEYWORDS)
 
-        if has_benign_desc and has_malignant_conclusion and not has_malignant_desc:
+        if has_benign_desc and has_crisis_conclusion and not has_crisis_desc:
             issues.append(DetectionIssue(
                 strategy=DetectionStrategy.CONTEXT_AWARE,
                 description="心脏描述特征正常但结论提示严重异常，存在描述-结论矛盾",
@@ -396,7 +446,7 @@ class ContextAwareDetector(BaseDetector):
                 weight=self.config.strategy_weights.context_aware,
             ))
 
-        if has_malignant_desc and has_benign_conclusion and not has_benign_desc:
+        if has_crisis_desc and has_benign_conclusion and not has_benign_desc:
             issues.append(DetectionIssue(
                 strategy=DetectionStrategy.CONTEXT_AWARE,
                 description="心脏描述特征异常但结论提示正常，存在描述-结论矛盾",

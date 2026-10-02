@@ -8,6 +8,11 @@ TODO(Phase0A): DESIGN-003 - Add unmapped term review queue for continuous vocabu
 """
 from dataclasses import dataclass
 from enum import Enum
+from pathlib import Path
+
+import structlog
+
+logger = structlog.get_logger("app.knowledge.vocabulary")
 
 
 @dataclass
@@ -217,6 +222,9 @@ class UDAFVocabulary:
         self._init_posterior_acoustic()
         # M3：派生测量术语（提供标准名用于输出与覆盖率统计）
         self._init_derived_measurements()
+        # 词汇表 v2 扩展层：THUOCL+语料双证+LLM 抽取（tier S/A/B 注册，
+        # C 层默认关闭）。资产缺失时静默跳过，内置词表保持可用。
+        self._init_extended_vocabulary()
 
     def _init_echogenicity(self):
         terms = [
@@ -404,6 +412,50 @@ class UDAFVocabulary:
         ]
         for standard in standards:
             self._add_mapping(standard, [], [], category=DERIVED_MEASUREMENT_CATEGORY)
+
+    EXTENDED_VOCAB_CATEGORY = "extended"
+
+    def _init_extended_vocabulary(self) -> None:
+        """加载词汇表 v2 扩展层（tier S/A/B；C 层需显式开启）。
+
+        资产来源：THUOCL_medical（清华）解剖锚点过滤 + 分器官语料双证 +
+        LLM 抽取（详见 scripts/udt_vocab_v2_*.py 与 16 号文档 A.15/A.16）。
+        每个词条注册为标准名（空同义词），不影响 _reverse_lookup 与
+        未识别词判定；organ/category 使 get_terms_by_organ/coverage_rate
+        直接受益。资产缺失或损坏时跳过（内置词表保持完整可用）。
+        """
+        import json
+        import os
+
+        default_path = Path(__file__).resolve().parent / "data" / "vocab_v2_final.json"
+        path = Path(os.environ.get("UDAF_EXTENDED_VOCAB", default_path))
+        if not path.exists():
+            logger.info("udaf_extended_vocab_missing", path=str(path))
+            return
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError) as exc:
+            logger.warning("udaf_extended_vocab_unreadable", path=str(path), error=str(exc))
+            return
+
+        include_c = os.environ.get("UDAF_EXTENDED_INCLUDE_C", "").lower() in ("1", "true", "yes")
+        allowed_tiers = {"S", "A", "B"} | ({"C"} if include_c else set())
+        organs = data.get("organs", {})
+        added = 0
+        for organ, terms in organs.items():
+            if organ not in ("thyroid", "liver", "cardiac"):
+                continue
+            for term, rec in terms.items():
+                if not isinstance(rec, dict) or rec.get("tier") not in allowed_tiers:
+                    continue
+                # 内置标准词/同义词优先：扩展词若与任一内建词重名，
+                # 注册会让 normalize 提前命中空同义词映射，遮蔽原映射
+                if term in self._vocab or term in self._reverse_lookup:
+                    continue
+                self._add_mapping(term, [], [], organ=organ,
+                                  category=self.EXTENDED_VOCAB_CATEGORY)
+                added += 1
+        logger.info("udaf_extended_vocab_loaded", path=str(path), added=added)
 
     def _add_mapping(self, standard: str, synonyms: list[str], related_terms: list[str],
                      organ: str | None = None, category: str | None = None):

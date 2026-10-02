@@ -1,0 +1,13432 @@
+{
+ "meta": {
+  "version": "vocab_v2_final",
+  "tiers": {
+   "S": "UDAF 生产分级同义词",
+   "A": "THUOCL+语料双证",
+   "B": "THUOCL 解剖锚点（语料低频）",
+   "C": "语料词素/LLM 抽取（待复核）"
+  },
+  "sources": [
+   "UDAF",
+   "THUOCL_medical(thunlp)",
+   "kb_src_v13 corpus",
+   "Qwen2.5-7B extraction"
+  ],
+  "date": "2026-10-02"
+ },
+ "organs": {
+  "thyroid": {
+   "甲状腺": {
+    "tier": "A",
+    "sources": [
+     "THUOCL",
+     "corpus_morph",
+     "llm"
+    ],
+    "freq": 3430
+   },
+   "甲状腺癌": {
+    "tier": "A",
+    "sources": [
+     "THUOCL",
+     "corpus_morph",
+     "llm"
+    ],
+    "freq": 492
+   },
+   "甲状腺结节": {
+    "tier": "A",
+    "sources": [
+     "THUOCL",
+     "corpus_morph",
+     "llm"
+    ],
+    "freq": 413
+   },
+   "颈部": {
+    "tier": "A",
+    "sources": [
+     "THUOCL",
+     "llm"
+    ],
+    "freq": 253
+   },
+   "甲状腺炎": {
+    "tier": "A",
+    "sources": [
+     "THUOCL",
+     "corpus_morph",
+     "llm"
+    ],
+    "freq": 240
+   },
+   "甲状腺肿": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 231
+   },
+   "甲状腺腺瘤": {
+    "tier": "A",
+    "sources": [
+     "THUOCL",
+     "corpus_morph",
+     "llm"
+    ],
+    "freq": 124
+   },
+   "亚急性甲状腺炎": {
+    "tier": "A",
+    "sources": [
+     "THUOCL",
+     "corpus_morph",
+     "llm"
+    ],
+    "freq": 88
+   },
+   "急性甲状腺炎": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 84
+   },
+   "甲状腺功能减退": {
+    "tier": "A",
+    "sources": [
+     "THUOCL",
+     "corpus_morph",
+     "llm"
+    ],
+    "freq": 83
+   },
+   "甲状腺激素": {
+    "tier": "A",
+    "sources": [
+     "THUOCL",
+     "llm"
+    ],
+    "freq": 74
+   },
+   "甲状腺素": {
+    "tier": "A",
+    "sources": [
+     "THUOCL",
+     "corpus_morph",
+     "llm"
+    ],
+    "freq": 68
+   },
+   "结节性甲状腺肿": {
+    "tier": "A",
+    "sources": [
+     "THUOCL",
+     "corpus_morph",
+     "llm"
+    ],
+    "freq": 53
+   },
+   "甲状旁腺": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 43
+   },
+   "结节": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph",
+     "llm"
+    ],
+    "freq": 30
+   },
+   "甲状腺囊肿": {
+    "tier": "A",
+    "sources": [
+     "THUOCL",
+     "corpus_morph",
+     "llm"
+    ],
+    "freq": 28
+   },
+   "甲状腺功能亢进": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph",
+     "llm"
+    ],
+    "freq": 26
+   },
+   "甲状腺瘤": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph",
+     "llm"
+    ],
+    "freq": 25
+   },
+   "远处转移": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 18
+   },
+   "淋巴结": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph",
+     "llm"
+    ],
+    "freq": 18
+   },
+   "乳头状癌": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 15
+   },
+   "淋巴结转移": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph",
+     "llm"
+    ],
+    "freq": 15
+   },
+   "促甲状腺激素": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 13
+   },
+   "甲状腺球蛋白": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 13
+   },
+   "下可能是甲状腺腺瘤": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 13
+   },
+   "甲状腺乳头状癌": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph",
+     "llm"
+    ],
+    "freq": 13
+   },
+   "慢性淋巴细胞性甲状腺炎": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 12
+   },
+   "滤泡癌": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 12
+   },
+   "手术治疗": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 12
+   },
+   "甲状腺病": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 11
+   },
+   "甲状腺低分化癌": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 11
+   },
+   "甲状腺清除治疗": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 11
+   },
+   "生改变为甲状腺滤泡增生": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 10
+   },
+   "甲状腺肿大": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph",
+     "llm"
+    ],
+    "freq": 10
+   },
+   "微钙化": {
+    "tier": "S",
+    "sources": [
+     "udaf",
+     "corpus_morph",
+     "llm"
+    ],
+    "freq": 9
+   },
+   "左甲状腺素钠片": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 9
+   },
+   "左甲状腺素钠": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 9
+   },
+   "甲状腺瘤是临床": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 9
+   },
+   "大体侵犯甲状腺外带状肌": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 9
+   },
+   "义不明的滤泡性病变": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 9
+   },
+   "甲状腺瘤的治疗": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 9
+   },
+   "分化型甲状腺癌": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 9
+   },
+   "位于甲状腺内": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 9
+   },
+   "钙化": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph",
+     "llm"
+    ],
+    "freq": 9
+   },
+   "低回声": {
+    "tier": "S",
+    "sources": [
+     "udaf",
+     "corpus_morph"
+    ],
+    "freq": 8
+   },
+   "甲状腺组织肿胀": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 8
+   },
+   "区域淋巴结转移": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 8
+   },
+   "未分化癌": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 8
+   },
+   "滤泡性肿瘤": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 8
+   },
+   "能自主性甲状腺瘤以外大": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 8
+   },
+   "多数见甲状腺边缘化性": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 8
+   },
+   "为多发性结节": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 8
+   },
+   "且局限在甲状腺内": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 8
+   },
+   "实性结节": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph",
+     "llm"
+    ],
+    "freq": 8
+   },
+   "甲状腺良性肿瘤": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph",
+     "llm"
+    ],
+    "freq": 8
+   },
+   "髓样癌": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph",
+     "llm"
+    ],
+    "freq": 8
+   },
+   "桥本甲状腺炎": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph",
+     "llm"
+    ],
+    "freq": 8
+   },
+   "甲状腺功能": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 8
+   },
+   "单纯性甲状腺肿": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 7
+   },
+   "慢性淋巴细胞性甲": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 7
+   },
+   "甲亢": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 7
+   },
+   "气管": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 7
+   },
+   "高回声": {
+    "tier": "S",
+    "sources": [
+     "udaf",
+     "corpus_morph",
+     "llm"
+    ],
+    "freq": 6
+   },
+   "甲状腺球蛋白抗体": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 6
+   },
+   "甲状腺片": {
+    "tier": "A",
+    "sources": [
+     "THUOCL",
+     "llm"
+    ],
+    "freq": 6
+   },
+   "甲状腺癌术后出": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 6
+   },
+   "瘤局限在甲状腺内": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 6
+   },
+   "甲状腺髓样癌": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 6
+   },
+   "甲状腺瘤应该怎": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 6
+   },
+   "出现远处转移": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 6
+   },
+   "出了恶性甲状腺瘤": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 6
+   },
+   "形态": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 6
+   },
+   "部分甲状腺腺瘤可再": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 6
+   },
+   "无结节": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 6
+   },
+   "侵袭性或转移性": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 6
+   },
+   "甲状腺结节可以单发": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 6
+   },
+   "多种不同甲状腺疾病": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 6
+   },
+   "发生远处转移": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 6
+   },
+   "甲状腺自身抗体": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 6
+   },
+   "甲状腺过氧化物": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 6
+   },
+   "微小钙化": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 6
+   },
+   "侧腺叶及峡部切除": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 6
+   },
+   "纵横比": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph",
+     "llm"
+    ],
+    "freq": 6
+   },
+   "回声": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph",
+     "llm"
+    ],
+    "freq": 6
+   },
+   "甲状腺彩超": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph",
+     "llm"
+    ],
+    "freq": 6
+   },
+   "腺瘤": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 6
+   },
+   "恶性": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 6
+   },
+   "手术摘除": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 6
+   },
+   "良性": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 6
+   },
+   "地方性甲状腺肿": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 5
+   },
+   "甲状腺肿瘤患者": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 5
+   },
+   "甲状腺癌的治疗": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 5
+   },
+   "可疑滤泡性肿瘤": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 5
+   },
+   "您好甲状腺功能亢进": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 5
+   },
+   "期甲状腺未分化癌": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 5
+   },
+   "如果甲状腺功能正常": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 5
+   },
+   "易发结节比单发结": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 5
+   },
+   "但单发结节甲状腺癌": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 5
+   },
+   "甲状腺结节是指在甲": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 5
+   },
+   "状腺内的肿块": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 5
+   },
+   "咽动作随甲状腺而上下快": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 5
+   },
+   "如甲状腺退行性变": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 5
+   },
+   "滤泡": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 5
+   },
+   "转移": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 5
+   },
+   "也可行全甲状腺切除": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 5
+   },
+   "肿瘤": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 5
+   },
+   "恶性变": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 5
+   },
+   "形态规则": {
+    "tier": "S",
+    "sources": [
+     "udaf",
+     "corpus_morph"
+    ],
+    "freq": 4
+   },
+   "甲状腺恶性肿瘤": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 4
+   },
+   "甲状腺切除术": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 4
+   },
+   "慢性甲状腺炎": {
+    "tier": "B",
+    "sources": [
+     "THUOCL",
+     "llm"
+    ],
+    "freq": 4
+   },
+   "被确诊为甲状腺肿瘤": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 4
+   },
+   "甲状腺瘤有良性": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 4
+   },
+   "局限于甲状腺内或大体": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 4
+   },
+   "侵犯甲状腺外带状肌": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 4
+   },
+   "局限于甲状腺内": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 4
+   },
+   "区域淋巴结": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 4
+   },
+   "乳头状或滤泡状癌": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 4
+   },
+   "甲状腺癌怎么治": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 4
+   },
+   "无远处转移": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 4
+   },
+   "查出来的甲状腺瘤": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 4
+   },
+   "极低回声": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 4
+   },
+   "出现典型甲状腺癌转移性": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 4
+   },
+   "我有甲状腺瘤病": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 4
+   },
+   "院查说有甲状腺结节": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 4
+   },
+   "危分化型甲状腺癌患者": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 4
+   },
+   "表现出为结节": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 4
+   },
+   "体检查出甲状腺结节": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 4
+   },
+   "于分化型甲状腺癌": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 4
+   },
+   "仔细检查甲状腺功能": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 4
+   },
+   "甲状腺癌手术后": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 4
+   },
+   "甲状腺外侵犯": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 4
+   },
+   "颈部肿块多为单发": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 4
+   },
+   "且局限于甲状腺内": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 4
+   },
+   "甲状腺瘤的早期": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 4
+   },
+   "滤泡上皮与": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 4
+   },
+   "类结节": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 4
+   },
+   "甲状腺瘤患者怎": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 4
+   },
+   "彩超": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 4
+   },
+   "中药": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 4
+   },
+   "手术": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 4
+   },
+   "吞咽困难": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 4
+   },
+   "食管": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 4
+   },
+   "癌变": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 4
+   },
+   "边界不清": {
+    "tier": "S",
+    "sources": [
+     "udaf",
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "边界模糊": {
+    "tier": "S",
+    "sources": [
+     "udaf",
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "边界清": {
+    "tier": "S",
+    "sources": [
+     "udaf",
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "边界清晰": {
+    "tier": "S",
+    "sources": [
+     "udaf",
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "甲状腺癌的淋巴": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "滤泡型": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "包膜内甲状腺髓样癌等": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "滤泡细胞构成": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "状为迅速增大": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "伴有远处转移如肺": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "以上形态可单独或": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "非滤泡和滤泡旁细胞来": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "甲状腺癌的分期": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "侵犯甲状腺外颈部周": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "无淋巴结转移证据": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "转移至": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "淋巴结广泛": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "包膜侵犯": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "淋巴结转移特征": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "未见甲状腺床外摄碘": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "合并少量淋巴结转移": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "即转移灶最大直": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "甲状腺内微小乳": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "肿瘤侵犯甲状腺外软组织": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "管侵犯的甲状腺乳头状癌": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "颈部摄碘转移灶显影": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "枚转移淋巴结": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "变阳性的甲状腺腺内乳头": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "存在远处转移": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "任何淋巴结转移灶": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "甲状腺滤泡癌广泛侵": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "灶较小或淋巴结转移个": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "危人群中淋巴结受累": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "但无远处转移的中": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "伴发颈部淋巴结或远处": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "全甲状腺切除术后": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "部或远处转移患者的应": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "对于肺转移的治疗": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "对于骨转移灶": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "符合良性滤泡结节": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "括腺瘤样结节和胶质结": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "甲状腺未分化癌": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "转移性恶性肿": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "可疑滤泡性": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "见点状强回声": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "甲状腺癌对放射": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "甲状腺瘤患者的": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "癌出现颈淋巴结转移": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "皮肤肌肉纤维化": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "食管气管狭窄": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "甲状腺癌的全身": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "分化型甲状腺癌存在血": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "期甲状腺未分化癌的方案": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "甲状腺疾病需多": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "甲状腺癌功能代": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "甲状腺癌患者术": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "甲状腺癌细胞病": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "甲状腺癌的细胞": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "囊实性结节或先前有": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "每个结节的进针次": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "于囊实性结节应有针对": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "床怀疑是甲状腺少见类型": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "如髓样癌": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "可以通过甲状腺彩超就可": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "以推测出甲状腺的性质问": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "甲状腺核素探测": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "出的是冷结节": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "为亚急性甲状腺炎": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "分甲状腺腺瘤可再": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "甲状腺癌怎么办": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "甲状腺腺瘤是一": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "种甲状腺良性肿瘤": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "滤泡旁细胞": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "约占全部髓样癌的": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "甲状腺癌术后除": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "全甲状腺切除的患": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "颈部淋巴结清扫的": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "甲状腺癌多学科": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "甲状腺癌的多学": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "甲状腺癌尤其是": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "对于远处转移高危分化": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "型甲状腺癌患者": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "果无远处转移和气道梗": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "甲状腺癌的术后": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "对甲状腺癌患者进": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "发肿瘤和转移": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "服外源性甲状腺素的剂量": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "随访复查甲状腺功能": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "清除全部甲状腺": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "侧颈部的淋巴结状态": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "对可疑淋巴结可行超": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "淋巴结复发广": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "转移病灶可能": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "域复发或转移可发生于": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "甲状腺残留组织": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "远处转移可发生于": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "甲状腺已完全清": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "甲状腺瘤有什么": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "结节性甲状腺肿是甲状": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "少数未分化癌患者就": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "滤泡上皮肿瘤": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "滤泡性腺瘤": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "立发生于甲状腺": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "甲状腺肉瘤": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "主要位于淋巴管或间质": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "常见淋巴管侵犯": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "身免疫性甲状腺炎的血清": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "最常见转移至肺": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "包膜": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "缺乏乳头状癌核型特": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "仅包膜侵犯": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "包膜内血管浸": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "淋巴结转移较": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "甲状腺癌术后需": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "包括甲状腺床": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "上纵隔淋巴结": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "甲状腺癌体征主": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "要为甲状腺肿大或结": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "结节形状不规": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "并逐渐增大": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "若伴颈部淋巴结转移": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "甲状腺癌局部可": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "发生区域淋巴转移": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "已存在颈淋巴转移": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "沿淋巴引流路径": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "逐站转移": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "其淋巴引流一般": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "仅单区转移较少见": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "区淋巴转移少见": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "肺部是甲状腺癌常见的": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "远处转移器官": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "大部分的甲状腺癌是分化": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "型甲状腺癌": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "甲状腺激素检测": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "制治疗的甲状腺癌患者中": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "果调整左甲状腺素": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "身免疫性甲状腺疾病相关": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "主要有抗甲状腺球蛋白抗": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "通常早于甲状腺功能紊乱": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "参与桥本甲状腺炎和萎缩": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "性甲状腺炎发病中": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "应考虑甲状腺组织或肿": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "可疑颈部淋巴结": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "淋巴结穿刺针": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "身免疫性甲状腺炎": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "可能会是甲状腺炎": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "甲状腺机能减退": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "甲状腺瘤病是较": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "为严重的甲状腺疾病之一": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "出现颈部淋巴结转移": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "需行颈部淋巴结清扫术": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "甲状腺手术喉返": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "注意紧贴甲状腺腺体精细": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "多见于全甲状腺切除后": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "甲状腺手术多为": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "甲状腺术后切口": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "口深部的积液": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "见于颈部淋巴结清扫后": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "颈部转移组织瓣封": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "局部积液": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "甲状腺术后局部": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "积液的发生率": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "多次针吸积液以及负压": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "甲状腺手术还可": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "乳头状甲状腺癌和淋巴": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "甲状腺瘤治疗医": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "肿块随干咽上": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "术后甲状腺功能的随": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "正规治疗甲状腺疾病外": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "甲状腺癌出现远": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "处转移病灶如肺": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "甲状腺瘤分成良": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "甲状腺癌在中医": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "医在治疗甲状腺癌方面一": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "甲状腺肿瘤术后": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "方式发现甲状腺结节的患": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "边界": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "血流和结构特": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "甲状腺结节恶性征象": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "实性低回声结节": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "伴有颈部淋巴结异常超": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "淋巴结内部出": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "现微钙化": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "外还包括淋巴结呈圆形": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "边界不规则或": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "内部回声不均": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "淋巴门消失或": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "对甲状腺结节及淋巴结": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "甲状腺影像报告": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "对甲状腺结节恶性程度": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "助于规范甲状腺超声报告": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "正常甲状腺": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "型的良性结节": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "甲状腺瘤是最常": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "对淋巴结有无转": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "以决定甲状腺切除的术": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "如果肿瘤结节": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "镜下发现淋巴结内有砂": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "寻找有无转移的证据": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "淋巴结术中冰": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "甲状腺癌患者在": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "微小癌或结节": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "注意检查甲状腺周围组织": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "淋巴结或甲状": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "甲状腺被膜受累": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "淋巴结被膜外": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "多为单结节": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "突然增大常为囊内": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "甲状腺弥漫性增": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "术以排除甲状腺癌": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "行性双侧甲状腺肿大": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "纤维性甲状腺炎": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "甲状腺普遍增大": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "并切除峡部": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "甲状腺癌的诊断": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "甲状腺癌的组织": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "甲状腺肿瘤的组": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "足在于对钙化不敏感": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "故甲状腺": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "目前在甲状腺的影像检": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "性者查找转移灶": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "高时查找转移灶": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "甲状腺癌术后注": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "淋巴转移与远处转": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "些双侧颈淋巴结转移": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "特征是有包膜的孤立肿": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "由于滤泡细胞浸润": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "后比浸润包膜者更差": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "瘤局限于甲状腺内": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "才能治疗甲状腺肿大": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "甲状腺瘤如何治": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "仔细检查甲状腺瘤的大小": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "无区域淋巴结或远处": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "扫描未见甲状腺床外的摄": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "个微小淋巴结转移": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "未突破包膜": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "个以上淋巴结转移的": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "多灶性甲状腺乳头状微": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "明显侵犯甲状腺周围软组": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "围组织的回声": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "良恶性的甲状腺结节": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "还有助于甲状腺乳头状癌": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "用细针对甲状腺结节进行": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "一步确定甲状腺结节良恶": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "经甲状腺核素显像": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "功能的热结节": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "纯囊性的结节": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "应注意原结节体积是否": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "于囊实性结节": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "对于甲状腺术后患者": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "对颈部淋巴结的评价": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "正常甲状腺含碘量高": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "清楚显示甲状腺": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "系及有无淋巴结转移有": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "出现纵隔淋巴结肿大": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "上纵隔组淋巴结和咽后": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "组淋巴结观察具": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "对胸骨后甲状腺病变": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "显示各种形态大小的钙": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "病变合并结节的患者观": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "甲状腺囊肿病人术后": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "甲状腺癌术后要": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "转移的可能": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "隔淋巴结": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "包膜血管侵犯": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "甲状腺癌的外科": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "未分化癌的治疗": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "分化型甲状腺癌的外科": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "对于位于峡部的肿瘤": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "大或伴有淋巴结转移者": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "可考虑全甲状腺切除": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "些较靠近甲状腺被膜的病": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "般建议全甲状腺切除": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "变在切除甲状腺的同时需": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "区域淋巴结的处理": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "中央区淋巴结": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "平深面的淋巴脂肪组织": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "侧颈部淋巴结处理": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "侧颈部淋巴结转移最": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "咽旁淋巴结": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "球范围内甲状腺癌的发病": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "地区女性甲状腺癌发病率": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "我国甲状腺癌将以每": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "甲状腺癌又分为": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "以及甲状腺未分化癌": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "约占全部甲状腺癌的": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "称分化型甲状腺癌": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "理类型的甲状腺癌": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "组织学形态": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "大多数甲状腺结节患者": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "甲状腺瘤需要怎": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "甲状腺疾病": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 3
+   },
+   "良性肿瘤": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 3
+   },
+   "冰冻切片检查": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 3
+   },
+   "喉返神经": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 3
+   },
+   "B超": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 3
+   },
+   "声晕": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 3
+   },
+   "峡部": {
+    "tier": "S",
+    "sources": [
+     "udaf",
+     "llm"
+    ],
+    "freq": 2
+   },
+   "三碘甲状腺原氨酸": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 2
+   },
+   "桥本氏甲状腺炎": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "病理检查": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "性质": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "边缘": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "保守治疗": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "淋巴瘤": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "病发": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "饮食": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "血管": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "声音嘶哑": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "喘鸣": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "颈部超声": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "肿大": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "纤维化": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "病理": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "呼吸困难": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "霍纳综合征": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "人参皂苷rh2": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "T3": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "T4": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "意义不明的非典型细胞": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "意义不明的滤泡性病变": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "可疑恶性": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "海带": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "海藻": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "抗生素": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "出血": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "颈部肿胀": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "复发": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "辛辣": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "良性炎症": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "甲状腺肿物": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "超声": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "存活率": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "恶性程度": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "TIRADS": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "囊性": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "降钙素": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "CEA": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "TSH": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "弹性成像": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "胸闷": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "Tg": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "毒性弥漫性甲状腺肿": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 1
+   },
+   "1类": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "2类": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "3类": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "4A类": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "4B类": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "4C类": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "5类": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "6类": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "EF30-40%": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "EF40-55%": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "EF<30%": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "EF>55%": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "EF中度减低": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "EF正常": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "EF轻度减低": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "EF重度减低": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LI RADS 1": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LI RADS 2": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LI RADS 3": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LI RADS 4": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LI RADS 5": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LI RADS M": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LI RADS TR": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LI-RADS-M": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LI-RADS-TR": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LI-RADS1": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LI-RADS2": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LI-RADS3": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LI-RADS4": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LI-RADS5": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LR-1": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LR-2": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LR-3": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LR-4": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LR-5": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LR-M": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LR-TR": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LR1": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LR2": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LR3": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LR4": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LR5": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LRM": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LRTR": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI RADS 1": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI RADS 2": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI RADS 3": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI RADS 4A": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI RADS 4B": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI RADS 4C": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI RADS 5": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI RADS 6": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI-RADS1": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI-RADS1类": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI-RADS2": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI-RADS2类": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI-RADS3": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI-RADS3类": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI-RADS4A": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI-RADS4A类": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI-RADS4B": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI-RADS4B类": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI-RADS4C": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI-RADS4C类": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI-RADS5": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI-RADS5类": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI-RADS6": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI-RADS6类": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "三尖瓣": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "三尖瓣瓣口": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "不均质回声": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "不规则": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "不规则形": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "中央血流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "中度反流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "中心血流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "中量反流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "丰富血流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "主动脉": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "主动脉瓣": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "二尖瓣": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "二尖瓣瓣口": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "低回声区": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "内部血流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "内部见血流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "分叶状": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "升主动脉": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "卵圆型": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "右叶上极": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "右叶上部": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "右叶下极": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "右叶下部": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "右叶中极": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "右叶中部": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "右室": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "右心室": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "右心房": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "右房": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "后方伴声影": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "后方回声增强": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "后方回声无异常": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "后方回声无明显改变": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "后方回声无特殊": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "后方回声混合": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "后方回声衰减": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "后方增强": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "后方增强效应": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "后方声增强": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "后方声影": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "后方声衰减": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "后方无明显改变": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "后方混合": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "后方衰减": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "呈分叶状": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "周边及内部血流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "周边血流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "回声不均": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "回声减低": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "回声增强": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "回声稍低": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "回声稍强": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "圆形": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "境界不清": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "境界清": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "境界清晰": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "增厚": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "增厚明显": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "增大": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "声影": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "大量反流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "室间隔": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "少许血流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "少量反流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "少量积液": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "少量血流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "左叶上极": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "左叶上部": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "左叶下极": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "左叶下部": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "左叶中极": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "左叶中部": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "左室": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "左室侧壁": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "左室后壁": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "左室壁": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "左室射血分数正常": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "左心室": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "左心房": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "左房": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "强回声": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "形态不规则": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "形态欠规则": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "微量积液": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "心包": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "心包腔": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "心包腔未见积液": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "扩大": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "收缩功能下降": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "收缩功能减低": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "斑片状钙化": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "无回声": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "无回声区": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "无血流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "无钙化": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "未见器质性病变": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "未见异常": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "未见明显异常": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "未见明显血流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "未见积液": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "未见血流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "未见血流信号": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "未见钙化": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "椭圆形": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "液性暗区": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "混合回声": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "混合回声区": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "混合血流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "点状钙化": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "狭窄": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "环形钙化": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "环状血流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "环状钙化": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "环绕血流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "瓣口狭窄": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "甲状腺峡部": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "等回声": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "等回声区": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "类圆形": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "类椭圆形": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "粗大钙化": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "粗钙化": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "细小钙化": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "结构未见明显异常": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "肺动脉瓣": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "舒张功能下降": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "舒张功能减低": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "蛋壳样钙化": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "血流不丰富": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "血流丰富": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "血流信号不丰富": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "血流信号丰富": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "规则": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "轻度反流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "边界不规则": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "边界分叶": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "边界尚清": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "边界欠清": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "边界清楚": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "边缘血流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "运动减低": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "运动减弱": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "近圆形": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "重度反流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "针尖样钙化": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "降主动脉": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "高回声区": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "颈部损伤": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "甲状旁腺激素": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "甲状旁腺功能亢进": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "甲状腺毒症": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "高碘性甲状腺肿": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "颈部烧伤": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "突眼性甲状腺肿": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "副甲状腺": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "甲状腺危象": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "放射性甲状腺疾病": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "甲状腺次全切除术": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "产后甲状腺炎": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "甲状腺钙化": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "颈部淋巴结结核": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "甲状旁腺机能减退": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "颈部血管瘤": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "甲状旁腺功能减退症": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "甲状腺粉": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "游离甲状腺素": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "甲状腺上动脉": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   }
+  },
+  "liver": {
+   "肝癌": {
+    "tier": "A",
+    "sources": [
+     "THUOCL",
+     "llm"
+    ],
+    "freq": 1260
+   },
+   "肝脏": {
+    "tier": "A",
+    "sources": [
+     "THUOCL",
+     "corpus_morph",
+     "llm"
+    ],
+    "freq": 298
+   },
+   "门静脉": {
+    "tier": "A",
+    "sources": [
+     "THUOCL",
+     "corpus_morph"
+    ],
+    "freq": 175
+   },
+   "肝硬化": {
+    "tier": "A",
+    "sources": [
+     "THUOCL",
+     "corpus_morph",
+     "llm"
+    ],
+    "freq": 134
+   },
+   "肝病": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 100
+   },
+   "胆管": {
+    "tier": "A",
+    "sources": [
+     "THUOCL",
+     "llm"
+    ],
+    "freq": 93
+   },
+   "肝炎": {
+    "tier": "A",
+    "sources": [
+     "THUOCL",
+     "llm"
+    ],
+    "freq": 87
+   },
+   "肝功能": {
+    "tier": "A",
+    "sources": [
+     "THUOCL",
+     "llm"
+    ],
+    "freq": 83
+   },
+   "肝纤维化": {
+    "tier": "A",
+    "sources": [
+     "THUOCL",
+     "llm"
+    ],
+    "freq": 80
+   },
+   "肝细胞": {
+    "tier": "A",
+    "sources": [
+     "THUOCL",
+     "llm"
+    ],
+    "freq": 60
+   },
+   "肝静脉": {
+    "tier": "A",
+    "sources": [
+     "THUOCL",
+     "llm"
+    ],
+    "freq": 33
+   },
+   "胆囊": {
+    "tier": "A",
+    "sources": [
+     "THUOCL",
+     "llm"
+    ],
+    "freq": 33
+   },
+   "肝动脉": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 30
+   },
+   "肝血": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 27
+   },
+   "门静脉高压": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 27
+   },
+   "胆管癌": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 24
+   },
+   "肝血管瘤": {
+    "tier": "A",
+    "sources": [
+     "THUOCL",
+     "llm"
+    ],
+    "freq": 19
+   },
+   "慢性肝病": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 17
+   },
+   "肝门": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 17
+   },
+   "腹水": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph",
+     "llm"
+    ],
+    "freq": 17
+   },
+   "肝细胞癌": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 16
+   },
+   "肝移植术": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 15
+   },
+   "病毒性肝炎": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 14
+   },
+   "慢性肝炎": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 13
+   },
+   "肝脓肿": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 13
+   },
+   "急性肝炎": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 12
+   },
+   "肝损伤": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 11
+   },
+   "肝胆病": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 11
+   },
+   "脾脏": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 10
+   },
+   "肝包虫病": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 10
+   },
+   "肿块巨大或者": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 9
+   },
+   "超声造影": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 9
+   },
+   "门静脉期": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph",
+     "llm"
+    ],
+    "freq": 8
+   },
+   "化疗": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 8
+   },
+   "放射治疗": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 8
+   },
+   "肝大": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 7
+   },
+   "肝结核": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 7
+   },
+   "脂肪肝": {
+    "tier": "A",
+    "sources": [
+     "THUOCL",
+     "llm"
+    ],
+    "freq": 7
+   },
+   "进展期肝纤维化": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 6
+   },
+   "未见异常血流信号": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 6
+   },
+   "手术": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 6
+   },
+   "肝功能异常": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 5
+   },
+   "肝炎病毒": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 5
+   },
+   "第二肝门": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 5
+   },
+   "结节": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 5
+   },
+   "高危复发转移风险的肝": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 5
+   },
+   "腹水消失": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 5
+   },
+   "肝脏储备功能": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 5
+   },
+   "胆囊大小形态正常": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 5
+   },
+   "明显异常回声": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 5
+   },
+   "CT": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 5
+   },
+   "形态规则": {
+    "tier": "S",
+    "sources": [
+     "udaf",
+     "corpus_morph"
+    ],
+    "freq": 4
+   },
+   "肝衰竭": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 4
+   },
+   "脾大": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 4
+   },
+   "肝细胞腺瘤": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 4
+   },
+   "大胆管型": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 4
+   },
+   "肝癌胆管癌晚期": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 4
+   },
+   "知道肝癌胆管癌晚期": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 4
+   },
+   "胆管细胞癌": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 4
+   },
+   "准进行肝纤维化分期诊断": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 4
+   },
+   "肝实质回声明显增粗": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 4
+   },
+   "血流通畅": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 4
+   },
+   "为入肝血流": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 4
+   },
+   "肿瘤复发转移": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 4
+   },
+   "MRI": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 4
+   },
+   "AFP": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 4
+   },
+   "晚期": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 4
+   },
+   "形态不规则": {
+    "tier": "S",
+    "sources": [
+     "udaf",
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "边界清晰": {
+    "tier": "S",
+    "sources": [
+     "udaf",
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "边界清楚": {
+    "tier": "S",
+    "sources": [
+     "udaf",
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "健脾": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 3
+   },
+   "急性肝衰竭": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 3
+   },
+   "慢性病毒性肝炎": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 3
+   },
+   "肝肾综合征": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 3
+   },
+   "急性病毒性肝炎": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 3
+   },
+   "肝小叶": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 3
+   },
+   "肝动脉造影": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 3
+   },
+   "小胆管型": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "术后复发转移率": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "学联合会肝脏弹性超声": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "肝脏肿瘤较局": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "型肝炎肝纤维化临床应用": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "肝占位": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "最常用的肝脏影像学检": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "形态": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "肝脏长满肿瘤": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "栓和肝外转移": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "肝实质回声增粗": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "伴或不伴结节": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "门静脉主干内径": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "术后复发转移": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "肝内外胆管不扩张": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "实质回声均匀": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "实质回声分布均匀": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "肝脏异常灌注": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "特征的肝占位性病变": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "手术治疗": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 3
+   },
+   "恶性肿瘤": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 3
+   },
+   "磁共振": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 3
+   },
+   "肝癌晚期": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 3
+   },
+   "肿瘤": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 3
+   },
+   "插手治疗": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 3
+   },
+   "肝实质": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 3
+   },
+   "恶心": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 3
+   },
+   "肝肿瘤": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 3
+   },
+   "低回声": {
+    "tier": "S",
+    "sources": [
+     "udaf",
+     "llm"
+    ],
+    "freq": 2
+   },
+   "胆管炎": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 2
+   },
+   "胆道梗阻": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 2
+   },
+   "肝俞": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 2
+   },
+   "手术切除": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "食欲": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "动态增强CT": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "microRNA": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "肝病灶穿刺活检": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "肝区疼痛": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "乏力": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "肝硬度": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "ＡＬＴ": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "CNLC": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "血管瘤": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "动脉期": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "延迟期": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "局灶性增生结节": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "扩散": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "心情": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "靶向药物治疗": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "身体疼痛": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "病灶": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "中晚期": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "中医药": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "靶向治疗": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "弹性成像": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "ＨＣＣ": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "ＩＣＣ": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "肝包膜": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "外科手术": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "消化道出血": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "ＲＯＩ": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "肝硬化失代偿": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "血小板": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "Gd-EOB-DTPA": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "消融治疗": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "白蛋白": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "INR": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "ALT": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "胆囊炎": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 1
+   },
+   "肝腹水": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 1
+   },
+   "乙型病毒性肝炎": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 1
+   },
+   "乙型肝炎病毒": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 1
+   },
+   "肝肿大": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 1
+   },
+   "肝气郁结": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 1
+   },
+   "丙型肝炎病毒": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 1
+   },
+   "胆总管": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 1
+   },
+   "肝功能不全": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 1
+   },
+   "酒精性肝炎": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 1
+   },
+   "胆道感染": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 1
+   },
+   "多囊肝": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 1
+   },
+   "肝掌": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 1
+   },
+   "活动性肝炎": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 1
+   },
+   "胆囊穿孔": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 1
+   },
+   "肝固有动脉": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 1
+   },
+   "肝血窦": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 1
+   },
+   "肝总动脉": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 1
+   },
+   "阿米巴性肝脓肿": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 1
+   },
+   "1类": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "2类": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "3类": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "4A类": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "4B类": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "4C类": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "5类": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "6类": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "EF30-40%": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "EF40-55%": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "EF<30%": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "EF>55%": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "EF中度减低": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "EF正常": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "EF轻度减低": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "EF重度减低": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LI RADS 1": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LI RADS 2": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LI RADS 3": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LI RADS 4": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LI RADS 5": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LI RADS M": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LI RADS TR": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LI-RADS-M": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LI-RADS-TR": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LI-RADS1": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LI-RADS2": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LI-RADS3": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LI-RADS4": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LI-RADS5": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LR-1": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LR-2": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LR-3": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LR-4": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LR-5": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LR-M": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LR-TR": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LR1": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LR2": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LR3": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LR4": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LR5": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LRM": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LRTR": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI RADS 1": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI RADS 2": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI RADS 3": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI RADS 4A": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI RADS 4B": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI RADS 4C": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI RADS 5": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI RADS 6": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI-RADS1": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI-RADS1类": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI-RADS2": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI-RADS2类": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI-RADS3": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI-RADS3类": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI-RADS4A": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI-RADS4A类": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI-RADS4B": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI-RADS4B类": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI-RADS4C": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI-RADS4C类": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI-RADS5": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI-RADS5类": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI-RADS6": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI-RADS6类": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "三尖瓣": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "三尖瓣瓣口": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "不均质回声": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "不规则": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "不规则形": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "中央血流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "中度反流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "中心血流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "中量反流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "丰富血流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "主动脉": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "主动脉瓣": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "二尖瓣": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "二尖瓣瓣口": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "低回声区": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "内部血流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "内部见血流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "分叶状": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "升主动脉": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "卵圆型": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "右叶上极": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "右叶上部": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "右叶下极": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "右叶下部": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "右叶中极": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "右叶中部": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "右室": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "右心室": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "右心房": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "右房": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "后方伴声影": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "后方回声增强": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "后方回声无异常": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "后方回声无明显改变": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "后方回声无特殊": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "后方回声混合": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "后方回声衰减": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "后方增强": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "后方增强效应": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "后方声增强": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "后方声影": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "后方声衰减": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "后方无明显改变": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "后方混合": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "后方衰减": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "呈分叶状": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "周边及内部血流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "周边血流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "回声不均": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "回声减低": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "回声增强": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "回声稍低": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "回声稍强": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "圆形": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "境界不清": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "境界清": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "境界清晰": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "增厚": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "增厚明显": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "增大": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "声影": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "大量反流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "室间隔": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "少许血流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "少量反流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "少量积液": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "少量血流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "峡部": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "左叶上极": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "左叶上部": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "左叶下极": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "左叶下部": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "左叶中极": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "左叶中部": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "左室": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "左室侧壁": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "左室后壁": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "左室壁": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "左室射血分数正常": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "左心室": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "左心房": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "左房": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "强回声": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "形态欠规则": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "微量积液": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "微钙化": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "心包": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "心包腔": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "心包腔未见积液": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "扩大": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "收缩功能下降": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "收缩功能减低": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "斑片状钙化": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "无回声": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "无回声区": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "无血流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "无钙化": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "未见器质性病变": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "未见异常": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "未见明显异常": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "未见明显血流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "未见积液": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "未见血流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "未见血流信号": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "未见钙化": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "椭圆形": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "液性暗区": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "混合回声": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "混合回声区": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "混合血流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "点状钙化": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "狭窄": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "环形钙化": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "环状血流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "环状钙化": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "环绕血流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "瓣口狭窄": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "甲状腺峡部": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "等回声": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "等回声区": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "类圆形": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "类椭圆形": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "粗大钙化": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "粗钙化": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "细小钙化": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "结构未见明显异常": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "肺动脉瓣": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "舒张功能下降": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "舒张功能减低": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "蛋壳样钙化": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "血流不丰富": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "血流丰富": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "血流信号不丰富": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "血流信号丰富": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "规则": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "轻度反流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "边界不清": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "边界不规则": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "边界分叶": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "边界尚清": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "边界模糊": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "边界欠清": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "边界清": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "边缘血流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "运动减低": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "运动减弱": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "近圆形": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "重度反流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "针尖样钙化": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "降主动脉": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "高回声": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "高回声区": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "脾胃": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "乙肝疫苗": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "脾胃虚寒": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝火": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "脾胃虚弱": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "乙肝表面抗原": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "脾虚": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "鱼肝油": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "乙型肝炎疫苗": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "胆囊结石": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝功能衰竭": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "脾破裂": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "滋补肝肾": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝病科": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "健脾益气": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "甲肝疫苗": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "丙肝抗体": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝脾肿大": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "胆囊癌": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝素": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "胆管结石": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "健脾祛湿": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "急性胆囊炎": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝阳上亢": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "慢性胆囊炎": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝肾阴虚": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "乙肝两对半": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "益气健脾": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "乙肝免疫球蛋白": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "酒精性脂肪肝": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "胆囊息肉": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "酒精性肝硬化": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝豆状核变性": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "健脾化湿": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "胆总管结石": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "急性肝功能衰竭": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "胆囊切除术": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "戊型病毒性肝炎": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝素钠": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "甲型病毒性肝炎": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "腹腔镜胆囊切除术": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "药物性肝炎": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "健脾益肾": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "中毒性肝炎": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "脾阳": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "甲肝减毒活疫苗": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "龙胆泻肝丸": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝内胆管结石": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝开窍于目": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "脾肾阳虚": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "心脾两虚": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "脾俞": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "慢性活动性肝炎": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝母细胞瘤": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "胆汁性肝硬化": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "脾胃湿热": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "黄疸型肝炎": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "脾为后天之本": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "护肝片": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "丙型病毒性肝炎": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝胃不和": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝硬变": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝郁脾虚": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "归脾丸": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "仙灵脾": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "调和脾胃": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "足厥阴肝经": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝气郁滞": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝郁调经膏": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "足太阴脾经": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "脾主运化": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "甲型肝炎灭活疫苗": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "乙肝表面抗体": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "乙型肝炎人免疫球蛋白": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝胆湿热": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "醒脾开胃颗粒": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "脾切除术": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "补脾益肺": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "低分子肝素": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "健脾补血": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝细胞移植": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "平肝熄风": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "人参健脾丸": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "脾肾双补丸": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝火上炎": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "归脾汤": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝主疏泄": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "中毒性肝病": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "甲型肝炎病毒": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "脾肾两虚": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "龙胆泻肝汤": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "柴胡疏肝散": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝门静脉": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "心肝火旺": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝风内动": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "脾俞穴": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "脾寒": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "急性黄疸型肝炎": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "巢脾": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "急性胆管炎": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "胆囊肿大": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "脾为生痰之源": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "创伤性脾破裂": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "茸杞补肾健脾茶": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝脾不和": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝小静脉闭塞": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "脾虚证": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "胆管狭窄": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "人参归脾丸": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝肠循环": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "脾主肌肉": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝气犯胃": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "硬化性胆管炎": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "胆囊收缩素": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "黄连羊肝丸": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "脾开窍于口": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "脾虚湿困": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "复方鳖甲软肝片": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "健脾丸": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "胆道蛔虫病": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "脾虚水肿": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "脾病": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "脾主四肢": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "乙肝核心抗体": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝俞穴": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝出血": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "舒肝健胃丸": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝经湿热": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "内镜逆行胰胆管造影": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝胃气痛": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝海绵状血管瘤": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "胆总管扩张": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "益肝明目口服液": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "血吸虫性肝硬化": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "先天性肝内胆管扩张": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝肾阴虚证": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "腹腔镜下胆囊切除术": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "脾脏损伤": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "益肝解毒茶": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "胆道出血": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "复方肝浸膏片": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "脾阴": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝萎缩": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "伏龙肝": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "乙型肝炎免疫球蛋白": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "乙肝灵胶囊": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "黄萱益肝散": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝结石": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "依诺肝素": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "甲型肝炎减毒活疫苗": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "胆管囊肿": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝外胆道": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "调和肝脾": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "鲨肝醇": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "脾动脉瘤": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "慢性迁延性肝炎": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "健脾止遗片": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "心脾两虚证": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "天胡荽愈肝片": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝性昏迷": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "补脾益肠丸": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "脾热": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "脾喜燥恶湿": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝气横逆": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝苏软胶囊": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝十二指肠韧带": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "新生儿肝炎": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "副脾": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "萎缩性胆囊炎": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝素钠注射液": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "婴儿健脾散": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "慢性胆管炎": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肺脾两虚": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "九味肝泰胶囊": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "门静脉血栓形成": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "复方肝浸膏胶囊": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "鱼肝油乳": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "维肝福泰片": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝片吸虫病": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "急性化脓性胆管炎": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "胆囊积水": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "清肝降压胶囊": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "庚型肝炎病毒": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "新生儿胆道闭锁": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "舒肝止痛丸": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝爽颗粒": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝胃不和证": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "开胃健脾丸": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝必复软胶囊": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "脾胃湿热证": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "龙胆泻肝软胶囊": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "脾囊肿": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "脾胃虚寒证": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "麻仁滋脾丸": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "乙肝舒康": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "脾肺气虚证": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝积": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝火犯肺": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "脾不统血": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "龙胆泻肝胶囊": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝经湿热证": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "阿米巴肝脓肿": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "益肝解毒": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "龙胆泻肝口服液": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "明目羊肝丸": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "健脾益肾颗粒": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "坏疽性胆囊炎": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "鱼肝油酸钠": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "注射用肝水解肽": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝宁片": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝淤血": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "酒精性肝损坏": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "乙肝舒康胶囊": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "胆囊造瘘术": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝著": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝速康胶囊": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "胆囊三角": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "低分子量肝素钙注射液": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "解郁和肝丸": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝血虚证": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "小儿肝炎": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝胆相表里": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "调肝汤": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "腹腔镜脾切除术": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "胆囊囊肿": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "乙肝灵丸": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "舒肝片": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肾脾双补口服液": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝素钠乳膏": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "葵花护肝片": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "健脾五味丸": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "养肝胶囊": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "健脾消食丸": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝主谋虑": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "丁型病毒性肝炎": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝郁血虚证": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "脾气虚证": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "和中理脾丸": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "复方肝浸膏糖浆": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝管结石": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "湿困脾阳": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "脾移植": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝胃郁热证": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "小儿健脾化积口服液": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "脾虚湿困证": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "补肝汤": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "调胃舒肝丸": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "第三肝门": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "护肝宁片": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "脾氨肽口服冻干粉": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "乙肝清热解毒胶囊": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "温脾固肠散": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "开胃理脾丸": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "先天性肝囊肿": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "虎驹乙肝胶囊": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "参灵肝康胶囊": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "脾胃舒丸": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "胆囊胆固醇沉着症": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "和络舒肝胶囊": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝龙胶囊": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝素钠软膏": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "脾虚湿热证": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "复方益肝丸": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝厥": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "健脾糕片": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "五灵肝复胶囊": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "龙牙肝泰胶囊": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "低分子量肝素": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝肺综合征": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝胆湿热证": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "良性肝肿瘤": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "护肝胶囊": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "滋补肝肾丸": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "秘制舒肝丸": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "中毒性肝硬化": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "复方胚肝铁铵片": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "胆囊切除术后综合征": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "舒肝和胃丸": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "鲨肝醇片": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "脾约": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "脾结核": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝毒净颗粒": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝热病": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "小牛脾提取物注射液": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝炎康复丸": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "舒肝丸": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "促肝细胞生长素": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "健脾壮腰药酒": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "小儿健脾散": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "复方熊胆乙肝胶囊": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝炎灵注射液": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "寒湿困脾": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "清肝利胆口服液": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "注射用促肝细胞生长素": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "龙胆泻肝片": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "抗乙肝转移因子口服液": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "归脾颗粒": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肝郁脾虚证": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "脾胃气虚证": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "脾虚湿盛证": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   }
+  },
+  "cardiac": {
+   "心脏": {
+    "tier": "A",
+    "sources": [
+     "THUOCL",
+     "llm"
+    ],
+    "freq": 850
+   },
+   "心室": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 422
+   },
+   "心脏病": {
+    "tier": "A",
+    "sources": [
+     "THUOCL",
+     "llm"
+    ],
+    "freq": 365
+   },
+   "主动脉": {
+    "tier": "S",
+    "sources": [
+     "udaf",
+     "THUOCL",
+     "corpus_morph",
+     "llm"
+    ],
+    "freq": 315
+   },
+   "左心室": {
+    "tier": "S",
+    "sources": [
+     "udaf",
+     "THUOCL",
+     "corpus_morph",
+     "llm"
+    ],
+    "freq": 270
+   },
+   "瓣膜": {
+    "tier": "A",
+    "sources": [
+     "THUOCL",
+     "llm"
+    ],
+    "freq": 248
+   },
+   "先天性心脏病": {
+    "tier": "A",
+    "sources": [
+     "THUOCL",
+     "llm"
+    ],
+    "freq": 243
+   },
+   "心肌": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 226
+   },
+   "二尖瓣": {
+    "tier": "S",
+    "sources": [
+     "udaf",
+     "THUOCL",
+     "corpus_morph"
+    ],
+    "freq": 202
+   },
+   "冠状动脉": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 191
+   },
+   "主动脉瓣": {
+    "tier": "S",
+    "sources": [
+     "udaf",
+     "THUOCL"
+    ],
+    "freq": 165
+   },
+   "右心室": {
+    "tier": "S",
+    "sources": [
+     "udaf",
+     "THUOCL",
+     "corpus_morph",
+     "llm"
+    ],
+    "freq": 131
+   },
+   "心脏瓣膜病": {
+    "tier": "A",
+    "sources": [
+     "THUOCL",
+     "corpus_morph"
+    ],
+    "freq": 131
+   },
+   "肺动脉": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 113
+   },
+   "左心房": {
+    "tier": "S",
+    "sources": [
+     "udaf",
+     "THUOCL",
+     "corpus_morph",
+     "llm"
+    ],
+    "freq": 96
+   },
+   "心律": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 83
+   },
+   "室间隔": {
+    "tier": "S",
+    "sources": [
+     "udaf",
+     "THUOCL",
+     "llm"
+    ],
+    "freq": 77
+   },
+   "三尖瓣": {
+    "tier": "S",
+    "sources": [
+     "udaf",
+     "THUOCL"
+    ],
+    "freq": 76
+   },
+   "室间隔缺损": {
+    "tier": "A",
+    "sources": [
+     "THUOCL",
+     "corpus_morph",
+     "llm"
+    ],
+    "freq": 63
+   },
+   "右心房": {
+    "tier": "S",
+    "sources": [
+     "udaf",
+     "THUOCL",
+     "llm"
+    ],
+    "freq": 56
+   },
+   "肺动脉瓣": {
+    "tier": "S",
+    "sources": [
+     "udaf",
+     "THUOCL"
+    ],
+    "freq": 54
+   },
+   "主动脉瓣狭窄": {
+    "tier": "A",
+    "sources": [
+     "THUOCL",
+     "llm"
+    ],
+    "freq": 38
+   },
+   "主动脉夹层": {
+    "tier": "A",
+    "sources": [
+     "THUOCL",
+     "llm"
+    ],
+    "freq": 33
+   },
+   "心律失常": {
+    "tier": "A",
+    "sources": [
+     "THUOCL",
+     "llm"
+    ],
+    "freq": 29
+   },
+   "心肌缺血": {
+    "tier": "A",
+    "sources": [
+     "THUOCL",
+     "llm"
+    ],
+    "freq": 28
+   },
+   "冠状动脉痉挛": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 25
+   },
+   "心律不齐": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 23
+   },
+   "二尖瓣狭窄": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 22
+   },
+   "升主动脉": {
+    "tier": "S",
+    "sources": [
+     "udaf",
+     "THUOCL"
+    ],
+    "freq": 17
+   },
+   "射血分数": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 16
+   },
+   "主动脉弓": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 14
+   },
+   "肺动脉瓣狭窄": {
+    "tier": "A",
+    "sources": [
+     "THUOCL",
+     "llm"
+    ],
+    "freq": 14
+   },
+   "左心室流出道": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 14
+   },
+   "肺动脉高压": {
+    "tier": "A",
+    "sources": [
+     "THUOCL",
+     "llm"
+    ],
+    "freq": 13
+   },
+   "心包": {
+    "tier": "S",
+    "sources": [
+     "udaf",
+     "THUOCL"
+    ],
+    "freq": 11
+   },
+   "胸骨旁左心室长轴切面": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 11
+   },
+   "手术": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 10
+   },
+   "风湿性心脏病": {
+    "tier": "A",
+    "sources": [
+     "THUOCL",
+     "llm"
+    ],
+    "freq": 9
+   },
+   "心肌病": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 8
+   },
+   "主动脉窦": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 8
+   },
+   "三尖瓣狭窄": {
+    "tier": "A",
+    "sources": [
+     "THUOCL",
+     "llm"
+    ],
+    "freq": 8
+   },
+   "左心室流出道速": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 8
+   },
+   "冠状动脉造影": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 7
+   },
+   "冠状动脉狭窄": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 7
+   },
+   "二尖瓣关闭不全": {
+    "tier": "A",
+    "sources": [
+     "THUOCL",
+     "llm"
+    ],
+    "freq": 7
+   },
+   "反流容积": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 7
+   },
+   "主动脉瓣口面积": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 7
+   },
+   "左心室射血分数": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph",
+     "llm"
+    ],
+    "freq": 7
+   },
+   "瘢痕": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 7
+   },
+   "mm": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 7
+   },
+   "心脏破裂": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 6
+   },
+   "房间隔缺损": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 6
+   },
+   "瓣膜置换术": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 6
+   },
+   "主动脉瓣置换术": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 6
+   },
+   "二尖瓣间隔瓣环": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 6
+   },
+   "左心房容积": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph",
+     "llm"
+    ],
+    "freq": 6
+   },
+   "超声心动图": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 6
+   },
+   "室性早搏": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 6
+   },
+   "LVEF": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 6
+   },
+   "重度反流": {
+    "tier": "S",
+    "sources": [
+     "udaf",
+     "corpus_morph"
+    ],
+    "freq": 5
+   },
+   "冠状动脉粥样硬化性心脏病": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 5
+   },
+   "血流汇聚法": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 5
+   },
+   "舒张早期二尖瓣血流峰值": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 5
+   },
+   "反流分数": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 5
+   },
+   "心房颤动": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 5
+   },
+   "主动脉窦部内径": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 5
+   },
+   "二尖瓣口": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 5
+   },
+   "反流": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph",
+     "llm"
+    ],
+    "freq": 5
+   },
+   "中度反流": {
+    "tier": "S",
+    "sources": [
+     "udaf",
+     "corpus_morph"
+    ],
+    "freq": 4
+   },
+   "狭窄": {
+    "tier": "S",
+    "sources": [
+     "udaf",
+     "corpus_morph"
+    ],
+    "freq": 4
+   },
+   "轻度反流": {
+    "tier": "S",
+    "sources": [
+     "udaf",
+     "corpus_morph"
+    ],
+    "freq": 4
+   },
+   "心脏杂音": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 4
+   },
+   "主动脉硬化": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 4
+   },
+   "心室肥厚": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 4
+   },
+   "心律平": {
+    "tier": "B",
+    "sources": [
+     "THUOCL",
+     "llm"
+    ],
+    "freq": 4
+   },
+   "湿性心脏瓣膜病": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 4
+   },
+   "钙化": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 4
+   },
+   "三尖瓣侧壁瓣环": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 4
+   },
+   "参考前文主动脉瓣反流超": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 4
+   },
+   "性心脏病室间隔缺损怎么": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 4
+   },
+   "峰血流速度": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 4
+   },
+   "右心室舒张功能": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 4
+   },
+   "右心房压": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 4
+   },
+   "左心室流出道内": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 4
+   },
+   "管腔狭窄面积在": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 4
+   },
+   "主动脉瓣环": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 4
+   },
+   "手术治疗": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 4
+   },
+   "心包积液": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 3
+   },
+   "主动脉狭窄": {
+    "tier": "A",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 3
+   },
+   "左心房面积": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "重度狭窄": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "血流": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "主动脉瓣峰值流": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "低压差主动脉瓣狭窄": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "经导管主动脉瓣置换术": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "室间隔缺损是一": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "心室收缩末期": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "张末期左心室内径": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "张末期左心室容积": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "右心室流出道": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "三尖瓣的": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "二尖瓣侧壁瓣环": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "反流频谱的密": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "主动脉弓内径": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "降主动脉内径": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "肺动脉主干内径": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "多普勒血流速度指数": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "右心室舒张末期": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "二尖瓣环间隔和": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "三尖瓣环侧壁瓣": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "肺动脉收缩压": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "张末期从回声前缘测到": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "回声前缘的方": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "心绞痛或心肌梗塞": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "三尖瓣环收缩期": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "小脑萎缩先天心脏": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "普勒取样二尖瓣侧壁瓣环": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "胸骨上窝主动脉弓长轴切": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "胸骨旁主动脉瓣短轴切": {
+    "tier": "C",
+    "sources": [
+     "corpus_morph"
+    ],
+    "freq": 3
+   },
+   "早搏": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 3
+   },
+   "冠心病": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 3
+   },
+   "解剖结构": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 3
+   },
+   "动脉硬化": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 3
+   },
+   "心电图": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 3
+   },
+   "房间隔": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 3
+   },
+   "头晕": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 3
+   },
+   "胸闷": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 3
+   },
+   "左心房前后径": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 3
+   },
+   "下腔静脉": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 3
+   },
+   "LVOT": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 3
+   },
+   "扩张型心肌病": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 2
+   },
+   "人工瓣膜": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 2
+   },
+   "心瓣膜": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 2
+   },
+   "主动脉炎": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 2
+   },
+   "瓣口面积": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "跨瓣压差": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "窦性心律": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "窦性心律过缓": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "心衰": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "心腔": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "心腔大小": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "超声所见": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "测量": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "心率": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "瓣膜反流": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "肺高压": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "心脏彩超": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "胸骨旁": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "心尖切面": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "左侧卧位": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "峰值流速": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "缩流颈宽度": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "反流束宽度": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "反流频谱的密度": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "内径": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "舒张末期": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "收缩末期": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "室间隔厚度": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "主动脉根部": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "供血不足": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "插手救治": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "三尖瓣反流": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "心颤": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "IVSd": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "IVSs": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "LVPWd": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "LVPWs": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "LVEDD": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "LVESD": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "LVEDV": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "ml": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "LVESV": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "LVM": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "心内膜": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "心尖两腔": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "动脉导管未闭": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "法洛四联症": {
+    "tier": "C",
+    "sources": [
+     "llm"
+    ],
+    "freq": 2
+   },
+   "心包腔": {
+    "tier": "S",
+    "sources": [
+     "udaf",
+     "THUOCL"
+    ],
+    "freq": 1
+   },
+   "心肌炎": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 1
+   },
+   "心脏停搏": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 1
+   },
+   "心包填塞": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 1
+   },
+   "主动脉瘤": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 1
+   },
+   "心脏扩大": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 1
+   },
+   "心肌酶谱": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 1
+   },
+   "心脏肥大": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 1
+   },
+   "心瓣膜病": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 1
+   },
+   "瓣膜性心脏病": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 1
+   },
+   "妊娠合并心脏病": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 1
+   },
+   "缺血性心肌病": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 1
+   },
+   "室间隔缺损修补术": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 1
+   },
+   "急性左心衰竭": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 1
+   },
+   "二尖瓣置换术": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 1
+   },
+   "心室肥大": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 1
+   },
+   "二尖瓣脱垂": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 1
+   },
+   "心肌纤维化": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 1
+   },
+   "肺动脉干": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 1
+   },
+   "瓣膜成形术": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 1
+   },
+   "透壁性心肌梗死": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 1
+   },
+   "二尖瓣球囊扩张术": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 1
+   },
+   "1类": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "2类": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "3类": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "4A类": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "4B类": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "4C类": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "5类": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "6类": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "EF30-40%": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "EF40-55%": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "EF<30%": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "EF>55%": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "EF中度减低": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "EF正常": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "EF轻度减低": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "EF重度减低": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LI RADS 1": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LI RADS 2": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LI RADS 3": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LI RADS 4": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LI RADS 5": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LI RADS M": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LI RADS TR": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LI-RADS-M": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LI-RADS-TR": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LI-RADS1": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LI-RADS2": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LI-RADS3": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LI-RADS4": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LI-RADS5": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LR-1": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LR-2": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LR-3": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LR-4": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LR-5": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LR-M": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LR-TR": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LR1": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LR2": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LR3": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LR4": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LR5": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LRM": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "LRTR": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI RADS 1": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI RADS 2": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI RADS 3": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI RADS 4A": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI RADS 4B": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI RADS 4C": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI RADS 5": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI RADS 6": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI-RADS1": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI-RADS1类": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI-RADS2": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI-RADS2类": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI-RADS3": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI-RADS3类": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI-RADS4A": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI-RADS4A类": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI-RADS4B": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI-RADS4B类": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI-RADS4C": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI-RADS4C类": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI-RADS5": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI-RADS5类": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI-RADS6": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "TI-RADS6类": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "三尖瓣瓣口": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "不均质回声": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "不规则": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "不规则形": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "中央血流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "中心血流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "中量反流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "丰富血流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "二尖瓣瓣口": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "低回声": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "低回声区": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "内部血流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "内部见血流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "分叶状": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "卵圆型": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "右叶上极": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "右叶上部": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "右叶下极": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "右叶下部": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "右叶中极": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "右叶中部": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "右室": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "右房": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "后方伴声影": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "后方回声增强": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "后方回声无异常": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "后方回声无明显改变": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "后方回声无特殊": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "后方回声混合": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "后方回声衰减": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "后方增强": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "后方增强效应": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "后方声增强": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "后方声影": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "后方声衰减": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "后方无明显改变": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "后方混合": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "后方衰减": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "呈分叶状": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "周边及内部血流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "周边血流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "回声不均": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "回声减低": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "回声增强": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "回声稍低": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "回声稍强": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "圆形": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "境界不清": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "境界清": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "境界清晰": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "增厚": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "增厚明显": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "增大": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "声影": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "大量反流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "少许血流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "少量反流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "少量积液": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "少量血流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "峡部": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "左叶上极": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "左叶上部": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "左叶下极": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "左叶下部": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "左叶中极": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "左叶中部": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "左室": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "左室侧壁": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "左室后壁": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "左室壁": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "左室射血分数正常": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "左房": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "强回声": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "形态不规则": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "形态欠规则": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "形态规则": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "微量积液": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "微钙化": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "心包腔未见积液": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "扩大": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "收缩功能下降": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "收缩功能减低": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "斑片状钙化": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "无回声": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "无回声区": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "无血流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "无钙化": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "未见器质性病变": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "未见异常": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "未见明显异常": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "未见明显血流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "未见积液": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "未见血流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "未见血流信号": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "未见钙化": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "椭圆形": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "液性暗区": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "混合回声": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "混合回声区": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "混合血流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "点状钙化": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "环形钙化": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "环状血流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "环状钙化": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "环绕血流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "瓣口狭窄": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "甲状腺峡部": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "等回声": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "等回声区": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "类圆形": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "类椭圆形": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "粗大钙化": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "粗钙化": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "细小钙化": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "结构未见明显异常": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "舒张功能下降": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "舒张功能减低": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "蛋壳样钙化": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "血流不丰富": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "血流丰富": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "血流信号不丰富": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "血流信号丰富": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "规则": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "边界不清": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "边界不规则": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "边界分叶": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "边界尚清": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "边界模糊": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "边界欠清": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "边界清": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "边界清晰": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "边界清楚": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "边缘血流": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "运动减低": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "运动减弱": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "近圆形": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "针尖样钙化": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "降主动脉": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "高回声": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "高回声区": {
+    "tier": "S",
+    "sources": [
+     "udaf"
+    ],
+    "freq": 0
+   },
+   "心脏移植": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "病毒性心肌炎": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "腹主动脉": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "心包炎": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "心律紊乱": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "胸主动脉": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "冠状动脉搭桥术": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肺源性心脏病": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "主动脉夹层动脉瘤": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "腹主动脉瘤": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "高血压性心脏病": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "心肌肥大": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "急性心肌炎": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肺动脉闭锁": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "主动脉缩窄": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "室性心律失常": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "中毒性心肌炎": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "慢性肺源性心脏病": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "单心室": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "高原性心脏病": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "心脏肿瘤": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "心脏损伤": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肥厚性心肌病": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "心脏移植术": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "心房间隔缺损": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "急性心包炎": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "先天性肺动脉狭窄": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "三尖瓣返流": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "心肌劳损": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "心肌衰竭": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "手厥阴心包经": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "缩窄性心包炎": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "单心房": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "室间隔膜部": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "心包积血": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "心脏神经官能症": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "贫血性心脏病": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "陈旧性心肌梗死": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "房间隔缺损修补术": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "心房扑动": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "糖尿病性心脏病": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "心肌炎后遗症": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "心脏恶性肿瘤": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "室间隔穿孔": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "慢性心包炎": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "二尖瓣成形术": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肺动脉瓣闭锁": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "房间隔缺损封堵术": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "心脏粘液瘤": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "右心室双出口": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "二尖瓣返流": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "心脏传导阻滞": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "感染性心肌炎": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "室间隔缺损封堵术": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "心肌肌钙蛋白": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "限制性心肌病": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "热入心包": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "心动过速性心肌病": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "逆传心包": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "尿毒症性心肌病": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "主动脉动脉瘤": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "心包穿刺术": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "慢性风湿性心脏病": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "类风湿性心脏病": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "心肌挫伤": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "化脓性心包炎": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "心包肌": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "先天性主动脉缩窄": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "继发性肺动脉高压": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "心包囊肿": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "心室晚电位": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "心室率": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "肺动脉扩张": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "主动脉瓣赘生物": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "梅毒性心脏病": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "主动脉结": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "新生儿心律失常": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "心房粘液瘤": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "心包剥脱术": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "三尖瓣闭锁不全": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "左心发育不全综合症": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "心肌抑制因子": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "注射用心肌肽": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   },
+   "主动脉瓣返流": {
+    "tier": "B",
+    "sources": [
+     "THUOCL"
+    ],
+    "freq": 0
+   }
+  }
+ }
+}
