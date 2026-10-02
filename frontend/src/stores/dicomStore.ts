@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { DicomImageState, DicomTool, FrameIndexMapping } from '@/types/dicom';
+import { getViewport as csGetViewport, setViewport as csSetViewport } from '@/components/dicom/cornerstone';
 
 type DicomStoreState = DicomImageState & { activeTool: DicomTool; frameMappings: FrameIndexMapping[]; cornerstoneElement: HTMLElement | null };
 
@@ -52,7 +53,7 @@ export const useDicomStore = create<DicomStoreState & DicomActions>((set, get) =
     const element = get().cornerstoneElement;
     if (element) {
       try {
-        const csViewport = window.cornerstone?.getViewport(element);
+        const csViewport = csGetViewport(element);
         if (csViewport) {
           if (viewport.windowWidth !== undefined) csViewport.voi.windowWidth = viewport.windowWidth;
           if (viewport.windowCenter !== undefined) csViewport.voi.windowCenter = viewport.windowCenter;
@@ -60,7 +61,7 @@ export const useDicomStore = create<DicomStoreState & DicomActions>((set, get) =
           if (viewport.translationX !== undefined) csViewport.translation.x = viewport.translationX;
           if (viewport.translationY !== undefined) csViewport.translation.y = viewport.translationY;
           if (viewport.invert !== undefined) csViewport.invert = viewport.invert;
-          window.cornerstone?.setViewport(element, csViewport);
+          csSetViewport(element, csViewport);
         }
       } catch {
         // cornerstone sync failed

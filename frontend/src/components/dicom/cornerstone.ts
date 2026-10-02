@@ -167,13 +167,33 @@ export function setViewport(element: HTMLElement, viewport: Record<string, unkno
   try {
     const enabled = getEnabledElement(element as HTMLDivElement);
     if (!enabled) return;
+    const vp = enabled.viewport as Types.IStackViewport;
     // voi {windowWidth, windowCenter} → voiRange {lower, upper}
     const voi = (viewport.voi ?? {}) as { windowWidth?: number; windowCenter?: number };
     const ww = voi.windowWidth ?? 0;
     const wc = voi.windowCenter ?? 0;
-    (enabled.viewport as Types.IStackViewport).setProperties({
-      voiRange: { lower: wc - ww / 2, upper: wc + ww / 2 },
-    });
+    if (ww > 0) {
+      vp.setProperties({ voiRange: { lower: wc - ww / 2, upper: wc + ww / 2 } });
+    }
+    // invert / scale / translation：与 getViewport 读出口对称，旧签名完整兼容
+    if (typeof viewport.invert === 'boolean') {
+      vp.setProperties({ invert: viewport.invert });
+    }
+    const cam = vp.getCamera();
+    let camChanged = false;
+    if (typeof viewport.scale === 'number' && viewport.scale > 0) {
+      cam.parallelScale = viewport.scale;
+      camChanged = true;
+    }
+    const tr = viewport.translation as { x?: number; y?: number } | undefined;
+    if (tr && (typeof tr.x === 'number' || typeof tr.y === 'number')) {
+      const focal = [...(cam.focalPoint ?? [0, 0, 0])] as [number, number, number];
+      if (typeof tr.x === 'number') focal[0] = tr.x;
+      if (typeof tr.y === 'number') focal[1] = tr.y;
+      cam.focalPoint = focal;
+      camChanged = true;
+    }
+    if (camChanged) vp.setCamera(cam);
   } catch {
     // ignore
   }
