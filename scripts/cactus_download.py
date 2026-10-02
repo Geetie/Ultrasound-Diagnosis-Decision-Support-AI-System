@@ -44,9 +44,7 @@ def wanted(rel: str) -> bool:
     low = rel.lower()
     if low.endswith((".mp4",)):
         return False
-    if low.endswith((".jpg", ".csv", ".txt")):
-        return True
-    return False
+    return bool(low.endswith((".jpg", ".csv", ".txt")))
 
 
 def fetch_one(rel: str, dest_root: Path, session: requests.Session) -> str:
@@ -71,7 +69,7 @@ def fetch_one(rel: str, dest_root: Path, session: requests.Session) -> str:
                 _stats["ok"] += 1
                 _stats["bytes"] += len(data)
             return "ok"
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             last_err = exc
             time.sleep(2**attempt)
     dest.unlink(missing_ok=True)

@@ -113,7 +113,7 @@ def main() -> int:
     # 视图 ↔ prompt 映射（探针与对比锚共用）
     prompts = sorted({r["caption"] for rows in splits.values() for r in rows})
     cap2view = {r["caption"]: r["view"] for rows in splits.values() for r in rows}
-    view_of_cap = [cap2view[c] for c in prompts]
+    [cap2view[c] for c in prompts]
 
     # 1) 官方库加载（local-dir: schema——与 8003 嵌入服务/t2a 同款，零网络）
     uri = "local-dir:" + str(model_dir)
@@ -188,7 +188,7 @@ def main() -> int:
         rec = {"epoch": epoch + 1, "loss": round(tot / nb, 4),
                "epoch_s": round(time.perf_counter() - t0, 1)}
         for tag in ("train", "val", "test"):
-            f, c = feats[tag]
+            f, _c = feats[tag]
             ys = [r["view"] for r in splits[tag]]
             lr = LogisticRegression(max_iter=2000)
             lr.fit(f, ys)

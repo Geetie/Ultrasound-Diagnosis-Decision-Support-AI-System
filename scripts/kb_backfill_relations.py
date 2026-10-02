@@ -46,7 +46,7 @@ async def backfill(kb_version: str, dry_run: bool = False) -> int:
             )
 
         updates: list[tuple[str, list[dict[str, str]]]] = []
-        for doc_id, chunks in by_doc.items():
+        for _doc_id, chunks in by_doc.items():
             ids = [c["chunk_id"] for c in chunks]
             for i, c in enumerate(chunks):
                 if "relations" in (c["metadata"] or {}):

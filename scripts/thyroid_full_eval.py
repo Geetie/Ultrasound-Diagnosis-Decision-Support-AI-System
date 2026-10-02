@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """TN3K full eval (official split): trainval 2878 train + test 614 official test.
 
 Dual backbone: EchoCare (GPU-first, CPU fallback) + BiomedCLIP (8003 HTTP).
@@ -140,7 +139,7 @@ def eval_probe(train_x, train_y, test_x, test_y):
         "auc": round(float(roc_auc_score(test_y, proba)), 4),
         "accuracy": round(float(accuracy_score(test_y, pred)), 4),
         "balanced_accuracy": round(float(balanced_accuracy_score(test_y, pred)), 4),
-        "n_test": int(len(test_y)),
+        "n_test": len(test_y),
         "label_dist": dict(Counter(test_y.tolist())),
     }
 
@@ -157,8 +156,8 @@ def main():
 
     report = {
         "dataset": "TN3K official split",
-        "n_train": int(len(tr_y)),
-        "n_test": int(len(te_y)),
+        "n_train": len(tr_y),
+        "n_test": len(te_y),
         "echocare": eval_probe(tr_echo, tr_y, te_echo, te_y),
         "biomedclip": eval_probe(tr_clip, tr_y, te_clip, te_y),
         "generated_at": time.strftime("%Y-%m-%d %H:%M:%S"),

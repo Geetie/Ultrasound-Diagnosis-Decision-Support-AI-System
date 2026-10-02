@@ -57,7 +57,7 @@ for row in rows:
     if not row["consistent"]:
         grade_diff_only += 1
 
-valid = by_organ_total and sum(by_organ_total.values()) or 1
+valid = (by_organ_total and sum(by_organ_total.values())) or 1
 print(f"total={n} valid={sum(by_organ_total.values())} (B 侧无分级 {none_b})")
 print(f"同处置层: {same_tier} = {same_tier / valid:.2%}")
 print(f"相邻层(±1): {adjacent} = {adjacent / valid:.2%}")

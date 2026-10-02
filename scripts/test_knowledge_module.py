@@ -31,7 +31,7 @@ def test_vocabulary():
     print(f"   'hyperechoic' synonyms: {synonyms}")
 
     print("\n3. Coverage Rate:")
-    coverage = vocab.coverage_rate(test_terms + ["unknown_term"])
+    coverage = vocab.coverage_rate([*test_terms, "unknown_term"])
     print(f"   Coverage: {coverage:.1%}")
 
     print("\nOK - Vocabulary test completed!")

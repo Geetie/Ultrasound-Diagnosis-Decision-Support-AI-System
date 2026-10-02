@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """甲状腺冒烟训练（T2a 式：冻结底座特征 + LR 探针）。
 
 双底座对比：
@@ -162,7 +161,7 @@ def eval_probe(
         "balanced_accuracy": round(
             float(balanced_accuracy_score(test_y, pred)), 4
         ),
-        "n_test": int(len(test_y)),
+        "n_test": len(test_y),
         "label_dist": dict(Counter(test_y.tolist())),
     }
 
@@ -182,7 +181,7 @@ def main() -> int:
     remaining = [r for r in all_rows if r[0] not in train_names]
     test_rows = stratified_sample(remaining, args.n_test, args.seed + 1)
     print(f"train={len(train_rows)} test={len(test_rows)}", flush=True)
-    print("train dist:", dict(Counter(l for _, l in train_rows)), flush=True)
+    print("train dist:", dict(Counter(ln for _, ln in train_rows)), flush=True)
 
     print("== feature extraction (EchoCare CPU + BiomedCLIP HTTP) ==", flush=True)
     extractor = EchoCareFeatures()

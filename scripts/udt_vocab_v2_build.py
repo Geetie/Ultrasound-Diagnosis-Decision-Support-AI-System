@@ -13,7 +13,6 @@ LayerS 分级体系: 既有 UDAF 225 同义词 → tier S（已在生产）
 from __future__ import annotations
 
 import json
-import re
 import sys
 from collections import Counter
 from pathlib import Path

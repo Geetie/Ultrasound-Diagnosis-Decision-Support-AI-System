@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """TN3K benchmark v2 - probe arms (official split, per-model native preprocessing).
 
 Arms:
@@ -35,11 +34,11 @@ FEAT_DIR.mkdir(parents=True, exist_ok=True)
 
 def load_labels(p):
     with open(p, encoding="utf-8") as f:
-        return [(n, int(l)) for n, l in csv.reader(f)]
+        return [(n, int(ln)) for n, ln in csv.reader(f)]
 
 
 def load_rows(sub, csv_name):
-    rows = [(n, l) for n, l in load_labels(DATA / csv_name)
+    rows = [(n, ln) for n, ln in load_labels(DATA / csv_name)
             if (DATA / sub / n).exists()]
     return rows
 
@@ -143,7 +142,7 @@ def extract_ulc(rows, subdir, tag):
     )
     sd = torch.load("/mnt/ee16/home/student03/uai/models/ultrasound_clip/checkpoints.pt",
                     map_location="cpu", weights_only=True)
-    usd = sd["state_dict"] if "state_dict" in sd else sd
+    usd = sd.get("state_dict", sd)
     vsd = {k.replace("base_clip.visual.", "", 1): v
            for k, v in usd.items() if k.startswith("base_clip.visual.")}
     model.visual.load_state_dict(vsd, strict=False)

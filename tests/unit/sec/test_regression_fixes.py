@@ -707,10 +707,25 @@ class TestConsentRecordSingleSource:
 
     def test_checker_imports_from_main_models(self):
         """checker应从validation_result导入ConsentStatus，而非本地定义ConsentRecord"""
+        import ast
+        import inspect
+        import pathlib
+
         import safety_gateway.checker.orchestrator as checker_module
+
         source = inspect.getsource(checker_module)
 
-        assert "from safety_gateway.validation_result import ConsentStatus" in source
+        # AST 级断言（不受 ruff 单行/多行括号格式化影响）：
+        # ConsentStatus 必须来自 safety_gateway.validation_result
+        tree = ast.parse(pathlib.Path(checker_module.__file__).read_text(encoding="utf-8"))
+        imported_from = {
+            alias.name
+            for node in ast.walk(tree)
+            if isinstance(node, ast.ImportFrom)
+            and node.module == "safety_gateway.validation_result"
+            for alias in node.names
+        }
+        assert "ConsentStatus" in imported_from
         assert "class ConsentRecord" not in source
 
     def test_no_declarative_base_in_checker(self):
@@ -2127,9 +2142,17 @@ class TestDesensitizationRestoreRateLimitExtended:
 class TestSoftHSMExpiryScenarios:
 
     def test_softhsm_active_within_90_days(self):
+        """契约更新（2026-10-03）：get_status() 返回 expiry_level
+        （none/approaching/warning/critical），旧键 "status" 已移除。"""
         status = hsm_manager.get_soft_hsm_status()
         if status.get("is_soft_hsm"):
-            assert status["status"] in ("active", "expired", "critical")
+            assert status["expiry_level"] in (
+                "none",
+                "approaching",
+                "warning",
+                "critical",
+            )
+            assert isinstance(status["days_running"], int)
 
     def test_softhsm_critical_days_constant(self):
         assert HSMManager.SOFT_HSM_CRITICAL_DAYS == 120

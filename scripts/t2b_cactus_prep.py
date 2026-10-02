@@ -67,7 +67,7 @@ def stratified_split(records: list[dict], seed: int) -> dict[str, list[dict]]:
     for r in records:
         by_key.setdefault((r["view"], r["grade"]), []).append(r)
     splits: dict[str, list[dict]] = {"train": [], "val": [], "test": []}
-    for key, items in sorted(by_key.items()):
+    for _key, items in sorted(by_key.items()):
         items = sorted(items, key=lambda x: x["filepath"])
         rng.shuffle(items)
         n = len(items)

@@ -68,7 +68,7 @@ def stratified_split(samples, seed=42, ratios=(0.7, 0.15, 0.15)):
         by_cls.setdefault(s[1], []).append(s)
     rng = random.Random(seed)
     train, val, test = [], [], []
-    for label, items in sorted(by_cls.items()):
+    for _label, items in sorted(by_cls.items()):
         rng.shuffle(items)
         n = len(items)
         n_tr = int(n * ratios[0])

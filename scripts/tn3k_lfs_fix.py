@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """TN3K test 集 LFS 指针修复：从 hf-mirror resolve 逐文件拉真实内容并 sha256 校验。
 
 本地 test-image/test-mask 下 614+614 个文件是 Git LFS 指针（130B），
@@ -55,7 +54,7 @@ def fetch_one(sub: str, name: str, oid: str, size: int, attempts: int = 3) -> tu
             tmp.write_bytes(data)
             tmp.replace(dest)
             return (name, True, "ok")
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             if attempt == attempts - 1:
                 return (name, False, f"{type(exc).__name__}: {exc}")
             time.sleep(2 * (attempt + 1))
@@ -106,7 +105,7 @@ def main() -> int:
         try:
             with Image.open(p) as img:
                 img.load()
-        except Exception:  # noqa: BLE001
+        except Exception:
             bad += 1
     print(f"PIL readability: {614 - bad}/614 ok, bad={bad}")
     return 0 if fail == 0 and bad == 0 else 1

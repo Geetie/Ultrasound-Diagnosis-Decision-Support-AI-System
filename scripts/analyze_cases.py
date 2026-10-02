@@ -32,11 +32,10 @@ def analyze_case_homogeneity(cases):
     attr_categories = Counter()
     for c in cases:
         if c.expected_attributes:
-            for cat in c.expected_attributes.keys():
+            for cat in c.expected_attributes:
                 attr_categories[cat] += 1
 
     # Text pattern similarity analysis
-    first_text = cases[0].input_text
     pattern_counts = Counter()
     for c in cases:
         # Check if text follows similar structure

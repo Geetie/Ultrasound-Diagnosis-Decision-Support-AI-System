@@ -16,10 +16,9 @@ import open_clip
 import torch
 import torch.nn.functional as F
 from sklearn.linear_model import LinearRegression, LogisticRegression
-from torch.utils.data import DataLoader
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from t2b_cactus_train import STANDARD_VIEWS, CactusDataset, make_loader  # noqa: E402
+from t2b_cactus_train import STANDARD_VIEWS, CactusDataset, make_loader
 
 DATA_DIR = Path("/mnt/ee16/home/student03/uai/data/t2b_cactus")
 MODEL_DIR = Path("/mnt/ee16/home/student03/uai/models/biomedclip-base-patch16-224")

@@ -1,0 +1,590 @@
+{
+  "total": 30,
+  "exact": 7,
+  "multi": 21,
+  "missing": 2,
+  "mapping": {
+    "thyroid_hyperthyroidism": {
+      "confidence": "multi",
+      "icd10": "E05.900",
+      "name": "甲状腺毒症",
+      "candidates": [
+        {
+          "code": "E05.900",
+          "name": "甲状腺毒症"
+        },
+        {
+          "code": "E05.400",
+          "name": "人为甲状腺毒症"
+        },
+        {
+          "code": "E07.800x021",
+          "name": "桥本甲状腺毒症"
+        },
+        {
+          "code": "E05.900x021",
+          "name": "甲状腺毒症性眼病"
+        },
+        {
+          "code": "E05.800",
+          "name": "甲状腺毒症，其他的"
+        }
+      ]
+    },
+    "thyroid_toxic_diffuse_goiter": {
+      "confidence": "exact",
+      "icd10": "E05.003",
+      "name": "毒性弥漫性甲状腺肿",
+      "candidates": [
+        {
+          "code": "E05.003",
+          "name": "毒性弥漫性甲状腺肿"
+        }
+      ]
+    },
+    "thyroid_toxic_nodular_goiter": {
+      "confidence": "exact",
+      "icd10": "E05.201",
+      "name": "毒性结节性甲状腺肿",
+      "candidates": [
+        {
+          "code": "E05.201",
+          "name": "毒性结节性甲状腺肿"
+        }
+      ]
+    },
+    "thyroid_toxic_adenoma": {
+      "icd10": "E05.100",
+      "name": "甲状腺毒症伴有毒性单个甲状腺结节",
+      "confidence": "manual"
+    },
+    "thyroid_hypothyroidism": {
+      "confidence": "multi",
+      "icd10": "E03.900",
+      "name": "甲状腺功能减退症",
+      "candidates": [
+        {
+          "code": "E03.900",
+          "name": "甲状腺功能减退症"
+        },
+        {
+          "code": "E01.801",
+          "name": "碘性甲状腺功能减退"
+        },
+        {
+          "code": "E03.200x011",
+          "name": "药物性甲状腺功能减退"
+        },
+        {
+          "code": "E03.200x012",
+          "name": "医源性甲状腺功能减退"
+        },
+        {
+          "code": "E03.800x001",
+          "name": "继发性甲状腺功能减退"
+        }
+      ]
+    },
+    "thyroid_primary_hypothyroidism": {
+      "confidence": "multi",
+      "icd10": "E03.800x002",
+      "name": "原发性甲状腺功能减退",
+      "candidates": [
+        {
+          "code": "E03.800x002",
+          "name": "原发性甲状腺功能减退"
+        },
+        {
+          "code": "E03.802",
+          "name": "原发性甲状腺功能减退症"
+        }
+      ]
+    },
+    "thyroid_secondary_hypothyroidism": {
+      "confidence": "multi",
+      "icd10": "E03.800x001",
+      "name": "继发性甲状腺功能减退",
+      "candidates": [
+        {
+          "code": "E03.800x001",
+          "name": "继发性甲状腺功能减退"
+        },
+        {
+          "code": "E03.801",
+          "name": "继发性甲状腺功能减退症"
+        }
+      ]
+    },
+    "thyroid_hashimoto": {
+      "confidence": "multi",
+      "icd10": "E06.302+G94.8*",
+      "name": "桥本脑病",
+      "candidates": [
+        {
+          "code": "E06.302+G94.8*",
+          "name": "桥本脑病"
+        },
+        {
+          "code": "E06.304",
+          "name": "桥本甲状腺炎"
+        },
+        {
+          "code": "E07.800x021",
+          "name": "桥本甲状腺毒症"
+        },
+        {
+          "code": "E06.300x001",
+          "name": "短暂性桥本甲状腺毒症"
+        }
+      ]
+    },
+    "cardiac_arrhythmia": {
+      "confidence": "multi",
+      "icd10": "I49.900",
+      "name": "心律失常",
+      "candidates": [
+        {
+          "code": "I49.900",
+          "name": "心律失常"
+        },
+        {
+          "code": "I49.801",
+          "name": "窦性心律失常"
+        },
+        {
+          "code": "I49.802",
+          "name": "室性心律失常"
+        },
+        {
+          "code": "O36.800x002",
+          "name": "胎儿心律失常"
+        },
+        {
+          "code": "I47.200x014",
+          "name": "心律失常电风暴"
+        }
+      ]
+    },
+    "cardiac_atrial_fibrillation": {
+      "confidence": "multi",
+      "icd10": "I48.x00x021",
+      "name": "阵发性心房纤颤",
+      "candidates": [
+        {
+          "code": "I48.x00x021",
+          "name": "阵发性心房纤颤"
+        },
+        {
+          "code": "I48.x00x023",
+          "name": "特发性心房纤颤"
+        },
+        {
+          "code": "I48.x00x022",
+          "name": "心房颤动[心房纤颤]"
+        },
+        {
+          "code": "O99.400x027",
+          "name": "妊娠合并心房颤动(心房纤颤)"
+        }
+      ]
+    },
+    "cardiac_tachycardia": {
+      "confidence": "multi",
+      "icd10": "R00.000",
+      "name": "心动过速",
+      "candidates": [
+        {
+          "code": "R00.000",
+          "name": "心动过速"
+        },
+        {
+          "code": "I47.101",
+          "name": "房性心动过速"
+        },
+        {
+          "code": "I47.200",
+          "name": "室性心动过速"
+        },
+        {
+          "code": "R00.001",
+          "name": "窦性心动过速"
+        },
+        {
+          "code": "I47.100",
+          "name": "室上性心动过速"
+        }
+      ]
+    },
+    "cardiac_bradycardia": {
+      "confidence": "multi",
+      "icd10": "R00.100",
+      "name": "心动过缓",
+      "candidates": [
+        {
+          "code": "R00.100",
+          "name": "心动过缓"
+        },
+        {
+          "code": "R00.100x001",
+          "name": "窦性心动过缓"
+        }
+      ]
+    },
+    "cardiac_ventricular_arrhythmia": {
+      "confidence": "multi",
+      "icd10": "I47.200",
+      "name": "室性心动过速",
+      "candidates": [
+        {
+          "code": "I47.200",
+          "name": "室性心动过速"
+        },
+        {
+          "code": "I47.200x003",
+          "name": "右室室性心动过速"
+        },
+        {
+          "code": "I47.200x005",
+          "name": "左室室性心动过速"
+        },
+        {
+          "code": "I47.200x010",
+          "name": "多形性室性心动过速"
+        },
+        {
+          "code": "I47.200x011",
+          "name": "单形性室性心动过速"
+        }
+      ]
+    },
+    "cardiac_pericardial_effusion": {
+      "confidence": "multi",
+      "icd10": "I31.800x004",
+      "name": "心包积液",
+      "candidates": [
+        {
+          "code": "I31.800x004",
+          "name": "心包积液"
+        },
+        {
+          "code": "C79.800x863",
+          "name": "恶性心包积液"
+        },
+        {
+          "code": "I30.900x001",
+          "name": "急性心包积液"
+        },
+        {
+          "code": "O36.800x001",
+          "name": "胎儿心包积液"
+        },
+        {
+          "code": "A18.809+I32.0*",
+          "name": "结核性心包积液"
+        }
+      ]
+    },
+    "cardiac_right_heart_failure": {
+      "confidence": "multi",
+      "icd10": "I50.001",
+      "name": "右心衰竭",
+      "candidates": [
+        {
+          "code": "I50.001",
+          "name": "右心衰竭"
+        },
+        {
+          "code": "I50.000x006",
+          "name": "急性右心衰竭"
+        }
+      ]
+    },
+    "cardiac_right_heart_failure_acute": {
+      "confidence": "exact",
+      "icd10": "I50.000x006",
+      "name": "急性右心衰竭",
+      "candidates": [
+        {
+          "code": "I50.000x006",
+          "name": "急性右心衰竭"
+        }
+      ]
+    },
+    "cardiac_right_heart_failure_chronic": {
+      "icd10": "I50.900",
+      "name": "心力衰竭（底表无右心衰独立码，保守映射）",
+      "confidence": "manual_pending_review"
+    },
+    "cardiac_tricuspid_regurgitation": {
+      "confidence": "multi",
+      "icd10": "I07.100",
+      "name": "三尖瓣关闭不全",
+      "candidates": [
+        {
+          "code": "I07.100",
+          "name": "三尖瓣关闭不全"
+        },
+        {
+          "code": "I07.100x001",
+          "name": "风湿性三尖瓣关闭不全"
+        },
+        {
+          "code": "I08.103",
+          "name": "二尖瓣及三尖瓣关闭不全"
+        },
+        {
+          "code": "I36.100",
+          "name": "非风湿性三尖瓣关闭不全"
+        },
+        {
+          "code": "I08.201",
+          "name": "主动脉瓣及三尖瓣关闭不全"
+        }
+      ]
+    },
+    "cardiac_tricuspid_regurgitation_mild": {
+      "confidence": "multi",
+      "icd10": "I07.100",
+      "name": "三尖瓣关闭不全",
+      "candidates": [
+        {
+          "code": "I07.100",
+          "name": "三尖瓣关闭不全"
+        },
+        {
+          "code": "I07.100x001",
+          "name": "风湿性三尖瓣关闭不全"
+        },
+        {
+          "code": "I08.103",
+          "name": "二尖瓣及三尖瓣关闭不全"
+        },
+        {
+          "code": "I36.100",
+          "name": "非风湿性三尖瓣关闭不全"
+        },
+        {
+          "code": "I08.201",
+          "name": "主动脉瓣及三尖瓣关闭不全"
+        }
+      ]
+    },
+    "cardiac_tricuspid_regurgitation_moderate": {
+      "confidence": "multi",
+      "icd10": "I07.100",
+      "name": "三尖瓣关闭不全",
+      "candidates": [
+        {
+          "code": "I07.100",
+          "name": "三尖瓣关闭不全"
+        },
+        {
+          "code": "I07.100x001",
+          "name": "风湿性三尖瓣关闭不全"
+        },
+        {
+          "code": "I08.103",
+          "name": "二尖瓣及三尖瓣关闭不全"
+        },
+        {
+          "code": "I36.100",
+          "name": "非风湿性三尖瓣关闭不全"
+        },
+        {
+          "code": "I08.201",
+          "name": "主动脉瓣及三尖瓣关闭不全"
+        }
+      ]
+    },
+    "cardiac_tricuspid_regurgitation_severe": {
+      "confidence": "multi",
+      "icd10": "I07.100",
+      "name": "三尖瓣关闭不全",
+      "candidates": [
+        {
+          "code": "I07.100",
+          "name": "三尖瓣关闭不全"
+        },
+        {
+          "code": "I07.100x001",
+          "name": "风湿性三尖瓣关闭不全"
+        },
+        {
+          "code": "I08.103",
+          "name": "二尖瓣及三尖瓣关闭不全"
+        },
+        {
+          "code": "I36.100",
+          "name": "非风湿性三尖瓣关闭不全"
+        },
+        {
+          "code": "I08.201",
+          "name": "主动脉瓣及三尖瓣关闭不全"
+        }
+      ]
+    },
+    "cardiac_liver_congestion": {
+      "confidence": "exact",
+      "icd10": "K76.101",
+      "name": "心源性肝硬化",
+      "candidates": [
+        {
+          "code": "K76.101",
+          "name": "心源性肝硬化"
+        }
+      ]
+    },
+    "liver_cirrhosis": {
+      "confidence": "multi",
+      "icd10": "K74.100",
+      "name": "肝硬化",
+      "candidates": [
+        {
+          "code": "K74.100",
+          "name": "肝硬化"
+        },
+        {
+          "code": "K74.601",
+          "name": "特指肝硬化"
+        },
+        {
+          "code": "A52.705+K77.0*",
+          "name": "梅毒性肝硬化"
+        },
+        {
+          "code": "K70.300",
+          "name": "酒精性肝硬化"
+        },
+        {
+          "code": "K71.701",
+          "name": "药物性肝硬化"
+        }
+      ]
+    },
+    "liver_alcoholic_cirrhosis": {
+      "confidence": "multi",
+      "icd10": "K70.300",
+      "name": "酒精性肝硬化",
+      "candidates": [
+        {
+          "code": "K70.300",
+          "name": "酒精性肝硬化"
+        },
+        {
+          "code": "K70.300x004+I98.2*",
+          "name": "酒精性肝硬化伴胃底静脉曲张"
+        },
+        {
+          "code": "K70.301+I98.2*",
+          "name": "酒精性肝硬化伴食管静脉曲张"
+        },
+        {
+          "code": "K70.300x006+I98.2*",
+          "name": "酒精性肝硬化伴食管胃底静脉曲张"
+        },
+        {
+          "code": "K70.300x005+I98.3*",
+          "name": "酒精性肝硬化伴胃底静脉曲张破裂出血"
+        }
+      ]
+    },
+    "liver_biliary_cirrhosis": {
+      "confidence": "multi",
+      "icd10": "K74.301+I98.2*",
+      "name": "原发性胆汁性肝硬化伴食管静脉曲张",
+      "candidates": [
+        {
+          "code": "K74.301+I98.2*",
+          "name": "原发性胆汁性肝硬化伴食管静脉曲张"
+        },
+        {
+          "code": "K74.302+I98.3*",
+          "name": "原发性胆汁性肝硬化伴食管静脉曲张破裂出血"
+        }
+      ]
+    },
+    "liver_post_hepatitic_cirrhosis": {
+      "confidence": "multi",
+      "icd10": "K74.608",
+      "name": "肝炎后肝硬化",
+      "candidates": [
+        {
+          "code": "K74.608",
+          "name": "肝炎后肝硬化"
+        },
+        {
+          "code": "K74.600x046",
+          "name": "肝炎后肝硬化静止性"
+        },
+        {
+          "code": "K74.600x047",
+          "name": "肝炎后肝硬化活动性"
+        },
+        {
+          "code": "K74.605",
+          "name": "肝炎后肝硬化失代偿期"
+        },
+        {
+          "code": "K73.900x001",
+          "name": "慢性肝炎后肝硬化活动性"
+        }
+      ]
+    },
+    "liver_congestion": {
+      "confidence": "exact",
+      "icd10": "K76.100x011",
+      "name": "肝淤血",
+      "candidates": [
+        {
+          "code": "K76.100x011",
+          "name": "肝淤血"
+        }
+      ]
+    },
+    "liver_congestion_mild": {
+      "confidence": "exact",
+      "icd10": "K76.100x011",
+      "name": "肝淤血",
+      "candidates": [
+        {
+          "code": "K76.100x011",
+          "name": "肝淤血"
+        }
+      ]
+    },
+    "liver_congestion_severe": {
+      "confidence": "exact",
+      "icd10": "K76.100x011",
+      "name": "肝淤血",
+      "candidates": [
+        {
+          "code": "K76.100x011",
+          "name": "肝淤血"
+        }
+      ]
+    },
+    "liver_autoimmune_hepatitis": {
+      "confidence": "multi",
+      "icd10": "K75.400",
+      "name": "自身免疫性肝炎",
+      "candidates": [
+        {
+          "code": "K75.400",
+          "name": "自身免疫性肝炎"
+        },
+        {
+          "code": "K74.600x048",
+          "name": "自身免疫性肝炎后肝硬化"
+        },
+        {
+          "code": "O26.608",
+          "name": "妊娠合并自身免疫性肝炎"
+        },
+        {
+          "code": "K74.604",
+          "name": "自身免疫性肝炎后肝硬化失代偿期"
+        }
+      ]
+    }
+  }
+}

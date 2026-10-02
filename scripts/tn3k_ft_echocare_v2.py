@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """TN3K finetune v2 - EchoCare (Swin encoder + linear head, CE, 3 seeds).
 
 Recipe self-designed (EchoCare repo has NO downstream classification recipe):
@@ -88,7 +87,7 @@ def run_variant(seed: int, epochs: int = 5, bs: int = 16):
             for i in range(0, len(test_rows), bs):
                 chunk = test_rows[i:i + bs]
                 xs = [load_image(p) for _, _, p in chunk]
-                keep = [(x, y) for x, (_, _, y) in zip(xs, chunk) if x is not None]
+                keep = [(x, y) for x, (_, _, y) in zip(xs, chunk, strict=False) if x is not None]
                 if not keep:
                     continue
                 xs = torch.stack([k[0] for k in keep]).to("cuda")
@@ -116,7 +115,7 @@ def run_variant(seed: int, epochs: int = 5, bs: int = 16):
             idx = perm[i:i + bs]
             xs, ys = [], []
             for j in idx:
-                name, label, p = train_rows[j]
+                _name, label, p = train_rows[j]
                 x = load_image(p)
                 if x is not None:
                     xs.append(x)

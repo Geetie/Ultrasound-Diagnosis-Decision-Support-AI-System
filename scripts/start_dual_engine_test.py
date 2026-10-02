@@ -115,9 +115,8 @@ def main():
     signal.signal(signal.SIGINT, cleanup)
     signal.signal(signal.SIGTERM, cleanup)
 
-    if not args.llama_only and not args.vllm_only:
-        if not args.llama_model and not args.vllm_model:
-            parser.error("At least one of --llama-model or --vllm-model is required")
+    if not args.llama_only and not args.vllm_only and not args.llama_model and not args.vllm_model:
+        parser.error("At least one of --llama-model or --vllm-model is required")
 
     if not args.vllm_only and args.llama_model:
         p = start_llama_cpp(

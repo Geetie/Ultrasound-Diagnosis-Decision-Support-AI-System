@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Ultrasound-CLIP 官方权重结构鉴定（只读，不加载进显存）。
 
 输出：顶层结构 / key 前缀分布 / 张量形状样本 / backbone 匹配建议，

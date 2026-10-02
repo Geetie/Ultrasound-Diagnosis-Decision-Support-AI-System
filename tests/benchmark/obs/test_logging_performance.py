@@ -79,7 +79,7 @@ class TestLoggingPerformance:
             metrics = storage.get_metrics()
             # 安全获取flush_latencies，避免KeyError
             if metrics.get("flush_latencies"):
-                flush_latencies.extend([l * 1000 for l in metrics["flush_latencies"]])
+                flush_latencies.extend([ln * 1000 for ln in metrics["flush_latencies"]])
                 # 重置后端的flush_latencies
                 if hasattr(storage._backend, "_metrics") and "flush_latencies" in storage._backend._metrics:
                     storage._backend._metrics["flush_latencies"] = []
@@ -365,7 +365,7 @@ class TestBatchLogStorageWrapper:
         await asyncio.sleep(0.1)
 
         metrics = wrapper.get_metrics()
-        flush_latencies_ms = [l * 1000 for l in metrics["flush_latencies"]]
+        flush_latencies_ms = [ln * 1000 for ln in metrics["flush_latencies"]]
 
         if flush_latencies_ms:
             p99 = TestLoggingPerformance._calculate_percentile(flush_latencies_ms, 99)

@@ -133,7 +133,7 @@ def main():
     te_loader = make_loader(MemDS(test_rows, preprocess), args.batch_size, args.workers, False)
 
     # 基线（域适应前）
-    f_tr, y_tr = extract(model, tr_loader, device)
+    _f_tr, _y_tr = extract(model, tr_loader, device)
     f_va, y_va = extract(model, va_loader, device)
     f_te, y_te = extract(model, te_loader, device)
     base_va = mal_auc(f_va, y_va)

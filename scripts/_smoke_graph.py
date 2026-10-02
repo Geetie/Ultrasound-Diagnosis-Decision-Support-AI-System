@@ -5,12 +5,12 @@ import sys
 os.environ["GRAPH_QUERY_ENABLED"] = "1"  # must precede app imports
 sys.path.insert(0, ".")
 
-import asyncio  # noqa: E402
+import asyncio
 
-from sqlalchemy import text  # noqa: E402
+from sqlalchemy import text
 
-from app.config.database import AsyncSessionLocal  # noqa: E402
-from app.knowledge.graph_query import PgVectorGraphAdapter  # noqa: E402
+from app.config.database import AsyncSessionLocal
+from app.knowledge.graph_query import PgVectorGraphAdapter
 
 
 async def main() -> int:

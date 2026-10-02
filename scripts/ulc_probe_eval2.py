@@ -5,8 +5,8 @@ os.environ["TRANSFORMERS_OFFLINE"] = "1"
 
 import csv
 import json
+import shutil
 import time
-import uuid
 from pathlib import Path
 
 import numpy as np
@@ -37,7 +37,7 @@ print("open_clip model loaded offline", flush=True)
 
 sd = torch.load(str(M / "ultrasound_clip" / "checkpoints.pt"),
                 map_location="cpu", weights_only=True)
-usd = sd["state_dict"] if "state_dict" in sd else sd
+usd = sd.get("state_dict", sd)
 visual_sd = {k.replace("base_clip.visual.", "", 1): v
              for k, v in usd.items() if k.startswith("base_clip.visual.")}
 sk = set(model.visual.state_dict())
@@ -54,7 +54,7 @@ print(f"device: {device}", flush=True)
 
 def load_labels(p):
     with open(p, encoding="utf-8") as f:
-        return [(n, int(l)) for n, l in csv.reader(f)]
+        return [(n, int(ln)) for n, ln in csv.reader(f)]
 
 
 @torch.no_grad()
@@ -91,11 +91,9 @@ def extract(rows, subdir, tag):
 
 
 def main():
-    import csv
 
     from sklearn.linear_model import LogisticRegression
-    from sklearn.metrics import (accuracy_score, balanced_accuracy_score,
-                                 roc_auc_score)
+    from sklearn.metrics import accuracy_score, balanced_accuracy_score, roc_auc_score
 
     tr_x, tr_y = extract(load_labels(DATA / "label4trainval.csv"),
                          "trainval-image", "train")
@@ -108,7 +106,7 @@ def main():
     pred = (proba >= 0.5).astype(int)
     report = {
         "model": "Ultrasound-CLIP (official ckpt, visual tower)",
-        "n_train": int(len(tr_y)), "n_test": int(len(te_y)),
+        "n_train": len(tr_y), "n_test": len(te_y),
         "auc": round(float(roc_auc_score(te_y, proba)), 4),
         "accuracy": round(float(accuracy_score(te_y, pred)), 4),
         "balanced_accuracy": round(float(balanced_accuracy_score(te_y, pred)), 4),

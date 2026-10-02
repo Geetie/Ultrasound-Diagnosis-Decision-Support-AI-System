@@ -457,7 +457,7 @@ class OpenClipBackend:
         view_classes = [str(c) for c in self._t2b_view_probe.classes_]
         grades = self._t2b_quality_reg.predict(X)
         results = []
-        for p_row, g in zip(view_probs, grades):
+        for p_row, g in zip(view_probs, grades, strict=False):
             top = int(p_row.argmax())
             pred_view = view_classes[top]
             results.append({

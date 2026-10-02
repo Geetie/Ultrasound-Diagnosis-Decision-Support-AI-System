@@ -155,7 +155,7 @@ def suite_inline(iterations: int) -> SuiteReport:
             },
         )()
     )
-    template = report_service.load_template()
+    report_service.load_template()
     rendered = report_service.render_report(content)
     payload = report_service.report_payload(rendered)
 

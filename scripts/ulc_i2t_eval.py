@@ -43,7 +43,7 @@ print("base BiomedCLIP loaded", flush=True)
 
 sd = torch.load(str(M / "ultrasound_clip" / "checkpoints.pt"),
                 map_location="cpu", weights_only=True)
-usd = sd["state_dict"] if "state_dict" in sd else sd
+usd = sd.get("state_dict", sd)
 v_sd = {k.replace("base_clip.visual.", "", 1): v
         for k, v in usd.items() if k.startswith("base_clip.visual.")}
 t_sd = {k.replace("base_clip.text.", "", 1): v

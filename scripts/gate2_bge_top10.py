@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Gate 2 或分支评测：bge-m3 纯文本检索 Top10 命中率（≥88% 判定）。
 
 口径：golden set 每条 query_text → bge-m3(8004) 文本嵌入 → 对
@@ -14,14 +13,13 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import sys
 import time
 from pathlib import Path
 
-import sys
-
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from t1_eval_retrieval import cosine_topk, embed_texts  # noqa: E402
+from t1_eval_retrieval import cosine_topk, embed_texts
 
 GOLDEN = Path("/mnt/ee16/home/student03/uai/data/golden/kb_qa_golden_v1.json")
 OUT = Path("/mnt/ee16/home/student03/uai/reports/gate2_bge_top10.json")
@@ -92,7 +90,7 @@ def main() -> int:
 
     hits = {1: 0, 5: 0, 10: 0}
     mrr = 0.0
-    for q, ranking in zip(queries, rankings):
+    for q, ranking in zip(queries, rankings, strict=False):
         gold_doc = q["relevant_source_doc_id"]
         for k in hits:
             if doc_level_hit_at_k(ranking, corpus, gold_doc, k):
