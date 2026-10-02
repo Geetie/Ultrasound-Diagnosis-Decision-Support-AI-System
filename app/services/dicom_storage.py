@@ -130,7 +130,7 @@ class DicomStorageService:
 
     STORAGE_ID_PATTERN = re.compile(r"^(?:img|frame)_(\d{8})_[0-9a-f]{8}$")
 
-    def path_for_id(self, storage_id: str) -> Optional[str]:
+    def path_for_id(self, storage_id: str) -> str | None:
         """由存储 ID 反推绝对路径；ID 格式非法或不含日期时返回 None。"""
         m = self.STORAGE_ID_PATTERN.match(storage_id or "")
         if not m:
