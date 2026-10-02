@@ -50,23 +50,41 @@ todos:
       - p03-faithfulness
 ---
 
-## P0-2 780 例评测性能修订（2026-10-01 调研 vLLM 官方 Optimization 文档后）
+## 用户需求
 
-### 根因（官方文档对照）
+"全部执行"——按医学知识资产自审清单，执行三项加固（顺序 1→2→3）：
 
-- vLLM 8002 启动参数仅 `--gpu-memory-utilization 0.40`：48GB 卡只给 19GB，权重 15GB 后 **KV cache 仅 ~4GB** → 8 并发立即触发 Preemption（RECOMPUTE 重算风暴）→ aggregate 61 tok/s（GPU 100% 但全在做无用功）
-- `max_num_batched_tokens` 未设置（官方：最佳吞吐 >8192，示例 16384）
-- prefix caching 未显式开启（780 例共享系统前缀，prefill 可大幅复用）
+1. **UDAF 词表升级接入**：把手搓的 225 条分级同义词升级为 vocab_v2_final.json（1,650 独立词条，四层溯源：S=UDAF 生产词/A=THUOCL+语料双证/B=仅词表/C=LLM 抽取待复核），接入 UDAFVocabulary 生产加载链路，query_enhancer/tokenizer_utils/feature_extractor/udt_parser 四个消费方自动受益。
+2. **幻觉检测医学词表重建**：hallucination_detector.py 的恶性/良性关键词表从手搓枚举改为 vocab_v2 A 层对齐；补建 cardiac 危象词表（心包填塞/主动脉夹层等，现 cardiac 恶性词集为空 set() 是安全缺口），危象词用 LLM 从心超指南语料抽取生成。
+3. **禁忌症规则补引用**：contraindication_rules_safety.yaml 15 条手写规则逐条补 source_reference（对应器官穿刺/操作规范条款），severity 保持现状待临床复核标注。
 
-### 修订步骤
+收尾：测试回归（5632 后端套件相关子集 + 前端不受影响）、文档 A.16、提交推送 GitHub、同步服务器并重启主服务。
 
-1. 杀当前 780 评测进程
-2. 重启 vllm_server.py 8002：`--gpu-memory-utilization 0.80 --max-num-batched-tokens 16384 --enable-prefix-caching`（嵌入服务 6.3GB + 0.80×48=38.4GB ≈ 45GB < 49GB，安全）
-3. 重跑 780 例（--no-guided 口径 + max_tokens=64），预期 aggregate >600 tok/s，全程 5-10 分钟
-4. 归档 p02_780_vllm_nonguided.json，对照 95% 门控如实出数
-5. 引擎参数固化进 vllm_server.py 默认值 + SKILL 回写
+## 技术方案
 
-### 后续不变
+### 任务 1：vocab_v2 接入 UDAF
 
-- P0-3 faithfulness 重跑（KB v1.1.0 + content 接线后）
-- 文档收口（15 号修正 + 16 号 A.10 + SKILL）+ 全量测试 + 提交
+- `vocabulary.py` 新增 `_init_extended_vocabulary()`：读取 `data/udt/vocab_v2_final.json`（路径支持环境变量 `UDT_VOCAB_V2` 覆盖，默认服务器绝对路径），按 tier 过滤接入范围（S/A/B 层直接注册；C 层默认不注册——待复核，可用 `UDT_INCLUDE_C=1` 开关控制）
+- 术语注册复用既有 `self._add_mapping(standard, synonyms, related, category)`：v2 词条无 standard/synonym 结构，采用 **term 自映射**（standard=term，synonyms=[]），category 按来源编码（`thuocL_a`/`thuocL_b`），避免污染既有 echogenicity/boundary 等语义类目
+- organ 归属：v2 按器官分桶，注册时通过既有 organ 字段或 category 前缀携带器官信息，保证 `get_terms_by_organ` 语义不回归
+- 数据文件随仓库走：vocab_v2_final.json 从服务器拷回本机入 `app/knowledge/data/`（与代码同仓库分发，服务器 git archive 同步自然到位）
+- 回归验证：`pytest tests/unit/rag/ tests/unit/knowledge/ -q` 全绿 + `get_all_synonyms` 数量断言（225 → 显著增长）+ query_enhancer 冒烟
+
+### 任务 2：幻觉检测词表重建
+
+- 新增 `data/udt/crisis_terms_cardiac.json` 资产：用运行中的 vLLM 8002（Qwen2.5-7B）对心超指南语料（kb_src_v13/cardiac 的 cardiac_tte_standardization 等文档）做危象术语抽取（prompt 口径：危重/急症/需立即临床干预的超声所见），频次≥2 + 人工口径白名单兜底（心包填塞/主动脉夹层/室间隔穿孔/腱索断裂/人造瓣膜功能障碍等）
+- `hallucination_detector.py` 改造：
+- `_MALIGNANT_DESC_KEYWORDS` 等枚举改为从 JSON 资产加载（模块级加载、失败回退内置默认集——安全组件不许因文件缺失而失效）
+- cardiac 分支：`_CARDIAC_MALIGNANT_DESC_KEYWORDS`（空集）替换为危象词表；cardiac 的"恶性结论"口径改为"危象结论"
+- 保持 detect() 接口与 DetectionIssue 结构不变（消费方零改动）
+- 回归：`pytest tests/unit/llm/test_consistency.py tests/unit/sec/test_regression_fixes.py -q`
+
+### 任务 3：禁忌症规则补引用
+
+- `contraindication_rules_safety.yaml` 每条规则新增 `source_reference` 字段（如甲状腺 FNA：中国甲状腺结节穿刺活检规范；肝脏活检：肝穿刺活检规范；负荷超声：相应指南章节），`severity` 不改动（保留"待临床复核"语义）
+- SafetyGateway 加载侧若对未知字段报错需同步放行（pydantic/yaml 解析处确认 extra 字段容忍性）
+- 回归：SG 相关单测 `pytest tests/unit/sg/ -q`
+
+### 收尾
+
+- 16 号文档追加 A.16；commit + push origin；git archive 同步服务器 + 重启主服务 + 健康核验（18000/9001/8003/8002/8006）

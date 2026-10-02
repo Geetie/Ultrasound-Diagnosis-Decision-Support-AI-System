@@ -537,7 +537,7 @@ venv 要手动 `pip install PyJWT`**，否则主服务启动即崩（ModuleNotFo
     =管线内 LLM 串行链（dispatcher 4.7s + fusion 4.7s），属链长问题
     而非并发机制问题。压测脚本 `/tmp/_load8.py`（服务器）。
 
-## 20. T2 系列评测（2026-09-30，数据见 16 号 A.7）
+## 22. T2 系列评测（2026-09-30，数据见 16 号 A.7）
 
 - **数据渠道三连堵**：TNSCUI Zenodo 只有 PDF；CACTUS FRDR http=000；
   ALN-ULTRA Zenodo files=0；CARDIACUDC 需 Kaggle 凭证。**AUL（~/uai/data/aul，
@@ -555,3 +555,55 @@ venv 要手动 `pip install PyJWT`**，否则主服务启动即崩（ModuleNotFo
 - 主服务 API 端口是 **18000**（不是 8000）；评测用户 smoke-doctor 密码在
   `~/uai/.smoke_pw`；session 必须先 INSERT（E1002 强校验，模板抄
   server_link_smoke.sh）。
+
+## 23. 2026-10-01 ~ 10-02 增量踩坑（数据见 16 号 A.10~A.16）
+
+> 本节只收「操作层」姿势；数字与结论归 16 号附录 A。
+
+**① 会话级工具损坏（2026-10-02）**：某会话中 `write_to_file` / 长参数
+`replace_in_file` 全挂——**换会话自愈**；新会话开工先写 2 行小文件验工具，
+别直接上生产编辑。（与服务器无关，但会直接毁掉一次部署轮次。）
+
+**② CACTUS / FRDR 直下（2026-10-02）**
+- FRDR 备份维护结束已恢复（09-30 还 http=000，10-02 frdr-dfdr.ca 301→200；
+  **旧域名 frdr.usask.ca 的 DNS 已死**）。
+- 匿名直下 = `/repo/files/<path>` 跟随 302 到 `data.globus.org`；
+  目录**不服务 index**，清单走 `/repo/userfiles` API（五参：
+  item_id/collection_id/endpoint_id/path/limit/offset）。
+- **文件清单以 `frdr-dfdr-checksums.txt` 为权威**——README 会虚标
+  （CACTUS 称 37,736 张，实收 29,963，缺 PSAV 全部 5,832 与 PL 1,941）。
+- 下载器入库 `scripts/cactus_download.py`（ThreadPoolExecutor 32 +
+  重试退避 + 断点续传）；12 个视频跳过（M1/M6 不需要）。
+- 渠道实测（服务器侧）：frdr-dfdr.ca ✅ / opendatalab.org.cn ✅ / kaggle.com ✅
+  / gitee.com ✅ / storage.googleapis.com ⚠️400 / drive.google.com ❌ /
+  frdr.usask.ca ❌。
+
+**③ open_clip 本地权重加载（T2a/T2b 同款）**：`create_model_and_transforms("local-dir:" + 路径)`；
+**路径直传 model name 会报 not found in built-ins**；`open_clip_train` CLI 需
+repo 版库，脚本层（训练脚本）用官方 API 即可。
+
+**④ T2b 训练一键窗口**：`scripts/t2b_cactus_run.sh`——停双 vLLM → 训练 →
+**串行恢复**（rc 透传），需服务窗口批准；首启踩了 ③ 的坑。bs 256 显存 ~21GB。
+
+**⑤ 8003 能力端点（懒加载）/ 契约**：`POST /v1/classify`（T2a）、
+`POST /v1/analyze_view`（T2b）——微调 visual **独立副本**懒加载，首次调用才占显存，
+不污染基线检索权重。批量嵌入契约是 `/v1/embeddings/multimodal`。
+
+**⑥ 图谱查询 P2-KB-08（commit 6d693e5 / 0eeb3cb）**：`graph_query_enabled`
+默认 **False**（一期设计内关闭）；真机 PG 跑 CTE 报
+`AmbiguousParameterError`——asyncpg 无法推断 NULL/数组参数类型，
+**须显式 `CAST(...)`**。边投影回填 `scripts/kb_backfill_relations.py`。
+
+**⑦ UDT 词汇表四层管线（16 号 A.15③/A.16）**：L1 THUOCL_medical 现成词表
+（jsdelivr CDN 取，本地 raw 截断不可用）+ 解剖锚点过滤；L2 语料对齐；
+L3 LLM 抽取（8002 + `response_format json_schema`）；LS 生产同义词。
+**通用 prompt + 关键词过滤对低频危象词召回极差（85→1）——专项 prompt +
+指向性语料（指南文档）才是正解**（cardiac 危象 22 词即此法）。
+
+**⑧ 词表资产化模式**：`app/inference/data/hallucination_vocab.json`（含
+version/source），加载失败**回退内置默认 + logger.warning 留痕**——运营侧可维护。
+Pydantic 默认 `extra=ignore` 让加字段天然兼容，但**显式声明字段**才是可追溯正道
+（如 `ContraindicationRule.source_reference`）。
+
+**⑨ 评测预检按端口分别校验**：gen/judge 分端口（8002/8006）后，
+只查 `gen.list` 会误报 FATAL——fail-fast 逻辑本身要跟着部署演进。

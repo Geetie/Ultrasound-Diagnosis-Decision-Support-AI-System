@@ -1,0 +1,235 @@
+{
+  "schema_version": "1.0",
+  "project": "超声诊疗决策支持 AI 系统",
+  "updated_at": "2026-10-02",
+  "head_commit": "0eeb3cb",
+  "branch": "feature/T-GA-INT-01-e2e-integration",
+  "status_legend": {
+    "done": "已交付且有证据（命令/报告/测试）",
+    "in_progress": "本轮正在推进（同一时间至多一个）",
+    "blocked": "受外部依赖或管理决策阻塞",
+    "planned": "已立项未开工",
+    "ongoing": "跨轮次持续进行的质量实践（不占用 in_progress 名额）",
+    "deferred": "一期明确不做/延期"
+  },
+  "authoritative_sources": {
+    "metrics": "docs-for-guiding generating docs/超声诊疗决策支持系统/00-项目总览与核心指标.md",
+    "evidence": "docs-for-guiding generating docs/超声诊疗决策支持系统/16-开发进展汇报-20260928.md 附录 A",
+    "current_state": "progress.md",
+    "skills": ".codebuddy/skills/"
+  },
+  "features": [
+    {
+      "id": "retrieval-gate0",
+      "name": "混合检索 Gate 0（召回率）",
+      "description": "dense(bge-m3) + bm25(jieba) + RRF 混合检索，命中率 ≥90%",
+      "status": "done",
+      "gate": "≥90%",
+      "result": "94.5% (R@10)",
+      "dependencies": ["inference-vllm", "kb-v13"],
+      "evidence": "16 号 A.4；tests/reports/t1_kb_retrieval_eval.json"
+    },
+    {
+      "id": "retrieval-gate1",
+      "name": "检索 Gate 1（真实知识库）",
+      "description": "kb_v1.1.0 真实库上混合检索准确率 ≥85%",
+      "status": "done",
+      "gate": "≥85%",
+      "result": "98% (R@10)",
+      "dependencies": ["kb-v13"],
+      "evidence": "16 号 A.5；tests/reports/t1_kb_retrieval_eval.json"
+    },
+    {
+      "id": "inference-vllm",
+      "name": "推理服务层（官方 vLLM server）",
+      "description": "自写 vllm_server.py 换成官方 openai api_server（continuous batching + prefix caching）",
+      "status": "done",
+      "result": "780 例 3.25h → 5min（约 40x）",
+      "dependencies": [],
+      "evidence": "16 号 A.10；requirements-vllm.lock（vllm==0.30.0）"
+    },
+    {
+      "id": "fusion-parallel-degrade",
+      "name": "融合层并行化 + 管线降级预算",
+      "description": "Layer2 一致性/Layer3 Self-RAG 并行；各阶段延迟预算(dispatch 6s/fusion 6s/sg 2s)走降级",
+      "status": "done",
+      "dependencies": ["inference-vllm"],
+      "evidence": "16 号 A.9/A.11；73 项管线单测"
+    },
+    {
+      "id": "sg-degradation",
+      "name": "SafetyGateway 降级路径（真机故障注入）",
+      "description": "Redis 停机→PG 降级；SG 停机→拒绝输出(E4005)；组合故障快速拒绝",
+      "status": "done",
+      "dependencies": ["fusion-parallel-degrade"],
+      "evidence": "16 号 A.14③D；scripts/_sg_inject.sh"
+    },
+    {
+      "id": "t2a-malignancy",
+      "name": "T2a 良恶性判别（方案 C：微调视觉塔 + LR 探针）",
+      "description": "BiomedCLIP 微调 + 逻辑回归探针，8003 新增 POST /v1/classify",
+      "status": "done",
+      "gate": "AUC ≥0.75",
+      "result": "AUC 0.8751；恶性召回 93.9%",
+      "dependencies": ["embed-8003"],
+      "evidence": "16 号 A.11/A.13.1；tests/reports/t2a_v2_official.json"
+    },
+    {
+      "id": "t2b-plane-quality",
+      "name": "T2b 切面识别 + 质量分级",
+      "description": "CACTUS 5 视图微调头 + LR 探针 + 质量回归，8003 新增 POST /v1/analyze_view",
+      "status": "done",
+      "gate": "Top-1 ≥0.75",
+      "result": "test 0.9793；质量 R² 0.765（体模数据偏高属预期）",
+      "dependencies": ["embed-8003"],
+      "evidence": "16 号 A.14②/A.14③E；reports/t2b_cactus.json"
+    },
+    {
+      "id": "t2c-e2e",
+      "name": "T2c 端到端管线可用性",
+      "description": "US-365K caption 输入主服务全链路，全部到终态",
+      "status": "done",
+      "gate": "全部出终态",
+      "result": "9/9 completed，1.5~9s",
+      "dependencies": ["kb-v13", "fusion-parallel-degrade"],
+      "evidence": "16 号 A.13；tests/reports/t2c_e2e_report_final2.json"
+    },
+    {
+      "id": "kb-v13",
+      "name": "知识库 kb_v1.3.0 生产切换",
+      "description": "三器官指南+对话语料，含 PDF(pymupdf4llm) 语料管线",
+      "status": "done",
+      "result": "1257 chunks（thyroid 601 / liver 313 / cardiac 343）",
+      "dependencies": [],
+      "evidence": "16 号 A.14③"
+    },
+    {
+      "id": "gate0a-p0",
+      "name": "Gate 0A-Tech-P0 双引擎口径决策（方案 A）",
+      "description": "修订口径：同形态可复现 + 跨形态业务结论等价 ≥85% + 量化幻觉增量 ≤0.5% + 严格跨层≈0",
+      "status": "done",
+      "result": "同处置层 88.72%；幻觉增量 0.0%；跨两档 1/780",
+      "dependencies": ["inference-vllm"],
+      "evidence": "16 号 A.14③B/A.15①；reports/phase0a_retest_v2.json"
+    },
+    {
+      "id": "p99-capacity",
+      "name": "P99 并发定容压测",
+      "description": "梯度并发 5/10/15/20 对主生成 8002",
+      "status": "done",
+      "gate": "P99 <8s",
+      "result": "0.73/0.74/0.75/0.79s，零错误，余量 10 倍",
+      "dependencies": ["inference-vllm"],
+      "evidence": "16 号 A.13/#6；reports/p99_capacity.json"
+    },
+    {
+      "id": "cornerstone3d",
+      "name": "Cornerstone3D 前端迁移",
+      "description": "@cornerstonejs/* 5.11.3 全替换旧 4 包；补 dicomStore 全局引用与 setViewport 对称应用",
+      "status": "done",
+      "dependencies": [],
+      "evidence": "16 号 A.14③A；npm run build 通过"
+    },
+    {
+      "id": "kb-graph",
+      "name": "图谱查询 P2-KB-08（默认门控关闭）",
+      "description": "边投影生产方(builder) + RAG 邻居扩展消费方(retriever)；graph_query_enabled 默认 False",
+      "status": "done",
+      "dependencies": ["kb-v13"],
+      "evidence": "commit 6d693e5 / 0eeb3cb；tests/unit/rag/test_retriever_graph_expansion.py"
+    },
+    {
+      "id": "langfuse-tracing",
+      "name": "Langfuse v3 自托管 + OTel 接入",
+      "description": "6 容器全栈（127.0.0.1:30100），主服务 OTLP HTTP exporter 激活",
+      "status": "done",
+      "dependencies": [],
+      "evidence": "16 号 A.8④/A.11；scripts/langfuse/docker-compose.yml"
+    },
+    {
+      "id": "udt-phase1",
+      "name": "UDT Phase 1 词汇表（≥2000 词 / 52 器官）",
+      "description": "四层管线产出 vocab_v2_final.json，待医生审定；cardiac 危象词表 22 条已建",
+      "status": "in_progress",
+      "result": "约 1650/2000 条（thyroid 723 / liver 684 / cardiac 491）",
+      "dependencies": [],
+      "evidence": "16 号 A.15③/A.16；data/udt/vocab_v2_final.json"
+    },
+    {
+      "id": "zero-silence-guard",
+      "name": "零静默守卫（静默失败清查）",
+      "description": "59 处静默清查 → 主路径修复 + 守卫测试；评测器三层 fail-fast（预检/连错熔断/失败率退出）",
+      "status": "ongoing",
+      "dependencies": [],
+      "evidence": "16 号 A.10.1"
+    },
+    {
+      "id": "faithfulness-gate",
+      "name": "faithfulness 门控（官方 RAGAS 口径 ≥95%）",
+      "description": "生成侧溯源约束 v2 + 双轨口径（官方/宽松）；判官 Qwen3-8B GPU",
+      "status": "blocked",
+      "gate": "≥95%",
+      "result": "官方 68.96% / 宽松 72.8%；主因 context Top-5 缺依据（语料覆盖）",
+      "dependencies": ["kb-v13", "thyroid-registry-data"],
+      "evidence": "16 号 A.10.3/A.10.6/A.13/#5；tests/reports/t1_faithfulness_v11.json"
+    },
+    {
+      "id": "coverage-core",
+      "name": "核心覆盖率门禁 ≥90%",
+      "description": "整体 82.39%（门禁 82 ✅）；核心 86.30%（门禁 86，差 3.70pt）",
+      "status": "blocked",
+      "gate": "整体 ≥82% / 核心 ≥90%",
+      "result": "整体 ✅ / 核心 ❌",
+      "dependencies": ["remote-softHSM-bytes"],
+      "evidence": "pyproject.toml 注释块；docs/合规/覆盖率豁免清单.json"
+    },
+    {
+      "id": "thyroid-registry-data",
+      "name": "甲状腺注册数据方案",
+      "description": "无任何可商用公开数据集（TN3K/TG3K NC、TNSCUI ND）；须自有/合作医院或授权采购；HF ThyroidDataSet 为 gated 且含 NC 子集",
+      "status": "blocked",
+      "dependencies": [],
+      "evidence": "16 号 A.15②；docs/合规/数据源台账/"
+    },
+    {
+      "id": "nmpa-materials",
+      "name": "部署手册 / NMPA 注册材料 / 验收报告",
+      "description": "计划项未交付",
+      "status": "planned",
+      "dependencies": ["thyroid-registry-data"],
+      "evidence": "16 号 §六"
+    },
+    {
+      "id": "t2a-independent-val",
+      "name": "T2a 独立验证集",
+      "description": "AUL 单数据集口径，生产分布需独立验证集持续监控",
+      "status": "planned",
+      "dependencies": ["t2a-malignancy"],
+      "evidence": "16 号 A.11"
+    },
+    {
+      "id": "prod-capacity-acceptance",
+      "name": "生产部署定容后 P99 并发验收",
+      "description": "容量上限锚定在批量调度与判官配额，随生产部署定容复验",
+      "status": "planned",
+      "dependencies": ["p99-capacity"],
+      "evidence": "16 号 A.13 收敛路径"
+    },
+    {
+      "id": "consent-withdrawal-consumer",
+      "name": "consent_withdrawal_consumer 的 SchedulingAgentHandler (P2)",
+      "description": "未实现；默认配置不实例化，不影响当前路径",
+      "status": "planned",
+      "dependencies": [],
+      "evidence": "16 号 §六 P2"
+    },
+    {
+      "id": "dicom-fail-open",
+      "name": "DICOM 去标识化失败开放行为 (P2)",
+      "description": "解析失败时原始(含 PHI)字节仍入库，需产品决策「失败即拒存」",
+      "status": "planned",
+      "dependencies": [],
+      "evidence": "16 号 §六 P2；app/services/dicom_storage.py:71-73"
+    }
+  ]
+}

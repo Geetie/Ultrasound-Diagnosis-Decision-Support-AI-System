@@ -12,6 +12,17 @@ description: 连接并驱动「学校 GPU 服务器」（student03@10.20.28.21�
 3. 脚本上传后先 `sed -i 's/\r$//'` 去 CRLF。
 4. 所有 CUDA 进程前 `export CUDA_VISIBLE_DEVICES=0`（fish 配置写了不存在的卡 2）。
 5. 服务只绑 127.0.0.1；不碰他人目录；密码不进命令行。
+6. 开工先对齐项目状态（仓库根 `progress.md` / `feature_list.json`），真机实测数字收尾回写 `16` 号附录 A。
+
+## 与项目 harness 状态对齐
+
+| 文件 | 用途 |
+|---|---|
+| `AGENTS.md` | Agent 入口：硬规则（含服务器禁则）、DoD、验证命令 |
+| `progress.md` | 当前目标 / 下一步 / 阻塞（服务器侧改动后回写） |
+| `feature_list.json` | 功能与门控状态 + 证据指针（真机评测对上门控项） |
+| `docs-for-guiding generating docs/超声诊疗决策支持系统/16-开发进展汇报-20260928.md` 附录 A | 真机实测数字与证据台账（只追加） |
+| SKILL `uai-harness-maintenance` | 文档/技能维护规范（何时回写、写在哪） |
 
 ## 环境事实
 
@@ -22,17 +33,25 @@ description: 连接并驱动「学校 GPU 服务器」（student03@10.20.28.21�
 | 家目录 | /mnt/ee16/home/student03/uai/{src,venv,venv-vllm,models,data,reports,logs} |
 | 外网 | hf-mirror.com 与 pypi 可达；huggingface.co 与 docker registry 不通 |
 
-## 服务拓扑（2026-10-01）
+## 服务拓扑（2026-10-02）
 
 | 端口 | 服务 | 启动/探活 |
 |---|---|---|
 | 18000 | 主 API（FastAPI） | /api/v1/health；重启见 reference.md R1 |
-| 8002 | vLLM 官方 OpenAI server（Qwen2.5-7B-Instruct） | /health；命令见下 |
+| 8002 | vLLM 官方 OpenAI server（Qwen2.5-7B-Instruct）＝ 主生成 | /health；命令见下 |
+| 8003 | 图像嵌入（BiomedCLIP 底座）+ T2a/T2b 端点 | bash ~/server_start_ultrasound_clip.sh |
 | 8004 / 8005 | bge-m3 / bge-reranker | bash ~/server_start_embedding_services.sh |
-| 8003 | BiomedCLIP 图像嵌入 | bash ~/server_start_ultrasound_clip.sh |
+| 8006 | 判官 Qwen3-8B（GGUF Q4_K_M，llama_cpp_server.py，评测用 /no_think） | bash ~/server_start_judge.sh |
+| 8007 | 双引擎评测临时实例（Qwen2.5-1.5B vLLM，仅 Gate 0A 重测期） | 临时起，评测后停 |
+| 8001 | ~~llama.cpp~~（2026-10-01 已弃用，compact 档链路验证才起） | `server_start_llama_server.sh`（CPU-only 包，勿作主引擎） |
 | 9001 | SafetyGateway | 随 ~/server_restart_all.sh |
-| 16379 / 15432 | Redis / PG 容器 | bash ~/server_infra_up.sh |
+| 16379 / 15432 | Redis / PG 容器（`uai-redis` / `uai-postgres`） | bash ~/server_infra_up.sh |
 | 30100 | Langfuse（docker 全栈） | ~/uai/langfuse/docker-compose.yml |
+
+一键健康自检（全服务端口探活）：`bash scripts/_verify_services.sh`（在 `~/uai/src`）。
+
+**GPU 显存账（48GB，串行启动）**：主生成 8002 0.46 + 判官 8006 0.36 + 嵌入×3 基线 6.8GB ≈ 45.4GB；
+任何额外 GPU 进程（探针导出/训练）须**临时停判官**再跑。双实例**并发启动会互踩 memory probe**，必须串行。
 
 
 ## vLLM 重启（8002，三环境变量缺一即崩）
@@ -96,14 +115,15 @@ PYTHONPATH=$HOME/uai/src ~/uai/venv/bin/python /tmp/_load8.py
 
 ```bash
 PYTHONPATH=$HOME/uai/src ~/uai/venv/bin/python scripts/init_knowledge_base.py \
-  --kb-version kb_v1.1.0 [--chunk-min-tokens N --chunk-max-tokens N]
+  --kb-version kb_v1.3.0 [--chunk-min-tokens N --chunk-max-tokens N]
 PYTHONPATH=$HOME/uai/src ~/uai/venv/bin/python scripts/server_populate_vector_index.py \
-  --kb-version kb_v1.1.0 --purge
+  --kb-version kb_v1.3.0 --purge
 ```
 
-- 对话语料参数化：scripts/t1b_build_dialogue_docs.py（--organ/--keyword/--sources）。
+- 对话语料参数化：scripts/t1b_build_dialogue_docs.py（--organ/--keyword/--sources）；PDF 语料用 `build_pdf_corpus.py`（pymupdf4llm）。
 - 灌数幂等；重建后必须 --purge 清旧索引行。chunk_id 含 kb_version（多版本防撞车）。
-- 现状 kb_v1.1.0：809 文档 / 856 chunks（thyroid+liver+cardiac 三器官）。
+- 现状 **kb_v1.3.0（生产）**：1257 chunks（thyroid 601 / liver 313 / cardiac 343）。切库后须重启主服务并跑 `_verify_services.sh`。
+- 图谱邻居扩展（`graph_query_enabled`，默认 **False**）需要边投影，用 `scripts/kb_backfill_relations.py` 回填。
 
 ## 核心坑速查（完整叙事见 reference.md）
 
@@ -146,6 +166,10 @@ PYTHONPATH=$HOME/uai/src ~/uai/venv/bin/python scripts/server_populate_vector_in
 | T2b 端点 | 8003 新增 `POST /v1/analyze_view`（微调 visual 副本 + LR 切面探针 + 质量回归，懒加载不污染检索权重）；探针经 `t2b_export_probes.py` 落盘 models/t2b/；真图验证 A4C@0.9991+质量 4.3、Random@0.9937+null |
 | GPU 满时探针导出 | 嵌入+双 vLLM 占满 45.4GB 时任何额外 GPU 进程必 OOM——探针导出/训练类任务须临时停判官（17GB）跑完再恢复；ssh 会话内裸 python 脚本记得带 `CUDA_VISIBLE_DEVICES=0`（否则 "No CUDA GPUs are available"） |
 | SG fusion 误报根因 | `sg_config env_file=".env"` 按 CWD 读 `src/.env`——`FUSION_LAYER_PORT=18000` 只在 `~/uai/.env`，SG 用默认 8000 探测必拒 → 已补 src/.env 修复（fusion healthy 8.33ms）；残留 overall degraded 由 oom_protection warning 驱动（-1000 需 root/compose），bare 进程环境产物非缺陷 |
+| 图谱 CTE 真机报 `AmbiguousParameterError` | asyncpg 无法推断 NULL/数组参数类型——**显式 `CAST(... AS ...)`**（P2-KB-08 收口，commit 0eeb3cb） |
+| 8003 能力端点（非仅嵌入） | `POST /v1/classify`（T2a 微调 visual 副本 + LR 探针 → 三分类概率）、`POST /v1/analyze_view`（T2b 切面 + 质量回归）；均**懒加载**独立副本，不污染基线检索权重；批量嵌入契约是 `/v1/embeddings/multimodal` |
+| 评测器 fail-fast 三层 | ①模型预检——gen/judge **分端口后必须分别校验**（只查一处会误报 FATAL）；②连错熔断；③失败率 30% 退出。跑完抽查 report 的 `error` 字段 + 抽样结论非空 |
+| harness 状态同步 | 真机改动收尾回写 `progress.md`/`feature_list.json` 与 16 号附录 A；维护规则见 SKILL `uai-harness-maintenance` |
 
 ## 压测结论（2026-10-01）
 
@@ -162,5 +186,7 @@ PYTHONPATH=$HOME/uai/src ~/uai/venv/bin/python scripts/server_populate_vector_in
 ## 详细档案
 
 - 完整踩坑叙事与历史数据：[reference.md](reference.md)
-- 项目进展与口径决策：docs-for-guiding generating docs/超声诊疗决策支持系统/16-开发进展汇报-20260928.md（A.2~A.10）
+- 项目进展与口径决策：docs-for-guiding generating docs/超声诊疗决策支持系统/16-开发进展汇报-20260928.md（**附录 A.2~A.16**，含 Gate 0A 重测 / T2a-T2c / faithfulness / UDT / 医学知识资产加固）
+- 当前状态与门控：仓库根 `progress.md`、`feature_list.json`
 - 技术升级规划与状态：同目录 15-技术升级规划-202609.md
+- 文档与技能维护规范：SKILL `uai-harness-maintenance`

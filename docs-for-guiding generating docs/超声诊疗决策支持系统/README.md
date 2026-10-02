@@ -105,6 +105,8 @@
 
 | 目录 | 内容 |
 |---|---|
+| **仓库根 `AGENTS.md` / `feature_list.json` / `progress.md` / `session-handoff.md` / `init.sh`** | **Agent harness 层**（启动路由与不变量 / 功能与门控状态 / 当前状态与下一步 / 会话交接 / 验证入口）；维护规范见 SKILL `uai-harness-maintenance`，结构审计 `validate-harness`（当前 100/100） |
+| `.codebuddy/skills/` | 可复用 Agent 流程：`remote-gpu-server-devtest`（真机作业）、`uai-harness-maintenance`（文档/技能维护） |
 | `docs/技术文档/` | SRS（软件需求规格）、SAD（软件架构设计说明书） |
 | `docs/合规/` | 发布就绪报告、可追溯性矩阵、覆盖率豁免清单（`.md` + `.json`） |
 | `docs/运维与使用/` | 临床使用手册、运维手册 |
@@ -129,4 +131,4 @@
 | M1~M12 多数已实现 | `edge/plane_assessment.py`、`edge/measurement.py`、`knowledge/differential.py`、`edge/image_quality.py`、`knowledge/{clinical_actions,patient_explanation,research_metrics,cross_modality}.py` |
 | 双引擎一致性**未达标** | `tests/reports/phase0a_report.json`：`total_cases=6`、`grading_consistency_rate=0.1667`、`clinical_boundary_diff_rate=0.6667` |
 | 覆盖率现状 | 整体 **82.39%**、核心 **86.30%**（门禁 82/86，`pyproject.toml` + `.github/workflows/ci.yml`）；全量 5611 passed |
-| 图谱查询未实现 | `graph_query.py` 为 STUB，`graph_query_enabled=False`（`settings.py:297`） |
+| 图谱查询默认关闭 | P2-KB-08 已收口（边投影生产方 `knowledge/builder.py` + RAG 邻居扩展消费方 `rag/retriever.py`，commit 6d693e5/0eeb3cb），但 `graph_query_enabled` 默认 **False**（`settings.py:306`）——一期设计内关闭，开启需先跑 `scripts/kb_backfill_relations.py` 回填边 |
