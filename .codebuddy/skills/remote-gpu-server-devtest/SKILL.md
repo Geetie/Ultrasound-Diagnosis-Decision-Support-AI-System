@@ -138,6 +138,7 @@ PYTHONPATH=$HOME/uai/src ~/uai/venv/bin/python scripts/server_populate_vector_in
 | KB v1.3.0 | 生产切换完成（thyroid 601/liver 313/cardiac 343 = 1257 chunks）；RAGAS golden 口径语料路线**已饱和**（+83 指南文档 A/B 实测 -1.7pp 噪声内偏负），提升空间在生产 T2c 口径与 query-context 对齐 |
 | open_clip 本地权重加载 | `create_model_and_transforms("local-dir:" + 路径)`（与 8003/t2a 同款）；**路径直传 model name 会报 not found in built-ins**；open_clip_train CLI 需 repo 版库，脚本层用官方 API 即可 |
 | T2b 战果 | CACTUS 切面头训练完成：test Top-1 **0.9793**（门 ≥0.75 通过；基线 0.921，体模数据偏高属预期）；质量 MAE 0.773/R² 0.765；资产 reports/t2b_cactus.{pt,json}；训练 3 epochs×150s，bs 256 显存 ~21GB（嵌入常驻下可共存，无需停嵌入） |
+| Cornerstone3D 迁移终态 | **完成且构建通过**（npm run build ✓）：@cornerstonejs/* 5.11.3 全替换旧 4 包；两处尾巴已修——dicomStore 的 window.cornerstone 全局引用（CS3D 不挂全局，tsc 必炸）与适配器 setViewport 静默丢 scale/translation/invert（与 getViewport 读口不对称） |
 
 ## 压测结论（2026-10-01）
 
