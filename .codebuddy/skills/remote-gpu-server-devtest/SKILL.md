@@ -142,6 +142,7 @@ PYTHONPATH=$HOME/uai/src ~/uai/venv/bin/python scripts/server_populate_vector_in
 | Gate 0A-Tech-P0 重测 | 780 例正式 FAILED（一致率 19.1% vs ≥95%）：异构双引擎（llama.cpp Q4_K_M vs vLLM bf16）原始输出一致率口径**不可达**，属门控口径与架构假设冲突，待项目方修订口径；重测姿势：`server_build_eval_cases.py`（780 例）+ `consistency_verify.py --use-chat --guided-json` |
 | llama.cpp b11272 | CUDA 构建但需 **CUDA 13 运行时**（libcudart.so.13/libcublas.so.13），系统只有 CUDA 12.4 → GPU offload 静默失败回退 CPU（日志无 CUDA 行 + GPU 不涨即中招）；vLLM venv 的 `nvidia/cu13/lib/` 有 .so.13 但驱动为 12.4 代仍 "no CUDA-capable device"——**该构建在本机只能 CPU**；kill 主 vLLM 必须连 `VLLM::EngineCore` 一起杀（api_server 死后 EngineCore 存活继续占显存） |
 | P99 压测定容 | `server_p99_capacity.py`：conc 5→20 P99 = 0.73→0.79s 近乎平坦、26.7rps、零错误——记分牌 #6 PASS 余量 10 倍；vLLM continuous batching 下尾延迟不随并发恶化 |
+| 降级注入拓扑 | 我们的中间件是 docker 容器 `uai-redis`(16379)/`uai-postgres`(15432)——**6379 上的 redis-server 是共享服务器上别人的，绝不能动**；SG 独立 uvicorn(9001)；真机注入已验证：Redis 停机→PG 降级 1/1 ✅、SG 停机→拒绝输出 ✅、组合 4s 快拒 ✅；融合层在主进程内无法真机注入（CI 覆盖）；SG 自检 fusion_layer connection_refused 是观察项非故障 |
 
 ## 压测结论（2026-10-01）
 
