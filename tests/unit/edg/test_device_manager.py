@@ -52,7 +52,7 @@ class TestRegistration:
         assert await manager.register() is True
         assert manager.state == DeviceState.ONLINE
         assert manager.should_uplink is True
-        assert transport.calls[0]["path"] == "/api/v1/admin/device/register"
+        assert transport.calls[0]["path"] == "/api/v1/admin/device/checkin"
         assert transport.calls[0]["payload"]["device_id"] == "dev_edge_001"
 
     @pytest.mark.asyncio

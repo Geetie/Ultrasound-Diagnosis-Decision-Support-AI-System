@@ -72,9 +72,17 @@ services:
       context: .
       dockerfile: Dockerfile.dev
     container_name: ultrasound-api
+    extra_hosts:
+      # Linux 下 host.docker.internal 默认不可用（Docker Desktop 自带）
+      - "host.docker.internal:host-gateway"
     environment:
       - DATABASE_URL=postgresql+asyncpg://admin:${POSTGRES_PASSWORD}@postgres:5432/ultrasound_db
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+      # 容器内 localhost 是自指——SG 在相邻容器，vLLM/llama.cpp 在宿主机
+      # （wiring-audit P1-7）
+      - SAFETY_GATEWAY_HOST=safety-gateway
+      - VLLM_HOST=host.docker.internal
+      - LLAMA_CPP_HOST=host.docker.internal
       - ENV=development
     volumes:
       - .:/app

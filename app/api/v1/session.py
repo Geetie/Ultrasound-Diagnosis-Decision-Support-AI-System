@@ -1,9 +1,11 @@
 from fastapi import APIRouter, Depends
 from datetime import datetime, timezone
-from typing import Optional
+from typing import List, Optional
 
 from app.models.schemas import (
     SessionCreateRequest,
+    SessionListItem,
+    SessionListResponse,
     SessionResponse,
     SessionUpdateRequest,
     SessionStatus,
@@ -42,6 +44,82 @@ def _build_session_response(session) -> SessionResponse:
         updated_at=session.updated_at,
         consent_status_at_creation=ConsentStatus(session.consent_status_at_creation),
         ttl_remaining_seconds=_calc_ttl_remaining(session.updated_at),
+    )
+
+
+def _mask_name(name: Optional[str]) -> Optional[str]:
+    """姓名脱敏：姓 + **。
+
+    列表是共享屏幕，暴露全名即泄露面。**脱敏必须在服务端做** ——
+    前端拿到再遮，等于把完整姓名发到了浏览器。
+    单名/双名/英文名都要覆盖：
+      张三 → 张**   欧阳修→ 欧**   李 →李**
+    """
+    if not name:
+        return None
+    first = name[0]
+    return f"{first}{'*' * 2}"
+
+
+def _age_from(birth_date) -> Optional[int]:
+    """从出生日期派生年龄。缺失或非法一律 None —— 不猜。"""
+    if not birth_date:
+        return None
+    now = datetime.now(birth_date.tzinfo or timezone.utc)
+    years = now.year - birth_date.year
+    # 生日未到则减一
+    if (now.month, now.day) < (birth_date.month, birth_date.day):
+        years -= 1
+    return years if 0 <= years < 130 else None
+
+
+@router.get("", response_model=SessionListResponse)
+async def list_sessions(
+    limit: int = 20,
+    session_repo: SessionRepository = Depends(get_session_repo),
+    current_user: Optional[dict] = Depends(get_current_active_user),
+):
+    """工作列表 —— 设计稿 01_工作列表 / 15_工作列表浅色 的数据源。
+
+    为什么必须有这个端点：原先只有 POST /sessions（建）与
+    GET /sessions/{id}（单个），**没有列表** —— 前端工作列表无数据源，
+    只能写死三行假数据。
+
+    排序与分组都在服务端完成，前端只渲染。
+    契约 §0 P2：只分两组（进行中 / 今日待处理），不按七种状态切页。
+    """
+    # 进行中 = active / partial；待处理 = needs_review / pending。
+    # 不含 completed / failed / terminated —— 那些不是"待处理"。
+    rows = await session_repo.list_sessions(limit=limit)
+
+    in_progress: List[SessionListItem] = []
+    pending_today: List[SessionListItem] = []
+    today = datetime.now(timezone.utc).date()
+
+    for r in rows:
+        item = SessionListItem(
+            session_id=r["session_id"],
+            patient_id=r["patient_id"],
+            patient_name_masked=_mask_name(r.get("name")),
+            gender=r.get("gender"),
+            age=_age_from(r.get("birth_date")),
+            status=SessionStatus(r["status"]),
+            target_organs=r.get("target_organs") or [],
+            created_at=r["created_at"],
+            updated_at=r["updated_at"],
+            ttl_remaining_seconds=_calc_ttl_remaining(r["updated_at"]),
+        )
+        if item.status in (SessionStatus.ACTIVE, SessionStatus.PARTIAL):
+            in_progress.append(item)
+        elif item.status in (SessionStatus.PENDING, SessionStatus.NEEDS_REVIEW):
+            # 只显示今天的；昨天的待处理不该挤在今天列表里
+            if item.created_at.date() == today:
+                pending_today.append(item)
+
+    return SessionListResponse(
+        in_progress=in_progress,
+        pending_today=pending_today,
+        total_pending=len(in_progress) + len(pending_today),
     )
 
 

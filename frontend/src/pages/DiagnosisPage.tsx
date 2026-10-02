@@ -278,7 +278,7 @@ export default function DiagnosisPage() {
         <ProgressiveBlock ready={progressive.isRevealed('hallucination')} skeletonRows={2} label="安全警示">
           <HallucinationWarning
             visible={isSevere}
-            reviewReason={result.review_reason}
+            reviewReason={result.diagnosis?.review_reason ?? result.review_reason ?? null}
             onAcknowledgeReview={() => setReviewAcknowledged(true)}
           />
         </ProgressiveBlock>

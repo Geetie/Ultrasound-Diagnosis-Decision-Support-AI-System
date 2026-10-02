@@ -126,10 +126,17 @@ class EdgeDeviceAuth:
         return hmac.compare_digest(expected, provided)
 
     def build_headers(self, now: Optional[float] = None) -> dict:
-        """构建握手/请求认证头。"""
+        """构建请求认证头。
+
+        X-Device-Token 携带**原始 API Key**：服务端只存 API Key 哈希
+        （无法重建 HKDF 会话密钥），HTTP 设备端点（check-in/heartbeat/
+        health）走 raw key + 服务端哈希校验，传输层由 TLS 保护。
+        ``make_token`` 的 HMAC 短期 token 为预留能力——需服务端能拿到
+        原始密钥派生会话密钥后才可启用（见 ``verify_auth_headers``）。
+        """
         return {
             HEADER_DEVICE_ID: self.device_id,
-            HEADER_DEVICE_TOKEN: self.make_token(now=now),
+            HEADER_DEVICE_TOKEN: self.api_key,
         }
 
 

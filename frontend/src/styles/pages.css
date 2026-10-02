@@ -1,0 +1,319 @@
+/* ============================================================
+   三个真页面的外壳与内容 —— 01 工作列表 / 08 设置 / 09 新建检查会话
+   15 工作列表浅色 = 01 换data-theme="light"，不写第二套页面。
+
+   这批页面的骨架与工作区不同：侧栏 200 + 主区（padding 32 / gap 24），
+   没有顶栏、没有状态栏 —— 契约 §1：连接状态正常时根本不渲染。
+   所有颜色走 design-tokens.css的 var()，因此换肤自动成立。
+   ============================================================ */
+
+.page-root {
+  width: var(--size-screen-w, 1440px);
+  height: var(--size-screen-h, 900px);
+  display: flex;
+  flex-direction: row;
+  gap: 0;
+  background: var(--color-bg);
+  overflow: auto;
+  font-family: var(--font-cjk);
+}
+
+/* ---- 侧栏 200（01/08/09/15 结构逐字相同，只有高亮项与脚注不同）---- */
+.page-sidebar {
+  width: 200px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  background: var(--color-surface-alt);
+}
+
+.page-sidebar__brand {
+  font-size: var(--font-size-body);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.page-sidebar__item {
+  width: 100%;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-card);
+  background: transparent;
+  font-family: var(--font-cjk);
+  font-size: var(--font-size-body);
+  font-weight: 400;
+  text-align: left;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+/* 当前板块＝底色 + 主色文字（不靠图标、不靠颜色块） */
+.page-sidebar__item--active {
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font-weight: 500;
+}
+
+/* 弹性占位：把脚注推到侧栏底部 */
+.page-sidebar__spacer {
+  flex: 1;
+}
+
+.page-sidebar__footnote {
+  font-size: var(--font-size-micro);
+  color: var(--color-text-secondary);
+}
+
+/* ---- 主区（padding 32= space-8，gap 24 = space-6）---- */
+.page-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding: var(--space-8);
+  overflow: auto;
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.page-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.page-title {
+  font-size: var(--font-size-title);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.page-subtitle {
+  font-size: var(--font-size-small);
+  color: var(--color-text-secondary);
+}
+
+.page-count {
+  font-size: var(--font-size-small);
+  color: var(--color-text-secondary);
+}
+
+.page-group-title {
+  font-size: var(--font-size-small);
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.page-filter-note {
+  font-size: var(--font-size-tiny);
+  color: var(--color-attention);
+}
+
+.page-note {
+  font-size: var(--font-size-tiny);
+  line-height: 20px;
+  color: var(--color-text-secondary);
+}
+
+/* ---- 01 列表行 ---- */
+.page-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* 进行中行 72 —— 比普通行高 8：它是置顶的活会话，不是列表项 */
+.page-row-current {
+  height: 72px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+}
+
+.page-row {
+  height: 64px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+}
+
+.page-row__patient {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.page-row__name {
+  font-size: var(--font-size-body);
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.page-row__meta {
+  font-size: var(--font-size-tiny);
+  color: var(--color-text-secondary);
+}
+
+/* 进行中行的患者名 15/SemiBold（tokens 阶梯无15，显式取值） */
+.page-row-current__patient {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+/* 状态：看一眼档＝attention；正常＝**无标记**（次要色 + Regular 字重） */
+.page-row__status--attention {
+  font-size: var(--font-size-small);
+  font-weight: 500;
+  color: var(--color-attention);
+}
+
+.page-row__status--plain {
+  font-size: var(--font-size-small);
+  font-weight: 400;
+  color: var(--color-text-secondary);
+}
+
+.page-row__action {
+  border: 0;
+  padding: 0;
+  background: none;
+  font-family: var(--font-cjk);
+  font-size: var(--font-size-small);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+/* ---- 08 设置行 56 ---- */
+.page-setting-row {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+}
+
+.page-setting-row__label {
+  font-size: var(--font-size-body);
+  font-weight: 400;
+  color: var(--color-text-primary);
+}
+
+.page-setting-row__value {
+  font-size: var(--font-size-small);
+  font-weight: 400;
+  color: var(--color-text-secondary);
+}
+
+.page-setting-row__value--attention {
+  color: var(--color-attention);
+}
+
+/* ---- 09 表单卡 ---- */
+.page-form-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-6);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+}
+
+.page-field-label {
+  font-size: var(--font-size-tiny);
+  font-weight: 400;
+  color: var(--color-text-secondary);
+}
+
+.page-field-value {
+  font-size: var(--font-size-body);
+  font-weight: 400;
+  color: var(--color-text-primary);
+}
+
+.page-organ-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* 部位36px：选中＝底色 + 青灰描边 + 主色；未选中＝无底色 + 灰描边 + 次要色 */
+.page-organ {
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-tag);
+  background: transparent;
+  font-family: var(--font-cjk);
+  font-size: var(--font-size-small);
+  font-weight: 400;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.page-organ--selected {
+  border: 1.5px solid var(--color-attention);
+  background: var(--color-border);
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.page-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* 开始检查 44px / 15px（比工作区主按钮大一级：它是页面级主操作） */
+.page-primary-action {
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 28px;
+  border: 0;
+  border-radius: var(--radius-card);
+  background: var(--color-inverse);
+  color: var(--color-on-inverse);
+  font-family: var(--font-cjk);
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.page-secondary-action {
+  border: 0;
+  padding: 0;
+  background: none;
+  font-family: var(--font-cjk);
+  font-size: var(--font-size-small);
+  color: var(--color-attention);
+  cursor: pointer;
+}
+
+/* 禁用态：#3A3F47 底 + 次要色文字（与工作区主按钮同一套语义） */
+.page-primary-action:disabled {
+  background: var(--color-border);
+  color: var(--color-text-secondary);
+  cursor: not-allowed;
+}

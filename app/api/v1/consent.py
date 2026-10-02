@@ -13,8 +13,8 @@ from app.models.schemas import (
 )
 from app.api.v1.errors import BadRequestException
 from app.config.database import get_db_session
-from app.config.redis import RedisPool
-from app.config.redis_keys import RedisKey
+from app.config.redis import RedisPool  # noqa: F401  (shutdown/其他用途保留导入面)
+from app.config.redis_keys import RedisKey  # noqa: F401
 from app.repositories.consent_repository import ConsentRepository, record_hsm_degradation_if_needed
 from app.security.auth import get_current_active_user, RoleChecker
 
@@ -82,20 +82,13 @@ async def update_consent(
         consent_version=request.consent_version,
         operator_id=operator_id,
     )
-    
+
     await record_hsm_degradation_if_needed(db)
 
-    if consent_status == ConsentStatus.WITHDRAWN:
-        try:
-            await RedisPool.xadd(RedisKey.CONSENT_WITHDRAWAL_STREAM, {
-                "event_type": "ConsentWithdrawn",
-                "patient_id": request.patient_id,
-                "operator_id": operator_id,
-                "consent_version": request.consent_version,
-            })
-            logger.info("consent_withdrawal_event_published", patient_id=request.patient_id)
-        except Exception as e:
-            logger.warning("consent_withdrawal_event_publish_failed", patient_id=request.patient_id, error=str(e))
+    # 撤回事件的 Redis Streams 投递由 ConsentRepository.create_consent 内的
+    # _publish_consent_withdrawal 统一完成（含 withdrawn_at 全字段契约）。
+    # 此处不再重复投递——历史上这里发过一条缺 withdrawn_at 的第二份事件，
+    # 消费端 datetime.fromisoformat 必抛、系统性污染死信流（审计 P0-3）。
 
     return ConsentUpdateResponse(
         patient_id=consent_record.patient_id,

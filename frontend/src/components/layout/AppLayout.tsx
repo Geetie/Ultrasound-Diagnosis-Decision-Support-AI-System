@@ -78,11 +78,12 @@ export default function AppLayout() {
         </Footer>
       </Layout>
 
-      {/* T-GB-FE-02：语音控件常驻（发起诊断后跳转诊断页查看结果） */}
+      {/* T-GB-FE-02：语音控件常驻（发起诊断后跳检查工作区看结果。
+          原跳 /diagnosis，该独立页已按 17-§5 裁定 4 删除，结论并入工作区结论区。 */}
       <VoiceControl
         onExecuted={(result) => {
           if (result.request_id) {
-            navigate('/diagnosis');
+            navigate('/');
           }
         }}
       />

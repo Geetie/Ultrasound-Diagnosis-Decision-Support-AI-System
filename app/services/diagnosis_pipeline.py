@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import asyncio
 import inspect
+import json
 import time
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
@@ -90,12 +91,15 @@ def _coerce_response_tier(value: Any) -> ResponseTier:
 
 def _assess_routing(request: Any) -> Optional[RoutingDecision]:
     """按规格 §5.3 给出路由判定（任何异常都不得阻断诊断）。"""
+    t = time.monotonic()
     try:
-        return get_routing_router().assess(
+        decision = get_routing_router().assess(
             query=str(getattr(request, "clinical_text", "") or ""),
             target_organ=str(getattr(request, "organ", "") or "") or None,
             requested_tier=_coerce_response_tier(getattr(request, "tier", None)),
         )
+        _record_assessment_latency(time.monotonic() - t)
+        return decision
     except Exception as exc:  # noqa: BLE001
         logger.warning(
             "routing_assessment_failed",
@@ -103,6 +107,40 @@ def _assess_routing(request: Any) -> Optional[RoutingDecision]:
             error_type=type(exc).__name__,
         )
         return None
+
+
+def _record_assessment_latency(seconds: float) -> None:
+    """obs 指标：routing 评估延迟（wiring-audit P1-3，失败不影响管线）。"""
+    try:
+        from app.observability.metrics_collector import get_metrics_collector
+
+        get_metrics_collector().record_assessment_latency(seconds)
+    except Exception:  # noqa: BLE001
+        pass
+
+
+async def _read_retry_skip_self_rag(request_id: str) -> bool:
+    """读取重试跳过 Self-RAG 标志（wiring-audit P1-6：此前只写不读）。
+
+    读取失败按未设置处理（False）——重试增强功能不得阻断主链路。
+    """
+    try:
+        from app.config.redis import RedisPool
+        from app.config.redis_keys import RedisKey
+
+        client = await RedisPool.get_client()
+        raw = await client.get(RedisKey.retry_skip_self_rag(request_id))
+        if not raw:
+            return False
+        payload = json.loads(raw if isinstance(raw, str) else raw.decode())
+        return bool(payload.get("skip_self_rag", False))
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "retry_skip_self_rag_read_failed",
+            request_id=request_id,
+            error=str(exc),
+        )
+        return False
 
 
 # ----------------------------------------------------------------------
@@ -147,6 +185,9 @@ async def run_diagnosis_pipeline(request_id: str) -> bool:
             # 是否切换深度分析"的确认对话框，观测侧据此统计标准路径占比。
             routing_decision = _assess_routing(request)
 
+            # P1-6（wiring audit）：消费重试标志——retry 时跳过 Self-RAG 质检。
+            skip_self_rag = await _read_retry_skip_self_rag(request_id)
+
             # 1) 调度 (dispatcher.invoke)
             # T-GB-AGT-02：把路由判定的检索档位一并注入，使"标准/全量"
             # 真正作用于专科智能体的检索强度（此前判定结果只落库不生效）。
@@ -162,6 +203,7 @@ async def run_diagnosis_pipeline(request_id: str) -> bool:
                 request=request,
                 specialist_responses=specialist_responses,
                 request_id=request_id,
+                skip_self_rag=skip_self_rag,
             )
             timings["fusion.fuse_ms"] = (time.monotonic() - t) * 1000.0
 
@@ -297,7 +339,8 @@ async def _safe_dispatch(
         return [_make_failed_response(f"dispatcher_failed: {type(exc).__name__}")]
 
 
-async def _safe_fuse(request, specialist_responses, request_id: str):
+async def _safe_fuse(request, specialist_responses, request_id: str,
+                     skip_self_rag: bool = False):
     """调用 fusion.fuse；失败时返回带 needs_review 的占位 FusionResult。"""
     try:
         from app.main import app as _app_instance
@@ -317,6 +360,8 @@ async def _safe_fuse(request, specialist_responses, request_id: str):
             organ=Organ(request.organ) if request.organ else Organ.THYROID,
             agent_responses=specialist_responses,
             use_crag=True,
+            # P1-6：重试请求（retry_skip_self_rag 标志）跳过 Self-RAG 质检
+            use_self_rag=not skip_self_rag,
         )
         return await fusion_engine.fuse(fusion_req)
     except Exception as exc:

@@ -1,88 +1,112 @@
 import { useState } from 'react';
-import { Card, Form, Input, Select, Button, Typography, message } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
-import { useSession } from '@/hooks/useSession';
 import { useNavigate } from 'react-router-dom';
-import type { OrganType } from '@/types/session';
+import AppShell from '@/components/shell/AppShell';
+import type { ThemeName } from '@/components/shell/AppSidebar';
+import { ORGAN_LABEL, ORGAN_PRESETS, type OrganType } from '@/types/session';
 
-const { Title } = Typography;
-
-interface SessionFormValues {
-  patient_id: string;
-  device_id: string;
-  target_organs: OrganType[];
-}
-
-export default function SessionCreatePage() {
-  const [loading, setLoading] = useState(false);
-  const { createSession } = useSession();
+/**
+ * 新建检查会话 —— 09_新建检查会话（进入检查前必经）
+ *
+ * 侧栏高亮**停在「工作列表」**，这是有意为之：本屏是工作列表流程的子页，
+ * 导航反映的是「所在板块」而不是「当前子页」（画布 `_nav_highlight_decision`）。
+ * 对照 08_设置 —— 设置是一级项，所以高亮在设置。别把这个「不一致」当缺陷修掉。
+ *
+ * 设计取舍：
+ *   · **不要求医生事前声明全部部位** —— 超声是操作者驱动、边扫边定；
+ *     这里是「默认预选 + 自动补全」，所以甲状腺默认选中，医生通常一键即可
+ *   · 自动补全是**补全而不是替代**，保持显式声明为主，避免纯推断带来的不安全
+ *   · 患者行的同意状态在此**显式带出一次** —— 建会话阶段是同意校验的必经点
+ *     （这是契约 §1「同意状态仅非常驻」在流程入口的一次性例外，画布明确要求）
+ *
+ * 部位显示名与 ID 走 types/session 的 ORGAN_LABEL / ORGAN_PRESETS，
+ * 与 14_多部位标签排共用同一份，不会再走散。
+ *
+ * ⚠️ 未接线部分：患者 / 设备的选择器。画布只给了两个已填好的值，没有选择器 UI，
+ * 也没有 patient_id / device_id。所以本组件把这两个值作为 props 接收，
+ * 由上层（患者登记 / 设备注册流程）传入；未传时只做展示，「开始检查」不会调后端。
+ */
+export default function SessionCreatePage({
+  theme = 'dark',
+  patientLabel = '李** · 女 · 41 岁 · 门诊号 A2301 · 已签署 AI 辅助知情同意',
+  deviceLabel = '诊室 3 · 便携超声 02 号机（已注册 · 在线）',
+  patientId,
+  deviceId,
+  onStart,
+}: {
+  theme?: ThemeName;
+  patientLabel?: string;
+  deviceLabel?: string;
+  /** 真实患者 ID：有值时「开始检查」才调后端（画布未给选择器，由上层传入）。 */
+  patientId?: string;
+  deviceId?: string;
+  /** 点击「开始检查」时回调选中的部位（画布 2:294 → 创建会话 → 02_扫查态）。 */
+  onStart?: (organ: OrganType) => void;
+}) {
   const navigate = useNavigate();
-  const [form] = Form.useForm<SessionFormValues>();
-
-  const handleFinish = async (values: SessionFormValues) => {
-    setLoading(true);
-    try {
-      await createSession(values.patient_id, values.device_id, values.target_organs);
-      message.success('检查会话创建成功');
-      navigate('/');
-    } catch (err: any) {
-      message.error(err?.response?.data?.error_message || '创建会话失败');
-    } finally {
-      setLoading(false);
-    }
-  };
+  // 默认预选上次使用的部位 —— 医生通常一键即可
+  const [organ, setOrgan] = useState<OrganType>('thyroid');
 
   return (
-    <div className="h-full flex items-center justify-center animate-fade-in">
-      <Card
-        style={{
-          width: 480,
-          background: '#111827',
-          border: '1px solid #1e293b',
-        }}
-      >
-        <Title
-          level={4}
-          style={{
-            fontFamily: "'Orbitron', sans-serif",
-            color: '#00d4ff',
-            letterSpacing: '0.05em',
-            marginBottom: 24,
-          }}
-        >
-          NEW SESSION
-        </Title>
-        <Form form={form} layout="vertical" onFinish={handleFinish}>
-          <Form.Item label="患者ID" name="patient_id" rules={[{ required: true, message: '请输入患者ID' }]}>
-            <Input placeholder="输入患者ID" />
-          </Form.Item>
-          <Form.Item label="设备ID" name="device_id" rules={[{ required: true, message: '请输入设备ID' }]}>
-            <Input placeholder="输入设备ID" />
-          </Form.Item>
-          <Form.Item label="目标器官" name="target_organs" rules={[{ required: true, message: '请选择至少一个目标器官' }]}>
-            <Select
-              mode="multiple"
-              placeholder="选择目标器官"
-              options={[
-                { value: 'thyroid', label: '甲状腺' },
-                { value: 'liver', label: '肝脏' },
-                { value: 'cardiac', label: '心脏' },
-              ]}
-            />
-          </Form.Item>
-          <Form.Item>
-            <Button
-              type="primary"
-              htmlType="submit"
-              icon={<PlusOutlined />}
-              loading={loading}
-              block
+    <AppShell
+      // 本屏属工作列表流程子页 → 高亮工作列表，不高亮自己
+      active="worklist"
+      theme={theme}
+      screen="09_新建检查会话"
+      onNavigate={(key) => navigate(key === 'settings' ? '/settings' : '/worklist')}
+    >
+      <h1 className="page-title">新建检查会话</h1>
+
+      <div className="page-form-card">
+        <span className="page-field-label">患者</span>
+        <span className="page-field-value">{patientLabel}</span>
+
+        <span className="page-field-label">设备</span>
+        <span className="page-field-value">{deviceLabel}</span>
+
+        <span className="page-field-label">
+          检查部位 · 默认已预选上次使用的部位，通常一键即可，不必手工挑
+        </span>
+        <div className="page-organ-row" data-node="2:285">
+          {ORGAN_PRESETS.map((o) => (
+            <button
+              key={o}
+              type="button"
+              className={o === organ ? 'page-organ page-organ--selected' : 'page-organ'}
+              aria-pressed={o === organ}
+              onClick={() => setOrgan(o)}
             >
-              创建检查会话
-            </Button>
-          </Form.Item>
-        </Form>
-      </Card>
-    </div>
+              {ORGAN_LABEL[o]}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <p className="page-subtitle" style={{ lineHeight: '22px' }}>
+        系统会把实际扫到的部位自动补入，作为补全而不是替代 —— 保持显式声明为主，避免纯推断带来的不安全。
+      </p>
+
+      <div className="page-actions">
+        <button
+          type="button"
+          className="page-primary-action"
+          disabled={!patientId || !deviceId}
+          onClick={() => onStart?.(organ)}
+          title={
+            patientId && deviceId
+              ? undefined
+              : '未接入患者/设备选择器（画布未提供该UI），无法创建会话'
+          }
+        >
+          开始检查
+        </button>
+        <button
+          type="button"
+          className="page-secondary-action"
+          onClick={() => navigate('/worklist')}
+        >
+          从工作列表继续已有会话
+        </button>
+      </div>
+    </AppShell>
   );
 }

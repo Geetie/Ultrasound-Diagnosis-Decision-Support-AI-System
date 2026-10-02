@@ -99,8 +99,19 @@ export interface StageTiming {
   durationMs: number;
 }
 
+/**
+ * 阶段 → `diagnosis.timings_ms` 真实键名的映射。
+ *
+ * 键名来自**真机实测**（2026-10-02，req_20261002_da4fa542），不是从 OpenAPI 猜的。
+ * 后端实际写入的 5 个键：
+ *   db_read_ms · fusion.fuse_ms · pipeline.total_ms · sg.check_output_ms · dispatcher.invoke_ms
+ *
+ * ⚠️ 曾把 retrieval 映射成 `'dispatch'` —— 后端从不写这个键，
+ * 于是该阶段恒被 `typeof value === 'number'` 过滤掉，**永远不显示**。
+ * 这类"键名对不上"缺陷单测抓不到（没有真实响应），只能实测。
+ */
 const TIMING_KEY_MAP: Array<[DiagnosisStageKey, string]> = [
-  ['retrieval', 'dispatch'],
+  ['retrieval', 'dispatcher.invoke_ms'],
   ['fusion', 'fusion.fuse_ms'],
   ['safety', 'sg.check_output_ms'],
 ];

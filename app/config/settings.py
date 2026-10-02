@@ -7,7 +7,10 @@ class Settings(BaseSettings):
     env: str = 'development'
 
     database_url: str = ''
-    redis_url: str = 'redis://redis:6379/1'
+    # 主服务固定 db0（SG 固定 db1，见 sg_validator 对 db 的强制）。
+    # 默认值曾指向 db1——裸机部署漏配 REDIS_URL 时主服务会写进 SG 的
+    # 逻辑库，共享键（脱敏 HMAC/令牌映射）跨服务不可见（wiring-audit P1-7）。
+    redis_url: str = 'redis://localhost:6379/0'
 
     postgres_password: str = ''
 

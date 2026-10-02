@@ -1,0 +1,114 @@
+import WorkspaceImageRegion from '@/components/workspace/WorkspaceImageRegion';
+import WorkspaceConclusion from '@/components/workspace/WorkspaceConclusion';
+import WorkspaceConclusionBody from '@/components/workspace/WorkspaceConclusionBody';
+import {
+  hasOrganBar,
+  hasReportPanel,
+  isCenteredState,
+  isCompactState,
+  overlayOf,
+  SCREEN_OF,
+  type WorkspaceState,
+} from '@/components/workspace/states';
+import WorkspaceActionBar from '@/components/workspace/WorkspaceActionBar';
+import WorkspaceOrganBar from '@/components/workspace/WorkspaceOrganBar';
+import WorkspaceReportPanel from '@/components/workspace/WorkspaceReportPanel';
+import WorkspaceConclusionMask from '@/components/workspace/WorkspaceConclusionMask';
+import WorkspaceOrganTagRow from '@/components/workspace/WorkspaceOrganTagRow';
+import type { ConclusionView } from '@/services/diagnosisAdapter';
+
+/**
+ * 检查工作区 —— 路由 `/`
+ *
+ * 一个组件 + **11 个视图状态**，不是 11 个页面（17 帧里只有 3 个真页面，
+ * 见 design_data_for_agents/_页面分类.md）。
+ *
+ * 骨架（合计 900，硬规则不得改动）：
+ *   常驻条 40 / 影像区 600（恒定） / 结论区 260（→200） / 确认动作区 60（仅有待确认项时）
+ *   无动作区 40+600+260 = 900；有动作区 40+600+200+60 = 900。两种路径都恰满。
+ *
+ * 四条硬规则（AGENT_TASKS §六）：
+ *   1. 默认沉默 —— 不满足条件**不渲染**（不是 display:none）
+ *   2. 影像尺寸恒定 —— 永远 600，被压缩的从来不是它
+ *   3. 语义色两级 —— 只有 semantic-stop（停，挡签发）与 attention（看一眼，静态）
+ *   4. 主题设备级一次设置；--color-image-bg 不参与切换
+ *
+ * 全稿按契约**故意不渲染**的元素（补上任何一个都算返工）：
+ *   · 同意状态、连接状态 —— §1：仅非 granted / 仅异常时渲染
+ *   · 确认动作区          —— §1：仅存在待确认项时渲染
+ *   · 部位指示条 / 标签排 —— §1：仅部位数 ≥ 2 时渲染
+ *   · 报告状态行          —— §1：仅非 draft 时渲染（12_签发后 才出现）
+ *   · 「看一眼」标记行 / 恶性风险行 —— 11 屏 AI 不可用时 visible:false
+ *   · 置信度 / 一致性 / Self-RAG 明细 —— 二级折叠且后端字段未接通（16-报告 N-01）
+ *   · 区域编号 1~4        —— 画布上的评阅用标注（annotation_note），非界面
+ */
+export default function WorkspacePage({
+  state = 'scanning',
+  view,
+  onConfirm,
+  onReviewDetail,
+  onCollapseReport,
+  onStructuredProofread,
+  onSign,
+  onSignNext,
+  onRevealConclusion,
+  dicomImageId,
+}: {
+  state?: WorkspaceState;
+  /**
+   * 真机数据视图模型（services/diagnosisAdapter 从 API 响应映射）。
+   * 省略 = 设计预览模式；传入 = 真机模式，结论区按 P1 逐字段渲染。
+   */
+  view?: ConclusionView | null;
+  onConfirm?: () => void;
+  onReviewDetail?: () => void;
+  onCollapseReport?: () => void;
+  onStructuredProofread?: () => void;
+  onSign?: () => void;
+  onSignNext?: () => void;
+  onRevealConclusion?: () => void;
+  /** 真实 DICOM 的 URL。给了就替换影像区的渐变占位（2:4 impl_note）。 */
+  dicomImageId?: string;
+}) {
+  const overlay = overlayOf(state);
+
+  return (
+    <div className="ws-root" data-screen={SCREEN_OF[state]}>
+      <header className="ws-bar" data-region="bar">
+        <span className="ws-bar__identity">张** · 女 · 52 岁 · 门诊</span>
+      </header>
+
+      {/* 影像区在 11 个状态间是同一份拷贝（04 的 2:15、10 的 2:299 等都标注
+          shared_copy_of: 02_扫查态/2:4），逐像素相同，故直接复用，不重复实现。
+          部位指示条锚在它内部底缘，高度不受影响 —— 影像区恒定 600。 */}
+      <WorkspaceImageRegion
+        organBar={hasOrganBar(state) ? <WorkspaceOrganBar onReviewClick={onReviewDetail} /> : undefined}
+        dicomImageId={dicomImageId}
+      />
+
+      <WorkspaceConclusion
+        centered={isCenteredState(state)}
+        compact={isCompactState(state)}
+      >
+        <WorkspaceConclusionBody state={state} view={view} onSignNext={onSignNext} />
+      </WorkspaceConclusion>
+
+      {/* 仅存在待确认项时渲染；其余状态这个组件根本不出现在 DOM 里 */}
+      {isCompactState(state) && <WorkspaceActionBar onConfirm={onConfirm} />}
+
+      {/* 报告侧面板：滑出面板而非页面，可收起、可钉住 */}
+      {hasReportPanel(state) && (
+        <WorkspaceReportPanel
+          signed={state === 'signed'}
+          onCollapse={onCollapseReport}
+          onStructuredProofread={onStructuredProofread}
+          onSign={onSign}
+        />
+      )}
+
+      {/* 覆盖层与结论区内容互斥：出现覆盖层时结论卡不渲染（P1） */}
+      {overlay === 'mask' && <WorkspaceConclusionMask onReveal={onRevealConclusion} />}
+      {overlay === 'organ-tags' && <WorkspaceOrganTagRow />}
+    </div>
+  );
+}

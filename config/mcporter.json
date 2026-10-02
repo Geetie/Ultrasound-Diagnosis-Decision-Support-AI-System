@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "autoglm-browser-agent": {
+      "command": "C:/Users/ghf/.agents/skills/autoglm-browser-agent/dist/mcp_server"
+    }
+  }
+}

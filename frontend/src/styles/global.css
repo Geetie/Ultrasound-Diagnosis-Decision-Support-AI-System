@@ -1,4 +1,7 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Orbitron:wght@400;500;600;700;800;900&display=swap');
+/* 设计字体：--font-cjk = Noto Sans SC，--font-numeric = Inter。
+   Orbitron / JetBrains Mono 属旧设计系统，仅遗留页面在用，
+   待那批页面按设计重做后随 styles/tokens.ts 一并移除。 */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@400;500&family=JetBrains+Mono:wght@400;500;600&family=Orbitron:wght@400;500;600;700;800;900&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -15,8 +18,9 @@
   --color-accent-warning: #f59e0b;
   --color-accent-danger: #ef4444;
   --color-accent-info: #3b82f6;
-  --color-text-primary: #e2e8f0;
-  --color-text-secondary: #94a3b8;
+  /* --color-text-primary / --color-text-secondary 已移除：
+     这两个名字与设计 token 撞名，旧值(#e2e8f0/#94a3b8)已作废。
+     现由 styles/design-tokens.css 独家提供（#E6E8EB/#A8AEB6）。 */
   --color-text-muted: #64748b;
   --color-border-default: #1e293b;
   --color-border-accent: rgba(0, 212, 255, 0.2);
@@ -38,11 +42,19 @@
 }
 
 html,
-body,
-#root {
+body {
   width: 100%;
   height: 100%;
   overflow: hidden;
+}
+
+/* #root 允许滚动：医生侧三个真页面与11 个工作区状态是固定 1440x900 画布，
+   视口小于画布时必须能滚到内容，而不是被父级静默裁掉。
+   遗留页面用 h-screen 正好等于视口高度，不会因此出现滚动条。 */
+#root {
+  width: 100%;
+  height: 100%;
+  overflow: auto;
 }
 
 body {

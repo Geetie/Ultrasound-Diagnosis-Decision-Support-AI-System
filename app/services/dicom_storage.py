@@ -1,5 +1,6 @@
 """DICOM文件存储服务 - 支持本地文件系统和MinIO后端"""
 import os
+import re
 import shutil
 from io import BytesIO
 from pathlib import Path
@@ -106,6 +107,78 @@ class DicomStorageService:
             session_id,
             f"{sop_instance_uid}.dcm",
         )
+
+    # ------------------------------------------------------------------
+    # 按存储 ID 存取（供 WADO 回读用）
+    #
+    # 背景：上传/推流接口只把 `img_YYYYMMDD_hex8` / `frame_YYYYMMDD_hex8`
+    # 这类 ID 返回给客户端，而 `_build_storage_path` 生成的是
+    # `{date}/{patient}/{session}/{sop}.dcm` —— 两者之间**没有任何映射记录**，
+    # 所以此前无法按 ID 取回字节（浏览器显示 DICOM 缺的就是这条回读路径）。
+    #
+    # 这里不引入数据库表：ID 本身就带日期（`img_20261002_ab12cd34` 中的
+    # `20261002`），因此路径可由 ID **确定性推导**，无需索引、也不会把
+    # 文件系统路径暴露给客户端。
+    # ------------------------------------------------------------------
+
+    STORAGE_ID_PATTERN = re.compile(r"^(?:img|frame)_(\d{8})_[0-9a-f]{8}$")
+
+    def path_for_id(self, storage_id: str) -> Optional[str]:
+        """由存储 ID 反推绝对路径；ID 格式非法或不含日期时返回 None。"""
+        m = self.STORAGE_ID_PATTERN.match(storage_id or "")
+        if not m:
+            return None
+        date_prefix = m.group(1)
+        if self._backend == "minio":
+            return f"minio://{settings.minio_bucket}/{date_prefix}/{storage_id}.dcm"
+        candidate = os.path.join(self._base_path, date_prefix, f"{storage_id}.dcm")
+        # 双保险：即使 pattern 将来放宽，也必须仍落在 base 之内
+        base = os.path.abspath(self._base_path)
+        if os.path.abspath(candidate).startswith(base + os.sep):
+            return candidate
+        return None
+
+    async def save_by_id(self, content: bytes, storage_id: str, patient_id: str) -> str:
+        """按存储 ID 落盘（去 PHI 后）。返回可交给 retrieve() 的路径。"""
+        if len(content) > self._max_file_size:
+            raise ValueError(
+                f"DICOM file size {len(content)} exceeds maximum {self._max_file_size}"
+            )
+
+        storage_path = self.path_for_id(storage_id)
+        if storage_path is None:
+            raise ValueError(f"Invalid storage id: {storage_id}")
+
+        stripped_content, was_stripped = strip_dicom_phi(content, patient_id)
+        if was_stripped:
+            logger.info("dicom_phi_stripped_before_save", storage_id=storage_id)
+
+        if self._backend == "local":
+            os.makedirs(os.path.dirname(storage_path), exist_ok=True)
+            temp_path = storage_path + ".tmp"
+            try:
+                async with aiofiles.open(temp_path, "wb") as f:
+                    await f.write(stripped_content)
+                shutil.move(temp_path, storage_path)
+            except Exception:
+                if os.path.exists(temp_path):
+                    os.remove(temp_path)
+                raise
+            logger.info(
+                "dicom_saved_by_id",
+                backend="local",
+                storage_id=storage_id,
+                size=len(stripped_content),
+            )
+            return storage_path
+
+        if self._backend == "minio":
+            client = self._get_minio_client()
+            bucket, _, key = storage_path.partition("minio://")[2].partition("/")
+            client.put_object(bucket, key, stripped_content, content_type="application/dicom")
+            return storage_path
+
+        raise ValueError(f"Unknown storage backend: {self._backend}")
 
     async def save(
         self,

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile, File, Form, Depends
+from fastapi import APIRouter, UploadFile, File, Form, Depends, Response
 from datetime import datetime, timezone
 import uuid
 import base64
@@ -172,11 +172,11 @@ async def upload_dicom(
     sop_instance_uid = internal_metadata.get("sop_instance_uid", image_id)
     try:
         storage = get_dicom_storage()
-        storage_path = await storage.save(
+        #按 image_id 落盘：这样 image_id 才能反推路径被 GET /dicom/{image_id} 取回
+        storage_path = await storage.save_by_id(
             content=content,
+            storage_id=image_id,
             patient_id=raw_patient_id,
-            session_id=session_id,
-            sop_instance_uid=sop_instance_uid,
         )
         internal_metadata["storage_path"] = storage_path
     except Exception as e:
@@ -250,7 +250,24 @@ async def stream_dicom_frame(
         )
     
     frame_id = generate_frame_id()
-    
+
+    # ⚠️ 修正：此前本端点只校验+ 审计，**从未落盘** —— 推来的帧字节被直接丢弃，
+    # 返回的 frame_id 指向一个不存在的东西。补上持久化，frame_id 才可用于回读。
+    try:
+        storage = get_dicom_storage()
+        storage_path = await storage.save_by_id(
+            content=frame_data,
+            storage_id=frame_id,
+            patient_id=session.patient_id or "unknown",
+        )
+    except Exception as e:
+        logger.error("dicom_frame_store_failed", error=str(e), frame_id=frame_id)
+        raise ServerErrorException(
+            error_code="E2000",
+            error_message="DICOM frame storage failed",
+            detail=str(e),
+        )
+
     actor_id = get_actor_id(current_user)
     await audit_service.log_action(
         action="dicom_stream",
@@ -263,6 +280,7 @@ async def stream_dicom_frame(
             "is_key_frame": request.is_key_frame,
             "priority": request.priority,
             "frame_size": len(frame_data),
+            "storage_path": storage_path,
         },
     )
     
@@ -282,4 +300,70 @@ async def stream_dicom_frame(
             "threshold": settings.navigation_confidence_threshold,
         },
         status="accepted"
+    )
+
+
+@router.get("/dicom/{storage_id}")
+async def get_dicom(
+    storage_id: str,
+    audit_service: AuditService = Depends(get_audit_service),
+    current_user: Optional[dict] = Depends(get_current_active_user),
+):
+    """
+    WADO 回读：按上传/推流返回的 ID 取回 DICOM 字节。
+
+    此前 imaging 路由只有两个 POST（upload / stream），**没有任何按 ID 取回字节的
+    端点**，导致浏览器端 cornerstone 无从取得影像 —— 医生侧工作区的影像区只能放
+    占位渐变。本端点补上这条回路。
+
+    - `storage_id` 形如 `img_20261002_ab12cd34` / `frame_20261002_ab12cd34`，
+      日期段由 ID 自带，故路径可确定性推导（见 DicomStorageService.path_for_id），
+      **不需要额外的索引表，也不向客户端暴露文件系统路径**。
+    - 读取 DICOM 属于 PHI 访问事件，按医疗系统要求记审计。
+    """
+    storage = get_dicom_storage()
+
+    storage_path = storage.path_for_id(storage_id)
+    if storage_path is None:
+        raise BadRequestException(
+            error_code="E1001",
+            error_message=(
+                "Invalid storage id: expected 'img_YYYYMMDD_hex8' or 'frame_YYYYMMDD_hex8'"
+            ),
+        )
+
+    try:
+        content = await storage.retrieve(storage_path)
+    except Exception as e:
+        logger.error("dicom_retrieve_failed", error=str(e), storage_id=storage_id)
+        raise ServerErrorException(
+            error_code="E2000",
+            error_message="DICOM retrieval failed",
+            detail=str(e),
+        )
+
+    if content is None:
+        raise NotFoundException(error_message=f"DICOM not found: {storage_id}")
+
+    actor_id = get_actor_id(current_user)
+    await audit_service.log_action(
+        action="dicom_read",
+        actor=actor_id,
+        session_id=None,
+        target_type="dicom",
+        target_id=storage_id,
+        detail={"file_size": len(content)},
+    )
+
+    logger.info("DICOM retrieved", storage_id=storage_id, file_size=len(content))
+
+    return Response(
+        content=content,
+        media_type="application/dicom",
+        headers={
+            "Content-Length": str(len(content)),
+            # cornerstone 的 wadouri loader 会发 Range 请求做分片取帧
+            "Accept-Ranges": "bytes",
+            "Content-Disposition": f'inline; filename="{storage_id}.dcm"',
+        },
     )

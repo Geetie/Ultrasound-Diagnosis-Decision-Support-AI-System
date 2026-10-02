@@ -161,7 +161,7 @@ async def submit_diagnosis_request(
         request.retry_strategy = RetryStrategy.FULL_RETRIEVAL
 
     if request.retry:
-        retry_flag_key = f"ultrasound:diagnosis:retry_skip_self_rag:{request_id}"
+        retry_flag_key = RedisKey.retry_skip_self_rag(request_id)
         try:
             await RedisPool.setex(
                 retry_flag_key,

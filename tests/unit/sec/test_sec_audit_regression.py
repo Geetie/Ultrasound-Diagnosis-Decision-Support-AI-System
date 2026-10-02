@@ -231,12 +231,17 @@ class TestP1_8_ConsentWithdrawalBroadcast:
         from app.security.consent_withdrawal_consumer import CONSENT_WITHDRAWAL_STREAM
         assert CONSENT_WITHDRAWAL_STREAM is not None
 
-    def test_update_consent_publishes_on_withdraw(self):
+    def test_update_consent_single_publish_via_repository(self):
+        """P0-3 修复后的契约：API 层不再直接 xadd（唯一生产者 =
+        ConsentRepository._publish_consent_withdrawal，含 withdrawn_at 全字段）。
+        历史断言（要求 API 层内含 xadd）钉住的是双投递缺陷本体，随修复更新。"""
         import inspect
         from app.api.v1 import consent as consent_api
         source = inspect.getsource(consent_api.update_consent)
-        assert "CONSENT_WITHDRAWAL_STREAM" in source
-        assert "xadd" in source
+        assert "xadd" not in source
+        assert "RedisPool" not in source
+        # 投递职责归位说明必须留痕，防止未来误改回
+        assert "_publish_consent_withdrawal" in source
 
 
 class TestP1_9_PeriodicAuditVerification:

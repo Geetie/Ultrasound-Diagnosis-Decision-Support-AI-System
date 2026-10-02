@@ -374,6 +374,40 @@ class SessionResponse(BaseModel):
     ttl_remaining_seconds: Optional[int] = None
 
 
+class SessionListItem(BaseModel):
+    """工作列表单行 —— 对应设计稿 01_工作列表 的一行。
+
+    脱敏纪律：这里只出**已脱敏**的 `patient_name_masked`（姓+**），
+    不出完整姓名、不出生日期 —— 列表是共享屏幕，暴露全名即构成泄露面。
+    年龄由服务端从 birth_date 派生，避免把生日发到前端再算。
+    """
+    session_id: str
+    patient_id: str
+    patient_name_masked: Optional[str] = None
+    gender: Optional[str] = None
+    age: Optional[int] = None
+    status: SessionStatus
+    target_organs: List[str] = []
+    created_at: datetime
+    updated_at: datetime
+    ttl_remaining_seconds: Optional[int] = None
+
+
+class SessionListResponse(BaseModel):
+    """工作列表整体。分组在服务端做完，前端不再二次分类。
+
+    契约 §0 P2「一次决策」：列表页医生此刻只需要挑一个病人开始，
+    所以只给两组 —— 进行中 / 今日待处理，不按七种状态切页。
+    """
+    in_progress: List[SessionListItem] = []
+    pending_today: List[SessionListItem] = []
+    total_pending: int = 0
+
+    @property
+    def items(self) -> List[SessionListItem]:
+        return self.in_progress + self.pending_today
+
+
 class SessionUpdateRequest(BaseModel):
     status: Optional[SessionStatus] = None
     organ_statuses: Optional[Dict[str, str]] = None
@@ -521,6 +555,38 @@ class DeviceRegisterRequest(BaseModel):
     device_type: str
     location: str
     jetpack_version: str
+
+
+class DeviceCheckInResponse(BaseModel):
+    """设备自通告（check-in）响应：设备侧凭 api_key 声明自己已在线。
+
+    供给（分配 device_id/api_key）走管理员 POST /register；设备开机后
+    通过 /checkin 声明上线（wiring-audit P0-4，消除假隔离）。
+    """
+    device_id: str
+    status: str
+    registered: bool = True
+
+
+class DeviceHeartbeatRequest(BaseModel):
+    device_id: str
+    state: str = "registered"
+
+
+class DeviceHeartbeatResponse(BaseModel):
+    device_id: str
+    status: str = "ok"
+    server_time: str
+
+
+class DeviceHealthProbeRequest(BaseModel):
+    device_id: str
+
+
+class DeviceHealthProbeResponse(BaseModel):
+    device_id: str
+    status: str = "ok"
+    server_time: str
 
 
 class DeviceRegisterResponse(BaseModel):

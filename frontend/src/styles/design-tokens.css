@@ -1,0 +1,68 @@
+/* ============================================================
+   设计 token —— 唯一真相源
+   来源：docs-for-guiding generating docs/超声诊疗决策支持系统/
+        前端设计/设计数据包/tokens/tokens.css
+   本文件为该文件的逐字副本，改动请先改设计包再同步过来。
+
+   37 个 token：11 色 + 3 圆角 + 7 间距 + 7 字号 + 7 尺寸 + 2 字体
+   :root = dark，[data-theme="light"] = light
+
+   色彩体系只有两级语义（见 17-医生侧展示契约 §2）：
+     「停」    = --color-semantic-stop
+     「看一眼」= --color-attention
+     正常      = 不渲染任何颜色
+   ============================================================ */
+
+:root {
+  --color-bg: #1B1E23;
+  --color-surface: #24282F;
+  --color-surface-alt: #17191E;
+  --color-image-bg: #15171B;
+  --color-text-primary: #E6E8EB;
+  --color-text-secondary: #A8AEB6;
+  --color-attention: #8C99A6;
+  --color-semantic-stop: #9B2423;
+  --color-border: #3A3F47;
+  --color-inverse: #E6E8EB;
+  --color-on-inverse: #1B1E23;
+  --radius-tag: 4px;
+  --radius-card: 8px;
+  --radius-panel: 12px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --font-size-display: 32px;
+  --font-size-title: 20px;
+  --font-size-section: 18px;
+  --font-size-body: 14px;
+  --font-size-small: 13px;
+  --font-size-tiny: 12px;
+  --font-size-micro: 11px;
+  --size-screen-w: 1440px;
+  --size-screen-h: 900px;
+  --size-bar-h: 40px;
+  --size-image-h: 600px;
+  --size-conclusion-h: 260px;
+  --size-conclusion-h-compact: 200px;
+  --size-actionbar-h: 60px;
+  --font-cjk: "Noto Sans SC";
+  --font-numeric: "Inter";
+}
+
+[data-theme="light"] {
+  --color-bg: #F7F8FA;
+  --color-surface: #FFFFFF;
+  --color-surface-alt: #EEF0F3;
+  --color-image-bg: #15171B;
+  --color-text-primary: #1F2937;
+  --color-text-secondary: #5A6673;
+  --color-attention: #5A6673;
+  --color-semantic-stop: #9B2423;
+  --color-border: #D8DDE3;
+  --color-inverse: #1F2937;
+  --color-on-inverse: #FFFFFF;
+}

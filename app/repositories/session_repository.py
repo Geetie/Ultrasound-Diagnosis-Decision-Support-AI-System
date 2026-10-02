@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 import uuid
 import structlog
 
-from app.models.database import DiagnosisSession
+from app.models.database import DiagnosisSession, Patient
 from app.models.schemas import SessionStatus, OrganStatus, ConsentStatus
 
 logger = structlog.get_logger()
@@ -116,6 +116,51 @@ class SessionRepository:
             .limit(limit)
         )
         return list(result.scalars().all())
+
+    async def list_sessions(
+        self,
+        statuses: Optional[List[str]] = None,
+        limit: int = 20,
+    ) -> List[dict]:
+        """工作列表：按创建时间倒序取最近会话，联表 patients 带出人口学信息。
+
+        设计稿 01_工作列表需要「患者标识 / 部位 / 时间 / 状态 / 剩余分钟」，
+        人口学信息在 `patients` 表，必须 JOIN 才能拿到。
+
+        返回 dict（含 patient_* 字段）而不是 ORM 对象 —— 列表行要做脱敏与派生
+        （年龄、剩余分钟），不适合直接序列化模型。
+
+        `statuses` 为空表示不过滤。注意默认**不含** terminated/archived 类终态，
+        由调用方显式传入 —— 工作列表只显示待处理与进行中。
+        """
+        stmt = (
+            select(
+                DiagnosisSession.session_id,
+                DiagnosisSession.patient_id,
+                DiagnosisSession.status,
+                DiagnosisSession.target_organs,
+                DiagnosisSession.organ_statuses,
+                DiagnosisSession.created_at,
+                DiagnosisSession.updated_at,
+                Patient.name,
+                Patient.gender,
+                Patient.birth_date,
+            )
+            .select_from(DiagnosisSession)
+            .outerjoin(Patient, Patient.patient_id == DiagnosisSession.patient_id)
+            .order_by(DiagnosisSession.created_at.desc())
+            .limit(limit)
+        )
+        if statuses:
+            stmt = stmt.where(DiagnosisSession.status.in_(statuses))
+
+        result = await self.db.execute(stmt)
+        keys = [
+            "session_id", "patient_id", "status", "target_organs",
+            "organ_statuses", "created_at", "updated_at",
+            "name", "gender", "birth_date",
+        ]
+        return [dict(zip(keys, row)) for row in result.all()]
 
     async def renew_session(self, session_id: str) -> Optional[DiagnosisSession]:
         """续期会话TTL（更新updated_at时间戳）"""

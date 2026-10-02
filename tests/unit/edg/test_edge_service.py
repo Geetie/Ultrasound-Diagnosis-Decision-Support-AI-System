@@ -227,7 +227,7 @@ class TestServiceLifecycle:
         await service.start()
         try:
             assert service.status()["started"] is True
-            assert any(path == "/api/v1/admin/device/register" for path, _ in transport.calls)
+            assert any(path == "/api/v1/admin/device/checkin" for path, _ in transport.calls)
             assert service.status()["tasks_alive"] == 3
         finally:
             await service.stop()
@@ -239,7 +239,7 @@ class TestServiceLifecycle:
         await service.start()
         await service.start()
         try:
-            registers = [c for c in transport.calls if c[0].endswith("/register")]
+            registers = [c for c in transport.calls if c[0].endswith("/checkin")]
             assert len(registers) == 1
         finally:
             await service.stop()

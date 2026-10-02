@@ -66,7 +66,10 @@ describe('extractStageTimings（真实阶段耗时）', () => {
     const result = makeResult({
       diagnosis: {
         timings_ms: {
-          dispatch: 800,
+          // 键名取自真机实测（2026-10-02），后端写的是 dispatcher.invoke_ms。
+          // 曾经这里写 'dispatch'，测试用同一个错键造数据 → 一直绿，
+          // 而真实响应里 retrieval 阶段永远取不到值。
+          'dispatcher.invoke_ms': 800,
           'fusion.fuse_ms': 300,
           'sg.check_output_ms': 50,
           'pipeline.total_ms': 1500,
@@ -87,6 +90,32 @@ describe('extractStageTimings（真实阶段耗时）', () => {
   it('无 timings 时返回空数组（不展示假数据）', () => {
     expect(extractStageTimings(makeResult())).toEqual([]);
     expect(extractStageTimings(null)).toEqual([]);
+  });
+
+  /**
+   * 防回归：用**真机实测**的完整 timings_ms 键集跑一遍。
+   * 这 5 个键来自 req_20261002_da4fa542 的真实响应；任何改名都必须同步改这里，
+   * 否则会退化成「某阶段静默消失」——那正是 dispatch 键名错配造成过的故障。
+   */
+  it('真机实测键集下三个阶段全部命中（防键名错配回归）', () => {
+    const result = makeResult({
+      diagnosis: {
+        timings_ms: {
+          db_read_ms: 5.52,
+          'fusion.fuse_ms': 656.17,
+          'pipeline.total_ms': 2488.23,
+          'sg.check_output_ms': 14.62,
+          'dispatcher.invoke_ms': 1808.66,
+        },
+      },
+    });
+    const byKey = Object.fromEntries(
+      extractStageTimings(result).map((t) => [t.key, t.durationMs])
+    );
+    expect(byKey.retrieval).toBe(1809);
+    expect(byKey.fusion).toBe(656);
+    expect(byKey.safety).toBe(15);
+    expect(byKey.finalizing).toBe(2488);
   });
 });
 
