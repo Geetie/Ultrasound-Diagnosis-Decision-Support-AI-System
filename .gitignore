@@ -72,3 +72,13 @@ secrets/
 *.crt
 # 本机 IDE 工具配置（mcporter 浏览器代理注册）
 config/mcporter.json
+
+# === 运行期状态，不该进版本库 ===
+# soft_hsm_enabled_at.txt 是 soft HSM 的启用时刻，只有 90 天有效期。
+# 它曾被提交进仓库，于是每次 `git archive` 部署都会把**已过期**的时间戳带回去，
+# 主服务启动即 `RuntimeError: SoftHSM has expired (90 days)`，登录接口 500。
+# 现场用 scripts/server_fix_soft_hsm.sh 刷新，不要提交进版本库。
+soft_hsm_enabled_at.txt
+
+# 部署脚本写入的部署标记（记录当前 src 对应的 commit）
+.deployed_sha
