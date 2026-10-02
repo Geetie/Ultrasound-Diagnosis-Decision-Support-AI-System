@@ -398,6 +398,82 @@ class OpenClipBackend:
             })
         return results
 
+    # ---- T2b 切面/质量头（CACTUS：微调 visual 副本 + LR/线性回归探针）----
+    # 与 T2a 同款独立副本 + 懒加载；质量回归仅标准切面视图有效（Random 无分级）。
+
+    T2B_VIEWS = ["A4C", "PL", "PSMV", "Random", "SC"]
+
+    def _ensure_t2b(self) -> None:
+        if getattr(self, "_t2b_ready", False):
+            return
+        import copy
+        import os
+
+        import joblib
+
+        weights = os.environ.get(
+            "T2B_FT_WEIGHTS",
+            "/mnt/ee16/home/student03/uai/src/reports/t2b_cactus.pt",
+        )
+        probes_dir = os.environ.get(
+            "T2B_PROBES_DIR",
+            "/mnt/ee16/home/student03/uai/models/t2b",
+        )
+        view_probe = Path(probes_dir) / "view_probe.joblib"
+        quality_reg = Path(probes_dir) / "quality_reg.joblib"
+        if not (Path(weights).exists() and view_probe.exists() and quality_reg.exists()):
+            raise HTTPException(
+                status_code=503,
+                detail=f"t2b assets missing: {weights} / {view_probe} / {quality_reg}",
+            )
+        sd = torch.load(weights, map_location=self.device, weights_only=True)
+        self._t2b_visual = copy.deepcopy(self.model.visual)
+        self._t2b_visual.load_state_dict(sd)
+        self._t2b_visual.to(self.device).eval()
+        self._t2b_view_probe = joblib.load(view_probe)
+        self._t2b_quality_reg = joblib.load(quality_reg)
+        self._t2b_ready = True
+        logger.info("t2b_loaded", weights=weights, probes=probes_dir)
+
+    def analyze_view_images(self, image_bytes_list: list[bytes]) -> list[dict]:
+        self._ensure_t2b()
+        from io import BytesIO
+
+        from PIL import Image
+
+        images = [
+            self.preprocess(Image.open(BytesIO(raw)).convert("RGB"))
+            for raw in image_bytes_list
+        ]
+        batch = torch.stack(images).to(self.device)
+        with torch.inference_mode(), torch.autocast(
+            self.device.type, dtype=torch.bfloat16
+        ):
+            feats = torch.nn.functional.normalize(
+                self._t2b_visual(batch).float(), p=2, dim=1
+            )
+        X = feats.cpu().numpy()
+        view_probs = self._t2b_view_probe.predict_proba(X)
+        view_classes = [str(c) for c in self._t2b_view_probe.classes_]
+        grades = self._t2b_quality_reg.predict(X)
+        results = []
+        for p_row, g in zip(view_probs, grades):
+            top = int(p_row.argmax())
+            pred_view = view_classes[top]
+            results.append({
+                "view_probs": {
+                    cls: round(float(p_row[view_classes.index(cls)]), 4)
+                    for cls in self.T2B_VIEWS if cls in view_classes
+                },
+                "view": pred_view,
+                "standard": pred_view != "Random",
+                "quality_grade": (
+                    round(float(min(10.0, max(1.0, g))), 2)
+                    if pred_view != "Random" else None
+                ),
+            })
+        return results
+
 
 class RerankerBackend:
     """bge-reranker-base 交叉编码器打分（返回原始 logit，供排序使用）。"""
@@ -623,6 +699,20 @@ def build_app(
                 raise HTTPException(status_code=400, detail="images must not be empty")
             results = await asyncio.to_thread(backend.classify_images, raws)
             return {"model": "t2a_v2", "results": results}
+
+        @app.post("/v1/analyze_view")
+        async def t2b_analyze_view(images: list[UploadFile] = File(default=[])) -> dict[str, Any]:
+            """T2b 切面/质量头（CACTUS）：微调 visual 副本 + LR 切面探针 + 质量回归。"""
+            backend = _backend()
+            if not hasattr(backend, "analyze_view_images"):
+                raise HTTPException(
+                    status_code=400, detail=f"service {service} has no view analyzer"
+                )
+            raws = [await f.read() for f in images]
+            if not raws or any(not r for r in raws):
+                raise HTTPException(status_code=400, detail="images must not be empty")
+            results = await asyncio.to_thread(backend.analyze_view_images, raws)
+            return {"model": "t2b_cactus", "results": results}
 
         @app.post("/v1/embeddings/multimodal")
         async def clip_multimodal_embeddings(
