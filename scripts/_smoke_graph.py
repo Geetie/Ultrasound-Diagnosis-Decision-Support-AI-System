@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Smoke: backfill idempotency + graph neighbor query end-to-end."""
 import os
 import sys

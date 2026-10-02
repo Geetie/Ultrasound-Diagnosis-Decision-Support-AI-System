@@ -96,6 +96,11 @@ class RedisKey:
         return f"{_PREFIX}:diagnosis:retry:{request_id}"
 
     @staticmethod
+    def retry_skip_self_rag(request_id: str) -> str:
+        """重试时跳过 Self-RAG 质检的标志（wiring-audit P1-6：此前只写不读）。"""
+        return f"{_PREFIX}:diagnosis:retry_skip_self_rag:{request_id}"
+
+    @staticmethod
     def feedback_idempotency(key: str) -> str:
         return f"{_PREFIX}:feedback:idempotency:{key}"
 
@@ -137,7 +142,10 @@ class RedisKey:
     HSM_KEYS_PATTERN = f"{_PREFIX}:hsm:keys:*:private"
 
     # 安全网关相关键名
-    SG_THRESHOLD_UPDATE = f"{_PREFIX}:sg:threshold:update"
+    # 注意：SG 阈值更新走 Redis Streams，流名无 _PREFIX（历史约定），
+    # 必须与 safety_gateway/threshold_subscriber.py 的
+    # REDIS_STREAM_THRESHOLD_UPDATE 保持一致（wiring-audit P1-8）。
+    SG_THRESHOLD_STREAM = "sg:threshold:stream"
 
     # 设备相关键名
     @staticmethod
@@ -217,5 +225,3 @@ class LegacyRedisKey:
         return f"hsm:emergency_signing:daily_count:{date_key}"
 
     HSM_KEYS_PATTERN = "hsm:keys:*:private"
-
-    SG_THRESHOLD_UPDATE = "sg:threshold:update"

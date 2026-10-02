@@ -7,7 +7,10 @@ class Settings(BaseSettings):
     env: str = 'development'
 
     database_url: str = ''
-    redis_url: str = 'redis://redis:6379/1'
+    # 主服务固定 db0（SG 固定 db1，见 sg_validator 对 db 的强制）。
+    # 默认值曾指向 db1——裸机部署漏配 REDIS_URL 时主服务会写进 SG 的
+    # 逻辑库，共享键（脱敏 HMAC/令牌映射）跨服务不可见（wiring-audit P1-7）。
+    redis_url: str = 'redis://localhost:6379/0'
 
     postgres_password: str = ''
 
@@ -16,10 +19,9 @@ class Settings(BaseSettings):
 
     safety_gateway_host: str = 'localhost'
     safety_gateway_port: int = 9001
-    safety_gateway_whitelist_fields: list[str] = Field(
-        default=['organ_name', 'anatomical_location', 'echogenicity', 'boundary', 'morphology', 'vascularity', 'calcification', 'measurement'],
-        alias='safety_gateway_whitelist_fields',
-    )
+    # wiring-audit P2-4：删除游离白名单副本 safety_gateway_whitelist_fields——
+    # 权威白名单在 edge/safety.py 与 safety_gateway 侧（SG 自带同名配置），
+    # 这份 8 项副本零引用且与权威不一致，删除以防误用。
     safety_gateway_enable_degraded_mode: bool = True
     safety_gateway_queue_timeout_seconds: float = 10.0
     safety_gateway_http_client_timeout_seconds: float = Field(default=3.0, alias='sg_http_client_timeout_seconds')
@@ -214,7 +216,9 @@ class Settings(BaseSettings):
     # server_populate_vector_index.py）
     rag_kb_version: str = 'kb_v1.0.0'
     int_worker_pool_size: int = 4
-    int_pipeline_total_timeout_ms: int = 8000
+    # wiring-audit P2-5：删除孤儿配置 int_pipeline_total_timeout_ms
+    # （管线各阶段用 time.monotonic 计时，总超时从未被强制执行；如需
+    # 总超时门控须先设计降级语义再恢复此字段）。
     int_dlq_max_retries: int = 3
     int_worker_blpop_timeout_seconds: int = 5
     # T-Perf 措施#3：管线各阶段延迟预算（秒，超时降级不挂死）
@@ -287,7 +291,9 @@ class Settings(BaseSettings):
     # 实体近似匹配专用 collection（≤1 万向量），与主检索 collection 隔离。
     # 设计规格 §5.5 / 01-系统架构设计「Gate 0A 强制执行项」指定的名称。
     rag_entity_matching_collection: str = 'entity_matching'
-    rag_top_k: int = 20
+    # wiring-audit P2-5：删除孤儿配置 rag_top_k（专科智能体检索档位实际用
+    # specialist/base.py 的 DEFAULT_RAG_TOP_K=5，此字段零读者；接线会改变
+    # 检索行为 5→20，须先经评测再定）。
     rag_rerank_output_top_k: int = 5
     rag_min_score_threshold: float = 0.5
     rag_bm25_min_top1_score: float = 0.3
@@ -399,7 +405,8 @@ class Settings(BaseSettings):
     # 需要被**同机之外的抓取端**拉取时（例如容器编排里由另一个容器抓）
     # 显式设 `OBS_METRICS_HOST=0.0.0.0`；仓库内当前的部署编排没有这种用法。
     obs_metrics_host: str = '127.0.0.1'
-    obs_metrics_scrape_interval: float = 15.0
+    # wiring-audit P2-5：删除孤儿配置 obs_metrics_scrape_interval（零读者，
+    # 抓取间隔由 Prometheus/VictoriaMetrics 侧决定）。
     obs_victoriametrics_url: str = 'http://victoriametrics:8428'
     # 指标导出链路的开关（2026-09-28 接线修复新增）。
     # 此前这两条链路**只定义、从未接线**：`start_metrics_server()` 只被测试调用、

@@ -132,6 +132,26 @@ def validate_config() -> list[str]:
         if settings.rollout_counter_ttl_seconds <= 0:
             errors.append("ROLLOUT_COUNTER_TTL_SECONDS must be greater than 0")
 
+    # wiring-audit P2-5：接线开关与 worker 池校验（此前 validator 未覆盖）
+    if settings.int_worker_pool_size < 1 or settings.int_worker_pool_size > 64:
+        errors.append("INT_WORKER_POOL_SIZE must be between 1 and 64")
+    if settings.int_dlq_max_retries < 1:
+        errors.append("INT_DLQ_MAX_RETRIES must be at least 1")
+    if settings.int_worker_blpop_timeout_seconds <= 0:
+        errors.append("INT_WORKER_BLPOP_TIMEOUT_SECONDS must be greater than 0")
+    if not settings.safety_gateway_host:
+        errors.append("SAFETY_GATEWAY_HOST must not be empty (container deployments "
+                      "must point it at the gateway service name, not localhost)")
+    if settings.env == "production":
+        # 主服务约定 db0、SG 固定 db1——db 混用会让共享键（脱敏 HMAC/令牌
+        # 映射）跨服务不可见。生产环境强制主服务 db=0。
+        redis_db = settings.redis_url.rsplit("/", 1)[-1].split("?")[0]
+        if redis_db != "0":
+            errors.append(
+                "REDIS_URL must use db=0 for the main service in production "
+                "(db=1 is reserved for safety-gateway)"
+            )
+
     errors.extend(validate_version_compatibility())
 
     return errors

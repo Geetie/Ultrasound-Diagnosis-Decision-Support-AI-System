@@ -32,7 +32,9 @@ from safety_gateway.validation_result import ConsentStatus
 
 logger = structlog.get_logger()
 
-_RULES_SYNC_CHANNEL = "desensitization_rules_update"
+# 必须与后端发布频道一致（app/config/redis_keys.py DESSENS_RULES_UPDATE），
+# 可经 DESSENS_RULES_SYNC_CHANNEL 环境变量覆盖（wiring-audit P1-1）。
+_RULES_SYNC_CHANNEL = settings.desens_rules_sync_channel
 _rules_sync_subscriber: RedisSubscriber | None = None
 _sg_concurrency_semaphore: asyncio.Semaphore | None = None
 

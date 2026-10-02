@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Task 2: filter cardiac crisis terms from UDT LLM extraction output."""
 import json
 

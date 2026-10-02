@@ -73,6 +73,20 @@ async def start_obs_export(app) -> None:
         )
     app.state.vm_pusher = pusher
 
+    # CacheMonitor → Prometheus 同步（wiring-audit P1-3：此前 start_prometheus_sync
+    # 零调用，缓存面板 gauge 永远为 0）。一次性快照同步，失败不影响主服务。
+    try:
+        from app.observability.cache_monitor.monitor import get_cache_monitor
+
+        get_cache_monitor().start_prometheus_sync()
+        _logger.info("cache_monitor_prometheus_sync_started")
+    except Exception as exc:
+        _logger.warning(
+            "cache_monitor_prometheus_sync_failed",
+            error=str(exc),
+            error_type=type(exc).__name__,
+        )
+
 
 async def stop_obs_export(app) -> None:
     """停止推送器。

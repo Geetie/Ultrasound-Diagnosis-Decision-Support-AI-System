@@ -267,7 +267,10 @@ class TestSchedulingAgentHandler:
         assert self.handler.get_handler_name() == "scheduling_agent_pending"
 
     @pytest.mark.asyncio
-    async def test_handle_withdrawal_raises_not_implemented(self):
+    @pytest.mark.asyncio
+    async def test_handle_withdrawal_is_explicit_noop(self):
+        """P2-3 修复后的契约：handler 显式禁用（no-op + 日志），不再抛
+        NotImplementedError——抛异常会把每次撤回打进死信流。"""
         event = ConsentWithdrawalEvent(
             patient_id="P001",
             operator_id="DOC001",
@@ -275,8 +278,8 @@ class TestSchedulingAgentHandler:
             consent_version="v1.0",
             event_id="msg-001",
         )
-        with pytest.raises(NotImplementedError):
-            await self.handler.handle_withdrawal(event)
+        # 不抛异常即通过
+        await self.handler.handle_withdrawal(event)
 
 
 class TestDataCleanupHandler:

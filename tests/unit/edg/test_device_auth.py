@@ -100,17 +100,26 @@ class TestTokenRoundTrip:
 
 
 class TestHeaders:
-    def test_build_headers_contains_device_and_token(self):
+    def test_build_headers_carries_raw_api_key(self):
+        """build_headers 携带原始 API Key（服务端哈希校验，见 device_auth 模块文档）。"""
         auth = EdgeDeviceAuth(device_id=DEVICE_ID, api_key=API_KEY)
 
         headers = auth.build_headers(now=1000.0)
 
         assert headers[HEADER_DEVICE_ID] == DEVICE_ID
-        assert auth.verify_token(headers[HEADER_DEVICE_TOKEN], now=1000.0) is True
+        assert headers[HEADER_DEVICE_TOKEN] == API_KEY
+
+    @staticmethod
+    def _hmac_headers(auth: EdgeDeviceAuth) -> dict:
+        """构造 HMAC 短期 token 头（verify_auth_headers 的预留协议形态）。"""
+        return {
+            HEADER_DEVICE_ID: auth.device_id,
+            HEADER_DEVICE_TOKEN: auth.make_token(now=1000.0),
+        }
 
     def test_verify_auth_headers_happy_path(self):
         auth = EdgeDeviceAuth(device_id=DEVICE_ID, api_key=API_KEY)
-        headers = auth.build_headers(now=1000.0)
+        headers = self._hmac_headers(auth)
 
         device_id = verify_auth_headers(
             headers, lambda did: API_KEY if did == DEVICE_ID else None, now=1000.0
@@ -120,7 +129,7 @@ class TestHeaders:
 
     def test_verify_auth_headers_unknown_device(self):
         auth = EdgeDeviceAuth(device_id=DEVICE_ID, api_key=API_KEY)
-        headers = auth.build_headers(now=1000.0)
+        headers = self._hmac_headers(auth)
 
         assert verify_auth_headers(headers, lambda did: None, now=1000.0) is None
 
@@ -130,6 +139,6 @@ class TestHeaders:
 
     def test_verify_auth_headers_expired(self):
         auth = EdgeDeviceAuth(device_id=DEVICE_ID, api_key=API_KEY, token_ttl_seconds=10)
-        headers = auth.build_headers(now=1000.0)
+        headers = self._hmac_headers(auth)
 
         assert verify_auth_headers(headers, lambda did: API_KEY, now=2000.0) is None

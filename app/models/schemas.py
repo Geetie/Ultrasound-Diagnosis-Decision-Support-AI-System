@@ -776,6 +776,38 @@ class DeviceRegisterRequest(BaseModel):
     jetpack_version: str
 
 
+class DeviceCheckInResponse(BaseModel):
+    """设备自通告（check-in）响应：设备侧凭 api_key 声明自己已在线。
+
+    供给（分配 device_id/api_key）走管理员 POST /register；设备开机后
+    通过 /checkin 声明上线（wiring-audit P0-4，消除假隔离）。
+    """
+    device_id: str
+    status: str
+    registered: bool = True
+
+
+class DeviceHeartbeatRequest(BaseModel):
+    device_id: str
+    state: str = "registered"
+
+
+class DeviceHeartbeatResponse(BaseModel):
+    device_id: str
+    status: str = "ok"
+    server_time: str
+
+
+class DeviceHealthProbeRequest(BaseModel):
+    device_id: str
+
+
+class DeviceHealthProbeResponse(BaseModel):
+    device_id: str
+    status: str = "ok"
+    server_time: str
+
+
 class DeviceRegisterResponse(BaseModel):
     device_id: str
     api_key: str

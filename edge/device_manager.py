@@ -133,10 +133,15 @@ class EdgeDeviceManager:
 
     # ---- 注册与心跳 ----
     async def register(self) -> bool:
-        """设备注册（失败不影响本地可用，保持 REGISTERED 待重试）。"""
+        """设备自通告（失败不影响本地可用，保持 REGISTERED 待重试）。
+
+        供给语义（分配 device_id/api_key）属管理员的 POST /register；
+        设备侧此处只做 check-in 声明上线（wiring-audit P0-4：原路径
+        /register 与后端 DeviceRegisterRequest 契约错配，必 422/401/403）。
+        """
         try:
             await self._transport.post(
-                "/api/v1/admin/device/register",
+                "/api/v1/admin/device/checkin",
                 {"device_id": self._auth.device_id},
             )
         except Exception as e:

@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import asyncio
 import re
+from collections import deque
 from typing import Any
 
 import structlog
@@ -44,6 +45,25 @@ from app.rag.protocols import (
 )
 
 logger = structlog.get_logger("app.rag.retriever")
+
+# 检索空结果滑动窗口（wiring-audit P1-3：retrieval_empty_rate gauge 生产者）
+_RETRIEVAL_OUTCOME_WINDOW: deque[int] = deque(maxlen=500)
+
+
+def _record_retrieval_outcome(*, is_empty: bool) -> None:
+    """记录一次融合检索的空结果与否，并把窗口空率推到 Prometheus gauge。
+
+    失败静默（观测不阻塞检索主链路）。
+    """
+    try:
+        _RETRIEVAL_OUTCOME_WINDOW.append(1 if is_empty else 0)
+        window = _RETRIEVAL_OUTCOME_WINDOW
+        rate = sum(window) / len(window)
+        from app.observability.metrics_collector import get_metrics_collector
+
+        get_metrics_collector().set_retrieval_empty_rate(rate)
+    except Exception as exc:
+        logger.debug("retrieval_empty_rate_update_failed", error=str(exc))
 
 # Used to detect "collection does not exist" style errors from Qdrant so we
 # can silently skip the image leg when the image collection is not provisioned.
@@ -174,6 +194,7 @@ class Retriever:
         fused = self._rrf_fuse(legs)
         top_k = max(1, request.top_k)
         fused = fused[:top_k]
+        _record_retrieval_outcome(is_empty=not fused)
         chunks = [
             ScoredChunk(
                 chunk=h.chunk,

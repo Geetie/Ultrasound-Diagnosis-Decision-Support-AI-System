@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Task 2 backup: cardiac crisis-term extraction via 8002 (Qwen2.5-7B).
 
 Targets kb_src_v13/cardiac/pdf_cardiac_*.json guideline docs with a

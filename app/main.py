@@ -45,7 +45,6 @@ logger = structlog.get_logger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     from app.inference.factory import create_inference_engine_from_settings
-    from app.inference.gpu_monitor import GPUScheduleStrategy
     from app.services.safety_gateway_client import safety_gateway_client
     from app.speech.funasr import FunASROnnxEngine
 
@@ -76,16 +75,15 @@ async def lifespan(app: FastAPI):
     )
     app.state.speech_engine = speech_engine
 
-    gpu_schedule = GPUScheduleStrategy()
-    app.state.gpu_schedule = gpu_schedule
-
+    # wiring-audit P1-5：删除死赋值 app.state.gpu_schedule（GPUScheduleStrategy
+    # 实例全库无读取方）与 app.state.consent_consumer（shutdown 用局部变量，
+    # state 上的副本零读取方）。
     consent_consumer = None
     if settings.consent_withdrawal_consumer_enabled:
         try:
             from app.security.consent_withdrawal_consumer import create_consent_withdrawal_consumer
             consent_consumer = await create_consent_withdrawal_consumer()
             await consent_consumer.start()
-            app.state.consent_consumer = consent_consumer
         except Exception as e:
             logger.error("failed_to_start_consent_withdrawal_consumer", error=str(e))
 
@@ -134,6 +132,29 @@ async def lifespan(app: FastAPI):
     except Exception as e:
 
         logger.warning("desens_state_load_on_startup_failed", error=str(e))
+
+    # P0-5（wiring audit）：AlertEscalationManager 启停接线——
+    # 生产侧回调已注册（CUSUM/熔断），但 start() 此前从未被调用，
+    # critical webhook flush 与超时升级循环实际不生效。best-effort：
+    # 告警升级失败不阻塞主服务。
+    try:
+        await alert_mgr.start()
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(
+            "alert_escalation_start_failed", extra={"error": str(e)}
+        )
+
+    # P1-2（wiring audit）：审计哈希链周期校验（含 verify_all_chains，
+    # 断链即 critical 告警）。同样 best-effort。
+    try:
+        from app.services.audit_service import start_periodic_verification
+        await start_periodic_verification()
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(
+            "audit_periodic_verification_start_failed", extra={"error": str(e)}
+        )
 
     # T-GA-INT-01: 启动后台诊断 worker 池
     # N 个 worker 协程持续 BLPop 队列，调用 run_diagnosis_pipeline 执行完整管线。
@@ -510,6 +531,23 @@ async def lifespan(app: FastAPI):
 
     from app.api.websocket.nav import manager as nav_manager
     await nav_manager.stop_redis_subscriber()
+    # P0-5/P1-2：停止告警升级循环与审计链周期校验（与 lifespan 启动配对）
+    try:
+        from app.observability.alert_escalation import get_alert_escalation_manager
+        await get_alert_escalation_manager().stop()
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(
+            "alert_escalation_stop_failed", extra={"error": str(e)}
+        )
+    try:
+        from app.services.audit_service import stop_periodic_verification
+        await stop_periodic_verification()
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(
+            "audit_periodic_verification_stop_failed", extra={"error": str(e)}
+        )
     # T-GA-INT-01: 关闭 worker 池（取消所有 task + 等待 5s 超时）
     try:
         from app.services.diagnosis_worker import stop_worker_pool

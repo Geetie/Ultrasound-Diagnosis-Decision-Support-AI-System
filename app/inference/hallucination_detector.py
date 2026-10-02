@@ -17,6 +17,7 @@ import re
 import threading
 import time
 from abc import ABC, abstractmethod
+from collections import deque
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
@@ -487,6 +488,8 @@ class HallucinationDetector:
         self.strategies = strategies or list(DetectionStrategy)
         self.severity_threshold = severity_threshold
         self._detectors = self._init_detectors()
+        # 幻觉率滑动窗口（wiring-audit P1-3：供 Prometheus gauge 生产者使用）
+        self._rate_window: deque = deque(maxlen=500)
         logger.info(
             "hallucination_detector_initialized",
             strategies=[s.value for s in self.strategies],
@@ -591,8 +594,54 @@ class HallucinationDetector:
                 issue.severity >= 3 for issue in result.issues
             )
             bridge.report_hallucination_result(is_severe=is_severe, disease_type=organ)
+            self._publish_hallucination_rate_gauges(
+                is_hallucination=result.is_hallucination, is_severe=is_severe
+            )
         except Exception as e:
             logger.warning("cusum_report_failed", error=str(e))
+
+    def _publish_hallucination_rate_gauges(
+        self, is_hallucination: bool, is_severe: bool
+    ) -> None:
+        """obs 指标：幻觉率滑动窗口 → Prometheus gauge（wiring-audit P1-3）。
+
+        窗口口径：最近 500 次检测。
+        - overall_rate：is_hallucination 占比；
+        - severe_rate：is_severe（任一 issue severity>=3）占比；
+        - high_risk_rate：取 CUSUM 桥接器中已注册的高风险病种监控器的
+          当前率（未注册任何病种监控时不更新，gauge 保持 0）。
+        指标发布失败不影响检测主流程。
+        """
+        try:
+            from collections import deque
+
+            window: deque = self._rate_window
+            window.append(
+                (1 if is_hallucination else 0, 1 if is_severe else 0)
+            )
+            n = len(window)
+            overall = sum(w[0] for w in window) / n
+            severe = sum(w[1] for w in window) / n
+
+            from app.observability.metrics_collector import get_metrics_collector
+
+            collector = get_metrics_collector()
+            collector.set_overall_hallucination_rate(overall)
+            collector.set_severe_hallucination_rate(severe)
+
+            from app.observability.cusum import HallucinationCUSUMBridge
+
+            bridge = HallucinationCUSUMBridge.get_instance()
+            disease_rates = [
+                monitor.get_state().get("current_rate", 0.0)
+                for monitor in bridge._disease_monitors.values()
+            ]
+            if disease_rates:
+                collector.set_high_risk_hallucination_rate(
+                    max(disease_rates)
+                )
+        except Exception as e:
+            logger.debug("hallucination_rate_gauge_update_failed", error=str(e))
 
 
 # 全局默认检测器实例

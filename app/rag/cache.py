@@ -257,6 +257,7 @@ class RetrievalCache:
             命中返回 ``RetrievalResult``（负缓存命中返回空结果对象）；
             未命中返回 ``None``。
         """
+        t = time.monotonic()
         raw = await self._read_redis(key)
         if raw is not None:
             result = self._decode(raw, source="redis")
@@ -264,6 +265,7 @@ class RetrievalCache:
                 self._stats.hits_redis += 1
                 # L1 命中回填 L2，减少后续同 key 的网络往返
                 self._local.set(key, raw)
+                self._record_read(hit=True, latency=time.monotonic() - t)
                 return result
 
         local_raw = self._local.get(key)
@@ -271,9 +273,11 @@ class RetrievalCache:
             result = self._decode(local_raw, source="local")
             if result is not None:
                 self._stats.hits_local += 1
+                self._record_read(hit=True, latency=time.monotonic() - t)
                 return result
 
         self._stats.misses += 1
+        self._record_read(hit=False, latency=time.monotonic() - t)
         return None
 
     # ------------------------------------------------------------------
@@ -292,9 +296,28 @@ class RetrievalCache:
             return
 
         ttl = self._ttl_for(is_negative)
+        t = time.monotonic()
         self._local.set(key, payload, ttl_seconds=ttl)
         await self._write_redis(key, payload, ttl)
         self._stats.stores += 1
+        self._record_write(latency=time.monotonic() - t)
+
+    def _record_read(self, *, hit: bool, latency: float) -> None:
+        """CacheMonitor 接线（wiring-audit P1-3：record_* 此前零调用）。"""
+        try:
+            from app.observability.cache_monitor.monitor import get_cache_monitor
+
+            get_cache_monitor().record_cache_read(hit=hit, latency_seconds=latency)
+        except Exception as exc:
+            logger.debug("cache_monitor_record_read_failed", error=str(exc))
+
+    def _record_write(self, *, latency: float) -> None:
+        try:
+            from app.observability.cache_monitor.monitor import get_cache_monitor
+
+            get_cache_monitor().record_cache_write(latency_seconds=latency)
+        except Exception as exc:
+            logger.debug("cache_monitor_record_write_failed", error=str(exc))
 
     # ------------------------------------------------------------------
     # 内部：编解码

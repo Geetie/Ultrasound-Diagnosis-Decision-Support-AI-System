@@ -50,6 +50,13 @@ class SGSettings(BaseSettings):
     contraindication_rules_safety_path: str = "contraindication_rules_safety.yaml"
     medical_person_names_path: str = "medical_person_names.yaml"
 
+    # 脱敏规则热更新 Pub/Sub 频道——必须与后端发布方
+    # app/config/redis_keys.py::RedisKey.DESSENS_RULES_UPDATE
+    # （f"{prefix}:desens:rules:update"）一致。历史上这里硬编码了
+    # 裸名 "desensitization_rules_update"，规则热更新永远收不到
+    # （wiring-audit P1-1）。
+    desens_rules_sync_channel: str = "ultrasound:desens:rules:update"
+
     db_query_timeout: int = 5
     db_pool_size: int = 5
     db_max_overflow: int = 10

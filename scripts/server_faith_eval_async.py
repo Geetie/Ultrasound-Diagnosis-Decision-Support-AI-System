@@ -7,6 +7,14 @@ from pathlib import Path
 sys.path.insert(0, "/mnt/ee16/home/student03/uai/src")
 sys.path.insert(0, "/mnt/ee16/home/student03/uai/src/scripts")
 
+# 生成侧溯源约束 v2（A.10.3）：T1c 基线 prompt 的"复述原文"约束在
+# 对话语料上失分——语料简略，模型补全的医学正确常识在 NLI 逐条判定
+# 下全部记为不支持。v2 改为**分层回答**：有据详述、无据明示"参考知识
+# 未涉及"（meta 标注会被 _filter_meta_statements 过滤，不编造也不硬拒）。
+# 主生成 A/B 评估（qwen3-upgrade）：环境变量可覆盖生成端，
+# A 组=生产（Qwen2.5-7B@8002），B 组=候选（Qwen3-8B@8006）。
+import os
+
 import httpx
 from openai import AsyncOpenAI
 from t1_eval_faithfulness import (
@@ -18,14 +26,6 @@ from t1_eval_faithfulness import (
     heuristic_numeric_check,
 )
 from t1_eval_retrieval import bm25_topk, cosine_topk, embed_texts, rrf_fuse
-
-# 生成侧溯源约束 v2（A.10.3）：T1c 基线 prompt 的"复述原文"约束在
-# 对话语料上失分——语料简略，模型补全的医学正确常识在 NLI 逐条判定
-# 下全部记为不支持。v2 改为**分层回答**：有据详述、无据明示"参考知识
-# 未涉及"（meta 标注会被 _filter_meta_statements 过滤，不编造也不硬拒）。
-# 主生成 A/B 评估（qwen3-upgrade）：环境变量可覆盖生成端，
-# A 组=生产（Qwen2.5-7B@8002），B 组=候选（Qwen3-8B@8006）。
-import os
 
 GEN_URL = os.environ.get("GEN_URL", "http://127.0.0.1:8002")
 JUDGE_URL = os.environ.get("JUDGE_URL", "http://127.0.0.1:8006")

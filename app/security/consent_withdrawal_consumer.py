@@ -84,17 +84,25 @@ class SafetyActionHandler(ConsentWithdrawalHandler):
                             patient_id=event.patient_id, error=str(e))
 
             try:
+                # wiring-audit P2-2：此通知频道当前无订阅者（前端/边缘侧语义
+                # 待产品确认）。发布保留——Streams/ Pub/Sub 语义上无害，若产品
+                # 确认"通知患者端"由轮询兜底，可移除此发布并删除常量。
                 await redis_client.publish(
                     RedisKey.CONSENT_WITHDRAWAL_NOTIFICATION,
                     event.patient_id,
                 )
                 logger.info("consent_withdrawal_notification_published",
-                           patient_id=event.patient_id)
+                           patient_id=event.patient_id,
+                           note="no subscriber registered (P2-2 pending product decision)")
             except Exception as e:
                 logger.error("failed_to_publish_withdrawal_notification",
                             patient_id=event.patient_id, error=str(e))
 
             try:
+                # wiring-audit P2-2：edge_stop_ai_annotation 同样无订阅方
+                # （edge/ 未实现该频道的消费）。撤回后停止边缘标注的实际兜底
+                # 由在途诊断取消（下方 cancel_for_patient）+ 轮询会话状态实现；
+                # 是否补 edge 侧订阅待产品确认。
                 cursor = 0
                 while True:
                     cursor, keys = await redis_client.scan(
@@ -108,7 +116,8 @@ class SafetyActionHandler(ConsentWithdrawalHandler):
                             event.patient_id,
                         )
                         logger.info("edge_stop_ai_annotation_published",
-                                   session_id=session_id, patient_id=event.patient_id)
+                                   session_id=session_id, patient_id=event.patient_id,
+                                   note="no edge-side subscriber registered (P2-2)")
                     if cursor == 0:
                         break
                     await asyncio.sleep(0)
@@ -159,12 +168,21 @@ class SafetyActionHandler(ConsentWithdrawalHandler):
 
 
 class SchedulingAgentHandler(ConsentWithdrawalHandler):
+    """排程智能体联动（wiring-audit P2-3：半成品接入，显式禁用）。
+
+    排程系统尚未对接；此 handler **不得**注册进
+    ``create_consent_withdrawal_consumer`` 的默认 handler 列表——
+    注册后每次撤回都会抛 NotImplementedError 进入死信流。
+    当前实现为显式 no-op + 日志留痕，接入排程系统时替换 handle_withdrawal。
+    """
+
     async def handle_withdrawal(self, event: ConsentWithdrawalEvent) -> None:
-        logger.info("scheduling_agent_handler_withdrawal_received",
-                    patient_id=event.patient_id,
-                    event_id=event.event_id,
-                    status="integration_pending")
-        raise NotImplementedError("SchedulingAgentHandler must be implemented before production use")
+        logger.warning(
+            "scheduling_agent_handler_disabled",
+            patient_id=event.patient_id,
+            event_id=event.event_id,
+            status="explicitly_disabled_no_scheduling_integration",
+        )
 
     def get_handler_name(self) -> str:
         return "scheduling_agent_pending"

@@ -1,14 +1,21 @@
+
 import secrets
 from datetime import datetime, timedelta, timezone
 
 import structlog
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Header, HTTPException
 
 from app.api.v1.errors import BadRequestException, NotFoundException
 from app.api.v1.utils import get_actor_id
 from app.dependencies import get_audit_service, get_device_repo
+from app.models.database import Device
 from app.models.schemas import (
+    DeviceCheckInResponse,
     DeviceDeregisterResponse,
+    DeviceHealthProbeRequest,
+    DeviceHealthProbeResponse,
+    DeviceHeartbeatRequest,
+    DeviceHeartbeatResponse,
     DeviceRecoveryResponse,
     DeviceRegisterRequest,
     DeviceRegisterResponse,
@@ -22,6 +29,29 @@ logger = structlog.get_logger()
 router = APIRouter(tags=["device-management"])
 
 admin_only = RoleChecker(allowed_roles=["SYSTEM_ADMIN"])
+
+
+async def _authenticate_device(
+    x_device_id: str = Header(default=""),
+    x_device_token: str = Header(default=""),
+    device_repo: DeviceRepository = Depends(get_device_repo),
+) -> Device:
+    """设备头认证（X-Device-Id / X-Device-Token）。
+
+    X-Device-Token 携带原始 API Key，走 ``authenticate_device`` 的
+    哈希校验 + active 状态检查 + last-seen 触碰（与 WS 设备路径同源）。
+    服务端仅存 API Key 哈希，无法重建 edge 端 HKDF 会话密钥，故 HTTP
+    设备端点不接受 HMAC 短期 token（edge/device_auth.py 预留能力）。
+    """
+    if not x_device_id or not x_device_token:
+        raise HTTPException(
+            status_code=401,
+            detail="Device credentials required (X-Device-Id / X-Device-Token)",
+        )
+    device = await device_repo.authenticate_device(x_device_id, x_device_token)
+    if device is None:
+        raise HTTPException(status_code=401, detail="Invalid device credentials")
+    return device
 
 
 @router.post("/register", response_model=DeviceRegisterResponse)
@@ -69,6 +99,77 @@ async def register_device(
         device_id=device.device_id,
         api_key=raw_api_key,
         status=device.status,
+    )
+
+
+@router.post("/checkin", response_model=DeviceCheckInResponse)
+async def checkin_device(
+    device: Device = Depends(_authenticate_device),
+):
+    """设备自通告（wiring-audit P0-4）。
+
+    设备开机后凭 api_key 声明上线。供给语义（创建 device 记录 + 签发
+    api_key）仍属管理员的 POST /register，二者不混用——历史上 edge 对
+    /register 发 {device_id} 单字段请求，与 DeviceRegisterRequest 契约
+    双双错配（422/401/403），导致设备系统性假隔离。
+    """
+    logger.info("device_checked_in", device_id=device.device_id)
+    return DeviceCheckInResponse(
+        device_id=device.device_id, status=device.status, registered=True
+    )
+
+
+@router.post("/heartbeat", response_model=DeviceHeartbeatResponse)
+async def device_heartbeat(
+    request: DeviceHeartbeatRequest,
+    device: Device = Depends(_authenticate_device),
+):
+    """设备 HTTP 心跳（edge 15s 间隔；authenticate_device 内已触碰 last-seen）。"""
+    if request.device_id != device.device_id:
+        raise BadRequestException(
+            error_code="E1001",
+            error_message="heartbeat device_id does not match authenticated device",
+        )
+    return DeviceHeartbeatResponse(
+        device_id=device.device_id,
+        status="ok",
+        server_time=datetime.now(timezone.utc).isoformat(),
+    )
+
+
+@router.post("/health", response_model=DeviceHealthProbeResponse)
+async def device_health_probe(
+    request: DeviceHealthProbeRequest,
+    device: Device = Depends(_authenticate_device),
+):
+    """设备健康探测（edge 1s 周期，隔离期恢复判定依据）。"""
+    if request.device_id != device.device_id:
+        raise BadRequestException(
+            error_code="E1001",
+            error_message="health probe device_id does not match authenticated device",
+        )
+    return DeviceHealthProbeResponse(
+        device_id=device.device_id,
+        status="ok",
+        server_time=datetime.now(timezone.utc).isoformat(),
+    )
+
+
+@router.get("/ota/{package}/{version}")
+async def download_ota_package(
+    package: str,
+    version: str,
+    device: Device = Depends(_authenticate_device),
+):
+    """OTA 包下载（edge/ota_client.py 契约位）。
+
+    本环境未部署 OTA 包分发基础设施：显式返回 501 使契约可见，
+    而非 404 令 edge 侧故障难归因。按需调用（无后台轮询），不影响
+    设备假隔离问题。
+    """
+    raise HTTPException(
+        status_code=501,
+        detail=f"OTA distribution is not deployed (package={package}, version={version})",
     )
 
 

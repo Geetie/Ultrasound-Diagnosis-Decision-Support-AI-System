@@ -4,10 +4,6 @@ from typing import Any, ClassVar
 
 import structlog
 
-# ConsentStatus 的**单一来源**锚点：曾被本地重复定义过，守护测试
-# （tests/unit/sec/test_regression_fixes.py）钉住这行导入。即使当前未直接引用，
-# 也不得删除——它同时是"不要在 checker 里再定义一份枚举"的约束点。
-from safety_gateway.validation_result import ConsentStatus  # noqa: F401
 from safety_gateway.checker.consent_phase import ConsentPhase
 from safety_gateway.checker.consistency_phase import ConsistencyPhase
 from safety_gateway.checker.contraindication_threshold_phase import ContraindicationThresholdPhase
@@ -27,7 +23,15 @@ from safety_gateway.degraded_output import (
 )
 from safety_gateway.health import HealthChecker
 from safety_gateway.sg_config import sg_settings as settings
-from safety_gateway.validation_result import CheckResult, DegradedReason
+
+# ConsentStatus 的**单一来源**锚点：曾被本地重复定义过，守护测试
+# （tests/unit/sec/test_regression_fixes.py）钉住这行导入。即使当前未直接引用，
+# 也不得删除——它同时是"不要在 checker 里再定义一份枚举"的约束点。
+from safety_gateway.validation_result import (
+    CheckResult,
+    ConsentStatus,  # noqa: F401
+    DegradedReason,
+)
 
 logger = structlog.get_logger()
 

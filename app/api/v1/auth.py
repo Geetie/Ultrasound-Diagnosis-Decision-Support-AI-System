@@ -200,7 +200,7 @@ async def refresh_token(refresh_request: RefreshTokenRequest):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired refresh token",
             headers={"WWW-Authenticate": "Bearer"},
-        )
+        ) from e
 
     token_data = await verify_refresh_token(new_token_id)
     if not token_data:
@@ -317,3 +317,58 @@ async def protected_test(
     _: dict[str, Any] = Depends(RoleChecker(["ULTRASOUND_DOCTOR", "DEPARTMENT_HEAD"]))
 ):
     return {"message": "This is a protected endpoint", "user": current_user}
+
+
+class NavTokenExchangeRequest(BaseModel):
+    session_id: str
+
+
+@router.post("/nav-token")
+async def exchange_nav_token(
+    request: NavTokenExchangeRequest,
+    current_user: dict[str, Any] = Depends(get_current_active_user),
+):
+    """JWT → 导航 WS nav token 交换端点（审计 P0-2）。
+
+    前端持 JWT 调用本端点换取 ``session_id`` 对应的 nav token，随后用
+    ``{type:'auth', session_id, token}`` 完成 /api/v1/realtime/nav 的
+    token 认证路径（nav.py validate_token）。token 由与 WS 校验同源的
+    模块级 ConnectionManager 单例签发（AuthTokenManager._tokens），
+    生命周期与 WS 侧完全一致（TTL 见
+    settings.navigation_ws_auth_token_ttl_seconds）。
+
+    不做 session 存在性校验：与 WS token 路径同口径——token 只在其
+    session_id 上有效，误签发的 token 会随 TTL 过期被清理。
+    """
+    if not request.session_id or not request.session_id.strip():
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="session_id is required",
+        )
+    # 函数内导入：nav.py 依赖较重，且避免任何潜在导入环
+    from app.api.websocket.nav import manager as nav_manager
+
+    try:
+        nav_token = await nav_manager.generate_auth_token(request.session_id)
+    except Exception as exc:
+        logger.warning(
+            "nav_token_exchange_failed",
+            session_id=request.session_id,
+            error=str(exc),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to issue navigation token",
+        ) from exc
+
+    logger.info(
+        "nav_token_exchanged",
+        session_id=request.session_id,
+        operator=current_user.get("username"),
+    )
+    return {
+        "session_id": request.session_id,
+        "nav_token": nav_token,
+        "token_type": "nav_ws",
+        "expires_in": settings.navigation_ws_auth_token_ttl_seconds,
+    }
