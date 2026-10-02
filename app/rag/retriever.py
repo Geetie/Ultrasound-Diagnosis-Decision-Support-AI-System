@@ -90,6 +90,11 @@ class Retriever:
         session_factory: AsyncSession factory for resolving chunk metadata
             from search results.
         rrf_k: RRF rank constant (default 60, per Cormack et al. 2009).
+        graph_adapter: Optional GraphQueryAdapter (PgVectorGraphAdapter). Only
+            consulted when settings.graph_query_enabled is True; None means
+            construct one lazily on first use.
+        graph_seed_limit: How many fused top-k chunks to use as graph seeds.
+        graph_neighbor_limit: Max neighbor chunks appended after top-k.
     """
 
     def __init__(
@@ -100,6 +105,9 @@ class Retriever:
         bm25_index: BM25Index | None = None,
         session_factory: Any | None = None,
         rrf_k: int | None = None,
+        graph_adapter: Any | None = None,
+        graph_seed_limit: int = 3,
+        graph_neighbor_limit: int = 5,
     ):
         self._vector_client = vector_client
         self._embedding = embedding_service
@@ -107,6 +115,9 @@ class Retriever:
         self._bm25 = bm25_index
         self._session_factory = session_factory
         self._rrf_k = rrf_k if rrf_k is not None else settings.rag_rrf_k
+        self._graph_adapter = graph_adapter
+        self._graph_seed_limit = max(1, int(graph_seed_limit))
+        self._graph_neighbor_limit = max(0, int(graph_neighbor_limit))
 
     async def retrieve(
         self,
@@ -172,6 +183,9 @@ class Retriever:
             )
             for h in fused
         ]
+        # 图谱邻居扩展（settings.graph_query_enabled 门控，默认关闭）：
+        # 只在 top-k 之后追加，不挤占 RRF 排名；失败降级为不扩展。
+        chunks = await self._expand_graph_neighbors(chunks)
         # 二期 §6：记录本次引用（best-effort，失败只记日志）。
         # 放在返回前而不是各条检索腿里：只看最终入选的 chunks——落选条目的
         # "被引用"并不是真的被用上，把它算进去会让衰减依据失真。
@@ -190,6 +204,85 @@ class Retriever:
         from app.knowledge.decay import record_retrieval_references
 
         await record_retrieval_references(chunk_ids)
+
+    async def _get_graph_adapter(self) -> Any | None:
+        if self._graph_adapter is not None:
+            return self._graph_adapter
+        try:
+            from app.knowledge.graph_query import PgVectorGraphAdapter
+
+            self._graph_adapter = PgVectorGraphAdapter(
+                session_factory=self._session_factory
+            )
+        except Exception as exc:
+            logger.warning(
+                "graph_adapter_init_failed",
+                error=str(exc),
+                error_type=type(exc).__name__,
+            )
+            self._graph_adapter = False  # sentinel: do not retry this instance
+        return self._graph_adapter or None
+
+    async def _expand_graph_neighbors(
+        self, chunks: list[ScoredChunk]
+    ) -> list[ScoredChunk]:
+        """图谱扩展：以融合 top-k 的前 N 个 chunk 为种子追加 depth-1 邻居。
+
+        - 门控：settings.graph_query_enabled 为 False 时直接原样返回；
+        - 语义：邻居是检索增强补充，append 在 top-k 之后，不改排名；
+        - 失败：adapter 内部已降级为空列表，这里再兜一层异常不影响主链路。
+        """
+        if (
+            not chunks
+            or self._graph_neighbor_limit == 0
+            or not bool(getattr(settings, "graph_query_enabled", False))
+        ):
+            return chunks
+        adapter = await self._get_graph_adapter()
+        if adapter is None:
+            return chunks
+
+        seen_ids = {c.chunk.chunk_id for c in chunks if c.chunk.chunk_id}
+        seeds = [
+            c.chunk.chunk_id
+            for c in chunks[: self._graph_seed_limit]
+            if c.chunk.chunk_id
+        ]
+        added: list[ScoredChunk] = []
+        for seed_id in seeds:
+            if len(added) >= self._graph_neighbor_limit:
+                break
+            try:
+                neighbors = await adapter.query_neighbors(seed_id, max_depth=1)
+            except Exception as exc:
+                logger.warning(
+                    "graph_expand_failed",
+                    seed=seed_id,
+                    error=str(exc),
+                    error_type=type(exc).__name__,
+                )
+                break
+            for nb in neighbors:
+                if len(added) >= self._graph_neighbor_limit:
+                    break
+                if not nb.chunk_id or nb.chunk_id in seen_ids:
+                    continue
+                seen_ids.add(nb.chunk_id)
+                added.append(
+                    ScoredChunk(
+                        chunk=nb,
+                        score=0.0,
+                        rerank_score=None,
+                        retrieval_source=RetrievalMethod.GRAPH,
+                    )
+                )
+        if added:
+            logger.info(
+                "graph_neighbors_appended",
+                seeds=len(seeds),
+                added=len(added),
+            )
+        return chunks + added
 
     # ------------------------------------------------------------------
     # Legs

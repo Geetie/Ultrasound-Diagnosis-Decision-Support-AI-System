@@ -281,6 +281,37 @@ class KnowledgeIndexBuilderImpl(KnowledgeIndexBuilder):
         )
         self._default_strategy = strategy
 
+    @staticmethod
+    def _attach_relations(
+        raw_chunks: list[KnowledgeChunk], enriched: list[KnowledgeChunk]
+    ) -> None:
+        """为同文档相邻块写 relations 边（graph_query.py 的边契约）。
+
+        - 只写新建（enriched）块的元数据：resume 跳过的块不动其已入库元数据；
+        - 边指向按 chunk_index 排序后的前后邻居，与 chunker 的单调重编号一致；
+        - 用 setdefault 不覆盖上游已给的 relations。
+        """
+        if len(raw_chunks) < 2:
+            return
+        ordered = sorted(
+            raw_chunks, key=lambda c: c.metadata.get("chunk_index", 0)
+        )
+        ids = [c.chunk_id for c in ordered]
+        pos = {cid: i for i, cid in enumerate(ids)}
+        for c in enriched:
+            i = pos.get(c.chunk_id)
+            if i is None:
+                continue
+            relations: list[dict[str, str]] = []
+            if i + 1 < len(ids):
+                relations.append({"target": ids[i + 1], "relation": "next_section"})
+            if i > 0:
+                relations.append({"target": ids[i - 1], "relation": "prev_section"})
+            if relations:
+                meta = dict(c.metadata)
+                meta.setdefault("relations", relations)
+                c.metadata = meta
+
     async def _assert_embedding_available(self) -> None:
         """建库前对 embedding 服务做一次**真实探活**，不可用即失败。
 
@@ -387,6 +418,10 @@ class KnowledgeIndexBuilderImpl(KnowledgeIndexBuilder):
                     merged_meta = {**c.metadata, **meta}
                     c.metadata = merged_meta
                     enriched.append(c)
+
+                # 图谱边投影（graph_query.py 契约）：同文档相邻块互指
+                # （next_section/prev_section），供 RAG depth-1 上下文扩展。
+                self._attach_relations(raw_chunks, enriched)
 
                 if not enriched:
                     continue

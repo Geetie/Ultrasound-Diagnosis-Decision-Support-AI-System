@@ -299,9 +299,10 @@ class Settings(BaseSettings):
     rag_p99_critical_threshold_ms: float = 100.0
 
     # Knowledge Graph 图谱查询开关（app/knowledge/graph_query.py）。
-    # 一期 graph_query 为 STUB，默认关闭；调用方须先检查本开关，
-    # 关闭时自行 fallback 到非图谱路径。二期 Neo4j / PGVector 递归
-    # CTE 就绪后置 True 即可启用，无需改业务代码。
+    # 图谱查询开关（P2-KB-08）：查询实现（PGVector 递归 CTE）已落地，
+    # 边数据由 builder 写入 metadata.relations（存量库用
+    # scripts/kb_backfill_relations.py 回填）。默认关闭；置 True 后
+    # 检索器自动追加 depth-1 图谱邻居（retrieval_source=graph）。
     graph_query_enabled: bool = False
     rag_rrf_k: int = 60
 

@@ -76,11 +76,14 @@ class RetrievalMethod(str, Enum):
     - SPARSE: BM25 over knowledge_chunks.content.
     - HYBRID: Reciprocal Rank Fusion (RRF) of dense + sparse.
     - BM25_FALLBACK: BM25-only retrieval triggered when primary methods underperform.
+    - GRAPH: Knowledge-graph neighbor expansion (PgVectorGraphAdapter) appended
+      after fused top-k; only active when settings.graph_query_enabled is True.
     """
     DENSE = "dense"
     SPARSE = "sparse"
     HYBRID = "hybrid"
     BM25_FALLBACK = "bm25_fallback"
+    GRAPH = "graph"
 
 
 class RetrievalRequest(BaseModel):

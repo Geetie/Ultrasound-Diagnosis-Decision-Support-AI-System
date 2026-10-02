@@ -1,29 +1,22 @@
 """GraphQueryAdapter Protocol — 知识图谱查询抽象层。
 
-P2-KB-08 STATUS: 一期 STUB（接入条件明确化）
+P2-KB-08 STATUS: 查询实现已落地（PGVector 递归 CTE，无需 Neo4j/AGE），
+默认由 settings.graph_query_enabled 门控（默认 False）。
 
-一期现状 (2026-06-30):
-- 定义 GraphQueryAdapter Protocol 接口
-- 提供默认实现 PgVectorGraphAdapter，但三个方法 (query_neighbors /
-  traverse_path / check_contradictions) 均返回空列表
-- 空调用会记录 WARNING 日志，便于生产环境捕获误调用
+现状 (2026-10-02):
+- GraphQueryAdapter Protocol + PgVectorGraphAdapter 完整实现
+  （query_neighbors / traverse_path / check_contradictions，含环检测与
+  脏数据护栏，失败一律降级为空结果）
+- 边数据契约：knowledge_chunks.metadata.relations 数组
+  （``[{"target": "<chunk_id>", "relation": "..."}]``），由 KB 构建侧
+  （builder._attach_relations，next_section/prev_section）写入；
+  存量库用 scripts/kb_backfill_relations.py 回填
+- 消费方：RAG 检索器 RRF top-k 后追加 depth-1 邻居
+  （Retriever._expand_graph_neighbors，retrieval_source=GRAPH）
 
-接入条件 (满足任一即实现完整功能):
-  1. settings.graph_query_enabled = True  ← 在 app/config/settings.py 中
-     暴露的开关（默认 False）
-  2. 二期 Neo4j 部署完成 → 用 Cypher 实现路径遍历
-  3. PGVector 递归 CTE 实现就绪（alembic migration 0010+）
-     → 用递归 CTE 实现 query_neighbors + check_contradictions
-
-设计规格:
-- 一期仅定义接口 + 占位实现，业务层通过 GraphQueryAdapter Protocol 抽象
-  不受影响
-- 二期切换 Neo4j Cypher 或 PGVector 递归 CTE 都不需要改业务代码
-
-调用方应在注入时检查 settings.graph_query_enabled：
-    if settings.graph_query_enabled:
-        contradictions = await graph_adapter.check_contradictions(chunk_ids)
-    # else: 业务层应假设 graph_query 不可用，自行 fallback
+开关（app/config/settings.py）:
+  graph_query_enabled = True 即启用；关闭时 adapter 返回空表、
+  检索器不扩展，业务层行为与非图谱路径完全一致。
 """
 from __future__ import annotations
 
