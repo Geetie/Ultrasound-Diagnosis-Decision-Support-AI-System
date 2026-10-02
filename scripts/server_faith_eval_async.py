@@ -154,7 +154,11 @@ async def main():
         print(f"FATAL: {JUDGE_MODEL} not found on {JUDGE_URL}.", flush=True)
         raise SystemExit(2)
 
-    raw = json.loads(Path("/mnt/ee16/home/student03/uai/src/data/golden/kb_qa_golden_v1.json").read_text(encoding="utf-8"))
+    golden_path = os.environ.get(
+        "GOLDEN_PATH",
+        "/mnt/ee16/home/student03/uai/src/data/golden/kb_qa_golden_v1.json",
+    )
+    raw = json.loads(Path(golden_path).read_text(encoding="utf-8"))
     corpus = raw["corpus"]
     queries = raw["queries"][:N]
     corpus_texts = [c["text"] for c in corpus]
@@ -184,7 +188,7 @@ async def main():
     if scored and len(failed) / len(results) > 0.3:
         print(f"FATAL: failure rate {len(failed)}/{len(results)} > 30%, see errors above", flush=True)
         raise SystemExit(1)
-    report = {"sample": N, "scored": len(scored), "failed": len(failed),
+    report = {"sample": N, "golden": golden_path, "scored": len(scored), "failed": len(failed),
         "methodology": "RAGAS faithfulness (official prompts) + asyncio concurrent",
         "mean_faithfulness": sum(scores) / len(scores) if scores else None,
         "mean_faithfulness_lenient": (

@@ -132,6 +132,10 @@ PYTHONPATH=$HOME/uai/src ~/uai/venv/bin/python scripts/server_populate_vector_in
 | open_clip 训练 | 官方 main 参数：`--csv-separator ","`（默认 TSV 的坑）、`--csv-img-key/--csv-caption-key`、`--val-data`（非 valid-data）、`--report-to tensorboard`、`--resume latest`+`--save-most-recent` 续训、`--lock-text`；CSV 必须 pandas 生成（手写引号转义会破列）；**训练慢先查 CPU 解码**（Data t/step 高=加 workers，GPU 不一定是瓶颈）；open_clip_train 需 repo 版 open_clip（pip 3.3.0 无 create_task），覆盖 site-packages 时先 mv 备份 |
 | Qwen3-8B 部署/评测 | 默认思考模式输出 `<think>` 污染 JSON——请求级 `chat_template_kwargs:{"enable_thinking":false}` 关闭；思考判官实测不提升反略降（66.6% vs 69.0%）；A/B 评测口径三查：判官 max_tokens 截断（幸存者偏差）、答案长度偏倚、服务配额差异污染速度结论（单发串行才能测真实速度） |
 | /tmp 探针累积 116 个 | 每轮只删本轮脚本不够——**历次会话探针持续累积**；收尾时 `ls /tmp/_*.py /tmp/_*.sh | wc -l` 全量清点一次清空（正式脚本都在 ~/uai/src/scripts/，/tmp 的 _ 前缀文件全可删） |
+| FRDR 数据集下载 | `/repo/files/<path>` 跟随 302 到 data.globus.org 匿名直下；目录**无 index**，清单走 `/repo/userfiles` API（GET 五参：item_id/collection_id/endpoint_id/path/limit/offset）；文件清单以 **frdr-dfdr-checksums.txt 为权威**（README 数字会虚标——CACTUS 发布版实际缺 PSAV 5,832 张）；frdr.usask.ca 旧域名已死，用 frdr-dfdr.ca |
+| Windows 端内联命令 | PowerShell 里 ssh 内联 `python -c` 多行/复杂引号必炸——**一律本地写脚本 → scp → bash 执行**（fish 铁律的 Windows 端变体）；`head` 等 Unix 命令 PowerShell 没有，用 `Select-Object` |
+| CACTUS/T2b 资产 | ~/uai/data/cactus（29,963 张 5 视图 + 分级 CSV）、~/uai/data/t2b_cactus/{train,val,test}.csv（分层 21k/4.5k/4.5k）；训练 `scripts/t2b_cactus_run.sh` 一键（停双 vLLM→训练→串行恢复），需服务窗口批准 |
+| KB v1.3.0 | 生产切换完成（thyroid 601/liver 313/cardiac 343 = 1257 chunks）；RAGAS golden 口径语料路线**已饱和**（+83 指南文档 A/B 实测 -1.7pp 噪声内偏负），提升空间在生产 T2c 口径与 query-context 对齐 |
 
 ## 压测结论（2026-10-01）
 
