@@ -139,10 +139,11 @@ PYTHONPATH=$HOME/uai/src ~/uai/venv/bin/python scripts/server_populate_vector_in
 | open_clip 本地权重加载 | `create_model_and_transforms("local-dir:" + 路径)`（与 8003/t2a 同款）；**路径直传 model name 会报 not found in built-ins**；open_clip_train CLI 需 repo 版库，脚本层用官方 API 即可 |
 | T2b 战果 | CACTUS 切面头训练完成：test Top-1 **0.9793**（门 ≥0.75 通过；基线 0.921，体模数据偏高属预期）；质量 MAE 0.773/R² 0.765；资产 reports/t2b_cactus.{pt,json}；训练 3 epochs×150s，bs 256 显存 ~21GB（嵌入常驻下可共存，无需停嵌入） |
 | Cornerstone3D 迁移终态 | **完成且构建通过**（npm run build ✓）：@cornerstonejs/* 5.11.3 全替换旧 4 包；两处尾巴已修——dicomStore 的 window.cornerstone 全局引用（CS3D 不挂全局，tsc 必炸）与适配器 setViewport 静默丢 scale/translation/invert（与 getViewport 读口不对称） |
-| Gate 0A-Tech-P0 重测 | 780 例正式 FAILED（一致率 19.1% vs ≥95%）：异构双引擎（llama.cpp Q4_K_M vs vLLM bf16）原始输出一致率口径**不可达**，属门控口径与架构假设冲突，待项目方修订口径；重测姿势：`server_build_eval_cases.py`（780 例）+ `consistency_verify.py --use-chat --guided-json` |
+| Gate 0A-Tech-P0 重测 | 780 例两轮口径：**guided-json 口径作废**（引擎 A 恒定输出伪影——guided 模式不追加任务指令，1.5B Q4 按语法槽位填最常见枚举；手工三问证模型正常）；**structured-output 正式口径 70.13%**（常规+高风险层 75.59%）vs ≥95% 门控 FAILED——异构精度（Q4_K_M vs bf16）跨栈一致率不可达 95%，幻觉率差 2.95% 接近达标；待项目方口径决策 |
 | llama.cpp b11272 | CUDA 构建但需 **CUDA 13 运行时**（libcudart.so.13/libcublas.so.13），系统只有 CUDA 12.4 → GPU offload 静默失败回退 CPU（日志无 CUDA 行 + GPU 不涨即中招）；vLLM venv 的 `nvidia/cu13/lib/` 有 .so.13 但驱动为 12.4 代仍 "no CUDA-capable device"——**该构建在本机只能 CPU**；kill 主 vLLM 必须连 `VLLM::EngineCore` 一起杀（api_server 死后 EngineCore 存活继续占显存） |
 | P99 压测定容 | `server_p99_capacity.py`：conc 5→20 P99 = 0.73→0.79s 近乎平坦、26.7rps、零错误——记分牌 #6 PASS 余量 10 倍；vLLM continuous batching 下尾延迟不随并发恶化 |
-| 降级注入拓扑 | 我们的中间件是 docker 容器 `uai-redis`(16379)/`uai-postgres`(15432)——**6379 上的 redis-server 是共享服务器上别人的，绝不能动**；SG 独立 uvicorn(9001)；真机注入已验证：Redis 停机→PG 降级 1/1 ✅、SG 停机→拒绝输出 ✅、组合 4s 快拒 ✅；融合层在主进程内无法真机注入（CI 覆盖）；SG 自检 fusion_layer connection_refused 是观察项非故障 |
+| 降级注入拓扑 | 我们的中间件是 docker 容器 `uai-redis`(16379)/`uai-postgres`(15432)——**6379 上的 redis-server 是共享服务器上别人的，绝不能动**；SG 独立 uvicorn(9001)；真机注入已验证：Redis 停机→PG 降级 1/1 ✅、SG 停机→拒绝输出 ✅、组合 4s 快拒 ✅；融合层在主进程内无法真机注入（CI 覆盖） |
+| SG fusion 误报根因 | `sg_config env_file=".env"` 按 CWD 读 `src/.env`——`FUSION_LAYER_PORT=18000` 只在 `~/uai/.env`，SG 用默认 8000 探测必拒 → 已补 src/.env 修复（fusion healthy 8.33ms）；残留 overall degraded 由 oom_protection warning 驱动（-1000 需 root/compose），bare 进程环境产物非缺陷 |
 
 ## 压测结论（2026-10-01）
 
