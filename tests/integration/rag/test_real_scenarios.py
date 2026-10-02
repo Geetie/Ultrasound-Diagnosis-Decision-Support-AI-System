@@ -23,7 +23,6 @@ from __future__ import annotations
 
 import asyncio
 import os
-from typing import List, Tuple
 
 import pytest
 
@@ -78,10 +77,8 @@ def rag_service():
     Imports are inside the fixture so we don't pay the import cost when
     the module is skipped.
     """
-    from app.embedding.qdrant_client import QdrantVectorIndex
     from app.embedding.bge_m3 import BgeM3MedicalService
-    from app.embedding.bus_client import BgeRerankerClient  # type: ignore
-    from app.knowledge.hybrid_indexer import PGVectorHybridIndexer
+    from app.embedding.qdrant_client import QdrantVectorIndex
     from app.knowledge.udt_parser import UDTParser
     from app.knowledge.vocabulary import UDAFVocabulary
     from app.rag.bm25_fallback import BM25Fallback, BM25Index
@@ -190,10 +187,10 @@ async def test_rerank_uses_original_query_not_enhanced(rag_service) -> None:
     instead of query_for_retrieval. This regression test pins that
     behavior in the real environment.
     """
-    from app.rag.protocols import RetrievalRequest, ScoredChunk, RetrievalMethod
-    from unittest.mock import AsyncMock
 
-    captured: List[str] = []
+    from app.rag.protocols import RetrievalRequest
+
+    captured: list[str] = []
 
     original_rerank = rag_service._reranker.rerank
 
@@ -223,10 +220,9 @@ async def test_rerank_uses_original_query_not_enhanced(rag_service) -> None:
 async def test_kb_builder_applies_desensitization(tmp_path) -> None:
     """case_reports subdir PII must be redacted in the indexed chunks."""
     import json
+
     from app.config.database import AsyncSessionLocal
-    from app.embedding.protocols import (
-        EmbeddingResponse, TextEmbeddingRequest, EmbeddingService
-    )
+    from app.embedding.protocols import EmbeddingResponse, TextEmbeddingRequest
     from app.knowledge.builder import KnowledgeIndexBuilderImpl
     from app.knowledge.protocols import IndexBuildRequest
 
@@ -278,6 +274,7 @@ async def test_kb_builder_applies_desensitization(tmp_path) -> None:
 
     # Verify the chunk stored in the DB no longer contains the raw PII.
     from sqlalchemy import select
+
     from app.models.database import KnowledgeChunkModel
 
     async with AsyncSessionLocal() as session:

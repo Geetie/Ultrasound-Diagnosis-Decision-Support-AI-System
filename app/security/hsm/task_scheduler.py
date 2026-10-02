@@ -5,7 +5,7 @@
 """
 
 import threading
-from typing import Callable, Optional, List
+from collections.abc import Callable
 
 import structlog
 
@@ -27,7 +27,7 @@ class TaskScheduler:
     """
 
     def __init__(self) -> None:
-        self._timers: List[threading.Timer] = []
+        self._timers: list[threading.Timer] = []
         self._lock = threading.Lock()
 
     def schedule_periodic_task(

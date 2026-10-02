@@ -5,8 +5,8 @@
 """
 
 import os
-from typing import Dict, Any, Optional
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
+from typing import Any
 
 import structlog
 
@@ -31,9 +31,9 @@ class SoftHSMManager:
     SOFT_HSM_EXPIRY_DAYS = 90
     SOFT_HSM_CRITICAL_DAYS = 120
 
-    def __init__(self, task_scheduler: Optional[TaskScheduler] = None) -> None:
+    def __init__(self, task_scheduler: TaskScheduler | None = None) -> None:
         self._use_soft_hsm: bool = os.environ.get("USE_SOFT_HSM", "false").lower() == "true"
-        self._soft_hsm_enabled_at: Optional[datetime] = None
+        self._soft_hsm_enabled_at: datetime | None = None
         self._task_scheduler = task_scheduler
 
         self._load_timestamp()
@@ -47,7 +47,7 @@ class SoftHSMManager:
         return self._use_soft_hsm
 
     @property
-    def enabled_at(self) -> Optional[datetime]:
+    def enabled_at(self) -> datetime | None:
         """SoftHSM 启用时间。"""
         return self._soft_hsm_enabled_at
 
@@ -77,7 +77,7 @@ class SoftHSMManager:
             task_name="soft_hsm_expiry_check",
         )
 
-    def get_status(self) -> Dict[str, Any]:
+    def get_status(self) -> dict[str, Any]:
         """获取 SoftHSM 状态信息。
 
         Returns:
@@ -167,7 +167,7 @@ class SoftHSMManager:
         timestamp_path = os.environ.get("SOFT_HSM_TIMESTAMP_PATH", "soft_hsm_enabled_at.txt")
         if os.path.exists(timestamp_path):
             try:
-                with open(timestamp_path, "r") as f:
+                with open(timestamp_path) as f:
                     timestamp_str = f.read().strip()
                     self._soft_hsm_enabled_at = datetime.fromisoformat(timestamp_str)
                     logger.info("soft_hsm_timestamp_loaded", enabled_at=self._soft_hsm_enabled_at)

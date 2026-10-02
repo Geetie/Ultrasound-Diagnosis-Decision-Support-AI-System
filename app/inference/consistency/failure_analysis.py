@@ -1,14 +1,15 @@
-from typing import Any, Dict, List, Set, Tuple
+from typing import Any
 
 from app.inference.verification_config import get_verification_config
+
 from .report import ConsistencyPair, ConsistencyReport
-from .statistics import text_similarity, _smart_truncate
+from .statistics import _smart_truncate, text_similarity
 
 
 def generate_failure_analysis(
     report: ConsistencyReport,
-    pairs: List[ConsistencyPair],
-) -> Dict[str, Any]:
+    pairs: list[ConsistencyPair],
+) -> dict[str, Any]:
     analysis = {
         "summary": {
             "total_failures": len(set(
@@ -29,10 +30,10 @@ def generate_failure_analysis(
         "trace_chain": [],
     }
 
-    inconsistent_ids: Set[str] = {c.get("case_id", "") for c in report.inconsistent_cases}
-    boundary_ids: Set[str] = {c.get("case_id", "") for c in report.boundary_cases}
+    inconsistent_ids: set[str] = {c.get("case_id", "") for c in report.inconsistent_cases}
+    boundary_ids: set[str] = {c.get("case_id", "") for c in report.boundary_cases}
 
-    seen_case_ids: Set[str] = set()
+    seen_case_ids: set[str] = set()
     for case in report.inconsistent_cases + report.boundary_cases:
         case_id = case.get("case_id", "")
         if case_id in seen_case_ids:
@@ -81,7 +82,7 @@ def generate_failure_analysis(
                 trace["steps"].append({
                     "stage": "grading_extraction",
                     "rule": "extract_grading_failed",
-                    "detail": f"engine_a output contains no recognizable grading",
+                    "detail": "engine_a output contains no recognizable grading",
                     "severity": "high",
                 })
                 analysis["summary"]["extraction_failures"] += 1
@@ -89,7 +90,7 @@ def generate_failure_analysis(
                 trace["steps"].append({
                     "stage": "grading_extraction",
                     "rule": "extract_grading_failed",
-                    "detail": f"engine_b output contains no recognizable grading",
+                    "detail": "engine_b output contains no recognizable grading",
                     "severity": "high",
                 })
                 analysis["summary"]["extraction_failures"] += 1
@@ -140,7 +141,7 @@ def generate_failure_analysis(
                 trace["steps"].append({
                     "stage": "text_consistency_check",
                     "rule": "text_inconsistency",
-                    "detail": f"grading consistent but text similarity low",
+                    "detail": "grading consistent but text similarity low",
                     "severity": "low",
                 })
                 analysis["summary"]["text_failures"] += 1
@@ -153,7 +154,7 @@ def generate_failure_analysis(
     total_fn = (a_fs.false_negatives if a_fs else 0) + (b_fs.false_negatives if b_fs else 0)
     total_tp = (a_fs.true_positives if a_fs else 0) + (b_fs.true_positives if b_fs else 0)
     fp_fn_diff = total_fp - total_fn
-    _ranked: List[Tuple[int, str]] = []
+    _ranked: list[tuple[int, str]] = []
     if report.critical_boundary_diff_count > 0:
         _ranked.append((0, f"存在{report.critical_boundary_diff_count}例关键边界跨越(如4↔5)，需紧急审查模型对边界病例的分级准确性"))
     if report.clinical_boundary_diff_rate > get_verification_config().consistency_thresholds.clinical_boundary_diff_rate:
@@ -198,7 +199,7 @@ def generate_failure_analysis(
     return analysis
 
 
-def suggest_for_trace(steps: List[Dict[str, Any]], pair: ConsistencyPair) -> str:
+def suggest_for_trace(steps: list[dict[str, Any]], pair: ConsistencyPair) -> str:
     rules = [s["rule"] for s in steps]
     grading_a = pair.engine_a_result.grading if pair.engine_a_result else None
     grading_b = pair.engine_b_result.grading if pair.engine_b_result else None

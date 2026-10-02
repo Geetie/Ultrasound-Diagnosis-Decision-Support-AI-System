@@ -1,22 +1,32 @@
 import asyncio
 import shutil
 import time
-import structlog
-from typing import Optional, Sequence
+from collections.abc import Sequence
+from datetime import timedelta
 
+import structlog
+
+from app.config.dsn import redact_url
 from app.observability.constants import DiskAlertThresholds, EdgeGPUConstants
 from app.observability.metrics_collector import get_metrics_collector
 
 _logger = structlog.get_logger("app.observability.infra_health")
 
 # 巡检循环的停止信号（在运行中的事件循环内创建，避免导入期绑定循环）
-_infra_shutdown_event: Optional[asyncio.Event] = None
+_infra_shutdown_event: asyncio.Event | None = None
 
 # 边缘 GPU 连续过热起始时间戳（None 表示当前未过热）
-_edge_gpu_overheat_since: Optional[float] = None
+_edge_gpu_overheat_since: float | None = None
 
 
-async def check_redis_health(redis_url: str = "redis://localhost:6379") -> bool:
+async def check_redis_health(redis_url: str | None = None) -> bool:
+    # 默认值必须取自 settings：原实现写死 "redis://localhost:6379"，真机上探测的是
+    # 错误地址（我们的 Redis 在 127.0.0.1:16379 + requirepass），健康检查因此
+    # 永远 unhealthy 并刷错误日志（2026-09-28 现场部署暴露）。
+    if redis_url is None:
+        from app.config.settings import settings as _settings
+
+        redis_url = _settings.redis_url
     try:
         import redis.asyncio as aioredis
 
@@ -26,10 +36,14 @@ async def check_redis_health(redis_url: str = "redis://localhost:6379") -> bool:
         collector = get_metrics_collector()
         collector.set_redis_process_alive(alive)
         if not alive:
-            _logger.warning("redis_health_check_failed", redis_url=redis_url)
+            # 打 URL 前必须脱敏：redis_url 里带 requirepass 口令，
+            # 原实现会把明文口令写进共享机上的日志文件。
+            _logger.warning("redis_health_check_failed", redis_url=redact_url(redis_url))
         return alive
     except Exception as e:
-        _logger.error("redis_health_check_error", error=str(e), redis_url=redis_url)
+        _logger.error(
+            "redis_health_check_error", error=str(e), redis_url=redact_url(redis_url)
+        )
         try:
             collector = get_metrics_collector()
             collector.set_redis_process_alive(False)
@@ -39,9 +53,22 @@ async def check_redis_health(redis_url: str = "redis://localhost:6379") -> bool:
 
 
 async def check_pg_health(
-    dsn: str = "postgresql://localhost:5432/ultrasound",
+    dsn: str | None = None,
     slow_query_threshold_seconds: float = 300.0,
 ) -> dict:
+    # 默认值必须取自 settings 且**归一为 asyncpg 形式**：原实现写死
+    # `postgresql://localhost:5432/ultrasound`，真机上巡检的是不存在的库；
+    # 而 settings.database_url 带 `+asyncpg` 后缀，裸驱动又不认（见 app/config/dsn.py）。
+    if dsn is None:
+        from app.config.dsn import to_asyncpg_dsn
+        from app.config.settings import settings as _settings
+
+        dsn = to_asyncpg_dsn(_settings.database_url)
+    else:
+        from app.config.dsn import to_asyncpg_dsn
+
+        dsn = to_asyncpg_dsn(dsn)
+
     result = {"pool_utilization": 0.0, "slow_queries_detected": False}
     pool = None
     try:
@@ -57,7 +84,12 @@ async def check_pg_health(
             slow_count = await conn.fetchval(
                 "SELECT count(*) FROM pg_stat_activity "
                 "WHERE state = 'active' AND now() - query_start > $1::interval",
-                f"{slow_query_threshold_seconds} seconds",
+                # asyncpg 的 `interval` 参数要的是 `datetime.timedelta`，**不是字符串**：
+                # 原实现传 f"{n} seconds" 会抛
+                #   TypeError: invalid input for query argument $1:
+                #              '300.0 seconds' ('str' object has no attribute 'days')
+                # 真机上这条报错一直被"巡检连不上库"的噪声掩盖着，直到库连通才显形。
+                timedelta(seconds=slow_query_threshold_seconds),
             )
             if slow_count and slow_count >= 3:
                 result["slow_queries_detected"] = True
@@ -172,8 +204,8 @@ async def stop_infra_health_checks() -> None:
 
 
 async def run_infra_health_checks(
-    redis_url: str = "redis://localhost:6379",
-    pg_dsn: str = "postgresql://localhost:5432/ultrasound",
+    redis_url: str | None = None,
+    pg_dsn: str | None = None,
     interval_seconds: float = 30.0,
     disk_paths: Sequence[str] = ("/",),
 ) -> None:
@@ -183,9 +215,23 @@ async def run_infra_health_checks(
     ``asyncio.wait_for`` 包住事件等待，保证停止信号能被及时响应
     （原先的 ``asyncio.sleep`` 只能等满整个间隔）。
 
+    两个连接串默认取自 settings：原实现把 ``redis://localhost:6379`` /
+    ``postgresql://localhost:5432/ultrasound`` 写死在签名里，而 lifespan 是无参调用
+    —— 真机上巡检**一直在探测两个不存在的服务**，日志被健康检查错误刷满
+    （2026-09-28 现场部署暴露）。
+
     边缘端 GPU 温度由边缘设备上报后调用
     :func:`check_edge_gpu_temperature`，不在服务端巡检循环内采集。
     """
+    if redis_url is None or pg_dsn is None:
+        from app.config.dsn import to_asyncpg_dsn
+        from app.config.settings import settings as _settings
+
+        if redis_url is None:
+            redis_url = _settings.redis_url
+        if pg_dsn is None:
+            pg_dsn = to_asyncpg_dsn(_settings.database_url)
+
     global _infra_shutdown_event
     if _infra_shutdown_event is None:
         _infra_shutdown_event = asyncio.Event()

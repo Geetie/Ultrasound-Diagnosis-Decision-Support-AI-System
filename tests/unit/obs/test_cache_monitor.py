@@ -1,5 +1,6 @@
 import pytest
-from app.observability.cache_monitor import CacheMonitor, CacheEventType
+
+from app.observability.cache_monitor import CacheEventType, CacheMonitor
 
 
 @pytest.fixture(autouse=True)

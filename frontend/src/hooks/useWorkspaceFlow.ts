@@ -34,6 +34,14 @@ export interface WorkspaceFlow {
   /** 「已人工核验」勾选，对应 reviewAcknowledged。 */
   acknowledged: boolean;
   setAcknowledged: (v: boolean) => void;
+  /**
+   * 接管**已有** request_id：只轮询取结果，不再新发一次判读。
+   *
+   * 为什么需要：语音控件（AppLayout）在拿到 request_id 后跳 `/?request_id=…`，
+   * 那个请求已经发出并落库了 —— 若此时走 start() 会重复提交一次判读。
+   * 幂等键留空由后端去重也救不了：这里根本不该再发请求。
+   */
+  resume: (requestId: string, tier?: 'realtime' | 'standard' | 'full') => void;
 }
 
 const P99_MS = 4800; // 14-文档 P99 基线；超时才提示，不常驻倒计时
@@ -106,12 +114,39 @@ export function useWorkspaceFlow(): WorkspaceFlow {
     setAcknowledged(true);
   }, [phase]);
 
+  /** 接管已有 request_id —— 只轮询，不重新提交判读。 */
+  const resume = useCallback<WorkspaceFlow['resume']>((requestId, tier) => {
+    if (!requestId) return;
+    setPhase('analyzing');
+    setError(null);
+    setResult(null);
+    setAcknowledged(false);
+    setOvertimeNote(null);
+    startedAt.current = Date.now();
+
+    cancelPoll.current?.cancel();
+    cancelPoll.current = pollDiagnosisResult(
+      requestId,
+      (r) => {
+        setResult(r);
+        setPhase('concluded');
+        const spent = (Date.now() - startedAt.current) / 1000;
+        if (spent * 1000 > P99_MS) {
+          setOvertimeNote(`本次耗时 ${spent.toFixed(1)}s，已超基线 4.8s`);
+        }
+      },
+      () => setPhase('timeout'),
+      { tier: tier ?? 'standard', onStage: () => undefined }
+    );
+  }, []);
+
   return {
     phase,
     overtimeNote,
     result,
     error,
     start,
+    resume,
     confirm,
     acknowledged,
     setAcknowledged,

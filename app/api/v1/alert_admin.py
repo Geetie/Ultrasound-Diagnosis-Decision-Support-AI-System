@@ -1,10 +1,12 @@
-from fastapi import APIRouter, HTTPException, Depends, Query
-from pydantic import BaseModel, Field
-from app.security.auth import get_current_active_user, RoleChecker
-from app.observability.alert_escalation import get_alert_escalation_manager
+from typing import Any, Literal
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
+
 from app.config.redis import RedisPool
 from app.config.redis_keys import RedisKey
-from typing import Any, Dict, List, Literal, Optional
+from app.observability.alert_escalation import get_alert_escalation_manager
+from app.security.auth import RoleChecker
 
 router = APIRouter(tags=["alert-admin"])
 
@@ -12,15 +14,15 @@ _admin_only = Depends(RoleChecker(["SYSTEM_ADMIN"]))
 
 
 @router.get("/contacts")
-async def get_alert_contacts(current_user: Dict[str, Any] = _admin_only):
+async def get_alert_contacts(current_user: dict[str, Any] = _admin_only):
     manager = get_alert_escalation_manager()
     return {"contacts": manager.get_contacts()}
 
 
 @router.put("/contacts")
 async def update_alert_contacts(
-    contacts: List[Dict[str, Any]],
-    current_user: Dict[str, Any] = _admin_only,
+    contacts: list[dict[str, Any]],
+    current_user: dict[str, Any] = _admin_only,
 ):
     import json
 
@@ -36,7 +38,7 @@ async def update_alert_contacts(
 
 
 @router.get("/active-alerts")
-async def get_active_alerts(current_user: Dict[str, Any] = _admin_only):
+async def get_active_alerts(current_user: dict[str, Any] = _admin_only):
     manager = get_alert_escalation_manager()
     return {"alerts": manager.get_active_alerts()}
 
@@ -46,7 +48,7 @@ async def run_cusum_calibration(
     target_rate: float = Query(0.005, gt=0, le=0.1, description="目标误判率(0-0.1)"),
     daily_cases: int = Query(50, gt=0, le=1000, description="日均病例数(1-1000)"),
     simulation_days: int = Query(30, gt=0, le=365, description="模拟天数(1-365)"),
-    current_user: Dict[str, Any] = _admin_only,
+    current_user: dict[str, Any] = _admin_only,
 ):
     from app.observability.cusum import CUSUMCalibrator
 
@@ -62,7 +64,7 @@ async def run_cusum_calibration(
 
 
 @router.get("/cusum/calibration-report")
-async def get_cusum_calibration_report(current_user: Dict[str, Any] = _admin_only):
+async def get_cusum_calibration_report(current_user: dict[str, Any] = _admin_only):
     from app.observability.cusum import CUSUMCalibrator
 
     report = CUSUMCalibrator.load_calibration_report()
@@ -79,15 +81,15 @@ class SGThresholdUpdateRequest(BaseModel):
     action=update 需 organ+threshold；action=delete 需 organ。
     """
     action: Literal["refresh", "update", "delete"]
-    organ: Optional[str] = None
-    threshold: Optional[float] = None
-    disease_type: Optional[str] = None
+    organ: str | None = None
+    threshold: float | None = None
+    disease_type: str | None = None
 
 
 @router.post("/sg-threshold")
 async def publish_sg_threshold_update(
     request: SGThresholdUpdateRequest,
-    current_user: Dict[str, Any] = _admin_only,
+    current_user: dict[str, Any] = _admin_only,
 ):
     """向 SafetyGateway 阈值更新流（sg:threshold:stream）投递更新消息。
 
@@ -104,7 +106,7 @@ async def publish_sg_threshold_update(
     if request.action == "delete" and not request.organ:
         raise HTTPException(status_code=422, detail="action=delete requires organ")
 
-    message: Dict[str, Any] = {"action": request.action}
+    message: dict[str, Any] = {"action": request.action}
     if request.organ:
         message["organ"] = request.organ
     if request.threshold is not None:
@@ -121,6 +123,6 @@ async def publish_sg_threshold_update(
             {"payload": json.dumps(message)},
         )
     except Exception as exc:
-        raise HTTPException(status_code=503, detail=f"Redis unavailable: {exc}")
+        raise HTTPException(status_code=503, detail=f"Redis unavailable: {exc}") from exc
 
     return {"status": "published", "stream": RedisKey.SG_THRESHOLD_STREAM, "message": message}

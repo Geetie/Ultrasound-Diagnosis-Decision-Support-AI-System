@@ -20,13 +20,36 @@
 from edge.config import EdgeConfigError, EdgeSettings
 from edge.device_auth import EdgeDeviceAuth
 from edge.device_manager import DeviceHealth, DeviceState, EdgeDeviceManager
-from edge.main import EdgeService, build_edge_service
 from edge.gpu_thermal import GPUThermalPolicy, ThermalDecision, ThermalLevel
+from edge.image_quality import (
+    ImageQualityAdapter,
+    create_image_quality_adapter,
+    set_image_quality_adapter,
+)
+from edge.main import EdgeService, build_edge_service
+from edge.measurement import (
+    PixelSpacing,
+    from_dicom_metadata,
+    measure_labels,
+    measurement_from_bbox,
+)
 from edge.nav_backend import NullNavBackend, TensorRTNavBackend, create_nav_backend
 from edge.navigation import NavigationInferenceService
 from edge.ota_client import OTAClient, OTAError, OTAProgress
 from edge.pipeline import EdgePipeline
-from edge.protocols import Frame, NavInferenceBackend, NavResult, NavLabel
+from edge.plane_assessment import (
+    PlaneAssessmentAdapter,
+    create_plane_assessment_adapter,
+    set_plane_assessment_adapter,
+)
+from edge.protocols import (
+    Frame,
+    ImageQuality,
+    NavInferenceBackend,
+    NavLabel,
+    NavResult,
+    PlaneAssessment,
+)
 from edge.safety import LocalSafetyChecker, LocalSafetyResult
 from edge.websocket_server import EdgeWebSocketClient
 
@@ -36,12 +59,14 @@ __all__ = [
     "EdgeConfigError",
     "EdgeDeviceAuth",
     "EdgeDeviceManager",
+    "EdgePipeline",
     "EdgeService",
     "EdgeSettings",
-    "EdgePipeline",
     "EdgeWebSocketClient",
     "Frame",
     "GPUThermalPolicy",
+    "ImageQuality",
+    "ImageQualityAdapter",
     "LocalSafetyChecker",
     "LocalSafetyResult",
     "NavInferenceBackend",
@@ -49,12 +74,22 @@ __all__ = [
     "NavResult",
     "NavigationInferenceService",
     "NullNavBackend",
+    "OTAClient",
     "OTAError",
     "OTAProgress",
-    "OTAClient",
+    "PixelSpacing",
+    "PlaneAssessment",
+    "PlaneAssessmentAdapter",
     "TensorRTNavBackend",
     "ThermalDecision",
     "ThermalLevel",
     "build_edge_service",
+    "create_image_quality_adapter",
     "create_nav_backend",
+    "create_plane_assessment_adapter",
+    "from_dicom_metadata",
+    "measure_labels",
+    "measurement_from_bbox",
+    "set_image_quality_adapter",
+    "set_plane_assessment_adapter",
 ]

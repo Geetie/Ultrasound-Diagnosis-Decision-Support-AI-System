@@ -1,7 +1,6 @@
 import time
-from enum import Enum
 from dataclasses import dataclass
-from typing import Optional
+from enum import Enum
 
 
 class StepStatus(Enum):
@@ -19,8 +18,8 @@ class StepRecord:
     test_name: str
     step_name: str
     status: StepStatus
-    detail: Optional[str] = None
-    duration_ms: Optional[float] = None
+    detail: str | None = None
+    duration_ms: float | None = None
 
 
 class StepTracker:

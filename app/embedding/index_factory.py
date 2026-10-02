@@ -17,7 +17,6 @@ Qdrant 或 PGVector 实现,支持 Qdrant 不可用时自动降级到 PGVector(�
 from __future__ import annotations
 
 import asyncio
-from typing import Any
 
 import structlog
 
@@ -141,7 +140,7 @@ async def _create_qdrant_with_fallback(
             )
             return await _create_pgvector(database_url)
         raise
-    except (asyncio.TimeoutError, Exception) as exc:  # noqa: BLE001
+    except (asyncio.TimeoutError, Exception) as exc:
         if not auto_fallback:
             raise VectorIndexError(
                 error_code=VectorIndexErrorCode.CONNECTION_FAILED,
@@ -235,7 +234,7 @@ async def ensure_entity_matching_collection(
             collection=settings.rag_entity_matching_collection,
             dimension=dimension,
         )
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         # Collection may already exist; that's fine.
         logger.debug(
             "entity_matching_collection_create_skipped",

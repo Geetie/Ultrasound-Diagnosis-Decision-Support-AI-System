@@ -1,7 +1,7 @@
 import asyncio
 import os
 from datetime import datetime, timezone
-from typing import Any, List, Optional
+from typing import Any
 
 import structlog
 
@@ -14,13 +14,13 @@ _logger = structlog.get_logger("app.observability.logging")
 class ElasticsearchLogStorage(LogStorageBackend):
     def __init__(
         self,
-        es_url: Optional[str] = None,
+        es_url: str | None = None,
         index_prefix: str = "ultrasound-logs",
     ):
         self.es_url = es_url or os.getenv("ELASTICSEARCH_URL", "http://localhost:9200")
         self.index_prefix = index_prefix
-        self._client: Optional[Any] = None
-        self._async_lock: Optional[asyncio.Lock] = None
+        self._client: Any | None = None
+        self._async_lock: asyncio.Lock | None = None
 
     async def _get_client(self):
         if self._client is None:
@@ -47,7 +47,7 @@ class ElasticsearchLogStorage(LogStorageBackend):
                           es_url=self.es_url,
                           index=index_name)
 
-    async def awrite_batch(self, records: List[LogRecord]) -> None:
+    async def awrite_batch(self, records: list[LogRecord]) -> None:
         if not records:
             return
 

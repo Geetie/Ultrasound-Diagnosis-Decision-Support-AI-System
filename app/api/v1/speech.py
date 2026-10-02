@@ -9,18 +9,16 @@
 """
 
 import base64
-import structlog
 
+import structlog
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from app.dependencies import get_speech_engine
 from app.speech.protocols import (
     SpeechEngine,
-    SpeechEngineInfo,
     SpeechError,
     SpeechRequest,
-    SpeechResponse,
 )
 
 router = APIRouter(tags=["speech"])
@@ -30,7 +28,7 @@ logger = structlog.get_logger()
 
 class SpeechRecognitionRequest(BaseModel):
     """语音识别请求模型。
-    
+
     Attributes:
         audio_data: Base64编码的音频数据（PCM格式，16kHz采样率）
         sample_rate: 采样率（默认16000Hz，仅支持16000）
@@ -53,7 +51,7 @@ class SpeechRecognitionRequest(BaseModel):
 
 class SpeechRecognitionResponse(BaseModel):
     """语音识别响应模型。
-    
+
     Attributes:
         text: 识别出的文本结果
         language: 语言标识
@@ -98,26 +96,26 @@ async def recognize_speech(
     engine: SpeechEngine = Depends(get_speech_engine),
 ) -> SpeechRecognitionResponse:
     """执行语音识别。
-    
+
     Args:
         request: 语音识别请求，包含Base64编码的音频数据
         engine: 语音引擎实例
-    
+
     Returns:
         SpeechRecognitionResponse: 识别结果
     """
     try:
         audio_bytes = base64.b64decode(request.audio_data)
-        
+
         speech_request = SpeechRequest(
             audio_data=audio_bytes,
             sample_rate=request.sample_rate,
             language=request.language,
             request_id=request.request_id,
         )
-        
+
         response = await engine.recognize(speech_request)
-        
+
         return SpeechRecognitionResponse(
             text=response.text,
             language=response.language,
@@ -126,7 +124,7 @@ async def recognize_speech(
             request_id=response.request_id,
             terminology_matches=response.terminology_matches,
         )
-    
+
     except base64.binascii.Error:
         raise HTTPException(
             status_code=400,
@@ -161,7 +159,7 @@ async def check_health(
             status="healthy" if is_ready else "unhealthy",
             engine_ready=is_ready,
         )
-    except Exception as e:
+    except Exception:
         return HealthResponse(
             status="error",
             engine_ready=False,
@@ -190,5 +188,5 @@ async def get_engine_info(
     except Exception as e:
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to get engine info: {str(e)}"
+            detail=f"Failed to get engine info: {e!s}"
         )

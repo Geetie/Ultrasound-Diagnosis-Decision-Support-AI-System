@@ -20,18 +20,19 @@ SG-FIX-002: 验证P99延迟基准 < 5ms
 - SG-FIX-R7-09: time.time() → time.perf_counter()
 """
 
-import time
 import gc
-import pytest
-from unittest.mock import AsyncMock, patch
+import time
+from unittest.mock import patch
 
-from safety_gateway.checker import get_safety_gateway_checker, CheckResultStatus
+import pytest
+
+from safety_gateway.checker import get_safety_gateway_checker
+from safety_gateway.consent_checker import ConsentCheckResult
+from safety_gateway.contraindication import get_contraindication_engine
 from safety_gateway.desensitization import sg_desensitization_engine
 from safety_gateway.threshold import get_threshold_engine
-from safety_gateway.contraindication import get_contraindication_engine
-from safety_gateway.health import HealthChecker
 from safety_gateway.validation_result import ConsentStatus
-from safety_gateway.consent_checker import ConsentCheckResult
+
 pytestmark = [pytest.mark.track_sg, pytest.mark.track_sec]
 
 
@@ -49,10 +50,10 @@ def compute_percentile(sorted_data: list[float], p: int) -> float:
 
 class TestSafetyGatewayPerformance:
     """SafetyGateway性能基准测试"""
-    
+
     def setup_method(self):
         self.checker = get_safety_gateway_checker()
-    
+
     @pytest.mark.asyncio
     async def test_full_check_p99_latency(self):
         """测试完整校验流程的P99延迟
@@ -92,7 +93,7 @@ class TestSafetyGatewayPerformance:
         p95 = compute_percentile(latencies, 95)
         p99 = compute_percentile(latencies, 99)
 
-        print(f"\n完整校验流程延迟统计:")
+        print("\n完整校验流程延迟统计:")
         print(f"  P50: {p50:.2f}ms")
         print(f"  P95: {p95:.2f}ms")
         print(f"  P99: {p99:.2f}ms")
@@ -102,80 +103,80 @@ class TestSafetyGatewayPerformance:
         assert p50 < 1.0, f"P50延迟{ p50:.2f}ms超过1ms阈值"
         assert p95 < 3.0, f"P95延迟{ p95:.2f}ms超过3ms阈值"
         assert p99 < 5.0, f"P99延迟{ p99:.2f}ms超过5ms阈值"
-    
+
     @pytest.mark.asyncio
     async def test_desensitization_performance(self):
         """测试脱敏引擎性能
-        
+
         验证标准：单次脱敏 < 1ms
         """
         test_text = "患者张三，身份证号110101199001011234，手机号13812345678"
-        
+
         latencies = []
         for _ in range(100):
             start = time.perf_counter()
             sg_desensitization_engine.desensitize(test_text)
             elapsed = (time.perf_counter() - start) * 1000
             latencies.append(elapsed)
-        
+
         p99 = compute_percentile(sorted(latencies), 99)
 
-        print(f"\n脱敏引擎延迟统计:")
+        print("\n脱敏引擎延迟统计:")
         print(f"  P99: {p99:.2f}ms")
-        
+
         assert p99 < 1.0, f"脱敏P99延迟{ p99:.2f}ms超过1ms阈值"
-    
+
     @pytest.mark.asyncio
     async def test_threshold_check_performance(self):
         """测试阈值校验性能
-        
+
         验证标准：单次阈值检查 < 0.5ms
         """
         threshold_engine = get_threshold_engine()
-        
+
         latencies = []
         for _ in range(100):
             start = time.perf_counter()
             await threshold_engine.check("thyroid", 0.95)
             elapsed = (time.perf_counter() - start) * 1000
             latencies.append(elapsed)
-        
+
         p99 = compute_percentile(sorted(latencies), 99)
 
-        print(f"\n阈值校验延迟统计:")
+        print("\n阈值校验延迟统计:")
         print(f"  P99: {p99:.2f}ms")
-        
+
         assert p99 < 0.5, f"阈值校验P99延迟{ p99:.2f}ms超过0.5ms阈值"
-    
+
     def test_contraindication_check_performance(self):
         """测试禁忌校验性能
-        
+
         验证标准：单次禁忌检查 < 0.5ms
         """
         contraindication_engine = get_contraindication_engine()
-        
+
         latencies = []
         for _ in range(100):
             start = time.perf_counter()
             contraindication_engine.check("thyroid", {})
             elapsed = (time.perf_counter() - start) * 1000
             latencies.append(elapsed)
-        
+
         p99 = compute_percentile(sorted(latencies), 99)
 
-        print(f"\n禁忌校验延迟统计:")
+        print("\n禁忌校验延迟统计:")
         print(f"  P99: {p99:.2f}ms")
-        
+
         assert p99 < 0.5, f"禁忌校验P99延迟{ p99:.2f}ms超过0.5ms阈值"
 
 
 class TestSafetyGatewayThroughput:
     """SafetyGateway吞吐量测试"""
-    
+
     @pytest.mark.asyncio
     async def test_concurrent_requests(self):
         """测试并发请求处理能力
-        
+
         验证标准：100并发请求下P99延迟 < 10ms
         """
         checker = get_safety_gateway_checker()
@@ -184,26 +185,26 @@ class TestSafetyGatewayThroughput:
             "diagnosis_data": {},
             "conclusions": [{"organ": "thyroid", "confidence": 0.95}],
         }
-        
+
         with patch.object(checker._consent_checker, 'check_consent_status',
                          return_value=ConsentCheckResult(status=ConsentStatus.GRANTED, timeout=False, error=False)):
             import asyncio
-            
+
             async def make_request(i):
                 start = time.perf_counter()
                 await checker.perform_full_check(f"P{i:03d}", test_data)
                 return (time.perf_counter() - start) * 1000
-            
+
             tasks = [make_request(i) for i in range(100)]
             latencies = await asyncio.gather(*tasks)
-        
+
         latencies.sort()
         p99 = compute_percentile(latencies, 99)
-        
-        print(f"\n并发请求延迟统计(100并发):")
+
+        print("\n并发请求延迟统计(100并发):")
         print(f"  P99: {p99:.2f}ms")
         print(f"  吞吐量: {100 / sum(latencies) * 1000:.1f} req/s")
-        
+
         assert p99 < 10.0, f"并发P99延迟{ p99:.2f}ms超过10ms阈值"
 
     @pytest.mark.asyncio
@@ -283,7 +284,7 @@ class TestHTTPEndToEndLatency:
 
         latencies.sort()
         p99 = compute_percentile(latencies, 99)
-        print(f"\nHTTP端到端延迟统计:")
+        print("\nHTTP端到端延迟统计:")
         print(f"  样本数: {len(latencies)}")
         print(f"  P99: {p99:.2f}ms")
         assert p99 < 5.0, f"HTTP端到端P99延迟{p99:.2f}ms超过5ms阈值"
@@ -338,7 +339,7 @@ class TestGate0ConsentQueryLatency:
         latencies.sort()
         p99 = compute_percentile(latencies, 99)
         p95 = compute_percentile(latencies, 95)
-        print(f"\nPG直查同意状态延迟统计:")
+        print("\nPG直查同意状态延迟统计:")
         print(f"  样本数: {len(latencies)}")
         print(f"  P95: {p95:.2f}ms")
         print(f"  P99: {p99:.2f}ms")

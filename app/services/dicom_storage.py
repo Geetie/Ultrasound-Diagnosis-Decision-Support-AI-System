@@ -2,12 +2,11 @@
 import os
 import re
 import shutil
-from io import BytesIO
-from pathlib import Path
-from typing import Optional, Tuple
 from datetime import datetime, timezone
-import structlog
+from io import BytesIO
+
 import aiofiles
+import structlog
 
 from app.config.settings import settings
 
@@ -48,7 +47,13 @@ _PHI_TAGS = [
 ]
 
 
-def strip_dicom_phi(content: bytes, patient_id: str) -> Tuple[bytes, bool]:
+def strip_dicom_phi(content: bytes, patient_id: str) -> tuple[bytes, bool]:
+    """DICOM PHI 去标识化。失败即抛错（fail-closed）——调用方拒绝存储。
+
+    P0-5（15 号计划）：原实现 except 分支 `return content, False` 会把
+    **未脱敏原文**继续落盘（fail-open），患者 PHI 直接入库，真机审计判定
+    为红线缺陷。
+    """
     stripped = False
     try:
         import pydicom
@@ -71,8 +76,10 @@ def strip_dicom_phi(content: bytes, patient_id: str) -> Tuple[bytes, bool]:
         ds.save_as(buf)
         return buf.getvalue(), stripped
     except Exception as e:
-        logger.warning("dicom_phi_strip_failed", error=str(e))
-        return content, False
+        logger.error("dicom_phi_strip_failed_fail_closed", error=str(e))
+        raise ValueError(
+            f"DICOM PHI 去标识化失败，拒绝存储（fail-closed）: {e}"
+        ) from e
 
 
 class DicomStorageService:
@@ -263,7 +270,7 @@ class DicomStorageService:
         date_prefix = datetime.now(timezone.utc).strftime("%Y%m%d")
         return f"{date_prefix}/{patient_id}/{session_id}/{sop_instance_uid}.dcm"
 
-    async def retrieve(self, storage_path: str) -> Optional[bytes]:
+    async def retrieve(self, storage_path: str) -> bytes | None:
         if self._backend == "local":
             if os.path.exists(storage_path):
                 async with aiofiles.open(storage_path, "rb") as f:
@@ -298,7 +305,7 @@ class DicomStorageService:
         return False
 
 
-_dicom_storage: Optional[DicomStorageService] = None
+_dicom_storage: DicomStorageService | None = None
 
 
 def get_dicom_storage() -> DicomStorageService:

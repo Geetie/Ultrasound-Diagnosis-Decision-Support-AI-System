@@ -39,7 +39,7 @@ class MemoryMonitor:
         except ImportError:
             pass
         try:
-            with open(f"/proc/{os.getpid()}/status", "r") as f:
+            with open(f"/proc/{os.getpid()}/status") as f:
                 for line in f:
                     if line.startswith("VmRSS:"):
                         return int(line.split()[1]) / 1024

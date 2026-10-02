@@ -1,0 +1,70 @@
+# progress.md — 当前状态（唯一「现在在哪」来源）
+
+**Last Updated**: 2026-10-02
+**HEAD**: `0eeb3cb`（分支 `feature/T-GA-INT-01-e2e-integration`）
+**Owner of truth**: 本文件只记「当前状态/下一步/阻塞」；**功能与门控状态在 `feature_list.json`**，长期证据在 `16-开发进展汇报-20260928.md` 附录 A。
+
+## Current Objective
+
+把项目从「评测与模型能力攻关」推进到**生产化收口**：通用技术轨道（检索/推理/融合/安全网关/降级/
+可观测）已达标；剩余为**门控口径待项目组决策项**、**外部数据依赖项**与**NMPA 交付物**。
+
+## Current State
+
+### What 已完成（有证据，详见 `feature_list.json` 与 16 号附录 A）
+
+- 检索：Gate 0 94.5% ✅ / Gate 1 98% ✅（混合检索 RRF 已调优到顶）。
+- 推理：官方 vLLM OpenAI server（780 例评测 3.25h→5min）；P99 定容 0.73~0.79s ✅。
+- 融合/管线：DB 会话治理 + Layer2/Layer3 并行 + 阶段延迟预算 → 端到端 9/9 completed（1.5~9s）。
+- 安全：SG 降级注入可注入场景全过（Redis 停→PG 降级；SG 停→E4005 拒绝输出）。
+- 模型资产：T2a 方案 C（AUC 0.8751 ✅）+ T2b 切面/质量头（Top-1 0.9793 ✅），二者均已生产端点（8003 `/v1/classify`、`/v1/analyze_view`）。
+- 知识：kb_v1.3.0（1257 chunks）生产切换；图谱查询 P2-KB-08 收口（默认门控关闭）。
+- 前端：Cornerstone3D 5.11.3 迁移完成，`npm run build` 通过。
+- 医学知识资产加固：vocab_v2 接入 UDAF、cardiac 危象词表 22 条、hallucination 词表资产化、禁忌规则 15 条补溯源。
+- 可观测：Langfuse v3 自托管（127.0.0.1:30100）+ OTel 激活。
+
+### What 未完成 / 挂起
+
+- `faithfulness` 官方 RAGAS 口径 68.96%（门控 95%）——判官侧已无空间，卡在**语料覆盖**（Top-5 缺依据）。
+- 核心覆盖率 86.30%（门禁 90%，差 3.70pt），缺口集中在已登记的 🔬 真机项（SoftHSM 签名字节、真实 Redis 语义）。
+- UDT Phase 1 词汇表 ≈1650/2000，**待医生审定草案**（AI 侧覆盖度审计与草案已交付）。
+- 甲状腺注册数据方案（管理决策 + 数据授权）；NMPA 注册材料/部署手册/验收报告未交付。
+- 镜像仓库的**文件级同步窗口**：服务器 `~/uai/src` 经 `git archive` 铺 HEAD，非实时（改动后需跑同步脚本）。
+
+## Recommended Next Step
+
+1. **口径决策收口**：`faithfulness ≥95%` 门控是否需要调整口径（NLI 允许同义概括）或走语料扩展（TN3K 渠道 / 域内中文甲状腺语料）——需项目组拍板（对应 `feature_list.json: faithfulness-gate`）。
+2. **UDT 草案送审**：把 `data/udt/vocab_v2_final.json`（~1650 条，含逐词条溯源分层）交医生勾选背书，把 Phase 1 从「无词可审」推到「可审」。
+3. **清收工作区未跟踪文件**：`scripts/_verify_services.sh`、`scripts/server_restart_api.sh`、`scripts/_smoke_graph.py`（3 个 `??`）——判定入库或删除。
+
+## Blockers
+
+| 阻塞项 | 类型 | 解除条件 | 影响 feature |
+|---|---|---|---|
+| faithfulness 95% 门控 | 口径/语料 | 项目组口径决策 或 域内语料到位 | `faithfulness-gate` |
+| 甲状腺注册数据 | 管理决策 + 授权 | 自有/合作医院或授权采购 | `thyroid-registry-data`、`nmpa-materials` |
+| 核心覆盖率 90% | 真机依赖 | SoftHSM 签名字节、真实 Redis 语义可测 | `coverage-core` |
+| T2b 真机泛化 | 数据 | 真实临床切面验证集（CACTUS 为体模） | `t2b-plane-quality` |
+
+## 证据与报告索引（Verification Evidence）
+
+| 报告 | 内容 |
+|---|---|
+| `tests/reports/t1_kb_retrieval_eval.json` | 检索 Gate 0/1 |
+| `tests/reports/p99_capacity.json` | P99 并发定容 |
+| `tests/reports/t2a_v2_official.json` | T2a 方案 C AUC |
+| `reports/t2b_cactus.json` | T2b 切面/质量 |
+| `tests/reports/t2c_e2e_report_final2.json` | T2c 端到端 |
+| `tests/reports/phase0a_retest_v2.json` | Gate 0A-T-P0 重测（口径 A） |
+| `tests/reports/t1_faithfulness_v11.json` | faithfulness 基线 |
+| `tests/reports/phase0a_report.json` | 早期 6 例口径（已作废，仅存档） |
+
+## Files（本轮相关）
+
+- `AGENTS.md`（harness 入口）、`progress.md`、`feature_list.json`、`session-handoff.md`、`init.sh`（harness 五子系统）
+- `.codebuddy/skills/remote-gpu-server-devtest/SKILL.md`（服务器作业手册）
+- `.codebuddy/skills/uai-harness-maintenance/SKILL.md`（文档/SKILL 维护规范）
+
+## Next
+
+见 [Recommended Next Step](#recommended-next-step)；下一位 Agent 从这里起步即可 clean restart。

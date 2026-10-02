@@ -228,6 +228,20 @@ class MetricsDefinitions:
             "Dual-write compensation queue backlog",
             registry=r,
         )
+        # T-G1-INT-06：同意撤回端到端时延（撤回动作 -> 各处理器执行完毕）。
+        # 桶按 500ms 验收线附近加密：只有落在 0.3/0.5 两档之间才说明"擦线达标"，
+        # 桶太粗会把 480ms 和 520ms 归到同一档，失去验收意义。
+        self.consent_withdrawal_latency = Histogram(
+            "ultrasound_consent_withdrawal_latency_seconds",
+            "Consent withdrawal end-to-end latency (withdrawn_at -> handlers done)",
+            buckets=[0.05, 0.1, 0.2, 0.3, 0.5, 1.0, 5.0],
+            registry=r,
+        )
+        self.consent_withdrawal_target_exceeded = Counter(
+            "ultrasound_consent_withdrawal_target_exceeded_total",
+            "Withdrawals whose end-to-end latency exceeded the target",
+            registry=r,
+        )
 
     def _init_diagnosis_metrics(self) -> None:
         r = self._registry

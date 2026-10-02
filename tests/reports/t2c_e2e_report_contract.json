@@ -1,0 +1,95 @@
+{
+ "task": "T2c 端到端诊断评测（US-365K caption 作所见输入，并发 6）",
+ "dataset_block_note": "ALN-ULTRA Zenodo 15003119 files=0（发布不完整）",
+ "n_total": 9,
+ "n_completed": 3,
+ "n_scored": 0,
+ "judge_support_rate": null,
+ "manual_review_rate": 0.0,
+ "avg_processing_ms": 0.0,
+ "wall_clock_seconds": 271.9,
+ "conclusion": "三列对照=输入所见(caption) / AI 结论 / 判官裁决。caption 非金标准，不得解读为诊断准确率。",
+ "results": [
+  {
+   "query_id": "t2c-000",
+   "organ": "thyroid",
+   "caption": "A thyroid mass/nodule is observed, appearing irregular in shape and hypoechoic, with internal calcifications and inhomogeneous vascularity on Doppler evaluation.",
+   "session_id": "t2c-session-000",
+   "request_id": "req_20260930_8c5eddd7",
+   "status": "completed",
+   "error": "UnboundLocalError: cannot access local variable 'v' where it is not associated with a value"
+  },
+  {
+   "query_id": "t2c-001",
+   "organ": "thyroid",
+   "caption": "No discrete thyroid abnormality is identified on this ultrasound examination.",
+   "session_id": "t2c-session-001",
+   "request_id": "req_20260930_36c18e71",
+   "status": "completed",
+   "error": "UnboundLocalError: cannot access local variable 'v' where it is not associated with a value"
+  },
+  {
+   "query_id": "t2c-002",
+   "organ": "thyroid",
+   "caption": "A thyroid mass is observed, characterized by hypoechogenicity and increased vascularity on ultrasound.",
+   "session_id": "t2c-session-002",
+   "request_id": "req_20260930_a4ce5ce7",
+   "status": "completed",
+   "error": "UnboundLocalError: cannot access local variable 'v' where it is not associated with a value"
+  },
+  {
+   "query_id": "t2c-003",
+   "organ": "liver",
+   "caption": "Within the liver, there is a well-defined, complex fluid collection of mixed echogenicity, featuring both internal solid elements and cystic changes.",
+   "session_id": "t2c-session-003",
+   "request_id": "req_20260930_615ac128",
+   "status": "needs_review",
+   "error": "UnboundLocalError: cannot access local variable 'v' where it is not associated with a value"
+  },
+  {
+   "query_id": "t2c-004",
+   "organ": "liver",
+   "caption": "The liver demonstrates a fluid collection located subcapsularly, in keeping with a hematoma.",
+   "session_id": "t2c-session-004",
+   "request_id": "req_20260930_833e3acf",
+   "status": "needs_review",
+   "error": "UnboundLocalError: cannot access local variable 'v' where it is not associated with a value"
+  },
+  {
+   "query_id": "t2c-005",
+   "organ": "liver",
+   "caption": "Ultrasound of the abdomen and retroperitoneum reveals a mass in the liver that is hyperechoic.",
+   "session_id": "t2c-session-005",
+   "request_id": "req_20260930_90397d04",
+   "status": "needs_review",
+   "error": "UnboundLocalError: cannot access local variable 'v' where it is not associated with a value"
+  },
+  {
+   "query_id": "t2c-006",
+   "organ": "cardiac",
+   "caption": "Ultrasound evaluation of the heart and mediastinum reveals a normal appearance.",
+   "session_id": "t2c-session-006",
+   "request_id": "req_20260930_f385c21d",
+   "status": "needs_review",
+   "error": "UnboundLocalError: cannot access local variable 'v' where it is not associated with a value"
+  },
+  {
+   "query_id": "t2c-007",
+   "organ": "cardiac",
+   "caption": "Sonographic assessment of the thorax shows the heart and mediastinum to be normal in appearance.",
+   "session_id": "t2c-session-007",
+   "request_id": "req_20260930_eee89f0e",
+   "status": "needs_review",
+   "error": "UnboundLocalError: cannot access local variable 'v' where it is not associated with a value"
+  },
+  {
+   "query_id": "t2c-008",
+   "organ": "cardiac",
+   "caption": "The heart and mediastinum demonstrate a normal sonographic appearance.",
+   "session_id": "t2c-session-008",
+   "request_id": "req_20260930_c710a6f5",
+   "status": "needs_review",
+   "error": "UnboundLocalError: cannot access local variable 'v' where it is not associated with a value"
+  }
+ ]
+}

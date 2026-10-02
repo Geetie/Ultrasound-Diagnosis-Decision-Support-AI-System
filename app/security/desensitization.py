@@ -1,15 +1,16 @@
-import re
-import yaml
-import os
 import hashlib
 import hmac
-import structlog
+import os
+import re
 import threading
-from typing import Dict, List, Optional, Any
-from pydantic import BaseModel
-from app.common.desensitization.rule import DesensitizationRule
-from app.config.settings import settings
 from datetime import datetime, timezone
+from typing import Any
+
+import structlog
+import yaml
+from pydantic import BaseModel
+
+from app.common.desensitization.rule import DesensitizationRule
 
 logger = structlog.get_logger()
 
@@ -19,86 +20,86 @@ DESENSITIZATION_RULES_PATH = os.environ.get(
 )
 
 class DesensitizationRules(BaseModel):
-    rules: List[DesensitizationRule]
+    rules: list[DesensitizationRule]
 
 class DesensitizationEngine:
     _instance = None
     _init_lock = threading.Lock()
-    
+
     def __new__(cls):
         with cls._init_lock:
             if cls._instance is None:
-                cls._instance = super(DesensitizationEngine, cls).__new__(cls)
+                cls._instance = super().__new__(cls)
                 cls._instance._rules = []
                 cls._instance._compiled_patterns = {}
                 cls._instance._rules_path = DESENSITIZATION_RULES_PATH
                 cls._instance._last_modified_time = None
                 cls._instance._last_loaded_time = None
                 cls._instance._rules_lock = threading.RLock()
-                cls._instance._patient_name_hash_to_token: Dict[str, str] = {}
+                cls._instance._patient_name_hash_to_token: dict[str, str] = {}
                 cls._instance._patient_token_counter: int = 0
                 cls._instance._token_lock = threading.Lock()
                 cls._instance._name_hmac_key = os.urandom(32)
                 cls._instance._redis_loaded = False
         return cls._instance
-    
+
     def load_rules(self, rules_path: str = None):
         if rules_path is None:
             rules_path = DESENSITIZATION_RULES_PATH
-        
+
         self._rules_path = rules_path
-        
+
         if not os.path.exists(rules_path):
             self._rules = self._get_default_rules()
             self._save_rules(rules_path)
         else:
-            with open(rules_path, 'r', encoding='utf-8') as f:
+            with open(rules_path, encoding='utf-8') as f:
                 rules_data = yaml.safe_load(f)
                 self._rules = [DesensitizationRule(**rule) for rule in rules_data.get('rules', [])]
-        
+
         self._update_modified_time()
         self._compile_patterns()
-    
+
     def _update_modified_time(self):
         """更新规则文件修改时间"""
         if os.path.exists(self._rules_path):
             self._last_modified_time = os.path.getmtime(self._rules_path)
             self._last_loaded_time = datetime.now()
-    
+
     def check_and_reload_rules(self) -> bool:
         """检查规则文件是否被修改，如果是则重新加载"""
         if not os.path.exists(self._rules_path):
             return False
-        
+
         current_modified_time = os.path.getmtime(self._rules_path)
-        
+
         if self._last_modified_time is None or current_modified_time > self._last_modified_time:
             logger.info("desensitization_rules_changed_detected", path=self._rules_path)
             self.load_rules(self._rules_path)
             return True
-        
+
         return False
-    
-    def reload_rules(self) -> Dict[str, Any]:
+
+    def reload_rules(self) -> dict[str, Any]:
         """强制重新加载规则文件"""
         previous_count = len(self._rules)
         self.load_rules(self._rules_path)
         current_count = len(self._rules)
-        
+
         logger.info(
             "desensitization_rules_reloaded",
             previous_count=previous_count,
             current_count=current_count
         )
-        
+
         return {
             "status": "success",
             "previous_rule_count": previous_count,
             "current_rule_count": current_count,
             "reloaded_at": datetime.now().isoformat()
         }
-    
-    def _get_default_rules(self) -> List[DesensitizationRule]:
+
+    def _get_default_rules(self) -> list[DesensitizationRule]:
         return [
             DesensitizationRule(
                 name="id_card",
@@ -186,7 +187,7 @@ class DesensitizationEngine:
                 enabled=False
             )
         ]
-    
+
     def _save_rules(self, rules_path: str):
         rules_data = {"rules": [rule.model_dump() for rule in self._rules]}
         directory = os.path.dirname(rules_path)
@@ -194,7 +195,7 @@ class DesensitizationEngine:
             os.makedirs(directory)
         with open(rules_path, 'w', encoding='utf-8') as f:
             yaml.dump(rules_data, f, default_flow_style=False, allow_unicode=True)
-    
+
     def _compile_patterns(self):
         self._compiled_patterns = {}
         for rule in self._rules:
@@ -245,15 +246,15 @@ class DesensitizationEngine:
                     return prefix + token
             return replacer
         return None
-    
-    def desensitize(self, text: Optional[str]) -> Optional[str]:
+
+    def desensitize(self, text: str | None) -> str | None:
         if text is None:
             return None
         if not text:
             return text
 
         with self._rules_lock:
-            sorted_rules: List[DesensitizationRule] = sorted(
+            sorted_rules: list[DesensitizationRule] = sorted(
                 [r for r in self._rules if r.enabled],
                 key=lambda x: x.priority
             )
@@ -262,7 +263,7 @@ class DesensitizationEngine:
         result: str = text
 
         for rule in sorted_rules:
-            pattern: Optional[re.Pattern] = patterns_snapshot.get(rule.name)
+            pattern: re.Pattern | None = patterns_snapshot.get(rule.name)
             if pattern:
                 name_replacer = self._make_name_replacer(rule)
                 if name_replacer:
@@ -271,7 +272,7 @@ class DesensitizationEngine:
                     result = pattern.sub(rule.replacement, result)
 
         return result
-    
+
     MAX_RECURSION_DEPTH = 20
 
     def _desensitize_list(self, items: list, _depth: int = 0) -> list:
@@ -285,7 +286,7 @@ class DesensitizationEngine:
             for item in items
         ]
 
-    def desensitize_dict(self, data: Dict[str, Any], _depth: int = 0) -> Dict[str, Any]:
+    def desensitize_dict(self, data: dict[str, Any], _depth: int = 0) -> dict[str, Any]:
         if _depth >= self.MAX_RECURSION_DEPTH:
             logger.error("desensitize_dict_recursion_depth_exceeded", depth=_depth)
             raise ValueError(f"Desensitization recursion depth exceeded (max={self.MAX_RECURSION_DEPTH}). Data at depth {_depth} was not desensitized.")
@@ -314,10 +315,10 @@ class DesensitizationEngine:
             else:
                 result[key] = value
         return result
-    
-    def get_rules(self) -> List[DesensitizationRule]:
+
+    def get_rules(self) -> list[DesensitizationRule]:
         return self._rules
-    
+
     def add_rule(self, rule: DesensitizationRule):
         with self._rules_lock:
             self._rules.append(rule)
@@ -332,18 +333,18 @@ class DesensitizationEngine:
                     break
             self._compile_patterns()
         self._publish_rules_update()
-    
+
     def remove_rule(self, rule_name: str):
         with self._rules_lock:
             self._rules = [r for r in self._rules if r.name != rule_name]
             self._compile_patterns()
         self._publish_rules_update()
-    
-    def get_status(self) -> Dict[str, Any]:
+
+    def get_status(self) -> dict[str, Any]:
         """获取脱敏引擎状态"""
         enabled_count = sum(1 for r in self._rules if r.enabled)
         disabled_count = len(self._rules) - enabled_count
-        
+
         return {
             "rules_path": self._rules_path,
             "total_rules": len(self._rules),
@@ -356,6 +357,7 @@ class DesensitizationEngine:
     def _publish_rules_update(self):
         try:
             import asyncio
+
             from app.config.redis import RedisPool
             from app.config.redis_keys import RedisKey
 
@@ -396,7 +398,6 @@ class DesensitizationEngine:
     @staticmethod
     def _report_sync_delay(message: dict) -> None:
         try:
-            import time as _time
             data = message.get("data", "")
             if isinstance(data, bytes):
                 data = data.decode("utf-8", errors="replace")
@@ -445,11 +446,26 @@ class DesensitizationEngine:
         except Exception as e:
             logger.warning("desens_state_load_from_redis_failed", error=str(e))
 
+    async def ensure_state_loaded(self) -> None:
+        """幂等地把 Redis 侧状态（HMAC 密钥 / 令牌映射 / 计数器）载入本进程。
+
+        必须在**事件循环内**调用（本项目的落点是 lifespan 启动期）。原实现在
+        同步工厂里用 ``asyncio.new_event_loop().run_until_complete()`` 硬跑，
+        一旦进程已有事件循环就抛 ``RuntimeError: Cannot run the event loop while
+        another loop is running`` 并丢弃协程 —— 于是 HMAC 密钥**永远没从 Redis
+        恢复**，每次重启都换一把随机密钥，历史令牌与还原映射全部失配。
+        详见 :func:`get_desensitization_engine` 的说明。
+        """
+        if self._redis_loaded:
+            return
+        await self.load_state_from_redis()
+
     def _persist_token_to_redis(self, name_hash: str, token: str):
         if not self._redis_loaded:
             return
         try:
             import asyncio
+
             from app.config.redis import RedisPool
             from app.config.redis_keys import RedisKey
 
@@ -471,15 +487,25 @@ class DesensitizationEngine:
             logger.warning("desens_token_persist_failed", error=str(e))
 
 def get_desensitization_engine() -> DesensitizationEngine:
+    """返回进程内单例（只加载规则；Redis 状态改由启动期 ``ensure_state_loaded`` 载入）。
+
+    ## 为什么这里不再"顺手"跑一次异步载入（2026-09-28 真机部署暴露）
+
+    原实现为了在同步工厂里调用 ``load_state_from_redis()``，临时
+    ``asyncio.new_event_loop().run_until_complete(...)``。而本模块在 **import 期**
+    就以 ``desensitization_engine = get_desensitization_engine()`` 触发这段代码，
+    那时进程往往已有事件循环 → 抛
+    ``RuntimeError: Cannot run the event loop while another loop is running``，
+    协程被丢弃（真机日志同时出现 ``RuntimeWarning: coroutine
+    'DesensitizationEngine.load_state_from_redis' was never awaited``）。
+
+    后果不是"少了个优化"，而是**正确性**：``_name_hmac_key`` 保持
+    ``os.urandom(32)`` 的随机初值，每次重启都换一把密钥 —— 同一个患者姓名前后两次
+    跑出的令牌不同，历史令牌与还原映射全部对不上（restore 服务形同失效）。
+    因此改为在 lifespan 启动期显式 ``await ensure_state_loaded()``。
+    """
     engine = DesensitizationEngine()
     engine.load_rules()
-    try:
-        import asyncio
-        loop = asyncio.new_event_loop()
-        loop.run_until_complete(engine.load_state_from_redis())
-        loop.close()
-    except Exception as e:
-        logger.warning("desens_hmac_key_load_on_init_failed", error=str(e))
     return engine
 
 desensitization_engine = get_desensitization_engine()

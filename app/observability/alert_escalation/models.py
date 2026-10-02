@@ -1,6 +1,5 @@
 import time
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 
 @dataclass
@@ -22,10 +21,10 @@ class AlertEvent:
     value: float
     threshold: float
     created_at: float
-    confirmed_at: Optional[float] = None
-    escalated_at: Optional[float] = None
+    confirmed_at: float | None = None
+    escalated_at: float | None = None
     escalation_level: int = 0
-    reminded_at: Optional[float] = None
+    reminded_at: float | None = None
     message: str = ""
 
     @property

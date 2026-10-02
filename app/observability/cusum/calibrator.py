@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import structlog
 
@@ -41,9 +41,9 @@ class CUSUMCalibrator:
 
     def calibrate(
         self,
-        h_values: Optional[List[float]] = None,
-        deltas: Optional[List[float]] = None,
-    ) -> List[CUSUMCalibrationResult]:
+        h_values: list[float] | None = None,
+        deltas: list[float] | None = None,
+    ) -> list[CUSUMCalibrationResult]:
         if h_values is None:
             h_values = [2.0, 3.0, 4.0, 5.0]
         if deltas is None:
@@ -149,7 +149,7 @@ class CUSUMCalibrator:
 
         return sum(triggered_runs) / len(triggered_runs)
 
-    def generate_calibration_report(self, results: List[CUSUMCalibrationResult]) -> Dict[str, Any]:
+    def generate_calibration_report(self, results: list[CUSUMCalibrationResult]) -> dict[str, Any]:
         valid_results = [r for r in results if r.is_valid]
         best = min(valid_results, key=lambda r: r.arl_1) if valid_results else None
 
@@ -177,7 +177,7 @@ class CUSUMCalibrator:
             ],
         }
 
-    def save_calibration_report(self, report: Dict[str, Any], path: str = "data/cusum_calibration_report.json") -> None:
+    def save_calibration_report(self, report: dict[str, Any], path: str = "data/cusum_calibration_report.json") -> None:
         import json
         import os
         from datetime import datetime, timezone
@@ -190,7 +190,7 @@ class CUSUMCalibrator:
         self._audit_calibration_report(report)
 
     @staticmethod
-    def _audit_calibration_report(report: Dict[str, Any]) -> None:
+    def _audit_calibration_report(report: dict[str, Any]) -> None:
         try:
             from app.observability.audit_chain import CriticalOperationAudit
             audit = CriticalOperationAudit(
@@ -203,11 +203,11 @@ class CUSUMCalibrator:
             pass
 
     @staticmethod
-    def load_calibration_report(path: str = "data/cusum_calibration_report.json") -> Optional[Dict[str, Any]]:
+    def load_calibration_report(path: str = "data/cusum_calibration_report.json") -> dict[str, Any] | None:
         import json
         import os
 
         if not os.path.exists(path):
             return None
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             return json.load(f)

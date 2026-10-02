@@ -24,14 +24,14 @@ from pydantic import BaseModel, Field, field_validator
 
 class InferenceErrorCode(str, Enum):
     """推理引擎错误码枚举。
-    
+
     定义推理过程中可能出现的错误类型，用于统一异常处理和日志记录。
-    
+
     活跃错误码：
     - TIMEOUT: 请求超时
     - CONNECTION_FAILED: 连接失败
     - GENERATION_FAILED: 生成失败（包含模型加载、无效请求等子类型）
-    
+
     废弃错误码通过_missing_方法自动映射到活跃码，保证向后兼容。
     """
     TIMEOUT = "E2002_TIMEOUT"
@@ -41,13 +41,13 @@ class InferenceErrorCode(str, Enum):
     @classmethod
     def _missing_(cls, value: object) -> "InferenceErrorCode | None":
         """将废弃的错误码映射到活跃码。
-        
+
         当传入已废弃的错误码时，自动映射到对应的活跃错误码，
         保证系统升级后的向后兼容性。
-        
+
         Args:
             value: 错误码字符串
-            
+
         Returns:
             对应的活跃错误码，如果无法映射返回None
         """
@@ -61,7 +61,7 @@ class InferenceErrorCode(str, Enum):
 
 class DeprecatedErrorCode:
     """已废弃的错误码定义，仅用于向后兼容。
-    
+
     这些错误码已不再直接使用，通过InferenceErrorCode._missing_方法
     自动映射到活跃错误码。保留此定义是为了兼容旧代码的引用。
     """
@@ -72,16 +72,16 @@ class DeprecatedErrorCode:
 
 class InferenceError(Exception):
     """推理引擎统一异常类。
-    
+
     封装推理过程中的所有错误，包含错误码、错误信息、详细描述和重试策略。
-    
+
     Args:
         error_code: 错误码枚举值
         message: 错误简要描述
         detail: 错误详细信息（可选）
         retryable: 是否可重试
         retry_strategy: 重试策略标识
-        
+
     Attributes:
         error_code: 错误码
         message: 错误消息
@@ -107,9 +107,9 @@ class InferenceError(Exception):
 
 class TokenUsage(BaseModel):
     """Token使用统计模型。
-    
+
     记录推理请求的Token消耗情况，用于计费和性能监控。
-    
+
     Attributes:
         prompt_tokens: 输入Prompt的Token数量
         completion_tokens: 生成结果的Token数量
@@ -122,9 +122,9 @@ class TokenUsage(BaseModel):
 
 class ModelInfo(BaseModel):
     """模型信息模型。
-    
+
     描述当前推理引擎加载的模型信息，用于监控和调试。
-    
+
     Attributes:
         model_name: 模型名称
         model_version: 模型版本
@@ -141,9 +141,9 @@ class ModelInfo(BaseModel):
 
 class InferenceRequest(BaseModel):
     """推理请求模型。
-    
+
     封装LLM推理请求的所有参数，包含严格的字段校验。
-    
+
     Attributes:
         prompt: 输入提示文本（必填，非空）
         max_tokens: 最大生成Token数（可选，正整数）
@@ -206,9 +206,9 @@ class InferenceRequest(BaseModel):
 
 class InferenceResponse(BaseModel):
     """推理响应模型。
-    
+
     封装LLM推理的响应结果。
-    
+
     Attributes:
         text: 生成的文本结果
         model: 模型名称
@@ -228,9 +228,9 @@ class InferenceResponse(BaseModel):
 
 class InferenceEngine(ABC):
     """推理引擎抽象基类。
-    
+
     定义所有推理引擎必须实现的核心接口，实现多后端的统一抽象。
-    
+
     子类需要实现的抽象方法：
     - generate: 执行推理生成
     - health_check: 健康检查
@@ -241,13 +241,13 @@ class InferenceEngine(ABC):
     @abstractmethod
     async def generate(self, request: InferenceRequest) -> InferenceResponse:
         """执行LLM推理生成。
-        
+
         Args:
             request: 推理请求对象
-            
+
         Returns:
             InferenceResponse: 推理响应对象
-            
+
         Raises:
             InferenceError: 推理过程中发生错误
         """
@@ -256,7 +256,7 @@ class InferenceEngine(ABC):
     @abstractmethod
     async def health_check(self) -> bool:
         """检查推理引擎健康状态。
-        
+
         Returns:
             bool: True表示健康，False表示不健康
         """
@@ -265,7 +265,7 @@ class InferenceEngine(ABC):
     @abstractmethod
     async def get_model_info(self) -> ModelInfo:
         """获取当前加载的模型信息。
-        
+
         Returns:
             ModelInfo: 模型信息对象
         """
@@ -274,7 +274,7 @@ class InferenceEngine(ABC):
     @abstractmethod
     async def close(self) -> None:
         """关闭推理引擎，释放资源。
-        
+
         子类应在此方法中关闭HTTP客户端、释放连接池等资源。
         """
         raise NotImplementedError

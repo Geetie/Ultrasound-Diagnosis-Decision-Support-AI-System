@@ -1,19 +1,26 @@
-import pytest
-import os
 import asyncio
+import os
 import threading
-from datetime import datetime, timezone, timedelta
-from unittest.mock import patch, MagicMock, AsyncMock
+from datetime import datetime, timedelta, timezone
+from unittest.mock import AsyncMock, patch
+
+import pytest
 
 from app.security.hsm import (
-    HSMManager, DegradedPhase, KeySlot, DegradedBehavior,
-    DEGRADED_BEHAVIORS, hsm_manager,
+    DEGRADED_BEHAVIORS,
+    DegradedBehavior,
+    DegradedPhase,
+    HSMManager,
+    KeySlot,
+    hsm_manager,
 )
+
 pytestmark = [pytest.mark.track_sec, pytest.mark.sec_domain_hsm]
 
 
 def _make_lightweight_hsm():
-    from app.security.hsm import HSMManager, KeySlot as _KS
+    from app.security.hsm import HSMManager
+    from app.security.hsm import KeySlot as _KS
     mgr = HSMManager.__new__(HSMManager)
     mgr._use_soft_hsm = os.environ.get("USE_SOFT_HSM", "false").lower() == "true"
     mgr._hsm_available = False
@@ -801,8 +808,8 @@ class TestEmergencySigningFullFlow:
         assert mgr._daily_signature_count == 0
 
     async def test_emergency_check_daily_limit_under(self):
-        from app.security.emergency_signing import EmergencySigningManager
         from app.config.settings import settings
+        from app.security.emergency_signing import EmergencySigningManager
         mgr = EmergencySigningManager()
         with patch("app.config.redis.RedisPool") as mock_pool:
             mock_redis = AsyncMock()
@@ -813,8 +820,8 @@ class TestEmergencySigningFullFlow:
             assert count <= settings.hsm_emergency_signing_max_daily
 
     async def test_emergency_check_daily_limit_over(self):
-        from app.security.emergency_signing import EmergencySigningManager
         from app.config.settings import settings
+        from app.security.emergency_signing import EmergencySigningManager
         mgr = EmergencySigningManager()
         max_daily = settings.hsm_emergency_signing_max_daily
         with patch("app.config.redis.RedisPool") as mock_pool:

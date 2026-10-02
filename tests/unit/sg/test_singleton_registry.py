@@ -220,7 +220,7 @@ class TestGlobalRegistry:
 class TestSingletonMigration:
 
     def test_contraindication_via_registry(self):
-        from safety_gateway.contraindication import get_contraindication_engine, _reset_contraindication_engine
+        from safety_gateway.contraindication import _reset_contraindication_engine, get_contraindication_engine
         _reset_contraindication_engine()
         engine = get_contraindication_engine()
         assert engine is not None
@@ -228,7 +228,7 @@ class TestSingletonMigration:
         _reset_contraindication_engine()
 
     def test_threshold_via_registry(self):
-        from safety_gateway.threshold import get_threshold_engine, _reset_threshold_engine
+        from safety_gateway.threshold import _reset_threshold_engine, get_threshold_engine
         _reset_threshold_engine()
         engine = get_threshold_engine()
         assert engine is not None
@@ -236,7 +236,7 @@ class TestSingletonMigration:
         _reset_threshold_engine()
 
     def test_consent_checker_via_registry(self):
-        from safety_gateway.consent_checker import get_consent_checker, _reset_consent_checker
+        from safety_gateway.consent_checker import _reset_consent_checker, get_consent_checker
         _reset_consent_checker()
         checker = get_consent_checker()
         assert checker is not None
@@ -244,7 +244,7 @@ class TestSingletonMigration:
         _reset_consent_checker()
 
     def test_reset_creates_new_instance(self):
-        from safety_gateway.contraindication import get_contraindication_engine, _reset_contraindication_engine
+        from safety_gateway.contraindication import _reset_contraindication_engine, get_contraindication_engine
         _reset_contraindication_engine()
         engine1 = get_contraindication_engine()
         _reset_contraindication_engine()
@@ -253,7 +253,7 @@ class TestSingletonMigration:
         _reset_contraindication_engine()
 
     def test_registry_tracks_migrated_components(self):
-        from safety_gateway.contraindication import get_contraindication_engine, _reset_contraindication_engine
+        from safety_gateway.contraindication import _reset_contraindication_engine, get_contraindication_engine
         _reset_contraindication_engine()
         get_contraindication_engine()
         assert sg_registry.is_registered("contraindication_engine")

@@ -16,11 +16,8 @@ Qdrant instance; both must be reachable from the test process.
 from __future__ import annotations
 
 import os
-import uuid
-from typing import List
 
 import pytest
-
 
 pytestmark = pytest.mark.skipif(
     not os.environ.get("RUN_BM25_INTEGRATION")
@@ -112,8 +109,8 @@ async def test_rag_service_share_state():
         pytest.skip("RUN_RAG_E2E_INTEGRATION not set")
 
     from app.config.database import AsyncSessionLocal
-    from app.knowledge.vocabulary import UDAFVocabulary
     from app.knowledge.udt_parser import UDTParser
+    from app.knowledge.vocabulary import UDAFVocabulary
     from app.rag.bm25_fallback import BM25Fallback, BM25Index
     from app.rag.query_enhancer import QueryEnhancer
     from app.rag.reranker import HeuristicReranker

@@ -4,10 +4,10 @@
 FULL模式强制高采样率（>=0.5），支持FastAPI请求自动追踪。
 """
 
-__all__ = ["DiagnosisSpan", "DIAGNOSIS_SPANS", "init_tracing", "instrument_fastapi", "inject_trace_to_structlog"]
+__all__ = ["DIAGNOSIS_SPANS", "DiagnosisSpan", "init_tracing", "inject_trace_to_structlog", "instrument_fastapi"]
 
 import contextvars
-from typing import Any, Dict, Optional
+from typing import Any
 
 import structlog
 
@@ -16,10 +16,10 @@ from app.observability.enums import DeploymentProfile
 
 _logger = structlog.get_logger("app.observability.tracing")
 
-_current_trace_id: contextvars.ContextVar[Optional[str]] = contextvars.ContextVar(
+_current_trace_id: contextvars.ContextVar[str | None] = contextvars.ContextVar(
     "current_trace_id", default=None
 )
-_current_span_id: contextvars.ContextVar[Optional[str]] = contextvars.ContextVar(
+_current_span_id: contextvars.ContextVar[str | None] = contextvars.ContextVar(
     "current_span_id", default=None
 )
 
@@ -62,9 +62,9 @@ def init_tracing() -> None:
 
     try:
         from opentelemetry import trace
+        from opentelemetry.sdk.resources import Resource
         from opentelemetry.sdk.trace import TracerProvider as SDKTracerProvider
         from opentelemetry.sdk.trace.sampling import TraceIdRatioBased
-        from opentelemetry.sdk.resources import Resource
 
         profile = DeploymentProfile(settings.deployment_profile)
         sample_rate = settings.obs_tracing_sample_rate
@@ -105,19 +105,50 @@ def init_tracing() -> None:
 
 
 def _setup_exporter(provider) -> None:
+    """优先 HTTP OTLP（Langfuse v3 只暴露 HTTP：/api/public/otel/v1/traces），
+    HTTP exporter 不可用时回退 gRPC（自建 collector 场景）。
+    """
     try:
-        from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
-            OTLPSpanExporter,
-        )
         from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
-        exporter = OTLPSpanExporter(
-            endpoint=settings.obs_tracing_otlp_endpoint,
-            insecure=True,
-        )
+        # Langfuse 等接收端要求 Basic auth（pk:sk）时经 headers 传入
+        # （显式构造的 exporter 不会自动读 OTEL_EXPORTER_OTLP_HEADERS env）
+        headers: dict[str, str] | None = None
+        raw_headers = settings.obs_tracing_otlp_headers
+        if raw_headers:
+            headers = {}
+            for part in raw_headers.split(","):
+                if "=" in part:
+                    k, _, v = part.partition("=")
+                    headers[k.strip()] = v.strip()
+        endpoint = settings.obs_tracing_otlp_endpoint
+        exporter = None
+        try:
+            from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
+                OTLPSpanExporter as _HttpExporter,
+            )
+
+            # HTTP exporter 的 endpoint 需为完整 /v1/traces URL
+            http_endpoint = endpoint.rstrip("/")
+            if not http_endpoint.endswith("/v1/traces"):
+                http_endpoint = f"{http_endpoint}/v1/traces"
+            exporter = _HttpExporter(endpoint=http_endpoint, headers=headers)
+            endpoint = http_endpoint
+        except ImportError:
+            from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
+                OTLPSpanExporter as _GrpcExporter,
+            )
+
+            exporter = _GrpcExporter(
+                endpoint=endpoint, insecure=True, headers=headers
+            )
         processor = BatchSpanProcessor(exporter)
         provider.add_span_processor(processor)
-        _logger.info("OTLP exporter configured", endpoint=settings.obs_tracing_otlp_endpoint)
+        _logger.info(
+            "OTLP exporter configured",
+            endpoint=endpoint,
+            auth=bool(headers),
+        )
     except ImportError:
         _logger.warning("OTLP exporter not available, using default")
     except Exception as e:
@@ -131,11 +162,11 @@ def get_tracer():
     return _tracer
 
 
-def get_current_trace_id() -> Optional[str]:
+def get_current_trace_id() -> str | None:
     return _current_trace_id.get()
 
 
-def get_current_span_id() -> Optional[str]:
+def get_current_span_id() -> str | None:
     return _current_span_id.get()
 
 
@@ -153,7 +184,7 @@ class DiagnosisSpan:
     def __init__(
         self,
         span_name: str,
-        attributes: Optional[Dict[str, Any]] = None,
+        attributes: dict[str, Any] | None = None,
     ):
         self._span_name = span_name
         self._attributes = attributes or {}
@@ -208,7 +239,7 @@ class DiagnosisSpan:
         if self._span is not None:
             self._span.set_attribute(key, value)
 
-    def add_event(self, name: str, attributes: Optional[Dict[str, Any]] = None) -> None:
+    def add_event(self, name: str, attributes: dict[str, Any] | None = None) -> None:
         if self._span is not None:
             self._span.add_event(name, attributes or {})
 

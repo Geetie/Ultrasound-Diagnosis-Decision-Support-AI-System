@@ -1,13 +1,15 @@
-from unittest.mock import patch, MagicMock, AsyncMock
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
 pytestmark = [pytest.mark.track_sec, pytest.mark.track_data, pytest.mark.sec_domain_desens]
 
 from app.security.desensitization_restore import (
-    DesensitizationRestoreService,
     DesensitizationMappingRecord,
+    DesensitizationRestoreService,
 )
+
 
 class TestDesensitizationRestoreService:
     def setup_method(self):
@@ -82,9 +84,10 @@ class TestDesensitizationRestoreService:
         assert "key_cache_valid" in stats
 
     def test_key_cache_ttl(self):
-        from app.security.desensitization_restore import _KEY_CACHE_TTL
         from datetime import timedelta
-        assert _KEY_CACHE_TTL == timedelta(minutes=5)
+
+        from app.security.desensitization_restore import _KEY_CACHE_TTL
+        assert timedelta(minutes=5) == _KEY_CACHE_TTL
 
 
 class TestDesensitizationMappingRecord:
@@ -116,15 +119,14 @@ class TestBatchRestoreLogging:
 
     @pytest.mark.asyncio
     async def test_rate_limited_logs_warning(self):
-        with patch("app.security.desensitization_restore.logger") as mock_logger:
-            with patch.object(
-                self.service, "_check_rate_limit_persistent", return_value=False
-            ):
-                with pytest.raises(RuntimeError):
-                    await self.service.batch_restore(["id1", "id2"])
-                mock_logger.warning.assert_called_once_with(
-                    "batch_restore_rate_limited", record_count=2
-                )
+        with patch("app.security.desensitization_restore.logger") as mock_logger, patch.object(
+            self.service, "_check_rate_limit_persistent", return_value=False
+        ):
+            with pytest.raises(RuntimeError):
+                await self.service.batch_restore(["id1", "id2"])
+            mock_logger.warning.assert_called_once_with(
+                "batch_restore_rate_limited", record_count=2
+            )
 
     @pytest.mark.asyncio
     async def test_successful_batch_restore_logs_started_and_completed(self):

@@ -1,4 +1,3 @@
-from typing import Optional
 
 from app.config.settings import settings
 
@@ -6,8 +5,8 @@ from .monitor import CUSUMConfig, CUSUMMonitor
 
 
 def create_cusum_monitor(
-    target_rate: Optional[float] = None,
-    decision_threshold: Optional[float] = None,
+    target_rate: float | None = None,
+    decision_threshold: float | None = None,
 ) -> CUSUMMonitor:
     """创建CUSUM监控器工厂函数
 

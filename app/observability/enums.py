@@ -7,7 +7,7 @@
 - DeploymentProfile: 部署配置（compact/full）
 """
 
-__all__ = ["LogCategory", "NtpSyncStatus", "DeploymentProfile", "AlertLevel"]
+__all__ = ["AlertLevel", "DeploymentProfile", "LogCategory", "NtpSyncStatus"]
 
 from enum import Enum
 

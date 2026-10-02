@@ -323,7 +323,9 @@ class TestBUSIAdapter:
         from app.embedding.busi_adapter import BUSIAdapter
 
         nonexistent = tmp_path / "missing"
-        adapter = BUSIAdapter(dataset_path=str(nonexistent))
+        # 合成样本现在是**显式 opt-in**：本用例测的正是合成路径，故显式声明意图
+        # （此前是隐式行为，会让评估脚本在空目录上产出指标）。
+        adapter = BUSIAdapter(dataset_path=str(nonexistent), allow_synthetic=True)
         samples = adapter.load(max_samples=4)
         assert len(samples) == 4
         assert all(s.image_path.startswith("<synthetic>/") for s in samples)
@@ -347,6 +349,7 @@ class TestBUSIAdapter:
 
     def test_load_jsonl(self, tmp_path):
         import json
+
         from app.embedding.busi_adapter import BUSIAdapter
 
         jsonl = tmp_path / "train.jsonl"

@@ -4,16 +4,14 @@ import time
 
 import pytest
 
+from app.observability.alert_escalation import (
+    AlertEscalationManager,
+    get_alert_escalation_manager,
+)
 from app.observability.cusum import (
     AISafetyCircuitBreaker,
     CUSUMConfig,
     CUSUMMonitor,
-    HallucinationCUSUMBridge,
-)
-from app.observability.alert_escalation import (
-    AlertEscalationManager,
-    AlertEvent,
-    get_alert_escalation_manager,
 )
 
 

@@ -13,7 +13,7 @@ tests/unit/emb/test_embedding.py.
 from __future__ import annotations
 
 import json
-from typing import Any, Optional
+from typing import Any
 
 import httpx
 import pytest
@@ -22,15 +22,14 @@ pytestmark = [pytest.mark.track_rag]
 
 from app.rag.llm_enhancer import AgnesLLMEnhancer
 
-
 # ----------------------------------------------------------------------
 # helpers
 # ----------------------------------------------------------------------
 
 
 def _make_mock_handler(
-    response: Optional[httpx.Response] = None,
-    exc: Optional[Exception] = None,
+    response: httpx.Response | None = None,
+    exc: Exception | None = None,
 ):
     async def handler(request: httpx.Request) -> httpx.Response:
         if exc is not None:

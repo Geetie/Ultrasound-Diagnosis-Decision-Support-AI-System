@@ -1,33 +1,34 @@
 import asyncio
 import functools
+import os
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Any, Literal
 
 import structlog
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
-from safety_gateway.validation_result import ConsentStatus
+from safety_gateway.checker import CheckResultStatus, DegradedReason, get_safety_gateway_checker
+from safety_gateway.desensitization import sg_desensitization_engine
 from safety_gateway.errors import (
-    SafetyGatewayError,
-    ServiceUnavailableError,
-    HealthCheckFailureError,
-    DesensitizationSafetyViolationError,
+    CombinedUnavailableError,
     ConsentSafetyViolationError,
     DatabaseUnavailableError,
-    CombinedUnavailableError,
+    DesensitizationSafetyViolationError,
+    HealthCheckFailureError,
+    SafetyGatewayError,
+    ServiceUnavailableError,
 )
 from safety_gateway.redis_pool import SafetyGatewayRedisPool
 from safety_gateway.redis_subscriber import RedisSubscriber
 from safety_gateway.sg_config import sg_settings as settings
-from safety_gateway.health.latency_tracker import LatencyTracker
-from safety_gateway.sg_validator import SGConfigValidationError as ConfigValidationError, validate_sg_config as validate_config
-from safety_gateway.checker import CheckResultStatus, DegradedReason, get_safety_gateway_checker
-from safety_gateway.desensitization import sg_desensitization_engine
+from safety_gateway.sg_validator import SGConfigValidationError as ConfigValidationError
+from safety_gateway.sg_validator import validate_sg_config as validate_config
 from safety_gateway.threshold import start_threshold_subscribe, stop_threshold_subscribe
+from safety_gateway.validation_result import ConsentStatus
 
 logger = structlog.get_logger()
 
@@ -139,23 +140,31 @@ class ConsentStatusResponse(BaseModel):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     import os
-    import sys
 
     workers_env = os.environ.get("UVICORN_WORKERS", os.environ.get("WEB_CONCURRENCY", None))
     if workers_env is not None and workers_env != "1":
         logger.error("sg_workers_must_be_1_from_env", workers=workers_env)
         raise ConfigValidationError([f"SafetyGateway must run with exactly 1 worker (got {workers_env}). Use uvicorn --workers 1."])
 
-    actual_workers = _get_actual_worker_count()
-    if actual_workers is not None and actual_workers != 1:
-        logger.error("sg_workers_must_be_1_actual", actual_workers=actual_workers)
-        raise ConfigValidationError([f"SafetyGateway must run with exactly 1 worker (detected {actual_workers}). SafetyGateway is not designed for multi-worker deployment."])
+    _assert_single_process(_get_actual_worker_count())
 
     errors = validate_config()
     if errors:
         raise ConfigValidationError(errors)
 
     await SafetyGatewayRedisPool.get_client()
+
+    # 阈值引擎是**懒加载**的：不预热，`/health` 会一直报
+    # threshold_engine=degraded（loaded=False），即使它随时能服务
+    # （库里没有阈值时自动回落内置默认值 —— 见 ThresholdEngine._lazy_load）。
+    # 健康状态应反映"能否服务"，而不是"是否碰巧已被用过"。
+    # 2026-09-28 真机：主服务把 SG 的 degraded 当 unhealthy，导致永久 critical 告警。
+    try:
+        from safety_gateway.threshold import get_threshold_engine
+
+        await get_threshold_engine().ensure_loaded()
+    except Exception as e:
+        logger.warning("sg_threshold_warmup_failed", error=str(e))
 
     logger.info(
         "safety_gateway_starting",
@@ -191,6 +200,36 @@ async def lifespan(app: FastAPI):
     from safety_gateway.sg_db import close_db
     await close_db()
     logger.info("safety_gateway_shutdown_complete")
+
+
+def _assert_single_process(actual_children: int | None) -> None:
+    """校验"以单进程方式运行"，与 :func:`_get_actual_worker_count` 的文档语义一致。
+
+    子进程数语义：
+    * ``0``  → 当前进程**就是**那个唯一的服务进程（单 worker，正常）；
+    * ``>=1``→ 当前进程在充当"父/监管进程"，说明以多 worker 方式拉起 → 拒绝；
+    * ``None`` → 无法判定（无 psutil / 无权限），不阻断。
+
+    ## 为什么不是 `!= 1`（2026-09-28 真机部署暴露）
+
+    原实现写成 `actual_workers != 1`，等于要求"必须有恰好 1 个子进程"，而它自己的
+    文档写着"正常情况下应该只有 0 个子进程" —— 自相矛盾。后果是
+    **SafetyGateway 在干净环境下永远无法启动**，真机实测：
+
+        sg_workers_must_be_1_actual  actual_workers=0
+        → lifespan 抛 ConfigValidationError → "Application startup failed. Exiting."
+
+    属典型"能力从未在真实环境跑过"缺陷：单测绕过了 lifespan，所以一直没暴露。
+    """
+    if actual_children is not None and actual_children >= 1:
+        logger.error("sg_workers_must_be_1_actual", actual_workers=actual_children)
+        raise ConfigValidationError(
+            [
+                "SafetyGateway must run as a single process, "
+                f"but {actual_children} child process(es) were detected. "
+                "It is not designed for multi-worker deployment.",
+            ]
+        )
 
 
 def _get_actual_worker_count() -> int | None:
@@ -294,6 +333,20 @@ async def watchdog_check():
     }
 
 
+def _consent_status_value(status: Any) -> str | None:
+    """把同意状态归一为**枚举值字符串**（"granted"），而不是枚举 repr（"ConsentStatus.GRANTED"）。
+
+    见 `get_consent_status` 里的说明：repr 形态会让调用方回传时触发 422。
+    """
+    from enum import Enum
+
+    if status is None:
+        return None
+    if isinstance(status, Enum):
+        return str(status.value)
+    return str(status)
+
+
 @app.get("/api/v1/consent-status/{patient_id}", response_model=ConsentStatusResponse)
 async def get_consent_status(patient_id: str):
     checker = get_safety_gateway_checker()
@@ -313,7 +366,14 @@ async def get_consent_status(patient_id: str):
 
     return ConsentStatusResponse(
         patient_id=patient_id,
-        consent_status=str(consent_status) if consent_status else None,
+        # ⚠️ 不能写 `str(consent_status)`：`ConsentStatus` 是 `(str, Enum)`，而 py3.11+
+        # 的默认 `__str__` 给出的是 **"ConsentStatus.GRANTED"**（不是 "granted"）。
+        # 调用方（主服务）会把这个值原样回传给 `SafetyCheckRequest.consent_status_at_input`
+        # 的 `Literal["granted","denied","withdrawn","pending"]` → **必 422**
+        # （2026-09-29 真机：主服务 `safety_gateway_check_failed status_code=422`
+        #  → 连续失败进入快速失败 → 诊断恒 failed 且看起来像"网关不可用"）。
+        # 本接口的契约是**枚举值**，一律取 `.value`。
+        consent_status=_consent_status_value(consent_status),
         checked_at=datetime.now(timezone.utc).isoformat(),
         source="postgresql",
     )
@@ -322,9 +382,9 @@ async def get_consent_status(patient_id: str):
 @app.post("/api/v1/safety/check", response_model=SafetyCheckResponse)
 @sg_endpoint_handler("safety_check")
 async def perform_safety_check(request: SafetyCheckRequest):
+    from safety_gateway.checker import _get_health_checker
     from safety_gateway.health.memory_monitor import MemoryMonitor
     from safety_gateway.sg_config import sg_settings as _settings
-    from safety_gateway.checker import _get_health_checker
 
     if MemoryMonitor.is_over_budget():
         raise ServiceUnavailableError(
@@ -399,13 +459,11 @@ async def _perform_safety_check_inner(request: SafetyCheckRequest) -> SafetyChec
 
     if check_result.degraded_mode:
         reason = check_result.degraded_reason or DegradedReason.SENSITIVE_DATA_DETECTED
-        fusion_actually_available = not (
-            check_result.degraded_reason in (
+        fusion_actually_available = check_result.degraded_reason not in (
                 DegradedReason.FUSION_UNAVAILABLE,
                 DegradedReason.FUSION_UNAVAILABLE_SENSITIVE_DETECTED,
                 DegradedReason.DUAL_DEGRADATION_FUSION_AND_SG_UNAVAILABLE,
             )
-        )
         response.degraded_output = checker.apply_degraded_output(request.output_data, reason=reason, fusion_available=fusion_actually_available)
 
     logger.info(

@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 import json
+import os
 import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -125,7 +126,7 @@ class UltrasoundCLIPModel:
     def is_loaded(self) -> bool:
         return self._loaded
 
-    def load(self, model_path: str | None = None) -> "UltrasoundCLIPModel":
+    def load(self, model_path: str | None = None) -> UltrasoundCLIPModel:
         """加载模型权重。model_path=None 时使用 model_name。"""
         torch = _require_torch()
         try:
@@ -150,9 +151,15 @@ class UltrasoundCLIPModel:
             torch_dtype = torch.float32
 
         try:
-            self._processor = AutoProcessor.from_pretrained(target_path)
+            # trust_remote_code：第三方转换的模型（如 BiomedCLIP 的 HF 格式版）
+            # 带自定义 modeling/processing 代码，需要显式信任；环境变量开关
+            # 避免无条件开启（官方 openai/clip-vit-large-patch14 不需要）。
+            trust_remote_code = os.environ.get("CLIP_TRUST_REMOTE_CODE", "") == "1"
+            self._processor = AutoProcessor.from_pretrained(
+                target_path, trust_remote_code=trust_remote_code
+            )
             self._model = AutoModel.from_pretrained(
-                target_path, torch_dtype=torch_dtype
+                target_path, torch_dtype=torch_dtype, trust_remote_code=trust_remote_code
             ).to(device)
         except Exception as exc:
             logger.error(
@@ -178,7 +185,7 @@ class UltrasoundCLIPModel:
         """应用 LoRA adapter(若启用)。"""
         try:
             from peft import LoraConfig, get_peft_model
-        except ImportError as exc:
+        except ImportError:
             logger.warning("peft_not_available_skip_lora")
             return
         config = LoraConfig(
@@ -205,6 +212,18 @@ class UltrasoundCLIPModel:
             return vec
         return vec / norm
 
+    @staticmethod
+    def _features_tensor(features: Any) -> Any:
+        """取出投影特征张量（transformers 版本兼容）。
+
+        v4 的 ``get_text_features``/``get_image_features`` 直接返回投影后的张量；
+        v5（实测 5.17.0）返回 ``BaseModelOutputWithPooling``，投影特征在
+        ``pooler_output``（图像/文本塔分别经 image/text projection 后的 768 维）。
+        """
+        if hasattr(features, "pooler_output"):
+            return features.pooler_output
+        return features
+
     def encode_text(self, texts: list[str]) -> np.ndarray:
         """编码文本为向量。
 
@@ -222,7 +241,7 @@ class UltrasoundCLIPModel:
         inputs = {k: v.to(self._model.device) for k, v in inputs.items()}
         with torch.no_grad():
             text_features = self._model.get_text_features(**inputs)
-        arr = text_features.cpu().float().numpy()
+        arr = self._features_tensor(text_features).cpu().float().numpy()
         arr = np.stack([self._normalize(v) for v in arr])
         return arr
 
@@ -246,7 +265,7 @@ class UltrasoundCLIPModel:
         inputs = {k: v.to(self._model.device) for k, v in inputs.items()}
         with torch.no_grad():
             image_features = self._model.get_image_features(**inputs)
-        arr = image_features.cpu().float().numpy()
+        arr = self._features_tensor(image_features).cpu().float().numpy()
         arr = np.stack([self._normalize(v) for v in arr])
         return arr
 
@@ -429,18 +448,25 @@ class UltrasoundCLIPModel:
         device: str = "cuda",
         use_lora: bool = True,
         max_samples: int | None = None,
-    ) -> tuple["UltrasoundCLIPModel", list[CLIPSample]]:
-        """便捷方法:加载模型并加载数据集样本。"""
-        adapter = BUSIAdapter(dataset_path=dataset_path)
+        allow_synthetic: bool = False,
+    ) -> tuple[UltrasoundCLIPModel, list[CLIPSample]]:
+        """便捷方法:加载模型并加载数据集样本。
+
+        `allow_synthetic` 默认 False（与 `BUSIAdapter` 一致）：数据集路径不存在时
+        **拒绝**，而不是悄悄造合成样本让调用方以为"加载成功"。
+        """
+        adapter = BUSIAdapter(
+            dataset_path=dataset_path, allow_synthetic=allow_synthetic
+        )
         samples = adapter.load(max_samples=max_samples)
         model = cls(model_name=model_name, device=device, use_lora=use_lora)
         return model, samples
 
 
 __all__ = [
-    "UltrasoundCLIPModel",
-    "FinetuneResult",
-    "EvaluationResult",
     "BUSIAdapter",
     "CLIPSample",
+    "EvaluationResult",
+    "FinetuneResult",
+    "UltrasoundCLIPModel",
 ]

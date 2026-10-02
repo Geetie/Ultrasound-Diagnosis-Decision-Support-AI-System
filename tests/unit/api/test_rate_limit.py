@@ -1,8 +1,14 @@
-import pytest
 from unittest.mock import patch
+
+import pytest
+
 from app.config.rate_limit import (
-    TokenBucket, RATE_LIMITS, RateLimitMiddleware, check_rate_limit,
-    _buckets, MAX_BUCKETS, _evict_oldest_bucket,
+    MAX_BUCKETS,
+    RATE_LIMITS,
+    TokenBucket,
+    _buckets,
+    _evict_oldest_bucket,
+    check_rate_limit,
 )
 
 

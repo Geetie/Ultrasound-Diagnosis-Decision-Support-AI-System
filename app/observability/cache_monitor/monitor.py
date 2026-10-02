@@ -1,7 +1,8 @@
 import threading
 import time
 from collections import deque
-from typing import Any, Callable, Dict, List, Optional
+from collections.abc import Callable
+from typing import Any, Optional
 
 import structlog
 
@@ -33,8 +34,8 @@ class CacheMonitor:
         self._read_latencies: deque = deque(maxlen=CacheMonitorConstants.LATENCY_DEQUE_MAXLEN)
         self._expiry_timestamps: deque = deque(maxlen=CacheMonitorConstants.EXPIRY_DEQUE_MAXLEN)
         self._lock_timeout_timestamps: deque = deque(maxlen=CacheMonitorConstants.EXPIRY_DEQUE_MAXLEN)
-        self._alert_callbacks: List[Callable] = []
-        self._alert_escalation_callbacks: List[Callable] = []
+        self._alert_callbacks: list[Callable] = []
+        self._alert_escalation_callbacks: list[Callable] = []
         self._lock = threading.Lock()
         self._prometheus_dirty = False
         self._last_prometheus_sync: float = 0.0
@@ -193,7 +194,7 @@ class CacheMonitor:
             wait_time_ms=wait_time_ms,
         )
 
-    def log_ttl_randomization_check(self, randomization_percent: float, actual_offsets_sample: List[float]) -> None:
+    def log_ttl_randomization_check(self, randomization_percent: float, actual_offsets_sample: list[float]) -> None:
         _logger.info(
             "ttl_randomization_check",
             randomization_percent=randomization_percent,
@@ -203,7 +204,7 @@ class CacheMonitor:
     def register_alert_escalation_callback(self, callback: Callable) -> None:
         self._alert_escalation_callbacks.append(callback)
 
-    def check_alerts_and_escalate(self) -> List[Dict[str, Any]]:
+    def check_alerts_and_escalate(self) -> list[dict[str, Any]]:
         alerts = self.check_alerts()
         for alert in alerts:
             for callback in self._alert_escalation_callbacks:
@@ -213,7 +214,7 @@ class CacheMonitor:
                     _logger.error("cache_alert_escalation_callback_failed", error=str(e))
         return alerts
 
-    def check_alerts(self) -> List[Dict[str, Any]]:
+    def check_alerts(self) -> list[dict[str, Any]]:
         with self._lock:
             overall_hit_rate = self._overall.overall_hit_rate
             db_penetration_rate = self._penetration.db_penetration_rate
@@ -253,7 +254,7 @@ class CacheMonitor:
             read_p99=read_p99,
         )
 
-    def get_all_metrics(self) -> Dict[str, Any]:
+    def get_all_metrics(self) -> dict[str, Any]:
         with self._lock:
             read_p99 = calculate_percentile(list(self._read_latencies), 99.0)
             write_p99 = calculate_percentile(list(self._write_latencies), 99.0)
@@ -282,7 +283,7 @@ class CacheMonitor:
             },
         }
 
-    def get_metrics_snapshot(self) -> Dict[str, Any]:
+    def get_metrics_snapshot(self) -> dict[str, Any]:
         return {
             "bloom_filter_interception_rate": self._penetration.bloom_filter_interception_rate,
             "null_value_hit_rate": self._penetration.null_value_hit_rate,
@@ -315,7 +316,7 @@ class CacheMonitor:
         self._prometheus_dirty = False
 
     @staticmethod
-    def _calculate_p99(data: List[float]) -> float:
+    def _calculate_p99(data: list[float]) -> float:
         from app.observability.utils import calculate_percentile
         return calculate_percentile(data, 99.0)
 

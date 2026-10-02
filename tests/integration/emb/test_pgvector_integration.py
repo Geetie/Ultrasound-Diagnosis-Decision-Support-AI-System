@@ -26,8 +26,8 @@ class TestPgvectorIntegration:
 
     async def test_health_check(self) -> None:
         """Verify PgvectorVectorIndex health check succeeds."""
-        from app.embedding.pgvector_client import PgvectorVectorIndex
         from app.config.settings import settings
+        from app.embedding.pgvector_client import PgvectorVectorIndex
 
         client = PgvectorVectorIndex(database_url=settings.database_url)
         try:
@@ -38,9 +38,9 @@ class TestPgvectorIntegration:
 
     async def test_create_and_search(self) -> None:
         """Verify create_collection + upsert + search workflow."""
+        from app.config.settings import settings
         from app.embedding.pgvector_client import PgvectorVectorIndex
         from app.embedding.protocols import VectorRecord
-        from app.config.settings import settings
 
         client = PgvectorVectorIndex(database_url=settings.database_url)
         collection = "test_pgvector_integration"

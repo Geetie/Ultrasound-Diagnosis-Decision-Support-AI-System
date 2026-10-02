@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.observability.constants import DiskAlertThresholds, EdgeGPUConstants
+from app.observability.constants import EdgeGPUConstants
 from app.observability.infra_health import (
     check_disk_usage,
     check_edge_gpu_temperature,

@@ -3,9 +3,9 @@ import pytest
 
 from edge.gpu_thermal import (
     FRAME_SKIP_FPS,
-    GPUThermalPolicy,
     NORMAL_FPS,
     THROTTLED_FPS,
+    GPUThermalPolicy,
     ThermalLevel,
 )
 

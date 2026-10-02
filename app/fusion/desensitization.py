@@ -8,8 +8,9 @@
 两层使用不同规则集，复用引擎框架而非规则集，确保异构冗余。
 """
 import re
+from typing import Any
+
 import structlog
-from typing import Dict, List, Optional, Any
 from pydantic import BaseModel
 
 from app.security.desensitization import desensitization_engine
@@ -19,14 +20,14 @@ logger = structlog.get_logger()
 
 class FusionDesensitizationResult(BaseModel):
     """融合层脱敏结果"""
-    desensitized_text: Optional[str]
-    sensitive_data_detected: List[str]
+    desensitized_text: str | None
+    sensitive_data_detected: list[str]
     modified: bool
 
 
 class FusionDesensitizationEngine:
     """融合层脱敏引擎 - 第二道防线"""
-    
+
     def __init__(self):
         # 融合层特有的额外敏感模式（除了标准化层已有的）
         self._additional_sensitive_patterns = {
@@ -47,22 +48,22 @@ class FusionDesensitizationEngine:
             "llm_generated_phone": r'******',
         }
         self._compiled_additional_patterns = {
-            name: re.compile(pattern) 
+            name: re.compile(pattern)
             for name, pattern in self._additional_sensitive_patterns.items()
         }
-    
-    def check_additional_sensitive(self, text: str) -> List[str]:
+
+    def check_additional_sensitive(self, text: str) -> list[str]:
         """检查融合层特有的敏感数据模式"""
         detected = []
         for name, pattern in self._compiled_additional_patterns.items():
             if pattern.search(text):
                 detected.append(name)
         return detected
-    
-    def desensitize_llm_output(self, text: Optional[str]) -> FusionDesensitizationResult:
+
+    def desensitize_llm_output(self, text: str | None) -> FusionDesensitizationResult:
         """
         对LLM输出进行脱敏 - 第二层防线
-        
+
         首先使用标准化层的脱敏，然后额外检查融合层特有的模式
         """
         if text is None:
@@ -71,15 +72,15 @@ class FusionDesensitizationEngine:
                 sensitive_data_detected=[],
                 modified=False
             )
-        
+
         original_text = text
-        
+
         # 第一步：应用标准化层脱敏
         desensitized = desensitization_engine.desensitize(original_text)
-        
+
         # 第二步：额外检查融合层特有模式
         additional_detected = self.check_additional_sensitive(desensitized)
-        
+
         # 第三步：对检测到的额外敏感模式进行处理
         final_desensitized = desensitized
         fusion_modified = False
@@ -99,20 +100,20 @@ class FusionDesensitizationEngine:
         if fusion_modified:
             all_detected.append("fusion_desensitization_applied")
         all_detected.extend(additional_detected)
-        
+
         if modified:
             logger.info(
                 "fusion_desensitization_applied",
                 detected_types=all_detected,
                 modified_chars=len(original_text) - len(final_desensitized)
             )
-        
+
         return FusionDesensitizationResult(
             desensitized_text=final_desensitized,
             sensitive_data_detected=all_detected,
             modified=modified
         )
-    
+
     MAX_RECURSION_DEPTH = 20
 
     def _desensitize_list(self, items: list, _depth: int = 0) -> list:
@@ -126,12 +127,12 @@ class FusionDesensitizationEngine:
             for item in items
         ]
 
-    def desensitize_dict(self, data: Dict[str, Any], _depth: int = 0) -> Dict[str, Any]:
+    def desensitize_dict(self, data: dict[str, Any], _depth: int = 0) -> dict[str, Any]:
         if _depth >= self.MAX_RECURSION_DEPTH:
             logger.error("fusion_desensitize_dict_recursion_depth_exceeded", depth=_depth)
             raise ValueError(f"Desensitization recursion depth exceeded (max={self.MAX_RECURSION_DEPTH}). Data at depth {_depth} was not desensitized.")
         result = {}
-        
+
         for key, value in data.items():
             if isinstance(value, str):
                 desensitize_result = self.desensitize_llm_output(value)
@@ -158,7 +159,7 @@ class FusionDesensitizationEngine:
                 }
             else:
                 result[key] = value
-        
+
         return result
 
 

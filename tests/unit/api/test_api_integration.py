@@ -1,26 +1,26 @@
 """Integration tests for API endpoints"""
-import pytest
 import asyncio
-from unittest.mock import Mock, AsyncMock, patch, MagicMock
-from datetime import datetime, timezone
 import json
-import base64
+from datetime import datetime, timezone
+from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
+
 pytestmark = [pytest.mark.track_api, pytest.mark.track_int]
 
 
 class TestSessionEndpointsIntegration:
     """Integration tests for Session endpoints"""
-    
+
     @pytest.fixture
     def mock_db_deps(self):
+        from app.dependencies import get_audit_service, get_consent_repo, get_session_repo
         from app.main import app
-        from app.dependencies import get_session_repo, get_consent_repo, get_audit_service
-        from app.repositories.session_repository import SessionRepository
         from app.repositories.consent_repository import ConsentRepository
-        from app.services.audit_service import AuditService
+        from app.repositories.session_repository import SessionRepository
         from app.security.auth import get_current_active_user
+        from app.services.audit_service import AuditService
 
         mock_session_repo = AsyncMock(spec=SessionRepository)
         mock_consent_repo = AsyncMock(spec=ConsentRepository)
@@ -38,12 +38,12 @@ class TestSessionEndpointsIntegration:
         }
 
         app.dependency_overrides.clear()
-    
+
     def test_create_session_success(self, test_client, mock_db_deps):
         """Test creating a session successfully"""
-        from app.models.database import DiagnosisSession, ConsentRecord
+        from app.models.database import ConsentRecord, DiagnosisSession
         from app.models.schemas import ConsentStatus
-        
+
         # Setup mock
         mock_db_deps["consent_repo"].get_latest_consent = AsyncMock(
             return_value=ConsentRecord(
@@ -77,38 +77,42 @@ class TestSessionEndpointsIntegration:
                 "target_organs": ["thyroid"]
             }
         )
-        
+
         # Check response
         assert response.status_code == 200
         data = response.json()
         assert "session_id" in data
         assert data["patient_id"] == "patient_001"
         assert data["status"] == "pending"
-    
+
     def test_get_session_not_found(self, test_client, mock_db_deps):
         """Test getting a non-existent session"""
         mock_db_deps["session_repo"].get_session = AsyncMock(return_value=None)
-        
+
         response = test_client.get("/api/v1/sessions/nonexistent_id")
-        
+
         assert response.status_code == 404
         assert "error_code" in response.json()
 
 
 class TestDiagnosisEndpointsIntegration:
     """Integration tests for Diagnosis endpoints"""
-    
+
     @pytest.fixture
     def mock_db_deps(self):
+        from app.dependencies import get_audit_service, get_consent_repo, get_diagnosis_repo, get_session_repo
         from app.main import app
-        from app.dependencies import get_diagnosis_repo, get_consent_repo, get_session_repo, get_audit_service
-        from app.repositories.diagnosis_repository import DiagnosisRepository
         from app.repositories.consent_repository import ConsentRepository
+        from app.repositories.diagnosis_repository import DiagnosisRepository
         from app.repositories.session_repository import SessionRepository
-        from app.services.audit_service import AuditService
         from app.security.auth import get_current_active_user
+        from app.services.audit_service import AuditService
 
         mock_diagnosis_repo = AsyncMock(spec=DiagnosisRepository)
+        # 端点在入队前会 `await diagnosis_repo.db.commit()`（见
+        # app/api/v1/diagnosis.py 的"必须先提交再入队"注释）——`db` 是实例属性、
+        # 不在 `spec=DiagnosisRepository` 里，必须显式补上可等待的替身。
+        mock_diagnosis_repo.db = AsyncMock()
         mock_consent_repo = AsyncMock(spec=ConsentRepository)
         mock_session_repo = AsyncMock(spec=SessionRepository)
         mock_audit_service = AsyncMock(spec=AuditService)
@@ -127,12 +131,12 @@ class TestDiagnosisEndpointsIntegration:
         }
 
         app.dependency_overrides.clear()
-    
+
     def test_submit_diagnosis_request_success(self, test_client, mock_db_deps):
         """Test submitting a diagnosis request successfully"""
-        from app.models.database import DiagnosisSession, ConsentRecord
+        from app.models.database import ConsentRecord, DiagnosisSession
         from app.models.schemas import ConsentStatus
-        
+
         # Setup mocks
         mock_db_deps["session_repo"].get_session = AsyncMock(
             return_value=DiagnosisSession(
@@ -170,17 +174,17 @@ class TestDiagnosisEndpointsIntegration:
                 },
                 headers={"X-Priority": "1"}
             )
-        
+
         assert response.status_code == 200
         data = response.json()
         assert "request_id" in data
         assert data["status"] == "processing"
-    
+
     def test_submit_diagnosis_request_no_consent(self, test_client, mock_db_deps):
         """Test submitting diagnosis request without consent"""
-        from app.models.database import DiagnosisSession, ConsentRecord
+        from app.models.database import ConsentRecord, DiagnosisSession
         from app.models.schemas import ConsentStatus
-        
+
         mock_db_deps["session_repo"].get_session = AsyncMock(
             return_value=DiagnosisSession(
                 session_id="session_001",
@@ -197,7 +201,7 @@ class TestDiagnosisEndpointsIntegration:
                 patient_id="patient_001",
                 status=ConsentStatus.DENIED.value,
                 consent_version="1.0"))
-        
+
         response = test_client.post(
             "/api/v1/diagnosis/request",
             json={
@@ -207,25 +211,26 @@ class TestDiagnosisEndpointsIntegration:
                 "response_tier": "full"
             }
         )
-        
+
         assert response.status_code == 403
         assert "E1008" in response.json()["error_code"]
 
 
 class TestDICOMEndpointsIntegration:
     """Integration tests for DICOM endpoints"""
-    
+
     def test_upload_dicom_success(self, test_client):
-        from app.main import app
-        from app.dependencies import get_session_repo, get_audit_service
-        from app.security.auth import get_current_active_user
-        from app.repositories.session_repository import SessionRepository
-        from app.services.audit_service import AuditService
-        from app.models.database import DiagnosisSession
+        from io import BytesIO
+
         import pydicom
         from pydicom.dataset import Dataset
-        from pydicom.sequence import Sequence
-        from io import BytesIO
+
+        from app.dependencies import get_audit_service, get_session_repo
+        from app.main import app
+        from app.models.database import DiagnosisSession
+        from app.repositories.session_repository import SessionRepository
+        from app.security.auth import get_current_active_user
+        from app.services.audit_service import AuditService
 
         mock_session_repo = AsyncMock(spec=SessionRepository)
         mock_session_repo.get_session = AsyncMock(
@@ -282,14 +287,14 @@ class TestDICOMEndpointsIntegration:
             assert data["metadata"]["modality"] == "US"
         finally:
             app.dependency_overrides.clear()
-    
+
     def test_upload_invalid_dicom(self, test_client):
+        from app.dependencies import get_audit_service, get_session_repo
         from app.main import app
-        from app.dependencies import get_session_repo, get_audit_service
-        from app.security.auth import get_current_active_user
-        from app.repositories.session_repository import SessionRepository
-        from app.services.audit_service import AuditService
         from app.models.database import DiagnosisSession
+        from app.repositories.session_repository import SessionRepository
+        from app.security.auth import get_current_active_user
+        from app.services.audit_service import AuditService
 
         mock_session_repo = AsyncMock(spec=SessionRepository)
         mock_session_repo.get_session = AsyncMock(
@@ -322,17 +327,19 @@ class TestDICOMEndpointsIntegration:
             assert "E1004" in response.json()["error_code"]
         finally:
             app.dependency_overrides.clear()
-    
+
     def test_upload_dicom_missing_tags(self, test_client):
-        from app.main import app
-        from app.dependencies import get_session_repo, get_audit_service
-        from app.security.auth import get_current_active_user
-        from app.repositories.session_repository import SessionRepository
-        from app.services.audit_service import AuditService
-        from app.models.database import DiagnosisSession
+        from io import BytesIO
+
         import pydicom
         from pydicom.dataset import Dataset
-        from io import BytesIO
+
+        from app.dependencies import get_audit_service, get_session_repo
+        from app.main import app
+        from app.models.database import DiagnosisSession
+        from app.repositories.session_repository import SessionRepository
+        from app.security.auth import get_current_active_user
+        from app.services.audit_service import AuditService
 
         mock_session_repo = AsyncMock(spec=SessionRepository)
         mock_session_repo.get_session = AsyncMock(
@@ -382,17 +389,19 @@ class TestDICOMEndpointsIntegration:
             assert "E1012" in response.json()["error_code"]
         finally:
             app.dependency_overrides.clear()
-    
+
     def test_upload_dicom_wrong_modality(self, test_client):
-        from app.main import app
-        from app.dependencies import get_session_repo, get_audit_service
-        from app.security.auth import get_current_active_user
-        from app.repositories.session_repository import SessionRepository
-        from app.services.audit_service import AuditService
-        from app.models.database import DiagnosisSession
+        from io import BytesIO
+
         import pydicom
         from pydicom.dataset import Dataset
-        from io import BytesIO
+
+        from app.dependencies import get_audit_service, get_session_repo
+        from app.main import app
+        from app.models.database import DiagnosisSession
+        from app.repositories.session_repository import SessionRepository
+        from app.security.auth import get_current_active_user
+        from app.services.audit_service import AuditService
 
         mock_session_repo = AsyncMock(spec=SessionRepository)
         mock_session_repo.get_session = AsyncMock(
@@ -451,16 +460,16 @@ class TestDICOMEndpointsIntegration:
 
 class TestFeedbackEndpointsIntegration:
     """Integration tests for Feedback endpoints"""
-    
+
     @pytest.fixture
     def mock_db_deps(self):
+        from app.dependencies import get_audit_service, get_diagnosis_repo, get_feedback_repo, get_session_repo
         from app.main import app
-        from app.dependencies import get_feedback_repo, get_diagnosis_repo, get_session_repo, get_audit_service
-        from app.repositories.feedback_repository import FeedbackRepository
         from app.repositories.diagnosis_repository import DiagnosisRepository
+        from app.repositories.feedback_repository import FeedbackRepository
         from app.repositories.session_repository import SessionRepository
-        from app.services.audit_service import AuditService
         from app.security.auth import get_current_active_user
+        from app.services.audit_service import AuditService
 
         mock_feedback_repo = AsyncMock(spec=FeedbackRepository)
         mock_diagnosis_repo = AsyncMock(spec=DiagnosisRepository)
@@ -481,12 +490,11 @@ class TestFeedbackEndpointsIntegration:
         }
 
         app.dependency_overrides.clear()
-    
+
     def test_submit_feedback_success(self, test_client, mock_db_deps):
         """Test submitting feedback successfully"""
-        from app.models.database import DiagnosisResult
-        from app.models.database import FeedbackRecord
-        
+        from app.models.database import DiagnosisResult, FeedbackRecord
+
         mock_db_deps["diagnosis_repo"].get_result = AsyncMock(
             return_value=DiagnosisResult(
                 request_id="req_001",
@@ -517,7 +525,7 @@ class TestFeedbackEndpointsIntegration:
             )
         )
         mock_db_deps["audit_service"].log_action = AsyncMock()
-        
+
         response = test_client.post(
             "/api/v1/feedback",
             json={
@@ -534,16 +542,16 @@ class TestFeedbackEndpointsIntegration:
                 "reviewer_id": "doctor_001"
             }
         )
-        
+
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "accepted"
         assert "feedback_id" in data
-    
+
     def test_submit_feedback_request_not_found(self, test_client, mock_db_deps):
         """Test submitting feedback for non-existent request"""
         mock_db_deps["diagnosis_repo"].get_result = AsyncMock(return_value=None)
-        
+
         response = test_client.post(
             "/api/v1/feedback",
             json={
@@ -560,29 +568,29 @@ class TestFeedbackEndpointsIntegration:
                 "reviewer_id": "doctor_001"
             }
         )
-        
+
         assert response.status_code == 404
         assert "E1002" in response.json()["error_code"]
 
 
 class TestErrorHandlingIntegration:
     """Integration tests for error handling"""
-    
+
     def test_404_error(self, test_client):
         """Test 404 error handling"""
         response = test_client.get("/api/v1/nonexistent_endpoint")
-        
+
         assert response.status_code == 404
         data = response.json()
         assert "error_code" in data
         assert "error_message" in data
-    
+
     def test_validation_error(self, test_client):
+        from app.dependencies import get_audit_service, get_consent_repo, get_session_repo
         from app.main import app
-        from app.dependencies import get_session_repo, get_consent_repo, get_audit_service
-        from app.security.auth import get_current_active_user
-        from app.repositories.session_repository import SessionRepository
         from app.repositories.consent_repository import ConsentRepository
+        from app.repositories.session_repository import SessionRepository
+        from app.security.auth import get_current_active_user
         from app.services.audit_service import AuditService
 
         mock_session_repo = AsyncMock(spec=SessionRepository)
@@ -655,8 +663,9 @@ class TestWebSocketIntegration:
         assert is_valid is False
 
     def test_connection_manager_thread_safety(self):
-        from app.api.websocket.nav import ConnectionManager
         import asyncio
+
+        from app.api.websocket.nav import ConnectionManager
 
         manager = ConnectionManager()
 
@@ -669,11 +678,11 @@ class TestDiagnosisResultEndpoint:
     """Tests for GET /api/v1/diagnosis/result/{request_id}"""
 
     def test_get_diagnosis_result_not_found(self, test_client):
-        from app.main import app
         from app.config.database import get_db_session
         from app.dependencies import get_diagnosis_repo
-        from app.security.auth import get_current_active_user
+        from app.main import app
         from app.repositories.diagnosis_repository import DiagnosisRepository
+        from app.security.auth import get_current_active_user
 
         mock_session = AsyncMock(spec=AsyncSession)
         mock_diagnosis_repo = AsyncMock(spec=DiagnosisRepository)
@@ -695,18 +704,23 @@ class TestDiagnosisResultEndpoint:
             app.dependency_overrides.clear()
 
     def test_get_diagnosis_result_with_safety_gateway(self, test_client):
-        from app.main import app
         from app.config.database import get_db_session
-        from app.dependencies import get_diagnosis_repo, get_consent_repo, get_session_repo
-        from app.security.auth import get_current_active_user
-        from app.repositories.diagnosis_repository import DiagnosisRepository
-        from app.repositories.consent_repository import ConsentRepository
-        from app.repositories.session_repository import SessionRepository
-        from app.models.database import DiagnosisResult as DBDiagnosisResult, DiagnosisSession, ConsentRecord
+        from app.dependencies import get_consent_repo, get_diagnosis_repo, get_session_repo
+        from app.main import app
+        from app.models.database import ConsentRecord, DiagnosisSession
+        from app.models.database import DiagnosisResult as DBDiagnosisResult
         from app.models.schemas import ConsentStatus
+        from app.repositories.consent_repository import ConsentRepository
+        from app.repositories.diagnosis_repository import DiagnosisRepository
+        from app.repositories.session_repository import SessionRepository
+        from app.security.auth import get_current_active_user
 
         mock_db = AsyncMock(spec=AsyncSession)
         mock_diagnosis_repo = AsyncMock(spec=DiagnosisRepository)
+        # 端点在入队前会 `await diagnosis_repo.db.commit()`（见
+        # app/api/v1/diagnosis.py 的"必须先提交再入队"注释）——`db` 是实例属性、
+        # 不在 `spec=DiagnosisRepository` 里，必须显式补上可等待的替身。
+        mock_diagnosis_repo.db = AsyncMock()
         mock_consent_repo = AsyncMock(spec=ConsentRepository)
         mock_session_repo = AsyncMock(spec=SessionRepository)
 
@@ -780,18 +794,23 @@ class TestDiagnosisResultEndpoint:
             app.dependency_overrides.clear()
 
     def test_get_diagnosis_result_safety_gateway_blocked(self, test_client):
-        from app.main import app
         from app.config.database import get_db_session
-        from app.dependencies import get_diagnosis_repo, get_consent_repo, get_session_repo
-        from app.security.auth import get_current_active_user
-        from app.repositories.diagnosis_repository import DiagnosisRepository
-        from app.repositories.consent_repository import ConsentRepository
-        from app.repositories.session_repository import SessionRepository
-        from app.models.database import DiagnosisResult as DBDiagnosisResult, DiagnosisSession, ConsentRecord
+        from app.dependencies import get_consent_repo, get_diagnosis_repo, get_session_repo
+        from app.main import app
+        from app.models.database import ConsentRecord, DiagnosisSession
+        from app.models.database import DiagnosisResult as DBDiagnosisResult
         from app.models.schemas import ConsentStatus
+        from app.repositories.consent_repository import ConsentRepository
+        from app.repositories.diagnosis_repository import DiagnosisRepository
+        from app.repositories.session_repository import SessionRepository
+        from app.security.auth import get_current_active_user
 
         mock_db = AsyncMock(spec=AsyncSession)
         mock_diagnosis_repo = AsyncMock(spec=DiagnosisRepository)
+        # 端点在入队前会 `await diagnosis_repo.db.commit()`（见
+        # app/api/v1/diagnosis.py 的"必须先提交再入队"注释）——`db` 是实例属性、
+        # 不在 `spec=DiagnosisRepository` 里，必须显式补上可等待的替身。
+        mock_diagnosis_repo.db = AsyncMock()
         mock_consent_repo = AsyncMock(spec=ConsentRepository)
         mock_session_repo = AsyncMock(spec=SessionRepository)
 
@@ -867,15 +886,19 @@ class TestIdempotencyCacheHit:
     """Tests for idempotency cache hit behavior"""
 
     def test_idempotency_cache_hit(self, test_client):
+        from app.dependencies import get_audit_service, get_consent_repo, get_diagnosis_repo, get_session_repo
         from app.main import app
-        from app.dependencies import get_diagnosis_repo, get_consent_repo, get_session_repo, get_audit_service
-        from app.security.auth import get_current_active_user
-        from app.repositories.diagnosis_repository import DiagnosisRepository
         from app.repositories.consent_repository import ConsentRepository
+        from app.repositories.diagnosis_repository import DiagnosisRepository
         from app.repositories.session_repository import SessionRepository
+        from app.security.auth import get_current_active_user
         from app.services.audit_service import AuditService
 
         mock_diagnosis_repo = AsyncMock(spec=DiagnosisRepository)
+        # 端点在入队前会 `await diagnosis_repo.db.commit()`（见
+        # app/api/v1/diagnosis.py 的"必须先提交再入队"注释）——`db` 是实例属性、
+        # 不在 `spec=DiagnosisRepository` 里，必须显式补上可等待的替身。
+        mock_diagnosis_repo.db = AsyncMock()
         mock_consent_repo = AsyncMock(spec=ConsentRepository)
         mock_session_repo = AsyncMock(spec=SessionRepository)
         mock_audit_service = AsyncMock(spec=AuditService)
@@ -946,8 +969,8 @@ class TestRateLimitTrigger:
         assert bucket.consume() is False
 
     def test_rate_limit_middleware_registered(self):
-        from app.main import app
         from app.config.rate_limit import RateLimitMiddleware
+        from app.main import app
 
         has_rate_limit = any(
             getattr(m.cls, "__name__", "") == "RateLimitMiddleware" or m.cls is RateLimitMiddleware
@@ -981,6 +1004,7 @@ class TestWebSocketAuthFlow:
 
     def test_dicom_binary_frame_format(self):
         import struct
+
         from app.api.websocket.dicom import calculate_crc32
 
         frame_index = 42
@@ -1004,6 +1028,7 @@ class TestWebSocketAuthFlow:
 
     def test_dicom_crc_mismatch_detection(self):
         import struct
+
         from app.api.websocket.dicom import calculate_crc32
 
         frame_index = 1
@@ -1066,8 +1091,9 @@ class TestTokenBucketConcurrency:
     """Tests for TokenBucket asyncio.Lock safety (P0-3 fix)"""
 
     def test_buckets_lock_exists(self):
-        from app.config.rate_limit import _bucket_stripes
         import asyncio
+
+        from app.config.rate_limit import _bucket_stripes
 
         assert isinstance(_bucket_stripes, list)
         assert len(_bucket_stripes) > 0

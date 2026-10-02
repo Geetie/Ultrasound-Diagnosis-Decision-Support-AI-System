@@ -6,11 +6,9 @@ mock dispatcher、mock fusion engine 等），仅补全 INT-01 特有的 worker
 """
 from __future__ import annotations
 
-import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from typing import List, Optional
 
 from app.config.redis_keys import RedisKey
 
@@ -64,9 +62,9 @@ def mock_diagnosis_repo_read():
 
 
 __all__ = [
-    "int_queue_key",
     "int_dlq_key",
-    "int_worker_count",
     "int_dlq_max_retries",
+    "int_queue_key",
+    "int_worker_count",
     "mock_diagnosis_repo_read",
 ]

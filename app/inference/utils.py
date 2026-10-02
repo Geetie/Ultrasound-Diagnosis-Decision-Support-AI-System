@@ -1,8 +1,7 @@
 import math
-from typing import List
 
 
-def percentile(values: List[float], pct: float) -> float:
+def percentile(values: list[float], pct: float) -> float:
     """计算百分位数（线性插值法）。
 
     使用线性插值法计算百分位数。函数内部会对输入列表排序，

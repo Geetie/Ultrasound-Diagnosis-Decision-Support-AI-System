@@ -33,9 +33,10 @@
 """
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
+from typing import Any
 
 import structlog
 
@@ -93,7 +94,7 @@ class RetrievalProfile:
     top_k: int
     full_validation: bool
 
-    def as_retrieval_kwargs(self) -> Dict[str, Any]:
+    def as_retrieval_kwargs(self) -> dict[str, Any]:
         return {
             "use_query_enhancement": self.use_query_enhancement,
             "use_reranking": self.use_reranking,
@@ -102,13 +103,13 @@ class RetrievalProfile:
             "top_k": self.top_k,
         }
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         payload = self.as_retrieval_kwargs()
         payload["full_validation"] = self.full_validation
         return payload
 
     @classmethod
-    def from_dict(cls, payload: Optional[Mapping[str, Any]]) -> "RetrievalProfile":
+    def from_dict(cls, payload: Mapping[str, Any] | None) -> RetrievalProfile:
         """从 ``as_dict()`` / ``as_retrieval_kwargs()`` 的产物还原。
 
         未知键忽略；缺失字段用 ``standard()`` 的默认值补齐（保守回退——
@@ -138,7 +139,7 @@ class RetrievalProfile:
             return defaults
 
     @classmethod
-    def standard(cls, top_k: int = DEFAULT_STANDARD_TOP_K) -> "RetrievalProfile":
+    def standard(cls, top_k: int = DEFAULT_STANDARD_TOP_K) -> RetrievalProfile:
         """标准路径：单特征→分级映射，链路短，只做轻量检索与快校验。"""
         return cls(
             use_query_enhancement=True,
@@ -150,7 +151,7 @@ class RetrievalProfile:
         )
 
     @classmethod
-    def full(cls, top_k: int = DEFAULT_FULL_TOP_K) -> "RetrievalProfile":
+    def full(cls, top_k: int = DEFAULT_FULL_TOP_K) -> RetrievalProfile:
         """全量路径：完整检索（精排 + LLM 增强）与完整校验链路。"""
         return cls(
             use_query_enhancement=True,
@@ -171,14 +172,14 @@ class RoutingDecision:
     target_tier: ResponseTier
     complexity: QueryComplexity
     requires_confirmation: bool
-    reasons: Tuple[RoutingReason, ...] = ()
+    reasons: tuple[RoutingReason, ...] = ()
     retrieval_profile: RetrievalProfile = field(
         default_factory=lambda: RetrievalProfile.standard()
     )
-    feature_categories: Tuple[str, ...] = ()
-    detected_organs: Tuple[str, ...] = ()
-    retrieval_confidence: Optional[float] = None
-    organ_threshold: Optional[float] = None
+    feature_categories: tuple[str, ...] = ()
+    detected_organs: tuple[str, ...] = ()
+    retrieval_confidence: float | None = None
+    organ_threshold: float | None = None
 
     @property
     def is_upgraded(self) -> bool:
@@ -198,7 +199,7 @@ class RoutingDecision:
         """是否存在"待医生确认"的升级。"""
         return self.requires_confirmation and self.effective_tier != self.target_tier
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         return {
             "requested_tier": self.requested_tier.value,
             "effective_tier": self.effective_tier.value,
@@ -215,7 +216,7 @@ class RoutingDecision:
         }
 
     @classmethod
-    def from_dict(cls, payload: Optional[Mapping[str, Any]]) -> Optional["RoutingDecision"]:
+    def from_dict(cls, payload: Mapping[str, Any] | None) -> RoutingDecision | None:
         """从 ``as_dict()`` 的产物还原判定结果（T-GB-AGT-02 医生确认用）。
 
         诊断结论落库时会把 ``as_dict()`` 写入 ``findings.routing``；医生在
@@ -265,9 +266,9 @@ class AdaptiveRAGRouter:
     def __init__(
         self,
         *,
-        udt_parser: Optional[UDTParser] = None,
+        udt_parser: UDTParser | None = None,
         feature_category_threshold: int = DEFAULT_FEATURE_CATEGORY_THRESHOLD,
-        organ_thresholds: Optional[Dict[str, float]] = None,
+        organ_thresholds: dict[str, float] | None = None,
         default_organ_threshold: float = DEFAULT_ORGAN_THRESHOLD,
         standard_top_k: int = DEFAULT_STANDARD_TOP_K,
         full_top_k: int = DEFAULT_FULL_TOP_K,
@@ -301,10 +302,10 @@ class AdaptiveRAGRouter:
         self,
         *,
         query: str,
-        target_organ: Optional[str] = None,
+        target_organ: str | None = None,
         requested_tier: ResponseTier = ResponseTier.FULL,
-        retrieval_confidence: Optional[float] = None,
-        extra_text: Optional[str] = None,
+        retrieval_confidence: float | None = None,
+        extra_text: str | None = None,
     ) -> RoutingDecision:
         """给出路由判定。
 
@@ -330,7 +331,7 @@ class AdaptiveRAGRouter:
             and retrieval_confidence < threshold
         )
 
-        reasons: List[RoutingReason] = []
+        reasons: list[RoutingReason] = []
         if is_cross_organ:
             complexity = QueryComplexity.CROSS_ORGAN
             reasons.append(RoutingReason.CROSS_ORGAN_ASSOCIATION)
@@ -463,7 +464,7 @@ class AdaptiveRAGRouter:
     # ------------------------------------------------------------------
     # 观测
     # ------------------------------------------------------------------
-    def stats(self) -> Dict[str, Any]:
+    def stats(self) -> dict[str, Any]:
         """路由分布（``05-可观测性与运维`` 口径：标准路径占比 ≥70%）。"""
         standard_ratio = (self._standard_path / self._total) if self._total else 0.0
         return {
@@ -498,14 +499,14 @@ class AdaptiveRAGRouter:
             self._confirmation_requested += 1
 
     def _feature_categories(
-        self, text: str, target_organ: Optional[str]
-    ) -> Tuple[str, ...]:
+        self, text: str, target_organ: str | None
+    ) -> tuple[str, ...]:
         """提取征象类别（去重、排序，保证判定稳定可复现）。"""
         if not text or not text.strip():
             return ()
         try:
             parsed = self._parser.parse(text, organ=target_organ)
-        except Exception as exc:  # noqa: BLE001 - 判定失败不得阻断诊断
+        except Exception as exc:
             logger.warning(
                 "adaptive_rag_feature_parse_failed",
                 error=str(exc),
@@ -515,16 +516,16 @@ class AdaptiveRAGRouter:
         return tuple(sorted({attr.category for attr in parsed.attributes if attr.category}))
 
     def _detected_organs(
-        self, text: str, target_organ: Optional[str]
-    ) -> Tuple[str, ...]:
+        self, text: str, target_organ: str | None
+    ) -> tuple[str, ...]:
         """检测文本中提到的器官（含医生指定的目标器官）。"""
-        organs: List[str] = []
+        organs: list[str] = []
         if target_organ:
             organs.append(str(target_organ))
         if text and text.strip():
             try:
                 detected = self._parser.detect_organs(text)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.warning(
                     "adaptive_rag_organ_detection_failed",
                     error=str(exc),
@@ -535,13 +536,13 @@ class AdaptiveRAGRouter:
                 value = getattr(organ, "value", str(organ))
                 organs.append(str(value))
         # 去重保序（target_organ 排在最前）
-        seen: List[str] = []
+        seen: list[str] = []
         for organ in organs:
             if organ not in seen:
                 seen.append(organ)
         return tuple(seen)
 
-    def _threshold_for(self, target_organ: Optional[str]) -> Optional[float]:
+    def _threshold_for(self, target_organ: str | None) -> float | None:
         """器官级阈值（表内缺失时用兜底值）。"""
         if self._default_organ_threshold is None:
             return None

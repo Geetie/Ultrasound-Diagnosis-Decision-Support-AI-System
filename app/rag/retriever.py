@@ -19,7 +19,8 @@ from __future__ import annotations
 
 import asyncio
 import re
-from typing import Any, Dict, List, Optional, Tuple
+from collections import deque
+from typing import Any
 
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -45,6 +46,25 @@ from app.rag.protocols import (
 
 logger = structlog.get_logger("app.rag.retriever")
 
+# 检索空结果滑动窗口（wiring-audit P1-3：retrieval_empty_rate gauge 生产者）
+_RETRIEVAL_OUTCOME_WINDOW: deque[int] = deque(maxlen=500)
+
+
+def _record_retrieval_outcome(*, is_empty: bool) -> None:
+    """记录一次融合检索的空结果与否，并把窗口空率推到 Prometheus gauge。
+
+    失败静默（观测不阻塞检索主链路）。
+    """
+    try:
+        _RETRIEVAL_OUTCOME_WINDOW.append(1 if is_empty else 0)
+        window = _RETRIEVAL_OUTCOME_WINDOW
+        rate = sum(window) / len(window)
+        from app.observability.metrics_collector import get_metrics_collector
+
+        get_metrics_collector().set_retrieval_empty_rate(rate)
+    except Exception as exc:
+        logger.debug("retrieval_empty_rate_update_failed", error=str(exc))
+
 # Used to detect "collection does not exist" style errors from Qdrant so we
 # can silently skip the image leg when the image collection is not provisioned.
 _NOT_FOUND_PATTERNS = (
@@ -63,7 +83,7 @@ def _is_collection_not_found(exc: Exception) -> bool:
 class _Hit:
     """Internal lightweight hit type used during RRF fusion."""
 
-    __slots__ = ("chunk_id", "chunk", "score", "source")
+    __slots__ = ("chunk", "chunk_id", "score", "source")
 
     def __init__(
         self,
@@ -90,16 +110,24 @@ class Retriever:
         session_factory: AsyncSession factory for resolving chunk metadata
             from search results.
         rrf_k: RRF rank constant (default 60, per Cormack et al. 2009).
+        graph_adapter: Optional GraphQueryAdapter (PgVectorGraphAdapter). Only
+            consulted when settings.graph_query_enabled is True; None means
+            construct one lazily on first use.
+        graph_seed_limit: How many fused top-k chunks to use as graph seeds.
+        graph_neighbor_limit: Max neighbor chunks appended after top-k.
     """
 
     def __init__(
         self,
         vector_client: VectorIndexClient,
         embedding_service: EmbeddingService,
-        ultrasound_clip: Optional[EmbeddingService] = None,
-        bm25_index: Optional[BM25Index] = None,
-        session_factory: Optional[Any] = None,
+        ultrasound_clip: EmbeddingService | None = None,
+        bm25_index: BM25Index | None = None,
+        session_factory: Any | None = None,
         rrf_k: int | None = None,
+        graph_adapter: Any | None = None,
+        graph_seed_limit: int = 3,
+        graph_neighbor_limit: int = 5,
     ):
         self._vector_client = vector_client
         self._embedding = embedding_service
@@ -107,6 +135,9 @@ class Retriever:
         self._bm25 = bm25_index
         self._session_factory = session_factory
         self._rrf_k = rrf_k if rrf_k is not None else settings.rag_rrf_k
+        self._graph_adapter = graph_adapter
+        self._graph_seed_limit = max(1, int(graph_seed_limit))
+        self._graph_neighbor_limit = max(0, int(graph_neighbor_limit))
 
     async def retrieve(
         self,
@@ -121,7 +152,7 @@ class Retriever:
         # Each leg is keyed by the RetrievalMethod enum value that its hits
         # carry (image leg hits are tagged DENSE inside _safe_image, so the
         # image leg is also keyed under DENSE).
-        tasks: List[Tuple[RetrievalMethod, "asyncio.Future"]] = []
+        tasks: list[tuple[RetrievalMethod, asyncio.Future]] = []
         tasks.append((
             RetrievalMethod.DENSE,
             asyncio.create_task(self._safe_dense(enhanced_query, request)),
@@ -143,11 +174,11 @@ class Retriever:
                 asyncio.create_task(self._safe_image(request)),
             ))
 
-        legs: Dict[RetrievalMethod, List[_Hit]] = {}
+        legs: dict[RetrievalMethod, list[_Hit]] = {}
         for method, task in tasks:
             try:
                 hits = await task
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.warning(
                     "retriever_leg_failed",
                     leg=method.value,
@@ -163,6 +194,7 @@ class Retriever:
         fused = self._rrf_fuse(legs)
         top_k = max(1, request.top_k)
         fused = fused[:top_k]
+        _record_retrieval_outcome(is_empty=not fused)
         chunks = [
             ScoredChunk(
                 chunk=h.chunk,
@@ -172,10 +204,106 @@ class Retriever:
             )
             for h in fused
         ]
+        # 图谱邻居扩展（settings.graph_query_enabled 门控，默认关闭）：
+        # 只在 top-k 之后追加，不挤占 RRF 排名；失败降级为不扩展。
+        chunks = await self._expand_graph_neighbors(chunks)
+        # 二期 §6：记录本次引用（best-effort，失败只记日志）。
+        # 放在返回前而不是各条检索腿里：只看最终入选的 chunks——落选条目的
+        # "被引用"并不是真的被用上，把它算进去会让衰减依据失真。
+        await self._record_references(chunks)
+
         return RetrievalResult(
             chunks=chunks,
             retrieval_method=RetrievalMethod.HYBRID,
         )
+
+    @staticmethod
+    async def _record_references(chunks: list[ScoredChunk]) -> None:
+        chunk_ids = [chunk.chunk.chunk_id for chunk in chunks if chunk.chunk.chunk_id]
+        if not chunk_ids:
+            return
+        from app.knowledge.decay import record_retrieval_references
+
+        await record_retrieval_references(chunk_ids)
+
+    async def _get_graph_adapter(self) -> Any | None:
+        if self._graph_adapter is not None:
+            return self._graph_adapter
+        try:
+            from app.knowledge.graph_query import PgVectorGraphAdapter
+
+            self._graph_adapter = PgVectorGraphAdapter(
+                session_factory=self._session_factory
+            )
+        except Exception as exc:
+            logger.warning(
+                "graph_adapter_init_failed",
+                error=str(exc),
+                error_type=type(exc).__name__,
+            )
+            self._graph_adapter = False  # sentinel: do not retry this instance
+        return self._graph_adapter or None
+
+    async def _expand_graph_neighbors(
+        self, chunks: list[ScoredChunk]
+    ) -> list[ScoredChunk]:
+        """图谱扩展：以融合 top-k 的前 N 个 chunk 为种子追加 depth-1 邻居。
+
+        - 门控：settings.graph_query_enabled 为 False 时直接原样返回；
+        - 语义：邻居是检索增强补充，append 在 top-k 之后，不改排名；
+        - 失败：adapter 内部已降级为空列表，这里再兜一层异常不影响主链路。
+        """
+        if (
+            not chunks
+            or self._graph_neighbor_limit == 0
+            or not bool(getattr(settings, "graph_query_enabled", False))
+        ):
+            return chunks
+        adapter = await self._get_graph_adapter()
+        if adapter is None:
+            return chunks
+
+        seen_ids = {c.chunk.chunk_id for c in chunks if c.chunk.chunk_id}
+        seeds = [
+            c.chunk.chunk_id
+            for c in chunks[: self._graph_seed_limit]
+            if c.chunk.chunk_id
+        ]
+        added: list[ScoredChunk] = []
+        for seed_id in seeds:
+            if len(added) >= self._graph_neighbor_limit:
+                break
+            try:
+                neighbors = await adapter.query_neighbors(seed_id, max_depth=1)
+            except Exception as exc:
+                logger.warning(
+                    "graph_expand_failed",
+                    seed=seed_id,
+                    error=str(exc),
+                    error_type=type(exc).__name__,
+                )
+                break
+            for nb in neighbors:
+                if len(added) >= self._graph_neighbor_limit:
+                    break
+                if not nb.chunk_id or nb.chunk_id in seen_ids:
+                    continue
+                seen_ids.add(nb.chunk_id)
+                added.append(
+                    ScoredChunk(
+                        chunk=nb,
+                        score=0.0,
+                        rerank_score=None,
+                        retrieval_source=RetrievalMethod.GRAPH,
+                    )
+                )
+        if added:
+            logger.info(
+                "graph_neighbors_appended",
+                seeds=len(seeds),
+                added=len(added),
+            )
+        return chunks + added
 
     # ------------------------------------------------------------------
     # Legs
@@ -183,7 +311,7 @@ class Retriever:
 
     async def _safe_dense(
         self, query: str, request: RetrievalRequest
-    ) -> List[_Hit]:
+    ) -> list[_Hit]:
         try:
             return await self._dense_search(query, request)
         except (EmbeddingError, VectorIndexError) as exc:
@@ -193,7 +321,7 @@ class Retriever:
                 error_type=type(exc).__name__,
             )
             return []
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning(
                 "dense_search_unexpected",
                 error=str(exc),
@@ -203,14 +331,14 @@ class Retriever:
 
     async def _safe_sparse(
         self, query: str, request: RetrievalRequest
-    ) -> List[_Hit]:
+    ) -> list[_Hit]:
         if self._bm25 is None or not self._bm25.is_built:
             return []
         try:
             hits = self._bm25.search(
                 query, top_k=request.top_k, organ_filter=request.organ
             )
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning(
                 "sparse_search_failed",
                 error=str(exc),
@@ -227,7 +355,7 @@ class Retriever:
             for h in hits
         ]
 
-    async def _safe_image(self, request: RetrievalRequest) -> List[_Hit]:
+    async def _safe_image(self, request: RetrievalRequest) -> list[_Hit]:
         if self._clip is None or request.image_data is None:
             return []
         try:
@@ -269,7 +397,7 @@ class Retriever:
                 error_type=type(exc).__name__,
             )
             return []
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             if _is_collection_not_found(exc):
                 logger.info(
                     "image_collection_not_found_skipping",
@@ -287,7 +415,7 @@ class Retriever:
 
     async def _dense_search(
         self, query: str, request: RetrievalRequest
-    ) -> List[_Hit]:
+    ) -> list[_Hit]:
         # Embed the query (1 call, no retry logic here; the orchestrator wraps).
         text_resp = await self._embedding.embed_text(
             TextEmbeddingRequest(
@@ -315,9 +443,9 @@ class Retriever:
 
     async def _wrap_search_results(
         self,
-        results: List[SearchResult],
+        results: list[SearchResult],
         source: RetrievalMethod,
-    ) -> List[_Hit]:
+    ) -> list[_Hit]:
         if not results:
             return []
         if self._session_factory is None:
@@ -335,6 +463,7 @@ class Retriever:
         session: AsyncSession = self._session_factory()
         try:
             from sqlalchemy import select
+
             from app.models.database import KnowledgeChunkModel
 
             ids = [r.id for r in results]
@@ -351,7 +480,7 @@ class Retriever:
                     await res
 
         score_map = {r.id: float(r.score) for r in results}
-        hits: List[_Hit] = []
+        hits: list[_Hit] = []
         for r in results:
             row = rows.get(r.id)
             if row is None:
@@ -378,16 +507,16 @@ class Retriever:
         return hits
 
     def _rrf_fuse(
-        self, legs: Dict[RetrievalMethod, List[_Hit]]
-    ) -> List[_Hit]:
+        self, legs: dict[RetrievalMethod, list[_Hit]]
+    ) -> list[_Hit]:
         """Reciprocal Rank Fusion: fused(d) = sum(1 / (k + rank_i(d))).
 
         Preserves the original _Hit.chunk / _Hit.source from the first leg
         where the chunk appears; ranks the fused list by fused score.
         """
         k = self._rrf_k
-        fused_scores: Dict[str, float] = {}
-        first_seen: Dict[str, _Hit] = {}
+        fused_scores: dict[str, float] = {}
+        first_seen: dict[str, _Hit] = {}
         for source, hits in legs.items():
             # Sort this leg by score desc to derive ranks.
             ordered = sorted(hits, key=lambda h: h.score, reverse=True)
@@ -399,7 +528,7 @@ class Retriever:
                     first_seen[hit.chunk_id] = hit
 
         # Deduplicate by chunk_id, keep the hit with the highest RRF score.
-        unique: Dict[str, _Hit] = {}
+        unique: dict[str, _Hit] = {}
         for cid, score in fused_scores.items():
             hit = first_seen[cid]
             # Use the fused RRF score as the new "score" so consumers see a
@@ -416,34 +545,36 @@ class Retriever:
         )
 
     @staticmethod
-    def _embedding_to_list(emb: Any) -> List[float]:
+    def _embedding_to_list(emb: Any) -> list[float]:
         """Coerce an embedding (np.ndarray, list, etc.) to a flat list of floats."""
         try:
             import numpy as np
             if isinstance(emb, np.ndarray):
                 return emb.astype(np.float32).ravel().tolist()
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as exc:
+            logger.debug("retriever_cleanup_failed", error=str(exc))
         if isinstance(emb, list):
             return [float(x) for x in emb]
         if hasattr(emb, "tolist"):
             return [float(x) for x in emb.tolist()]
         return [float(emb)]
 
-    async def health_check(self) -> Dict[str, bool]:
+    async def health_check(self) -> dict[str, bool]:
         """Check health of embedding service and vector index.
 
         Returns a dict with keys "embedding" and "vector_index", values are
         True if healthy, False otherwise.
         """
-        results: Dict[str, bool] = {}
+        results: dict[str, bool] = {}
         try:
             results["embedding"] = bool(await self._embedding.health_check())
-        except Exception:  # noqa: BLE001
+        except Exception as exc:
+            logger.warning("retriever_health_embedding_failed", error=str(exc))
             results["embedding"] = False
         try:
             results["vector_index"] = bool(await self._vector_client.health_check())
-        except Exception:  # noqa: BLE001
+        except Exception as exc:
+            logger.warning("retriever_health_vector_index_failed", error=str(exc))
             results["vector_index"] = False
         return results
 
@@ -456,8 +587,8 @@ class Retriever:
                     res = close()
                     if asyncio.iscoroutine(res):
                         await res
-                except Exception:  # noqa: BLE001
-                    pass
+                except Exception as exc:
+                    logger.debug("retriever_close_failed", error=str(exc))
 
 
 def _placeholder_chunk(chunk_id: str) -> KnowledgeChunk:

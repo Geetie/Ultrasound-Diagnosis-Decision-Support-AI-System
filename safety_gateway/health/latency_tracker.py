@@ -1,6 +1,6 @@
 import asyncio
 from collections import deque
-from typing import Any, ClassVar
+from typing import Any
 
 import structlog
 
@@ -53,13 +53,22 @@ class LatencyTracker:
             n = len(sorted_samples)
 
             p99_value = self._percentile(sorted_samples, 99)
-            p99_status = self._get_p99_status(
-                p99_value,
-                settings.sg_p99_latency_warning_threshold_ms,
-                settings.sg_p99_latency_critical_threshold_ms,
-            )
+            if n < settings.sg_p99_min_samples_for_throttle:
+                # 样本不足时 p99 无统计意义（≈max，被冷启动慢请求支配）。
+                # 返回 unknown 并清零计数 —— 否则真机会自持锁死：
+                # 节流 → 拒绝新请求 → 无新样本 → p99 冻结在超限值（E4005 死循环）。
+                p99_status = "unknown"
+            else:
+                p99_status = self._get_p99_status(
+                    p99_value,
+                    settings.sg_p99_latency_warning_threshold_ms,
+                    settings.sg_p99_latency_critical_threshold_ms,
+                )
 
-            if p99_status == "critical":
+            if p99_status == "unknown":
+                self._critical_count = 0
+                self._recovery_count = 0
+            elif p99_status == "critical":
                 self._recovery_count = 0
                 self._critical_count += 1
                 if self._critical_count >= 3 and not self._throttling:

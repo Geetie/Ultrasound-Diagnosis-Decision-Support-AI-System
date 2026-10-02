@@ -1,15 +1,15 @@
-from fastapi import APIRouter, Depends
-from typing import Optional
-import structlog
 
-from app.models.schemas import VoiceConfirmRequest, VoiceConfirmResponse
-from app.api.v1.errors import NotFoundException, BadRequestException
+import structlog
+from fastapi import APIRouter, Depends
+
+from app.api.v1.errors import BadRequestException, NotFoundException
 from app.api.v1.utils import get_actor_id
 from app.api.websocket.nav import manager as nav_manager
-from app.dependencies import get_session_repo, get_diagnosis_repo, get_audit_service
-from app.repositories import SessionRepository, DiagnosisRepository
-from app.services.audit_service import AuditService
+from app.dependencies import get_audit_service, get_diagnosis_repo, get_session_repo
+from app.models.schemas import VoiceConfirmRequest, VoiceConfirmResponse
+from app.repositories import DiagnosisRepository, SessionRepository
 from app.security.auth import get_current_active_user
+from app.services.audit_service import AuditService
 
 logger = structlog.get_logger()
 router = APIRouter(tags=["voice"])
@@ -21,7 +21,7 @@ async def voice_confirm(
     session_repo: SessionRepository = Depends(get_session_repo),
     diag_repo: DiagnosisRepository = Depends(get_diagnosis_repo),
     audit_service: AuditService = Depends(get_audit_service),
-    current_user: Optional[dict] = Depends(get_current_active_user),
+    current_user: dict | None = Depends(get_current_active_user),
 ):
     session = await session_repo.get_session(request.session_id)
     if not session:

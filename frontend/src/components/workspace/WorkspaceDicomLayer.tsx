@@ -26,12 +26,12 @@ export default function WorkspaceDicomLayer({ imageId }: { imageId: string }) {
 
     (async () => {
       try {
-        const { initCornerstoneCore, cornerstone } = await import(
-          '@/components/dicom/cornerstone'
-        );
+        const cornerstone = await import('@/components/dicom/cornerstone');
         if (cancelled) return;
 
-        initCornerstoneCore();
+        // feature 分支把 core-only 初始化换成统一入口 initCornerstone()：
+        // 内部按需ensureInit（core + WADO 加载器 + 工具栈），幂等。
+        cornerstone.initCornerstone();
 
         // displayImage 前必须先 enable，否则 cornerstone 抛 "element not enabled"。
         // 不静默吞异常 —— 吞掉之后的表现是 canvas 停在 300x150 默认尺寸，极难排查。
@@ -55,7 +55,7 @@ export default function WorkspaceDicomLayer({ imageId }: { imageId: string }) {
     const onResize = () => {
       // cornerstone 可能还没加载完，交给上面的 try 兜底
       import('@/components/dicom/cornerstone')
-        .then(({ cornerstone }) => cornerstone.resize(element))
+        .then((cs) => cs.resize(element))
         .catch(() => undefined);
     };
     window.addEventListener('resize', onResize);
@@ -64,7 +64,7 @@ export default function WorkspaceDicomLayer({ imageId }: { imageId: string }) {
       cancelled = true;
       window.removeEventListener('resize', onResize);
       import('@/components/dicom/cornerstone')
-        .then(({ cornerstone }) => cornerstone.disable(element))
+        .then((cs) => cs.disable(element))
         .catch(() => undefined);
     };
   }, [imageId]);

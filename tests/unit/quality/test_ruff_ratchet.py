@@ -1,0 +1,189 @@
+"""ruff 质量债棘轮（quality-debt）。
+
+设计
+----
+- **永久豁免**只在 ``ruff.toml``（行宽、中文标点）；
+- **存量债务**登记在仓库根 ``.ruff-debt.txt``（一行一个规则码），CI 用它做 CLI ignore
+  实现"新增违规立刻阻断"；
+- 本测试用**不带任何 ignore 的完整检查**统计存量，并按规则码钉住计数上限。
+
+为什么不用 ruff.toml 的 ignore 承载债务
+---------------------------------------
+实测踩到过：把债务码写进 ruff.toml 的 ignore 后，``ruff check --statistics`` 里这些
+规则**彻底消失**（计数变成 0），棘轮失去测量对象，等于把债务藏起来；同时被 ignore 的
+规则会让仓库里既有的 ``# noqa`` 变成"无用指令"，凭空多出 RUF100。
+
+三条不变量
+----------
+1. 出现 .ruff-debt.txt 之外的违规规则 -> 失败（不能悄悄新增债务类别）；
+2. 任一债务规则计数高于基线 -> 失败（不能新增同类违规）；
+3. 计数低于基线 -> 提示把基线调小（锁住成果，避免棘轮失真）。
+"""
+import shutil
+import subprocess
+from pathlib import Path
+
+import pytest
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
+DEBT_FILE = REPO_ROOT / ".ruff-debt.txt"
+
+# 存量基线（2026-10-03 重定：①历届评测/探针脚本入库带入的 E402 +2 显式登记；
+# ②覆盖率攻坚新增 10 个测试文件（pytestmark 前置模式）带来 E402 +18、SIM115 +1；
+# ③E741/RUF021/RUF100/SIM118 已清零、F841/F401/RUF059/B007/B905 等经
+# ruff --fix 收敛后自基线调小锁住成果；④UP009/W292/I001/SIM401/B018 等新码
+# 当日全部修复，未登记）。**只允许调小。**
+RUFF_BASELINE = {
+    "E402": 252,
+    "F841": 59,
+    "RUF013": 48,
+    "F401": 44,
+    "B904": 41,
+    "RUF012": 41,
+    "SIM105": 37,
+    "RUF059": 32,
+    "SIM117": 32,
+    "B007": 21,
+    "SIM102": 21,
+    "SIM108": 13,
+    "E701": 12,
+    "B017": 11,
+    "RUF046": 9,
+    "B905": 7,
+    "SIM115": 7,
+    "RUF043": 6,
+    "RUF006": 5,
+    "SIM103": 5,
+    "RUF005": 4,
+    "UP035": 4,
+    "SIM110": 3,
+    "RUF022": 2,
+    "B023": 1,
+    "E722": 1,
+    "F811": 1,
+    "SIM101": 1,
+    "SIM113": 1,
+    "SIM222": 1,
+}
+
+
+def _ruff_available() -> bool:
+    if shutil.which("ruff") is not None:
+        return True
+    probe = subprocess.run(
+        ["python", "-m", "ruff", "--version"],
+        capture_output=True,
+        text=True,
+        cwd=REPO_ROOT,
+    )
+    return probe.returncode == 0
+
+
+def _collect_statistics() -> dict:
+    """完整检查的按规则计数（不带任何 CLI ignore，保证债务仍然可见）。"""
+    completed = subprocess.run(
+        ["python", "-m", "ruff", "check", ".", "--statistics"],
+        capture_output=True,
+        text=True,
+        cwd=REPO_ROOT,
+    )
+    statistics = {}
+    for line in completed.stdout.splitlines():
+        parts = line.split()
+        if len(parts) < 2:
+            continue
+        count_token, code_token = parts[0], parts[1]
+        # 规则码形如 E402 / RUF046 / SIM105：以字母开头且含数字，
+        # 用 isalpha() 判断会把它们全部漏掉（还会静默 skip，比报错更糟）。
+        if not count_token.isdigit():
+            continue
+        if not (code_token[0].isalpha() and code_token.isalnum()):
+            continue
+        statistics[code_token] = int(count_token)
+    return statistics
+
+
+def _debt_codes() -> list:
+    lines = DEBT_FILE.read_text(encoding="utf-8").splitlines()
+    return [line.strip() for line in lines if line.strip() and not line.startswith("#")]
+
+
+@pytest.fixture(scope="module")
+def statistics() -> dict:
+    if not _ruff_available():
+        pytest.skip("ruff 未安装，跳过棘轮检查")
+    data = _collect_statistics()
+    if not data:
+        pytest.skip("ruff 未产出统计（可能已全部收敛）")
+    return data
+
+
+class TestDebtRegistry:
+    def test_debt_file_matches_baseline(self):
+        """两份清单必须同口径：否则 CI 阻断范围与棘轮基线会悄悄错位。"""
+        assert set(_debt_codes()) == set(RUFF_BASELINE)
+
+    def test_debt_file_is_machine_readable(self):
+        """CI 会直接把文件内容拼成 --ignore 参数，不能有注释或空行混入内容。"""
+        for line in DEBT_FILE.read_text(encoding="utf-8").splitlines():
+            assert not line.startswith("#"), "CI 会把 # 当作规则码传给 ruff"
+
+    def test_debt_file_has_no_duplicates(self):
+        codes = _debt_codes()
+
+        assert len(codes) == len(set(codes))
+
+
+class TestRuffRatchet:
+    def test_no_rule_outside_debt_registry(self, statistics):
+        """出现清单之外的新违规：要么立刻修掉，要么显式登记（登记即需说明理由）。"""
+        unexpected = sorted(set(statistics) - set(_debt_codes()))
+
+        assert unexpected == [], f"出现债务清单之外的新违规类别：{unexpected}"
+
+    def test_no_rule_grew_beyond_baseline(self, statistics):
+        """任一规则计数高于基线即失败——"只减不增"的落点。"""
+        grew = {
+            code: (statistics.get(code, 0), RUFF_BASELINE[code])
+            for code in RUFF_BASELINE
+            if statistics.get(code, 0) > RUFF_BASELINE[code]
+        }
+
+        assert grew == {}, f"违规数超过基线（规则: 当前/基线）：{grew}"
+
+    def test_improvements_are_recorded(self, statistics):
+        """变少是好事，但基线要同步调小，否则棘轮会逐渐失真。"""
+        improved = {
+            code: (statistics.get(code, 0), RUFF_BASELINE[code])
+            for code in RUFF_BASELINE
+            if statistics.get(code, 0) < RUFF_BASELINE[code]
+        }
+
+        assert improved == {}, f"下列规则已少于基线，请把基线调小以锁住成果：{improved}"
+
+
+class TestConfig:
+    def test_ruff_config_has_no_debt_ignores(self):
+        """债务不得写回 ruff.toml —— 写回去会让计数消失，棘轮失去测量对象。"""
+        config = (REPO_ROOT / "ruff.toml").read_text(encoding="utf-8")
+        ignore_block = config.split("ignore = [", 1)[1].split("]", 1)[0]
+
+        for code in _debt_codes():
+            assert f'"{code}"' not in ignore_block, (
+                f"{code} 出现在 ruff.toml 的 ignore 里：存量会变成不可见"
+            )
+
+    def test_bugbear_immutable_calls_keeps_fastapi_dependencies(self):
+        """删掉这条配置会让百余条 B008 噪声重新淹没有效告警。"""
+        config = (REPO_ROOT / "ruff.toml").read_text(encoding="utf-8")
+
+        assert "extend-immutable-calls" in config
+        assert "fastapi.Depends" in config
+
+    def test_ci_uses_debt_file_for_blocking(self):
+        """CI 必须真的用这份清单——只写文件不接线等于没有门禁。"""
+        workflow = (REPO_ROOT / ".github" / "workflows" / "ci.yml").read_text(
+            encoding="utf-8"
+        )
+
+        assert ".ruff-debt.txt" in workflow, "CI 未引用债务清单，阻断范围与棘轮会错位"

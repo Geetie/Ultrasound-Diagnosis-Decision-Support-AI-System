@@ -1,21 +1,21 @@
-from datetime import timedelta, datetime, timezone
-from app.security.auth import (
-    create_access_token,
-    decode_access_token,
-    verify_password,
-    get_password_hash,
-    RoleChecker,
-    check_permission,
-    get_current_user,
-    ROLES,
-    PERMISSIONS
-)
-from fastapi import HTTPException
-
-import pytest
 import base64
 import json
-from jose import jwt as jose_jwt
+from datetime import timedelta
+
+import pytest
+from fastapi import HTTPException
+
+from app.security.auth import (
+    PERMISSIONS,
+    ROLES,
+    RoleChecker,
+    check_permission,
+    create_access_token,
+    decode_access_token,
+    get_password_hash,
+    verify_password,
+)
+
 pytestmark = [pytest.mark.track_sec, pytest.mark.track_api, pytest.mark.sec_domain_auth]
 
 def test_password_hashing():
@@ -27,7 +27,7 @@ def test_password_hashing():
 def test_jwt_token_creation_and_decoding():
     data = {"sub": "test_user", "user_info": {"username": "test_user", "role": "ULTRASOUND_DOCTOR"}}
     token = create_access_token(data, expires_delta=timedelta(minutes=1))
-    
+
     decoded = decode_access_token(token)
     assert decoded["sub"] == "test_user"
     assert decoded["user_info"]["username"] == "test_user"
@@ -58,25 +58,25 @@ def test_check_permission():
     user_head = {"role": "DEPARTMENT_HEAD"}
     user_admin = {"role": "SYSTEM_ADMIN"}
     user_emergency = {"role": "EMERGENCY_DOCTOR"}
-    
+
     assert check_permission("submit_diagnosis", user_doctor) is True
     assert check_permission("view_results", user_doctor) is True
     assert check_permission("review_l3", user_doctor) is False
-    
+
     assert check_permission("review_l3", user_head) is True
     assert check_permission("configure_thresholds", user_head) is True
-    
+
     assert check_permission("submit_diagnosis", user_admin) is True
     assert check_permission("review_l3", user_admin) is True
     assert check_permission("view_audit_logs", user_admin) is True
-    
+
     assert check_permission("submit_feedback", user_emergency) is False
 
 def test_roles_and_permissions_structure():
     assert len(ROLES) == 5
     assert "ULTRASOUND_DOCTOR" in ROLES
     assert "SYSTEM_ADMIN" in ROLES
-    
+
     assert len(PERMISSIONS) == 5
     assert "ULTRASOUND_DOCTOR" in PERMISSIONS
     assert "SYSTEM_ADMIN" in PERMISSIONS
@@ -86,7 +86,7 @@ def test_jwt_expired_token_raises_401():
     """过期Token解码应抛出401"""
     data = {"sub": "test_user", "user_info": {"username": "test_user", "role": "ULTRASOUND_DOCTOR"}}
     token = create_access_token(data, expires_delta=timedelta(seconds=-1))
-    
+
     with pytest.raises(HTTPException) as exc_info:
         decode_access_token(token)
     assert exc_info.value.status_code == 401
@@ -95,11 +95,11 @@ def test_jwt_tampered_signature_raises_401():
     """篡改Token签名应抛出401"""
     data = {"sub": "test_user", "user_info": {"username": "test_user", "role": "ULTRASOUND_DOCTOR"}}
     token = create_access_token(data)
-    
+
     parts = token.split('.')
     tampered_payload = parts[1][:10] + "XXXX" + parts[1][14:]
     tampered_token = f"{parts[0]}.{tampered_payload}.{parts[2]}"
-    
+
     with pytest.raises(HTTPException) as exc_info:
         decode_access_token(tampered_token)
     assert exc_info.value.status_code == 401
@@ -184,9 +184,10 @@ class TestJWTAlgorithmConfusionAttacks:
     def test_alg_hs256_token_rejected(self):
         """alg为HS256的Token应被拒绝（算法混淆攻击）"""
         self._ensure_jwt_key()
-        from app.security.hsm import hsm_manager
-        import hmac
         import hashlib
+        import hmac
+
+        from app.security.hsm import hsm_manager
         public_key = hsm_manager.get_public_key("jwt_signing_key")
         if public_key is None:
             pytest.skip("HSM public key not available")
@@ -267,7 +268,8 @@ class TestKeyRotationJWTCompatibility:
 
     def test_rotated_key_naming_convention(self):
         import re
-        from app.security.hsm import hsm_manager, KeySlot
+
+        from app.security.hsm import KeySlot, hsm_manager
         hsm_manager.rotate_key("jwt_signing_key")
         all_keys = hsm_manager.list_keys_by_slot(KeySlot.JWT_SIGNING)
         rotated_keys = [k for k in all_keys if k.startswith("jwt_signing_key_v")]

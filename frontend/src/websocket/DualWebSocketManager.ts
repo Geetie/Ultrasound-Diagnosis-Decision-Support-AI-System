@@ -21,13 +21,16 @@ function deriveConnectionStatus(nav: ChannelStatus, dicom: ChannelStatus): Conne
   return 'both_disconnected';
 }
 
-function buildWsUrl(path: string): string {
+function buildWsUrl(path: string, params: Record<string, string>): string {
   const store = useWebSocketStore.getState();
   const configuredUrl = path === '/api/v1/realtime/nav' ? store.navChannelUrl : store.dicomChannelUrl;
   const url = configuredUrl || path;
-  if (url.startsWith('ws')) return url;
+  const query = new URLSearchParams(params).toString();
+  const withQuery = (base: string) =>
+    query ? `${base}${base.includes('?') ? '&' : '?'}${query}` : base;
+  if (url.startsWith('ws')) return withQuery(url);
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  return `${protocol}//${window.location.host}${url}`;
+  return withQuery(`${protocol}//${window.location.host}${url}`);
 }
 
 export class DualWebSocketManager {
@@ -35,6 +38,7 @@ export class DualWebSocketManager {
   private dicomWs: WebSocket | null = null;
   private sessionId: string | null = null;
   private token: string | null = null;
+  private deviceId: string | null = null;
 
   private heartbeatInterval: ReturnType<typeof setInterval> | null = null;
   private navReconnectTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -66,14 +70,25 @@ export class DualWebSocketManager {
     organSwitching: [] as EventHandler<WsOrganSwitching>[],
   };
 
-  connect(sessionId: string, token: string): void {
+  connect(sessionId: string, token: string, deviceId?: string | null): void {
     this.sessionId = sessionId;
     this.token = token;
+    // 后端 `/api/v1/realtime/{nav,dicom}` 的 `session_id`/`device_id` 都是 `Query(...)` 必填，
+    // 只放进 auth 消息体不够 —— **握手阶段就会被拒**，这正是此前双通道建不起来的直接原因。
+    this.deviceId = deviceId ?? this.deviceId;
     this.isNavReconnecting = false;
     this.isDicomReconnecting = false;
     this.navReconnectAttempt = 0;
     this.dicomReconnectAttempt = 0;
     this.connectNavChannel();
+  }
+
+  /** 握手 Query 参数（后端必填，见 app/api/websocket/nav.py 与 dicom.py）。 */
+  private wsParams(): Record<string, string> {
+    const params: Record<string, string> = {};
+    if (this.sessionId) params.session_id = this.sessionId;
+    if (this.deviceId) params.device_id = this.deviceId;
+    return params;
   }
 
   disconnect(): void {
@@ -155,7 +170,7 @@ export class DualWebSocketManager {
   private connectNavChannel(): void {
     if (!this.sessionId) return;
 
-    const wsUrl = buildWsUrl('/api/v1/realtime/nav');
+    const wsUrl = buildWsUrl('/api/v1/realtime/nav', this.wsParams());
     this.updateStoreStatus('connecting', useWebSocketStore.getState().dicomChannelStatus);
 
     try {
@@ -199,7 +214,7 @@ export class DualWebSocketManager {
   private connectDicomChannel(): void {
     if (!this.sessionId || !this.token) return;
 
-    const wsUrl = buildWsUrl('/api/v1/realtime/dicom');
+    const wsUrl = buildWsUrl('/api/v1/realtime/dicom', this.wsParams());
     this.updateStoreStatus(useWebSocketStore.getState().navChannelStatus, 'connecting');
 
     try {
@@ -285,6 +300,13 @@ export class DualWebSocketManager {
           this.handlers.organSwitching.forEach((h) => h(msg as WsOrganSwitching));
           break;
 
+        case 'ping':
+          // 服务端心跳：**必须回 pong**。后端规则是"连续 3 次未收 pong 即关闭"
+          // （nav.py:741 / dicom.py:173），此前 switch 里没有这个分支，
+          // 即使连上也会在十几秒后被判死并反复重连。
+          this.navWs?.send(JSON.stringify({ type: 'pong' }));
+          break;
+
         case 'pong':
           this.missedHeartbeats = 0;
           useWebSocketStore.getState().setLastHeartbeat(Date.now());
@@ -303,6 +325,9 @@ export class DualWebSocketManager {
           this.updateStoreStatus(useWebSocketStore.getState().navChannelStatus, 'connected');
           this.dicomReconnectAttempt = 0;
           this.isDicomReconnecting = false;
+        } else if (msg.type === 'ping') {
+          // 与 nav 通道同理：不回 pong 会被服务端心跳判死（dicom.py:173）
+          this.dicomWs?.send(JSON.stringify({ type: 'pong' }));
         }
       } catch {
         // ignore

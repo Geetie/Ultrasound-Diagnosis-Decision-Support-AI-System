@@ -1,19 +1,19 @@
 import asyncio
-import structlog
-from datetime import datetime, timezone, timedelta
-from typing import Optional, Dict, Any, List
+from datetime import datetime, timedelta, timezone
+from typing import Any
 
-from sqlalchemy import select, delete, func, and_
+import structlog
+from sqlalchemy import and_, delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config.settings import settings
-from app.models.database import DiagnosisSession, SessionArchive, AuditLog
+from app.models.database import AuditLog, DiagnosisSession, SessionArchive
 from app.services.audit_service import AuditService
 from app.services.cold_archive import ColdArchiveService
 
 logger = structlog.get_logger()
 
-_retention_task: Optional[asyncio.Task] = None
+_retention_task: asyncio.Task | None = None
 _retention_running = False
 
 
@@ -149,9 +149,9 @@ class DataRetentionService:
     async def archive_and_purge_audit_logs(
         self,
         *,
-        before: Optional[datetime] = None,
+        before: datetime | None = None,
         storage=None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """把超期审计日志移入对象存储冷层（PG 仅保留创世锚点）。
 
         冷层不可用时**不删除任何热数据**（返回结果中 ``failed``/``pending``
@@ -164,11 +164,11 @@ class DataRetentionService:
 
     async def archive_and_purge_session_archives(
         self,
-        patient_type: Optional[str] = None,
+        patient_type: str | None = None,
         *,
-        before: Optional[datetime] = None,
+        before: datetime | None = None,
         storage=None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """到期的会话归档先入冷层再从 PG 清理（门诊 15 年 / 住院 30 年）。"""
         service = ColdArchiveService(self.db, storage=storage)
         result = await service.archive_session_archives(
@@ -177,12 +177,12 @@ class DataRetentionService:
         logger.info("session_archives_cold_tier_completed", **result.as_dict())
         return result.as_dict()
 
-    async def archive_audit_manifest_stats(self) -> Dict[str, Any]:
+    async def archive_audit_manifest_stats(self) -> dict[str, Any]:
         """冷归档清单总览（合规留痕/运维面板用）。"""
         service = ColdArchiveService(self.db)
         return await service.stats()
 
-    async def verify_retention_compliance(self) -> Dict[str, Any]:
+    async def verify_retention_compliance(self) -> dict[str, Any]:
         compliance_report = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "config": {
@@ -257,7 +257,7 @@ class DataRetentionService:
 
 async def start_data_retention_periodic_task(
     db_session_factory,
-    interval_hours: Optional[int] = None,
+    interval_hours: int | None = None,
 ) -> None:
     global _retention_task, _retention_running
     if _retention_running:

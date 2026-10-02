@@ -1,32 +1,18 @@
-import pytest
-from unittest.mock import AsyncMock, Mock, patch
-import struct
 import binascii
+import struct
+from unittest.mock import AsyncMock, patch
 
+import pytest
+
+from app.api.websocket.dicom import (
+    MAX_DICOM_FRAME_PAYLOAD_BYTES,
+    calculate_crc32,
+)
 from app.api.websocket.nav import (
-    ConnectionManager,
     WS_CLOSE_AUTH_FAILED,
     WS_CLOSE_AUTH_TIMEOUT,
+    ConnectionManager,
     get_timestamp,
-)
-from app.api.websocket.dicom import (
-    calculate_crc32,
-    MAX_DICOM_FRAME_PAYLOAD_BYTES,
-)
-from app.models.schemas import (
-    WebSocketMessageType,
-    AuthMessage,
-    AuthOKMessage,
-    PingMessage,
-    PongMessage,
-    FrameMessage,
-    NavigationMessage,
-    NavigationAnnotation,
-    DiagnosisResultMessage,
-    SessionTerminatedMessage,
-    NavigationRevocationMessage,
-    ReconnectAckMessage,
-    DesensitizationStatus,
 )
 
 pytestmark = pytest.mark.track_api

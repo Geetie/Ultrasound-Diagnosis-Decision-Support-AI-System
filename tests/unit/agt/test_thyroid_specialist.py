@@ -18,7 +18,6 @@ pytestmark = [pytest.mark.track_agt]
 
 from app.agents.protocols import AgentContext
 from app.agents.specialist.thyroid import (
-    TI_RADS_LEVELS,
     ThyroidSpecialistAgent,
 )
 from app.inference.protocols import InferenceError, InferenceErrorCode

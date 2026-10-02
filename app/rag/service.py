@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import asyncio
 import time
-from typing import List, Optional
 
 import structlog
 
@@ -66,7 +65,7 @@ class RAGServiceImpl(RAGService):
         p99_warning_ms: float | None = None,
         p99_critical_ms: float | None = None,
         kb_version: str | None = None,
-        cache: Optional[RetrievalCache] = None,
+        cache: RetrievalCache | None = None,
     ):
         self._enhancer = query_enhancer
         self._retriever = retriever
@@ -128,7 +127,7 @@ class RAGServiceImpl(RAGService):
         start = time.monotonic()
 
         # Stage 0: 缓存查询（命中则跳过 enhance/retrieve/rerank/fallback 全流水线）
-        cache_key: Optional[str] = None
+        cache_key: str | None = None
         if self._cache is not None and self._cache.is_cacheable(request):
             cache_key = self._cache.make_key(request, self._kb_version)
             cached = await self._cache.get(cache_key)
@@ -138,7 +137,7 @@ class RAGServiceImpl(RAGService):
         # Stage 1: query enhancement.
         # T-GB-AGT-02：``use_llm_enhancement`` 决定是否允许 LLM 改写查询，
         # 使"标准路径不调用 LLM"这一档位差异真正生效。
-        enhanced: Optional[EnhancedQuery] = None
+        enhanced: EnhancedQuery | None = None
         if request.use_query_enhancement:
             try:
                 enhanced = await self._enhancer.enhance(
@@ -146,7 +145,7 @@ class RAGServiceImpl(RAGService):
                     organ_hint=request.organ,
                     use_llm=request.use_llm_enhancement,
                 )
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.warning(
                     "query_enhancement_failed_using_raw",
                     error=str(exc),
@@ -160,7 +159,7 @@ class RAGServiceImpl(RAGService):
             result = await self._retriever.retrieve(
                 request, enhanced_query=query_for_retrieval
             )
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.error(
                 "retrieval_failed",
                 error=str(exc),
@@ -196,7 +195,7 @@ class RAGServiceImpl(RAGService):
                     top_k=self._rerank_output_top_k,
                 )
                 rerank_used = "heuristic"
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.warning(
                     "rerank_unexpected_using_heuristic",
                     error=str(exc),
@@ -212,7 +211,7 @@ class RAGServiceImpl(RAGService):
             # Preserve original retrieval_source from the input chunks when
             # possible (look up by chunk_id), otherwise mark as HYBRID.
             source_by_id = {sc.chunk.chunk_id: sc.retrieval_source for sc in result.chunks}
-            final_chunks: List[ScoredChunk] = []
+            final_chunks: list[ScoredChunk] = []
             for sc in reranked:
                 src = source_by_id.get(sc.chunk.chunk_id, sc.retrieval_source)
                 final_chunks.append(
@@ -317,7 +316,7 @@ class RAGServiceImpl(RAGService):
         )
         return cached
 
-    def cache_stats(self) -> Optional[dict]:
+    def cache_stats(self) -> dict | None:
         """缓存命中统计（未启用缓存时返回 None）。"""
         return self._cache.stats() if self._cache is not None else None
 
@@ -333,7 +332,7 @@ class RAGServiceImpl(RAGService):
             retriever_health = await self._retriever.health_check()
             results["embedding"] = retriever_health.get("embedding", False)
             results["vector_index"] = retriever_health.get("vector_index", False)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("rag_health_retriever_failed", error=str(exc))
             results["embedding"] = False
             results["vector_index"] = False
@@ -342,7 +341,7 @@ class RAGServiceImpl(RAGService):
         try:
             ok = await self._reranker.health_check()
             results["reranker"] = bool(ok)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("rag_health_reranker_failed", error=str(exc))
             results["reranker"] = False
 
@@ -350,7 +349,7 @@ class RAGServiceImpl(RAGService):
         try:
             ok = await self._bm25_fallback._index.health_check()
             results["bm25"] = bool(ok)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("rag_health_bm25_failed", error=str(exc))
             results["bm25"] = False
 
@@ -367,7 +366,7 @@ class RAGServiceImpl(RAGService):
             res = self._retriever.close()
             if asyncio.iscoroutine(res):
                 close_tasks.append(res)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning(
                 "rag_close_failed",
                 obj="Retriever",
@@ -384,7 +383,7 @@ class RAGServiceImpl(RAGService):
                     res = close()
                     if asyncio.iscoroutine(res):
                         close_tasks.append(res)
-                except Exception as exc:  # noqa: BLE001
+                except Exception as exc:
                     logger.warning(
                         "rag_close_failed",
                         obj=type(obj).__name__,
@@ -394,7 +393,7 @@ class RAGServiceImpl(RAGService):
             res = self._bm25_fallback._index.close()
             if asyncio.iscoroutine(res):
                 close_tasks.append(res)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning(
                 "rag_close_failed",
                 obj="BM25Index",

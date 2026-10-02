@@ -6,19 +6,23 @@ TODO(Phase0A): DESIGN-001 - Implement UHAT 4-level hierarchy (organ->system->fea
 TODO(Phase0A): DESIGN-002 - Add term review/approval workflow
 TODO(Phase0A): DESIGN-003 - Add unmapped term review queue for continuous vocabulary improvement
 """
-from enum import Enum
-from typing import Dict, List, Optional, Set
 from dataclasses import dataclass
+from enum import Enum
+from pathlib import Path
+
+import structlog
+
+logger = structlog.get_logger("app.knowledge.vocabulary")
 
 
 @dataclass
 class TermMapping:
     """Term mapping with synonyms and related terms."""
     standard: str
-    synonyms: List[str]
-    related_terms: List[str]
-    organ: Optional[str] = None
-    category: Optional[str] = None
+    synonyms: list[str]
+    related_terms: list[str]
+    organ: str | None = None
+    category: str | None = None
 
 
 class Organ(str, Enum):
@@ -70,10 +74,49 @@ class Calcification(str, Enum):
 
 
 class MeasurementType(str, Enum):
-    """Measurement type enumeration."""
+    """Measurement type enumeration.
+
+    M3 自动测量在原有三轴之外补充派生测量维度（纵横比、体积与三类距离）。
+    """
     LONGITUDINAL = "longitudinal"
     TRANSVERSE = "transverse"
     ANTEROPOSTERIOR = "anteroposterior"
+    ASPECT_RATIO = "aspect_ratio"
+    VOLUME = "volume"
+    DISTANCE_TO_CAPSULE = "distance_to_capsule"
+    DISTANCE_TO_ORGAN_EDGE = "distance_to_organ_edge"
+    DISTANCE_TO_SKIN = "distance_to_skin"
+
+
+# M9：后方回声特征。契约枚举定义在 ``app.models.schemas.PosteriorAcoustic``
+# （单一事实源），此处只登记 **UDAF 标准术语 → 契约枚举值** 的映射，避免
+# 两处枚举各自漂移。
+#
+# 为什么标准术语要带 ``posterior_`` 前缀：``_vocab`` 以标准术语为**全局键**，
+# 而 ``none`` / ``mixed`` / ``irregular`` 等短名已被既有类别占用（既有实现是
+# 后注册者覆盖先注册者：``calcification.none``、``vascularity.mixed`` 即如此）。
+# 直接复用短名会静默夺走这些类别的术语，破坏既有抽取行为。
+POSTERIOR_ACOUSTIC_ENUM_MAP: dict[str, str] = {
+    "posterior_enhancement": "enhancement",
+    "posterior_attenuation": "attenuation",
+    "posterior_shadowing": "shadowing",
+    "posterior_none": "none",
+    "posterior_mixed": "mixed",
+}
+
+# 派生测量的 UDAF 类别名（M3）。派生值由计算得到而非文本匹配，
+# 因此**不**登记进 ``udt_parser._ATTRIBUTE_CATEGORIES``。
+DERIVED_MEASUREMENT_CATEGORY = "derived_measurement"
+
+
+def posterior_acoustic_value(standard_term: str | None) -> str | None:
+    """把 UDAF 标准术语映射为契约枚举值（``app.models.schemas.PosteriorAcoustic``）。
+
+    非后方回声术语（含 ``None``）返回 ``None``，调用方据此判断"未识别"。
+    """
+    if not standard_term:
+        return None
+    return POSTERIOR_ACOUSTIC_ENUM_MAP.get(standard_term)
 
 
 class TI_RADS(str, Enum):
@@ -158,8 +201,8 @@ class UDAFVocabulary:
     """
 
     def __init__(self):
-        self._vocab: Dict[str, TermMapping] = {}
-        self._reverse_lookup: Dict[str, str] = {}
+        self._vocab: dict[str, TermMapping] = {}
+        self._reverse_lookup: dict[str, str] = {}
         self._initialize_vocabulary()
 
     def _initialize_vocabulary(self):
@@ -175,6 +218,13 @@ class UDAFVocabulary:
         self._init_heart_structures()
         self._init_heart_conditions()
         self._init_heart_function()
+        # M9：后方回声特征（UDAF 属性扩展）
+        self._init_posterior_acoustic()
+        # M3：派生测量术语（提供标准名用于输出与覆盖率统计）
+        self._init_derived_measurements()
+        # 词汇表 v2 扩展层：THUOCL+语料双证+LLM 抽取（tier S/A/B 注册，
+        # C 层默认关闭）。资产缺失时静默跳过，内置词表保持可用。
+        self._init_extended_vocabulary()
 
     def _init_echogenicity(self):
         terms = [
@@ -322,8 +372,93 @@ class UDAFVocabulary:
         for standard, synonyms, related, organ in terms:
             self._add_mapping(standard, synonyms, related, organ=organ, category="heart_function")
 
-    def _add_mapping(self, standard: str, synonyms: List[str], related_terms: List[str],
-                     organ: Optional[str] = None, category: Optional[str] = None):
+    def _init_posterior_acoustic(self):
+        """初始化后方回声特征术语（M9，UDAF 属性扩展）。
+
+        同义词采用临床自然表述（如"后方回声增强"）。其中若干表述包含其它
+        类别的同义词（"后方回声增强" ⊃ echogenicity 的"回声增强"），
+        这在各类别独立建 Trie 时会于同一位置重复命中；解析器通过
+        "后方回声优先匹配 + 已匹配 span 抑制" 解决（见
+        ``UDTParser._extract_all_attributes``），因此此处无需回避自然表述。
+        """
+        terms = [
+            ("posterior_enhancement",
+             ["后方回声增强", "后方增强", "后方增强效应", "后方声增强"], []),
+            ("posterior_attenuation",
+             ["后方回声衰减", "后方衰减", "后方声衰减"], []),
+            ("posterior_shadowing",
+             ["后方声影", "后方伴声影", "声影"], []),
+            ("posterior_none",
+             ["后方回声无明显改变", "后方回声无异常", "后方无明显改变", "后方回声无特殊"], []),
+            ("posterior_mixed",
+             ["后方回声混合", "后方混合"], []),
+        ]
+        for standard, synonyms, related in terms:
+            self._add_mapping(standard, synonyms, related, category="posterior_acoustic")
+
+    def _init_derived_measurements(self):
+        """初始化派生测量术语（M3）。
+
+        只登记标准名、不登记同义词：派生值由 bbox/像素间距计算得到而非文本
+        匹配，登记标准名的目的是让输出与覆盖率统计有统一术语；空同义词列表
+        保证 ``_reverse_lookup`` 与未识别词判定不受影响。
+        """
+        standards = [
+            MeasurementType.ASPECT_RATIO.value,
+            MeasurementType.VOLUME.value,
+            MeasurementType.DISTANCE_TO_CAPSULE.value,
+            MeasurementType.DISTANCE_TO_ORGAN_EDGE.value,
+            MeasurementType.DISTANCE_TO_SKIN.value,
+        ]
+        for standard in standards:
+            self._add_mapping(standard, [], [], category=DERIVED_MEASUREMENT_CATEGORY)
+
+    EXTENDED_VOCAB_CATEGORY = "extended"
+
+    def _init_extended_vocabulary(self) -> None:
+        """加载词汇表 v2 扩展层（tier S/A/B；C 层需显式开启）。
+
+        资产来源：THUOCL_medical（清华）解剖锚点过滤 + 分器官语料双证 +
+        LLM 抽取（详见 scripts/udt_vocab_v2_*.py 与 16 号文档 A.15/A.16）。
+        每个词条注册为标准名（空同义词），不影响 _reverse_lookup 与
+        未识别词判定；organ/category 使 get_terms_by_organ/coverage_rate
+        直接受益。资产缺失或损坏时跳过（内置词表保持完整可用）。
+        """
+        import json
+        import os
+
+        default_path = Path(__file__).resolve().parent / "data" / "vocab_v2_final.json"
+        path = Path(os.environ.get("UDAF_EXTENDED_VOCAB", default_path))
+        if not path.exists():
+            logger.info("udaf_extended_vocab_missing", path=str(path))
+            return
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError) as exc:
+            logger.warning("udaf_extended_vocab_unreadable", path=str(path), error=str(exc))
+            return
+
+        include_c = os.environ.get("UDAF_EXTENDED_INCLUDE_C", "").lower() in ("1", "true", "yes")
+        allowed_tiers = {"S", "A", "B"} | ({"C"} if include_c else set())
+        organs = data.get("organs", {})
+        added = 0
+        for organ, terms in organs.items():
+            if organ not in ("thyroid", "liver", "cardiac"):
+                continue
+            for term, rec in terms.items():
+                if not isinstance(rec, dict) or rec.get("tier") not in allowed_tiers:
+                    continue
+                # 内置标准词/同义词优先：扩展词若与任一内建词重名，
+                # 注册会让 normalize 提前命中空同义词映射，遮蔽原映射
+                if term in self._vocab or term in self._reverse_lookup:
+                    continue
+                self._add_mapping(term, [], [], organ=organ,
+                                  category=self.EXTENDED_VOCAB_CATEGORY)
+                added += 1
+        logger.info("udaf_extended_vocab_loaded", path=str(path), added=added)
+
+    def _add_mapping(self, standard: str, synonyms: list[str], related_terms: list[str],
+                     organ: str | None = None, category: str | None = None):
         """Add a term mapping to the vocabulary."""
         mapping = TermMapping(
             standard=standard,
@@ -337,7 +472,7 @@ class UDAFVocabulary:
             self._reverse_lookup[synonym] = standard
 
     # BUG-001 fix: type annotation changed from str to Optional[str]
-    def normalize(self, term: Optional[str]) -> Optional[str]:
+    def normalize(self, term: str | None) -> str | None:
         """
         Normalize a term to its standard form.
 
@@ -354,7 +489,7 @@ class UDAFVocabulary:
             return term_clean
         return self._reverse_lookup.get(term_clean)
 
-    def get_mapping(self, standard_term: str) -> Optional[TermMapping]:
+    def get_mapping(self, standard_term: str) -> TermMapping | None:
         """
         Get the full mapping for a standard term.
 
@@ -366,7 +501,7 @@ class UDAFVocabulary:
         """
         return self._vocab.get(standard_term)
 
-    def get_synonyms(self, term: str) -> List[str]:
+    def get_synonyms(self, term: str) -> list[str]:
         """
         Get all synonyms for a term (standard or synonym).
 
@@ -382,7 +517,7 @@ class UDAFVocabulary:
         mapping = self._vocab.get(normalized)
         return mapping.synonyms if mapping else []
 
-    def get_terms_by_category(self, category: str) -> List[str]:
+    def get_terms_by_category(self, category: str) -> list[str]:
         """
         Get all standard terms in a category.
 
@@ -398,7 +533,7 @@ class UDAFVocabulary:
         ]
 
     # BUG-003 fix: handle both Organ enum and plain string comparison
-    def get_terms_by_organ(self, organ: str) -> List[str]:
+    def get_terms_by_organ(self, organ: str) -> list[str]:
         """
         Get all standard terms for an organ.
 
@@ -414,7 +549,7 @@ class UDAFVocabulary:
             if mapping.organ == organ_value
         ]
 
-    def coverage_rate(self, terms: List[str]) -> float:
+    def coverage_rate(self, terms: list[str]) -> float:
         """
         Calculate terminology mapping coverage rate.
 
@@ -430,7 +565,7 @@ class UDAFVocabulary:
         return normalized_count / len(terms)
 
     @property
-    def all_standard_terms(self) -> Set[str]:
+    def all_standard_terms(self) -> set[str]:
         """Get all standard terms in the vocabulary."""
         return set(self._vocab.keys())
 
@@ -451,7 +586,7 @@ class UDAFVocabulary:
         return False
 
     # STYLE-004 fix: public API for iterating all synonyms
-    def get_all_synonyms(self) -> Set[str]:
+    def get_all_synonyms(self) -> set[str]:
         """
         Get all synonym strings in the vocabulary.
 

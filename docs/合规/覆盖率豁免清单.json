@@ -1,0 +1,151 @@
+{
+  "policy": "本清单只解释'剩余的未覆盖部分是什么性质'，不参与降低覆盖率门禁：CI 的整体/核心覆盖率一律按 pyproject.toml 与 .github/workflows/ci.yml 的阈值对整个代码库计算，与清单无关。列为 external_service_semantics / hardware_hsm / external_object_storage / real_database / hardware_gpu 的条目，表示其剩余缺口需要真实外部系统或真机才能覆盖；每条都必须说明'离线已经覆盖到哪一层'，否则不允许留在清单里。",
+  "target_core_percent": 90,
+  "target_overall_percent": 80,
+  "updated_at": "2026-09-29",
+  "entries": [
+    {
+      "module": "app/security/refresh_token.py",
+      "percent": 77.7,
+      "missing_lines": 130,
+      "category": "external_service_semantics",
+      "field_verification": true,
+      "offline_covered": "内存实现的全部 CRUD/家族轮换/重放检测/并发上限，以及 Redis 实现的正常路径与错误分支（注入 mock client 断言命令形状）。",
+      "reason": "剩余缺口依赖真实 Redis 服务器语义：scan_iter 键空间遍历、Lua eval 更新 last_used_at、pipeline SETEX/TTL 的原子性与过期行为——离线 mock 只能验证'命令发了什么'，无法验证 TTL 与键空间一致性。",
+      "next_action": "在具备真实 Redis 的环境执行键空间与 TTL 一致性校验（可复用既有 Redis 集成测试脚手架）。"
+    },
+    {
+      "module": "app/security/hsm/persistence_manager.py",
+      "percent": 55.8,
+      "missing_lines": 99,
+      "category": "hardware_hsm",
+      "field_verification": true,
+      "offline_covered": "safe_run_async_task 的三种调度分支、flush_pending_persistence、cleanup_redis_keys 的 pipeline 语义、restore_degraded_state 的时间戳回退、migrate_legacy_keys 的前缀跳过。",
+      "reason": "剩余缺口是 SoftHSM 真机端到端：真实 SoftHSM 产出私钥经 persist_key 写入 Redis、再由 restore_keys 解密回填 KeySlot——离线只能覆盖'Redis 故障吞异常'与'pipeline 命令形状'两层，无法验证密钥可恢复性。",
+      "next_action": "现场以真实 SoftHSM 执行'生成→持久化→重启→恢复→验签'全链路，并留存回执。"
+    },
+    {
+      "module": "app/security/emergency_signing.py",
+      "percent": 72.4,
+      "missing_lines": 59,
+      "category": "hardware_hsm",
+      "field_verification": true,
+      "offline_covered": "启停生命周期、审批审计、签名的调用参数与返回值透传、每日配额的内存回退分支、待核验报告查询。",
+      "reason": "真实签名字节由 SoftHSM 硬件产生并由公钥验签，且每日配额依赖真实 Redis 上的 Lua 原子 INCR/EXPIRE；离线只能断言'参数正确、返回被透传'。",
+      "next_action": "现场执行应急签名→验签→配额耗尽全流程，确认硬件签名字节可被现有验签逻辑接受。"
+    },
+    {
+      "module": "app/services/data_retention.py",
+      "percent": 61.9,
+      "missing_lines": 49,
+      "category": "real_database",
+      "field_verification": true,
+      "offline_covered": "purge 系列的批循环与 rowcount 分支（mock 结果）、冷层包装（注入假 storage）、合规违规审计分支、周期任务启停。",
+      "reason": "需要真实 PostgreSQL 才能定论两件事：DELETE 的 rowcount 与批处理实际行为，以及 SessionArchive.archived_at 与构造时写入的 archive_timestamp 列名是否一致（疑点，mock 下看不出）。",
+      "next_action": "在具备真实 PG 的环境跑一次归档-清理-合规校验，并核对列名。"
+    },
+    {
+      "module": "app/inference/gpu_monitor.py",
+      "percent": 52.5,
+      "missing_lines": 256,
+      "category": "hardware_gpu",
+      "field_verification": true,
+      "offline_covered": "nvidia-smi 输出的解析与异常分支、阈值判定、快照结构（可注入假命令输出覆盖）。",
+      "reason": "剩余缺口是真实 GPU 上的采样：显存/温度/利用率读数与降级阈值在真机上的实际触发。无 GPU 时相关基准按 SKIP 记录（见 scripts/bench_suite.py 的 vram 套件）。",
+      "next_action": "在目标机型上跑 smoke 与 bench_suite --suite vram，留存显存占用与碎片率快照。"
+    },
+    {
+      "module": "app/inference/gpu_memory_monitor.py",
+      "percent": 41.8,
+      "missing_lines": 107,
+      "category": "hardware_gpu",
+      "field_verification": true,
+      "offline_covered": "监控循环的调度、阈值比较、碎片率估算与热重载触发条件（可注入假快照）。",
+      "reason": "碎片率与热重载判定必须在真实显存压力下验证才可信，离线估的值与真机行为无对应关系。",
+      "next_action": "现场制造显存压力，验证碎片率阈值与模型热重载回执。"
+    }
+  ],
+  "field_progress": [
+    {
+      "module": "app/security/hsm/persistence_manager.py",
+      "status": "partially_verified",
+      "environment": "学校 GPU 服务器（student03@10.20.28.21，Ubuntu 24.04，无 sudo）",
+      "verified": "以 USE_SOFT_HSM=true 完成『生成 → 持久化 → 重启 → 恢复』：启动期强校验要求 HSM_PRIVATE_KEY_PASSWORD 与合法 Fernet HSM_KEY_ENCRYPTION_KEY，真机实测通过；期间暴露『仓库根 soft_hsm_enabled_at.txt 是被提交的运行期状态，90 天有效期一到签名路径即抛 RuntimeError』（现场用 scripts/server_fix_soft_hsm.sh 备份原时间戳后刷新）。",
+      "remaining": "验签回执留存、密钥恢复的完整链路回执；`app/security/emergency_signing.py` 的『签名 → 验签 → 配额耗尽』全流程未做。"
+    },
+    {
+      "module": "app/inference/gpu_monitor.py",
+      "status": "not_verified",
+      "environment": "同上（RTX 5880 Ada Generation 48GB，驱动 595.91.07；机器**只有 1 张卡**）",
+      "verified": "仅完成硬件可达性侦察：nvidia-smi 可读、torch 2.14.0+cu130 可加载、CUDA 可见性对照实验（0→True、未设置→True、1/2→False）。",
+      "remaining": "`bench_suite --suite vram` 与显存压力下的碎片率/热重载验证未做。",
+      "field_note": "坑：用户 fish 配置 `~/.config/fish/config.fish` 里写死 `CUDA_VISIBLE_DEVICES=2`，而机器只有 1 张卡 → 所有 CUDA 命令恒不可用；现场处置是**命令前置** `env CUDA_VISIBLE_DEVICES=0`（不改用户配置）。"
+    },
+    {
+      "module": "app/inference/gpu_memory_monitor.py",
+      "status": "not_verified",
+      "environment": "同上",
+      "verified": "无（未制造显存压力）。",
+      "remaining": "制造显存压力验证碎片率阈值与模型热重载回执。"
+    },
+    {
+      "module": "app/security/refresh_token.py",
+      "status": "not_verified",
+      "environment": "同上（本机已具备真实 Redis，127.0.0.1:16379，requirepass）",
+      "verified": "Redis 连通性与 PING 已实测；键空间/TTL 校验未做。",
+      "remaining": "真实 Redis 上执行键空间与 TTL 一致性校验。"
+    },
+    {
+      "module": "app/services/data_retention.py",
+      "status": "not_verified",
+      "environment": "同上（本机已具备真实 PostgreSQL 16 + pgvector 0.8.6，127.0.0.1:15432）",
+      "verified": "PG 连通、alembic 从空库跑通到 head（17 张表）已实测；归档-清理未做。",
+      "remaining": "归档-清理-合规校验并核对列名（SessionArchive.archived_at vs archive_timestamp）。"
+    },
+    {
+      "module": "app/services/safety_gateway_client.py",
+      "status": "partially_verified",
+      "environment": "同上（SG 以**独立进程**运行在 9001，主服务 18000）",
+      "verified": "『SG 不可用 → fail-closed 拒绝输出』与『健康探测在 SG 恢复后回归』已覆盖；真机另实测了 SG↔融合层探测路径修复后的恢复行为。",
+      "remaining": "kill 主服务进程，验证 SG 仍存活并返回 E4005 拒绝。"
+    },
+    {
+      "module": "app/config/redis.py",
+      "status": "not_verified",
+      "environment": "同上（单实例 Redis，未做主从）",
+      "verified": "『Redis 不可用时降级』离线 3 条已覆盖；真机为单实例。",
+      "remaining": "Redis 主从切换演练（秒级接管时序 + 切换期间计数连续性）。"
+    }
+  ],
+  "field_accepted_deviations": [
+    "Qdrant 未启动：向量检索按设计回落 pgvector（真机日志 `qdrant_unhealthy_falling_back_to_pgvector`），为可接受的降级。",
+    "SG 整体显示 degraded：`oom_protection=unknown`（需特权容器 os.environ 级 oom_score_adj=-1000，本机无 sudo 无法设置）；主服务已改为把 SG 的 degraded 视为**可服务**状态，只记一条 warning。",
+    "VictoriaMetrics 推送关闭（OBS_VM_PUSH_ENABLED=false）：本机未部署 VM，指标服务器（9090）本身已启动。",
+    "pkuseg 未安装：PyPI 无 py3.12 wheel、源码构建失败；代码侧是软依赖（`app/knowledge/segmentation_validation.py` try/except → 回落 jieba），已登记为 OPTIONAL_UNDECLARED 并由守卫测试校验其确为软依赖。",
+    "知识库当前仅为**冒烟基线**：3 条自造条目（metadata 标记 smoke_fixture=true，内容带『冒烟用自造条目，非临床依据』前缀），不含真实患者数据、不冒充权威知识；真实知识库需按 scripts/init_knowledge_base.py 的 manifest+per-organ JSON 路径重建。",
+    "模型权重**已就位**（经 HF_ENDPOINT=https://hf-mirror.com 下载，~/uai/models 共 9.2G：bge-m3、bge-reranker-base、Qwen2.5-1.5B-Instruct 与 qwen2.5-1.5b-instruct-q4_k_m.gguf），且 4 个模型服务实测在跑：8001 llama.cpp（Q4_K_M，n_gpu_layers=-1）、8002 vLLM（device cuda，gpu-memory-utilization 0.3）、8004 bge-m3、8005 reranker —— 全部绑 127.0.0.1。",
+    "Ultrasound-CLIP（8003）**已就位（2026-09-29）**：底座为 BiomedCLIP（MIT 许可，微软官方 open_clip 格式权重，512 维），经 hf-mirror 下载并起服务（scripts/server_start_ultrasound_clip.sh，自动识别格式，绑 127.0.0.1:8003）。官方 Ultrasound-CLIP（CVPR 2026，ZJUDataIntelligence）预训练权重在 OneDrive——本机与学校服务器均无法连接 onedrive.live.com（被墙），HF 仓库空壳、无镜像、无可用中转，无法自动化下载；手动获取后可无缝切换（该仓库与 US-365K 均未声明 license，注册商用前须向作者确认）。I2T@10（US-365K test 500 样本，非门控数值）：BiomedCLIP = 23.6%（通用基座 clip-vit-large-patch14 = 9.6%，随机基线 2%）。主服务配置 EMBEDDING_DIM=512 与底座对齐。",
+    "需权重的口径测试（双引擎一致性）**已完成三轮（2026-09-29）**：780 例分层用例（常规 240 + 边界 440 + 高风险 100，scripts/server_build_eval_cases.py）跑 scripts/consistency_verify.py。基线 1.5B 23.33%（提取失败 61）→ 结构化输出+统一 chat 端点（1.5B）80.51%（提取失败 6）→ Qwen2.5-7B 同设置 80.38%（提取失败 0）。报告归档 tests/reports/consistency_780*.json。基座规模无净收益——剩余约 19.6% 不一致为刻意构造边界模糊用例的设计内分歧；≥95% 门控口径（边界/常规分开统计或语义等价口径）为管理决策项（16 号文档 A.2.1）。引擎基座已升级 Qwen2.5-7B-Instruct 双格式（GGUF Q4_K_M + fp16，vLLM gpu-memory-utilization 0.4）。",
+    "SG p99 节流自持死锁已修：启动期 2 个冷启动样本即触发节流 → 拒绝新请求 → 无新样本 → p99 冻结在超限值 → 永久 503（E4005 sg_p99_throttling）。已加最小样本数门槛 sg_p99_min_samples_for_throttle=20（守卫 tests/unit/sg/test_latency_tracker_throttle_min_samples.py）。",
+    "reranker max_length 超过 bge-reranker-base（XLM-R）位置嵌入上限 512 → CUDA device-side assert 粘性毒化进程（之后所有请求 500）：三个嵌入后端统一按 max_position_embeddings-2 钳制 max_length（守卫在 tests/unit/emb/test_embedding_service_contract.py）。",
+    "pgvector 检索 SQL 键漏单引号（metadata->>organ 被 PG 当列名解析 → column \"organ\" does not exist，即长期 dense_search_failed 的根因）：已补引号，并同步更正 tests/unit/emb/test_pgvector_client.py 中被钉住的错误 SQL 形状断言。",
+    "指标端口曾绑 `0.0.0.0`：`prometheus_client.start_http_server` 不传 `addr` 的默认行为，真机 `ss -ltn` 实测为 `0.0.0.0:9090`（其余端口均已绑回环）。已修：新增 `OBS_METRICS_HOST`（默认 `127.0.0.1`）并显式传给 `start_http_server`，真机复核为 `127.0.0.1:9090`；守卫见 `tests/unit/obs/test_metrics_bind_loopback.py`。"
+  ],
+  "excluded_by_design": [
+    {
+      "module": "app/inference/sustained_load_test.py",
+      "percent": 0.0,
+      "reason": "纯现场长稳压测脚本（本机无 GPU 时其前置检查即退出）。它没有『离线可覆盖的那一层』可言，写在豁免清单里只会稀释清单的可信度；其验证动作归入现场验收清单，不进本清单。"
+    },
+    {
+      "module": "app/config/redis.py",
+      "percent": 0.0,
+      "reason": "降级场景⑦『Redis 主从切换秒级接管』没有离线层可言：离线只能验证『Redis 不可用时降级』，该层已覆盖 3 条（灰度计数退化为进程内计数、必须留痕、Redis 恢复后同一实例立刻改走 Redis，见 tests/integration/int/test_degradation_scenarios.py 的 TestRedisUnavailableDegradesWithoutBreakingDiagnosis）。『主从切换的秒级接管时序 + 切换期间计数连续性』必须由真实 Redis 主从演练证明，属现场验收动作，不是覆盖率缺口。现场动作：做一次主从切换演练，记录切换耗时与切换前后计数是否连续。"
+    },
+    {
+      "module": "app/services/safety_gateway_client.py",
+      "percent": 0.0,
+      "reason": "降级场景③(b)『主服务崩溃 + SG 存活』属现场演练：其**可离线层**已覆盖（SG 不可用→fail-closed 拒绝输出、短暂不可用→队列等待恢复、持续不可用→超时/熔断 E4005，见 test_degradation_scenarios.py 的 TestSafetyGatewayUnavailable 与 TestSafetyGatewayQueueAndTimeout）。剩余部分（主服务进程整体崩溃期间，独立进程的 SG 仍拒绝输出）依赖真实进程编排，不是覆盖率缺口。现场动作：kill 主服务进程，验证 SG 仍存活并返回 E4005 拒绝。"
+    }
+  ]
+}

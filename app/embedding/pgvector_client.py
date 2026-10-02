@@ -17,6 +17,7 @@ from typing import Any
 
 import structlog
 
+from app.config.dsn import to_asyncpg_dsn
 from app.embedding.protocols import (
     SearchResult,
     VectorIndexClient,
@@ -93,7 +94,9 @@ class PgvectorVectorIndex(VectorIndexClient):
                 message="database_url is required for PGVector backend",
                 retryable=False,
             )
-        self._database_url = database_url
+        # 归一掉 SQLAlchemy 方言后缀（`postgresql+asyncpg://` → `postgresql://`），
+        # 否则 asyncpg 建池必失败，见 _normalize_dsn 的说明。
+        self._database_url = to_asyncpg_dsn(database_url)
         self._pool_min_size = pool_min_size
         self._pool_max_size = pool_max_size
         self._pool: asyncpg.Pool | None = None
@@ -192,21 +195,20 @@ class PgvectorVectorIndex(VectorIndexClient):
         table_name = _validate_collection_name(collection)
         pool = await self._get_pool()
         try:
-            async with pool.acquire() as conn:
-                async with conn.transaction():
-                    for record in vectors:
-                        await conn.execute(
-                            f"""
+            async with pool.acquire() as conn, conn.transaction():
+                for record in vectors:
+                    await conn.execute(
+                        f"""
                             INSERT INTO {table_name} (id, embedding, metadata)
                             VALUES ($1, $2::vector, $3::jsonb)
                             ON CONFLICT (id) DO UPDATE
                             SET embedding = EXCLUDED.embedding,
                                 metadata = EXCLUDED.metadata
                             """,
-                            record.id,
-                            record.vector,
-                            json.dumps(record.metadata, ensure_ascii=False),
-                        )
+                        record.id,
+                        record.vector,
+                        json.dumps(record.metadata, ensure_ascii=False),
+                    )
             logger.info(
                 "pgvector_upsert_completed",
                 table=table_name,
@@ -235,7 +237,10 @@ class PgvectorVectorIndex(VectorIndexClient):
             for key, value in filter.items():
                 safe_key = _validate_meta_key(key)
                 where_params.append(json.dumps(value, ensure_ascii=False) if not isinstance(value, (str, int, float, bool)) else value)
-                where_clauses.append(f"metadata->>{safe_key} = ${len(where_params)}::text")
+                # ⚠️ 键必须带单引号（JSON 字符串字面量）：`metadata->>organ` 会被 PG
+                # 当成**列名**解析 → `column "organ" does not exist`（真机 2026-09-29
+                # 实测的 dense_search_failed 根因）。safe_key 已过白名单正则，可安全内插。
+                where_clauses.append(f"metadata->>'{safe_key}' = ${len(where_params)}::text")
 
         where_sql = (" WHERE " + " AND ".join(where_clauses)) if where_clauses else ""
         query = (
@@ -305,9 +310,16 @@ class PgvectorVectorIndex(VectorIndexClient):
                 await conn.fetchval("SELECT 1")
             return True
         except Exception as exc:
+            # 必须同时打 `detail`：`VectorIndexError.__str__` 只输出
+            # `[错误码] message`，真正的原因（DSN 非法、密码错、库不存在…）在 detail 里。
+            # 真机上就是因为这里只打 __str__，日志只剩一行
+            # `pgvector_health_check_failed error=[E2003_VEC_CONNECTION_FAILED]`，
+            # 真因被完全吞掉，排查只能靠猜。
             logger.warning(
                 "pgvector_health_check_failed",
                 error=str(exc),
+                error_detail=getattr(exc, "detail", None),
+                error_type=type(exc).__name__,
             )
             return False
 

@@ -7,9 +7,10 @@
 4. 源码变更检测：重型测试在源码未变时自动跳过
 """
 import os
+
 import pytest
 
-from tests.utils.track_progress_reporter import TrackProgressReporter, SourceChangeDetector
+from tests.utils.track_progress_reporter import SourceChangeDetector, TrackProgressReporter
 
 PHASE_ICONS = {
     "metrics": "\U0001f4ca",
@@ -63,10 +64,10 @@ def pytest_collection_modifyitems(session, config, items):
 @pytest.fixture(autouse=True)
 def reset_obs_singletons():
     from app.observability import metrics as metrics_module
-    from app.observability.logging import LogStorage
     from app.observability.cache_monitor import CacheMonitor
+    from app.observability.logging import LogStorage
     from app.observability.metrics_collector import MetricsCollector
-    from app.observability.tracing import shutdown_tracing, clear_trace_context
+    from app.observability.tracing import clear_trace_context, shutdown_tracing
 
     metrics_module._memory_monitor = None
     LogStorage._instance = None

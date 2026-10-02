@@ -1,6 +1,6 @@
 import redis.asyncio as redis
-import redis.retry
 import redis.backoff
+import redis.retry
 
 sg_redis_url = "redis://:sg_redis_dev_2024@redis:6379/1"
 connection_kwargs = dict(

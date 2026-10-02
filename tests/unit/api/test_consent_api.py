@@ -1,8 +1,10 @@
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, timezone
+from unittest.mock import AsyncMock, MagicMock, patch
 
-from app.models.schemas import ConsentStatus, ConsentAction
+import pytest
+
+from app.models.schemas import ConsentAction, ConsentStatus
+
 pytestmark = [pytest.mark.track_api, pytest.mark.track_sec, pytest.mark.sec_domain_consent]
 
 
@@ -101,7 +103,7 @@ class TestUpdateConsent:
     async def test_update_consent_grant(self):
         """创建同意记录成功"""
         from app.api.v1.consent import update_consent
-        from app.models.schemas import ConsentUpdateRequest, ConsentUpdateResponse
+        from app.models.schemas import ConsentUpdateRequest
 
         mock_db = AsyncMock()
         mock_record = MagicMock()
@@ -157,6 +159,7 @@ class TestUpdateConsent:
     async def test_update_consent_invalid_action(self):
         """无效操作类型被Pydantic枚举验证拒绝"""
         from pydantic import ValidationError
+
         from app.models.schemas import ConsentUpdateRequest
 
         with pytest.raises(ValidationError):

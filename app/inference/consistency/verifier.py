@@ -1,45 +1,72 @@
 import asyncio
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import structlog
 
+from app.inference.grading_definitions import extract_grading_with_conflict
+from app.inference.grading_schema import (
+    extract_guided_grading,
+    grading_gbnf,
+    grading_json_schema,
+)
+from app.inference.hallucination_detector import (
+    DetectionStrategy,
+    get_default_detector,
+)
 from app.inference.protocols import InferenceEngine, InferenceRequest
 from app.inference.utils import percentile as _percentile
-from app.inference.hallucination_detector import (
-    HallucinationDetector,
-    get_default_detector,
-    DetectionStrategy,
-)
 from app.inference.verification_config import (
-    get_verification_config,
     VerificationConfig,
+    get_verification_config,
 )
-from app.inference.grading_definitions import extract_grading, extract_grading_with_conflict
 
-from .statistics import (
-    wilson_confidence_interval,
-    grading_semantic_equivalent,
-    grading_clinically_equivalent,
-    text_similarity,
-    text_consistency_with_grading,
-    _grades_cross_clinical_boundary,
-)
+from .failure_analysis import generate_failure_analysis
+from .organ_breakdown import compute_organ_breakdown
 from .report import (
-    ConsistencyMetric,
+    ConsistencyPair,
+    ConsistencyReport,
+    CrossValidationResult,
+    FalseStats,
     GateStatus,
     GradingResult,
-    ConsistencyPair,
-    FalseStats,
     StrategyFalseStats,
-    CrossValidationResult,
-    ConsistencyReport,
 )
-from .organ_breakdown import compute_organ_breakdown
-from .failure_analysis import generate_failure_analysis, suggest_for_trace
 from .serialization import report_to_dict, report_to_json
+from .statistics import (
+    grading_clinically_equivalent,
+    grading_semantic_equivalent,
+    text_consistency_with_grading,
+    text_similarity,
+    wilson_confidence_interval,
+)
 
 logger = structlog.get_logger("app.inference.consistency")
+
+# 结构化输出指令段（2026-09-29 真机 780 例达标攻关）：两引擎收到**完全相同**的
+# 指令文本，要求末行以 "分级: <值>" 收束——抽取器（grading_definitions）对该
+# 行有专用模式，正则兜底仍在。格式随器官的分级体系而定（与 07 号文档口径一致）。
+_STRUCTURED_OUTPUT_INSTRUCTIONS: dict[str, str] = {
+    "thyroid": (
+        "\n\n输出要求：先给出简要依据（不超过3条），最后必须以单独一行"
+        "`分级: TI-RADS X` 结束（X 为 2/3/4a/4b/5 之一），不要输出其他分级体系。"
+    ),
+    "liver": (
+        "\n\n输出要求：先给出简要依据（不超过3条），最后必须以单独一行"
+        "`分级: LI-RADS X` 结束（X 为 1/2/3/4/5 之一），不要输出其他分级体系。"
+    ),
+    "cardiac": (
+        "\n\n输出要求：先给出简要依据（不超过3条），最后必须以单独一行"
+        "`分级: X` 结束（X 为 normal/mild/moderate/severe 之一，与 LVEF 阈值"
+        " ≥55/≥45/≥30 对应），不要输出其他分级体系。"
+    ),
+}
+
+# 器官名兜底：未知器官不加指令段（保持裸 prompt，抽取失败会如实计 extraction_failure）
+_STRUCTURED_OUTPUT_FALLBACK = (
+    "\n\n输出要求：先给出简要依据（不超过3条），最后必须以单独一行"
+    "`分级: <分级结论>` 结束。"
+)
 
 
 class ConsistencyVerifier:
@@ -51,9 +78,11 @@ class ConsistencyVerifier:
         engine_b_name: str = "engine_b",
         concurrency: int = 4,
         request_timeout_seconds: float = 30.0,
-        config: Optional[VerificationConfig] = None,
-        historical_pass_rates: Optional[Dict[str, List[float]]] = None,
-        overall_timeout_seconds: Optional[float] = None,
+        config: VerificationConfig | None = None,
+        historical_pass_rates: dict[str, list[float]] | None = None,
+        overall_timeout_seconds: float | None = None,
+        structured_output: bool = False,
+        guided_json: bool = False,
     ):
         self._engine_a = engine_a
         self._engine_b = engine_b
@@ -65,6 +94,12 @@ class ConsistencyVerifier:
         self.config = config or get_verification_config()
         self._historical_pass_rates = historical_pass_rates or {}
         self._hallucination_detector = get_default_detector()
+        # 结构化输出（2026-09-29 真机 780 例达标攻关）：两引擎收到完全相同的
+        # 输出格式指令段，消除"自由文本分级"的表述噪音。默认关闭保持兼容。
+        self._structured_output = structured_output
+        # P0-2 约束解码（2026-09-30）：采样层 schema 强制（vLLM guided_json /
+        # llama.cpp GBNF），优于 prompt 级指令——guided 启用时不再追加指令段。
+        self._guided_json = guided_json
 
         logger.info(
             "consistency_verifier_initialized",
@@ -72,11 +107,12 @@ class ConsistencyVerifier:
             engine_b=engine_b_name,
             concurrency=concurrency,
             test_data_version=self.config.test_data_version,
+            structured_output=structured_output,
         )
 
     async def verify(
         self,
-        cases: List[Dict[str, Any]],
+        cases: list[dict[str, Any]],
     ) -> ConsistencyReport:
         start_time = time.monotonic()
         request_temperature = 0.0
@@ -85,6 +121,7 @@ class ConsistencyVerifier:
             engine_b_name=self._engine_b_name,
             test_data_version=self.config.test_data_version,
             verification_temperature=request_temperature,
+            structured_output=self._structured_output,
             _config=self.config,
         )
 
@@ -97,7 +134,7 @@ class ConsistencyVerifier:
 
         semaphore = asyncio.Semaphore(self._concurrency)
 
-        async def _run_case(case: Dict[str, Any]) -> ConsistencyPair:
+        async def _run_case(case: dict[str, Any]) -> ConsistencyPair:
             async with semaphore:
                 return await self._verify_single_case(case)
 
@@ -119,7 +156,7 @@ class ConsistencyVerifier:
         else:
             pairs = await asyncio.gather(*tasks, return_exceptions=True)
 
-        valid_pairs: List[ConsistencyPair] = []
+        valid_pairs: list[ConsistencyPair] = []
         error_count = 0
         for p in pairs:
             if isinstance(p, Exception):
@@ -130,10 +167,27 @@ class ConsistencyVerifier:
 
         self._compute_report(report, valid_pairs, error_count)
 
+        # 逐例摘要行（T0 原口径重算与"预期 vs 实际"检测需要全量逐例数据；
+        # trace_chain 只含失败例，这里补全量紧凑行。字段见 report_to_dict。）
+        report.case_rows = [
+            {
+                "case_id": p.case_id,
+                "organ": p.organ,
+                "expected_grading": p.expected_grading,
+                "grading_a": p.engine_a_result.grading if p.engine_a_result else None,
+                "grading_b": p.engine_b_result.grading if p.engine_b_result else None,
+                "consistent": p.grading_consistent,
+                "is_hallucination_a": p.engine_a_result.is_hallucination if p.engine_a_result else None,
+                "is_hallucination_b": p.engine_b_result.is_hallucination if p.engine_b_result else None,
+                "category": p.category,
+            }
+            for p in valid_pairs
+        ]
+
         min_cases = self.config.consistency_thresholds.phase2_min_cases_per_organ \
             if self.config.consistency_thresholds.verification_phase == "phase2" else 100
 
-        organ_counts: Dict[str, int] = {}
+        organ_counts: dict[str, int] = {}
         for p in valid_pairs:
             organ_counts[p.organ] = organ_counts.get(p.organ, 0) + 1
         all_organs_meet_phase2 = all(
@@ -190,7 +244,39 @@ class ConsistencyVerifier:
 
         return report
 
-    async def _verify_single_case(self, case: Dict[str, Any]) -> ConsistencyPair:
+    def _apply_structured_output(self, prompt: str, organ: str) -> str:
+        """按器官追加输出格式指令段（未启用时原样返回）。
+
+        guided_json 启用时不追加（采样层已强制 JSON 语法，指令段冗余）。
+        """
+        if self._guided_json or not self._structured_output:
+            return prompt
+        suffix = _STRUCTURED_OUTPUT_INSTRUCTIONS.get(organ, _STRUCTURED_OUTPUT_FALLBACK)
+        return prompt + suffix
+
+    def _apply_guided(self, request: InferenceRequest, organ: str) -> InferenceRequest:
+        """guided 模式：把 organ 对应的 schema/GBNF 注入请求 extra。"""
+        if not self._guided_json:
+            return request
+        schema = grading_json_schema(organ)
+        if schema is None:
+            return request
+        request.extra["guided_json"] = schema
+        gbnf = grading_gbnf(organ)
+        if gbnf:
+            request.extra["grammar"] = gbnf
+        return request
+
+    def _extract_grading(self, text: str, organ: str) -> tuple[str | None, bool]:
+        """抽取分级：guided 优先裸值白名单/JSON 字段，回退正则抽取器。"""
+        if self._guided_json:
+            grading = extract_guided_grading(text, organ)
+            if grading:
+                return grading, False
+        conflict_result = extract_grading_with_conflict(text, organ)
+        return (conflict_result[0], conflict_result[1]) if conflict_result else (None, False)
+
+    async def _verify_single_case(self, case: dict[str, Any]) -> ConsistencyPair:
         case_id = case.get("case_id", "")
         organ = case.get("organ", "")
         prompt = case.get("prompt", "")
@@ -205,15 +291,19 @@ class ConsistencyVerifier:
             expected_grading=expected_grading,
             expected_hallucination=expected_hallucination,
             is_high_risk=is_high_risk,
+            category=case.get("category"),
         )
 
-        request = InferenceRequest(
-            prompt=prompt,
-            max_tokens=512,
-            temperature=0.0,
-            top_p=0.95,
-            request_id=f"consistency-{case_id}",
-            session_id="consistency-verification",
+        request = self._apply_guided(
+            InferenceRequest(
+                prompt=self._apply_structured_output(prompt, organ),
+                max_tokens=512,
+                temperature=0.0,
+                top_p=0.95,
+                request_id=f"consistency-{case_id}",
+                session_id="consistency-verification",
+            ),
+            organ,
         )
 
         try:
@@ -221,9 +311,7 @@ class ConsistencyVerifier:
                 self._engine_a.generate(request),
                 timeout=self._request_timeout_seconds,
             )
-            conflict_result_a = extract_grading_with_conflict(resp_a.text, organ)
-            grading_a = conflict_result_a[0] if conflict_result_a else None
-            has_conflict_a = conflict_result_a[1] if conflict_result_a else False
+            grading_a, has_conflict_a = self._extract_grading(resp_a.text, organ)
             detection_result_a = self._hallucination_detector.detect(resp_a.text, organ)
             is_hallucination_a = detection_result_a.is_hallucination
             hallucination_issues_a = [
@@ -253,9 +341,7 @@ class ConsistencyVerifier:
                 self._engine_b.generate(request),
                 timeout=self._request_timeout_seconds,
             )
-            conflict_result_b = extract_grading_with_conflict(resp_b.text, organ)
-            grading_b = conflict_result_b[0] if conflict_result_b else None
-            has_conflict_b = conflict_result_b[1] if conflict_result_b else False
+            grading_b, has_conflict_b = self._extract_grading(resp_b.text, organ)
             detection_result_b = self._hallucination_detector.detect(resp_b.text, organ)
             is_hallucination_b = detection_result_b.is_hallucination
             hallucination_issues_b = [
@@ -346,7 +432,7 @@ class ConsistencyVerifier:
     def _compute_report(
         self,
         report: ConsistencyReport,
-        pairs: List[ConsistencyPair],
+        pairs: list[ConsistencyPair],
         error_count: int = 0,
     ) -> None:
         report.total_cases = len(pairs) + error_count
@@ -363,12 +449,12 @@ class ConsistencyVerifier:
         self._compute_anomaly_cases(report, pairs)
         report.failure_analysis = generate_failure_analysis(report, pairs)
 
-    def _compute_basic_stats(self, report: ConsistencyReport, pairs: List[ConsistencyPair]) -> None:
+    def _compute_basic_stats(self, report: ConsistencyReport, pairs: list[ConsistencyPair]) -> None:
         grading_consistent = sum(1 for p in pairs if p.grading_consistent)
         report.grading_consistent_count = grading_consistent
         report.grading_consistency_rate = grading_consistent / len(pairs)
 
-    def _compute_boundary_stats(self, report: ConsistencyReport, pairs: List[ConsistencyPair]) -> None:
+    def _compute_boundary_stats(self, report: ConsistencyReport, pairs: list[ConsistencyPair]) -> None:
         boundary_diff = sum(1 for p in pairs if p.is_boundary_crossing)
         total_boundary_weight = sum(p.boundary_weight for p in pairs if p.is_boundary_crossing)
         critical_boundary_diff = sum(1 for p in pairs if p.is_boundary_crossing and p.boundary_severity == "critical")
@@ -390,7 +476,7 @@ class ConsistencyVerifier:
             if actual_boundary_weight_sum > 0 else 0.0
         )
 
-    def _compute_hallucination_stats(self, report: ConsistencyReport, pairs: List[ConsistencyPair]) -> None:
+    def _compute_hallucination_stats(self, report: ConsistencyReport, pairs: list[ConsistencyPair]) -> None:
         halluc_a = sum(
             1 for p in pairs
             if p.engine_a_result and p.engine_a_result.is_hallucination
@@ -419,7 +505,7 @@ class ConsistencyVerifier:
         )
         report.lvef_conflict_count = lvef_conflicts
 
-        strategy_diff: Dict[str, float] = {}
+        strategy_diff: dict[str, float] = {}
         for strategy in DetectionStrategy:
             a_count = sum(
                 1 for p in pairs
@@ -475,7 +561,7 @@ class ConsistencyVerifier:
             report.hallucination_rate_b_gt = gt_halluc_b / len(gt_pairs)
             report.hallucination_rate_diff_gt = abs(report.hallucination_rate_a_gt - report.hallucination_rate_b_gt)
 
-    def _compute_text_stats(self, report: ConsistencyReport, pairs: List[ConsistencyPair]) -> None:
+    def _compute_text_stats(self, report: ConsistencyReport, pairs: list[ConsistencyPair]) -> None:
         text_consistent = sum(
             1 for p in pairs
             if p.engine_a_result and p.engine_b_result
@@ -531,11 +617,11 @@ class ConsistencyVerifier:
         ]
         report.text_similarity_avg = sum(similarity_scores) / len(similarity_scores) if similarity_scores else 0.0
 
-    def _compute_false_stats(self, report: ConsistencyReport, pairs: List[ConsistencyPair]) -> None:
+    def _compute_false_stats(self, report: ConsistencyReport, pairs: list[ConsistencyPair]) -> None:
         a_fp, a_fn, a_tp, a_tn = 0, 0, 0, 0
         b_fp, b_fn, b_tp, b_tn = 0, 0, 0, 0
         cases_with_ground_truth = 0
-        strategy_stats: Dict[str, Dict[str, int]] = {}
+        strategy_stats: dict[str, dict[str, int]] = {}
 
         for p in pairs:
             if p.expected_hallucination is None:
@@ -651,7 +737,7 @@ class ConsistencyVerifier:
             r_ci = wilson_confidence_interval(combined_tp, total_actual_positive)
             report.false_stats.recall_ci_lower, report.false_stats.recall_ci_upper = r_ci
 
-    def _compute_latency_stats(self, report: ConsistencyReport, pairs: List[ConsistencyPair]) -> None:
+    def _compute_latency_stats(self, report: ConsistencyReport, pairs: list[ConsistencyPair]) -> None:
         latencies_a = [
             p.engine_a_result.latency_ms
             for p in pairs
@@ -693,7 +779,7 @@ class ConsistencyVerifier:
             elif report.latency_b_p99_ms < report.latency_a_p99_ms:
                 report.latency_faster_engine = self._engine_b_name
 
-    def _compute_anomaly_cases(self, report: ConsistencyReport, pairs: List[ConsistencyPair]) -> None:
+    def _compute_anomaly_cases(self, report: ConsistencyReport, pairs: list[ConsistencyPair]) -> None:
         for p in pairs:
             if p.is_boundary_crossing:
                 report.boundary_cases.append({
@@ -720,10 +806,10 @@ class ConsistencyVerifier:
 
     async def cross_validate(
         self,
-        cases: List[Dict[str, Any]],
+        cases: list[dict[str, Any]],
         n_folds: int = 5,
-        seed: Optional[int] = 42,
-    ) -> List[CrossValidationResult]:
+        seed: int | None = 42,
+    ) -> list[CrossValidationResult]:
         """K-Fold交叉验证用于稳定性评估。
 
         此方法实现K-Fold交叉验证用于**稳定性评估**，而非传统ML的模型选择。
@@ -745,7 +831,7 @@ class ConsistencyVerifier:
                 f"n_folds ({n_folds}) cannot exceed number of cases ({len(cases)})"
             )
 
-        results: List[CrossValidationResult] = []
+        results: list[CrossValidationResult] = []
         shuffled_cases = cases.copy()
         rng = random.Random(seed)
         rng.shuffle(shuffled_cases)
@@ -821,7 +907,7 @@ class ConsistencyVerifier:
 
         return results
 
-    def report_to_dict(self, report: ConsistencyReport) -> Dict[str, Any]:
+    def report_to_dict(self, report: ConsistencyReport) -> dict[str, Any]:
         return report_to_dict(report)
 
     def report_to_json(self, report: ConsistencyReport, indent: int = 2) -> str:

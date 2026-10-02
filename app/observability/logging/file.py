@@ -1,9 +1,8 @@
 import asyncio
 import json
 import threading
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Dict, List, Optional
 
 import aiofiles
 import structlog
@@ -24,7 +23,7 @@ class FileLogStorage(LogStorageBackend):
 
     def __init__(
         self,
-        log_dir: Optional[str] = None,
+        log_dir: str | None = None,
         max_file_size: int = MAX_FILE_SIZE,
         retention_days: int = 7,
     ):
@@ -32,9 +31,9 @@ class FileLogStorage(LogStorageBackend):
         self.max_file_size = max_file_size
         self.retention_days = retention_days
         self._write_count = 0
-        self._current_files: Dict[str, Path] = {}
+        self._current_files: dict[str, Path] = {}
         self._lock = threading.Lock()
-        self._async_lock: Optional[asyncio.Lock] = None
+        self._async_lock: asyncio.Lock | None = None
         self._ensure_log_dir()
 
     def _ensure_log_dir(self) -> None:
@@ -70,35 +69,46 @@ class FileLogStorage(LogStorageBackend):
             pass
 
     async def awrite(self, record: LogRecord) -> None:
+        async with self._get_async_lock():
+            await self._write_record_unlocked(record)
+
+    async def _write_record_unlocked(self, record: LogRecord) -> None:
+        """写一条记录。**调用方必须已持有 ``_async_lock``**。
+
+        为什么要把写逻辑抽出来：`awrite_batch` 的二次降级路径（主目录与降级目录都写
+        失败时逐条补写）已经在锁内，若那里直接调用 ``awrite``，就会重入同一把
+        **不可重入的 asyncio.Lock** —— 永久挂起并一直占着锁，此后所有日志写入都会
+        卡死。这是实测触发到的真实死锁（主目录只读 + home 也不可写时必然发生）。
+        锁只在一个地方获取，这里只负责写。
+        """
         file_path = self._get_log_file_path(record.category)
 
-        async with self._get_async_lock():
-            if self._should_rotate(file_path):
-                self._rotate_file(file_path)
+        if self._should_rotate(file_path):
+            self._rotate_file(file_path)
 
+        try:
+            async with aiofiles.open(file_path, mode="a") as f:
+                await f.write(json.dumps(record.to_dict(), default=str) + "\n")
+
+            self._write_count += 1
+            if self._write_count >= self.ROTATION_CHECK_INTERVAL:
+                self._write_count = 0
+                await self._cleanup_old_files()
+        except OSError as e:
+            _logger.warning("Primary log directory failed, using fallback",
+                            error=str(e),
+                            primary_dir=str(self.log_dir))
+            fallback_dir = Path.home() / ".ultrasound" / "logs"
+            fallback_dir.mkdir(parents=True, exist_ok=True)
+            fallback_path = fallback_dir / file_path.name
             try:
-                async with aiofiles.open(file_path, mode="a") as f:
+                async with aiofiles.open(fallback_path, mode="a") as f:
                     await f.write(json.dumps(record.to_dict(), default=str) + "\n")
+            except Exception as fallback_e:
+                _logger.error("Failed to write to fallback log directory",
+                              error=str(fallback_e))
 
-                self._write_count += 1
-                if self._write_count >= self.ROTATION_CHECK_INTERVAL:
-                    self._write_count = 0
-                    await self._cleanup_old_files()
-            except OSError as e:
-                _logger.warning("Primary log directory failed, using fallback",
-                                error=str(e),
-                                primary_dir=str(self.log_dir))
-                fallback_dir = Path.home() / ".ultrasound" / "logs"
-                fallback_dir.mkdir(parents=True, exist_ok=True)
-                fallback_path = fallback_dir / file_path.name
-                try:
-                    async with aiofiles.open(fallback_path, mode="a") as f:
-                        await f.write(json.dumps(record.to_dict(), default=str) + "\n")
-                except Exception as fallback_e:
-                    _logger.error("Failed to write to fallback log directory",
-                                  error=str(fallback_e))
-
-    async def awrite_batch(self, records: List[LogRecord]) -> None:
+    async def awrite_batch(self, records: list[LogRecord]) -> None:
         if not records:
             return
 
@@ -143,8 +153,10 @@ class FileLogStorage(LogStorageBackend):
                     except Exception as fallback_e:
                         _logger.error("Failed to write batch to fallback log directory",
                                       error=str(fallback_e))
+                        # 走 _write_record_unlocked 而不是 awrite：此处已在锁内，
+                        # 调 awrite 会重入同一把不可重入锁并永久挂起。
                         for record in category_records:
-                            await self.awrite(record)
+                            await self._write_record_unlocked(record)
 
     async def _cleanup_old_files(self) -> None:
         try:

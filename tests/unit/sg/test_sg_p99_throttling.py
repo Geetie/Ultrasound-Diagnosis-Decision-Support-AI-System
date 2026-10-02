@@ -14,8 +14,16 @@ def tracker():
 
 
 async def _record_and_compute(tracker: LatencyTracker, latency_ms: float) -> dict:
-    tracker._samples = deque(maxlen=settings.sg_latency_tracker_max_samples)
-    await tracker.record(latency_ms)
+    # 2026-09-29 起节流判定要求最小样本数（sg_p99_min_samples_for_throttle）：
+    # 样本不足时 p99_status=unknown，不参与状态机（真机死锁修复，见
+    # test_latency_tracker_throttle_min_samples.py）。本 helper 用整窗同值样本
+    # 让 p99 恰等于 latency_ms，状态机语义与原单样本版本完全一致。
+    # ⚠️ 固定 20，不得读 settings——2026-09-30 起全局默认为 10^9（节流停用），
+    # 读全局默认会让本 helper 构造 10 亿样本挂死。
+    tracker._samples = deque(
+        [latency_ms] * 20,
+        maxlen=settings.sg_latency_tracker_max_samples,
+    )
     return await tracker.compute_stats()
 
 

@@ -1,0 +1,189 @@
+{
+  "golden_set": "/mnt/ee16/home/student03/uai/data/golden/kb_qa_golden_v1.json",
+  "kb_version": "kb_v1.0.0",
+  "corpus_size": 459,
+  "num_queries": 136,
+  "relevance_level": "source_doc",
+  "methodology": {
+    "weighted_rrf": "Elastic 官方：fused=Σ w_i/(rank_i+rank_constant)，rank 1-based（实现用 0-based+1 等价）",
+    "two_stage_rerank": "召回 Top-N → 8005 bge-reranker → Top-10"
+  },
+  "baseline_rrf_k60": {
+    "recall@5": 0.9926470588235294,
+    "recall@10": 0.9926470588235294,
+    "mrr@10": 0.9836538461538462,
+    "ndcg@10": 0.9854248717706324
+  },
+  "weighted_rrf_grid": [
+    {
+      "weights": {
+        "dense": 0.5,
+        "sparse": 0.5
+      },
+      "rank_constant": 10,
+      "metrics": {
+        "recall@5": 0.9926470588235294,
+        "recall@10": 0.9926470588235294,
+        "mrr@10": 0.9836134453781513,
+        "ndcg@10": 0.9854248717706324
+      }
+    },
+    {
+      "weights": {
+        "dense": 0.5,
+        "sparse": 0.5
+      },
+      "rank_constant": 60,
+      "metrics": {
+        "recall@5": 0.9926470588235294,
+        "recall@10": 0.9926470588235294,
+        "mrr@10": 0.9836538461538462,
+        "ndcg@10": 0.9854248717706324
+      }
+    },
+    {
+      "weights": {
+        "dense": 0.5,
+        "sparse": 0.5
+      },
+      "rank_constant": 100,
+      "metrics": {
+        "recall@5": 0.9926470588235294,
+        "recall@10": 0.9926470588235294,
+        "mrr@10": 0.9836134453781513,
+        "ndcg@10": 0.9854248717706324
+      }
+    },
+    {
+      "weights": {
+        "dense": 0.6,
+        "sparse": 0.4
+      },
+      "rank_constant": 10,
+      "metrics": {
+        "recall@5": 0.9926470588235294,
+        "recall@10": 0.9926470588235294,
+        "mrr@10": 0.9835207612456747,
+        "ndcg@10": 0.9854248717706324
+      }
+    },
+    {
+      "weights": {
+        "dense": 0.6,
+        "sparse": 0.4
+      },
+      "rank_constant": 60,
+      "metrics": {
+        "recall@5": 0.9926470588235294,
+        "recall@10": 0.9926470588235294,
+        "mrr@10": 0.9836134453781513,
+        "ndcg@10": 0.9854248717706324
+      }
+    },
+    {
+      "weights": {
+        "dense": 0.6,
+        "sparse": 0.4
+      },
+      "rank_constant": 100,
+      "metrics": {
+        "recall@5": 0.9926470588235294,
+        "recall@10": 0.9926470588235294,
+        "mrr@10": 0.9836134453781513,
+        "ndcg@10": 0.9854248717706324
+      }
+    },
+    {
+      "weights": {
+        "dense": 0.7,
+        "sparse": 0.3
+      },
+      "rank_constant": 10,
+      "metrics": {
+        "recall@5": 0.9852941176470589,
+        "recall@10": 0.9926470588235294,
+        "mrr@10": 0.9758244206773619,
+        "ndcg@10": 0.9797720327045765
+      }
+    },
+    {
+      "weights": {
+        "dense": 0.7,
+        "sparse": 0.3
+      },
+      "rank_constant": 60,
+      "metrics": {
+        "recall@5": 0.9926470588235294,
+        "recall@10": 0.9926470588235294,
+        "mrr@10": 0.9798202614379086,
+        "ndcg@10": 0.9827111199586578
+      }
+    },
+    {
+      "weights": {
+        "dense": 0.7,
+        "sparse": 0.3
+      },
+      "rank_constant": 100,
+      "metrics": {
+        "recall@5": 0.9926470588235294,
+        "recall@10": 0.9926470588235294,
+        "mrr@10": 0.9798442906574394,
+        "ndcg@10": 0.9827111199586578
+      }
+    },
+    {
+      "weights": {
+        "dense": 0.4,
+        "sparse": 0.6
+      },
+      "rank_constant": 10,
+      "metrics": {
+        "recall@5": 0.9926470588235294,
+        "recall@10": 0.9926470588235294,
+        "mrr@10": 0.9802696078431372,
+        "ndcg@10": 0.9830333534207081
+      }
+    },
+    {
+      "weights": {
+        "dense": 0.4,
+        "sparse": 0.6
+      },
+      "rank_constant": 60,
+      "metrics": {
+        "recall@5": 0.9926470588235294,
+        "recall@10": 0.9926470588235294,
+        "mrr@10": 0.9810049019607843,
+        "ndcg@10": 0.9835430846113449
+      }
+    },
+    {
+      "weights": {
+        "dense": 0.4,
+        "sparse": 0.6
+      },
+      "rank_constant": 100,
+      "metrics": {
+        "recall@5": 0.9926470588235294,
+        "recall@10": 0.9926470588235294,
+        "mrr@10": 0.9810049019607843,
+        "ndcg@10": 0.9835430846113449
+      }
+    }
+  ],
+  "rerank_experiments": [],
+  "best_weighted_rrf": {
+    "weights": {
+      "dense": 0.5,
+      "sparse": 0.5
+    },
+    "rank_constant": 10,
+    "metrics": {
+      "recall@5": 0.9926470588235294,
+      "recall@10": 0.9926470588235294,
+      "mrr@10": 0.9836134453781513,
+      "ndcg@10": 0.9854248717706324
+    }
+  }
+}

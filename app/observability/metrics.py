@@ -8,21 +8,21 @@ VictoriaMetrics内存监控模块
 - 自动降采集频率到60s
 """
 
-__all__ = ["MemoryMonitorConfig", "MemoryMetrics", "VictoriaMetricsMemoryMonitor"]
+__all__ = ["MemoryMetrics", "MemoryMonitorConfig", "VictoriaMetricsMemoryMonitor"]
 
 import asyncio
-import psutil
 import threading
 import time
-from dataclasses import dataclass, field
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
 from enum import Enum
-from typing import Optional, Callable, Awaitable, Dict, Any, List
+from typing import Any
 
+import psutil
 import structlog
 
 from app.observability.constants import VMConstants
 from app.observability.enums import AlertLevel
-
 
 _logger = structlog.get_logger("app.observability.metrics")
 
@@ -63,8 +63,8 @@ class MemoryMonitorMetrics:
     total_checks: int = 0
     warning_count: int = 0
     critical_count: int = 0
-    warning_since: Optional[float] = None
-    critical_since: Optional[float] = None
+    warning_since: float | None = None
+    critical_since: float | None = None
 
 
 class VictoriaMetricsMemoryMonitor:
@@ -76,8 +76,8 @@ class VictoriaMetricsMemoryMonitor:
 
     def __init__(
         self,
-        process_id: Optional[int] = None,
-        config: Optional[MemoryMonitorConfig] = None,
+        process_id: int | None = None,
+        config: MemoryMonitorConfig | None = None,
     ):
         self._config = config or MemoryMonitorConfig()
         try:
@@ -90,9 +90,9 @@ class VictoriaMetricsMemoryMonitor:
         )
         self._lock = threading.Lock()
         self._shutdown_event = asyncio.Event()
-        self._monitor_task: Optional[asyncio.Task] = None
+        self._monitor_task: asyncio.Task | None = None
         self._alert_callbacks: list[Callable[[AlertLevel, MemoryMetrics], Awaitable[None]]] = []
-        self._frequency_change_callbacks: List[Callable[[float], Awaitable[None]]] = []
+        self._frequency_change_callbacks: list[Callable[[float], Awaitable[None]]] = []
         self._last_alert_level = AlertLevel.NORMAL
 
     async def start(self) -> None:
@@ -261,7 +261,7 @@ class VictoriaMetricsMemoryMonitor:
         except RuntimeError:
             asyncio.run(self._check_memory())
 
-    def get_metrics(self) -> Dict[str, Any]:
+    def get_metrics(self) -> dict[str, Any]:
         return {
             "current_rss_mb": self._metrics.current_rss_mb,
             "peak_rss_mb": self._metrics.peak_rss_mb,
@@ -280,12 +280,12 @@ class VictoriaMetricsMemoryMonitor:
         return self._metrics.current_rss_mb < self._config.max_allowed_mb
 
 
-_memory_monitor: Optional[VictoriaMetricsMemoryMonitor] = None
+_memory_monitor: VictoriaMetricsMemoryMonitor | None = None
 _monitor_lock = threading.Lock()
 
 
 async def get_memory_monitor(
-    config: Optional[MemoryMonitorConfig] = None
+    config: MemoryMonitorConfig | None = None
 ) -> VictoriaMetricsMemoryMonitor:
     global _memory_monitor
     if _memory_monitor is None:

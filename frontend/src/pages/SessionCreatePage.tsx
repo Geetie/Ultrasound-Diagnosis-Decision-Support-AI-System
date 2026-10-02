@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import AppShell from '@/components/shell/AppShell';
 import type { ThemeName } from '@/components/shell/AppSidebar';
 import { ORGAN_LABEL, ORGAN_PRESETS, type OrganType } from '@/types/session';
+import { createSession } from '@/services/sessionService';
+import { getApiErrorMessage } from '@/utils/apiError';
 
 /**
  * 新建检查会话 —— 09_新建检查会话（进入检查前必经）
@@ -45,6 +47,30 @@ export default function SessionCreatePage({
   const navigate = useNavigate();
   // 默认预选上次使用的部位 —— 医生通常一键即可
   const [organ, setOrgan] = useState<OrganType>('thyroid');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  /**
+   * 「开始检查」：真的建会话。
+   *
+   * 画布 09 只给了两个已填好的值、没有选择器 UI，所以 patient_id / device_id
+   * 由 props 传入。**两者齐备才调后端** —— 缺任一个都不该凭空编一个 id 提交，
+   * 那会在库里留下一条指向不存在患者的会话。
+   */
+  const handleStart = async () => {
+    onStart?.(organ);
+    if (!patientId || !deviceId) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      await createSession({ patient_id: patientId, device_id: deviceId, target_organs: [organ] });
+      navigate('/');
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, '创建会话失败'));
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <AppShell
@@ -85,19 +111,26 @@ export default function SessionCreatePage({
         系统会把实际扫到的部位自动补入，作为补全而不是替代 —— 保持显式声明为主，避免纯推断带来的不安全。
       </p>
 
+      {/* 错误提示：仅在提交失败时出现（契约 §0 P1：不满足条件不渲染） */}
+      {error && (
+        <p className="page-error-note" role="alert">
+          {error}
+        </p>
+      )}
+
       <div className="page-actions">
         <button
           type="button"
           className="page-primary-action"
-          disabled={!patientId || !deviceId}
-          onClick={() => onStart?.(organ)}
+          disabled={!patientId || !deviceId || submitting}
+          onClick={handleStart}
           title={
             patientId && deviceId
               ? undefined
               : '未接入患者/设备选择器（画布未提供该UI），无法创建会话'
           }
         >
-          开始检查
+          {submitting ? '创建中…' : '开始检查'}
         </button>
         <button
           type="button"

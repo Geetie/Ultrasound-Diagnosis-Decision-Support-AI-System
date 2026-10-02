@@ -17,16 +17,11 @@ from app.fusion.conflict import ConflictDetector
 from app.fusion.consistency import ConsistencyChecker
 from app.fusion.layered_validator import LayeredValidator
 from app.fusion.protocols import (
-    ConsistencyCheckResult,
-    ConsistencySeverity,
-    ConflictReport,
     FusionRequest,
-    FusionResult,
 )
-from app.fusion.self_rag import SelfRAGEvaluator, SelfRAGEvalResult
+from app.fusion.self_rag import SelfRAGEvaluator
 from app.models.schemas import Organ
 from tests.unit.fus.conftest import make_response
-
 
 # ======================================================================
 # Layer 1: 冲突检测

@@ -1,26 +1,26 @@
 """审计日志服务 - 统一的审计日志记录系统"""
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from typing import Optional, Dict, Any, Tuple
-from datetime import datetime, timezone
 import asyncio
 import hashlib
 import json
 import uuid
+from datetime import datetime, timezone
+from typing import Any
+
 import structlog
-from collections import defaultdict
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.database import AuditLog
 
 logger = structlog.get_logger()
 
-_chain_locks: Dict[str, asyncio.Lock] = {}
+_chain_locks: dict[str, asyncio.Lock] = {}
 _locks_lock = asyncio.Lock()
 _MAX_CHAIN_LOCKS = 10000
 _chain_lock_order: list = []
 
 
-async def _get_chain_lock(session_id: Optional[str]) -> asyncio.Lock:
+async def _get_chain_lock(session_id: str | None) -> asyncio.Lock:
     key = session_id or "__global__"
     async with _locks_lock:
         if key not in _chain_locks:
@@ -35,7 +35,7 @@ async def _get_chain_lock(session_id: Optional[str]) -> asyncio.Lock:
         return _chain_locks[key]
 
 
-async def release_chain_lock(session_id: Optional[str]) -> None:
+async def release_chain_lock(session_id: str | None) -> None:
     key = session_id or "__global__"
     async with _locks_lock:
         if key in _chain_locks:
@@ -49,7 +49,7 @@ class AuditService:
     def __init__(self, db: AsyncSession = None):
         self.db = db
 
-    async def _get_last_hash(self, session_id: Optional[str] = None) -> Optional[str]:
+    async def _get_last_hash(self, session_id: str | None = None) -> str | None:
         query = select(AuditLog).order_by(AuditLog.created_at.desc()).limit(1)
         if session_id:
             query = query.where(AuditLog.session_id == session_id)
@@ -75,10 +75,10 @@ class AuditService:
         self,
         action: str,
         actor: str,
-        session_id: Optional[str] = None,
-        target_type: Optional[str] = None,
-        target_id: Optional[str] = None,
-        detail: Optional[Dict[str, Any]] = None,
+        session_id: str | None = None,
+        target_type: str | None = None,
+        target_id: str | None = None,
+        detail: dict[str, Any] | None = None,
         log_type: str = "operation",
     ) -> AuditLog:
         db = await self._ensure_db()
@@ -127,7 +127,7 @@ class AuditService:
 
             return audit_log
 
-    async def verify_chain(self, session_id: Optional[str] = None) -> Tuple[bool, Optional[int], Optional[str], Optional[str]]:
+    async def verify_chain(self, session_id: str | None = None) -> tuple[bool, int | None, str | None, str | None]:
         db = await self._ensure_db()
         query = select(AuditLog).order_by(AuditLog.created_at.asc())
         if session_id:
@@ -150,7 +150,7 @@ class AuditService:
 
         return True, None, None, None
 
-    async def verify_all_chains(self) -> Dict[str, Tuple[bool, Optional[int], Optional[str], Optional[str]]]:
+    async def verify_all_chains(self) -> dict[str, tuple[bool, int | None, str | None, str | None]]:
         db = await self._ensure_db()
         result = await db.execute(
             select(AuditLog)
@@ -193,7 +193,7 @@ class AuditService:
         return verification_results
 
 
-_periodic_task: Optional[asyncio.Task] = None
+_periodic_task: asyncio.Task | None = None
 _periodic_running = False
 
 

@@ -13,15 +13,14 @@ import pytest
 pytestmark = [pytest.mark.track_fus]
 
 from app.fusion.crag import CRAGHandler
-from app.fusion.self_rag import SelfRAGEvalResult
 from app.fusion.protocols import FusionRequest
+from app.fusion.self_rag import SelfRAGEvalResult
 from app.models.schemas import Organ
 from tests.unit.fus.conftest import (
     FakeRAGService,
     make_response,
     make_scored,
 )
-
 
 # ======================================================================
 # 成功恢复

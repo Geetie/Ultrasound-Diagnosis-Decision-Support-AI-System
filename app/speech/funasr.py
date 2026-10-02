@@ -66,9 +66,9 @@ _TERM_PATTERN_CACHE: dict[str, re.Pattern] | None = None
 
 def _build_term_pattern() -> re.Pattern:
     """构建术语匹配正则表达式。
-    
+
     使用缓存机制避免重复编译，支持最长匹配优先（按术语长度降序排序）。
-    
+
     Returns:
         re.Pattern: 包含所有医疗术语的正则表达式对象
     """
@@ -86,12 +86,12 @@ def _build_term_pattern() -> re.Pattern:
 
 def find_terminology(text: str) -> list[dict[str, Any]]:
     """在文本中查找医疗术语。
-    
+
     使用预定义的超声术语词典进行匹配，返回匹配到的术语及其位置信息。
-    
+
     Args:
         text: 待分析的文本
-        
+
     Returns:
         list: 匹配到的术语列表，每个元素包含term、category、start、end字段
     """
@@ -118,20 +118,20 @@ def find_terminology(text: str) -> list[dict[str, Any]]:
 
 class FunASROnnxEngine(SpeechEngine):
     """FunASR ONNX Runtime语音识别引擎。
-    
+
     实现了基于ONNX Runtime的FunASR语音识别适配器，支持CPU和CUDA推理。
-    
+
     Args:
         model_dir: 模型文件目录（默认models/funasr）
         device: 推理设备（cpu或cuda，默认cpu）
         num_threads: 线程数（默认4）
         language: 语言（默认中文zh）
-    
+
     Note:
         需要预先下载FunASR ONNX模型：
         - model.onnx: ONNX格式的语音识别模型
         - tokens.txt: 词表文件（可选）
-        
+
         compact模式下强制使用CPU，避免与llama.cpp竞争GPU资源。
     """
 
@@ -153,9 +153,9 @@ class FunASROnnxEngine(SpeechEngine):
 
     async def initialize(self) -> None:
         """初始化FunASR引擎。
-        
+
         加载ONNX模型和词表文件，配置推理会话。
-        
+
         Raises:
             SpeechError: 如果模型文件不存在或初始化失败
         """
@@ -220,15 +220,15 @@ class FunASROnnxEngine(SpeechEngine):
 
     async def recognize(self, request: SpeechRequest) -> SpeechResponse:
         """执行语音识别。
-        
+
         将音频数据转换为文本，并进行医疗术语识别。
-        
+
         Args:
             request: 语音识别请求对象，包含音频数据和参数
-            
+
         Returns:
             SpeechResponse: 语音识别响应对象，包含文本结果和术语匹配
-            
+
         Raises:
             SpeechError: 如果识别过程中发生错误
         """
@@ -286,15 +286,15 @@ class FunASROnnxEngine(SpeechEngine):
 
     async def _run_inference(self, audio_array: Any) -> str:
         """执行ONNX推理。
-        
+
         将音频数组输入到ONNX模型进行推理，返回识别结果。
-        
+
         Args:
             audio_array: 预处理后的音频数组
-            
+
         Returns:
             str: 识别出的文本
-            
+
         Raises:
             SpeechError: 如果模型未初始化
         """
@@ -332,12 +332,12 @@ class FunASROnnxEngine(SpeechEngine):
 
     def _decode_tokens(self, tokens: Any) -> str:
         """解码Token数组为文本。
-        
+
         使用词表将Token ID数组转换为可读文本。
-        
+
         Args:
             tokens: Token ID数组
-            
+
         Returns:
             str: 解码后的文本
         """
@@ -353,12 +353,12 @@ class FunASROnnxEngine(SpeechEngine):
     @staticmethod
     def _load_tokenizer(path: str) -> dict[int, str]:
         """加载词表文件。
-        
+
         从tokens.txt文件加载词表，格式为每行一个token。
-        
+
         Args:
             path: 词表文件路径
-            
+
         Returns:
             dict: Token ID到token字符串的映射
         """
@@ -373,13 +373,13 @@ class FunASROnnxEngine(SpeechEngine):
     @staticmethod
     def _estimate_confidence(text: str, term_matches: list[dict[str, Any]]) -> float:
         """估计识别置信度。
-        
+
         根据识别文本长度和术语匹配数量估计置信度。
-        
+
         Args:
             text: 识别文本
             term_matches: 术语匹配列表
-            
+
         Returns:
             float: 置信度值（0.0-1.0）
         """
@@ -392,7 +392,7 @@ class FunASROnnxEngine(SpeechEngine):
 
     async def health_check(self) -> bool:
         """检查语音引擎健康状态。
-        
+
         Returns:
             bool: True表示健康（已初始化且模型存在），False表示不健康
         """
@@ -400,7 +400,7 @@ class FunASROnnxEngine(SpeechEngine):
 
     async def get_engine_info(self) -> SpeechEngineInfo:
         """获取引擎信息。
-        
+
         Returns:
             SpeechEngineInfo: 引擎信息对象
         """
@@ -414,7 +414,7 @@ class FunASROnnxEngine(SpeechEngine):
 
     async def close(self) -> None:
         """关闭语音引擎。
-        
+
         释放ONNX模型和词表资源。
         """
         if self._model is not None:

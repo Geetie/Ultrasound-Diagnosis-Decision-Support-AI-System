@@ -6,14 +6,15 @@
 3. 测试阶段自动分类
 4. 源码变更检测：重型测试在源码未变时自动跳过
 """
-import os
 import logging
+import os
+from unittest.mock import AsyncMock, patch
+
 import pytest
-from unittest.mock import patch, AsyncMock
 
 logger = logging.getLogger(__name__)
 
-from tests.utils.track_progress_reporter import TrackProgressReporter, SourceChangeDetector
+from tests.utils.track_progress_reporter import SourceChangeDetector, TrackProgressReporter
 
 PHASE_ICONS = {
     "desensitization": "\U0001f6e1",
@@ -94,6 +95,27 @@ def reset_sg_singletons():
         logger.info("Reset SafetyGatewayDesensitizationEngine._instance to None")
     except (ImportError, AttributeError):
         pass
+
+
+@pytest.fixture(autouse=True)
+def reset_sg_circuit_breakers():
+    """熔断器是按名字注册的全局单例，会**跨用例残留状态**（不只是实例）。
+
+    实测踩到：`test_sg_consent.py::TestConsentDirectPGQuery` 把 `checker._retry_query`
+    打桩后断言 GRANTED / WITHDRAWN，但 `check_consent_status` 会先经过 `sg_db_consent`
+    熔断器。只要同一 xdist worker 里更早的用例把该熔断器打到 OPEN，
+    `breaker.execute()` 就直接抛 `CircuitBreakerError`，**根本走不到被替换的
+    `_retry_query`**，于是断言变成"PG 不可用"（返回 `(None, False, True)`）——
+    单跑绿、跑全套红，且随 worker 分配时好时坏（在 CI 上就是随机红）。
+
+    在**每个用例前**清空熔断器：这样"熔断器已打开"必须是本用例自己造成的，
+    不会继承别人的失败。
+    """
+    from safety_gateway.circuit_breaker import circuit_breaker_manager
+
+    circuit_breaker_manager.reset()
+    yield
+    circuit_breaker_manager.reset()
 
 
 @pytest.fixture

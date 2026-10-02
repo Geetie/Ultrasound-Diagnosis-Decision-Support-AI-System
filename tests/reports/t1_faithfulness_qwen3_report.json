@@ -1,0 +1,3560 @@
+{
+  "golden_set": "data/golden/kb_qa_golden_v1.json",
+  "sample": 100,
+  "scored": 91,
+  "failed": 9,
+  "context_top_k": 5,
+  "methodology": "RAGAS faithfulness（prompt 照抄官方源码 vibrantlabsai/ragas@main collections/faithfulness，Apache-2.0）",
+  "gate": {
+    "faithfulness_target": 0.95,
+    "对应": "整体幻觉率 ≤ 5%"
+  },
+  "results_summary": {
+    "mean_faithfulness": 0.6596451239631589,
+    "median": 0.6666666666666666,
+    "min": 0.2,
+    "pct_below_0.5": 0.24175824175824176,
+    "zero_score_count": 0,
+    "no_statement_count": 8,
+    "refusal_count": 8,
+    "numeric_consistency_rate": 0.8461538461538461
+  },
+  "total_latency_s": 416.8,
+  "results": [
+    {
+      "query_id": "qa-0000",
+      "question": "求问甲状腺肿大是什么原因？。医生，我想进行咨询一下，那种甲状腺肿大是什么原因？患者应当留意什么问题？",
+      "context_chunk_ids": [
+        "dialogue_内科_2553#0000",
+        "dialogue_内科_2728#0000",
+        "dialogue_内科_2733#0000",
+        "dialogue_内科_2605#0000",
+        "dialogue_内科_2631#0000"
+      ],
+      "answer": "甲状腺肿大的常见原因包括：\n\n1. 甲状腺炎\n2. 甲状腺占位\n3. 甲亢（甲状腺功能亢进）\n4. 甲减（甲状腺功能减退）\n5. 缺碘\n6. 自身免疫性降低\n7. 进食某些致甲状腺肿大食物，这些食物中有抗甲状腺物质抑制激素合成\n\n患者应当注意以下几点：\n\n- 定期进行甲状腺功能检查和影像学检查（如甲状腺磁共振），以监测甲状腺状况。\n- 根据医生建议，可能需要补充碘元素。\n- 注意避免过度紧张，保持良好的生活习惯和饮食习惯。\n- 遵医嘱服用相关药物，并定期复查。",
+      "num_statements": 17,
+      "faithfulness": 0.29411764705882354,
+      "verdicts": [
+        {
+          "statement": "甲状腺肿大的常见原因包括甲状腺炎。",
+          "reason": "医生回答中明确提到甲状腺炎是引起甲状腺肿大的常见病因之一。",
+          "verdict": 1
+        },
+        {
+          "statement": "甲状腺肿大的常见原因包括甲状腺占位。",
+          "reason": "医生回答中明确提到甲状腺占位是引起甲状腺肿大的常见病因之一。",
+          "verdict": 1
+        },
+        {
+          "statement": "甲状腺肿大的常见原因包括甲亢。",
+          "reason": "医生回答中提到甲亢是一种常见慢性疾病，且弥漫性甲状腺肿可能与甲亢有关。",
+          "verdict": 1
+        },
+        {
+          "statement": "甲状腺肿大的常见原因包括甲减。",
+          "reason": "医生回答中提到甲减是缺碘引起的，且弥漫性甲状腺肿可能与甲减有关。",
+          "verdict": 1
+        },
+        {
+          "statement": "甲状腺肿大的常见原因包括缺碘。",
+          "reason": "医生回答中明确提到缺碘是引起甲状腺肿大的主要原因之一。",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": false,
+      "missing_numbers": [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7"
+      ]
+    },
+    {
+      "query_id": "qa-0001",
+      "question": "求问亚急性甲状腺炎严重吗？。想咨询一下，精神不好，身体乏力，亚急性甲状腺炎严重吗？",
+      "context_chunk_ids": [
+        "dialogue_内科_2554#0000",
+        "dialogue_内科_2680#0000",
+        "dialogue_内科_2642#0000",
+        "dialogue_内科_2617#0000",
+        "dialogue_内科_2615#0000"
+      ],
+      "answer": "亚急性甲状腺炎被认为是比较严重的疾病，可能会与自动免疫反应有密切关系。这种疾病可能会导致脖子粗大、脖子疼痛，并且有可能会反复发作，对身体有一定影响。因此，对于您提到的精神不好和身体乏力的症状，可能是亚急性甲状腺炎的表现之一，建议及时就医并根据医生指导进行治疗。",
+      "num_statements": 6,
+      "faithfulness": 0.8333333333333334,
+      "verdicts": [
+        {
+          "statement": "亚急性甲状腺炎被认为是一种比较严重的疾病。",
+          "reason": "医生回答中明确提到亚急性甲状腺炎是\"比较严重的疾病\"。",
+          "verdict": 1
+        },
+        {
+          "statement": "亚急性甲状腺炎可能与自身免疫反应有密切关系。",
+          "reason": "医生回答中提到亚急性甲状腺炎\"可能与自动免疫反映有密切的关系\"。",
+          "verdict": 1
+        },
+        {
+          "statement": "亚急性甲状腺炎可能导致脖子肿大和脖子疼痛。",
+          "reason": "医生回答中提到亚急性甲状腺炎\"会再次出现脖子粗大，脖子疼痛\"。",
+          "verdict": 1
+        },
+        {
+          "statement": "亚急性甲状腺炎有可能反复发作，对身体有一定影响。",
+          "reason": "医生回答中提到亚急性甲状腺炎\"常有复发...对身体是有一定影响的\"。",
+          "verdict": 1
+        },
+        {
+          "statement": "亚急性甲状腺炎可能表现为精神不好和身体乏力的症状。",
+          "reason": "医生回答中提到亚急性甲状腺炎\"有...精神不好，身体乏力\"的症状。",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0002",
+      "question": "求问甲状腺功能减退咋办？。最近总是感觉浑身难受，甲状腺功能减退咋办？",
+      "context_chunk_ids": [
+        "dialogue_内科_2556#0000",
+        "dialogue_内科_2643#0000",
+        "dialogue_内科_2608#0000",
+        "dialogue_内科_2727#0000",
+        "dialogue_内科_2611#0000"
+      ],
+      "answer": "甲状腺功能减退是因为甲状腺分泌不足而引起的症状，可能会表现为嗜睡、乏力、精神不振、食欲减退等。治疗上需要补充甲状腺素，以改善甲状腺水平并促进其功能恢复。不应私自停止服用药物，以免导致疾病复发。具体药物使用应在医生指导下进行，通常会使用左甲状腺素钠片等药物治疗，并根据甲状腺功能的结果定期调整药物剂量。",
+      "num_statements": 6,
+      "faithfulness": 0.6666666666666666,
+      "verdicts": [
+        {
+          "statement": "Thyroid function deficiency is caused by insufficient secretion from the thyroid gland.",
+          "reason": "The context explicitly states that thyroid function deficiency is caused by insufficient secretion from the thyroid gland.",
+          "verdict": 1
+        },
+        {
+          "statement": "Symptoms of thyroid function deficiency may include drowsiness, fatigue, lack of mental alertness, and reduced appetite.",
+          "reason": "The context lists these symptoms as associated with thyroid function deficiency.",
+          "verdict": 1
+        },
+        {
+          "statement": "Treatment for thyroid function deficiency involves supplementing thyroid hormones to improve thyroid levels and promote recovery of thyroid function.",
+          "reason": "The context mentions that thyroid function deficiency is treated by supplementing thyroid hormones to improve thyroid levels and promote recovery.",
+          "verdict": 1
+        },
+        {
+          "statement": "It is not advisable to stop taking medication on your own, as this may lead to a recurrence of the disease.",
+          "reason": "The context explicitly states that stopping medication on one's own may lead to disease recurrence.",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0003",
+      "question": "甲状腺和糖尿病有关吗？。公公患糖尿病已十多年，最近产检医生跟他说得了甲状腺。甲状腺和糖尿病关于吗？",
+      "context_chunk_ids": [
+        "dialogue_内科_2560#0000",
+        "dialogue_外科_2363#0000",
+        "dialogue_外科_2112#0000",
+        "dialogue_内科_2660#0000",
+        "dialogue_内科_2568#0000"
+      ],
+      "answer": "甲状腺和糖尿病确实存在密切关系。例如，在甲亢（甲状腺功能亢进）的情况下，甲状腺激素分泌增多，可能会导致胰岛素功能下降和胰岛素抵抗增加，从而引起血糖升高。相反，在甲减（甲状腺功能减退）的情况下，可能会导致血糖降低。因此，公公同时患有糖尿病和甲状腺疾病需要密切关注并进行适当的治疗和管理。",
+      "num_statements": 4,
+      "faithfulness": 1.0,
+      "verdicts": [
+        {
+          "statement": "The thyroid and diabetes have a close relationship.",
+          "reason": "The context explicitly states that the thyroid and diabetes have a close relationship.",
+          "verdict": 1
+        },
+        {
+          "statement": "In the case of hyperthyroidism, an increase in thyroid hormone secretion may lead to a decrease in insulin function and an increase in insulin resistance, which can cause elevated blood sugar levels.",
+          "reason": "The context explains that in hyperthyroidism, thyroid hormone secretion increases, leading to reduced insulin function and increased insulin resistance, which raises blood sugar levels.",
+          "verdict": 1
+        },
+        {
+          "statement": "In the case of hypothyroidism, blood sugar levels may decrease.",
+          "reason": "The context states that hypothyroidism can lead to decreased blood sugar levels.",
+          "verdict": 1
+        },
+        {
+          "statement": "A person who has both diabetes and a thyroid condition requires close monitoring and appropriate treatment and management.",
+          "reason": "The context implies that managing both conditions requires attention to diet, rest, and medical care, suggesting the need for close monitoring and treatment.",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0004",
+      "question": "甲状腺疾病需多长时间做一次甲功能检查？。甲状腺疾病需多长时间做一次甲功能仔细检查？",
+      "context_chunk_ids": [
+        "dialogue_内科_2573#0000",
+        "dialogue_内科_2630#0000",
+        "dialogue_外科_2301#0000",
+        "dialogue_内科_2638#0000",
+        "dialogue_内科_2683#0000"
+      ],
+      "answer": "甲状腺疾病需多长时间做一次甲功能仔细检查，需要根据病情选择。如果症状控制不好，需要2周左右复查一次；如果症状可以，可以适当延长复查时间。对于甲状腺功能减退的患者，在缓解期间建议每1-3个月查一次，之后可以3-6个月复查一次。但如果再次出现甲亢或甲减有关的症状，应立即去复查甲功。",
+      "num_statements": 6,
+      "faithfulness": 0.6666666666666666,
+      "verdicts": [
+        {
+          "statement": "The time interval for thyroid function tests depends on the patient's condition.",
+          "reason": "The context states that the frequency of thyroid function tests should be determined based on the patient's condition.",
+          "verdict": 1
+        },
+        {
+          "statement": "If the symptoms are not well controlled, the test should be repeated every 2 weeks.",
+          "reason": "The context mentions that if symptoms are not well controlled, the test should be repeated every 2 weeks.",
+          "verdict": 1
+        },
+        {
+          "statement": "If the symptoms are under control, the复查 time can be extended appropriately.",
+          "reason": "The context states that if symptoms are under control, the复查 time can be extended appropriately.",
+          "verdict": 1
+        },
+        {
+          "statement": "For patients with hypothyroidism, during the缓解 period, it is recommended to check thyroid function every 1 to 3 months.",
+          "reason": "The context states that for patients with hypothyroidism, during the缓解 period, it is recommended to check thyroid function every 1 to 3 months.",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0005",
+      "question": "右侧甲状腺癌已切除左侧是好的还有功能吗？。右侧甲状腺癌已摘除左侧是好的除了功能吗？",
+      "context_chunk_ids": [
+        "dialogue_内科_2574#0000",
+        "dialogue_内科_2591#0000",
+        "dialogue_外科_2273#0000",
+        "dialogue_外科_2354#0000",
+        "dialogue_肿瘤科_0037#0000"
+      ],
+      "answer": "根据参考知识中的信息，右侧甲状腺癌已经切除，左侧的甲状腺是好的，应该是有功能的。建议在手术后两个月进行甲状腺功能检查，以确认左侧甲状腺的功能状态。如果检查结果正常，则不需要特别处理，否则可能需要服用药物进行替代治疗。",
+      "num_statements": 4,
+      "faithfulness": 1.0,
+      "verdicts": [
+        {
+          "statement": "The right thyroid cancer has been removed, and the left thyroid is healthy, so it should have function.",
+          "reason": "The context states that the left thyroid is healthy and believes it has function, so this statement can be directly inferred.",
+          "verdict": 1
+        },
+        {
+          "statement": "It is recommended to perform a thyroid function test two months after surgery to confirm the functional status of the left thyroid.",
+          "reason": "The context explicitly mentions that a thyroid function test should be done two months after surgery.",
+          "verdict": 1
+        },
+        {
+          "statement": "If the test results are normal, no special treatment is needed.",
+          "reason": "The context states that if the thyroid function test is normal, no treatment is needed.",
+          "verdict": 1
+        },
+        {
+          "statement": "If the test results are abnormal, medication may be required for replacement therapy.",
+          "reason": "The context mentions that if the test results show thyroid function reduction, medication may be required.",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0006",
+      "question": "我胃溃疡的中药和甲状腺的西药能一起吃吗？。我吃了胃溃疡的中药和甲状腺的西药该怎么办？",
+      "context_chunk_ids": [
+        "dialogue_内科_2589#0000",
+        "dialogue_外科_2183#0000",
+        "dialogue_内科_2634#0000",
+        "dialogue_肿瘤科_0076#0000",
+        "dialogue_内科_2691#0000"
+      ],
+      "answer": "根据您的叙述，我个人觉得这应当不会干扰药效的体现。建议您按时服药就行，胃溃疡的药尽量饭后服食以免刺激胃。如果出现不适，建议及时就医咨询，以便得到专业的指导和帮助。",
+      "num_statements": 4,
+      "faithfulness": 0.75,
+      "verdicts": [
+        {
+          "statement": "The medication for gastric ulcer and the Western medicine for thyroid can be taken together.",
+          "reason": "The context states that the doctor believes these medications should not interfere with each other's effectiveness.",
+          "verdict": 1
+        },
+        {
+          "statement": "If you have taken both the medication for gastric ulcer and the Western medicine for thyroid, you should continue taking them as scheduled.",
+          "reason": "The context advises that the patient should continue taking the medications on time.",
+          "verdict": 1
+        },
+        {
+          "statement": "The medication for gastric ulcer should be taken after meals to avoid irritating the stomach.",
+          "reason": "The context explicitly mentions that the gastric ulcer medication should be taken after meals to avoid irritating the stomach.",
+          "verdict": 1
+        },
+        {
+          "statement": "If you experience any discomfort, you should seek medical advice promptly to get professional guidance and assistance.",
+          "reason": "The context does not mention anything about seeking medical advice for discomfort specifically.",
+          "verdict": 0
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0007",
+      "question": "甲状腺肿大可以缓解吗？。感觉自己的脖子比较粗，就去医院况且一下，说是甲状腺肿大，甲状腺肿大可以自愈吗？",
+      "context_chunk_ids": [
+        "dialogue_内科_2605#0000",
+        "dialogue_外科_2212#0000",
+        "dialogue_内科_2697#0000",
+        "dialogue_内科_2747#0000",
+        "dialogue_内科_2682#0000"
+      ],
+      "answer": "甲状腺肿大的情况是否可以自愈取决于其具体原因。例如，如果是由于地方性甲状腺肿（因地区食物含碘量较低引起），通过补充碘（如食用含碘食物或按医生指导服用甲状腺素片）是可以缓解的。如果是甲状腺炎，则可能需要通过抗感染治疗来缓解。因此，甲状腺肿大有可能自愈，但需要根据具体原因采取相应的治疗措施。建议遵循医生的指导进行治疗和管理。",
+      "num_statements": 5,
+      "faithfulness": 0.8,
+      "verdicts": [
+        {
+          "statement": "Thyroid enlargement can be relieved depending on the specific cause.",
+          "reason": "The context mentions that thyroid enlargement has various causes and that treatment depends on the specific cause.",
+          "verdict": 1
+        },
+        {
+          "statement": "If the cause is endemic goiter caused by low iodine intake in the region, it can be alleviated by supplementing iodine through consuming iodine-rich foods or taking thyroid hormone pills as directed by a doctor.",
+          "reason": "The context explicitly states that endemic goiter can be corrected by supplementing iodine through diet or thyroid hormone pills under a doctor's guidance.",
+          "verdict": 1
+        },
+        {
+          "statement": "If the cause is thyroiditis, it may require treatment with antibiotics to alleviate symptoms.",
+          "reason": "The context mentions that thyroiditis can be treated with anti-infective therapy, which may include antibiotics.",
+          "verdict": 1
+        },
+        {
+          "statement": "Thyroid enlargement may heal on its own, but appropriate treatment measures must be taken based on the specific cause.",
+          "reason": "The context states that thyroid enlargement may be self-limiting in some cases, but treatment is required based on the cause.",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0008",
+      "question": "之前有甲状腺功能亢进如何治。我老公之前有甲状腺功能亢进，，吃中药正常了，这几天又觉着胸闷，嗓子堵的慌，和甲亢有关系么",
+      "context_chunk_ids": [
+        "dialogue_内科_2634#0000",
+        "dialogue_内科_2630#0000",
+        "dialogue_内科_2639#0000",
+        "dialogue_内科_2613#0000",
+        "dialogue_内科_2631#0000"
+      ],
+      "answer": "甲状腺功能亢进（甲亢）可能导致一系列症状，包括心慌、胸闷和嗓子不适等。您老公之前通过中药治疗甲亢已经恢复正常，但最近出现胸闷和嗓子堵塞感，这些症状有可能与甲亢复发有关，但也可能是其他原因导致的。建议进行甲状腺功能检测，同时注意观察是否有其他甲亢相关症状。\n\n根据医生的建议，可以留意饮食清淡，同时建议化验激素水平，并注意做心电图和拍胸片。日常治疗主要是对症治疗，可能需要服用一些口服药物，并配合维生素，注意避免过度紧张，保证充足的休息。如果症状持续或加重，应及时就医。",
+      "num_statements": 14,
+      "faithfulness": 0.21428571428571427,
+      "verdicts": [
+        {
+          "statement": "甲状腺功能亢进可能导致心慌、胸闷和嗓子不适等症状。",
+          "reason": "医生提到甲状腺激素升高可以引起这些症状，因此可以推断甲状腺功能亢进可能导致这些症状。",
+          "verdict": 1
+        },
+        {
+          "statement": "您老公之前通过中药治疗甲状腺功能亢进已经恢复正常。",
+          "reason": "原文提到您老公之前吃中药正常了，因此可以推断中药治疗有效。",
+          "verdict": 1
+        },
+        {
+          "statement": "您老公最近出现胸闷和嗓子堵塞感，这些症状有可能与甲状腺功能亢进复发有关。",
+          "reason": "医生提到甲状腺激素升高可以引起这些症状，因此可以推断这些症状可能与甲亢复发有关。",
+          "verdict": 1
+        },
+        {
+          "statement": "您老公最近出现胸闷和嗓子堵塞感，这些症状也可能是其他原因导致的。",
+          "reason": "虽然症状可能与甲亢有关，但原文并未排除其他原因，因此不能直接推断是其他原因。",
+          "verdict": 0
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0009",
+      "question": "哪个医院治疗甲状腺结节病比较好？。最近总是感觉浑身难受，哪个医院治疗甲状腺结节病比较好？",
+      "context_chunk_ids": [
+        "dialogue_内科_2636#0000",
+        "dialogue_内科_2694#0000",
+        "dialogue_内科_2650#0000",
+        "dialogue_内科_2649#0000",
+        "dialogue_肿瘤科_0071#0000"
+      ],
+      "answer": "根据提供的参考知识，对于甲状腺结节的治疗，建议去正规的医院进行检查和治疗。在普通的二级医院就能很好地实施调理，如果结节较小，可以考虑使用一些中成药物进行调理治疗，以促进结节的恢复和好转。如果长期用药效果不佳或病情有恶化的情况，建议选择实施手术治疗。\n\n具体的医院推荐信息在提供的参考知识中没有明确给出，因此无法直接推荐某个具体的医院。建议您根据自己的地理位置，选择当地评价较好的医院进行就诊。同时，可以咨询医生关于甲状腺结节的具体治疗方案。",
+      "num_statements": 9,
+      "faithfulness": 0.5555555555555556,
+      "verdicts": [
+        {
+          "statement": "对于甲状腺结节的治疗，建议去正规的医院进行检查和治疗。",
+          "reason": "医生明确提到建议去正规的医院检查和治疗。",
+          "verdict": 1
+        },
+        {
+          "statement": "在普通的二级医院就能很好地实施调理。",
+          "reason": "医生提到如果结节比较小，可以在普通的二级医院进行调理。",
+          "verdict": 1
+        },
+        {
+          "statement": "如果结节较小，可以考虑使用一些中成药物进行调理治疗。",
+          "reason": "医生明确提到如果结节比较小，建议使用中成药物进行调理治疗。",
+          "verdict": 1
+        },
+        {
+          "statement": "使用中成药物可以促进结节的恢复和好转。",
+          "reason": "医生提到中成药物可以促进结节的恢复和好转。",
+          "verdict": 1
+        },
+        {
+          "statement": "如果长期用药效果不佳或病情有恶化的情况，建议选择实施手术治疗。",
+          "reason": "医生明确提到如果长期用药效果不佳或病情有恶化，建议手术治疗。",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0010",
+      "question": "甲状腺功能减退用什么药治的好？。最近总是感觉浑身难受，甲状腺功能减退用什么药治的好？",
+      "context_chunk_ids": [
+        "dialogue_内科_2643#0000",
+        "dialogue_内科_2556#0000",
+        "dialogue_内科_2608#0000",
+        "dialogue_内科_2628#0000",
+        "dialogue_内科_2727#0000"
+      ],
+      "answer": "甲状腺功能减退通常需要使用甲状腺激素替代治疗，常用的药物是左甲状腺素钠片。这种药物可以帮助补充体内缺乏的甲状腺激素，改善甲状腺功能。请在医生的指导下使用药物，并定期复查甲状腺功能，根据结果调整药物剂量。",
+      "num_statements": 7,
+      "faithfulness": 0.7142857142857143,
+      "verdicts": [
+        {
+          "statement": "甲状腺功能减退通常需要使用甲状腺激素替代治疗。",
+          "reason": "医生回答中提到补充甲状腺素，改善甲状腺水平，促进甲状腺功能恢复，说明需要甲状腺激素替代治疗。",
+          "verdict": 1
+        },
+        {
+          "statement": "常用的药物是左甲状腺素钠片。",
+          "reason": "医生回答中明确提到建议使用小剂量的左甲状腺素钠片治疗。",
+          "verdict": 1
+        },
+        {
+          "statement": "这种药物可以帮助补充体内缺乏的甲状腺激素。",
+          "reason": "医生回答中提到补充甲状腺素，改善甲状腺水平，说明药物用于补充缺乏的甲状腺激素。",
+          "verdict": 1
+        },
+        {
+          "statement": "这种药物可以改善甲状腺功能。",
+          "reason": "医生回答中提到补充甲状腺素，促进甲状腺功能恢复，说明药物可以改善甲状腺功能。",
+          "verdict": 1
+        },
+        {
+          "statement": "应在医生的指导下使用药物。",
+          "reason": "医生回答中提到不可以私自停止服用药物，说明应在医生指导下使用。",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0011",
+      "question": "乳头状甲状腺癌咋治。我外婆是乳头状甲状腺癌有淋巴分开除了期望吗几率多大1个淋巴分开了，甲状腺癌怎么办？",
+      "context_chunk_ids": [
+        "dialogue_内科_2656#0000",
+        "dialogue_内科_2663#0000",
+        "dialogue_外科_2274#0000",
+        "dialogue_外科_2283#0000",
+        "dialogue_内科_2593#0000"
+      ],
+      "answer": "根据提供的信息，乳头状甲状腺癌是一种治疗效果较好的类型。如果已经出现淋巴结转移，虽然有进一步扩散的可能性，但仍然有治疗的希望。一个淋巴结的转移意味着病情已经进展到一定程度，但并不意味着没有治疗的机会。\n\n治疗方面，通常首选手术切除，尤其是对于早期发现的病例。手术后可能需要进行放射性碘治疗（如131I治疗）以清除可能残留的癌细胞。对于已经出现淋巴结转移的情况，可能还需要辅助化疗或靶向治疗。\n\n中医中药在辅助治疗方面有一定的应用，如使用肉桂、苦参、金精粉等中药配合治疗，可能有助于控制病情、减轻症状和提高生活质量。但需要注意的是，中药治疗应由有经验的中医师根据患者的具体情况开具处方。\n\n总体来说，虽然出现淋巴结转移增加了治疗的复杂性，但通过综合治疗手段，仍然有可能控制病情并提高生存率。建议与专业的医疗团队密切合作，制定个性化的治疗方案。",
+      "num_statements": 14,
+      "faithfulness": 0.35714285714285715,
+      "verdicts": [
+        {
+          "statement": "乳头状甲状腺癌是一种治疗效果较好的癌症类型。",
+          "reason": "医生回答中提到甲状腺乳头状腺癌是所有类型的甲状腺癌中治疗效果最好的一种。",
+          "verdict": 1
+        },
+        {
+          "statement": "乳头状甲状腺癌如果出现淋巴结转移，仍然存在治疗的希望。",
+          "reason": "医生回答中提到即使有淋巴结转移，仍有进一步治疗的可能，并且有康复的希望。",
+          "verdict": 1
+        },
+        {
+          "statement": "出现淋巴结转移意味着病情已经进展到一定程度。",
+          "reason": "医生回答中提到淋巴结转移是病情进展的一个表现。",
+          "verdict": 1
+        },
+        {
+          "statement": "出现淋巴结转移并不意味着没有治疗的机会。",
+          "reason": "医生回答中提到即使有淋巴结转移，仍有治疗的可能和康复的希望。",
+          "verdict": 1
+        },
+        {
+          "statement": "乳头状甲状腺癌的治疗通常首选手术切除。",
+          "reason": "医生回答中提到确诊后首选的治疗方式是根治性手术切除。",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0012",
+      "question": "甲状腺癌手术后要注意什么。去年8月末做甲状腺癌手术同年10月做碘131救治，甲状腺癌手术后要注意什么？",
+      "context_chunk_ids": [
+        "dialogue_内科_2665#0000",
+        "dialogue_内科_2590#0000",
+        "dialogue_内科_2592#0000",
+        "dialogue_内科_2670#0000",
+        "dialogue_外科_2361#0000"
+      ],
+      "answer": "甲状腺癌手术后要注意以下几点：\n\n1. 定期监测肿瘤标志物，如甲状腺标志物，以评估病情变化。\n2. 保持颈部处于水平位置，避免过度后仰或前屈，以促进正常愈合。\n3. 保持手术部位清洁干燥，避免摩擦、搔抓及接触刺激性强的物质，如某些肥皂、酒精、胶带等。\n4. 饮食上应清淡，避免烟、酒及辛辣刺激性食物，同时忌油炸、烤肉等热性食物。\n5. 保持良好的心态，用积极的心态去面对疾病，提高自身免疫力，减少感染机会，有效防止复发转移。\n6. 可以考虑服用一些中药，如含量为16.2%的人参皂苷Rh2（护命素），以增强身体机能，抑制癌细胞生长表现，降低患病风险。\n7. 根据病情，可能需要进行碘131治疗，特别是对于某些类型的甲状腺癌，如未分化癌，可能需要结合外放射治疗和化疗。\n8. 术后可以配合使用传统中药进行巩固治疗，如虫草、猪苓、明党参等，以提高治疗效果。",
+      "error": "ValueError: no JSON in judge output: '<think>\\n\\n</think>\\n\\n{\"statements\": [\"After thyroid cancer surgery, it is important to regularly monitor tumor markers such as thyroid markers to assess changes in the condition.\", \"The neck should be k'"
+    },
+    {
+      "query_id": "qa-0013",
+      "question": "甲状腺癌的症状是什么。甲状腺癌有什么要禁饮食的吗现在没多大反映不过病人情绪不稳定，甲状腺癌的症状是什么？",
+      "context_chunk_ids": [
+        "dialogue_内科_2666#0000",
+        "dialogue_肿瘤科_0001#0000",
+        "dialogue_内科_2575#0000",
+        "dialogue_肿瘤科_0009#0000",
+        "dialogue_肿瘤科_0004#0000"
+      ],
+      "answer": "甲状腺癌的症状可能包括颈部出现无痛性肿块、声音嘶哑、吞咽困难、喝水时容易呛咳等。根据现有知识无法明确指出甲状腺癌需要禁饮食的情况，但病人情绪不稳定可能需要关注心理支持，而非饮食上的特别要求。",
+      "num_statements": 6,
+      "faithfulness": 0.6666666666666666,
+      "verdicts": [
+        {
+          "statement": "甲状腺癌的症状可能包括颈部出现无痛性肿块。",
+          "reason": "医生回答中提到甲状腺癌晚期症状包括颈部肿块急剧减小，但未明确提到无痛性肿块。",
+          "verdict": 0
+        },
+        {
+          "statement": "甲状腺癌的症状可能包括声音嘶哑。",
+          "reason": "医生回答中明确提到甲状腺癌晚期症状包括声音嘶哑。",
+          "verdict": 1
+        },
+        {
+          "statement": "甲状腺癌的症状可能包括吞咽困难。",
+          "reason": "医生回答中明确提到甲状腺癌晚期症状包括吞咽困难。",
+          "verdict": 1
+        },
+        {
+          "statement": "甲状腺癌的症状可能包括喝水时容易呛咳。",
+          "reason": "医生回答中明确提到甲状腺癌晚期症状包括喝水容易呛咳。",
+          "verdict": 1
+        },
+        {
+          "statement": "病人情绪不稳定可能需要关注心理支持。",
+          "reason": "医生回答中提到要调整心理情况，积极采用治疗措施，暗示情绪不稳定可能需要心理支持。",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0014",
+      "question": "甲状腺癌后服用什么药物。得了甲状腺癌以后是每天都非常痛啊。委实是快挺不住了、现在是靠药物保持着。甲状腺癌后服用什么药物？",
+      "context_chunk_ids": [
+        "dialogue_内科_2668#0000",
+        "dialogue_内科_2662#0000",
+        "dialogue_内科_2665#0000",
+        "dialogue_内科_2593#0000",
+        "dialogue_肿瘤科_0086#0000"
+      ],
+      "answer": "甲状腺癌后主要服用优甲乐（左甲状腺素钠片）来补充甲状腺激素，维持正常的体内环境，影响肿瘤的生长，阻止其复发与转移。此外，还需要不定期复检甲功，监测疗效及病情变化，必要时进行甲状腺球蛋白定量检测及磁共振检查，以及碘-131全身探测检查。在治疗期间，还需要注意营养和心理状态，保持清淡饮食，避免引发不必要的伤害。",
+      "num_statements": 7,
+      "faithfulness": 0.42857142857142855,
+      "verdicts": [
+        {
+          "statement": "After thyroid cancer, the main medication taken is levothyroxine sodium tablets (commonly known as Euthyrox) to supplement thyroid hormones.",
+          "reason": "The context explicitly states that thyroid cancer patients take levothyroxine (优甲乐).",
+          "verdict": 1
+        },
+        {
+          "statement": "Levothyroxine sodium tablets help maintain a normal internal environment, affect tumor growth, and prevent recurrence and metastasis of thyroid cancer.",
+          "reason": "The context mentions that adjusting thyroid hormone levels helps maintain a normal internal environment and affects tumor growth, but it does not explicitly state that levothyroxine directly prevents recurrence and metastasis.",
+          "verdict": 0
+        },
+        {
+          "statement": "Regular checks of thyroid function are needed to monitor treatment effectiveness and changes in the condition.",
+          "reason": "The context explicitly states that thyroid function should be checked regularly.",
+          "verdict": 1
+        },
+        {
+          "statement": "Thyroid globulin quantitative testing and magnetic resonance imaging are also required when necessary.",
+          "reason": "The context explicitly mentions thyroid globulin quantitative testing and magnetic resonance imaging as part of the monitoring process.",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0015",
+      "question": "甲状腺癌根治需注意什么。甲状腺癌根治术后一年，颈部老感觉不舒服，短暂性头晕，股骨困痛六月，甲状腺癌根治需注意什么？",
+      "context_chunk_ids": [
+        "dialogue_内科_2671#0000",
+        "dialogue_内科_2590#0000",
+        "dialogue_内科_2663#0000",
+        "dialogue_内科_2665#0000",
+        "dialogue_内科_2592#0000"
+      ],
+      "answer": "甲状腺癌根治术后需要注意以下几点：\n\n1. 饮食上忌硬食物或辛辣刺激食物，禁食鱼虾蟹，牛羊肉，多食菌类食物。\n2. 保持舒畅的心情，增强体质，加快康复速度。\n3. 定期复检，同时可以考虑不定期抗衰老中医药稳固救治，预防控制病发转移。\n4. 术后应注意保持颈部水平位置，避免后仰或前屈过度，影响正常结疤。\n5. 保持手术部位的清洁与干燥，避免摩擦、搔抓与接触刺激较大的肥皂、酒精、胶带等。\n6. 忌烟、酒及辛辣刺激性食物，忌油炸、烤肉等热性食物。\n7. 术后可以考虑服用一些中药，如含量为16.2%的人参皂苷Rh2（护命素），以增加免疫力，抑制癌细胞生长表现，降低感染机会，有效防止病发转移。",
+      "error": "ValueError: no JSON in judge output: '<think>\\n\\n</think>\\n\\n{\\n  \"statements\": [\\n    \"甲状腺癌根治术后需要避免食用硬食物或辛辣刺激食物。\",\\n    \"甲状腺癌根治术后需要避免食用鱼虾蟹和牛羊肉。\",\\n    \"甲状腺癌根治术后需要多食用菌类食物。\",\\n    \"甲状腺癌根治术后需要保持心情舒畅以增强体质。\",\\n    \"甲状腺癌根治术后需要加快康复速度。\",\\n    \"甲状腺癌根治术后需要定期'"
+    },
+    {
+      "query_id": "qa-0016",
+      "question": "甲状腺癌术后吃什么对身体好。有亲人在武警广西总队医院做了甲状腺癌手术，期望他彻底恢复得快一些，给他多吃什么对身体好多呢？",
+      "context_chunk_ids": [
+        "dialogue_内科_2673#0000",
+        "dialogue_内科_2670#0000",
+        "dialogue_内科_2590#0000",
+        "dialogue_肿瘤科_0083#0000",
+        "dialogue_内科_2665#0000"
+      ],
+      "answer": "根据提供的参考知识，甲状腺癌术后可以考虑食用以下食物以促进恢复：\n\n1. 可以食用传统中药如虫草、猪苓、明党参等，这些中药有助于增强身体机能，稳定食欲，防止残留癌细胞的生长，促进伤口愈合，抗炎镇痛，预防感染和并发症。\n\n2. 饮食上应保持营养均衡，摄入高蛋白、低脂肪、低糖、高维生素的食物，建议由少吃多餐逐渐过渡到定时定量。\n\n3. 食物中应包含一定量的蔬菜，可以适量食用水果。\n\n4. 避免辛辣刺激性食物，以免加重病情。\n\n5. 保持心情舒畅、乐观，学会放松，劳逸结合。\n\n请注意，上述建议主要基于传统中药和饮食调理，具体治疗方案应遵循主治医生的指导。",
+      "num_statements": 5,
+      "faithfulness": 0.4,
+      "verdicts": [
+        {
+          "statement": "After thyroid cancer surgery, it is recommended to consume traditional Chinese medicines such as Cordyceps, Polyporus, and Red Ginseng. These medicines help improve physical function, stabilize appetite, prevent the growth of residual cancer cells, promote wound healing, reduce inflammation and pain, and prevent infections and complications.",
+          "reason": "The context mentions the use of traditional Chinese medicines like Cordyceps, Polyporus, and Red Ginseng, and their benefits such as improving physical function, stabilizing appetite, preventing residual cancer cell growth, promoting wound healing, reducing inflammation, and preventing infections.",
+          "verdict": 1
+        },
+        {
+          "statement": "The diet should maintain a balanced nutrition, including high-protein, low-fat, low-sugar, and high-vitamin foods. It is recommended to gradually transition from eating small amounts frequently to eating at regular intervals.",
+          "reason": "The context states that the diet should be high-protein, low-fat, low-sugar, and high-vitamin, and suggests transitioning from eating small amounts frequently to eating at regular intervals.",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": false,
+      "missing_numbers": [
+        "4",
+        "5"
+      ]
+    },
+    {
+      "query_id": "qa-0017",
+      "question": "早期甲状腺结节症状有哪些？。医生，您好甲状腺结节的早期症状治疗有哪些？需要有做手术的程度吗？",
+      "context_chunk_ids": [
+        "dialogue_内科_2676#0000",
+        "dialogue_内科_2759#0000",
+        "dialogue_外科_2341#0000",
+        "dialogue_内科_2738#0000",
+        "dialogue_肿瘤科_0006#0000"
+      ],
+      "answer": "甲状腺结节的早期症状可能包括颈部的肿胀，或者出现甲状腺功能的异常，表现出的症状如下：\n\n- 甲状腺功能亢进时，可能会出现多食、情绪容易激动、出汗、体重减轻等症状。\n- 甲状腺功能减退时，可能会出现乏力、食欲减退、便秘、水肿等症状。\n\n根据甲状腺彩超以及体内甲状腺激素水平等综合考虑来选择是否进行手术。早期甲状腺结节通常不需要立即手术，但需要定期随访观察结节的变化。",
+      "num_statements": 13,
+      "faithfulness": 0.38461538461538464,
+      "verdicts": [
+        {
+          "statement": "甲状腺结节的早期症状可能包括颈部的肿胀。",
+          "reason": "医生回答中明确提到甲状腺结节早期症状包括颈部的肿胀。",
+          "verdict": 1
+        },
+        {
+          "statement": "甲状腺结节的早期症状可能包括甲状腺功能的异常。",
+          "reason": "医生回答中提到甲状腺结节早期症状包括甲状腺功能的异常。",
+          "verdict": 1
+        },
+        {
+          "statement": "甲状腺功能亢进时可能会出现多食的症状。",
+          "reason": "医生回答中提到甲亢时会出现多食的症状。",
+          "verdict": 1
+        },
+        {
+          "statement": "甲状腺功能亢进时可能会出现情绪容易激动的症状。",
+          "reason": "医生回答中提到甲亢时会出现情绪容易激动的症状。",
+          "verdict": 1
+        },
+        {
+          "statement": "甲状腺功能亢进时可能会出现出汗的症状。",
+          "reason": "医生回答中提到甲亢时会出现出汗的症状。",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0018",
+      "question": "甲状腺功能减退会引起怀孕吗？。医生，我一直想怀第二胎，想进行咨询一下，甲状腺功能减退可以怀上吗？",
+      "context_chunk_ids": [
+        "dialogue_内科_2677#0000",
+        "dialogue_内科_2727#0000",
+        "dialogue_内科_2608#0000",
+        "dialogue_内科_2609#0000",
+        "dialogue_内科_2628#0000"
+      ],
+      "answer": "根据你目前叙述的情况，如果拥有甲状腺功能减退，这种情况再次出现考虑早孕对于胎儿是有影响的。因此，甲状腺功能减退的患者在怀孕前应在医生指导下进行替代治疗，建[REDACTED]医生指导下补充甲状腺素，平时建议需要有不定期复检复检仔细检查甲状腺功能。",
+      "num_statements": 3,
+      "faithfulness": 1.0,
+      "verdicts": [
+        {
+          "statement": "If a person has hypothyroidism, becoming pregnant may have an impact on the fetus.",
+          "reason": "The context states that hypothyroidism can affect fetal development and that it is important to manage thyroid function during pregnancy.",
+          "verdict": 1
+        },
+        {
+          "statement": "Individuals with hypothyroidism should undergo thyroid hormone replacement therapy under a doctor's guidance before attempting to become pregnant.",
+          "reason": "The context mentions that thyroid hormone replacement therapy should be done under a doctor's guidance and that it is important to maintain normal thyroid function during pregnancy.",
+          "verdict": 1
+        },
+        {
+          "statement": "It is recommended that individuals with hypothyroidism have regular check-ups to monitor their thyroid function.",
+          "reason": "The context explicitly states that individuals should have regular check-ups to monitor thyroid function.",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0019",
+      "question": "什么情况是甲状腺结节？。前两天感觉甲状腺有点肿胀，今天仔细检查发觉有甲状腺结节，甲状腺结节单发是怎么回事？",
+      "context_chunk_ids": [
+        "dialogue_内科_2683#0000",
+        "dialogue_内科_2723#0000",
+        "dialogue_内科_2722#0000",
+        "dialogue_内科_2704#0000",
+        "dialogue_外科_2118#0000"
+      ],
+      "answer": "甲状腺结节是指在甲状腺内的肿块，可随吞咽动作随甲状腺而上下移动。你前两天感觉甲状腺有点肿胀，今天检查发现有甲状腺结节，这符合甲状腺结节的定义。\n\n甲状腺结节单发指的是在甲状腺内发现一个单独的肿块。医生提到，甲状腺单发结节首先考虑甲状腺腺瘤，大部分是良性肿物。如果肿物较大，需要尽早手术切除；如果肿物较小，可以暂时观察，每三个月做一次甲状腺彩超，根据肿物生长速度决定是否需要手术。",
+      "num_statements": 12,
+      "faithfulness": 0.4166666666666667,
+      "verdicts": [
+        {
+          "statement": "A thyroid nodule is a lump found within the thyroid gland.",
+          "reason": "The context explicitly states that a thyroid nodule is a lump within the thyroid gland.",
+          "verdict": 1
+        },
+        {
+          "statement": "The lump can move up and down with swallowing movements.",
+          "reason": "The context mentions that the lump can move up and down with swallowing movements.",
+          "verdict": 1
+        },
+        {
+          "statement": "You felt some swelling in the thyroid two days ago.",
+          "reason": "The context states that the person felt some swelling in the thyroid two days ago.",
+          "verdict": 1
+        },
+        {
+          "statement": "You discovered a thyroid nodule today through a checkup.",
+          "reason": "The context mentions that the person discovered a thyroid nodule today through a checkup.",
+          "verdict": 1
+        },
+        {
+          "statement": "This situation matches the definition of a thyroid nodule.",
+          "reason": "The context defines a thyroid nodule as a lump within the thyroid gland, and the situation described fits this definition.",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0020",
+      "question": "哪些因素会引起甲状腺肿大。什么因素会导致甲状腺肿大",
+      "context_chunk_ids": [
+        "dialogue_内科_2728#0000",
+        "dialogue_内科_2731#0000",
+        "dialogue_内科_2733#0000",
+        "dialogue_内科_2605#0000",
+        "dialogue_内科_2553#0000"
+      ],
+      "answer": "引起甲状腺肿大的常见因素包括：\n\n1. 甲状腺炎\n2. 甲状腺占位\n3. 甲亢（甲状腺功能亢进）\n4. 甲减（甲状腺功能减退）\n5. 激素分泌不平衡\n6. 感染性疾病\n7. 自身免疫性降低\n8. 碘摄入不足\n9. 食用某些含有抗甲状腺物质的食物\n\n这些因素可能导致体内激素分泌失衡，进而引起甲状腺肿大。",
+      "num_statements": 11,
+      "faithfulness": 0.45454545454545453,
+      "verdicts": [
+        {
+          "statement": "甲状腺炎是引起甲状腺肿大的一个常见因素。",
+          "reason": "医生回答中明确提到甲状腺炎是引起甲状腺肿大的常见病因之一。",
+          "verdict": 1
+        },
+        {
+          "statement": "甲状腺占位是引起甲状腺肿大的一个常见因素。",
+          "reason": "医生回答中明确提到甲状腺占位是引起甲状腺肿大的常见病因之一。",
+          "verdict": 1
+        },
+        {
+          "statement": "甲状腺功能亢进是引起甲状腺肿大的一个常见因素。",
+          "reason": "医生回答中明确提到甲亢是引起甲状腺肿大的常见病因之一。",
+          "verdict": 1
+        },
+        {
+          "statement": "甲状腺功能减退是引起甲状腺肿大的一个常见因素。",
+          "reason": "医生回答中明确提到甲减是引起甲状腺肿大的常见病因之一。",
+          "verdict": 1
+        },
+        {
+          "statement": "激素分泌不平衡是引起甲状腺肿大的一个常见因素。",
+          "reason": "医生回答中明确提到激素分泌不平衡是引起甲状腺肿大的主要原因。",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": false,
+      "missing_numbers": [
+        "3",
+        "5",
+        "6",
+        "7",
+        "9"
+      ]
+    },
+    {
+      "query_id": "qa-0021",
+      "question": "该怎样医治甲状腺肿大才有效。该怎样医治甲状腺肿大",
+      "context_chunk_ids": [
+        "dialogue_内科_2729#0000",
+        "dialogue_内科_2697#0000",
+        "dialogue_内科_2692#0000",
+        "dialogue_内科_2687#0000",
+        "dialogue_外科_2212#0000"
+      ],
+      "answer": "治疗甲状腺肿大的方案应根据其原因和症状的严重程度来个体化。对于单纯性甲状腺肿，如果甲状腺功能正常且没有压迫症状或怀疑肿瘤，通常不需要特殊治疗。但如果患者有明显的不适或甲状腺肿大影响到生活质量，可以考虑放射性碘131治疗或手术治疗，后者可以迅速缓解局部压迫症状。\n\n对于甲状腺功能异常（如甲亢或甲减）引起的甲状腺肿大，需要进行相应的药物治疗，并根据甲状腺功能检查结果调整药物剂量。如果没有甲状腺功能的改变，且甲状腺肿大是结节性的，如果没有明显的临床症状，可以先不进行治疗，但需要定期复查观察。\n\n总之，治疗甲状腺肿大的方法需要根据具体情况由医生指导，可能包括药物治疗、放射性碘治疗或手术治疗等。",
+      "num_statements": 10,
+      "faithfulness": 0.4,
+      "verdicts": [
+        {
+          "statement": "治疗甲状腺肿大的方案需要根据其原因和症状的严重程度来制定个体化治疗计划。",
+          "reason": "原文提到治疗方案应个体化，因甲状腺肿大轻重不一。",
+          "verdict": 1
+        },
+        {
+          "statement": "对于单纯性甲状腺肿，如果甲状腺功能正常且没有压迫症状或怀疑肿瘤，通常不需要进行特殊治疗。",
+          "reason": "原文提到单纯性甲状腺肿不需要治疗除非有压迫或怀疑肿瘤。",
+          "verdict": 1
+        },
+        {
+          "statement": "如果患者有明显的不适或甲状腺肿大影响到生活质量，可以考虑使用放射性碘131进行治疗。",
+          "reason": "原文提到放射碘131治疗适用于有压迫或怀疑肿瘤的情况。",
+          "verdict": 1
+        },
+        {
+          "statement": "如果患者有明显的不适或甲状腺肿大影响到生活质量，可以考虑进行手术治疗，这种治疗方式可以迅速缓解局部压迫症状。",
+          "reason": "原文提到手术治疗可以迅速解除局部压迫症状。",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0022",
+      "question": "甲状腺肿大治疗时要注意什么。甲状腺肿大需要注意什么",
+      "context_chunk_ids": [
+        "dialogue_内科_2730#0000",
+        "dialogue_内科_2732#0000",
+        "dialogue_内科_2697#0000",
+        "dialogue_内科_2729#0000",
+        "dialogue_内科_2687#0000"
+      ],
+      "answer": "甲状腺肿大治疗时需要注意以下几点：\n\n1. 定期复查甲状腺B超和甲状腺功能，根据不同的症状选择合适的药物进行治疗。\n2. 保持良好的休息，避免过度劳累。\n3. 保持心情舒畅，避免精神刺激。\n4. 饮食上应保持清淡，给予足够的营养和热量。\n5. 避免与水果同食海味，避免白酒与汽水同饮，避免茶叶煮蛋等可能影响甲状腺功能的食物组合。\n6. 根据医生的建议按时服药，并定期复查甲状腺激素和血常规。\n7. 如果甲状腺肿大是由于单纯性甲状腺肿引起，且甲状腺功能正常，可能不需要特殊治疗，但需要定期复查观察症状变化。\n\n以上是甲状腺肿大治疗时需要注意的事项。",
+      "num_statements": 7,
+      "faithfulness": 0.7142857142857143,
+      "verdicts": [
+        {
+          "statement": "During the treatment of goiter, it is important to regularly check thyroid ultrasound and thyroid function, and choose appropriate medication based on symptoms.",
+          "reason": "The context mentions that regular thyroid ultrasound and thyroid function checks are recommended, and treatment is based on symptoms.",
+          "verdict": 1
+        },
+        {
+          "statement": "It is recommended to maintain good rest and avoid excessive fatigue.",
+          "reason": "The context states that rest and avoiding fatigue are advised.",
+          "verdict": 1
+        },
+        {
+          "statement": "Maintaining a cheerful mood and avoiding mental stimulation is important.",
+          "reason": "The context emphasizes maintaining a cheerful mood and avoiding mental stimulation.",
+          "verdict": 1
+        },
+        {
+          "statement": "In terms of diet, it is advisable to keep the food清淡 and ensure sufficient nutrition and calories.",
+          "reason": "The context advises a清淡 diet with sufficient nutrition and calories.",
+          "verdict": 1
+        },
+        {
+          "statement": "Avoid consuming fruits with seafood, avoid drinking white wine and carbonated drinks together, and avoid combinations like tea-boiled eggs that may affect thyroid function.",
+          "reason": "The context lists these dietary restrictions as important for thyroid health.",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": false,
+      "missing_numbers": [
+        "4",
+        "5",
+        "6",
+        "7"
+      ]
+    },
+    {
+      "query_id": "qa-0023",
+      "question": "甲状腺肿大常见的有哪些并发症。甲状腺肿大导致的并发症有哪些",
+      "context_chunk_ids": [
+        "dialogue_内科_2731#0000",
+        "dialogue_内科_2728#0000",
+        "dialogue_内科_2605#0000",
+        "dialogue_内科_2733#0000",
+        "dialogue_内科_2747#0000"
+      ],
+      "answer": "根据现有知识无法回答。参考知识中主要讨论了甲状腺肿大的原因和处理方式，但并未提及甲状腺肿大可能引起的并发症。",
+      "num_statements": 3,
+      "faithfulness": 1.0,
+      "no_statements": true,
+      "refusal": true,
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0024",
+      "question": "甲状腺肿大患者平时该留意什么。甲状腺肿大日常需要注意什么",
+      "context_chunk_ids": [
+        "dialogue_内科_2732#0000",
+        "dialogue_内科_2730#0000",
+        "dialogue_内科_2729#0000",
+        "dialogue_外科_2222#0000",
+        "dialogue_外科_2096#0000"
+      ],
+      "answer": "甲状腺肿大日常需要注意以下几点：\n\n1. 定期复查甲状腺B超和甲状腺功能。\n2. 根据不同的症状选择合适的药物进行治疗。\n3. 保持心情舒畅，避免精神刺激和过度疲劳。\n4. 保持饮食清淡，摄入足够的营养和热量。\n5. 避免食用可能对甲状腺产生不良影响的食物，如海味与水果同食、白酒与汽水同饮、茶叶煮蛋等。\n6. 保持良好的休息，避免劳累。\n7. 注意个人卫生，避免感染。\n\n以上是甲状腺肿大患者日常生活中需要注意的事项。",
+      "num_statements": 7,
+      "faithfulness": 0.5714285714285714,
+      "verdicts": [
+        {
+          "statement": "Thyroid enlargement patients should have regular check-ups for thyroid B超 and thyroid function.",
+          "reason": "The context states that patients should regularly check thyroid B超 and thyroid function.",
+          "verdict": 1
+        },
+        {
+          "statement": "Thyroid enlargement patients should choose appropriate medications based on their symptoms.",
+          "reason": "The context mentions that treatment should be based on different symptoms and choose appropriate drugs.",
+          "verdict": 1
+        },
+        {
+          "statement": "Thyroid enlargement patients should maintain a good mood and avoid mental stimulation and excessive fatigue.",
+          "reason": "The context states that patients should maintain a good mood, avoid mental stimulation, and avoid excessive fatigue.",
+          "verdict": 1
+        },
+        {
+          "statement": "Thyroid enlargement patients should keep their diet simple and consume enough nutrition and calories.",
+          "reason": "The context mentions that patients should have a simple diet and consume enough nutrition and calories.",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": false,
+      "missing_numbers": [
+        "5",
+        "6"
+      ]
+    },
+    {
+      "query_id": "qa-0025",
+      "question": "甲状腺肿大到底是一种什么毛病。什么是甲状腺肿大",
+      "context_chunk_ids": [
+        "dialogue_内科_2733#0000",
+        "dialogue_内科_2553#0000",
+        "dialogue_内科_2728#0000",
+        "dialogue_内科_2605#0000",
+        "dialogue_内科_2631#0000"
+      ],
+      "answer": "甲状腺肿大是一种甲状腺体积增大的状况，通常表现为颈部前方肿胀。具体来说，甲状腺肿大（也称为甲状腺肿）是指甲状腺组织异常增生导致的甲状腺体积增大。这种状况可以分为两种主要类型：单纯性甲状腺肿和散发性甲状腺肿。\n\n1. **单纯性甲状腺肿**：这是最常见的类型，通常与缺碘有关，是身体对缺碘的一种代偿反应。在缺碘地区，甲状腺会增大以试图产生足够的甲状腺激素。这种情况下，患者通常没有甲状腺功能异常的症状。\n\n2. **散发性甲状腺肿**：这种类型的甲状腺肿大可能由多种原因引起，包括甲状腺激素需求增加、甲状腺激素合成缺陷、摄入某些抗甲状腺物质的食物等。此外，它也可能与甲状腺炎、甲状腺占位、甲亢或甲减等甲状腺疾病有关。\n\n简而言之，甲状腺肿大是一种甲状腺体积增大的状况，可以由多种原因引起，包括缺碘、甲状腺功能异常等。",
+      "error": "ValueError: no JSON in judge output: '<think>\\n\\n</think>\\n\\n{\\n  \"statements\": [\\n    \"甲状腺肿大是一种甲状腺体积增大的状况。\",\\n    \"甲状腺肿大通常表现为颈部前方肿胀。\",\\n    \"甲状腺肿大是指甲状腺组织异常增生导致的甲状腺体积增大。\",\\n    \"甲状腺肿大也被称为甲状腺肿。\",\\n    \"单纯性甲状腺肿是甲状腺肿大的一种类型。\",\\n    \"单纯性甲状腺肿通常是由于缺碘引起的。\",'"
+    },
+    {
+      "query_id": "qa-0026",
+      "question": "乳腺增生及甲状腺炎症如何治疗？。我今年40岁，总感觉乳腺块状，我很担心，请问：乳腺增生及甲状腺炎症如何治疗？",
+      "context_chunk_ids": [
+        "dialogue_外科_2095#0000",
+        "dialogue_外科_2183#0000",
+        "dialogue_肿瘤科_0084#0000",
+        "dialogue_肿瘤科_0012#0000",
+        "dialogue_外科_2293#0000"
+      ],
+      "answer": "根据您描述的症状，建议您及时就医进行详细检查。乳腺增生及甲状腺炎症的治疗需要根据具体病情来定，一般情况下，医生可能会建议以下几种治疗方法：\n\n1. 内分泌失调的调养：保持良好的生活习惯，注意饮食和作息规律，适当增加体育锻炼，提高身体免疫力。\n\n2. 保持良好的心态：积极面对疾病，保持乐观的心态有助于疾病的康复。\n\n3. 药物治疗：根据病情，医生可能会开具相应的药物进行治疗，如抗炎药物等。\n\n4. 定期复查：定期进行乳腺和甲状腺的检查，以便及时了解病情变化。\n\n5. 中医调理：在医生指导下，可以尝试中医调理，如中药调理等。\n\n请注意，以上建议仅供参考，具体治疗方案需要根据医生的诊断结果来确定。建议您尽快就医，以便获得针对性的治疗。",
+      "num_statements": 9,
+      "faithfulness": 0.4444444444444444,
+      "verdicts": [
+        {
+          "statement": "You should seek medical attention promptly for a detailed examination based on your described symptoms.",
+          "reason": "The context states that the disease should be treated promptly and that timely medical attention is necessary.",
+          "verdict": 1
+        },
+        {
+          "statement": "The treatment for breast hyperplasia and thyroid inflammation depends on the specific condition.",
+          "reason": "The context mentions that the treatment should be based on the specific condition and that timely medical attention is needed.",
+          "verdict": 1
+        },
+        {
+          "statement": "Doctors may recommend maintaining good living habits, paying attention to diet and regular作息, and increasing physical exercise to improve immunity.",
+          "reason": "The context explicitly mentions maintaining good living habits, diet, regular作息, and exercise to improve immunity.",
+          "verdict": 1
+        },
+        {
+          "statement": "Maintaining a positive mindset is beneficial for recovery from the disease.",
+          "reason": "The context emphasizes the importance of a positive mindset in improving immunity and fighting disease.",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": false,
+      "missing_numbers": [
+        "3",
+        "5"
+      ]
+    },
+    {
+      "query_id": "qa-0027",
+      "question": "女性甲状腺一般该有什么症状。本人女47岁一直身体都挺好的，但是一去检查之后就有了异常，请问：女性甲状腺一般该有什么症状？",
+      "context_chunk_ids": [
+        "dialogue_外科_2096#0000",
+        "dialogue_外科_2098#0000",
+        "dialogue_外科_2097#0000",
+        "dialogue_肿瘤科_0109#0000",
+        "dialogue_肿瘤科_0004#0000"
+      ],
+      "answer": "女性甲状腺异常时可能出现的症状包括但不限于：\n\n- 焦虑、紧张，情绪波动大\n- 心跳加快、心颤\n- 体重减轻\n- 易口渴\n- 大便次数增多\n- 怕热\n- 呼吸困难\n- 眼球突出、视力模糊、怕光、眼痛、眼胀\n- 喉咙浮肿、脖子变粗\n- 喉咙异物感\n- 经期紊乱或停经\n- 不育、小产\n- 自律神经失调的症状\n\n以上症状可能与甲状腺功能亢进有关。如果出现这些症状，建议及时就医进行详细检查。",
+      "num_statements": 15,
+      "faithfulness": 0.3333333333333333,
+      "verdicts": [
+        {
+          "statement": "女性甲状腺异常时可能出现焦虑、紧张和情绪波动大的症状。",
+          "reason": "医生回答中明确提到女性甲状腺异常时会出现焦虑、紧张，情绪震荡大。",
+          "verdict": 1
+        },
+        {
+          "statement": "女性甲状腺异常时可能出现心跳加快和心颤的症状。",
+          "reason": "医生回答中明确提到女性甲状腺异常时会出现心跳加快、心颤。",
+          "verdict": 1
+        },
+        {
+          "statement": "女性甲状腺异常时可能出现体重减轻的症状。",
+          "reason": "医生回答中明确提到女性甲状腺异常时会出现体重减轻。",
+          "verdict": 1
+        },
+        {
+          "statement": "女性甲状腺异常时可能出现易口渴的症状。",
+          "reason": "医生回答中明确提到女性甲状腺异常时会出现易口渴。",
+          "verdict": 1
+        },
+        {
+          "statement": "女性甲状腺异常时可能出现大便次数增多的症状。",
+          "reason": "医生回答中明确提到女性甲状腺异常时会出现大便次数增强。",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0028",
+      "question": "女性甲状腺有什么症状。本人男57岁因为最近有些不舒服，就去进行了检查，但是一查是这个病，请问：女性甲状腺有什么症状？",
+      "context_chunk_ids": [
+        "dialogue_外科_2098#0000",
+        "dialogue_外科_2096#0000",
+        "dialogue_外科_2097#0000",
+        "dialogue_肿瘤科_0109#0000",
+        "dialogue_肿瘤科_0002#0000"
+      ],
+      "answer": "女性患上甲状腺疾病，会出现怕热、流汗、心颤的现象，还会出现脾气急躁、消瘦等症状。皮肤也会变得干燥，食欲减退等。建议出现这些情况及时去治疗，甲状腺功能正常的治疗，按时进行检查即可。然后，饮食有节，规律作息，调节身心健康，在生活中注意要保持良好的心情，要多吃清淡稀软的食物，多喝水也要多吃一些蔬菜与水果。",
+      "num_statements": 8,
+      "faithfulness": 0.625,
+      "verdicts": [
+        {
+          "statement": "Women who have thyroid disease may experience symptoms such as feeling hot, sweating, and palpitations.",
+          "reason": "The context mentions that women with thyroid disease may experience fear of heat, sweating, and palpitations.",
+          "verdict": 1
+        },
+        {
+          "statement": "Women who have thyroid disease may experience symptoms such as irritability and weight loss.",
+          "reason": "The context mentions that women with thyroid disease may experience irritability and weight loss.",
+          "verdict": 1
+        },
+        {
+          "statement": "Women who have thyroid disease may experience symptoms such as dry skin and reduced appetite.",
+          "reason": "The context mentions that women with thyroid disease may experience dry skin and reduced appetite.",
+          "verdict": 1
+        },
+        {
+          "statement": "It is recommended to seek treatment promptly if these symptoms appear.",
+          "reason": "The context recommends seeking treatment promptly if these symptoms appear.",
+          "verdict": 1
+        },
+        {
+          "statement": "Treatment for thyroid function that is normal should be carried out on time and regular check-ups should be performed.",
+          "reason": "The context mentions that treatment for normal thyroid function should be carried out on time and regular check-ups should be performed.",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0029",
+      "question": "桥本氏甲状腺炎能治疗好吗。我32岁，男我现在颈部有多处疼痛的感觉，请问桥本氏甲状腺炎能治疗好吗",
+      "context_chunk_ids": [
+        "dialogue_外科_2100#0000",
+        "dialogue_外科_2116#0000",
+        "dialogue_外科_2101#0000",
+        "dialogue_外科_2113#0000",
+        "dialogue_外科_2102#0000"
+      ],
+      "answer": "目前桥本氏甲状腺炎的治疗主要是替代性地纠正甲状腺功能减退，但对自身免疫异常无效，不能降低桥本氏甲状腺抗体的水平。因此，对于桥本氏甲状腺炎，大多数情况下需要长期或终身服药。",
+      "num_statements": 4,
+      "faithfulness": 1.0,
+      "verdicts": [
+        {
+          "statement": "Bridge's thyroiditis is currently treated by correcting hypothyroidism through substitution therapy.",
+          "reason": "The context states that thyroid hormone treatment can substitute for hypothyroidism, implying substitution therapy is used.",
+          "verdict": 1
+        },
+        {
+          "statement": "The treatment for Bridge's thyroiditis does not address the underlying autoimmune abnormality.",
+          "reason": "The context explicitly mentions that thyroid hormone treatment does not address autoimmune abnormalities.",
+          "verdict": 1
+        },
+        {
+          "statement": "The treatment for Bridge's thyroiditis cannot reduce the levels of Bridge's thyroid antibodies.",
+          "reason": "The context states that treatment cannot reduce the levels of thyroid antibodies.",
+          "verdict": 1
+        },
+        {
+          "statement": "Most cases of Bridge's thyroiditis require long-term or lifelong medication.",
+          "reason": "The context mentions that most thyroid diseases require long-term or lifelong medication.",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0030",
+      "question": "桥本氏甲状腺炎该怎么治疗呢。我32岁，男我现在颈部有多处疼痛的感觉，请问桥本氏甲状腺炎该怎么治疗呢",
+      "context_chunk_ids": [
+        "dialogue_外科_2101#0000",
+        "dialogue_外科_2116#0000",
+        "dialogue_外科_2100#0000",
+        "dialogue_外科_2102#0000",
+        "dialogue_外科_2113#0000"
+      ],
+      "answer": "根据提供的信息，桥本氏甲状腺炎的治疗建议包括：\n\n1. 西药治疗：根据具体病情，可能需要药物治疗。\n2. 中医调理：可以面诊中医师进行把脉开方，使用中药进行调理。\n3. 生活习惯调整：多留意休息，保持清淡营养饮食，避免熬夜和过度劳累，不要食用辛辣肥甘厚腻的食物。\n4. 有氧运动：增加日常锻炼，有助于提高身体免疫力。\n5. 定期检查：定期监测甲状腺功能情况，以便及时调整治疗方案。\n\n请根据自身情况，在医生指导下进行治疗和调理。",
+      "num_statements": 6,
+      "faithfulness": 0.5,
+      "verdicts": [
+        {
+          "statement": "桥本氏甲状腺炎的治疗建议包括西药治疗，根据具体病情可能需要药物治疗。",
+          "reason": "医生回答中提到桥本氏甲状腺炎是自身免疫性甲状腺疾病，除了西药，还提到需要根据具体病情进行治疗，说明西药是治疗建议之一。",
+          "verdict": 1
+        },
+        {
+          "statement": "桥本氏甲状腺炎的治疗建议包括中医调理，可以面诊中医师进行把脉开方，使用中药进行调理。",
+          "reason": "医生回答中明确提到除了西药，可以面诊中医师把脉开方中药调理。",
+          "verdict": 1
+        },
+        {
+          "statement": "桥本氏甲状腺炎的治疗建议包括生活习惯调整，需要多留意休息，保持清淡营养饮食，避免熬夜和过度劳累，不要食用辛辣肥甘厚腻的食物。",
+          "reason": "医生回答中提到多留意休息及清淡营养饮食，不要熬夜、操劳，不要吃辛辣肥甘厚腻食物，说明生活习惯调整是治疗建议之一。",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": false,
+      "missing_numbers": [
+        "1",
+        "4",
+        "5"
+      ]
+    },
+    {
+      "query_id": "qa-0031",
+      "question": "甲状腺炎可以缓解吗。男性20岁发现这个症状已经很久了，但是这个情况一直就没有好转，请问甲状腺炎可以缓解吗",
+      "context_chunk_ids": [
+        "dialogue_外科_2103#0000",
+        "dialogue_外科_2108#0000",
+        "dialogue_外科_2113#0000",
+        "dialogue_外科_2110#0000",
+        "dialogue_外科_2111#0000"
+      ],
+      "answer": "亚甲炎是甲状腺的亚急性炎症，与自动免疫反映有关，可能会导致甲状腺功能减退，需要结合甲状腺功能状况确认治疗方案。如果没有症状，可能不需要用药，但由于自动免疫反映持续存在，完全缓解不太可能。",
+      "num_statements": 6,
+      "faithfulness": 0.8333333333333334,
+      "verdicts": [
+        {
+          "statement": "Thyroiditis is a subacute inflammation of the thyroid gland.",
+          "reason": "The context explicitly mentions that subacute thyroid inflammation is referred to as '亚甲炎' (subacute thyroiditis).",
+          "verdict": 1
+        },
+        {
+          "statement": "Thyroiditis is related to an autoimmune reaction.",
+          "reason": "The context states that subacute thyroiditis is related to an autoimmune reaction.",
+          "verdict": 1
+        },
+        {
+          "statement": "Thyroiditis may lead to hypothyroidism.",
+          "reason": "The context mentions that subacute thyroiditis can destroy thyroid tissue and lead to hypothyroidism.",
+          "verdict": 1
+        },
+        {
+          "statement": "The treatment plan for thyroiditis should be determined based on thyroid function status.",
+          "reason": "The context states that treatment should be determined based on thyroid function status.",
+          "verdict": 1
+        },
+        {
+          "statement": "If there are no symptoms, medication may not be necessary.",
+          "reason": "The context mentions that if there are no symptoms, medication may not be necessary.",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0032",
+      "question": "甲状腺炎检查项目有哪些。男性22岁发现这个症状已经很久了，但是这个情况一直就没有好转，请问甲状腺炎检查项目有哪些",
+      "context_chunk_ids": [
+        "dialogue_外科_2104#0000",
+        "dialogue_外科_2112#0000",
+        "dialogue_外科_2106#0000",
+        "dialogue_外科_2115#0000",
+        "dialogue_外科_2113#0000"
+      ],
+      "answer": "甲状腺炎检查项目包括：\n\n1. 甲状腺功能检测：通常T3、T4水平可能正常，但甲亢时TSH会降低。\n2. 细胞学穿刺检查：可能会发现淋巴细胞浸润及纤维化。\n3. 甲状腺核素探测：可能显示甲状腺增大、排列不均，有时可呈冷结节表现。",
+      "num_statements": 4,
+      "faithfulness": 1.0,
+      "verdicts": [
+        {
+          "statement": "Thyroiditis testing includes thyroid function tests.",
+          "reason": "The context mentions thyroid function tests as part of the diagnostic process for thyroiditis.",
+          "verdict": 1
+        },
+        {
+          "statement": "Thyroid function tests typically show normal T3 and T4 levels, but TSH levels decrease in cases of hyperthyroidism.",
+          "reason": "The context states that thyroid function tests often show normal T3 and T4 levels, and TSH levels decrease in hyperthyroidism.",
+          "verdict": 1
+        },
+        {
+          "statement": "Cytological aspiration testing may reveal lymphocyte infiltration and fibrosis.",
+          "reason": "The context mentions that cytological aspiration testing shows lymphocyte infiltration and fibrosis.",
+          "verdict": 1
+        },
+        {
+          "statement": "Thyroid radionuclide scanning may show an enlarged thyroid with uneven arrangement, and sometimes cold nodules may be present.",
+          "reason": "The context states that thyroid radionuclide scanning may show an enlarged thyroid with uneven arrangement and cold nodules.",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0033",
+      "question": "甲状腺炎会很严重吗。男性26岁发现这个症状已经很久了，但是这个情况一直就没有好转，请问甲状腺炎会很严重吗",
+      "context_chunk_ids": [
+        "dialogue_外科_2105#0000",
+        "dialogue_外科_2108#0000",
+        "dialogue_外科_2110#0000",
+        "dialogue_外科_2103#0000",
+        "dialogue_外科_2113#0000"
+      ],
+      "answer": "从你说的情况来看，桥本氏甲状腺炎是一种慢性的甲状腺炎，这个不是很严重的病。建议去检查一下甲状腺功能，如果正常的话，一般无须特殊救治，也不需要用药，如果甲状腺功能降低应行甲状腺激素替代救治，采用甲状腺片或左旋甲状腺素。",
+      "num_statements": 6,
+      "faithfulness": 1.0,
+      "verdicts": [
+        {
+          "statement": "桥本氏甲状腺炎是一种慢性的甲状腺炎。",
+          "reason": "医生明确提到桥本氏甲状腺炎是一种慢性的甲状腺炎。",
+          "verdict": 1
+        },
+        {
+          "statement": "桥本氏甲状腺炎不是一种很严重的疾病。",
+          "reason": "医生明确提到桥本氏甲状腺炎不是很严重的病。",
+          "verdict": 1
+        },
+        {
+          "statement": "建议检查甲状腺功能。",
+          "reason": "医生建议患者去检查甲状腺功能。",
+          "verdict": 1
+        },
+        {
+          "statement": "如果甲状腺功能正常，一般不需要特殊救治。",
+          "reason": "医生明确提到如果甲状腺功能正常，一般无须特殊救治。",
+          "verdict": 1
+        },
+        {
+          "statement": "如果甲状腺功能降低，应进行甲状腺激素替代治疗。",
+          "reason": "医生明确提到如果甲状腺功能降低应行甲状腺激素替代救治。",
+          "verdict": 1
+        },
+        {
+          "statement": "可以采用甲状腺片或左旋甲状腺素进行治疗。",
+          "reason": "医生明确提到可以采用甲状腺片或左旋甲状腺素进行治疗。",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0034",
+      "question": "治甲状腺炎的方法是什么。男性24岁发现这个症状已经很久了，但是这个情况一直就没有好转，请问治甲状腺炎的方法是什么",
+      "context_chunk_ids": [
+        "dialogue_外科_2106#0000",
+        "dialogue_外科_2115#0000",
+        "dialogue_外科_2111#0000",
+        "dialogue_外科_2107#0000",
+        "dialogue_外科_2108#0000"
+      ],
+      "answer": "治甲状腺炎的方法取决于具体的类型和病情。对于自身免疫性甲状腺炎（如桥本甲状腺炎），如果甲状腺功能正常，通常不需要特殊治疗，建议保持良好的生活习惯，避免压力，保证充足的休息，并保持饮食清淡，避免油腻和辛辣食物。\n\n如果甲状腺功能异常，如出现甲亢或甲减，则需要根据具体情况进行相应的治疗。例如，甲减时可能需要服用左甲状腺素钠片来调节甲状腺激素水平。\n\n总之，针对甲状腺炎的具体治疗方法需要结合患者的具体情况由医生来决定。",
+      "num_statements": 6,
+      "faithfulness": 0.6666666666666666,
+      "verdicts": [
+        {
+          "statement": "The treatment for thyroiditis depends on the specific type and severity of the condition.",
+          "reason": "Multiple doctors mention that treatment varies based on the type (e.g., Hashimoto's thyroiditis) and whether thyroid function is normal or abnormal.",
+          "verdict": 1
+        },
+        {
+          "statement": "For autoimmune thyroiditis such as Hashimoto's thyroiditis, if the thyroid function is normal, no special treatment is usually required.",
+          "reason": "Doctors state that if thyroid function is normal, no treatment is needed for Hashimoto's thyroiditis.",
+          "verdict": 1
+        },
+        {
+          "statement": "It is recommended to maintain good living habits, avoid stress, ensure adequate rest, and keep the diet light, avoiding oily and spicy foods.",
+          "reason": "Multiple doctors recommend maintaining good habits, avoiding stress, resting, and eating a light diet.",
+          "verdict": 1
+        },
+        {
+          "statement": "If the thyroid function is abnormal, such as in hyperthyroidism or hypothyroidism, treatment should be based on the specific condition.",
+          "reason": "Doctors mention that treatment depends on whether the patient has hyperthyroidism or hypothyroidism.",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0035",
+      "question": "甲状腺炎是什么原因引发的。男性25岁发现这个症状已经很久了，但是这个情况一直就没有好转，请问甲状腺炎是什么原因引发的",
+      "context_chunk_ids": [
+        "dialogue_外科_2107#0000",
+        "dialogue_外科_2106#0000",
+        "dialogue_外科_2112#0000",
+        "dialogue_肿瘤科_0046#0000",
+        "dialogue_外科_2115#0000"
+      ],
+      "answer": "甲状腺炎，特别是桥本甲状腺炎，是一种自身免疫性疾病，其特点是拥有针对甲状腺的自身抗体，甲状腺内存在浸润的淋巴细胞。碘摄入量增加被认为是重要的不良环境因素之一，因此桥本甲状腺炎患者应避免摄入过多的碘，如海产品及碘盐。根据现有知识，甲状腺炎的确切原因尚不完全清楚，但遗传因素和环境因素可能共同作用导致疾病的发生。",
+      "num_statements": 12,
+      "faithfulness": 0.3333333333333333,
+      "verdicts": [
+        {
+          "statement": "甲状腺炎是一种自身免疫性疾病。",
+          "reason": "医生回答中提到桥本甲状腺炎是自身免疫性甲状腺炎，因此可以推断甲状腺炎可能属于自身免疫性疾病。",
+          "verdict": 1
+        },
+        {
+          "statement": "桥本甲状腺炎是甲状腺炎的一种类型。",
+          "reason": "医生回答中明确提到桥本甲状腺炎是自身免疫性甲状腺炎的一种，因此可以推断桥本甲状腺炎是甲状腺炎的一种类型。",
+          "verdict": 1
+        },
+        {
+          "statement": "桥本甲状腺炎的特点是存在针对甲状腺的自身抗体。",
+          "reason": "医生回答中明确提到桥本甲状腺炎的特点是拥有针对甲状腺的自身抗体，因此可以直接推断。",
+          "verdict": 1
+        },
+        {
+          "statement": "桥本甲状腺炎的甲状腺内有浸润的淋巴细胞。",
+          "reason": "医生回答中明确提到桥本甲状腺炎的甲状腺拥有浸染的淋巴细胞，因此可以直接推断。",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0036",
+      "question": "甲状腺炎能是否缓解吗。男性27岁发现这个症状已经很久了，但是这个情况一直就没有好转，请问甲状腺炎能是否缓解吗",
+      "context_chunk_ids": [
+        "dialogue_外科_2108#0000",
+        "dialogue_外科_2103#0000",
+        "dialogue_外科_2110#0000",
+        "dialogue_外科_2113#0000",
+        "dialogue_外科_2106#0000"
+      ],
+      "answer": "医生的回答是，自身免疫性的甲状腺炎通常无须特别治疗，建议注意休息，保持充足的睡眠，并动态监测甲状腺功能。如果甲状腺功能发生变化，如变成甲减，也不必有心理压力，保持愉快的心情，注意休息和饮食清淡。因此，甲状腺炎本身难以完全缓解，但通过适当的管理和治疗可以控制症状。",
+      "num_statements": 6,
+      "faithfulness": 0.8333333333333334,
+      "verdicts": [
+        {
+          "statement": "自身免疫性的甲状腺炎通常不需要特别治疗。",
+          "reason": "医生明确提到自身免疫性的甲状腺炎无须救治，只需动态监测。",
+          "verdict": 1
+        },
+        {
+          "statement": "医生建议患者注意休息，保持充足的睡眠，并动态监测甲状腺功能。",
+          "reason": "医生建议注意休息，保持充足睡眠，并动态监测甲状腺功能和磁共振。",
+          "verdict": 1
+        },
+        {
+          "statement": "如果甲状腺功能发生变化，例如变成甲减，患者不需要有心理压力。",
+          "reason": "医生提到如果变作甲减，不要有心理压力，保持愉快心情。",
+          "verdict": 1
+        },
+        {
+          "statement": "患者应保持愉快的心情，注意休息并保持饮食清淡。",
+          "reason": "医生多次建议保持愉快心情、注意休息和饮食清淡。",
+          "verdict": 1
+        },
+        {
+          "statement": "甲状腺炎本身难以完全缓解。",
+          "reason": "医生提到桥本氏甲状腺炎不能缓解，完全缓解不太可能。",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0037",
+      "question": "甲状腺炎要注意些什么。男性28岁发现这个症状已经很久了，但是这个情况一直就没有好转，请问甲状腺炎要注意些什么",
+      "context_chunk_ids": [
+        "dialogue_外科_2109#0000",
+        "dialogue_外科_2112#0000",
+        "dialogue_外科_2106#0000",
+        "dialogue_外科_2110#0000",
+        "dialogue_外科_2108#0000"
+      ],
+      "answer": "甲状腺炎要注意以下几点：\n1. 避免食用含碘高的海产品和辛辣食物；\n2. 不要过度疲劳，避免熬夜；\n3. 保持愉快的心情，减少心理压力；\n4. 保证充足的休息；\n5. 饮食要清淡，避免油腻和辛辣食物；\n6. 定期复查甲状腺功能。",
+      "num_statements": 6,
+      "faithfulness": 0.8333333333333334,
+      "verdicts": [
+        {
+          "statement": "Thyroiditis patients should avoid consuming high-iodine sea products and spicy foods.",
+          "reason": "The context explicitly mentions avoiding high-iodine sea products and spicy foods.",
+          "verdict": 1
+        },
+        {
+          "statement": "Thyroiditis patients should not overexert themselves and should avoid staying up late.",
+          "reason": "The context advises against overexertion and staying up late.",
+          "verdict": 1
+        },
+        {
+          "statement": "Thyroiditis patients should maintain a happy mood and reduce psychological stress.",
+          "reason": "The context emphasizes maintaining a happy mood and reducing psychological stress.",
+          "verdict": 1
+        },
+        {
+          "statement": "Thyroiditis patients should ensure sufficient rest.",
+          "reason": "The context repeatedly advises patients to rest and avoid fatigue.",
+          "verdict": 1
+        },
+        {
+          "statement": "Thyroiditis patients should eat light meals and avoid oily and spicy foods.",
+          "reason": "The context mentions avoiding oily and spicy foods and eating light meals.",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": false,
+      "missing_numbers": [
+        "5",
+        "6"
+      ]
+    },
+    {
+      "query_id": "qa-0038",
+      "question": "甲状腺炎能治疗比较好吗。男性29岁发现这个症状已经很久了，但是这个情况一直就没有好转，请问甲状腺炎能治疗比较好吗",
+      "context_chunk_ids": [
+        "dialogue_外科_2110#0000",
+        "dialogue_外科_2113#0000",
+        "dialogue_外科_2115#0000",
+        "dialogue_外科_2108#0000",
+        "dialogue_外科_2103#0000"
+      ],
+      "answer": "甲状腺炎的治疗效果取决于具体的类型。例如，桥本甲状腺炎是一种慢性自身免疫性疾病，目前无法根治，但可以通过调整生活方式和饮食习惯来控制症状。对于其他类型的甲状腺炎，如亚急性甲状腺炎，如果及时治疗，症状可以得到缓解。\n\n根据您提供的信息，这位29岁的男性患者被诊断为甲状腺炎，但症状持续存在。建议他遵循医生的指导，进行适当的饮食调整和生活方式改变，并定期复查甲状腺功能，以便及时调整治疗方案。虽然完全治愈可能难以实现，但通过合理的管理，可以有效控制病情，改善生活质量。",
+      "num_statements": 6,
+      "faithfulness": 0.6666666666666666,
+      "verdicts": [
+        {
+          "statement": "Thyroiditis treatment effectiveness depends on the specific type of thyroiditis.",
+          "reason": "The context mentions different types of thyroiditis and their treatment approaches, indicating that treatment effectiveness varies by type.",
+          "verdict": 1
+        },
+        {
+          "statement": "Hashimoto's thyroiditis is a chronic autoimmune disease that cannot be cured, but symptoms can be controlled through lifestyle and dietary adjustments.",
+          "reason": "The context states that Hashimoto's thyroiditis is a chronic autoimmune disease that cannot be cured, but lifestyle and dietary adjustments are recommended.",
+          "verdict": 1
+        },
+        {
+          "statement": "For other types of thyroiditis, such as subacute thyroiditis, symptoms can be relieved if treated promptly.",
+          "reason": "The context mentions that subacute thyroiditis can be treated with appropriate measures, and symptoms can be relieved if treated promptly.",
+          "verdict": 1
+        },
+        {
+          "statement": "The 29-year-old male patient has been diagnosed with thyroiditis, but the symptoms have persisted.",
+          "reason": "The context mentions a 29-year-old male with thyroiditis whose symptoms have not improved.",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0039",
+      "question": "甲状腺炎可以用什么方式治疗。男性30岁发现这个症状已经很久了，但是这个情况一直就没有好转，请问甲状腺炎可以用什么方式治疗",
+      "context_chunk_ids": [
+        "dialogue_外科_2111#0000",
+        "dialogue_外科_2103#0000",
+        "dialogue_外科_2115#0000",
+        "dialogue_外科_2110#0000",
+        "dialogue_外科_2106#0000"
+      ],
+      "answer": "根据提供的信息，甲状腺炎的治疗方法取决于具体的类型和患者的甲状腺功能状况。对于桥本氏甲状腺炎，如果出现甲状腺功能减退，需要补充左甲状腺素钠片，使甲状腺功能控制在正常范围。对于亚急性甲状腺炎（亚甲炎），如果没有症状，可能不需要药物治疗，但需要根据甲状腺功能状况确定治疗方案。总体来说，治疗甲状腺炎时需要注意饮食清淡，避免摄入过多碘，并保持良好的生活习惯。建议患者根据自身具体情况，在医生指导下进行治疗。",
+      "num_statements": 5,
+      "faithfulness": 0.6,
+      "verdicts": [
+        {
+          "statement": "Thyroiditis treatment depends on the specific type and the patient's thyroid function status.",
+          "reason": "The context mentions that treatment for Hashimoto's thyroiditis and subacute thyroiditis depends on thyroid function status, indicating that treatment varies based on the type and function.",
+          "verdict": 1
+        },
+        {
+          "statement": "For Hashimoto's thyroiditis, if thyroid function is reduced, left thyroid hormone sodium tablets should be supplemented to maintain thyroid function within the normal range.",
+          "reason": "The context explicitly states that if thyroid function is reduced, left thyroid hormone sodium tablets should be taken to maintain normal thyroid function.",
+          "verdict": 1
+        },
+        {
+          "statement": "For subacute thyroiditis, if there are no symptoms, drug treatment may not be necessary, but the treatment plan should be determined based on thyroid function status.",
+          "reason": "The context states that for subacute thyroiditis, if there are no symptoms, drug treatment may not be necessary, and treatment should be based on thyroid function status.",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0040",
+      "question": "甲状腺炎要注意哪些。男性31岁发现这个症状已经很久了，但是这个情况一直就没有好转，请问甲状腺炎要注意哪些",
+      "context_chunk_ids": [
+        "dialogue_外科_2112#0000",
+        "dialogue_外科_2109#0000",
+        "dialogue_外科_2110#0000",
+        "dialogue_外科_2106#0000",
+        "dialogue_外科_2108#0000"
+      ],
+      "answer": "根据提供的信息，甲状腺炎患者需要注意以下几点：\n- 不要有任何的心理压力，保持愉快的心情。\n- 期间要注意多休息。\n- 饮食要保持清淡，避免油腻和辛辣食物。\n- 定期复查甲状腺功能。",
+      "num_statements": 4,
+      "faithfulness": 1.0,
+      "verdicts": [
+        {
+          "statement": "Thyroiditis patients should avoid any psychological stress and maintain a happy mood.",
+          "reason": "The context repeatedly mentions avoiding psychological pressure and maintaining a happy mood.",
+          "verdict": 1
+        },
+        {
+          "statement": "Thyroiditis patients should ensure adequate rest during the treatment period.",
+          "reason": "The context advises patients to take adequate rest and maintain a good sleep schedule.",
+          "verdict": 1
+        },
+        {
+          "statement": "Thyroiditis patients should maintain a清淡 diet and avoid oily and spicy foods.",
+          "reason": "The context explicitly states that patients should maintain a clear diet and avoid oily and spicy foods.",
+          "verdict": 1
+        },
+        {
+          "statement": "Thyroiditis patients should undergo regular复查 of thyroid function.",
+          "reason": "The context mentions that patients should undergo regular monitoring of thyroid function.",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0041",
+      "question": "甲状腺炎晚期能治疗好吗。男性32岁发现这个症状已经很久了，但是这个情况一直就没有好转，请问甲状腺炎晚期能治疗好吗",
+      "context_chunk_ids": [
+        "dialogue_外科_2113#0000",
+        "dialogue_外科_2110#0000",
+        "dialogue_外科_2108#0000",
+        "dialogue_外科_2103#0000",
+        "dialogue_外科_2115#0000"
+      ],
+      "answer": "根据现有知识无法直接回答甲状腺炎晚期能否治疗好的问题，因为提供的参考知识中没有明确提及“晚期”甲状腺炎的治疗情况。参考知识主要讨论了桥本氏甲状腺炎和亚急性甲状腺炎的治疗和管理，但没有具体说明晚期甲状腺炎的治疗效果。对于32岁男性的情况，建议咨询专业医生以获得针对个人状况的详细诊断和治疗建议。",
+      "num_statements": 5,
+      "faithfulness": 0.8,
+      "verdicts": [
+        {
+          "statement": "The existing knowledge cannot directly answer whether late-stage thyroiditis can be treated effectively.",
+          "reason": "The reference knowledge discusses various types of thyroiditis and their management but does not directly address the treatment effectiveness of late-stage thyroiditis.",
+          "verdict": 1
+        },
+        {
+          "statement": "The provided reference knowledge does not explicitly mention the treatment of late-stage thyroiditis.",
+          "reason": "The reference knowledge does not specifically mention the treatment of late-stage thyroiditis, focusing instead on general management and types of thyroiditis.",
+          "verdict": 1
+        },
+        {
+          "statement": "The reference knowledge mainly discusses the treatment and management of Hashimoto's thyroiditis and subacute thyroiditis.",
+          "reason": "The reference knowledge does mention Hashimoto's thyroiditis and subacute thyroiditis, focusing on their treatment and management.",
+          "verdict": 1
+        },
+        {
+          "statement": "The treatment outcomes for late-stage thyroiditis are not specifically addressed in the reference knowledge.",
+          "reason": "The reference knowledge does not specifically address the treatment outcomes for late-stage thyroiditis.",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0042",
+      "question": "甲状腺炎怎么治妥当。男性23岁发现这个症状已经很久了，但是这个情况一直就没有好转，请问甲状腺炎怎么治疗好",
+      "context_chunk_ids": [
+        "dialogue_外科_2115#0000",
+        "dialogue_外科_2106#0000",
+        "dialogue_外科_2110#0000",
+        "dialogue_外科_2111#0000",
+        "dialogue_外科_2103#0000"
+      ],
+      "answer": "治疗甲状腺炎需要结合甲状腺功能的情况来确定治疗方案。对于桥本氏甲状腺炎，这是一种慢性淋巴性甲状腺炎，起病缓慢，病程较长，可能会引发甲亢、甲减或甲状腺结节。如果出现甲状腺紧张的情况，建议饮食清淡，多吃含维生素的新鲜蔬菜、水果及营养丰富的瘦肉；如果出现甲状腺机能减退，则需要忌碘。\n\n具体治疗方案应由医生根据患者的具体情况制定，可能包括药物治疗、饮食调整等。建议及时就医，进行详细检查，并遵医嘱进行治疗。",
+      "num_statements": 6,
+      "faithfulness": 0.5,
+      "verdicts": [
+        {
+          "statement": "Treatment of thyroiditis should be determined based on the patient's thyroid function status.",
+          "reason": "The context states that treatment for Hashimoto's thyroiditis needs to be determined based on thyroid function status.",
+          "verdict": 1
+        },
+        {
+          "statement": "Hashimoto's thyroiditis is a type of chronic lymphocytic thyroiditis, which has a slow onset and a long course, and may lead to hyperthyroidism, hypothyroidism, or thyroid nodules.",
+          "reason": "The context explicitly describes Hashimoto's thyroiditis as a chronic lymphocytic thyroiditis with a slow onset, long course, and potential complications.",
+          "verdict": 1
+        },
+        {
+          "statement": "If the patient experiences thyroid tension, it is recommended to maintain a light diet and consume fresh vegetables, fruits, and lean meat that are rich in vitamins.",
+          "reason": "The context mentions that during thyroid tension, a light diet with fresh vegetables, fruits, and lean meat is recommended.",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0043",
+      "question": "桥本氏甲状腺炎能缓解吗。我32岁，男我现在颈部有多处疼痛的感觉，请问桥本氏甲状腺炎可以缓解吗",
+      "context_chunk_ids": [
+        "dialogue_外科_2116#0000",
+        "dialogue_外科_2100#0000",
+        "dialogue_外科_2101#0000",
+        "dialogue_外科_2113#0000",
+        "dialogue_外科_2314#0000"
+      ],
+      "answer": "桥本氏甲状腺炎是一种慢性炎症，通常情况下，如果甲状腺功能正常，是不需要用药治疗的，但可能会观察到甲状腺球蛋白抗体水平下降。因此，可以认为桥本氏甲状腺炎在某些情况下是可以缓解的，特别是当甲状腺功能保持正常时。建议您进行甲状腺功能检查和甲状腺彩超，并根据医生的指导进行相应的治疗和调理。",
+      "num_statements": 7,
+      "faithfulness": 0.42857142857142855,
+      "verdicts": [
+        {
+          "statement": "桥本氏甲状腺炎是一种慢性炎症。",
+          "reason": "医生回答中明确提到桥本氏甲状腺炎是甲状腺的一种慢性炎症。",
+          "verdict": 1
+        },
+        {
+          "statement": "如果甲状腺功能正常，桥本氏甲状腺炎通常不需要用药治疗。",
+          "reason": "医生回答中提到如果甲状腺功能正常，是不需要用药治疗的。",
+          "verdict": 1
+        },
+        {
+          "statement": "在甲状腺功能正常的情况下，可能会观察到甲状腺球蛋白抗体水平下降。",
+          "reason": "医生回答中提到可能会化验会有甲状腺球蛋白抗体下降。",
+          "verdict": 1
+        },
+        {
+          "statement": "桥本氏甲状腺炎在某些情况下是可以缓解的。",
+          "reason": "医生回答中提到桥本氏甲状腺炎是不能够缓解的。",
+          "verdict": 0
+        },
+        {
+          "statement": "当甲状腺功能保持正常时，桥本氏甲状腺炎可以缓解。",
+          "reason": "医生回答中明确指出桥本氏甲状腺炎是不能够缓解的。",
+          "verdict": 0
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0044",
+      "question": "甲状腺甲减能吃螃蟹吗。甲减能吃螃蟹吗，我是亚临床甲减，T3T4正常，需要怎么办呢？",
+      "context_chunk_ids": [
+        "dialogue_外科_2133#0000",
+        "dialogue_内科_2628#0000",
+        "dialogue_内科_2609#0000",
+        "dialogue_内科_2727#0000",
+        "dialogue_内科_2608#0000"
+      ],
+      "answer": "甲状腺功能减退（甲减）能吃螃蟹。螃蟹是一种高蛋白食物，对于亚临床甲状腺功能减退症患者来说，只要T3T4正常，适量食用螃蟹是没有问题的。\n\n你目前是亚临床甲状腺功能减退症，T3T4正常，建议你：\n1. 定期去内分泌科进行随访和复查。\n2. 根据医生的建议进行治疗。\n3. 保持有规律的生活，不要熬夜，适度锻炼以提高免疫力。\n\n请遵循医生的指导进行治疗和管理。",
+      "num_statements": 11,
+      "faithfulness": 0.2727272727272727,
+      "verdicts": [
+        {
+          "statement": "甲状腺功能减退可以吃螃蟹。",
+          "reason": "医生回答中提到螃蟹是一种高蛋白食物，但未明确说明甲状腺功能减退患者是否可以吃螃蟹。",
+          "verdict": 0
+        },
+        {
+          "statement": "螃蟹是一种高蛋白食物。",
+          "reason": "医生明确提到螃蟹是一种高蛋白食物。",
+          "verdict": 1
+        },
+        {
+          "statement": "对于亚临床甲状腺功能减退症患者来说，只要T3T4正常，适量食用螃蟹是没有问题的。",
+          "reason": "医生未明确说明亚临床甲状腺功能减退症患者是否可以适量食用螃蟹。",
+          "verdict": 0
+        },
+        {
+          "statement": "当前是亚临床甲状腺功能减退症。",
+          "reason": "医生明确提到患者是亚临床甲状腺功能减退症。",
+          "verdict": 1
+        },
+        {
+          "statement": "T3T4指标正常。",
+          "reason": "医生明确提到T3T4指标正常。",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0045",
+      "question": "怎么样治甲状腺瘤才能好。我有甲状腺瘤病，救治了2年多，还是不见踪影好。甲状腺瘤可以治疗吗？",
+      "context_chunk_ids": [
+        "dialogue_外科_2149#0000",
+        "dialogue_外科_2155#0000",
+        "dialogue_外科_2150#0000",
+        "dialogue_肿瘤科_0012#0000",
+        "dialogue_肿瘤科_0043#0000"
+      ],
+      "answer": "甲状腺瘤是可以治疗的。治疗方法通常包括手术治疗和非手术治疗。手术治疗是西医常用的手段，但手术后复发率较高，且可能治标不治本。非手术治疗方面，可以结合中医治疗，如使用中药（例如人参皂苷Rh2）来辅助治疗，以期改善病情并降低复发风险。此外，保持良好的身体状况和积极的心态也对治疗有帮助。建议根据具体情况选择合适的治疗方案，并在医生指导下进行。",
+      "num_statements": 11,
+      "faithfulness": 0.45454545454545453,
+      "verdicts": [
+        {
+          "statement": "Thyroid tumors can be treated.",
+          "reason": "The context mentions that thyroid cancer is treatable and that various treatment methods are available.",
+          "verdict": 1
+        },
+        {
+          "statement": "The usual treatment methods include surgical treatment and non-surgical treatment.",
+          "reason": "The context mentions that surgery is a common treatment and that non-surgical methods like radiotherapy and traditional Chinese medicine are also used.",
+          "verdict": 1
+        },
+        {
+          "statement": "Surgical treatment is a common approach in Western medicine.",
+          "reason": "The context states that Western medicine believes in surgical treatment for thyroid tumors.",
+          "verdict": 1
+        },
+        {
+          "statement": "However, the recurrence rate after surgery is relatively high.",
+          "reason": "The context explicitly states that the recurrence rate after surgery is as high as 88.2%.",
+          "verdict": 1
+        },
+        {
+          "statement": "Surgical treatment may only address the symptoms without curing the condition.",
+          "reason": "The context states that surgery is a local treatment and does not address the root cause of the disease.",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0046",
+      "question": "患了甲状腺瘤怎么治疗效果好。我有甲状腺瘤病，救治了2年多，还是不见踪影好。甲状腺瘤有什么好一点的治疗方法？",
+      "context_chunk_ids": [
+        "dialogue_外科_2150#0000",
+        "dialogue_外科_2155#0000",
+        "dialogue_外科_2149#0000",
+        "dialogue_肿瘤科_0100#0000",
+        "dialogue_肿瘤科_0026#0000"
+      ],
+      "answer": "根据提供的信息，甲状腺瘤的治疗方法主要包括手术治疗和辅助治疗。对于良性肿瘤，建议早期进行手术摘除，通常包括患侧甲状腺大部摘除或单纯腺瘤切除术。手术后可以结合中医药如人参皂苷Rh2进行辅助治疗，以稳定病情并预防癌变。\n\n此外，保持积极的心态和良好的生活习惯也对治疗有帮助。请务必遵从医生的具体指导，并定期复查以监测病情变化。",
+      "num_statements": 6,
+      "faithfulness": 0.6666666666666666,
+      "verdicts": [
+        {
+          "statement": "Thyroid tumors are treated with surgical and auxiliary treatments.",
+          "reason": "The context mentions that surgery is the main treatment and auxiliary treatments like radiotherapy and traditional Chinese medicine are recommended.",
+          "verdict": 1
+        },
+        {
+          "statement": "For benign tumors, it is recommended to perform surgery for removal at an early stage.",
+          "reason": "The context states that for benign tumors, early removal is recommended through surgery.",
+          "verdict": 1
+        },
+        {
+          "statement": "The surgery typically involves partial removal of the affected side of the thyroid or simple adenoma excision.",
+          "reason": "The context describes that surgery may involve partial removal of the affected side or simple adenoma excision.",
+          "verdict": 1
+        },
+        {
+          "statement": "After surgery, auxiliary treatment with traditional Chinese medicine such as Rh2 ginsenoside can be used to stabilize the condition and prevent cancer transformation.",
+          "reason": "The context mentions that traditional Chinese medicine like Rh2 ginsenoside can be used as an auxiliary treatment to stabilize the condition and prevent cancer transformation.",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0047",
+      "question": "患了甲状腺瘤初期什么症状。甲状腺瘤是个什么症状,刚刚仔细检查出的甲状腺瘤可有危险，应当如何治疗?",
+      "context_chunk_ids": [
+        "dialogue_外科_2151#0000",
+        "dialogue_外科_2153#0000",
+        "dialogue_肿瘤科_0050#0000",
+        "dialogue_肿瘤科_0126#0000",
+        "dialogue_肿瘤科_0067#0000"
+      ],
+      "answer": "患了甲状腺瘤初期可能没有明显症状，通常是无意中摸到颈前区肿块，质地较硬，可随吞咽上下移动。如果肿瘤迅速增大，可能会出现颈部变粗，甚至影响呼吸，少数情况下可能出现声音嘶哑或吞咽困难。\n\n刚刚检查出的甲状腺瘤有一定的危险性，因为大约10%～20%的甲状腺瘤有恶变的风险。因此，一旦发现甲状腺瘤，应尽早治疗。\n\n甲状腺瘤的主要治疗方法是手术切除，尤其是当肿瘤大于5厘米或有恶性变的迹象时。此外，根据具体情况，可能还需要结合放射治疗或化疗等其他治疗方法。在手术后，需要注意忌碘饮食，并定期复查甲状腺功能和影像学检查。",
+      "error": "ValueError: no JSON in judge output: '<think>\\n\\n</think>\\n\\n{\"statements\": [\"If someone has a thyroid tumor in the early stage, they may not have obvious symptoms.\", \"In the early stage of a thyroid tumor, the person may accidentally discove'"
+    },
+    {
+      "query_id": "qa-0048",
+      "question": "得了甲状腺癌都有什么治疗方法。61岁，有甲状腺瘤，请问一下医生，这种病都有什么样的治疗方法呢？",
+      "context_chunk_ids": [
+        "dialogue_外科_2152#0000",
+        "dialogue_外科_2155#0000",
+        "dialogue_肿瘤科_0057#0000",
+        "dialogue_肿瘤科_0089#0000",
+        "dialogue_外科_2272#0000"
+      ],
+      "answer": "甲状腺癌的治疗方法主要包括：\n\n1. 手术治疗：这是最常见的治疗方法，可能包括甲状腺全切或部分切除。\n2. 内分泌治疗：甲状腺素能抑制TSH排泄，从而对甲状腺联盟的纤维化和分裂好的癌有抑制作用，对乳头状癌和滤泡状癌有较好的治疗效果。\n3. 放射治疗：术后可以配合放射治疗，尤其是对于乳头状癌和滤泡状癌。\n4. 化疗：对于某些类型的甲状腺癌，如未分化癌，可能需要化疗。\n5. 中药治疗：如人参皂苷Rh2的配合治疗，可能有助于提高治疗效果。\n\n每个人的具体情况不同，适用的治疗方法也会有所不同，因此应根据病情来选择最适合的治疗方案。",
+      "num_statements": 8,
+      "faithfulness": 0.5,
+      "verdicts": [
+        {
+          "statement": "Thyroid cancer treatment methods mainly include surgery.",
+          "reason": "The context mentions that surgery is the main treatment method for thyroid cancer, especially for thyroid tumors.",
+          "verdict": 1
+        },
+        {
+          "statement": "Surgery may involve the complete or partial removal of the thyroid.",
+          "reason": "The context mentions that thyroidectomy (complete or partial removal of the thyroid) is a common treatment method.",
+          "verdict": 1
+        },
+        {
+          "statement": "Endocrine treatment uses thyroid hormones to suppress TSH secretion, which can inhibit the fibrosis and proliferation of thyroid tumors, and is effective for papillary and follicular cancers.",
+          "reason": "The context explicitly states that endocrine treatment uses thyroid hormones to suppress TSH secretion and is effective for papillary and follicular cancers.",
+          "verdict": 1
+        },
+        {
+          "statement": "Radiation therapy can be used after surgery, especially for papillary and follicular cancers.",
+          "reason": "The context mentions that radiation therapy is used after surgery and is effective for papillary and follicular cancers.",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": false,
+      "missing_numbers": [
+        "3",
+        "4"
+      ]
+    },
+    {
+      "query_id": "qa-0049",
+      "question": "患了甲状腺瘤有什么症状。甲状腺瘤是个什么症状。刚刚仔细检查出的甲状腺瘤可有危险，应当如何治疗。",
+      "context_chunk_ids": [
+        "dialogue_外科_2153#0000",
+        "dialogue_外科_2151#0000",
+        "dialogue_肿瘤科_0009#0000",
+        "dialogue_肿瘤科_0026#0000",
+        "dialogue_肿瘤科_0126#0000"
+      ],
+      "answer": "患了甲状腺瘤可能有以下症状：\n- 形状似核桃，质地较硬，可随干咽而上下运动的颈部慢性病变。\n- 短期迅速增大，颈部变粗。\n- 再进一步扩张可干扰呼吸。\n- 极少数情况下可出现声音嘶哑或吞咽困难。\n\n甲状腺瘤是个什么症状可以总结为上述几点。\n\n刚刚仔细检查出的甲状腺瘤可能有危险，因为甲状腺瘤有10%～20%的恶性变率。因此，应当尽早治疗。\n\n治疗方面，一般情况下，甲状腺肿瘤诊断后，一般都需要手术摘除。腺瘤的治疗方法有许多，但是由于具体情况不同，所以采用的治疗方法也就不一样，因此建议在确诊后，及早实施诊断治疗。",
+      "num_statements": 10,
+      "faithfulness": 0.4,
+      "verdicts": [
+        {
+          "statement": "If someone has a thyroid tumor, they may experience symptoms such as a lump resembling a walnut that is hard in texture and moves up and down with swallowing.",
+          "reason": "The context explicitly mentions that thyroid tumors are \"shape like a walnut,质地较硬，可随干咽而上下运动\".",
+          "verdict": 1
+        },
+        {
+          "statement": "If someone has a thyroid tumor, they may experience symptoms such as a rapid increase in size of the neck and a thicker neck.",
+          "reason": "The context states that thyroid tumors may \"短期迅速减小，颈部变粗\".",
+          "verdict": 1
+        },
+        {
+          "statement": "If someone has a thyroid tumor, they may experience symptoms such as difficulty breathing due to further expansion.",
+          "reason": "The context mentions that tumors \"再专心扩张可干扰呼息\".",
+          "verdict": 1
+        },
+        {
+          "statement": "If someone has a thyroid tumor, they may experience symptoms such as hoarseness or difficulty swallowing in very rare cases.",
+          "reason": "The context states that \"极少数可再次出现声音嘶哑或吞咽困难\".",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0050",
+      "question": "得甲状腺瘤该怎么治疗。我现在怀孕快30周了，不知怎么回事得了甲状腺瘤，不知道怎么办，我该怎么治疗？",
+      "context_chunk_ids": [
+        "dialogue_外科_2154#0000",
+        "dialogue_肿瘤科_0075#0000",
+        "dialogue_肿瘤科_0040#0000",
+        "dialogue_肿瘤科_0112#0000",
+        "dialogue_肿瘤科_0113#0000"
+      ],
+      "answer": "根据您目前怀孕快30周的情况，通常情况下，医生会建议暂时不需要对甲状腺瘤进行特殊治疗，而是通过定期的医学检查来监测其变化。具体来说，可以：\n\n1. 定期进行B超检查，监测甲状腺瘤的大小及其与周围组织的关系。\n2. 检查甲状腺功能7项，确保甲状腺激素水平正常，避免对胎儿产生不良影响。\n3. 进行早孕15周的唐氏筛查和早孕20周的心脏四维彩超检查，确保胎儿健康。\n4. 在医生的指导下，保持恰当的饮食，避免刺激性食物。\n\n如果甲状腺瘤出现压迫症状或甲状腺激素水平发生变化，应及时与医生沟通，根据具体情况决定是否需要进一步治疗。",
+      "num_statements": 6,
+      "faithfulness": 0.5,
+      "verdicts": [
+        {
+          "statement": "If a person is pregnant and near 30 weeks of gestation, doctors usually recommend not to perform special treatment for a thyroid tumor but to monitor it through regular medical check-ups.",
+          "reason": "The context states that for pregnant women with thyroid tumors, no treatment is generally needed, and regular check-ups are recommended if there are no symptoms or hormone changes.",
+          "verdict": 1
+        },
+        {
+          "statement": "Doctors may suggest regular ultrasound examinations to monitor the size of the thyroid tumor and its relationship with surrounding tissues.",
+          "reason": "The context mentions that ultrasound is used to check the size of the thyroid tumor and its relationship with surrounding tissues like the trachea and esophagus.",
+          "verdict": 1
+        },
+        {
+          "statement": "Checking thyroid function tests can ensure that thyroid hormone levels are normal and avoid adverse effects on the fetus.",
+          "reason": "The context states that thyroid function tests are recommended to exclude thyroid hormone interference with the fetus.",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": false,
+      "missing_numbers": [
+        "4"
+      ]
+    },
+    {
+      "query_id": "qa-0051",
+      "question": "有甲状腺瘤怎么治较好。我有甲状腺瘤病，救治了2年多，还是不见踪影好。请问甲状腺瘤可以治疗吗？",
+      "context_chunk_ids": [
+        "dialogue_外科_2155#0000",
+        "dialogue_外科_2149#0000",
+        "dialogue_外科_2150#0000",
+        "dialogue_肿瘤科_0026#0000",
+        "dialogue_肿瘤科_0113#0000"
+      ],
+      "answer": "甲状腺瘤是可以治疗的。治疗方法主要包括手术治疗、放射治疗、内分泌治疗以及中药治疗等。具体治疗方案需要根据甲状腺瘤的性质（良性或恶性）来确定。良性肿瘤通常建议早期手术切除，并可能配合其他治疗方法如优甲乐、左甲状腺素、人参皂苷Rh2等。恶性肿瘤则需要更积极的治疗措施。建议您及时就医，根据医生的诊断结果选择合适的治疗方案。",
+      "num_statements": 6,
+      "faithfulness": 0.5,
+      "verdicts": [
+        {
+          "statement": "Thyroid adenoma can be treated.",
+          "reason": "The context states that thyroid cancer is treatable and mentions various treatment methods.",
+          "verdict": 1
+        },
+        {
+          "statement": "The treatment methods for thyroid adenoma include surgical treatment, radiation therapy, endocrine therapy, and traditional Chinese medicine treatment.",
+          "reason": "The context explicitly mentions surgery, radiation therapy, endocrine therapy (like levothyroxine), and traditional Chinese medicine (like ginsenoside Rh2) as treatment methods.",
+          "verdict": 1
+        },
+        {
+          "statement": "The specific treatment plan should be determined based on the nature of the thyroid adenoma, whether it is benign or malignant.",
+          "reason": "The context discusses the importance of determining the nature of the tumor (benign or malignant) before deciding on treatment.",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0052",
+      "question": "甲状腺瘤的饮食禁术有哪些。我有甲状腺瘤病，救治了2年多，还是不见踪影好。有在饮食方面的禁忌吗？",
+      "context_chunk_ids": [
+        "dialogue_外科_2156#0000",
+        "dialogue_外科_2155#0000",
+        "dialogue_外科_2150#0000",
+        "dialogue_外科_2149#0000",
+        "dialogue_肿瘤科_0059#0000"
+      ],
+      "answer": "根据参考知识，甲状腺瘤在饮食方面需要注意以下禁忌：\n\n1. 不吃极冷、坚硬及变质的食物。\n2. 禁酒令及辛辣刺激性强的调味品。\n3. 对于沿海地区居民，如果是因为碘依赖型甲状腺肿瘤，应减少碘的摄入，避免食用紫菜、淡菜、海带、贝壳类海产品等。\n4. 对于内陆地区居民，如果是缺碘性甲状腺肿瘤，可以适量食用碘盐，以及海藻、昆布、黄药脂、夏枯草等中药，但应避免食用牛肉、狗肉、羊肉及火锅等辛热类食物。\n\n请注意，这些建议是基于参考知识提供的，具体饮食调整还需遵循医生的指导。",
+      "num_statements": 5,
+      "faithfulness": 0.6,
+      "verdicts": [
+        {
+          "statement": "甲状腺瘤患者应避免食用极冷、坚硬及变质的食物。",
+          "reason": "医生明确提到要留意饮食卫生，不吃极冷、坚硬及变质的食物。",
+          "verdict": 1
+        },
+        {
+          "statement": "甲状腺瘤患者应禁止饮酒及使用辛辣刺激性强的调味品。",
+          "reason": "医生明确提到禁酒令及辛辣刺激性强的调味品。",
+          "verdict": 1
+        },
+        {
+          "statement": "对于因碘依赖型甲状腺肿瘤的沿海地区居民，应减少碘的摄入，避免食用紫菜、淡菜、海带、贝壳类海产品等。",
+          "reason": "医生提到沿海地区居民应以无碘盐为宜，少食紫菜、淡菜、海带、贝壳类海产品等。",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": false,
+      "missing_numbers": [
+        "1",
+        "3",
+        "4"
+      ]
+    },
+    {
+      "query_id": "qa-0053",
+      "question": "甲状腺瘤到底要怎样才能治疗。亲戚大爷最近查出来得了甲状腺瘤，这病是不是很严重。甲状腺瘤要怎么治疗？",
+      "context_chunk_ids": [
+        "dialogue_外科_2157#0000",
+        "dialogue_肿瘤科_0076#0000",
+        "dialogue_肿瘤科_0057#0000",
+        "dialogue_肿瘤科_0073#0000",
+        "dialogue_肿瘤科_0113#0000"
+      ],
+      "answer": "甲状腺瘤是一种甲状腺良性肿瘤，但因其可能发生甲亢或恶性变的可能性，多主张手术治疗。对于七十一岁的患者，如果肿瘤不是很大且身体不能耐受手术，可以选择观察而不进行治疗。除了手术治疗外，还应注意饮食清淡，避免辛辣刺激食物。同时，建议选择一家专业医院进行诊治，以获得良好的治疗效果。\n\n对于是否严重，甲状腺瘤本身是良性的，但有潜在恶变的风险，因此需要密切关注。治疗方法主要包括手术和中医治疗，具体应根据患者自身情况决定。建议及时就医，根据医生的建议进行相应的治疗。",
+      "num_statements": 9,
+      "faithfulness": 0.5555555555555556,
+      "verdicts": [
+        {
+          "statement": "甲状腺瘤是一种甲状腺良性肿瘤。",
+          "reason": "医生明确指出甲状腺腺瘤是一种甲状腺良性肿瘤。",
+          "verdict": 1
+        },
+        {
+          "statement": "甲状腺瘤可能发展为甲亢或恶性变，因此多主张手术治疗。",
+          "reason": "医生提到甲状腺瘤可能发生甲亢或恶性变，因此多主张手术治疗。",
+          "verdict": 1
+        },
+        {
+          "statement": "对于七十一岁的患者，如果肿瘤不是很大且身体不能耐受手术，可以选择观察而不进行治疗。",
+          "reason": "医生提到七十一岁患者如果肿瘤不大且身体不能耐受手术，建议观察而不做手术。",
+          "verdict": 1
+        },
+        {
+          "statement": "除了手术治疗外，还应注意饮食清淡，避免辛辣刺激食物。",
+          "reason": "医生提到应注意饮食清淡，避免辛辣刺激食物。",
+          "verdict": 1
+        },
+        {
+          "statement": "建议选择一家专业医院进行诊治，以获得良好的治疗效果。",
+          "reason": "医生建议选择专业医院诊治以获得良好治疗效果。",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0054",
+      "question": "乳腺结节和甲状腺结节怎么办？。乳腺结节和甲状腺结节，医生现在这种情况可以吃中药调理吗，能不能调养好？",
+      "context_chunk_ids": [
+        "dialogue_外科_2183#0000",
+        "dialogue_外科_2184#0000",
+        "dialogue_外科_2095#0000",
+        "dialogue_外科_2242#0000",
+        "dialogue_内科_2692#0000"
+      ],
+      "answer": "乳腺结节和甲状腺结节，虽然不是特别严重，但是也不能忽略。对于乳腺结节和甲状腺结节，除了对症下药外，还需要看重自身的护理培训，比如保持清洁，不要同房，少吃辛辣刺激性食物。关于是否可以吃中药调理，参考知识中没有明确提到可以或不可以，但一般来说，中药可能有助于调理身体，改善症状，但具体是否适合需要根据个人情况由医生判断。因此，根据现有知识无法明确回答是否可以完全通过中药调理好，建议在医生指导下进行治疗和调理。",
+      "num_statements": 6,
+      "faithfulness": 0.5,
+      "verdicts": [
+        {
+          "statement": "Breast nodules and thyroid nodules are not particularly severe, but they should not be ignored.",
+          "reason": "The context explicitly states that breast nodules are a type of breast disease that is not very severe but should not be ignored.",
+          "verdict": 1
+        },
+        {
+          "statement": "For breast nodules and thyroid nodules, in addition to treating the symptoms, it is important to pay attention to personal care, such as maintaining cleanliness, avoiding sexual activity, and reducing the intake of spicy and stimulating foods.",
+          "reason": "The context mentions the importance of personal care, including maintaining cleanliness, avoiding sexual activity, and reducing spicy and stimulating foods.",
+          "verdict": 1
+        },
+        {
+          "statement": "Regarding whether it is possible to take traditional Chinese medicine for调理, there is no clear mention in the reference knowledge about whether it is allowed or not.",
+          "reason": "The context does not provide a clear statement on whether traditional Chinese medicine is allowed or not for调理.",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0055",
+      "question": "甲状腺乳腺结节发现2年了怎么办？。甲状腺乳腺结节，发觉2年了，吃过夏枯草颗粒和红金消结片效果不明显，您好用什么药效果好？",
+      "context_chunk_ids": [
+        "dialogue_外科_2184#0000",
+        "dialogue_外科_2183#0000",
+        "dialogue_外科_2095#0000",
+        "dialogue_外科_2150#0000",
+        "dialogue_外科_2155#0000"
+      ],
+      "answer": "根据现有知识无法提供特定药物，因为药物治疗对于甲状腺乳腺结节的效果有限，且药物难以渗透到病灶部位。建议您咨询专业的甲状腺乳腺疾病医生，根据医生的建议进行进一步检查和治疗，可能需要考虑手术或其他治疗方法。同时，可以咨询医生关于是否适合使用如人参皂苷Rh2等辅助治疗的建议。",
+      "num_statements": 10,
+      "faithfulness": 0.5,
+      "verdicts": [
+        {
+          "statement": "The thyroid and breast nodules have been present for two years.",
+          "reason": "The context mentions that the nodules were discovered two years ago.",
+          "verdict": 1
+        },
+        {
+          "statement": "The patient has taken Xiaokugan Granules and Hongjin Xiaojie Pills for two years.",
+          "reason": "The context states that the patient has taken these medications for two years.",
+          "verdict": 1
+        },
+        {
+          "statement": "The treatment with Xiaokugan Granules and Hongjin Xiaojie Pills has not shown significant improvement.",
+          "reason": "The context states that the treatment has not been effective.",
+          "verdict": 1
+        },
+        {
+          "statement": "Based on current knowledge, specific medications cannot be recommended for thyroid and breast nodules.",
+          "reason": "The context states that drugs cannot effectively reach the affected areas and are only effective for inflammation and blood circulation.",
+          "verdict": 1
+        },
+        {
+          "statement": "Medication treatment for thyroid and breast nodules has limited effectiveness.",
+          "reason": "The context states that drugs have limited effectiveness and can only provide some relief.",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0056",
+      "question": "这是得了甲状腺乳头状癌。急性脑梗半月有余，中间刺击诊治得了甲状腺乳头状癌。这能诊断吗",
+      "context_chunk_ids": [
+        "dialogue_外科_2191#0000",
+        "norm2018_s01#0008",
+        "dialogue_内科_2704#0000",
+        "dialogue_外科_2283#0000",
+        "dialogue_外科_2272#0000"
+      ],
+      "answer": "根据参考知识中的信息，可以诊断为甲状腺乳头状癌。刺击（穿刺）通常会进行病理学检查，以确定肿块的性质。既然已经通过刺击确诊为甲状腺乳头状癌，那么这个诊断是可靠的。建议您最好还是去医院找专科大夫面诊，进行综合性的检验，确认是否需要手术治疗。",
+      "num_statements": 5,
+      "faithfulness": 0.2,
+      "verdicts": [
+        {
+          "statement": "The patient has been diagnosed with papillary thyroid carcinoma.",
+          "reason": "The context mentions that the patient has a thyroid mass and that a biopsy was performed, and the doctor confirms that papillary thyroid carcinoma can be diagnosed through a biopsy. However, it does not explicitly state that the patient has been diagnosed with papillary thyroid carcinoma.",
+          "verdict": 0
+        },
+        {
+          "statement": "The patient also experienced an acute cerebral infarction more than half a month ago.",
+          "reason": "The context mentions an acute cerebral infarction, but it does not specify the time frame as 'more than half a month ago'.",
+          "verdict": 0
+        },
+        {
+          "statement": "A biopsy was performed to determine the nature of the mass.",
+          "reason": "The context explicitly states that a biopsy was performed to determine the nature of the mass.",
+          "verdict": 1
+        },
+        {
+          "statement": "The diagnosis of papillary thyroid carcinoma is confirmed through the biopsy results.",
+          "reason": "The context states that a biopsy was performed and that papillary thyroid carcinoma can be diagnosed through a biopsy, but it does not explicitly confirm that the biopsy results confirmed the diagnosis.",
+          "verdict": 0
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0057",
+      "question": "请问甲状腺怎样治疗。左侧颈部疼痛，胸痛",
+      "context_chunk_ids": [
+        "dialogue_外科_2209#0000",
+        "dialogue_外科_2101#0000",
+        "dialogue_肿瘤科_0056#0000",
+        "dialogue_肿瘤科_0053#0000",
+        "dialogue_肿瘤科_0014#0000"
+      ],
+      "answer": "根据您描述的症状，您可能需要进一步的检查以确定甲状腺结节的性质。如果是良性结节，一般不需要手术治疗，但有可能会恶变，因此建议进行穿刺活检以明确结节性质。治疗方案应由医生根据具体情况制定。同时，左侧颈部疼痛和胸痛的症状也需要进一步检查以确定原因。请咨询专业医生获取个性化建议。",
+      "num_statements": 5,
+      "faithfulness": 0.8,
+      "verdicts": [
+        {
+          "statement": "The symptoms described may indicate the need for further examination to determine the nature of the thyroid nodule.",
+          "reason": "The context mentions symptoms like neck pain and chest pain, and the need for further examination such as biopsy to determine the nature of the nodule.",
+          "verdict": 1
+        },
+        {
+          "statement": "If the nodule is benign, surgery is generally not required, but it may become malignant, so it is recommended to perform a biopsy to clarify the nodule's nature.",
+          "reason": "The context explicitly states that benign nodules generally do not require surgery but may become malignant, and a biopsy is recommended to clarify the nodule's nature.",
+          "verdict": 1
+        },
+        {
+          "statement": "The treatment plan should be determined by a doctor based on the specific situation.",
+          "reason": "The context mentions that treatment should be based on the specific situation and recommends consulting a doctor.",
+          "verdict": 1
+        },
+        {
+          "statement": "The symptoms of left neck pain and chest pain also require further examination to determine the cause.",
+          "reason": "The context mentions left neck pain and chest pain, and the need for further examination to determine the cause.",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0058",
+      "question": "针对甲状腺需要手术吗。发现有段时间了有点痛在汉寿人民医院检查了的",
+      "context_chunk_ids": [
+        "dialogue_外科_2218#0000",
+        "dialogue_肿瘤科_0129#0000",
+        "dialogue_肿瘤科_0040#0000",
+        "dialogue_肿瘤科_0078#0000",
+        "dialogue_肿瘤科_0021#0000"
+      ],
+      "answer": "根据您提供的信息，您在汉寿人民医院检查发现甲状腺有肿块并且有些疼痛。医生认为本病的病因主要是情志内伤和饮食及水土失宜，先天因素有密切关系。对于甲状腺瘤的治疗，如果肿瘤较大，通常应当先进行手术治疗，并在手术后进行病理活检，然后根据活检结果进一步对症治疗。\n\n由于您的情况已经存在一段时间并且伴有疼痛，建议您遵循医生的建议，考虑手术治疗。手术治疗后，还需要进行病理活检以确定肿瘤的性质，并根据活检结果制定后续治疗方案。同时，术后应注意保持良好的饮食习惯，补充身体营养，以促进康复。",
+      "num_statements": 10,
+      "faithfulness": 0.4,
+      "verdicts": [
+        {
+          "statement": "You have a thyroid swelling that has been present for some time and is causing pain.",
+          "reason": "The context mentions that the person has had a thyroid issue for some time and is experiencing pain.",
+          "verdict": 1
+        },
+        {
+          "statement": "You were checked at HanShou People's Hospital and found to have a thyroid mass with pain.",
+          "reason": "The context states that the person was checked at HanShou People's Hospital and found to have a thyroid mass with pain.",
+          "verdict": 1
+        },
+        {
+          "statement": "The doctor believes the main causes of this condition are emotional stress, dietary issues, and environmental factors, with congenital factors also playing a close relationship.",
+          "reason": "The context mentions that the doctor believes the main causes are emotional stress, dietary issues, and environmental factors, with congenital factors also playing a close relationship.",
+          "verdict": 1
+        },
+        {
+          "statement": "For the treatment of thyroid tumors, if the tumor is large, surgery is usually recommended first.",
+          "reason": "The context states that if the tumor is large, surgery is usually recommended first.",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0059",
+      "question": "得了甲状腺结节需要开刀吗。无",
+      "context_chunk_ids": [
+        "dialogue_外科_2219#0000",
+        "dialogue_内科_2567#0000",
+        "dialogue_外科_2341#0000",
+        "dialogue_内科_2704#0000",
+        "dialogue_外科_2307#0000"
+      ],
+      "answer": "甲状腺结节是否需要手术取决于多种因素，包括结节的大小、性质以及患者的具体情况。一般来说，如果结节较小且边缘规则，可能不需要立即手术，可以定期观察。但如果结节增大、边缘不规则或伴有其他症状（如纤维化），可能需要进行进一步检查（如穿刺活检）或考虑手术治疗。具体是否需要手术，建议根据医生的专业意见进行决策。",
+      "num_statements": 4,
+      "faithfulness": 0.75,
+      "verdicts": [
+        {
+          "statement": "Whether a thyroid nodule requires surgery depends on multiple factors, including the size of the nodule, its nature, and the patient's specific condition.",
+          "reason": "The context mentions that the decision to operate depends on the size, nature, and patient's condition.",
+          "verdict": 1
+        },
+        {
+          "statement": "If the nodule is small and has regular edges, surgery may not be needed immediately, and regular observation may be sufficient.",
+          "reason": "The context states that if the nodule is small and has regular edges, it can be observed periodically.",
+          "verdict": 1
+        },
+        {
+          "statement": "If the nodule increases in size, has irregular edges, or is accompanied by other symptoms such as fibrosis, further examination such as a biopsy may be necessary, or surgery may be considered as a treatment option.",
+          "reason": "The context mentions that if the nodule grows, has irregular edges, or is accompanied by fibrosis, biopsy or surgery may be needed.",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0060",
+      "question": "请问甲状腺肿大什么原因。有半年的时间",
+      "context_chunk_ids": [
+        "dialogue_外科_2222#0000",
+        "dialogue_内科_2553#0000",
+        "dialogue_内科_2728#0000",
+        "dialogue_内科_2733#0000",
+        "dialogue_内科_2605#0000"
+      ],
+      "answer": "甲状腺肿大的原因可能包括多种因素，如体内激素分泌不平衡、甲状腺炎、甲状腺占位、甲亢、甲减等。此外，缺碘也是引起单纯性甲状腺肿的一个常见原因，尤其是在缺碘的地区，人们通过补充碘可以改善这种情况。由于您提到已经有半年的时间，建议您及时到医院进行B超、甲状腺功能等相关检查，以便明确病因并获得相应的治疗。",
+      "num_statements": 5,
+      "faithfulness": 0.8,
+      "verdicts": [
+        {
+          "statement": "Thyroid enlargement can be caused by various factors such as hormonal imbalance in the body.",
+          "reason": "The context mentions that hormonal imbalance is a main cause of thyroid enlargement.",
+          "verdict": 1
+        },
+        {
+          "statement": "Thyroid enlargement may result from thyroiditis, thyroid nodules, hyperthyroidism, or hypothyroidism.",
+          "reason": "The context lists thyroiditis, thyroid nodules, hyperthyroidism, and hypothyroidism as causes of thyroid enlargement.",
+          "verdict": 1
+        },
+        {
+          "statement": "Iodine deficiency is a common cause of simple goiter, especially in regions where iodine is lacking.",
+          "reason": "The context explicitly states that iodine deficiency is a common cause of simple goiter in regions with low iodine intake.",
+          "verdict": 1
+        },
+        {
+          "statement": "In such regions, people can improve this condition by supplementing iodine.",
+          "reason": "The context mentions that iodine deficiency can be corrected by supplementing iodine.",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0061",
+      "question": "请问甲状腺多发实性结节怎么治疗。最近体检发现",
+      "context_chunk_ids": [
+        "dialogue_外科_2230#0000",
+        "dialogue_外科_2325#0000",
+        "dialogue_外科_2341#0000",
+        "dialogue_外科_2233#0000",
+        "dialogue_外科_2301#0000"
+      ],
+      "answer": "根据最近的体检发现甲状腺多发实性结节的情况，治疗方面可以应用适量甲状腺激素制剂，补充内生甲状腺激素的不足。此外，如果结节有压迫气管、颈部静脉、食管或喉返神经等症状，可能需要进一步的治疗措施，包括手术治疗。建议您咨询专业医生，根据具体情况制定治疗方案。",
+      "num_statements": 6,
+      "faithfulness": 0.6666666666666666,
+      "verdicts": [
+        {
+          "statement": "Thyroid multiple solid nodules were found during a recent physical examination.",
+          "reason": "The context mentions that thyroid nodules were found during a physical examination.",
+          "verdict": 1
+        },
+        {
+          "statement": "The treatment for thyroid multiple solid nodules can involve the use of an appropriate amount of thyroid hormone medication.",
+          "reason": "The context mentions that thyroid hormone medication can be used to supplement endogenous thyroid hormones.",
+          "verdict": 1
+        },
+        {
+          "statement": "The thyroid hormone medication helps to compensate for the lack of endogenous thyroid hormones.",
+          "reason": "The context states that thyroid hormone medication is used to supplement endogenous thyroid hormones.",
+          "verdict": 1
+        },
+        {
+          "statement": "If the nodules cause compression of the trachea, neck veins, esophagus, or recurrent laryngeal nerve, further treatment measures may be necessary.",
+          "reason": "The context mentions that compression of these structures may require further treatment.",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0062",
+      "question": "甲状腺疾病怎么预防。瘤大为22X19X15MM边清晰",
+      "context_chunk_ids": [
+        "dialogue_外科_2232#0000",
+        "dialogue_肿瘤科_0127#0000",
+        "dialogue_外科_2288#0000",
+        "dialogue_肿瘤科_0072#0000",
+        "dialogue_肿瘤科_0111#0000"
+      ],
+      "answer": "根据现有知识无法回答。提供的参考知识主要讨论了甲状腺瘤的预防、诊断、治疗等方面，但没有直接针对甲状腺疾病的预防措施进行详细说明。因此，无法直接回答甲状腺疾病如何预防的问题。",
+      "num_statements": 2,
+      "faithfulness": 1.0,
+      "no_statements": true,
+      "refusal": true,
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0063",
+      "question": "请问甲状腺结节怎么处理。2008",
+      "context_chunk_ids": [
+        "dialogue_外科_2233#0000",
+        "dialogue_外科_2344#0000",
+        "dialogue_内科_2747#0000",
+        "dialogue_外科_2230#0000",
+        "dialogue_内科_2649#0000"
+      ],
+      "answer": "根据2008年的医生回答，甲状腺结节的处理方式如下：\n\n- 保守治疗是无效的。\n- 可能会压迫食道和气管，以及癌变。\n- 需要到医院做手术治疗。\n- 术后静脉滴注大量抗生素治疗。\n- 平时禁吃辛辣酒、茶、咖啡等刺激性食物。",
+      "num_statements": 6,
+      "faithfulness": 0.6666666666666666,
+      "verdicts": [
+        {
+          "statement": "The treatment for thyroid nodules according to the doctor's answer in 2008 includes the following: ",
+          "reason": "The statement is incomplete and does not provide specific treatment details.",
+          "verdict": 0
+        },
+        {
+          "statement": "Conservative treatment for thyroid nodules is ineffective.",
+          "reason": "The context explicitly states that conservative treatment is ineffective for thyroid nodules.",
+          "verdict": 1
+        },
+        {
+          "statement": "Thyroid nodules may cause compression of the esophagus and trachea, as well as cancer.",
+          "reason": "The context mentions that thyroid nodules may cause compression of the esophagus and trachea, as well as cancer.",
+          "verdict": 1
+        },
+        {
+          "statement": "Thyroid nodules require surgical treatment at a hospital.",
+          "reason": "The context states that surgical treatment is required for thyroid nodules.",
+          "verdict": 1
+        },
+        {
+          "statement": "After surgery, a large amount of antibiotics should be administered intravenously.",
+          "reason": "The context mentions that after surgery, a large amount of antibiotics should be administered intravenously.",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0064",
+      "question": "甲状腺要吃什么药。发病次数、部位、哪些不适感、曾经得到过的治疗，想得到的帮助（20字以上）",
+      "context_chunk_ids": [
+        "dialogue_外科_2261#0000",
+        "dialogue_内科_2606#0000",
+        "dialogue_外科_2367#0000",
+        "dialogue_外科_2270#0000",
+        "dialogue_外科_2323#0000"
+      ],
+      "answer": "因此建议您到当地正规医院挂内分泌科就诊，进行甲状腺彩超检查。确诊后可能需要服用甲状腺激素类药物。请详细描述您的症状以便获得针对性建议。",
+      "num_statements": 4,
+      "faithfulness": 0.75,
+      "verdicts": [
+        {
+          "statement": "You are advised to visit a local hospital with an endocrinology department for an appointment.",
+          "reason": "The context explicitly states that the doctor recommends visiting a local hospital's endocrinology department.",
+          "verdict": 1
+        },
+        {
+          "statement": "You should undergo a thyroid ultrasound examination.",
+          "reason": "The context mentions that a thyroid ultrasound is recommended as part of the diagnostic process.",
+          "verdict": 1
+        },
+        {
+          "statement": "After diagnosis, you may need to take thyroid hormone medications.",
+          "reason": "The context states that if diagnosed with hypothyroidism, thyroid hormone medications are recommended.",
+          "verdict": 1
+        },
+        {
+          "statement": "Please provide a detailed description of your symptoms to obtain targeted advice.",
+          "reason": "The context does not explicitly state that providing detailed symptoms is required for targeted advice.",
+          "verdict": 0
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0065",
+      "question": "甲状腺右叶腺瘤怎么治疗。12月20日在医大",
+      "context_chunk_ids": [
+        "dialogue_外科_2266#0000",
+        "dialogue_肿瘤科_0073#0000",
+        "dialogue_肿瘤科_0015#0000",
+        "dialogue_肿瘤科_0023#0000",
+        "dialogue_外科_2288#0000"
+      ],
+      "answer": "甲状腺右叶腺瘤的治疗可以采用手术的方式。根据医生的建议，有两种手术方式可以选择：一是传统的颈部切口手术，二是胸前壁切开手术，后者可以在不留下颈部手术疤痕的情况下进行。具体选择哪种方式可以根据患者的具体情况和需求来决定。",
+      "num_statements": 4,
+      "faithfulness": 1.0,
+      "verdicts": [
+        {
+          "statement": "Thyroid right lobe adenoma can be treated with surgery.",
+          "reason": "The context explicitly states that surgery is an option for treating thyroid right lobe adenoma.",
+          "verdict": 1
+        },
+        {
+          "statement": "According to the doctor's advice, there are two types of surgical options available: one is traditional neck incision surgery, and the other is chest wall incision surgery.",
+          "reason": "The context mentions two surgical options: traditional neck incision and chest wall incision.",
+          "verdict": 1
+        },
+        {
+          "statement": "The second type of surgery can be performed without leaving a scar on the neck.",
+          "reason": "The context states that the chest wall incision surgery does not leave a scar on the neck.",
+          "verdict": 1
+        },
+        {
+          "statement": "The specific choice of surgery depends on the patient's specific condition and needs.",
+          "reason": "The context mentions that the choice of surgery depends on the patient's requirements.",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0066",
+      "question": "甲状腺囊肿该怎么检查。喉咙肿瘤.吃饭时有不适感发病时间及因素或病因2005年",
+      "context_chunk_ids": [
+        "dialogue_外科_2270#0000",
+        "dialogue_内科_2661#0000",
+        "dialogue_外科_2093#0000",
+        "dialogue_肿瘤科_0003#0000",
+        "dialogue_肿瘤科_0122#0000"
+      ],
+      "answer": "甲状腺囊肿的检查通常包括以下几种方式：\n\n1. 体格检查：医生会通过触诊检查甲状腺的大小、质地和是否有结节。\n2. 超声检查：这是诊断甲状腺囊肿最常用的方法，可以清晰地显示囊肿的位置、大小和形态。\n3. 血液检查：检测甲状腺功能指标，如TSH、T3、T4等。\n4. 细针穿刺活检：对于可疑的囊肿，可以通过细针穿刺获取组织或细胞进行病理学检查。\n\n对于喉咙肿瘤，如果患者在吃饭时有不适感，建议进行以下检查：\n\n1. 喉镜检查：直接观察喉部情况。\n2. 影像学检查：如CT或MRI，以了解肿瘤的大小、位置及其与周围组织的关系。\n3. 组织活检：通过取样进行病理学检查，以确定肿瘤的性质（良性或恶性）。\n\n根据您提供的信息，发病时间是2005年，建议及时就医，进行上述相关检查以明确诊断。",
+      "error": "ValueError: no JSON in judge output: '<think>\\n\\n</think>\\n\\n{\\n  \"statements\": [\\n    \"甲状腺囊肿的检查通常包括体格检查。\",\\n    \"医生通过触诊检查甲状腺的大小、质地和是否有结节。\",\\n    \"甲状腺囊肿的检查通常包括超声检查。\",\\n    \"超声检查可以清晰地显示囊肿的位置、大小和形态。\",\\n    \"甲状腺囊肿的检查通常包括血液检查。\",\\n    \"血液检查用于检测甲状腺功能指标如TS'"
+    },
+    {
+      "query_id": "qa-0067",
+      "question": "甲状腺癌有什么治疗方法。我于2015年7月1日，行甲状腺全切并清扫右侧淋巴结手术。",
+      "context_chunk_ids": [
+        "dialogue_外科_2272#0000",
+        "dialogue_外科_2274#0000",
+        "dialogue_外科_2273#0000",
+        "dialogue_外科_2152#0000",
+        "norm2018_s03#0000"
+      ],
+      "answer": "根据您描述的情况，您的甲状腺癌类型为乳头状癌，并且已经进行了甲状腺全切术及右侧淋巴结清扫手术。对于甲状腺乳头状癌，通常预后良好，即使出现淋巴结转移，患者也可以长期生存。目前颈部淋巴结肿大，医生建议继续观察淋巴结变化，若继续增大，考虑放化疗。\n\n甲状腺癌的治疗方法主要包括：\n\n1. **手术治疗**：包括甲状腺本身的手术以及颈淋巴结清扫。手术范围根据肿瘤的具体情况而定，最小范围为腺叶加峡部切除，最大范围至甲状腺全切除。\n\n2. **放射性碘治疗（131I治疗）**：适用于分化型甲状腺癌（如乳头状癌和滤泡状癌），通过口服放射性碘来消除残留的甲状腺组织和可能存在的微小转移灶。\n\n3. **放射治疗**：对于某些不适合手术或放射性碘治疗的患者，可以考虑放射治疗。\n\n4. **内分泌治疗**：通过抑制促甲状腺激素（TSH）的分泌来减缓肿瘤的生长，适用于乳头状癌和滤泡状癌。\n\n5. **靶向治疗**：针对某些特定的分子标志物进行治疗，适用于部分",
+      "error": "ValueError: no JSON in judge output: '<think>\\n\\n</think>\\n\\n{\"statements\": [\"The patient had a total thyroidectomy and right lymph node dissection on July 1, 2015.\", \"The patient\\'s thyroid cancer type is papillary thyroid cancer.\", \"The pati'"
+    },
+    {
+      "query_id": "qa-0068",
+      "question": "甲状腺癌手术注意哪些。术前肺ct 双肺多发微结节及右侧下叶外基地端炎性改变",
+      "context_chunk_ids": [
+        "dialogue_外科_2273#0000",
+        "dialogue_内科_2590#0000",
+        "dialogue_内科_2664#0000",
+        "dialogue_外科_2307#0000",
+        "dialogue_外科_2354#0000"
+      ],
+      "answer": "甲状腺癌手术主要注意以下几点：\n\n1. 保持颈部处于水平位置，避免过度后仰或前屈，以免影响正常愈合。\n2. 保持手术部位清洁干燥，避免摩擦、搔抓或接触刺激性强的物质，如某些肥皂、酒精、胶带等。\n3. 忌烟、酒及辛辣刺激性食物，避免食用油炸、烤肉等热性食物。\n\n此外，根据术前检查结果，患者存在双肺多发微结节及右侧下叶外基底端炎性改变，因此在术后还需要关注肺部情况，遵循医生的指导进行相应的护理和复查。",
+      "num_statements": 4,
+      "faithfulness": 0.75,
+      "verdicts": [
+        {
+          "statement": "The thyroid cancer surgery should maintain the neck in a horizontal position to prevent excessive backward or forward bending, which can affect normal healing.",
+          "reason": "The context explicitly states that after thyroid cancer surgery, the neck should remain in a horizontal position to prevent excessive backward or forward bending, which can affect normal healing.",
+          "verdict": 1
+        },
+        {
+          "statement": "The surgical area should remain clean and dry to avoid friction, scratching, or contact with irritants such as certain soaps, alcohol, and adhesive tapes.",
+          "reason": "The context explicitly states that the surgical area should remain clean and dry to prevent friction, scratching, or contact with irritants such as certain soaps, alcohol, and adhesive tapes.",
+          "verdict": 1
+        },
+        {
+          "statement": "Smoking, alcohol, and spicy or stimulating foods should be avoided, as well as fried and grilled meats which are considered hot-natured foods.",
+          "reason": "The context explicitly states that patients should avoid smoking, alcohol, and spicy or stimulating foods, as well as fried and grilled meats which are considered hot-natured foods.",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0069",
+      "question": "桥本氏甲状腺节结怎么治疗。发病时喘气困难有时还心慌",
+      "context_chunk_ids": [
+        "dialogue_外科_2281#0000",
+        "dialogue_外科_2101#0000",
+        "dialogue_外科_2116#0000",
+        "dialogue_外科_2100#0000",
+        "dialogue_内科_2649#0000"
+      ],
+      "answer": "根据现有知识无法回答。提供的参考知识中没有直接关于桥本氏甲状腺节结的治疗信息。参考知识主要讨论了桥本氏甲状腺炎和甲状腺结节的一般治疗方法，但没有具体提到桥本氏甲状腺节结的治疗方案。此外，关于发病时喘气困难和心慌的症状，建议及时就医以获得针对性的诊断和治疗。",
+      "num_statements": 4,
+      "faithfulness": 1.0,
+      "no_statements": true,
+      "refusal": true,
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0070",
+      "question": "甲状腺肿瘤手术头皮麻怎么办。最近总是肚子疼，去过很多医院，有的说是疝气，有的说是淋巴堵塞，请问甲状腺肿瘤手术头皮麻怎么办",
+      "context_chunk_ids": [
+        "dialogue_外科_2285#0000",
+        "dialogue_外科_2289#0000",
+        "dialogue_内科_2662#0000",
+        "dialogue_外科_2340#0000",
+        "dialogue_肿瘤科_0129#0000"
+      ],
+      "answer": "根据现有知识无法回答甲状腺肿瘤手术头皮麻的具体解决办法，因为提供的参考知识中没有直接涉及甲状腺肿瘤手术后出现头皮麻木的处理方法。建议咨询专业的神经科医生或主刀医生以获得针对性的医疗建议。",
+      "num_statements": 2,
+      "faithfulness": 1.0,
+      "no_statements": true,
+      "refusal": true,
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0071",
+      "question": "甲状腺瘤怎么解决。前几天·才发现的 没有感觉 脖子右側有点大了",
+      "context_chunk_ids": [
+        "dialogue_外科_2288#0000",
+        "dialogue_肿瘤科_0073#0000",
+        "dialogue_肿瘤科_0056#0000",
+        "dialogue_肿瘤科_0040#0000",
+        "dialogue_肿瘤科_0124#0000"
+      ],
+      "answer": "根据参考知识，甲状腺瘤的治疗方法通常包括手术治疗。对于您描述的情况，建议去医院进行微创手术治疗，并注意术后护理，预防感染，同时避免食用刺激性食物。",
+      "num_statements": 4,
+      "faithfulness": 0.75,
+      "verdicts": [
+        {
+          "statement": "Thyroid tumors are typically treated with surgical treatment according to reference knowledge.",
+          "reason": "The context mentions that surgery is generally recommended for thyroid tumors, but this statement refers to 'reference knowledge' which is not explicitly stated in the context.",
+          "verdict": 0
+        },
+        {
+          "statement": "For the described situation, it is recommended to go to the hospital for minimally invasive surgical treatment.",
+          "reason": "The context states that minimally invasive surgery is recommended, so this statement can be directly inferred.",
+          "verdict": 1
+        },
+        {
+          "statement": "It is important to pay attention to post-operative care to prevent infection.",
+          "reason": "The context explicitly mentions the importance of post-operative care and preventing infection.",
+          "verdict": 1
+        },
+        {
+          "statement": "It is also advised to avoid consuming stimulating foods.",
+          "reason": "The context explicitly advises avoiding stimulating foods.",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0072",
+      "question": "甲状腺肿瘤如何治。最近总是肚子疼，去过很多医院，有的说是疝气，有的说是淋巴堵塞，请问甲状腺肿瘤如何治",
+      "context_chunk_ids": [
+        "dialogue_外科_2289#0000",
+        "dialogue_肿瘤科_0129#0000",
+        "dialogue_肿瘤科_0078#0000",
+        "dialogue_外科_2285#0000",
+        "dialogue_肿瘤科_0076#0000"
+      ],
+      "answer": "根据现有知识无法回答。提供的参考知识主要讨论了甲状腺瘤的治疗方法，并未具体提及如何治疗因疝气或淋巴堵塞引起的肚子疼。建议您针对肚子疼的症状，向医生咨询具体的诊断和治疗方案。",
+      "num_statements": 1,
+      "faithfulness": 1.0,
+      "no_statements": true,
+      "refusal": true,
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0073",
+      "question": "甲状腺肿大40岁应该怎样治疗。女42岁 10岁就发现粗脖子 没症状",
+      "context_chunk_ids": [
+        "dialogue_外科_2293#0000",
+        "dialogue_外科_2096#0000",
+        "dialogue_外科_2270#0000",
+        "dialogue_内科_2733#0000",
+        "dialogue_外科_2212#0000"
+      ],
+      "answer": "根据提供的信息，42岁的女性患者10岁时就发现有甲状腺肿大（粗脖子），但没有症状。治疗甲状腺肿大的方法需要根据具体原因来确定。建议患者尽早到正规医院接受检查，以查清病因。治疗方法可能包括：\n\n1. **查明病因**：可能的原因包括缺碘、甲状腺激素产生缺陷、食用某些抗甲状腺物质的食物等。医生会根据检查结果决定具体的治疗方案。\n\n2. **中医治疗**：中医治疗甲状腺肿大可能是一个选择，但应在专业中医师的指导下进行。\n\n3. **药物治疗**：如果甲状腺功能异常，可能需要服用甲状腺素片等药物。\n\n4. **饮食调整**：增加含碘食物，如海带、紫菜等，有助于改善缺碘引起的甲状腺肿大。\n\n5. **定期复查**：即使目前没有症状，也应定期复查甲状腺功能和肿大的情况，以便及时发现并处理可能的变化。\n\n总之，建议患者尽快就医，进行全面检查，以确定最合适的治疗方案。",
+      "error": "ValueError: no JSON in judge output: '<think>\\n\\n</think>\\n\\n{\\n  \"statements\": [\\n    \"A 42-year-old female patient has had a swollen thyroid (粗脖子) since the age of 10.\",\\n    \"The patient currently does not have any symptoms.\",\\n    \"The treatm'"
+    },
+    {
+      "query_id": "qa-0074",
+      "question": "新生儿甲状腺功能低下是怎么回事。新生儿甲状腺功能低下是怎么引起的?",
+      "context_chunk_ids": [
+        "dialogue_外科_2296#0000",
+        "dialogue_外科_2294#0000",
+        "dialogue_内科_2556#0000",
+        "dialogue_外科_2331#0000",
+        "dialogue_外科_2097#0000"
+      ],
+      "answer": "新生儿甲状腺功能低下（先天性甲状腺功能减退）可能由以下原因引起：\n\n1. 甲状腺的发育不良、缺如或异位：这是先天性甲减最常见的因素。近年研究发现，先天性甲减患儿的母亲可能存在一种能阻断诱导甲状腺生长的抗体，这种抗体可干扰甲状腺的正常发育。自身免疫性甲状腺炎的孕妇体内存在一种免疫球蛋白，可通过胎盘抑制胎儿的甲状腺发育。此外，甲状腺发育不良的患儿中，部分可能与甲状腺转移因子基因和基因突变有关。动物实验也证实部分甲减与促甲状腺受体基因突变有关。\n\n2. 甲状腺激素合成障碍：甲状腺合成时需多种酶参与，因某种酶如过氧化酶、偶联酶、脱碘酶和甲状腺蛋白合成酶缺陷导致甲状腺激素合成障碍。本病常有家族史，大多数为常染色体隐性遗传。\n\n3. 下丘脑-垂体性甲减：较为少见，部分伴有其他下丘脑-垂体激素缺乏。\n\n4. 暂时性甲减：a. 孕母或婴儿生后接触含碘化合物，机体为防止碘过高引起T4升高，形成防御功能",
+      "error": "ValueError: no JSON in judge output: '<think>\\n\\n</think>\\n\\n{\"statements\": [\"Newborns with hypothyroidism have underactive thyroid glands.\", \"Congenital hypothyroidism in newborns is commonly caused by poor development, absence, or abnormal '"
+    },
+    {
+      "query_id": "qa-0075",
+      "question": "甲状腺疾病要手术吗。2012年7月份。 生气，疲劳时咽喉不舒服。 江源医院。",
+      "context_chunk_ids": [
+        "dialogue_外科_2301#0000",
+        "dialogue_外科_2340#0000",
+        "dialogue_外科_2307#0000",
+        "dialogue_外科_2306#0000",
+        "dialogue_外科_2341#0000"
+      ],
+      "answer": "根据江源医院医生的回答，甲状腺单发性结节，结节内有液态成分也有实性成分，可以说是囊实性结节的情况，不算太大，离手术指标还是比较远的。如果你不想手术，现在需要及时进行治疗；如果想手术治疗的话，可以考虑观察，3个月左右复查一次看看结节情况。",
+      "num_statements": 9,
+      "faithfulness": 0.5555555555555556,
+      "verdicts": [
+        {
+          "statement": "The hospital mentioned is Jiangyuan Hospital.",
+          "reason": "The context mentions Jiangyuan Hospital in the first entry.",
+          "verdict": 1
+        },
+        {
+          "statement": "In July 2012, the person experienced discomfort in the throat when angry and tired.",
+          "reason": "The context states that in July 2012, the person experienced discomfort in the throat when angry and tired.",
+          "verdict": 1
+        },
+        {
+          "statement": "The doctor at Jiangyuan Hospital diagnosed a single thyroid nodule.",
+          "reason": "The context states that the doctor at Jiangyuan Hospital diagnosed a single thyroid nodule.",
+          "verdict": 1
+        },
+        {
+          "statement": "The nodule contains both liquid and solid components, indicating a cystic-solid nodule.",
+          "reason": "The context states that the nodule contains both liquid and solid components, indicating a cystic-solid nodule.",
+          "verdict": 1
+        },
+        {
+          "statement": "The nodule is not very large.",
+          "reason": "The context states that the nodule is not very large.",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0076",
+      "question": "甲状腺乳头状癌治疗期间有什么注意事项。女，43岁，2014年1月15日刚做了甲状腺切除，现正在做碘131的治疗已经第3天",
+      "context_chunk_ids": [
+        "dialogue_外科_2302#0000",
+        "dialogue_外科_2361#0000",
+        "dialogue_外科_2152#0000",
+        "dialogue_外科_2272#0000",
+        "dialogue_外科_2274#0000"
+      ],
+      "answer": "根据提供的参考知识，甲状腺乳头状癌治疗期间的注意事项包括：\n\n1. 建议采取中药施治调理，同时结合食疗调养。\n2. 饮食上应以营养全面、高蛋白、高维生素、低脂低盐为主，少吃或不吃辛辣刺激、肥甘厚腻、烧烤、腌制等食物。\n3. 平时进食定时定量，合理营养为原则。\n4. 多食用如鱼、瘦肉、蛋、大豆制品、香菇、大枣等食物。\n5. 注意调整心理状态，适当的运动对康复有益。\n6. 保持良好的生活习惯，避免过度劳累。\n\n以上建议适用于正在进行甲状腺切除和碘131治疗的患者。",
+      "num_statements": 6,
+      "faithfulness": 0.6666666666666666,
+      "verdicts": [
+        {
+          "statement": "During the treatment for papillary thyroid cancer, it is recommended to use traditional Chinese medicine for regulation while also combining with dietary therapy.",
+          "reason": "The context explicitly mentions that traditional Chinese medicine should be combined with dietary therapy for better results.",
+          "verdict": 1
+        },
+        {
+          "statement": "The diet should focus on being nutritionally balanced, high in protein and vitamins, and low in fat and salt.",
+          "reason": "The context explicitly states that the diet should be nutritionally balanced, high in protein and vitamins, and low in fat and salt.",
+          "verdict": 1
+        },
+        {
+          "statement": "Patients should eat at regular times and in appropriate portions, following the principle of reasonable nutrition.",
+          "reason": "The context explicitly mentions that patients should eat at regular times and in appropriate portions, following the principle of reasonable nutrition.",
+          "verdict": 1
+        },
+        {
+          "statement": "Foods such as fish, lean meat, eggs, soy products, mushrooms, and dates should be consumed more frequently.",
+          "reason": "The context explicitly lists these foods as recommended for consumption.",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0077",
+      "question": "甲状腺囊腺瘤一定要手术吗。患者女，55，以前身体状况良好。无意中发现颈部有个小瘤，手推之，微痛的感觉",
+      "context_chunk_ids": [
+        "dialogue_外科_2305#0000",
+        "dialogue_肿瘤科_0055#0000",
+        "dialogue_肿瘤科_0105#0000",
+        "dialogue_外科_2358#0000",
+        "dialogue_肿瘤科_0004#0000"
+      ],
+      "answer": "根据提供的参考知识，甲状腺囊腺瘤是否需要手术取决于其具体情况。对于形成的结节，如果使用甲状腺素片无效，可能需要考虑手术处理。但是，对于较小且良性的囊腺瘤，可以采取保守治疗，如采用中药治疗。因此，对于这位55岁的女性患者，是否需要手术应由医生根据囊腺瘤的大小、性质以及其他相关检查结果来决定。建议遵循医生的专业意见。",
+      "num_statements": 5,
+      "faithfulness": 0.6,
+      "verdicts": [
+        {
+          "statement": "Thyroid cystadenoma may require surgery depending on specific circumstances.",
+          "reason": "The context mentions that for larger or malignant-tending cystadenomas, surgery is recommended, implying that surgery may be required depending on specific circumstances.",
+          "verdict": 1
+        },
+        {
+          "statement": "If the formed nodule does not respond to thyroid hormone pills, surgery may be considered.",
+          "reason": "The context states that if thyroid swelling has progressed to form nodules, thyroid hormone pills are ineffective, and surgery may be considered.",
+          "verdict": 1
+        },
+        {
+          "statement": "For smaller and benign cystadenomas, conservative treatment such as traditional Chinese medicine may be used.",
+          "reason": "The context mentions that small benign thyroid tumors can be treated conservatively with traditional Chinese medicine.",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0078",
+      "question": "甲状腺哪家医院治疗好。手术后复发，2010年，结节性甲状腺肿，鹤山市人民医院",
+      "context_chunk_ids": [
+        "dialogue_外科_2306#0000",
+        "dialogue_内科_2684#0000",
+        "dialogue_内科_2693#0000",
+        "dialogue_内科_2649#0000",
+        "dialogue_肿瘤科_0096#0000"
+      ],
+      "answer": "根据现有知识无法回答具体哪家医院在鹤山市治疗甲状腺疾病最好。不过，一般来说，大型综合医院或有专门内分泌科的医院在治疗甲状腺疾病方面更有经验。鹤山市人民医院作为当地医院，可能在处理甲状腺疾病方面有一定的能力，但是否为最佳选择需要进一步了解该医院在甲状腺疾病治疗方面的专业水平和患者评价。建议咨询当地医疗专家或查阅相关医疗评价信息以获取更准确的信息。",
+      "num_statements": 5,
+      "faithfulness": 1.0,
+      "no_statements": true,
+      "refusal": true,
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0079",
+      "question": "甲状腺乔本是什么病，需手术吗。2年前甲状腺结节0.9最近去查变大了是多发的双侧甲状腺肿大",
+      "context_chunk_ids": [
+        "dialogue_外科_2310#0000",
+        "dialogue_外科_2341#0000",
+        "dialogue_外科_2325#0000",
+        "dialogue_内科_2606#0000",
+        "dialogue_外科_2307#0000"
+      ],
+      "answer": "根据现有知识无法回答。提供的参考知识中没有直接提到“甲状腺乔本”这种疾病，且内容主要讨论的是甲状腺肿大、甲状腺结节等问题，并未明确指出是否需要手术治疗乔本甲状腺炎。建议您咨询专业医生以获得准确诊断和治疗建议。",
+      "num_statements": 4,
+      "faithfulness": 1.0,
+      "no_statements": true,
+      "refusal": true,
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0080",
+      "question": "甲状腺结节伴钙化是什么情况。一周前在锦州附属第一医院做彩超发现甲状腺结节伴钙化，医生要求手术治疗",
+      "context_chunk_ids": [
+        "dialogue_外科_2311#0000",
+        "dialogue_外科_2300#0000",
+        "dialogue_外科_2344#0000",
+        "dialogue_内科_2577#0000",
+        "dialogue_内科_2755#0000"
+      ],
+      "answer": "甲状腺结节伴钙化是指在甲状腺内出现一个或多个结节，并且这些结节内部存在钙化现象。钙化可以是点状、线状或其他形式，其存在可能提示结节的性质，但不能单独作为判断结节良恶性的依据。\n\n根据您提供的信息，医生建议手术治疗，这通常是因为结节的性质尚不明确，需要通过手术切除并进行病理检查来确定结节是否为恶性。良性肿瘤生长较慢，无不适症状时可以不用治疗，但恶性肿瘤则需要及时处理以防止病情恶化。\n\n因此，对于甲状腺结节伴钙化的情况，医生建议手术治疗是为了进一步明确结节的性质，并采取相应的治疗措施。",
+      "num_statements": 8,
+      "faithfulness": 0.5,
+      "verdicts": [
+        {
+          "statement": "甲状腺结节伴钙化是指在甲状腺内出现一个或多个结节并且这些结节内部存在钙化现象。",
+          "reason": "上下文提到甲状腺结节伴钙化，且描述了钙化现象，可推断结节内存在钙化。",
+          "verdict": 1
+        },
+        {
+          "statement": "钙化可以表现为点状、线状或其他形式。",
+          "reason": "上下文提到点状强回声、点状钙化灶等，说明钙化可以有不同形式。",
+          "verdict": 1
+        },
+        {
+          "statement": "钙化现象的存在可能提示结节的性质。",
+          "reason": "上下文提到钙化可能与癌变相关，暗示钙化可能提示结节性质。",
+          "verdict": 1
+        },
+        {
+          "statement": "钙化现象不能单独作为判断结节良恶性的依据。",
+          "reason": "上下文提到需结合其他检查和治疗方式，说明钙化不能单独判断。",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0081",
+      "question": "桥本氏甲状腺炎的症状是什么。最近总是肚子疼，去过很多医院，有的说是疝气，有的说是淋巴堵塞，请问桥本氏甲状腺炎的症状是什么",
+      "context_chunk_ids": [
+        "dialogue_外科_2314#0000",
+        "dialogue_外科_2116#0000",
+        "dialogue_外科_2101#0000",
+        "dialogue_外科_2102#0000",
+        "dialogue_外科_2109#0000"
+      ],
+      "answer": "桥本氏甲状腺炎的症状通常包括甲状腺肿大，表现为弥漫性肿胀，体积可为正常的2-3倍或更大，表面光滑，质韧如橡皮，无压痛无结节，与周围组织无粘连，可随吞咽运动活动。此外，患者可能会感到轻微的乏力及颈部不适。但是，肚子疼并不是桥本氏甲状腺炎的典型症状，您描述的症状更可能与疝气或淋巴堵塞有关。建议您针对肚子疼的症状再次就医，进行详细的检查和诊断。",
+      "num_statements": 15,
+      "faithfulness": 0.4,
+      "verdicts": [
+        {
+          "statement": "桥本氏甲状腺炎的症状通常包括甲状腺肿大。",
+          "reason": "医生回答中明确提到桥本氏甲状腺炎表现为甲状腺肿大。",
+          "verdict": 1
+        },
+        {
+          "statement": "甲状腺肿大表现为弥漫性肿胀。",
+          "reason": "医生回答中明确提到甲状腺肿呈弥漫性。",
+          "verdict": 1
+        },
+        {
+          "statement": "甲状腺肿大的体积可以是正常的2到3倍或更大。",
+          "reason": "医生回答中明确提到甲状腺肿体积可为正常的2-3倍或更大。",
+          "verdict": 1
+        },
+        {
+          "statement": "甲状腺肿大的表面光滑。",
+          "reason": "医生回答中明确提到甲状腺肿表面光滑。",
+          "verdict": 1
+        },
+        {
+          "statement": "甲状腺肿大质地坚韧如橡皮。",
+          "reason": "医生回答中明确提到甲状腺肿质地韧如橡皮。",
+          "verdict": 1
+        },
+        {
+          "statement": "甲状腺肿大没有压痛。",
+          "reason": "医生回答中明确提到甲状腺肿无压痛。",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0082",
+      "question": "甲状腺球蛋白抗体684.24要不要吃药。患者女53岁，以前身体一般，最近脖子二边有些胀。",
+      "context_chunk_ids": [
+        "dialogue_外科_2316#0000",
+        "dialogue_外科_2305#0000",
+        "dialogue_外科_2293#0000",
+        "dialogue_内科_2682#0000",
+        "dialogue_外科_2096#0000"
+      ],
+      "answer": "根据参考知识中的医生回答，甲状腺球蛋白抗体684.24需要口服药物治疗。建议遵医嘱口服药物治疗，无效时要通过手术的方法治疗。同时，除了正规治疗甲状腺疾病外，还需要和医生保持沟通，视饮食方面，例如日常清淡饮食，多外出运动。",
+      "num_statements": 5,
+      "faithfulness": 1.0,
+      "verdicts": [
+        {
+          "statement": "The thyroid globulin antibody level of 684.24 requires oral medication treatment.",
+          "reason": "The context states that the doctor recommends oral medication treatment for the thyroid globulin antibody level of 684.24.",
+          "verdict": 1
+        },
+        {
+          "statement": "It is recommended to follow the doctor's instructions for oral medication treatment.",
+          "reason": "The context explicitly states that the doctor recommends following their instructions for oral medication treatment.",
+          "verdict": 1
+        },
+        {
+          "statement": "If the oral medication is ineffective, treatment should be done through surgery.",
+          "reason": "The context mentions that if oral medication is ineffective, surgery should be considered.",
+          "verdict": 1
+        },
+        {
+          "statement": "In addition to standard treatment for thyroid diseases, it is necessary to communicate with the doctor.",
+          "reason": "The context states that it is necessary to communicate with the doctor in addition to standard treatment.",
+          "verdict": 1
+        },
+        {
+          "statement": "Regarding diet, it is advisable to maintain a清淡 diet and engage in more outdoor activities.",
+          "reason": "The context explicitly recommends maintaining a清淡 diet and engaging in more outdoor activities.",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0083",
+      "question": "双侧多发甲状腺结节怎么治疗。女50岁，查体发现右侧多发性囊性结节，左叶实性结节并有点状钙化，无症状",
+      "context_chunk_ids": [
+        "dialogue_外科_2325#0000",
+        "dialogue_外科_2230#0000",
+        "dialogue_外科_2341#0000",
+        "dialogue_外科_2278#0000",
+        "dialogue_内科_2633#0000"
+      ],
+      "answer": "根据提供的参考知识，对于双侧多发甲状腺结节的治疗，可以考虑以下几种方法：\n\n1. **中药治疗**：可以采用活血化淤、软坚散结、疏肝理气等中药进行治疗，以从根本上改善病情。\n\n2. **观察随访**：由于患者目前无症状，可以先进行定期的随访观察，监测结节的变化情况。\n\n3. **手术治疗**：如果结节增大或者有恶变的可能，或者结节引起了压迫症状，可以考虑手术切除。\n\n具体治疗方案需要根据患者的具体情况由医生综合评估后决定。建议患者定期复查，并与医生保持沟通，以便及时调整治疗方案。",
+      "num_statements": 8,
+      "faithfulness": 0.5,
+      "verdicts": [
+        {
+          "statement": "双侧多发甲状腺结节的治疗可以考虑中药治疗。",
+          "reason": "医生提到治疗此病最好以纯中药活血化淤、软坚散结、疏肝理气等从根本上治疗。",
+          "verdict": 1
+        },
+        {
+          "statement": "中药治疗可以通过活血化淤、软坚散结、疏肝理气等方式进行。",
+          "reason": "医生明确提到治疗此病最好以纯中药活血化淤、软坚散结、疏肝理气等从根本上治疗。",
+          "verdict": 1
+        },
+        {
+          "statement": "双侧多发甲状腺结节的治疗可以考虑观察随访。",
+          "reason": "医生提到对于无症状的患者，可以考虑观察随访。",
+          "verdict": 1
+        },
+        {
+          "statement": "观察随访适用于患者目前无症状的情况。",
+          "reason": "医生提到对于无症状的患者，可以考虑观察随访。",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0084",
+      "question": "甲状腺瘤术后伤口出现增生怎么办。没手术之前没有症状",
+      "context_chunk_ids": [
+        "dialogue_外科_2328#0000",
+        "dialogue_肿瘤科_0122#0000",
+        "dialogue_外科_2362#0000",
+        "dialogue_肿瘤科_0012#0000",
+        "dialogue_外科_2288#0000"
+      ],
+      "answer": "根据参考知识，甲状腺瘤术后伤口出现增生通常需要通过手术的方法治疗，单纯药物效果不太理想。建议去医院进行手术治疗，并注意术后护理，预防感染。",
+      "num_statements": 4,
+      "faithfulness": 0.5,
+      "verdicts": [
+        {
+          "statement": "If a scar forms after thyroid tumor surgery, it is typically treated with surgery.",
+          "reason": "The context does not mention scar treatment specifically, nor does it state that surgery is the typical treatment for scars.",
+          "verdict": 0
+        },
+        {
+          "statement": "Medication alone is not very effective for treating scar formation after thyroid tumor surgery.",
+          "reason": "The context does not mention scar formation or its treatment, so this cannot be directly inferred.",
+          "verdict": 0
+        },
+        {
+          "statement": "It is recommended to visit a hospital for surgical treatment.",
+          "reason": "The context repeatedly recommends surgical treatment for thyroid tumors, so this can be directly inferred.",
+          "verdict": 1
+        },
+        {
+          "statement": "Post-surgery care should be taken to prevent infection.",
+          "reason": "The context explicitly mentions the importance of post-surgery care to prevent infection.",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0085",
+      "question": "孩子颈部B超未发现甲状腺怎么办。天黄疸退的慢,肚脐有气疝.出生后筛查发现促甲状腺指标有问题.",
+      "context_chunk_ids": [
+        "dialogue_外科_2335#0000",
+        "dialogue_外科_2296#0000",
+        "dialogue_外科_2258#0000",
+        "dialogue_外科_2218#0000",
+        "dialogue_外科_2154#0000"
+      ],
+      "answer": "根据描述，孩子颈部B超未发现甲状腺，但出生后筛查发现促甲状腺指标有问题。这可能意味着孩子存在先天性甲状腺功能低下（先天性甲状腺缺失）。在这种情况下，需要遵循医生的建议，给予孩子终生服用甲状腺激素替代治疗。请不要担心，按照医生的指导进行治疗和管理。",
+      "num_statements": 5,
+      "faithfulness": 1.0,
+      "verdicts": [
+        {
+          "statement": "A neck ultrasound did not detect a thyroid in the child.",
+          "reason": "The context mentions that a neck ultrasound did not find a thyroid, indicating possible absence.",
+          "verdict": 1
+        },
+        {
+          "statement": "A screening test after birth found abnormal thyroid function indicators.",
+          "reason": "The context states that the child's screening found abnormal thyroid function indicators.",
+          "verdict": 1
+        },
+        {
+          "statement": "The absence of a thyroid detected by ultrasound and abnormal thyroid function indicators may indicate congenital hypothyroidism due to thyroid absence.",
+          "reason": "The context links the absence of a thyroid and abnormal thyroid function indicators to congenital hypothyroidism due to thyroid absence.",
+          "verdict": 1
+        },
+        {
+          "statement": "The child requires lifelong thyroid hormone replacement therapy as recommended by the doctor.",
+          "reason": "The context explicitly states that lifelong thyroid hormone replacement therapy is recommended for congenital hypothyroidism.",
+          "verdict": 1
+        },
+        {
+          "statement": "It is important to follow the doctor's guidance for treatment and management.",
+          "reason": "The context emphasizes the importance of following the doctor's guidance for treatment and management.",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0086",
+      "question": "双侧甲状腺多发实性结节要不要做手术。2006年，无明显症状，海淀、医院中医、北医三院",
+      "context_chunk_ids": [
+        "dialogue_外科_2341#0000",
+        "dialogue_外科_2301#0000",
+        "dialogue_外科_2325#0000",
+        "dialogue_外科_2230#0000",
+        "dialogue_外科_2300#0000"
+      ],
+      "answer": "根据2006年的描述，双侧甲状腺多发实性结节，无明显症状。北医三院的医生建议早期手术治疗，以排除恶变的可能性。因此，根据当时的医疗建议，早期手术治疗是推荐的。但是，最终是否需要手术，还需要结合最新的检查结果和医生的评估。建议您咨询专业的内分泌科或甲状腺外科医生，根据当前的病情进行综合判断。",
+      "num_statements": 5,
+      "faithfulness": 0.8,
+      "verdicts": [
+        {
+          "statement": "In 2006, there were multiple solid nodules in both sides of the thyroid gland, and there were no obvious symptoms.",
+          "reason": "The context mentions that in 2006, there were multiple solid nodules in both sides of the thyroid gland and no obvious symptoms.",
+          "verdict": 1
+        },
+        {
+          "statement": "Doctors at Peking University Third Hospital recommended early surgical treatment to rule out the possibility of malignancy.",
+          "reason": "The context states that doctors at Peking University Third Hospital recommended early surgical treatment to rule out the possibility of malignancy.",
+          "verdict": 1
+        },
+        {
+          "statement": "Based on the medical advice from that time, early surgical treatment was recommended.",
+          "reason": "The context indicates that based on the medical advice from that time, early surgical treatment was recommended.",
+          "verdict": 1
+        },
+        {
+          "statement": "Whether surgery is needed ultimately depends on the latest test results and the doctor's assessment.",
+          "reason": "The context suggests that whether surgery is needed depends on the latest test results and the doctor's assessment.",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0087",
+      "question": "风湿乳腺增生甲状腺结结高血脂症喝什么好。乳腺增生疼痛，0.5*0.3.甲状腺结结0.8*0.5.高血脂3.5",
+      "context_chunk_ids": [
+        "dialogue_外科_2342#0000",
+        "dialogue_外科_2095#0000",
+        "dialogue_外科_2183#0000",
+        "dialogue_内科_2633#0000",
+        "dialogue_外科_2323#0000"
+      ],
+      "answer": "根据参考知识，对于乳腺增生和甲状腺结节，可以考虑使用蒲公英进行调理，但需要注意其性寒，适合阳虚外寒、脾胃虚弱者要慎用。对于高血脂，参考知识中没有直接提到具体的饮品建议。\n\n建议您去中医科详细诊治，根据实际情况，是否使用蒲公英或其他草药进行调理，具体由就诊医师指导。同时，保持良好的生活习惯，注意饮食和睡眠，适当运动，以帮助改善症状。",
+      "num_statements": 4,
+      "faithfulness": 0.5,
+      "verdicts": [
+        {
+          "statement": "For breast hyperplasia and thyroid nodules, it is recommended to consider using dandelion for regulation, but it should be noted that it has a cold nature and is suitable for those with yang deficiency and external cold or spleen and stomach weakness.",
+          "reason": "The context mentions that dandelion can be used to treat breast hyperplasia and has a cold nature, but it does not mention it being suitable for those with yang deficiency and external cold or spleen and stomach weakness.",
+          "verdict": 0
+        },
+        {
+          "statement": "For high cholesterol, the reference knowledge does not provide specific recommendations for drinks.",
+          "reason": "The context does not mention any specific drinks or recommendations for high cholesterol.",
+          "verdict": 1
+        },
+        {
+          "statement": "It is recommended to visit the traditional Chinese medicine department for a detailed diagnosis and treatment, and whether to use dandelion or other herbs should be determined by the attending physician based on your specific condition.",
+          "reason": "The context explicitly states that one should visit the traditional Chinese medicine department and that the use of herbs should be determined by the attending physician.",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0088",
+      "question": "甲状腺癌恶性甲状腺肿瘤有区别吗。甲状腺肿瘤近期·无明显症状南京鼓楼医院",
+      "context_chunk_ids": [
+        "dialogue_外科_2343#0000",
+        "norm2018_s02#0006",
+        "norm2018_s01#0008",
+        "norm2018_s00#0000",
+        "norm2018_s02#0000"
+      ],
+      "answer": "甲状腺癌根据其病理类型可以分为几种，包括甲状腺乳头状癌（PTC）、甲状腺滤泡癌（FTC）、甲状腺髓样癌（MTC）以及甲状腺未分化癌（ATC）。不同类型的甲状腺癌在生物学行为、组织学形态、临床表现、治疗方法以及预后等方面存在显著差异。\n\n对于近期无明显症状的甲状腺肿瘤患者，南京鼓楼医院的医生建议通过甲状腺功能化验（如促甲状腺激素TSH的测定）来评估结节的性质。TSH降低的高功能性热结节较少为恶性，而TSH正常或升高的甲状腺结节，以及TSH降低情况下的冷结节或温结节，则需要进一步评估（如穿刺活检等）。\n\n根据细胞学诊断分级，患者的恶性风险不同，临床管理措施也不同。例如，分级为Ⅵ的恶性肿瘤，其恶性风险接近100%，通常需要手术治疗；而分级为Ⅱ的良性结节，其恶性风险极低，可能仅需随访观察。\n\n综上所述，甲状腺癌中的恶性肿瘤确实存在区别，需要通过详细的检查和评估来确定具体的病理类型和恶性程度，从而制定相应的治疗方案。",
+      "error": "ValueError: no JSON in judge output: '<think>\\n\\n</think>\\n\\n{\\n  \"statements\": [\\n    \"甲状腺癌根据其病理类型可以分为甲状腺乳头状癌、甲状腺滤泡癌、甲状腺髓样癌以及甲状腺未分化癌。\",\\n    \"不同类型的甲状腺癌在生物学行为、组织学形态、临床表现、治疗方法以及预后等方面存在显著差异。\",\\n    \"对于近期无明显症状的甲状腺肿瘤患者，南京鼓楼医院的医生建议通过甲状腺功能化验来评估结节的性质。\",'"
+    },
+    {
+      "query_id": "qa-0089",
+      "question": "乳腺癌术后会变成甲状腺癌吗。最近不知道怎么回事感觉乳房特别不舒服，而且还有硬块，请问乳腺癌术后会变成甲状腺癌吗",
+      "context_chunk_ids": [
+        "dialogue_外科_2345#0000",
+        "dialogue_外科_2340#0000",
+        "dialogue_内科_2591#0000",
+        "dialogue_内科_2666#0000",
+        "dialogue_内科_2590#0000"
+      ],
+      "answer": "根据现有知识无法回答乳腺癌术后是否会变成甲状腺癌的问题。乳腺癌和甲状腺癌是两种不同的癌症，目前没有医学证据表明一种癌症会直接转变为另一种癌症。如果你感到乳房不适并且有硬块，建议尽快就医进行检查。",
+      "num_statements": 4,
+      "faithfulness": 1.0,
+      "no_statements": true,
+      "refusal": true,
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0090",
+      "question": "甲状腺癌有效医治方法。今年七月发现脖子处有淋巴结然后去医院就医",
+      "context_chunk_ids": [
+        "dialogue_外科_2355#0000",
+        "dialogue_外科_2272#0000",
+        "dialogue_外科_2288#0000",
+        "dialogue_肿瘤科_0132#0000",
+        "dialogue_肿瘤科_0131#0000"
+      ],
+      "answer": "甲状腺癌的有效治疗方法包括手术治疗和术后多种非手术辅助治疗。根据您描述的情况，今年七月发现脖子处有淋巴结，医生考虑甲状腺癌是最有效的治疗方法。术后可能需要进行多种非手术辅助治疗，以提高长期生存率和降低复发率，特别是对于高危组患者。某些不能完整切除的甲状腺癌，定期复查也是较好的选择。",
+      "num_statements": 4,
+      "faithfulness": 0.75,
+      "verdicts": [
+        {
+          "statement": "Thyroid cancer can be effectively treated with surgical treatment and various non-surgical adjuvant treatments after surgery.",
+          "reason": "The context mentions that surgical treatment and various non-surgical adjuvant treatments are part of the treatment approach for thyroid cancer.",
+          "verdict": 1
+        },
+        {
+          "statement": "In July of this year, a lymph node was found in the neck, and the doctor considered thyroid cancer to be the most effective treatment.",
+          "reason": "The context states that in July of this year, a lymph node was found in the neck, and the doctor considered thyroid cancer as the most effective treatment.",
+          "verdict": 1
+        },
+        {
+          "statement": "After surgery, various non-surgical adjuvant treatments may be needed to improve long-term survival rates and reduce the risk of recurrence, especially for high-risk patients.",
+          "reason": "The context explicitly states that non-surgical adjuvant treatments after surgery can improve long-term survival rates and reduce recurrence, especially for high-risk patients.",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0091",
+      "question": "甲状腺癌半切吃什么盐。医生，我的家人前天做了甲状腺癌半切，请问在以后可以吃什么盐？",
+      "context_chunk_ids": [
+        "dialogue_肿瘤科_0008#0000",
+        "dialogue_内科_2664#0000",
+        "dialogue_内科_2673#0000",
+        "dialogue_外科_2302#0000",
+        "dialogue_内科_2670#0000"
+      ],
+      "answer": "根据参考知识中的信息，甲状腺癌半切手术后吃盐没有特别的限制，无需过度紧张。因此，在以后可以正常食用普通的盐。建议避免食用过于辛辣或刺激性的食物。",
+      "num_statements": 4,
+      "faithfulness": 1.0,
+      "verdicts": [
+        {
+          "statement": "After a thyroid cancer half resection surgery, there are no specific restrictions on the type of salt that can be consumed.",
+          "reason": "The context states that after surgery, there are no restrictions on salt consumption.",
+          "verdict": 1
+        },
+        {
+          "statement": "It is not necessary to be overly concerned about salt consumption after the surgery.",
+          "reason": "The context explicitly mentions that there is no need to be overly concerned about salt consumption after surgery.",
+          "verdict": 1
+        },
+        {
+          "statement": "Patients can normally consume regular salt in their daily diet following the surgery.",
+          "reason": "The context states that there are no restrictions on salt consumption, implying regular salt can be consumed.",
+          "verdict": 1
+        },
+        {
+          "statement": "It is recommended to avoid consuming overly spicy or stimulating foods.",
+          "reason": "The context advises avoiding spicy and stimulating foods.",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0092",
+      "question": "有甲状腺瘤治疗好的方法吗。家人精神状态不是很好，脸色也总是白白的，让我很是担心呢，请问：甲状腺瘤治疗比较好的方法是什么",
+      "context_chunk_ids": [
+        "dialogue_肿瘤科_0011#0000",
+        "dialogue_肿瘤科_0024#0000",
+        "dialogue_肿瘤科_0012#0000",
+        "dialogue_肿瘤科_0020#0000",
+        "dialogue_肿瘤科_0115#0000"
+      ],
+      "answer": "甲状腺瘤的治疗方法包括手术治疗、传统中药治疗以及综合治疗等。对于良性甲状腺瘤，如果瘤体较小，可以通过全科治疗仪照射使其缩小；如果瘤体较大，则需要手术摘除并辅以照射治疗，以达到消肿、促进伤口愈合、防止感染及疤痕的目的。\n\n此外，建议采取以下措施：\n1. 饮食清淡，避免肥腻与辛辣刺激性食物。\n2. 保持愉快乐观的心态，避免对腺瘤恢复产生不利影响。\n3. 尽量不喝啤酒，不吃辛辣刺激性食物。\n4. 足量食用海产品，多吃水果蔬菜，以清淡饮食为基础。\n\n根据描述，家人精神状态不佳且脸色苍白，建议及时就医，由专业医生根据具体情况制定合适的治疗方案。",
+      "num_statements": 9,
+      "faithfulness": 0.3333333333333333,
+      "verdicts": [
+        {
+          "statement": "甲状腺瘤的治疗方法包括手术治疗、传统中药治疗以及综合治疗。",
+          "reason": "医生提到甲状腺瘤可以手术治疗，也可以采取传统中药保守治疗，或手术后用传统中药稳固治疗，综合治疗未明确提及，但可推断为包含多种方法。",
+          "verdict": 1
+        },
+        {
+          "statement": "对于良性甲状腺瘤，如果瘤体较小，可以通过全科治疗仪照射使其缩小。",
+          "reason": "医生提到瘤体小时可通过全科治疗仪照射使其变失，即缩小。",
+          "verdict": 1
+        },
+        {
+          "statement": "如果瘤体较大，则需要手术摘除并辅以照射治疗，以达到消肿、促进伤口愈合、防止感染及疤痕的目的。",
+          "reason": "医生提到瘤体过大时应手术摘除再作照射治疗，可达到消肿、促进伤口愈合、防止感染及疤痕的目的。",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": false,
+      "missing_numbers": [
+        "1",
+        "2",
+        "3",
+        "4"
+      ]
+    },
+    {
+      "query_id": "qa-0093",
+      "question": "该怎么样治甲状腺瘤能好呢。家人精神状态不是很好，脸色也总是白白的，让我很是担心呢，请问：该怎么样治甲状腺瘤",
+      "context_chunk_ids": [
+        "dialogue_肿瘤科_0012#0000",
+        "dialogue_肿瘤科_0115#0000",
+        "dialogue_肿瘤科_0024#0000",
+        "dialogue_肿瘤科_0020#0000",
+        "dialogue_肿瘤科_0023#0000"
+      ],
+      "answer": "治疗甲状腺瘤的方法取决于瘤体的大小和性质。对于较小的良性甲状腺瘤，可以通过全科治疗仪照射使其消失。如果瘤体较大，可能需要手术切除，并结合后续的照射治疗，以达到消肿、促进伤口愈合、防止感染和疤痕的目的。\n\n除了上述治疗方法外，患者在治疗期间应注意饮食清淡，避免辛辣刺激食物。同时，保持愉快乐观的心态也很重要，因为这有助于腺瘤的恢复。\n\n对于甲状腺瘤的治疗，建议尽早到正规医院就诊，以获得最佳治疗效果。",
+      "num_statements": 6,
+      "faithfulness": 0.5,
+      "verdicts": [
+        {
+          "statement": "Treatment of thyroid tumors depends on the size and nature of the tumor.",
+          "reason": "The context mentions that treatment depends on the size and nature of the tumor, with different approaches for benign and malignant cases.",
+          "verdict": 1
+        },
+        {
+          "statement": "For small benign thyroid tumors, treatment can involve using a comprehensive treatment device for irradiation to make the tumor disappear.",
+          "reason": "The context states that for small tumors, treatment can involve using a comprehensive treatment device for irradiation to make the tumor disappear.",
+          "verdict": 1
+        },
+        {
+          "statement": "If the tumor is large, surgical removal may be necessary, and subsequent irradiation treatment is combined to achieve swelling reduction, promote wound healing, prevent infection, and reduce scarring.",
+          "reason": "The context mentions that for large tumors, surgical removal is recommended, followed by irradiation treatment to achieve swelling reduction, promote wound healing, prevent infection, and reduce scarring.",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0094",
+      "question": "甲状腺癌长在峡部危害。我有个问题，我得的是甲状腺癌，长在我的峡部，请问长在这个位置，有哪些的危害吗？",
+      "context_chunk_ids": [
+        "dialogue_肿瘤科_0013#0000",
+        "dialogue_内科_2660#0000",
+        "dialogue_内科_2590#0000",
+        "dialogue_肿瘤科_0037#0000",
+        "dialogue_外科_2131#0000"
+      ],
+      "answer": "甲状腺癌长在峡部可能引起以下危害：\n\n1. 随着甲状腺峡部结节的增大，可能会出现一些不良反应，比如呼吸道反应。\n2. 甲状腺峡部结节一旦发生恶变，会引起颈部胀痛，有压迫感。\n3. 偶尔发生甲状腺峡部结节内出血。\n4. 甲状腺峡部结节会累及周围组织，导致声音嘶哑、呼吸困难、吞咽障碍等症状。\n\n请注意，这些症状的出现与结节的大小和病情的发展程度有关。",
+      "num_statements": 5,
+      "faithfulness": 0.6,
+      "verdicts": [
+        {
+          "statement": "If thyroid cancer is located in the isthmus, it may cause certain adverse reactions as the isthmus nodule increases in size.",
+          "reason": "The context states that as the thyroid峡部结节 increases in size, it can cause adverse reactions such as respiratory issues.",
+          "verdict": 1
+        },
+        {
+          "statement": "If the isthmus nodule becomes malignant, it may cause neck pain and a feeling of pressure.",
+          "reason": "The context mentions that if the isthmus nodule becomes malignant, it may cause neck pain and a feeling of pressure.",
+          "verdict": 1
+        },
+        {
+          "statement": "Occasionally, there may be internal bleeding within the isthmus nodule.",
+          "reason": "The context states that occasionally, there may be internal bleeding within the isthmus nodule.",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": false,
+      "missing_numbers": [
+        "3",
+        "4"
+      ]
+    },
+    {
+      "query_id": "qa-0095",
+      "question": "甲状腺瘤需要怎么治较好。家人精神状态不是很好，脸色也总是白白的，让我很是担心呢，请问：甲状腺瘤需要怎么治较好",
+      "context_chunk_ids": [
+        "dialogue_肿瘤科_0015#0000",
+        "dialogue_肿瘤科_0115#0000",
+        "dialogue_肿瘤科_0012#0000",
+        "dialogue_肿瘤科_0023#0000",
+        "dialogue_肿瘤科_0068#0000"
+      ],
+      "answer": "甲状腺瘤的治疗方案需要根据其性质来决定。建议去医院介入科，在床上诱导下做结节刺击活检细胞学检查，明确其性质后再选择治疗方案。如果是良性结节，建议每隔一年复查一次彩超，如果没有明显变化，可以选择观察；如果结节较大或者有恶变的可能，可能需要进行手术治疗。此外，患者应注意保持恰当饮食的好习惯，消化身体营养，同时选择一家权威医院就诊，以获得良好的治疗效果。",
+      "num_statements": 8,
+      "faithfulness": 0.625,
+      "verdicts": [
+        {
+          "statement": "The treatment plan for a thyroid tumor depends on its nature.",
+          "reason": "The context mentions that the treatment depends on whether the nodule is benign or malignant.",
+          "verdict": 1
+        },
+        {
+          "statement": "It is recommended to go to the interventional department of a hospital and perform a fine-needle aspiration biopsy to determine the nature of the nodule.",
+          "reason": "The context explicitly states this recommendation.",
+          "verdict": 1
+        },
+        {
+          "statement": "Once the nature of the nodule is determined, an appropriate treatment plan can be selected.",
+          "reason": "The context implies that treatment is selected based on the nodule's nature.",
+          "verdict": 1
+        },
+        {
+          "statement": "If the nodule is benign, it is recommended to have a color Doppler ultrasound examination every two years.",
+          "reason": "The context explicitly states this recommendation for benign nodules.",
+          "verdict": 1
+        },
+        {
+          "statement": "If there is no significant change, observation may be chosen.",
+          "reason": "The context implies that observation may be chosen if there is no significant change.",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0096",
+      "question": "看甲状腺瘤去哪看更好。以前查出来是甲状腺结节，没做正规的治疗，现在诊断是甲状腺瘤病，您好下，这个甲状腺瘤去哪个医院治疗?",
+      "context_chunk_ids": [
+        "dialogue_肿瘤科_0017#0000",
+        "dialogue_肿瘤科_0082#0000",
+        "dialogue_肿瘤科_0026#0000",
+        "dialogue_肿瘤科_0096#0000",
+        "dialogue_内科_2694#0000"
+      ],
+      "answer": "根据提供的参考知识，治疗甲状腺瘤的医院选择很重要。建议您选择有良好声誉和专业医疗团队的医院进行治疗。具体医院的选择可以根据您所在地区的医疗资源和个人情况来决定。通常，大型综合医院或专科医院的内分泌科或甲状腺外科会有较好的治疗条件和技术。建议您咨询当地的专业医生，根据医生的建议选择合适的医院进行治疗。",
+      "num_statements": 4,
+      "faithfulness": 1.0,
+      "verdicts": [
+        {
+          "statement": "Treatment of thyroid tumors requires choosing a hospital with a good reputation and a professional medical team.",
+          "reason": "The context mentions that the choice of hospital and treatment methods are important, implying the need for a reputable and professional medical team.",
+          "verdict": 1
+        },
+        {
+          "statement": "The selection of a hospital for treating thyroid tumors can be based on the medical resources available in your region and your personal circumstances.",
+          "reason": "The context suggests that the choice of hospital should consider personal circumstances and available medical resources.",
+          "verdict": 1
+        },
+        {
+          "statement": "Large comprehensive hospitals or specialty hospitals with endocrinology or thyroid surgery departments typically have better treatment conditions and technical capabilities.",
+          "reason": "The context implies that hospitals with specialized departments (like endocrinology or thyroid surgery) are better for treatment, though it is not explicitly stated.",
+          "verdict": 1
+        },
+        {
+          "statement": "It is recommended to consult a local professional doctor and choose an appropriate hospital for treatment based on the doctor's advice.",
+          "reason": "The context advises consulting a doctor and following their recommendations for treatment, which includes choosing a hospital.",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0097",
+      "question": "甲状腺瘤患者怎么治较好。家人精神状态不是很好，脸色也总是白白的，让我很是担心呢，请问：甲状腺瘤患者怎么治较好",
+      "context_chunk_ids": [
+        "dialogue_肿瘤科_0015#0000",
+        "dialogue_肿瘤科_0115#0000",
+        "dialogue_肿瘤科_0012#0000",
+        "dialogue_肿瘤科_0023#0000",
+        "dialogue_肿瘤科_0020#0000"
+      ],
+      "answer": "甲状腺瘤的治疗需要根据具体情况来定，建议采取以下步骤：\n\n1. **明确性质**：建议去医院介入科，在床上诱导下做结节刺击活检细胞学检查，明确其性质再选择治疗方案。\n\n2. **良性结节**：如果是良性结节，建议每隔一年复查一次彩超，如果结节增大或有其他变化，可能需要进一步手术治疗。\n\n3. **恶性可能**：如果是恶性结节，则需要进行手术治疗。\n\n4. **注意饮食**：除了对症治疗腺瘤外，应注意保持恰当饮食的好习惯，消化身体营养，比如饮食清淡，避免辛辣刺激食物。\n\n5. **选择权威医院**：决定一家权威医院就诊，这样可以获得良好的治疗效果。\n\n6. **心理状态**：除了马上治疗外，注意患者的心理状态也很重要，保持愉快乐观的心态，以免对腺瘤的恢复产生了不必要的影响。\n\n7. **避免某些食物**：尽量避免肥煎与辛辣刺激性食物，尤其是甲状腺瘤患者，平时注意尽量不喝啤酒，不吃辛辣刺激饮食，足量食用海产品，多吃水果蔬菜，以清淡饮食为基础。\n\n综上所述，甲状腺瘤的治疗需要综合考虑病情的具体情况，",
+      "num_statements": 13,
+      "faithfulness": 0.38461538461538464,
+      "verdicts": [
+        {
+          "statement": "甲状腺瘤的治疗需要根据具体情况来决定。",
+          "reason": "医生建议根据结节性质选择治疗方案，说明治疗需根据具体情况决定。",
+          "verdict": 1
+        },
+        {
+          "statement": "建议去医院介入科，在床上诱导下做结节刺击活检细胞学检查，以明确结节的性质。",
+          "reason": "医生明确建议去医院介入科做结节刺击活检细胞学检查以明确性质。",
+          "verdict": 1
+        },
+        {
+          "statement": "如果结节是良性的，建议每隔一年进行一次彩超检查。",
+          "reason": "医生建议良性结节每隔一年复检一次彩超。",
+          "verdict": 1
+        },
+        {
+          "statement": "如果彩超检查发现结节增大或有其他变化，可能需要进一步进行手术治疗。",
+          "reason": "医生建议瘤体过大时手术摘除，说明结节增大可能需要手术治疗。",
+          "verdict": 1
+        },
+        {
+          "statement": "如果结节是恶性的，需要进行手术治疗。",
+          "reason": "医生建议恶性结节行手术治疗。",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": false,
+      "missing_numbers": [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7"
+      ]
+    },
+    {
+      "query_id": "qa-0098",
+      "question": "得了甲状腺瘤后应该怎么治疗好。家人精神状态不是很好，脸色也总是白白的，让我很是担心呢，请问：得了甲状腺瘤后应该怎么治疗好",
+      "context_chunk_ids": [
+        "dialogue_肿瘤科_0023#0000",
+        "dialogue_肿瘤科_0012#0000",
+        "dialogue_肿瘤科_0115#0000",
+        "dialogue_肿瘤科_0015#0000",
+        "dialogue_肿瘤科_0024#0000"
+      ],
+      "answer": "得了甲状腺瘤后，治疗方法取决于腺瘤的大小、是否引起症状以及是否有恶变的风险。对于较小且身体不能耐受手术的腺瘤，可以选择观察而不立即治疗。对于较大的腺瘤或有恶变风险的腺瘤，通常建议手术治疗。此外，还可以采用全科治疗仪照射或传统中药治疗等方法。\n\n重要的是，患者的精神状态和心理护理也很关键，应保持良好的心态，适当饮食，避免加重病情。同时，建议咨询专业医生以获得针对具体情况的治疗建议。",
+      "num_statements": 7,
+      "faithfulness": 0.42857142857142855,
+      "verdicts": [
+        {
+          "statement": "If a person has a thyroid tumor, the treatment depends on the size of the tumor, whether it causes symptoms, and whether there is a risk of malignancy.",
+          "reason": "The context discusses treatment based on tumor size, potential malignancy, and symptoms, indicating that these factors influence treatment decisions.",
+          "verdict": 1
+        },
+        {
+          "statement": "For small tumors that the body cannot tolerate surgery for, observation without immediate treatment is an option.",
+          "reason": "The context explicitly states that if the tumor is not large and the body cannot tolerate surgery, observation without immediate treatment is recommended.",
+          "verdict": 1
+        },
+        {
+          "statement": "For larger tumors or tumors with a risk of malignancy, surgery is typically recommended.",
+          "reason": "The context mentions that surgery is recommended for larger tumors or those with a risk of malignancy.",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    },
+    {
+      "query_id": "qa-0099",
+      "question": "患了甲状腺瘤真的可以治疗好吗。家人精神状态不是很好，脸色也总是白白的，让我很是担心呢，请问：患了甲状腺瘤真的可以治疗好吗",
+      "context_chunk_ids": [
+        "dialogue_肿瘤科_0024#0000",
+        "dialogue_肿瘤科_0012#0000",
+        "dialogue_肿瘤科_0023#0000",
+        "dialogue_肿瘤科_0020#0000",
+        "dialogue_肿瘤科_0033#0000"
+      ],
+      "answer": "患了甲状腺瘤是可以治疗好的。治疗方法包括手术治疗和传统中药保守治疗，或者手术后采取有效的传统中药稳固治疗。中医中药长期临床实践中积累了多种有效的治疗方法，可以在短期内见效，同时增强机体免疫力。建议根据具体情况选择合适的治疗方法，并保持积极的心态。",
+      "num_statements": 7,
+      "faithfulness": 0.7142857142857143,
+      "verdicts": [
+        {
+          "statement": "Thyroid tumors can be treated effectively.",
+          "reason": "The context mentions that thyroid tumors can be treated through surgery or traditional Chinese medicine, implying effectiveness.",
+          "verdict": 1
+        },
+        {
+          "statement": "Treatment methods for thyroid tumors include surgical treatment and traditional Chinese medicine conservative treatment.",
+          "reason": "The context explicitly states that thyroid tumors can be treated with surgery or traditional Chinese medicine conservative treatment.",
+          "verdict": 1
+        },
+        {
+          "statement": "After surgery, effective traditional Chinese medicine can be used for consolidation treatment.",
+          "reason": "The context mentions that after surgery, effective traditional Chinese medicine can be used for consolidation treatment.",
+          "verdict": 1
+        },
+        {
+          "statement": "Traditional Chinese medicine has accumulated various effective treatment methods through long-term clinical practice.",
+          "reason": "The context states that traditional Chinese medicine has accumulated many effective treatment methods through long-term clinical practice.",
+          "verdict": 1
+        },
+        {
+          "statement": "These methods can show results within a short period and enhance the body's immunity.",
+          "reason": "The context mentions that these methods can show results within a short period and enhance the body's immunity.",
+          "verdict": 1
+        }
+      ],
+      "numeric_consistent": true,
+      "missing_numbers": []
+    }
+  ]
+}

@@ -20,7 +20,6 @@ whether a given tag was logged at the expected level.
 """
 from __future__ import annotations
 
-from typing import List
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -28,13 +27,13 @@ import pytest
 pytestmark = [pytest.mark.track_agt]
 
 from app.agents.monitor import (
-    CONSECUTIVE_FAILURE_WINDOW,
     CONFIDENCE_REVIEW_THRESHOLD,
+    CONSECUTIVE_FAILURE_WINDOW,
     LATENCY_DEGRADED_THRESHOLD_MS,
-    MonitorAgentImpl,
     TAG_NEEDS_REVIEW,
     TAG_PERFORMANCE_DEGRADED,
     TAG_SYSTEM_ANOMALY,
+    MonitorAgentImpl,
 )
 from app.models.schemas import (
     DiagnosisQualityControl,
@@ -43,13 +42,12 @@ from app.models.schemas import (
     Organ,
 )
 
-
 # ----------------------------------------------------------------------
 # helpers
 # ----------------------------------------------------------------------
 
 
-def _req(organ: Organ = Organ.THYROID, image_ids: List[str] = None) -> DiagnosisRequest:
+def _req(organ: Organ = Organ.THYROID, image_ids: list[str] = None) -> DiagnosisRequest:
     return DiagnosisRequest(
         session_id="s1",
         image_ids=image_ids if image_ids is not None else ["img1"],

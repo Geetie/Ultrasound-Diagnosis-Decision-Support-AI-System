@@ -1,11 +1,10 @@
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-from datetime import datetime, timezone
 
 from app.observability.audit_chain import (
-    AuditCrossChain,
-    CriticalOperationAudit,
     AuditChainVerifier,
+    CriticalOperationAudit,
     is_critical_operation,
 )
 

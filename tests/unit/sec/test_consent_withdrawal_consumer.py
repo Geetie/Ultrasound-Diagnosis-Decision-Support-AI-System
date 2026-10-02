@@ -1,23 +1,23 @@
 import asyncio
-from unittest.mock import patch, MagicMock, AsyncMock, call
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
 pytestmark = [pytest.mark.track_sec, pytest.mark.track_agt, pytest.mark.sec_domain_consent]
 
+from app.config.redis_keys import RedisKey
+from app.models.schemas import ConsentAction, ConsentQueryResponse, ConsentStatus, ConsentUpdateRequest
 from app.security.consent_withdrawal_consumer import (
+    CONSENT_WITHDRAWAL_STREAM,
+    ConsentWithdrawalConsumer,
     ConsentWithdrawalEvent,
     ConsentWithdrawalHandler,
+    DataCleanupHandler,
     SafetyActionHandler,
     SchedulingAgentHandler,
-    DataCleanupHandler,
-    ConsentWithdrawalConsumer,
-    CONSENT_WITHDRAWAL_STREAM,
-    CONSENT_WITHDRAWAL_DEAD_LETTER_STREAM,
     _decode_field,
 )
-from app.models.schemas import ConsentStatus, ConsentAction, ConsentUpdateRequest, ConsentQueryResponse
-from app.config.redis_keys import RedisKey
 
 
 class TestDecodeField:
@@ -177,8 +177,8 @@ class TestSafetyActionHandler:
         async def _mock_session_gen():
             yield mock_db_session
 
-        edge_key_1 = f"ultrasound:edge:session:SE001:P20250001"
-        edge_key_2 = f"ultrasound:edge:session:SE002:P20250001"
+        edge_key_1 = "ultrasound:edge:session:SE001:P20250001"
+        edge_key_2 = "ultrasound:edge:session:SE002:P20250001"
 
         with patch("app.config.redis.RedisPool") as mock_redis_pool, \
              patch("app.config.database.get_session", side_effect=_mock_session_gen), \
@@ -267,7 +267,10 @@ class TestSchedulingAgentHandler:
         assert self.handler.get_handler_name() == "scheduling_agent_pending"
 
     @pytest.mark.asyncio
-    async def test_handle_withdrawal_raises_not_implemented(self):
+    @pytest.mark.asyncio
+    async def test_handle_withdrawal_is_explicit_noop(self):
+        """P2-3 修复后的契约：handler 显式禁用（no-op + 日志），不再抛
+        NotImplementedError——抛异常会把每次撤回打进死信流。"""
         event = ConsentWithdrawalEvent(
             patient_id="P001",
             operator_id="DOC001",
@@ -275,8 +278,8 @@ class TestSchedulingAgentHandler:
             consent_version="v1.0",
             event_id="msg-001",
         )
-        with pytest.raises(NotImplementedError):
-            await self.handler.handle_withdrawal(event)
+        # 不抛异常即通过
+        await self.handler.handle_withdrawal(event)
 
 
 class TestDataCleanupHandler:
@@ -370,8 +373,8 @@ class TestDataCleanupHandler:
             consent_version="v1.0",
             event_id="msg-001",
         )
-        desens_key_1 = f"ultrasound:desens:session:S001:P20250001"
-        desens_key_2 = f"ultrasound:desens:session:S002:P20250001"
+        desens_key_1 = "ultrasound:desens:session:S001:P20250001"
+        desens_key_2 = "ultrasound:desens:session:S002:P20250001"
 
         mock_db_session = AsyncMock()
         mock_result = MagicMock()
@@ -532,8 +535,8 @@ class TestConsentWithdrawalConsumer:
 
     @pytest.mark.asyncio
     async def test_create_consumer_factory(self):
-        from app.security.consent_withdrawal_consumer import create_consent_withdrawal_consumer
         from app.config.settings import settings
+        from app.security.consent_withdrawal_consumer import create_consent_withdrawal_consumer
         with patch.object(settings, 'consent_withdrawal_handlers', ["safety_action"]):
             consumer = await create_consent_withdrawal_consumer()
             assert len(consumer._handlers) == 1
@@ -541,8 +544,8 @@ class TestConsentWithdrawalConsumer:
 
     @pytest.mark.asyncio
     async def test_create_consumer_with_scheduling_agent(self):
-        from app.security.consent_withdrawal_consumer import create_consent_withdrawal_consumer
         from app.config.settings import settings
+        from app.security.consent_withdrawal_consumer import create_consent_withdrawal_consumer
         with patch.object(settings, 'consent_withdrawal_handlers', ["safety_action", "scheduling_agent"]):
             consumer = await create_consent_withdrawal_consumer()
             assert len(consumer._handlers) == 2

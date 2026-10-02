@@ -16,11 +16,11 @@
 4. 使用docker-compose start恢复api容器
 """
 
-import asyncio
 import subprocess
 import time
-import pytest
+
 import httpx
+import pytest
 
 SG_BASE_URL = "http://localhost:9001"
 MAIN_SERVICE_URL = "http://localhost:8000"

@@ -6,7 +6,7 @@ import subprocess
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import structlog
 
@@ -23,7 +23,7 @@ class GPUMemorySnapshot:
     fragmented_memory_mb: float
     fragmentation_rate: float
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "timestamp": self.timestamp,
             "gpu_id": self.gpu_id,
@@ -44,12 +44,12 @@ class FragmentationReport:
     final_fragmentation_rate: float = 0.0
     peak_fragmentation_rate: float = 0.0
     avg_fragmentation_rate: float = 0.0
-    snapshots: List[GPUMemorySnapshot] = field(default_factory=list)
+    snapshots: list[GPUMemorySnapshot] = field(default_factory=list)
     passed: bool = False
     warning_threshold: float = 0.30
     critical_threshold: float = 0.40
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "gpu_id": self.gpu_id,
             "duration_seconds": round(self.duration_seconds, 2),
@@ -67,7 +67,7 @@ class FragmentationReport:
         return json.dumps(self.to_dict(), indent=indent, ensure_ascii=False)
 
 
-def _query_nvidia_smi(gpu_id: int = 0) -> Optional[Dict[str, float]]:
+def _query_nvidia_smi(gpu_id: int = 0) -> dict[str, float] | None:
     try:
         result = subprocess.run(
             [
@@ -130,14 +130,14 @@ class GPUMemoryMonitor:
         self._warning_threshold = warning_threshold
         self._critical_threshold = critical_threshold
         self._log = structlog.get_logger("app.inference.gpu_memory_monitor")
-        self._fragmentation_above_warning_since: Optional[float] = None
-        self._overheat_since: Optional[float] = None
+        self._fragmentation_above_warning_since: float | None = None
+        self._overheat_since: float | None = None
         # T-GB-LLM-01：碎片化超临界阈值时触发模型热重载。未传参时用进程级
         # 控制器（延迟解析，避免构造期就要求适配器就绪）；显式传 None 关闭。
         self._hot_reload_controller = hot_reload_controller
         self._hot_reload_tasks: set = set()
 
-    def take_snapshot(self) -> Optional[GPUMemorySnapshot]:
+    def take_snapshot(self) -> GPUMemorySnapshot | None:
         info = _query_nvidia_smi(self._gpu_id)
         if info is None:
             self._log.warning("gpu_snapshot_failed", gpu_id=self._gpu_id)
@@ -173,7 +173,7 @@ class GPUMemoryMonitor:
                 from app.inference.hot_reload import get_hot_reload_controller
 
                 return get_hot_reload_controller()
-            except Exception as exc:  # noqa: BLE001 - 适配器未就绪时不影响采样
+            except Exception as exc:
                 self._log.warning(
                     "hot_reload_controller_unavailable",
                     error=str(exc),
@@ -238,7 +238,7 @@ class GPUMemoryMonitor:
         # T-GB-LLM-01：碎片化超临界阈值（默认 >40%）触发模型热重载
         self._maybe_trigger_hot_reload(fragmentation_rate)
 
-    def _update_overheat_duration(self, temperature: Optional[float]) -> None:
+    def _update_overheat_duration(self, temperature: float | None) -> None:
         if temperature is None:
             self._overheat_since = None
             return
@@ -263,7 +263,7 @@ class GPUMemoryMonitor:
         snapshot: GPUMemorySnapshot,
         memory_utilization: float,
         fragmentation_rate: float,
-        temperature: Optional[float] = None,
+        temperature: float | None = None,
     ) -> None:
         try:
             from app.observability.metrics_collector import get_metrics_collector

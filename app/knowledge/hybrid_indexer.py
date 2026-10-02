@@ -16,7 +16,7 @@ without changing the builder.
 """
 from __future__ import annotations
 
-from typing import List, Optional, Protocol
+from typing import Protocol
 
 import structlog
 from sqlalchemy import delete, select
@@ -32,7 +32,7 @@ logger = structlog.get_logger("app.knowledge.hybrid_indexer")
 class HybridIndexer(Protocol):
     """Protocol for hybrid indexers (PGVector now; Qdrant later)."""
     async def upsert(
-        self, chunks: List[KnowledgeChunk], session: AsyncSession
+        self, chunks: list[KnowledgeChunk], session: AsyncSession
     ) -> int:
         ...
 
@@ -46,16 +46,16 @@ class HybridIndexer(Protocol):
 
     async def get_by_id(
         self, chunk_id: str, session: AsyncSession
-    ) -> Optional[KnowledgeChunk]:
+    ) -> KnowledgeChunk | None:
         ...
 
     async def vector_search(
         self,
-        query_embedding: List[float],
+        query_embedding: list[float],
         k: int,
-        organ: Optional[str],
+        organ: str | None,
         session: AsyncSession,
-    ) -> List[KnowledgeChunk]:
+    ) -> list[KnowledgeChunk]:
         ...
 
 
@@ -66,6 +66,8 @@ def _chunk_to_row(chunk: KnowledgeChunk) -> dict:
     avoid clashing with SQLAlchemy's declarative ``metadata`` attribute, so
     the values dict must use the attribute name ``meta`` (not the column
     name ``metadata``).
+    ⚠️ 该规则只适用于 `.values()`（按属性名取值）；`on_conflict_do_update`
+    的 ``set_`` 字符串键是**数据库列名**（必须写 ``metadata``），见下方 upsert。
     """
     return {
         "chunk_id": chunk.chunk_id,
@@ -95,6 +97,29 @@ def _row_to_chunk(row: KnowledgeChunkModel) -> KnowledgeChunk:
     )
 
 
+def build_upsert_statement(values: list[dict]):
+    """构造 chunk 幂等 upsert 语句（独立函数便于编译级回归测试）。"""
+    stmt = pg_insert(KnowledgeChunkModel).values(values)
+    return stmt.on_conflict_do_update(
+        index_elements=[KnowledgeChunkModel.chunk_id],
+        set_={
+            # ⚠️ set_ 的字符串键是**数据库列名**（物理列 metadata，
+            # 由 ORM `meta = Column('metadata', …)` 映射）——用属性名
+            # "meta" 会报 `column "meta" does not exist`
+            # （真机 2026-09-29 首次正式建库实测，此前从未跑通过）。
+            "kb_version": stmt.excluded.kb_version,
+            "organ": stmt.excluded.organ,
+            "content": stmt.excluded.content,
+            "metadata": stmt.excluded.metadata,
+            "embedding": stmt.excluded.embedding,
+            "source_doc_id": stmt.excluded.source_doc_id,
+            "section_path": stmt.excluded.section_path,
+            "token_count": stmt.excluded.token_count,
+            "updated_at": stmt.excluded.updated_at,
+        },
+    )
+
+
 class PGVectorHybridIndexer:
     """PostgreSQL + pgvector backed hybrid indexer.
 
@@ -108,7 +133,7 @@ class PGVectorHybridIndexer:
         self.batch_flush_size = batch_flush_size
 
     async def upsert(
-        self, chunks: List[KnowledgeChunk], session: AsyncSession
+        self, chunks: list[KnowledgeChunk], session: AsyncSession
     ) -> int:
         """Insert or update chunks in batches. Returns count written."""
         if not chunks:
@@ -118,21 +143,7 @@ class PGVectorHybridIndexer:
         for start in range(0, len(chunks), self.batch_flush_size):
             batch = chunks[start : start + self.batch_flush_size]
             values = [_chunk_to_row(c) for c in batch]
-            stmt = pg_insert(KnowledgeChunkModel).values(values)
-            stmt = stmt.on_conflict_do_update(
-                index_elements=[KnowledgeChunkModel.chunk_id],
-                set_={
-                    "kb_version": stmt.excluded.kb_version,
-                    "organ": stmt.excluded.organ,
-                    "content": stmt.excluded.content,
-                    "meta": stmt.excluded.metadata,
-                    "embedding": stmt.excluded.embedding,
-                    "source_doc_id": stmt.excluded.source_doc_id,
-                    "section_path": stmt.excluded.section_path,
-                    "token_count": stmt.excluded.token_count,
-                    "updated_at": stmt.excluded.updated_at,
-                },
-            )
+            stmt = build_upsert_statement(values)
             await session.execute(stmt)
             await session.flush()
             written += len(batch)
@@ -164,7 +175,7 @@ class PGVectorHybridIndexer:
 
     async def get_by_id(
         self, chunk_id: str, session: AsyncSession
-    ) -> Optional[KnowledgeChunk]:
+    ) -> KnowledgeChunk | None:
         stmt = select(KnowledgeChunkModel).where(
             KnowledgeChunkModel.chunk_id == chunk_id
         )
@@ -174,11 +185,11 @@ class PGVectorHybridIndexer:
 
     async def vector_search(
         self,
-        query_embedding: List[float],
+        query_embedding: list[float],
         k: int,
-        organ: Optional[str],
+        organ: str | None,
         session: AsyncSession,
-    ) -> List[KnowledgeChunk]:
+    ) -> list[KnowledgeChunk]:
         """Return top-k chunks by cosine similarity. Optionally filter by organ.
 
         Note: this returns ALL chunks whose embedding is not None; downstream

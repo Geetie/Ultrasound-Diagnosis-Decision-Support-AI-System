@@ -9,7 +9,6 @@ from edge.config import EdgeConfigError, EdgeSettings
 from edge.device_auth import EdgeDeviceAuth
 from edge.device_manager import DeviceState, EdgeDeviceManager
 from edge.main import EdgeService, build_edge_service, main
-from edge.nav_backend import NullNavBackend
 from edge.navigation import NavigationInferenceService
 from edge.pipeline import EdgePipeline
 from edge.protocols import Frame, NavLabel

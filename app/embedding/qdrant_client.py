@@ -241,7 +241,7 @@ class QdrantVectorIndex(VectorIndexClient):
         except Exception as exc:
             raise VectorIndexError(
                 error_code=VectorIndexErrorCode.UPSERT_FAILED,
-                message=f"unexpected error during qdrant upsert",
+                message="unexpected error during qdrant upsert",
                 detail=str(exc),
                 retryable=False,
             )
@@ -290,7 +290,7 @@ class QdrantVectorIndex(VectorIndexClient):
         except Exception as exc:
             raise VectorIndexError(
                 error_code=VectorIndexErrorCode.SEARCH_FAILED,
-                message=f"unexpected error during qdrant search",
+                message="unexpected error during qdrant search",
                 detail=str(exc),
                 retryable=False,
             )

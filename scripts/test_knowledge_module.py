@@ -9,7 +9,7 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from app.knowledge import UDTParser, UDAFVocabulary, parse_kb_version, BaselineValidator
+from app.knowledge import BaselineValidator, UDAFVocabulary, UDTParser, parse_kb_version
 from app.knowledge.vocabulary import Organ
 
 
@@ -31,7 +31,7 @@ def test_vocabulary():
     print(f"   'hyperechoic' synonyms: {synonyms}")
 
     print("\n3. Coverage Rate:")
-    coverage = vocab.coverage_rate(test_terms + ["unknown_term"])
+    coverage = vocab.coverage_rate([*test_terms, "unknown_term"])
     print(f"   Coverage: {coverage:.1%}")
 
     print("\nOK - Vocabulary test completed!")
@@ -136,7 +136,7 @@ def main():
         print("=" * 60)
 
     except Exception as e:
-        print(f"\nError during testing: {str(e)}")
+        print(f"\nError during testing: {e!s}")
         import traceback
         traceback.print_exc()
         return 1

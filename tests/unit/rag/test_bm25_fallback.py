@@ -17,7 +17,6 @@ tests/unit/data/test_knowledge_builder.py and integration tests.
 from __future__ import annotations
 
 import time
-from typing import List, Optional
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -28,7 +27,6 @@ pytestmark = [pytest.mark.track_rag]
 from app.knowledge.protocols import KnowledgeChunk
 from app.rag.bm25_fallback import (
     BM25Fallback,
-    BM25Hit,
     BM25Index,
     _BuiltIndex,
     tokenize,
@@ -38,7 +36,6 @@ from app.rag.protocols import (
     RetrievalResult,
     ScoredChunk,
 )
-
 
 # ----------------------------------------------------------------------
 # helpers
@@ -65,8 +62,8 @@ def _mk_chunk(
 
 def _inject_index(
     bm25: BM25Index,
-    docs: List[tuple[str, str, str]],   # (chunk_id, organ, content)
-    kb_version: Optional[str] = "kb_v1.0.0",
+    docs: list[tuple[str, str, str]],   # (chunk_id, organ, content)
+    kb_version: str | None = "kb_v1.0.0",
 ) -> None:
     """Build a small BM25Okapi from in-memory docs and inject into BM25Index."""
     if not docs:
@@ -342,7 +339,7 @@ class TestProperties:
 
 
 class TestBM25FallbackPolicy:
-    def _mk_result(self, scores: List[float], chunks: int = 0) -> RetrievalResult:
+    def _mk_result(self, scores: list[float], chunks: int = 0) -> RetrievalResult:
         scored = []
         for i, s in enumerate(scores):
             chunk = _mk_chunk(f"c{i}", "thyroid", "x")

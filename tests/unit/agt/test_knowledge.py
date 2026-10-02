@@ -16,7 +16,6 @@ Covers:
 from __future__ import annotations
 
 import json
-from unittest.mock import AsyncMock
 
 import pytest
 
@@ -30,8 +29,7 @@ from app.agents.knowledge import (
     KnowledgeAgentImpl,
 )
 from app.models.schemas import Organ
-from app.rag.protocols import RAGError, RAGErrorCode, RetrievalRequest
-
+from app.rag.protocols import RAGError, RAGErrorCode
 from tests.unit.agt.conftest import FakeRAGService, FakeRedis, make_chunk
 
 

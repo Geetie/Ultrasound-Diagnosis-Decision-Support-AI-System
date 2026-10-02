@@ -1,7 +1,7 @@
 import asyncio
 import logging
+
 import pytest
-from unittest.mock import AsyncMock, patch
 
 pytestmark = [pytest.mark.track_sg, pytest.mark.track_sec, pytest.mark.sec_domain_sg]
 
@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 class TestCircuitBreaker:
 
     def setup_method(self):
-        from safety_gateway.circuit_breaker import circuit_breaker_manager, CircuitBreakerError
+        from safety_gateway.circuit_breaker import CircuitBreakerError, circuit_breaker_manager
         self.manager = circuit_breaker_manager
         self.CircuitBreakerError = CircuitBreakerError
         self._breaker_names = set(self.manager._breakers.keys())
@@ -97,8 +97,8 @@ class TestCircuitBreaker:
 class TestCircuitBreakerHealthCheck:
 
     def test_circuit_breaker_healthy_when_all_closed(self):
-        from safety_gateway.health import HealthChecker
         from safety_gateway.circuit_breaker import circuit_breaker_manager
+        from safety_gateway.health import HealthChecker
 
         circuit_breaker_manager.reset()
 
@@ -109,8 +109,8 @@ class TestCircuitBreakerHealthCheck:
 
     @pytest.mark.asyncio
     async def test_circuit_breaker_unhealthy_when_open(self):
-        from safety_gateway.health import HealthChecker
         from safety_gateway.circuit_breaker import circuit_breaker_manager
+        from safety_gateway.health import HealthChecker
 
         circuit_breaker_manager.reset()
         breaker = circuit_breaker_manager.get_circuit_breaker(
@@ -129,7 +129,7 @@ class TestCircuitBreakerHealthCheck:
 class TestCircuitBreakerHalfOpenRecovery:
 
     def setup_method(self):
-        from safety_gateway.circuit_breaker import circuit_breaker_manager, CircuitBreakerError
+        from safety_gateway.circuit_breaker import CircuitBreakerError, circuit_breaker_manager
         self.manager = circuit_breaker_manager
         self.CircuitBreakerError = CircuitBreakerError
 
@@ -138,7 +138,6 @@ class TestCircuitBreakerHalfOpenRecovery:
 
     @pytest.mark.asyncio
     async def test_half_open_to_open_on_failure(self):
-        from safety_gateway.circuit_breaker import CircuitBreakerState
         breaker = self.manager.get_circuit_breaker("test_ho_to_open", failure_threshold=2, success_threshold=3, cooldown_period=0.01)
 
         async def failing_func():
@@ -158,7 +157,6 @@ class TestCircuitBreakerHalfOpenRecovery:
 
     @pytest.mark.asyncio
     async def test_half_open_partial_success_then_failure(self):
-        from safety_gateway.circuit_breaker import CircuitBreakerState
         breaker = self.manager.get_circuit_breaker("test_ho_partial", failure_threshold=2, success_threshold=3, cooldown_period=0.01)
 
         async def failing_func():
@@ -185,7 +183,6 @@ class TestCircuitBreakerHalfOpenRecovery:
 
     @pytest.mark.asyncio
     async def test_cooldown_auto_transition_to_half_open(self):
-        from safety_gateway.circuit_breaker import CircuitBreakerState
         breaker = self.manager.get_circuit_breaker("test_cooldown_auto", failure_threshold=1, success_threshold=2, cooldown_period=0.01)
 
         async def failing_func():

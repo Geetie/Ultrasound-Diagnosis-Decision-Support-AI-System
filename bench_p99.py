@@ -4,17 +4,17 @@ Measures the latency of each check phase independently and the full pipeline,
 without external dependencies (Redis, PostgreSQL, fusion layer).
 Uses mock data to isolate internal processing latency.
 """
-import time
+import os
 import statistics
 import sys
-import os
+import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from safety_gateway.desensitization import SafetyGatewayDesensitizationEngine
 from safety_gateway.contraindication import ContraindicationEngine
-from safety_gateway.threshold import ThresholdEngine
 from safety_gateway.degraded_output import apply_degraded_output
+from safety_gateway.desensitization import SafetyGatewayDesensitizationEngine
+from safety_gateway.threshold import ThresholdEngine
 from safety_gateway.validation_result import DegradedReason
 
 N = 1000

@@ -9,6 +9,9 @@ logger = structlog.get_logger()
 
 MAX_RECURSION_DEPTH = 20
 
+# 口径必须与 edge/safety.py、safety_gateway/sg_config.py、
+# safety_gateway/checker/orchestrator.py 保持一致（一致性测试见
+# tests/unit/edg/test_whitelist_consistency.py）。
 DEFAULT_WHITELIST_FIELDS: list[str] = [
     "organ_name",
     "anatomical_location",
@@ -19,6 +22,18 @@ DEFAULT_WHITELIST_FIELDS: list[str] = [
     "calcification",
     "lesion_size_measurements",
     "observations",
+    # M1 / M6 / M2 / M9 / M3（详见 edge/safety.py 注释）
+    "plane_assessment",
+    "image_quality",
+    "risk_flag",
+    "suggested_action",
+    "posterior_acoustic",
+    "measurement",
+    "aspect_ratio",
+    "distance_to_capsule",
+    "distance_to_organ_edge",
+    "distance_to_skin",
+    "volume",
 ]
 
 _WHITELIST_FIELD_MAPPING: dict[str, str] = {}
@@ -173,6 +188,23 @@ def apply_degraded_output(
     effective_whitelist = whitelist_fields or DEFAULT_WHITELIST_FIELDS
     degraded_data = {}
 
+    # `reason` 可能是**字符串**而不是枚举成员：`CheckResult` 声明了
+    # `model_config = ConfigDict(use_enum_values=True)`，于是它的 `degraded_reason`
+    # 字段存的就是枚举值字符串；调用方把 `check_result.degraded_reason` 直接传进来时，
+    # 下面那句 `reason.value` 会抛 AttributeError。真机 2026-09-29 实测：
+    #   sg_unexpected_error error='str' object has no attribute 'value' prefix=safety_check
+    #   → POST /api/v1/safety/check 503 → 主服务只能给 needs_review。
+    # （这条路径此前**从未被走到**：consent 值形态不对时请求在 pydantic 校验阶段就 422 了。）
+    # 统一归一为枚举成员，后续比较 / 查表 / .value 才都成立。
+    if not isinstance(reason, DegradedReason):
+        try:
+            reason = DegradedReason(reason)
+        except ValueError:
+            logger.warning("sg_degraded_output_unknown_reason", reason=str(reason))
+            degraded_data.update(_DEFAULT_MARKS)
+            degraded_data["degraded_reason"] = str(reason)
+            return degraded_data
+
     if reason in _CONCLUSION_SUPPRESSED_REASONS:
         data = {k: v for k, v in data.items() if k != "diagnostic_conclusion"}
     else:
@@ -196,9 +228,7 @@ def apply_degraded_output(
                             processed.append(result)
                     elif isinstance(item, dict):
                         processed.append(sg_desensitization_engine.desensitize_dict(item))
-                    elif isinstance(item, bool):
-                        processed.append(item)
-                    elif isinstance(item, (int, float)):
+                    elif isinstance(item, bool) or isinstance(item, (int, float)):
                         processed.append(item)
                     elif item is not None:
                         logger.warning("sg_degraded_output_unknown_list_item_type", key=key, type=type(item).__name__)

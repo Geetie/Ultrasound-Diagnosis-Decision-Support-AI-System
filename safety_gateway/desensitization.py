@@ -4,22 +4,19 @@ import threading
 from typing import Any
 
 import structlog
-from pydantic import BaseModel
 
-from safety_gateway.sg_config import sg_settings as settings
 from safety_gateway.desensitization_rules import (
     DesensitizationRule,
-    MEDICAL_PERSON_NAME_SUFFIXES,
-    MEDICAL_PERSON_PREFIX_EXCLUSIONS,
-    get_default_rules,
     get_default_person_name_set,
+    get_default_rules,
     init_person_name_pattern,
-    load_person_name_set_from_file,
     load_patch_rules,
+    load_person_name_set_from_file,
     load_rules_from_yaml,
-    validate_rules,
     validate_heterogeneous_redundancy,
+    validate_rules,
 )
+from safety_gateway.sg_config import sg_settings as settings
 
 logger = structlog.get_logger()
 

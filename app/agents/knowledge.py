@@ -45,20 +45,21 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import hashlib
 import json
 import random
 import time
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from collections.abc import Callable
+from typing import Any
 
 import structlog
 from cachetools import LRUCache
 
 from app.agents.protocols import KnowledgeAgent
-from app.config.redis import RedisPool
 from app.knowledge.protocols import KnowledgeChunk
 from app.models.schemas import Organ
-from app.rag.protocols import RetrievalRequest, RAGService
+from app.rag.protocols import RAGService, RetrievalRequest
 
 logger = structlog.get_logger("app.agents.knowledge")
 
@@ -120,7 +121,7 @@ class _TTLLRUCache:
         if ttl_seconds <= 0:
             raise ValueError("ttl_seconds must be positive")
         self._cache: LRUCache = LRUCache(maxsize=maxsize)
-        self._expires: Dict[Any, float] = {}
+        self._expires: dict[Any, float] = {}
         self._ttl = float(ttl_seconds)
 
     def __contains__(self, key: Any) -> bool:
@@ -132,10 +133,8 @@ class _TTLLRUCache:
         exp = self._expires.get(key)
         if exp is None or time.monotonic() >= exp:
             # 过期：移除
-            try:
+            with contextlib.suppress(KeyError):
                 del self._cache[key]
-            except KeyError:
-                pass
             self._expires.pop(key, None)
             return False
         return True
@@ -196,12 +195,12 @@ class KnowledgeAgentImpl(KnowledgeAgent):
 
     def __init__(
         self,
-        rag_service: Optional[RAGService],
+        rag_service: RAGService | None,
         redis_client: Any = None,
         redis_ttl_seconds: int = DEFAULT_REDIS_TTL_SECONDS,
         local_cache_capacity: int = DEFAULT_LOCAL_CACHE_CAPACITY,
         local_cache_ttl_seconds: int = DEFAULT_LOCAL_CACHE_TTL_SECONDS,
-        kb_version_resolver: Optional[Callable[[], str]] = None,
+        kb_version_resolver: Callable[[], str] | None = None,
         jitter_ratio: float = DEFAULT_TTL_JITTER_RATIO,
         negative_cache_ttl_seconds: int = DEFAULT_NEGATIVE_CACHE_TTL_SECONDS,
         enable_breakdown_lock: bool = True,
@@ -250,7 +249,7 @@ class KnowledgeAgentImpl(KnowledgeAgent):
         self._key_lock_timeout = key_lock_timeout_seconds
 
         # 击穿防护：单 key 互斥锁字典（懒创建）
-        self._key_locks: Dict[str, asyncio.Lock] = {}
+        self._key_locks: dict[str, asyncio.Lock] = {}
         self._key_locks_guard = asyncio.Lock()
 
         # 命中统计（仅用于测试和监控；不影响业务逻辑）
@@ -270,7 +269,7 @@ class KnowledgeAgentImpl(KnowledgeAgent):
         try:
             v = self._kb_version_resolver()
             return v if v else DEFAULT_KB_VERSION
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning(
                 "knowledge_kb_version_resolver_failed",
                 error=str(exc),
@@ -308,7 +307,7 @@ class KnowledgeAgentImpl(KnowledgeAgent):
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _normalize_profile(profile: Any) -> Optional[Dict[str, Any]]:
+    def _normalize_profile(profile: Any) -> dict[str, Any] | None:
         """把档位归一为 ``RetrievalRequest`` 可用的字段子集。
 
         接受 ``RoutingProfile`` / ``dict``；未知字段一律丢弃（避免把
@@ -321,7 +320,7 @@ class KnowledgeAgentImpl(KnowledgeAgent):
                 data = dict(profile.as_retrieval_kwargs())
             else:
                 data = dict(profile)
-        except Exception as exc:  # noqa: BLE001 - 档位非法时退回默认档位
+        except Exception as exc:
             logger.warning(
                 "knowledge_profile_normalize_failed",
                 error=str(exc),
@@ -347,7 +346,7 @@ class KnowledgeAgentImpl(KnowledgeAgent):
 
     # 使用单例对象作为哨兵（list 不可哈希，但此 sentinel 不作为 cache key），
     # 通过 ``is`` 判定比字符串 sentinel 更安全。
-    _NEGATIVE_SENTINEL: List[Any] = []  # type: ignore[var-annotated]
+    _NEGATIVE_SENTINEL: list[Any] = []  # type: ignore[var-annotated]
 
     @classmethod
     def _is_negative_marker(cls, value: Any) -> bool:
@@ -407,7 +406,7 @@ class KnowledgeAgentImpl(KnowledgeAgent):
 
     async def _read_redis(
         self, key: str
-    ) -> "Tuple[Optional[List[KnowledgeChunk]], bool]":
+    ) -> tuple[list[KnowledgeChunk] | None, bool]:
         """从 Redis 读取缓存。
 
         Returns:
@@ -420,7 +419,7 @@ class KnowledgeAgentImpl(KnowledgeAgent):
             return None, False
         try:
             client = await self._redis_factory.get_client()
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning(
                 "knowledge_redis_get_client_failed",
                 key=key,
@@ -430,7 +429,7 @@ class KnowledgeAgentImpl(KnowledgeAgent):
             return None, False
         try:
             raw = await client.get(key)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning(
                 "knowledge_redis_get_failed",
                 key=key,
@@ -448,7 +447,7 @@ class KnowledgeAgentImpl(KnowledgeAgent):
             if isinstance(items, list) and len(items) == 1 and items[0] == self._REDIS_NEGATIVE_MARKER:
                 return [], True
             return [KnowledgeChunk.model_validate(item) for item in items], False
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             # 缓存内容损坏：当成 miss 处理，避免阻塞业务。
             logger.warning(
                 "knowledge_redis_value_corrupt",
@@ -461,7 +460,7 @@ class KnowledgeAgentImpl(KnowledgeAgent):
     async def _write_redis(
         self,
         key: str,
-        chunks: Optional[List[KnowledgeChunk]],
+        chunks: list[KnowledgeChunk] | None,
         is_negative: bool = False,
     ) -> None:
         """写入 Redis 缓存（自动应用 TTL 抖动 + 支持负缓存）。
@@ -475,7 +474,7 @@ class KnowledgeAgentImpl(KnowledgeAgent):
             return
         try:
             client = await self._redis_factory.get_client()
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning(
                 "knowledge_redis_get_client_failed_on_write",
                 key=key,
@@ -491,7 +490,7 @@ class KnowledgeAgentImpl(KnowledgeAgent):
                 payload = json.dumps([c.model_dump() for c in chunks])
                 ttl = self._jitter_ttl(self._redis_ttl)
             await client.setex(key, ttl, payload)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning(
                 "knowledge_redis_setex_failed",
                 key=key,
@@ -502,7 +501,7 @@ class KnowledgeAgentImpl(KnowledgeAgent):
     def _write_local(
         self,
         key: str,
-        chunks: Optional[List[KnowledgeChunk]],
+        chunks: list[KnowledgeChunk] | None,
         is_negative: bool = False,
     ) -> None:
         """写入 L2 进程内缓存（直接构造 ``_TTLLRUCache`` 的 entry）。"""
@@ -517,7 +516,7 @@ class KnowledgeAgentImpl(KnowledgeAgent):
 
     def _read_local(
         self, key: str
-    ) -> "Tuple[Optional[List[KnowledgeChunk]], bool]":
+    ) -> tuple[list[KnowledgeChunk] | None, bool]:
         """从 L2 进程内缓存读取。
 
         Returns: ``(chunks, is_negative)``，同 ``_read_redis``。
@@ -539,7 +538,7 @@ class KnowledgeAgentImpl(KnowledgeAgent):
         organ: Organ,
         top_k: int,
         profile: Any = None,
-    ) -> List[KnowledgeChunk]:
+    ) -> list[KnowledgeChunk]:
         """调用底层 RAG（**不加锁**；由 ``query()`` 在锁内调用）。
 
         T-GB-AGT-02：``profile`` 传入时，其 ``use_reranking`` /
@@ -569,7 +568,7 @@ class KnowledgeAgentImpl(KnowledgeAgent):
         organ: Organ,
         top_k: int = 10,
         profile: Any = None,
-    ) -> List[KnowledgeChunk]:
+    ) -> list[KnowledgeChunk]:
         """带两层缓存 + 三重防护的知识查询。
 
         防护策略（与 01-架构 §2.3 对齐）：
@@ -697,7 +696,7 @@ class KnowledgeAgentImpl(KnowledgeAgent):
         cache_key: str,
         kb_version: str,
         profile: Any = None,
-    ) -> List[KnowledgeChunk]:
+    ) -> list[KnowledgeChunk]:
         """实际 RAG 调用 + 写回缓存（含穿透防护 + 雪崩防护）。
 
         注：本方法**不**加锁，由 ``query()`` 在锁内调用；
@@ -739,7 +738,7 @@ class KnowledgeAgentImpl(KnowledgeAgent):
         """RAG 健康即视为本智能体健康；Redis 健康是 bonus。"""
         try:
             return await self._rag.health_check()
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning(
                 "knowledge_rag_health_failed",
                 error=str(exc),
@@ -751,7 +750,7 @@ class KnowledgeAgentImpl(KnowledgeAgent):
         """释放 L2 缓存 + 清理击穿锁字典（Redis 连接由全局 ``RedisPool.close()`` 负责）。"""
         try:
             self._local_cache.clear()
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning(
                 "knowledge_close_local_failed",
                 error=str(exc),
@@ -760,7 +759,7 @@ class KnowledgeAgentImpl(KnowledgeAgent):
         try:
             async with self._key_locks_guard:
                 self._key_locks.clear()
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning(
                 "knowledge_close_locks_failed",
                 error=str(exc),
@@ -769,7 +768,7 @@ class KnowledgeAgentImpl(KnowledgeAgent):
         # 安全读取 local_cache_size（用于结构化日志；缓存损坏时不影响清理结果）
         try:
             cache_size = len(self._local_cache)
-        except Exception:  # noqa: BLE001
+        except Exception:
             cache_size = -1
         logger.info(
             "knowledge_closed",
@@ -807,13 +806,13 @@ class KnowledgeAgentImpl(KnowledgeAgent):
 
 
 __all__ = [
-    "KnowledgeAgentImpl",
-    "DEFAULT_REDIS_TTL_SECONDS",
+    "DEFAULT_KB_VERSION",
+    "DEFAULT_KEY_LOCK_TIMEOUT_SECONDS",
     "DEFAULT_LOCAL_CACHE_CAPACITY",
     "DEFAULT_LOCAL_CACHE_TTL_SECONDS",
-    "DEFAULT_TTL_JITTER_RATIO",
     "DEFAULT_NEGATIVE_CACHE_TTL_SECONDS",
-    "DEFAULT_KEY_LOCK_TIMEOUT_SECONDS",
-    "DEFAULT_KB_VERSION",
+    "DEFAULT_REDIS_TTL_SECONDS",
+    "DEFAULT_TTL_JITTER_RATIO",
+    "KnowledgeAgentImpl",
     "_TTLLRUCache",
 ]

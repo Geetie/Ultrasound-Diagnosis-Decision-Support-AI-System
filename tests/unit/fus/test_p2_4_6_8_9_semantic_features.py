@@ -12,9 +12,6 @@ P2-9: 新功能测试覆盖（自身）
 """
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
-from unittest.mock import AsyncMock, MagicMock
-
 import pytest
 
 pytestmark = [pytest.mark.track_fus]
@@ -27,7 +24,6 @@ from app.fusion.protocols import (
     FusionRequest,
 )
 from app.fusion.self_rag import SelfRAGEvalResult
-from app.knowledge.protocols import KnowledgeChunk
 from app.models.schemas import Organ
 from tests.unit.fus.conftest import (
     FakeRAGService,
@@ -35,7 +31,6 @@ from tests.unit.fus.conftest import (
     make_response,
     make_scored,
 )
-
 
 # ======================================================================
 # P2-4 修复：_compare_with_guidelines 语义级比对

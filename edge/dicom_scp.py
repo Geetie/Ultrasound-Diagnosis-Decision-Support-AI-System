@@ -14,12 +14,14 @@ from __future__ import annotations
 import asyncio
 import time
 from collections import deque
-from dataclasses import dataclass, field
-from typing import Any, Callable, Deque, Dict, Optional, Protocol, Tuple
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import Any, Protocol
 
 import numpy as np
 import structlog
 
+from edge.measurement import PIXEL_SPACING_SOURCE_DICOM, from_dicom_metadata
 from edge.protocols import Frame
 
 logger = structlog.get_logger(__name__)
@@ -126,15 +128,15 @@ class DicomSCPService:
         *,
         ae_title: str = DEFAULT_AE_TITLE,
         port: int = DEFAULT_PORT,
-        frame_handler: Optional[Callable[[Frame], None]] = None,
-        decoder: Optional[PixelDecoder] = None,
+        frame_handler: Callable[[Frame], None] | None = None,
+        decoder: PixelDecoder | None = None,
         latency_window: int = DEFAULT_LATENCY_WINDOW,
     ) -> None:
         self._ae_title = ae_title
         self._port = port
         self._frame_handler = frame_handler
         self._decoder = decoder or default_pixel_decoder()
-        self._latencies_ms: Deque[float] = deque(maxlen=latency_window)
+        self._latencies_ms: deque[float] = deque(maxlen=latency_window)
         self._frame_index = 0
         self._stats = DicomSCPStats()
         self._server = None
@@ -156,7 +158,7 @@ class DicomSCPService:
     def started(self) -> bool:
         return self._started
 
-    def set_frame_handler(self, handler: Optional[Callable[[Frame], None]]) -> None:
+    def set_frame_handler(self, handler: Callable[[Frame], None] | None) -> None:
         """设置/替换帧回调。
 
         组装期存在循环依赖（回调需要服务实例，服务需要 SCP），因此提供
@@ -239,6 +241,9 @@ class DicomSCPService:
             pixels=pixels,
             received_at_ms=time.monotonic() * 1000.0,
             acquisition_datetime=self._extract_acquisition_datetime(dataset),
+            # M3：像素间距随帧传递，供导航标注框换算物理尺寸；DICOM 缺失时
+            # 保持 None，由 edge.measurement 明确标记为估算值。
+            pixel_spacing_mm=self._extract_pixel_spacing_mm(dataset),
         )
 
         if self._frame_handler is not None:
@@ -271,15 +276,28 @@ class DicomSCPService:
         return f"frame_{fallback_index}"
 
     @staticmethod
-    def _extract_acquisition_datetime(dataset: Any) -> Optional[str]:
+    def _extract_acquisition_datetime(dataset: Any) -> str | None:
         date = getattr(dataset, "AcquisitionDate", None) or getattr(dataset, "StudyDate", None)
         tm = getattr(dataset, "AcquisitionTime", None) or getattr(dataset, "StudyTime", None)
         if date and tm:
             return f"{date}{str(tm).split('.')[0]}"
         return None
 
+    @staticmethod
+    def _extract_pixel_spacing_mm(dataset: Any) -> tuple[float, float] | None:
+        """M3：取 DICOM 像素间距 ``(行间距, 列间距)``。
+
+        与 ``edge.measurement`` 的分工：这里只回答"DICOM 里到底有没有"，
+        回退默认间距的策略由测量模块统一决定并标记来源——本函数在缺失时
+        返回 ``None``，绝不填充默认值。
+        """
+        spacing = from_dicom_metadata(dataset)
+        if spacing.source != PIXEL_SPACING_SOURCE_DICOM:
+            return None
+        return (spacing.row_mm, spacing.column_mm)
+
     # ---- 观测 ----
-    def latency_stats(self) -> Dict[str, Optional[float]]:
+    def latency_stats(self) -> dict[str, float | None]:
         if not self._latencies_ms:
             return {"p50_ms": None, "p99_ms": None, "samples": 0}
         ordered = sorted(self._latencies_ms)
@@ -303,13 +321,13 @@ class DicomSCPService:
 __all__ = [
     "DEFAULT_AE_TITLE",
     "DEFAULT_PORT",
+    "STATUS_PROCESSING_FAILURE",
+    "STATUS_SUCCESS",
     "DicomSCPService",
     "DicomSCPStats",
     "GdcmPixelDecoder",
     "PixelDecodeError",
     "PixelDecoder",
     "PydicomPixelDecoder",
-    "STATUS_PROCESSING_FAILURE",
-    "STATUS_SUCCESS",
     "default_pixel_decoder",
 ]

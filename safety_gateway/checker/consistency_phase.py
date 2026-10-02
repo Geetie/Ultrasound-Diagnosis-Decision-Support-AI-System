@@ -2,9 +2,9 @@ from typing import Any, ClassVar
 
 import structlog
 
-from safety_gateway.validation_result import CheckResult, ConsistencyLevel, DegradedReason
-from safety_gateway.checker.phase_base import CheckPhase, CheckContext
+from safety_gateway.checker.phase_base import CheckContext, CheckPhase
 from safety_gateway.sg_config import sg_settings as settings
+from safety_gateway.validation_result import CheckResult, ConsistencyLevel, DegradedReason
 
 logger = structlog.get_logger()
 

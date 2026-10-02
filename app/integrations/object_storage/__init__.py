@@ -37,7 +37,7 @@ class StoredObject:
     checksum: str
     adapter: str
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         return {
             "key": self.key,
             "size_bytes": self.size_bytes,
@@ -58,7 +58,7 @@ class ObjectStorageAdapter(Protocol):
         """写入对象（覆盖同名对象）。"""
         ...
 
-    async def get(self, key: str) -> Optional[bytes]:
+    async def get(self, key: str) -> bytes | None:
         """读取对象；不存在返回 ``None``。"""
         ...
 
@@ -68,7 +68,7 @@ class ObjectStorageAdapter(Protocol):
     async def delete(self, key: str) -> bool:
         ...
 
-    async def list_keys(self, prefix: str = "") -> List[str]:
+    async def list_keys(self, prefix: str = "") -> list[str]:
         ...
 
     async def health(self) -> bool:
@@ -87,9 +87,9 @@ class LocalFakeObjectStorage:
             传目录可让"归档 → 重启 → 恢复"在本地闭环验证。
     """
 
-    def __init__(self, root_dir: Optional[str] = None) -> None:
+    def __init__(self, root_dir: str | None = None) -> None:
         self._root = Path(root_dir) if root_dir else None
-        self._memory: Dict[str, bytes] = {}
+        self._memory: dict[str, bytes] = {}
         if self._root is not None:
             self._root.mkdir(parents=True, exist_ok=True)
 
@@ -119,7 +119,7 @@ class LocalFakeObjectStorage:
             adapter=self.name,
         )
 
-    async def get(self, key: str) -> Optional[bytes]:
+    async def get(self, key: str) -> bytes | None:
         if self._root is None:
             return self._memory.get(key)
         path = self._path(key)
@@ -141,13 +141,13 @@ class LocalFakeObjectStorage:
         await asyncio.to_thread(path.unlink)
         return True
 
-    async def list_keys(self, prefix: str = "") -> List[str]:
+    async def list_keys(self, prefix: str = "") -> list[str]:
         if self._root is None:
             return sorted(k for k in self._memory if k.startswith(prefix))
         base = self._root
         if not await asyncio.to_thread(base.exists):
             return []
-        keys: List[str] = []
+        keys: list[str] = []
         for path in base.rglob("*"):
             if await asyncio.to_thread(path.is_file):
                 rel = str(path.relative_to(base)).replace(os.sep, "/")
@@ -214,7 +214,7 @@ class MinioObjectStorage:
 
     async def _with_retry(self, operation: str, func, *args, **kwargs):
         attempt = 0
-        last_error: Optional[Exception] = None
+        last_error: Exception | None = None
         while attempt < self._max_retries:
             attempt += 1
             try:
@@ -253,7 +253,7 @@ class MinioObjectStorage:
             adapter=self.name,
         )
 
-    async def get(self, key: str) -> Optional[bytes]:
+    async def get(self, key: str) -> bytes | None:
         def _get():
             client = self._client()
             response = None
@@ -290,7 +290,7 @@ class MinioObjectStorage:
         await self._with_retry("delete", _delete)
         return True
 
-    async def list_keys(self, prefix: str = "") -> List[str]:
+    async def list_keys(self, prefix: str = "") -> list[str]:
         def _list():
             client = self._client()
             return [
@@ -312,10 +312,10 @@ class MinioObjectStorage:
             return False
 
 
-_adapter: Optional[ObjectStorageAdapter] = None
+_adapter: ObjectStorageAdapter | None = None
 
 
-def set_object_storage(adapter: Optional[ObjectStorageAdapter]) -> None:
+def set_object_storage(adapter: ObjectStorageAdapter | None) -> None:
     """注入（或清除）进程级对象存储适配器。"""
     global _adapter
     _adapter = adapter

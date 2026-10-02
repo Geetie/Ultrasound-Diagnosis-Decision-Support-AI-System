@@ -11,9 +11,9 @@
 """
 from __future__ import annotations
 
-import asyncio
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from app.agents.protocols import AgentResponse
 from app.fusion.protocols import FusionResult
@@ -198,6 +198,7 @@ class TestE2EScenarioT6ConsentWithdrawn:
         from app.services.diagnosis_pipeline import _safe_safety_check
 
         with patch("app.services.diagnosis_pipeline.safety_gateway_client") as mock_sg:
+            mock_sg.get_consent_status = AsyncMock(return_value="granted")
             mock_sg.check_output = AsyncMock(return_value={
                 "passed": True,  # SG 同意通过
                 "consent_status_at_output": "withdrawn",  # 但同意被撤回
@@ -206,6 +207,8 @@ class TestE2EScenarioT6ConsentWithdrawn:
                 request=MagicMock(),
                 fusion_result=MagicMock(),
                 request_id="req_t6_001",
+                # 必须先解析出患者：解析不出时管线 fail-closed，本用例就走不到 SG。
+                patient_id="P001",
             )
 
         # 当前实现下 sg_ok 仍为 True; 端点 / 业务层应根据 consent_status_at_output 阻断

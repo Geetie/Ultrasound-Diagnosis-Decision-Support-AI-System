@@ -1,10 +1,8 @@
-import pytest
 import asyncio
-import os
-import hashlib
-import hmac
-from unittest.mock import patch, MagicMock, AsyncMock
-from datetime import datetime, timedelta, timezone
+from unittest.mock import patch
+
+import pytest
+
 pytestmark = [pytest.mark.track_sec, pytest.mark.track_sg]
 
 
@@ -20,15 +18,17 @@ class TestP0_1_RS256Enforcement:
         assert s.jwt_algorithm == "RS256"
 
     def test_decode_access_token_uses_hardcoded_rs256(self):
-        from app.security import auth as auth_module
         import inspect
+
+        from app.security import auth as auth_module
         source = inspect.getsource(auth_module.decode_access_token)
         assert '"RS256"' in source
         assert "settings.jwt_algorithm" not in source or "RS256" in source
 
     def test_inactive_user_returns_403(self):
-        from app.security import auth as auth_module
         import inspect
+
+        from app.security import auth as auth_module
         source = inspect.getsource(auth_module.get_current_active_user)
         assert "403" in source
 
@@ -98,8 +98,9 @@ class TestP0_3_NoFakeUsersDB:
         assert hasattr(User, 'role')
 
     def test_token_stats_requires_admin(self):
-        import app.api.v1.auth as auth_api
         import inspect
+
+        import app.api.v1.auth as auth_api
         source = inspect.getsource(auth_api.get_token_stats)
         assert "SYSTEM_ADMIN" in source or "RoleChecker" in source
 
@@ -120,6 +121,7 @@ class TestP0_4_ConsentStatusEnumValidation:
 
     def test_checker_validates_consent_status(self):
         import inspect
+
         from safety_gateway.checker import SafetyGatewayChecker
         source = inspect.getsource(SafetyGatewayChecker.perform_full_check)
         assert "consent_status_at_input" in source
@@ -177,7 +179,7 @@ class TestP1_2_ChainLocksCleanup:
         assert callable(release_chain_lock)
 
     async def test_release_chain_lock_removes_entry(self):
-        from app.services.audit_service import _chain_locks, _chain_lock_order, release_chain_lock
+        from app.services.audit_service import _chain_lock_order, _chain_locks, release_chain_lock
         _chain_locks["test_session"] = asyncio.Lock()
         _chain_lock_order.append("test_session")
         await release_chain_lock("test_session")
@@ -204,6 +206,7 @@ class TestP1_5_AuthRateLimiting:
 class TestP1_6_JWTKeyRotationParallelVerification:
     def test_decode_tries_old_keys_on_failure(self):
         import inspect
+
         from app.security import auth as auth_module
         source = inspect.getsource(auth_module.decode_access_token)
         assert "JWT_KEY_NAME" in source
@@ -217,6 +220,7 @@ class TestP1_6_JWTKeyRotationParallelVerification:
 class TestP1_7_SessionKickIntegration:
     def test_login_endpoint_has_session_kick(self):
         import inspect
+
         from app.api.v1 import auth as auth_api
         source = inspect.getsource(auth_api.login)
         assert "create_refresh_token" in source
@@ -236,6 +240,7 @@ class TestP1_8_ConsentWithdrawalBroadcast:
         ConsentRepository._publish_consent_withdrawal，含 withdrawn_at 全字段）。
         历史断言（要求 API 层内含 xadd）钉住的是双投递缺陷本体，随修复更新。"""
         import inspect
+
         from app.api.v1 import consent as consent_api
         source = inspect.getsource(consent_api.update_consent)
         assert "xadd" not in source
@@ -263,6 +268,7 @@ class TestP1_9_PeriodicAuditVerification:
 class TestP1_10_HSMPSSPadding:
     def test_sign_uses_pss(self):
         import inspect
+
         from app.security.hsm import HSMManager
         source = inspect.getsource(HSMManager.sign)
         assert "PSS" in source
@@ -270,6 +276,7 @@ class TestP1_10_HSMPSSPadding:
 
     def test_verify_uses_pss(self):
         import inspect
+
         from app.security.hsm import HSMManager
         source = inspect.getsource(HSMManager.verify_signature)
         assert "PSS" in source
@@ -287,7 +294,8 @@ class TestP2_4_FusionNoneConsistency:
 class TestP2_5_ForbiddenTermsBoundaryMatch:
     def test_filter_uses_regex(self):
         import inspect
-        from safety_gateway.degraded_output import filter_forbidden_terms, FORBIDDEN_GRADING_TERMS
+
+        from safety_gateway.degraded_output import FORBIDDEN_GRADING_TERMS, filter_forbidden_terms
         source = inspect.getsource(filter_forbidden_terms)
         assert "FORBIDDEN_GRADING_TERMS" in source
         assert len(FORBIDDEN_GRADING_TERMS) > 0
@@ -307,6 +315,7 @@ class TestP2_9_AuditLogTypeField:
 
     def test_log_action_accepts_log_type(self):
         import inspect
+
         from app.services.audit_service import AuditService
         source = inspect.getsource(AuditService.log_action)
         assert "log_type" in source
@@ -314,8 +323,9 @@ class TestP2_9_AuditLogTypeField:
 
 class TestP2_10_EmptyDataJudgment:
     def test_zero_value_not_treated_as_empty(self):
-        from safety_gateway.checker import SafetyGatewayChecker
         import inspect
+
+        from safety_gateway.checker import SafetyGatewayChecker
         source = inspect.getsource(SafetyGatewayChecker.perform_full_check)
         assert "isinstance" in source
         assert "bool" in source or "int" in source or "float" in source
@@ -324,6 +334,7 @@ class TestP2_10_EmptyDataJudgment:
 class TestP2_3_ExponentialBackoff:
     def test_backoff_formula_in_client(self):
         import inspect
+
         from app.services.safety_gateway_client import SafetyGatewayClient
         source = inspect.getsource(SafetyGatewayClient.check_output)
         assert "2 **" in source or "attempt" in source

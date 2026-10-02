@@ -1,6 +1,9 @@
-import pytest
 import time
-from app.security.hsm import HSMManager, KeySlot, DegradedPhase
+
+import pytest
+
+from app.security.hsm import HSMManager, KeySlot
+
 pytestmark = [pytest.mark.track_sec, pytest.mark.track_inf, pytest.mark.benchmark]
 
 _WARMUP_ITERATIONS = 10

@@ -1,13 +1,12 @@
-import pytest
+
+import pydicom
+
 from app.api.v1.imaging import (
+    REQUIRED_DICOM_TAGS,
     _desensitize_patient_id,
     _desensitize_patient_name,
     extract_metadata_from_dataset,
-    parse_and_validate_dicom,
-    REQUIRED_DICOM_TAGS,
 )
-import pydicom
-from io import BytesIO
 
 
 class TestDesensitization:

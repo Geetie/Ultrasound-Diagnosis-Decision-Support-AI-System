@@ -10,18 +10,15 @@
 """
 from __future__ import annotations
 
-import asyncio
 import time
 
 import pytest
 
 pytestmark = [pytest.mark.track_fus, pytest.mark.integration]
 
-from app.fusion.conflict import ConflictDetector
 from app.fusion.consistency import ConsistencyChecker
 from app.fusion.crag import CRAGHandler
 from app.fusion.protocols import (
-    ConflictResolution,
     ConflictType,
     ConsistencySeverity,
     FusionRequest,
@@ -34,7 +31,6 @@ from tests.unit.fus.conftest import (
     make_response,
     make_scored,
 )
-
 
 # ======================================================================
 # 端到端：标准融合

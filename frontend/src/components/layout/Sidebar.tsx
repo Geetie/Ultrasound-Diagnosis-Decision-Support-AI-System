@@ -8,6 +8,7 @@ import {
   BookOutlined,
   AuditOutlined,
   FormOutlined,
+  FileTextOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -21,6 +22,7 @@ const menuItems = [
   { key: '/consent', icon: <AuditOutlined />, label: '知情同意' },
   { key: '/feedback', icon: <FormOutlined />, label: '反馈提交' },
   { key: '/session/new', icon: <SafetyCertificateOutlined />, label: '新建会话' },
+  { key: '/report', icon: <FileTextOutlined />, label: '报告签发' },
   { key: '/qc-report', icon: <BarChartOutlined />, label: '质控报告' },
   { key: '/kb-management', icon: <BookOutlined />, label: '知识库管理' },
   { key: '/settings', icon: <SettingOutlined />, label: '设置' },

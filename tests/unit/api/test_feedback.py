@@ -1,9 +1,9 @@
-import pytest
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+
 from app.config.redis import RedisGetResult
-from app.models.schemas import FeedbackType, FeedbackLevel
 
 pytestmark = [pytest.mark.track_api, pytest.mark.feedback]
 
@@ -58,8 +58,8 @@ def _mock_audit_service():
 class TestFeedbackCorrectionL2:
     @pytest.fixture(autouse=True)
     def mock_deps(self):
+        from app.dependencies import get_audit_service, get_diagnosis_repo, get_feedback_repo, get_session_repo
         from app.main import app
-        from app.dependencies import get_feedback_repo, get_diagnosis_repo, get_session_repo, get_audit_service
         from app.security.auth import get_current_active_user
 
         mock_fb_repo = _mock_feedback_repo()
@@ -96,8 +96,8 @@ class TestFeedbackCorrectionL2:
 class TestFeedbackSupplementL2:
     @pytest.fixture(autouse=True)
     def mock_deps(self):
+        from app.dependencies import get_audit_service, get_diagnosis_repo, get_feedback_repo, get_session_repo
         from app.main import app
-        from app.dependencies import get_feedback_repo, get_diagnosis_repo, get_session_repo, get_audit_service
         from app.security.auth import get_current_active_user
 
         mock_fb_repo = _mock_feedback_repo()
@@ -132,8 +132,8 @@ class TestFeedbackSupplementL2:
 class TestFeedbackNewKnowledgeL2:
     @pytest.fixture(autouse=True)
     def mock_deps(self):
+        from app.dependencies import get_audit_service, get_diagnosis_repo, get_feedback_repo, get_session_repo
         from app.main import app
-        from app.dependencies import get_feedback_repo, get_diagnosis_repo, get_session_repo, get_audit_service
         from app.security.auth import get_current_active_user
 
         mock_fb_repo = _mock_feedback_repo()
@@ -168,8 +168,8 @@ class TestFeedbackNewKnowledgeL2:
 class TestFeedbackRuleChangeL3:
     @pytest.fixture(autouse=True)
     def mock_deps(self):
+        from app.dependencies import get_audit_service, get_diagnosis_repo, get_feedback_repo, get_session_repo
         from app.main import app
-        from app.dependencies import get_feedback_repo, get_diagnosis_repo, get_session_repo, get_audit_service
         from app.security.auth import get_current_active_user
 
         mock_fb_repo = _mock_feedback_repo()
@@ -204,8 +204,8 @@ class TestFeedbackRuleChangeL3:
 class TestFeedbackRuleChangeNonL3:
     @pytest.fixture(autouse=True)
     def mock_deps(self):
+        from app.dependencies import get_audit_service, get_diagnosis_repo, get_feedback_repo, get_session_repo
         from app.main import app
-        from app.dependencies import get_feedback_repo, get_diagnosis_repo, get_session_repo, get_audit_service
         from app.security.auth import get_current_active_user
 
         mock_fb_repo = _mock_feedback_repo()
@@ -239,8 +239,8 @@ class TestFeedbackRuleChangeNonL3:
 class TestFeedbackDiagnosisNotFound:
     @pytest.fixture(autouse=True)
     def mock_deps(self):
+        from app.dependencies import get_audit_service, get_diagnosis_repo, get_feedback_repo, get_session_repo
         from app.main import app
-        from app.dependencies import get_feedback_repo, get_diagnosis_repo, get_session_repo, get_audit_service
         from app.security.auth import get_current_active_user
 
         mock_fb_repo = _mock_feedback_repo()
@@ -274,8 +274,8 @@ class TestFeedbackDiagnosisNotFound:
 class TestFeedbackIdempotencyCacheHit:
     @pytest.fixture(autouse=True)
     def mock_deps(self):
+        from app.dependencies import get_audit_service, get_diagnosis_repo, get_feedback_repo, get_session_repo
         from app.main import app
-        from app.dependencies import get_feedback_repo, get_diagnosis_repo, get_session_repo, get_audit_service
         from app.security.auth import get_current_active_user
 
         mock_fb_repo = _mock_feedback_repo()
@@ -322,8 +322,8 @@ class TestFeedbackIdempotencyTTL:
 
     @pytest.fixture(autouse=True)
     def mock_deps(self):
+        from app.dependencies import get_audit_service, get_diagnosis_repo, get_feedback_repo, get_session_repo
         from app.main import app
-        from app.dependencies import get_feedback_repo, get_diagnosis_repo, get_session_repo, get_audit_service
         from app.security.auth import get_current_active_user
 
         mock_fb_repo = _mock_feedback_repo()

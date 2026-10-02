@@ -86,6 +86,9 @@ _LI_RADS_LEVEL_MAP = {
 _ATTRIBUTE_CATEGORIES = [
     "echogenicity", "boundary", "morphology", "vascularity", "calcification",
     "heart_structure", "heart_condition", "heart_function",
+    # M9 后方回声特征（UDAF 属性扩展）。派生测量（derived_measurement）
+    # 不在此列——它由 bbox/像素间距计算得到，不从文本匹配。
+    "posterior_acoustic",
 ]
 
 
@@ -197,11 +200,29 @@ class UDTParser:
 
     def _extract_all_attributes(self, text: str,
                                 organ: str | None) -> list[ParsedAttribute]:
-        """Extract all attributes from text."""
+        """Extract all attributes from text.
+
+        M9 后方回声（``posterior_acoustic``）先于其它类别匹配，并将其命中
+        span 作为**抑制区间**传给后续类别：否则"后方回声增强"会在
+        ``echogenicity`` 独立命中内部的"回声增强"，产出并非病灶自身属性的
+        ``hyperechoic`` 假阳性（会污染后续分级评分）。
+
+        当文本不含后方回声术语时，抑制区间为空，抽取顺序与结果与改造前
+        完全一致。
+        """
         attributes: list[ParsedAttribute] = []
 
+        blocked_spans: list[tuple[int, int]] = []
+        if "posterior_acoustic" in _ATTRIBUTE_CATEGORIES:
+            attributes.extend(self._extract_by_category(
+                text, "posterior_acoustic", organ, record_spans=blocked_spans))
+
         for category in _ATTRIBUTE_CATEGORIES:
-            attributes.extend(self._extract_by_category(text, category, organ))
+            if category == "posterior_acoustic":
+                # 已在上方优先匹配
+                continue
+            attributes.extend(self._extract_by_category(
+                text, category, organ, blocked_spans=blocked_spans))
 
         if self.config.extract_classifications:
             attributes.extend(self._extract_classification(text))
@@ -212,12 +233,21 @@ class UDTParser:
         return attributes
 
     def _extract_by_category(self, text: str, category: str,
-                             organ: str | None) -> list[ParsedAttribute]:
+                             organ: str | None,
+                             blocked_spans: list[tuple[int, int]] | None = None,
+                             record_spans: list[tuple[int, int]] | None = None,
+                             ) -> list[ParsedAttribute]:
         """Extract attributes for a given category using Trie-based multi-pattern matching.
 
         Optimized from O(n*m) to O(T + S) complexity:
         - T = len(text), S = total characters in synonyms + terms
         - Uses a Trie to find all vocabulary matches in a single text scan.
+
+        Args:
+            blocked_spans: 其它类别的已匹配区间；与之重叠的命中被丢弃
+                （M9：抑制"后方回声增强"内部的"回声增强"误匹配）。
+            record_spans: 若提供，把本类别命中的区间写回该列表，供调用方
+                作为后续类别的抑制区间。
         """
         category_terms = set(self.vocab.get_terms_by_category(category))
         attributes: list[ParsedAttribute] = []
@@ -264,8 +294,11 @@ class UDTParser:
 
             if match_end != -1:
                 span = (i, match_end)
-                if not self._overlaps(span, matched_spans):
+                blocked = bool(blocked_spans) and self._overlaps(span, blocked_spans)
+                if not blocked and not self._overlaps(span, matched_spans):
                     matched_spans.append(span)
+                    if record_spans is not None:
+                        record_spans.append(span)
                     attributes.append(ParsedAttribute(
                         category=category,
                         value=match_value,

@@ -18,10 +18,29 @@ async def main() -> None:
     parser.add_argument("--concurrency", type=int, default=4)
     parser.add_argument("--output", default="consistency_report.json")
     parser.add_argument("--timeout", type=float, default=30.0)
+    parser.add_argument(
+        "--structured-output",
+        action="store_true",
+        help="给两引擎追加完全相同的输出格式指令段（末行 `分级: X`），消除自由文本噪音",
+    )
+    parser.add_argument(
+        "--use-chat",
+        action="store_true",
+        help="llama.cpp 也走 /v1/chat/completions（与 vLLM 同形态，消除模板差异）",
+    )
+    parser.add_argument(
+        "--guided-json",
+        action="store_true",
+        help="P0-2 约束解码：采样层 schema 强制（vLLM guided_json / llama.cpp GBNF），"
+        "分级输出 {\"grading\": \"<枚举>\"}；启用时不追加 prompt 指令段",
+    )
     args = parser.parse_args()
 
     with open(args.cases, encoding="utf-8") as f:
-        cases = json.load(f)
+        loaded = json.load(f)
+    # 兼容两种格式：裸列表，或 generate_test_cases/server_build_eval_cases 的
+    # {"dataset_version":..., "total_cases":..., "cases": [...]} 包裹结构。
+    cases = loaded["cases"] if isinstance(loaded, dict) else loaded
 
     print(f"Loaded {len(cases)} test cases from {args.cases}")
 
@@ -30,6 +49,7 @@ async def main() -> None:
         llama_cpp_host=args.llama_cpp_host,
         llama_cpp_port=args.llama_cpp_port,
         timeout_seconds=args.timeout,
+        llama_cpp_use_chat=args.use_chat,
     )
     vllm_engine = create_inference_engine(
         engine_type="vllm",
@@ -46,6 +66,8 @@ async def main() -> None:
         engine_b_name="vLLM",
         concurrency=args.concurrency,
         request_timeout_seconds=args.timeout,
+        structured_output=args.structured_output,
+        guided_json=args.guided_json,
     )
 
     report = await verifier.verify(cases)
@@ -54,6 +76,34 @@ async def main() -> None:
     with open(args.output, "w", encoding="utf-8") as f:
         f.write(report_json)
 
+    # P0-2 分层口径（16 号 A.2.2 管理决策项）：常规+高风险 与 边界模糊用例
+    # 分开统计——边界用例为刻意 ±1.5 抖动构造，两引擎分歧是设计内行为。
+    # 注意：常规用例的 category 为 None（build 脚本不设该字段），归入常规层。
+    rows = report.case_rows or []
+
+    def _tier(sub: list[dict]) -> dict:
+        if not sub:
+            return {}
+        consistent = sum(1 for r in sub if r.get("consistent"))
+        return {
+            "total": len(sub),
+            "grading_consistency_rate": round(consistent / len(sub), 4),
+        }
+
+    non_boundary = [r for r in rows if not str(r.get("category") or "").startswith("boundary")]
+    boundary = [r for r in rows if str(r.get("category") or "").startswith("boundary")]
+    report_dict = json.loads(report_json)
+    report_dict["stratified_criteria"] = {
+        "regular_high_risk": _tier(non_boundary),
+        "boundary_fuzzy": _tier(boundary),
+        "note": "分层口径依据 10 号 v1.3 修订：边界模糊用例（刻意阈值抖动构造）"
+        "两引擎分歧属设计内行为，≥95% 门控适用于常规+高风险层。"
+        "常规用例 category 为 None，归入常规层。",
+    }
+    with open(args.output, "w", encoding="utf-8") as f:
+        f.write(json.dumps(report_dict, ensure_ascii=False, indent=2))
+
+    strat = report_dict["stratified_criteria"]
     print("\nConsistency Report:")
     print(f"  Total cases: {report.total_cases}")
     print(f"  Grading consistency: {report.grading_consistency_rate:.2%} (target: ≥95%)")
@@ -61,6 +111,13 @@ async def main() -> None:
     print(f"  Hallucination rate diff: {report.hallucination_rate_diff:.2%} (target: ≤0.5%)")
     print(f"  Latency diff: {report.latency_diff_pct:.1f}% (target: ≤20%)")
     print(f"  PASSED: {report.passed}")
+    if strat:
+        print(
+            f"  分层口径: 常规+高风险={strat['regular_high_risk'].get('grading_consistency_rate')} "
+            f"(n={strat['regular_high_risk'].get('total')}) | "
+            f"边界模糊={strat['boundary_fuzzy'].get('grading_consistency_rate')} "
+            f"(n={strat['boundary_fuzzy'].get('total')})"
+        )
     print(f"\nReport saved to {args.output}")
 
     await llama_engine.close()

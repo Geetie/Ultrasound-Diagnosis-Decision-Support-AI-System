@@ -1,4 +1,4 @@
-from typing import List
+
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -19,10 +19,9 @@ class Settings(BaseSettings):
 
     safety_gateway_host: str = 'localhost'
     safety_gateway_port: int = 9001
-    safety_gateway_whitelist_fields: List[str] = Field(
-        default=['organ_name', 'anatomical_location', 'echogenicity', 'boundary', 'morphology', 'vascularity', 'calcification', 'measurement'],
-        alias='safety_gateway_whitelist_fields',
-    )
+    # wiring-audit P2-4：删除游离白名单副本 safety_gateway_whitelist_fields——
+    # 权威白名单在 edge/safety.py 与 safety_gateway 侧（SG 自带同名配置），
+    # 这份 8 项副本零引用且与权威不一致，删除以防误用。
     safety_gateway_enable_degraded_mode: bool = True
     safety_gateway_queue_timeout_seconds: float = 10.0
     safety_gateway_http_client_timeout_seconds: float = Field(default=3.0, alias='sg_http_client_timeout_seconds')
@@ -97,9 +96,46 @@ class Settings(BaseSettings):
     consent_withdrawal_consumer_enabled: bool = True
     consent_withdrawal_consumer_group: str = "consent_withdrawal_consumers"
     consent_withdrawal_consumer_name: str = "sec_consumer_01"
-    consent_withdrawal_handlers: List[str] = Field(default_factory=lambda: ["safety_action", "data_cleanup"])
+    consent_withdrawal_handlers: list[str] = Field(default_factory=lambda: ["safety_action", "data_cleanup"])
     consent_withdrawal_batch_size: int = 10
     consent_withdrawal_poll_timeout_ms: int = 5000
+    # T-G1-INT-06：撤回生效端到端时延验收线（撤回动作 -> 各处理器执行完毕）
+    consent_withdrawal_e2e_latency_target_ms: int = 500
+
+    # 二期 §9 应用层算法档位：standard（RSA 家族）| gm（国密 SM2/SM4）
+    # 默认 standard 而非规格写的"默认国密"：国密需 gmssl，未安装时选 gm 会直接起不来，
+    # 部署侧装好依赖后改这一项即可切换。
+    security_algorithm_profile: str = "standard"
+
+    # 二期 §20 分布漂移（与既有 SPC 检测器分工：SPC 判单点越限，这里判分布形状变化）
+    drift_input_kl_threshold: float = 0.1
+    drift_output_kl_threshold: float = 0.15
+    drift_output_mean_shift_threshold: float = 0.05
+    drift_distribution_min_samples: int = 500
+
+    # 二期 §19 A/B 实验（仅 full Profile 生效）
+    ab_experiment_enabled: bool = False
+    ab_experiment_name: str = "default"
+    ab_experiment_traffic_percent: int = 10
+    ab_alpha: float = 0.05
+    ab_power: float = 0.80
+    ab_mde: float = 0.03
+    ab_non_inferiority_margin: float = 0.03
+    ab_min_samples_per_variant: int = 200
+
+    # 二期 §7 AI 修正率监控
+    correction_rate_window_days: int = 30
+    correction_rate_direction_alert_threshold: float = 0.20
+    correction_rate_reviewer_alert_threshold: float = 0.50
+    correction_rate_peer_baseline_threshold: float = 0.20
+    # 低于该样本数只统计不判定：1/1=100% 会直接触发个体告警，把真实信号淹没
+    correction_rate_min_samples: int = 20
+
+    # T-GR-INT-01 灰度发布路由
+    rollout_enabled: bool = False
+    rollout_full_percent: int = 5
+    rollout_compact_session_threshold: int = 10
+    rollout_counter_ttl_seconds: int = 7 * 24 * 3600
 
     deployment_profile: str = 'compact'
 
@@ -117,17 +153,17 @@ class Settings(BaseSettings):
     inference_timeout_seconds: float = 30.0
     inference_health_check_timeout_seconds: float = 5.0
     inference_connect_timeout_seconds: float = 10.0
-    
+
     # 重试配置
     inference_max_retries: int = 3
     inference_retry_delay_base: float = 1.0
     inference_retry_delay_max: float = 10.0
-    
+
     # 熔断配置
     inference_circuit_breaker_timeout: float = 30.0
     inference_circuit_breaker_failure_threshold: int = 5
     inference_circuit_breaker_success_threshold: int = 3
-    
+
     # 连接池配置
     inference_pool_max_connections: int = 10
     inference_pool_keepalive_expiry: float = 300.0
@@ -148,6 +184,23 @@ class Settings(BaseSettings):
     nav_safety_check_max_timeout_seconds: float = 0.08
     nav_verification_workers: int = 4
     nav_max_connections_per_session: int = 5
+
+    # === M2 快速路径高危标记自动升级 ===
+    # 命中 B+ 级（risk_flag=high，已过 SafetyGateway）时自动发起深度诊断。
+    nav_auto_upgrade_enabled: bool = True
+    # 自动升级使用的响应档位（规格：标准/全量）。
+    nav_auto_upgrade_tier: str = "standard"
+    # 同一会话的升级冷却窗口（秒）。导航流为 15fps，若不做冷却会逐帧入队，
+    # 瞬间打满诊断队列。
+    nav_auto_upgrade_cooldown_seconds: float = 60.0
+    # 同一会话最多自动升级次数（防止异常模型持续误标导致队列饥饿）。
+    nav_auto_upgrade_max_per_session: int = 3
+
+    # === M1 切面标准性监控 ===
+    # 连续多少帧非标准切面触发流程监控提醒（规格：连续 5 帧）。
+    nav_plane_non_standard_streak_threshold: int = 5
+    # 连续多少帧图像质量不达标触发提醒。
+    nav_image_quality_poor_streak_threshold: int = 5
     session_max_ttl_seconds: int = 7200
     dicom_max_retransmit_per_frame: int = 3
     dicom_max_retransmit_frame_range: int = 90
@@ -158,10 +211,20 @@ class Settings(BaseSettings):
     phase0a_mock_kb_version: str = "kb_v1.0.0"
 
     # === T-GA-INT-01 端到端集成配置 ===
+    # 当前激活的知识库版本（RAG 检索与知识智能体缓存键共用；换版本走
+    # .env 配置，建库/灌数见 scripts/init_knowledge_base.py 与
+    # server_populate_vector_index.py）
+    rag_kb_version: str = 'kb_v1.0.0'
     int_worker_pool_size: int = 4
-    int_pipeline_total_timeout_ms: int = 8000
+    # wiring-audit P2-5：删除孤儿配置 int_pipeline_total_timeout_ms
+    # （管线各阶段用 time.monotonic 计时，总超时从未被强制执行；如需
+    # 总超时门控须先设计降级语义再恢复此字段）。
     int_dlq_max_retries: int = 3
     int_worker_blpop_timeout_seconds: int = 5
+    # T-Perf 措施#3：管线各阶段延迟预算（秒，超时降级不挂死）
+    pipeline_dispatch_budget_s: float = 6.0
+    pipeline_fusion_budget_s: float = 6.0
+    pipeline_sg_budget_s: float = 2.0
 
     # === RAG 检索结果缓存（覆盖 fusion 的 consistency / crag 直连检索路径）===
     # 关闭时 RAGServiceImpl 走真实流水线，行为与引入缓存前完全一致。
@@ -228,7 +291,9 @@ class Settings(BaseSettings):
     # 实体近似匹配专用 collection（≤1 万向量），与主检索 collection 隔离。
     # 设计规格 §5.5 / 01-系统架构设计「Gate 0A 强制执行项」指定的名称。
     rag_entity_matching_collection: str = 'entity_matching'
-    rag_top_k: int = 20
+    # wiring-audit P2-5：删除孤儿配置 rag_top_k（专科智能体检索档位实际用
+    # specialist/base.py 的 DEFAULT_RAG_TOP_K=5，此字段零读者；接线会改变
+    # 检索行为 5→20，须先经评测再定）。
     rag_rerank_output_top_k: int = 5
     rag_min_score_threshold: float = 0.5
     rag_bm25_min_top1_score: float = 0.3
@@ -240,9 +305,10 @@ class Settings(BaseSettings):
     rag_p99_critical_threshold_ms: float = 100.0
 
     # Knowledge Graph 图谱查询开关（app/knowledge/graph_query.py）。
-    # 一期 graph_query 为 STUB，默认关闭；调用方须先检查本开关，
-    # 关闭时自行 fallback 到非图谱路径。二期 Neo4j / PGVector 递归
-    # CTE 就绪后置 True 即可启用，无需改业务代码。
+    # 图谱查询开关（P2-KB-08）：查询实现（PGVector 递归 CTE）已落地，
+    # 边数据由 builder 写入 metadata.relations（存量库用
+    # scripts/kb_backfill_relations.py 回填）。默认关闭；置 True 后
+    # 检索器自动追加 depth-1 图谱邻居（retrieval_source=graph）。
     graph_query_enabled: bool = False
     rag_rrf_k: int = 60
 
@@ -333,13 +399,28 @@ class Settings(BaseSettings):
 
     obs_metrics_enabled: bool = True
     obs_metrics_port: int = 9090
-    obs_metrics_scrape_interval: float = 15.0
+    # 指标服务器的**绑定地址**。默认只绑回环：`prometheus_client.start_http_server`
+    # 不传 `addr` 时默认 `0.0.0.0`，在共享机/边缘端等于把 `/metrics` 暴露到整个网络
+    # （2026-09-29 真机实测 `ss -ltn` 显示 `0.0.0.0:9090`）。
+    # 需要被**同机之外的抓取端**拉取时（例如容器编排里由另一个容器抓）
+    # 显式设 `OBS_METRICS_HOST=0.0.0.0`；仓库内当前的部署编排没有这种用法。
+    obs_metrics_host: str = '127.0.0.1'
+    # wiring-audit P2-5：删除孤儿配置 obs_metrics_scrape_interval（零读者，
+    # 抓取间隔由 Prometheus/VictoriaMetrics 侧决定）。
     obs_victoriametrics_url: str = 'http://victoriametrics:8428'
+    # 指标导出链路的开关（2026-09-28 接线修复新增）。
+    # 此前这两条链路**只定义、从未接线**：`start_metrics_server()` 只被测试调用、
+    # `VictoriaMetricsPusher` 在 app 内从未实例化，导致运行期 Prometheus 抓不到
+    # `/metrics`、VictoriaMetrics 收不到推送 —— 看板面板再正确也没有数据。
+    obs_metrics_server_enabled: bool = True
+    obs_vm_push_enabled: bool = True
     obs_tracing_enabled: bool = False
-    obs_tracing_otlp_endpoint: str = 'http://jaeger:4317'
+    obs_tracing_otlp_endpoint: str = 'http://127.0.0.1:30100'
+    # OTLP gRPC headers（Langfuse Basic auth：Authorization=Basic base64(pk:sk)）
+    obs_tracing_otlp_headers: str = ''
     obs_tracing_sample_rate: float = 0.1
     obs_audit_cross_chain_interval_hours: int = 1
-    obs_audit_critical_operations: List[str] = Field(
+    obs_audit_critical_operations: list[str] = Field(
         default_factory=lambda: [
             'threshold_adjustment', 'model_version_change',
             'kb_update', 'desensitization_rule_update',
@@ -359,6 +440,9 @@ class Settings(BaseSettings):
     alert_escalation_warning_escalate_seconds: int = 86400
     alert_escalation_critical_escalate_seconds: int = 3600
     alert_webhook_url: str = ''
+    # 内部告警回调（Alertmanager / vmbackup → /api/v1/internal/alerts/webhook）的共享令牌。
+    # 为空表示不校验（内网部署）；**一旦配置即强制校验**，缺失/错误返回 401（fail-closed）。
+    alert_webhook_token: str = ''
 
     data_retention_outpatient_years: int = 15
     data_retention_inpatient_years: int = 30
@@ -381,6 +465,36 @@ class Settings(BaseSettings):
         if v not in allowed:
             raise ValueError(f"deployment_profile must be one of {allowed}, got '{v}'")
         return v
+
+    @field_validator("nav_auto_upgrade_tier")
+    @classmethod
+    def nav_auto_upgrade_tier_must_be_valid(cls, v: str) -> str:
+        allowed = {'realtime', 'standard', 'full'}
+        if v not in allowed:
+            raise ValueError(
+                f"nav_auto_upgrade_tier must be one of {allowed}, got '{v}'"
+            )
+        return v
+
+    @model_validator(mode='after')
+    def validate_m2_risk_config(self) -> 'Settings':
+        """M2 自动升级的参数必须自洽，避免配错导致逐帧入队打满队列。"""
+        if self.nav_auto_upgrade_cooldown_seconds < 0:
+            raise ValueError(
+                "nav_auto_upgrade_cooldown_seconds 不能为负: "
+                f"{self.nav_auto_upgrade_cooldown_seconds}"
+            )
+        if self.nav_auto_upgrade_max_per_session < 1:
+            raise ValueError(
+                "nav_auto_upgrade_max_per_session 必须 >= 1: "
+                f"{self.nav_auto_upgrade_max_per_session}"
+            )
+        if self.nav_plane_non_standard_streak_threshold < 1:
+            raise ValueError(
+                "nav_plane_non_standard_streak_threshold 必须 >= 1: "
+                f"{self.nav_plane_non_standard_streak_threshold}"
+            )
+        return self
 
     @model_validator(mode='after')
     def validate_deployment_config(self) -> 'Settings':

@@ -1,12 +1,13 @@
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import structlog
-from sqlalchemy import select, and_
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.database import AuditLog
-from .verify_utils import verify_chain_integrity
+
 from .critical_audit import CriticalOperationAudit
+from .verify_utils import verify_chain_integrity
 
 _logger = structlog.get_logger("app.observability.audit_chain.verifier")
 
@@ -17,7 +18,7 @@ class AuditChainVerifier:
 
     async def verify_session_chain(
         self, session_id: str
-    ) -> Tuple[bool, Optional[str], Optional[str], Optional[str]]:
+    ) -> tuple[bool, str | None, str | None, str | None]:
         result = await self.db.execute(
             select(AuditLog)
             .where(AuditLog.session_id == session_id)
@@ -26,7 +27,7 @@ class AuditChainVerifier:
         logs = result.scalars().all()
         return verify_chain_integrity(logs)
 
-    async def verify_all(self) -> Dict[str, Any]:
+    async def verify_all(self) -> dict[str, Any]:
         session_result = await self.db.execute(
             select(AuditLog)
             .where(AuditLog.session_id.isnot(None))

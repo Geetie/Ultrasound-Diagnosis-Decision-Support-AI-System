@@ -2,10 +2,9 @@
 
 __all__ = ["calculate_percentile"]
 
-from typing import List
 
 
-def calculate_percentile(data: List[float], percentile: float) -> float:
+def calculate_percentile(data: list[float], percentile: float) -> float:
     if not data:
         return 0.0
     sorted_data = sorted(data)

@@ -22,10 +22,6 @@ from typing import NamedTuple
 import structlog
 from sqlalchemy import select
 
-from safety_gateway.sg_db import _get_async_session_local
-from safety_gateway.sg_config import sg_settings as settings
-from safety_gateway.sg_models import ConsentRecord
-from safety_gateway.validation_result import ConsentStatus
 from safety_gateway.circuit_breaker import circuit_breaker_manager
 from safety_gateway.errors import (
     CircuitBreakerError,
@@ -35,6 +31,10 @@ from safety_gateway.errors import (
     DatabaseQueryTimeoutError,
 )
 from safety_gateway.retry import retry_with_backoff
+from safety_gateway.sg_config import sg_settings as settings
+from safety_gateway.sg_db import _get_async_session_local
+from safety_gateway.sg_models import ConsentRecord
+from safety_gateway.validation_result import ConsentStatus
 
 logger = structlog.get_logger()
 

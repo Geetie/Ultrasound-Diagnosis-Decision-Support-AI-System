@@ -1,27 +1,26 @@
-from fastapi import APIRouter, UploadFile, File, Form, Depends, Response
-from datetime import datetime, timezone
-import uuid
 import base64
-import structlog
-from typing import Optional, List, Tuple
-
-import pydicom
+import uuid
+from datetime import datetime, timezone
 from io import BytesIO
 
-from app.models.schemas import DICOMUploadResponse, DICOMStreamRequest, DICOMStreamResponse
+import pydicom
+import structlog
+from fastapi import APIRouter, Depends, File, Form, UploadFile
+
 from app.api.v1.errors import (
     BadRequestException,
-    NotFoundException,
     MissingDICOMTagException,
+    NotFoundException,
     ServerErrorException,
 )
-from app.config.settings import settings
-from app.dependencies import get_session_repo, get_audit_service
 from app.api.v1.utils import get_actor_id
+from app.config.settings import settings
+from app.dependencies import get_audit_service, get_session_repo
+from app.models.schemas import DICOMStreamRequest, DICOMStreamResponse, DICOMUploadResponse
 from app.repositories import SessionRepository
+from app.security.auth import get_current_active_user
 from app.services.audit_service import AuditService
 from app.services.dicom_storage import get_dicom_storage
-from app.security.auth import get_current_active_user
 
 logger = structlog.get_logger()
 router = APIRouter(tags=["imaging"])
@@ -51,7 +50,7 @@ REQUIRED_DICOM_TAGS = [
 ]
 
 
-def validate_dicom_format(content: bytes) -> Tuple[bool, Optional[str]]:
+def validate_dicom_format(content: bytes) -> tuple[bool, str | None]:
     """DICOM format basic validation (magic word)"""
     if len(content) < 132:
         return False, "File too small"
@@ -60,7 +59,7 @@ def validate_dicom_format(content: bytes) -> Tuple[bool, Optional[str]]:
     return True, None
 
 
-def parse_and_validate_dicom(content: bytes) -> Tuple[Optional[pydicom.Dataset], Optional[str], List[str]]:
+def parse_and_validate_dicom(content: bytes) -> tuple[pydicom.Dataset | None, str | None, list[str]]:
     """Parse DICOM file and validate required tags (single parse)
 
     Returns:
@@ -70,7 +69,7 @@ def parse_and_validate_dicom(content: bytes) -> Tuple[Optional[pydicom.Dataset],
     try:
         ds = pydicom.dcmread(BytesIO(content), force=True)
     except Exception as e:
-        return None, f"Failed to parse DICOM: {str(e)}", []
+        return None, f"Failed to parse DICOM: {e!s}", []
 
     missing_tags = []
     for group, elem, name in REQUIRED_DICOM_TAGS:
@@ -103,7 +102,7 @@ def _desensitize_patient_name(value: str) -> str:
     return value[:1] + "******"
 
 
-def extract_metadata_from_dataset(ds: pydicom.Dataset, content: bytes) -> Tuple[dict, dict, str]:
+def extract_metadata_from_dataset(ds: pydicom.Dataset, content: bytes) -> tuple[dict, dict, str]:
     raw_patient_id = str(getattr(ds, "PatientID", ""))
     raw_patient_name = str(getattr(ds, "PatientName", ""))
     response_metadata = {
@@ -133,7 +132,7 @@ async def upload_dicom(
     priority: int = Form(1),
     session_repo: SessionRepository = Depends(get_session_repo),
     audit_service: AuditService = Depends(get_audit_service),
-    current_user: Optional[dict] = Depends(get_current_active_user),
+    current_user: dict | None = Depends(get_current_active_user),
 ):
 
     if priority not in (0, 1, 2):
@@ -145,38 +144,38 @@ async def upload_dicom(
     session = await session_repo.get_session(session_id)
     if not session:
         raise NotFoundException(error_message=f"Session not found: {session_id}")
-    
+
     content = await file.read()
-    
+
     if len(content) > settings.dicom_storage_max_file_size:
         raise BadRequestException(
             error_code="E1004",
             error_message=f"DICOM file size {len(content)} exceeds maximum {settings.dicom_storage_max_file_size}",
         )
-    
+
     is_valid, error_msg = validate_dicom_format(content)
     if not is_valid:
         raise BadRequestException(error_code="E1004", error_message=error_msg or "Invalid DICOM file")
-    
+
     dataset, tags_error, missing_tags = parse_and_validate_dicom(content)
     if dataset is None:
         raise MissingDICOMTagException(error_message=tags_error or "Missing required DICOM tags", detail=",".join(missing_tags))
-    
+
     response_metadata, internal_metadata, raw_patient_id = extract_metadata_from_dataset(dataset, content)
     internal_metadata = dict(internal_metadata)
     internal_metadata["original_filename"] = file.filename
     internal_metadata["priority"] = priority
-    
+
     image_id = generate_image_id()
 
     sop_instance_uid = internal_metadata.get("sop_instance_uid", image_id)
     try:
         storage = get_dicom_storage()
-        #按 image_id 落盘：这样 image_id 才能反推路径被 GET /dicom/{image_id} 取回
-        storage_path = await storage.save_by_id(
+        storage_path = await storage.save(
             content=content,
-            storage_id=image_id,
             patient_id=raw_patient_id,
+            session_id=session_id,
+            sop_instance_uid=sop_instance_uid,
         )
         internal_metadata["storage_path"] = storage_path
     except Exception as e:
@@ -217,7 +216,7 @@ async def stream_dicom_frame(
     request: DICOMStreamRequest,
     session_repo: SessionRepository = Depends(get_session_repo),
     audit_service: AuditService = Depends(get_audit_service),
-    current_user: Optional[dict] = Depends(get_current_active_user),
+    current_user: dict | None = Depends(get_current_active_user),
 ):
     if request.frame_index < 0:
         raise BadRequestException(
@@ -228,7 +227,7 @@ async def stream_dicom_frame(
     session = await session_repo.get_session(request.session_id)
     if not session:
         raise NotFoundException(error_message=f"Session not found: {request.session_id}")
-    
+
     try:
         frame_data = base64.b64decode(request.frame_data)
     except Exception:
@@ -248,25 +247,8 @@ async def stream_dicom_frame(
             session_id=request.session_id,
             frame_index=request.frame_index,
         )
-    
-    frame_id = generate_frame_id()
 
-    # ⚠️ 修正：此前本端点只校验+ 审计，**从未落盘** —— 推来的帧字节被直接丢弃，
-    # 返回的 frame_id 指向一个不存在的东西。补上持久化，frame_id 才可用于回读。
-    try:
-        storage = get_dicom_storage()
-        storage_path = await storage.save_by_id(
-            content=frame_data,
-            storage_id=frame_id,
-            patient_id=session.patient_id or "unknown",
-        )
-    except Exception as e:
-        logger.error("dicom_frame_store_failed", error=str(e), frame_id=frame_id)
-        raise ServerErrorException(
-            error_code="E2000",
-            error_message="DICOM frame storage failed",
-            detail=str(e),
-        )
+    frame_id = generate_frame_id()
 
     actor_id = get_actor_id(current_user)
     await audit_service.log_action(
@@ -280,17 +262,16 @@ async def stream_dicom_frame(
             "is_key_frame": request.is_key_frame,
             "priority": request.priority,
             "frame_size": len(frame_data),
-            "storage_path": storage_path,
         },
     )
-    
+
     logger.info(
         "DICOM frame streamed",
         frame_id=frame_id,
         session_id=request.session_id,
         frame_index=request.frame_index,
     )
-    
+
     return DICOMStreamResponse(
         session_id=request.session_id,
         frame_id=frame_id,
@@ -300,70 +281,4 @@ async def stream_dicom_frame(
             "threshold": settings.navigation_confidence_threshold,
         },
         status="accepted"
-    )
-
-
-@router.get("/dicom/{storage_id}")
-async def get_dicom(
-    storage_id: str,
-    audit_service: AuditService = Depends(get_audit_service),
-    current_user: Optional[dict] = Depends(get_current_active_user),
-):
-    """
-    WADO 回读：按上传/推流返回的 ID 取回 DICOM 字节。
-
-    此前 imaging 路由只有两个 POST（upload / stream），**没有任何按 ID 取回字节的
-    端点**，导致浏览器端 cornerstone 无从取得影像 —— 医生侧工作区的影像区只能放
-    占位渐变。本端点补上这条回路。
-
-    - `storage_id` 形如 `img_20261002_ab12cd34` / `frame_20261002_ab12cd34`，
-      日期段由 ID 自带，故路径可确定性推导（见 DicomStorageService.path_for_id），
-      **不需要额外的索引表，也不向客户端暴露文件系统路径**。
-    - 读取 DICOM 属于 PHI 访问事件，按医疗系统要求记审计。
-    """
-    storage = get_dicom_storage()
-
-    storage_path = storage.path_for_id(storage_id)
-    if storage_path is None:
-        raise BadRequestException(
-            error_code="E1001",
-            error_message=(
-                "Invalid storage id: expected 'img_YYYYMMDD_hex8' or 'frame_YYYYMMDD_hex8'"
-            ),
-        )
-
-    try:
-        content = await storage.retrieve(storage_path)
-    except Exception as e:
-        logger.error("dicom_retrieve_failed", error=str(e), storage_id=storage_id)
-        raise ServerErrorException(
-            error_code="E2000",
-            error_message="DICOM retrieval failed",
-            detail=str(e),
-        )
-
-    if content is None:
-        raise NotFoundException(error_message=f"DICOM not found: {storage_id}")
-
-    actor_id = get_actor_id(current_user)
-    await audit_service.log_action(
-        action="dicom_read",
-        actor=actor_id,
-        session_id=None,
-        target_type="dicom",
-        target_id=storage_id,
-        detail={"file_size": len(content)},
-    )
-
-    logger.info("DICOM retrieved", storage_id=storage_id, file_size=len(content))
-
-    return Response(
-        content=content,
-        media_type="application/dicom",
-        headers={
-            "Content-Length": str(len(content)),
-            # cornerstone 的 wadouri loader 会发 Range 请求做分片取帧
-            "Accept-Ranges": "bytes",
-            "Content-Disposition": f'inline; filename="{storage_id}.dcm"',
-        },
     )

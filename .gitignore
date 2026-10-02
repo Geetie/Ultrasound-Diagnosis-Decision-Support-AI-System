@@ -13,6 +13,9 @@ alembic/versions/*.pyc
 *.egg-info/
 .pytest_cache/
 .coverage
+# pytest-cov 在 xdist 下会按 worker 落一堆 .coverage.<host>.pid<N>.<rand> 数据文件，
+# 只忽略精确名 `.coverage` 会让它们每次跑覆盖率都冒出来污染 git status。
+.coverage.*
 coverage.xml
 htmlcov/
 *.log
@@ -36,12 +39,36 @@ docs-for-guiding generating docs/
 docs/reviews/
 harness_engineering_guide-main/
 
-# 敏感数据与模型
+# 敏感数据与模型（`data/*` 根锚定：目录级排除会阻止 git 下探，
+# 使下方 !data/medical_resources/ 逐级反白名单失效；无锚点 `data/`
+# 还会连带吞掉 tests/*/data 等嵌套目录——历史实测踩坑）
 dicom_storage/
 models/
-data/
+data/*
+# 例外：测试目录不能因为名字里带 data 就被忽略。
+# 实测踩到：`data/` 是无锚点模式，把 tests/unit/data 与 tests/integration/data 整目录
+# 忽略了，导致 3 个测试文件只存在于本机、**CI 从未运行过它们**；本地覆盖率因此虚高于 CI。
+!tests/unit/data/
+!tests/integration/data/
+# 例外：app 内置资产词表目录同样不能被 `data/` 无锚点模式吞掉
+# （vocab_v2_final.json / hallucination_vocab.json / crisis_terms_cardiac.json 等
+#  属于随仓库分发的运行时资产，非本地数据）。
+!app/knowledge/data/
+!app/inference/data/
+# 例外：UDT→ICD-10 映射表是测试（tests/unit/knowledge/test_udt_icd.py）与
+# M9 统计口径共同依赖的运行时资产，必须随仓库分发；实测 worktree 缺失
+# 导致 6 个用例红。注意必须用 `data/*` 锚定式重忽略 + 逐级反白名单：
+# 直接 `!data/` 会把整个 data/ 反白名单、破坏"忽略测试文件守卫"机制。
+!data/medical_resources/
+data/medical_resources/*
+!data/medical_resources/udt_icd_map.json
+# 覆盖率工具产物
+cov_core.json
+.coverage
 keys/
 secrets/
 *.pem
 *.key
 *.crt
+# 本机 IDE 工具配置（mcporter 浏览器代理注册）
+config/mcporter.json

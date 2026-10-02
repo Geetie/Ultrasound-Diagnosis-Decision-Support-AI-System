@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Card, Form, Input, Button, Typography, message } from 'antd';
 import { LoginOutlined } from '@ant-design/icons';
 import apiClient from '@/services/api';
+import { getApiErrorMessage } from '@/utils/apiError';
 
 const { Title, Text } = Typography;
 
@@ -24,8 +25,8 @@ export default function LoginPage() {
         }
         window.location.href = '/';
       }
-    } catch (err: any) {
-      message.error(err?.response?.data?.error_message || '登录失败');
+    } catch (err: unknown) {
+      message.error(getApiErrorMessage(err, '登录失败'));
     } finally {
       setLoading(false);
     }

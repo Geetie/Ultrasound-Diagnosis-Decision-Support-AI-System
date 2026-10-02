@@ -48,7 +48,7 @@ import json
 import random
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any
 
 import structlog
 from cachetools import LRUCache
@@ -96,7 +96,7 @@ class RetrievalCacheStats:
         total = self.hits + self.misses
         return (self.hits / total) if total else 0.0
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         return {
             "hits_redis": self.hits_redis,
             "hits_local": self.hits_local,
@@ -119,10 +119,10 @@ class _LocalTTLCache:
         if ttl_seconds <= 0:
             raise ValueError("ttl_seconds must be positive")
         self._cache: LRUCache = LRUCache(maxsize=maxsize)
-        self._expires: Dict[str, float] = {}
+        self._expires: dict[str, float] = {}
         self._ttl = float(ttl_seconds)
 
-    def get(self, key: str) -> Optional[Any]:
+    def get(self, key: str) -> Any | None:
         if key not in self._cache:
             return None
         exp = self._expires.get(key)
@@ -132,7 +132,7 @@ class _LocalTTLCache:
             return None
         return self._cache[key]
 
-    def set(self, key: str, value: Any, ttl_seconds: Optional[float] = None) -> None:
+    def set(self, key: str, value: Any, ttl_seconds: float | None = None) -> None:
         self._cache[key] = value
         self._expires[key] = time.monotonic() + (ttl_seconds or self._ttl)
 
@@ -142,6 +142,25 @@ class _LocalTTLCache:
 
     def __len__(self) -> int:
         return len(self._cache)
+
+
+_instance: RetrievalCache | None = None
+
+
+def _register_instance(cache: RetrievalCache) -> None:
+    global _instance
+    _instance = cache
+
+
+def get_retrieval_cache() -> RetrievalCache | None:
+    """取得本进程的检索缓存实例（未启用时为 None）。"""
+    return _instance
+
+
+def reset_retrieval_cache() -> None:
+    """清空注册（仅用于测试与进程重启）。"""
+    global _instance
+    _instance = None
 
 
 class RetrievalCache:
@@ -173,6 +192,29 @@ class RetrievalCache:
         self._jitter_ratio = max(0.0, float(jitter_ratio))
         self._local = _LocalTTLCache(local_capacity, local_ttl_seconds)
         self._stats = RetrievalCacheStats()
+        # 构造即注册（二期 §4.2）：缓存实例是在 lifespan 里作为构造参数内联创建的，
+        # 没有留出显式注册点；自注册让健康检查能拿到它，而不必为一个探针去重构
+        # 启动编排。每进程只会构造一个检索缓存，后者覆盖前者不构成问题。
+        _register_instance(self)
+
+    def health(self) -> dict[str, Any]:
+        """共享缓存健康信息（二期 §4.2 多副本可观测性）。
+
+        多副本部署下的语义：**L1（Redis）是共享层**，各副本一致；**L2（进程内 LRU）
+        是副本本地的**，不共享。因此副本数增加时整体命中率会上升（L1 命中更多），
+        但单看某个副本的 L2 命中率会下降——这是正常的，不要据此判断"缓存坏了"。
+        """
+        stats = self._stats.as_dict()
+        return {
+            "redis_configured": self._redis_factory is not None,
+            "local_entries": len(self._local),
+            "local_capacity": getattr(self._local._cache, "maxsize", None),
+            "redis_ttl_seconds": self._redis_ttl,
+            "hit_rate": stats.get("hit_rate", 0.0),
+            "hits": stats.get("hits", 0),
+            "misses": stats.get("misses", 0),
+            "shared_layer": "redis" if self._redis_factory is not None else "none",
+        }
 
     # ------------------------------------------------------------------
     # 键与可缓存性
@@ -208,13 +250,14 @@ class RetrievalCache:
     # ------------------------------------------------------------------
     # 读
     # ------------------------------------------------------------------
-    async def get(self, key: str) -> Optional[RetrievalResult]:
+    async def get(self, key: str) -> RetrievalResult | None:
         """查询缓存。
 
         Returns:
             命中返回 ``RetrievalResult``（负缓存命中返回空结果对象）；
             未命中返回 ``None``。
         """
+        t = time.monotonic()
         raw = await self._read_redis(key)
         if raw is not None:
             result = self._decode(raw, source="redis")
@@ -222,6 +265,7 @@ class RetrievalCache:
                 self._stats.hits_redis += 1
                 # L1 命中回填 L2，减少后续同 key 的网络往返
                 self._local.set(key, raw)
+                self._record_read(hit=True, latency=time.monotonic() - t)
                 return result
 
         local_raw = self._local.get(key)
@@ -229,9 +273,11 @@ class RetrievalCache:
             result = self._decode(local_raw, source="local")
             if result is not None:
                 self._stats.hits_local += 1
+                self._record_read(hit=True, latency=time.monotonic() - t)
                 return result
 
         self._stats.misses += 1
+        self._record_read(hit=False, latency=time.monotonic() - t)
         return None
 
     # ------------------------------------------------------------------
@@ -250,20 +296,39 @@ class RetrievalCache:
             return
 
         ttl = self._ttl_for(is_negative)
+        t = time.monotonic()
         self._local.set(key, payload, ttl_seconds=ttl)
         await self._write_redis(key, payload, ttl)
         self._stats.stores += 1
+        self._record_write(latency=time.monotonic() - t)
+
+    def _record_read(self, *, hit: bool, latency: float) -> None:
+        """CacheMonitor 接线（wiring-audit P1-3：record_* 此前零调用）。"""
+        try:
+            from app.observability.cache_monitor.monitor import get_cache_monitor
+
+            get_cache_monitor().record_cache_read(hit=hit, latency_seconds=latency)
+        except Exception as exc:
+            logger.debug("cache_monitor_record_read_failed", error=str(exc))
+
+    def _record_write(self, *, latency: float) -> None:
+        try:
+            from app.observability.cache_monitor.monitor import get_cache_monitor
+
+            get_cache_monitor().record_cache_write(latency_seconds=latency)
+        except Exception as exc:
+            logger.debug("cache_monitor_record_write_failed", error=str(exc))
 
     # ------------------------------------------------------------------
     # 内部：编解码
     # ------------------------------------------------------------------
     @staticmethod
-    def _encode(result: RetrievalResult) -> Optional[str]:
+    def _encode(result: RetrievalResult) -> str | None:
         """序列化（剔除 embedding；失败返回 None 由调用方跳过写入）。"""
         try:
             payload = result.model_dump(mode="json", exclude=_EXCLUDE_EMBEDDING)
             return json.dumps(payload, ensure_ascii=False)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning(
                 "retrieval_cache_encode_failed",
                 error=str(exc),
@@ -271,13 +336,13 @@ class RetrievalCache:
             )
             return None
 
-    def _decode(self, raw: str, *, source: str) -> Optional[RetrievalResult]:
+    def _decode(self, raw: str, *, source: str) -> RetrievalResult | None:
         """反序列化（损坏或负缓存均安全处理）。"""
         try:
             if isinstance(raw, bytes):
                 raw = raw.decode("utf-8")
             data = json.loads(raw)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             self._stats.errors += 1
             logger.warning(
                 "retrieval_cache_value_corrupt",
@@ -294,7 +359,7 @@ class RetrievalCache:
 
         try:
             return RetrievalResult.model_validate(data)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             self._stats.errors += 1
             logger.warning(
                 "retrieval_cache_validate_failed",
@@ -315,12 +380,12 @@ class RetrievalCache:
         high = base * (1.0 + self._jitter_ratio)
         return max(1, int(random.uniform(low, high)))
 
-    async def _read_redis(self, key: str) -> Optional[str]:
+    async def _read_redis(self, key: str) -> str | None:
         if self._redis_factory is None:
             return None
         try:
             client = await self._redis_factory.get_client()
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             self._stats.errors += 1
             logger.warning(
                 "retrieval_cache_redis_client_failed",
@@ -331,7 +396,7 @@ class RetrievalCache:
             return None
         try:
             raw = await client.get(key)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             self._stats.errors += 1
             logger.warning(
                 "retrieval_cache_redis_get_failed",
@@ -352,7 +417,7 @@ class RetrievalCache:
         try:
             client = await self._redis_factory.get_client()
             await client.setex(key, ttl, payload)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             # Redis 不可用只影响跨进程共享，本地 L2 已写入，不向上抛
             self._stats.errors += 1
             logger.warning(
@@ -368,7 +433,7 @@ class RetrievalCache:
     def clear_local(self) -> None:
         self._local.clear()
 
-    def stats(self) -> Dict[str, Any]:
+    def stats(self) -> dict[str, Any]:
         payload = self._stats.as_dict()
         payload["local_entries"] = len(self._local)
         return payload

@@ -32,13 +32,11 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Any, List, Optional
 
 import structlog
 
 from app.agents.protocols import AgentResponse
 from app.inference.protocols import InferenceEngine, InferenceRequest
-from app.knowledge.protocols import KnowledgeChunk
 
 logger = structlog.get_logger("app.fusion.self_rag")
 
@@ -67,7 +65,7 @@ class SelfRAGEvalResult:
     evidence_sufficiency: float = 0.0
     evidence_consistency: float = 0.0
     feature_completeness: float = 0.0
-    missing_features: List[str] = None  # type: ignore[assignment]
+    missing_features: list[str] = None  # type: ignore[assignment]
     reason: str = ""
 
     def __post_init__(self) -> None:
@@ -136,7 +134,7 @@ class SelfRAGEvaluator:
 
     def __init__(
         self,
-        inference_engine: Optional[InferenceEngine] = None,
+        inference_engine: InferenceEngine | None = None,
         pass_threshold: float = DEFAULT_PASS_THRESHOLD,
         heuristic_threshold: float = DEFAULT_HEURISTIC_THRESHOLD,
         max_tokens: int = 256,
@@ -196,7 +194,7 @@ class SelfRAGEvaluator:
 
         # 2) LLM 自我评估（带重试）
         prompt = self._build_prompt(response)
-        last_result: Optional[SelfRAGEvalResult] = None
+        last_result: SelfRAGEvalResult | None = None
         max_attempts = self._max_retries + 1  # 包含首次生成
         for attempt in range(1, max_attempts + 1):
             try:
@@ -207,7 +205,7 @@ class SelfRAGEvaluator:
                 )
                 llm_response = await self._inference.generate(request)
                 text = llm_response.text or ""
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.warning(
                     "self_rag_llm_failed_falling_back_to_heuristic",
                     agent=response.agent_name,
@@ -260,6 +258,14 @@ class SelfRAGEvaluator:
                 return last_result
 
             # 未通过：是否还有重试机会？
+            # T-Perf 修正（2026-10-01 真机）：确定性零分（三维度全 0，典型场景
+            # =KB 无该器官知识、证据不足）重发同样输入不会得到不同结果——真机
+            # 实测 cardiac 例 3 次重试全部 score=0.00，白耗 2 次 LLM 调用
+            # （~1.2s/例）。零分直接返回；重试机会留给"接近阈值的采样波动"
+            # （0 < total < threshold）。
+            if total == 0:
+                last_result.reason = f"zero_score_no_retry: {reason}"
+                return last_result
             if attempt < max_attempts:
                 logger.info(
                     "self_rag_retry_scheduled",
@@ -364,7 +370,7 @@ _FIELD_PATTERNS = {
 
 def _parse_self_rag_output(
     text: str,
-) -> Optional[tuple[float, float, float, List[str]]]:
+) -> tuple[float, float, float, list[str]] | None:
     """解析 self-rag LLM 输出。
 
     期望格式（每行一个字段）：
@@ -396,19 +402,22 @@ def _parse_self_rag_output(
         consistency = max(0.0, min(MAX_SCORE, consistency))
         completeness = max(0.0, min(MAX_SCORE, completeness))
         missing_text = (missing_m.group(1).strip() if missing_m else "")
-        missing_list: List[str] = []
+        missing_list: list[str] = []
         if missing_text and missing_text.lower() not in {"无", "none", "n/a", ""}:
             missing_list = [
                 t.strip() for t in re.split(r"[,，;；\n]", missing_text) if t.strip()
             ]
         return sufficiency, consistency, completeness, missing_list
-    except Exception:  # noqa: BLE001
+    except Exception as exc:
+        logger.warning(
+            "self_rag_extract_helper_failed", error=str(exc)
+        )
         return None
 
 
 __all__ = [
-    "SelfRAGEvaluator",
-    "SelfRAGEvalResult",
-    "DEFAULT_PASS_THRESHOLD",
     "DEFAULT_HEURISTIC_THRESHOLD",
+    "DEFAULT_PASS_THRESHOLD",
+    "SelfRAGEvalResult",
+    "SelfRAGEvaluator",
 ]

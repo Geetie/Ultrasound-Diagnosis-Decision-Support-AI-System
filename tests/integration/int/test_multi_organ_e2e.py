@@ -13,7 +13,7 @@ from __future__ import annotations
 import asyncio
 import time
 from contextlib import contextmanager
-from typing import Any, Dict
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -36,10 +36,10 @@ class _AsyncCtx:
 
 
 @contextmanager
-def _chain_env(*, behaviors: Dict[str, str] | None = None, session_organs=("thyroid", "liver", "cardiac")):
+def _chain_env(*, behaviors: dict[str, str] | None = None, session_organs=("thyroid", "liver", "cardiac")):
     """构造"会话 + 三器官请求 + 管线"的集成环境（仅 mock 外部边界）。"""
     behaviors = dict(behaviors or {})
-    state: Dict[str, Any] = {"calls": [], "session_updates": [], "metrics": []}
+    state: dict[str, Any] = {"calls": [], "session_updates": [], "metrics": []}
 
     db = MagicMock()
     db.expire_all = MagicMock()

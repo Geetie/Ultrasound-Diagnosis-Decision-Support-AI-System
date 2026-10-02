@@ -21,14 +21,16 @@ from __future__ import annotations
 
 import json
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, List, Optional
 
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.config.database import AsyncSessionLocal
+from app.config.settings import settings
+from app.embedding.bge_m3 import BgeM3MedicalService
 from app.embedding.protocols import (
     EmbeddingResponse,
     EmbeddingService,
@@ -97,9 +99,9 @@ def _load_manifest(source_dir: Path) -> dict:
 
 def _discover_source_docs(
     source_dir: Path,
-    organs_filter: Optional[List[str]],
-    desensitizer: Optional[Desensitizer] = None,
-) -> List[_SourceDocFile]:
+    organs_filter: list[str] | None,
+    desensitizer: Desensitizer | None = None,
+) -> list[_SourceDocFile]:
     """Walk <source-dir>/<organ>/*.json and return source doc descriptors.
 
     Args:
@@ -116,7 +118,7 @@ def _discover_source_docs(
             f"source_dir does not exist or is not a directory: {source_dir}",
         )
 
-    docs: List[_SourceDocFile] = []
+    docs: list[_SourceDocFile] = []
     for organ_dir in sorted(p for p in source_dir.iterdir() if p.is_dir()):
         organ = organ_dir.name
         if organs_filter and organ not in organs_filter:
@@ -165,11 +167,32 @@ def _resolve_chunker(strategy: str) -> Chunker:
         return create_chunker(ChunkerStrategy.SENTENCE_BOUNDARY)
 
 
+def _resolve_real_embedding_service() -> EmbeddingService:
+    """构造**真实** embedding 服务（BgeM3）。
+
+    ## 为什么默认不再是 Mock（2026-09-28 接线审计）
+
+    本模块此前在未注入 `embedding_service` 时默认返回 `MockEmbeddingService`
+    （`sha256(text)` 展开 768 维、**无任何语义**），而 CLI `scripts/init_knowledge_base.py`
+    正是走这条默认路径 —— 也就是说**默认建出的知识库不具备语义检索能力**，
+    所有"召回率/准确率"指标都建立在假向量上，且下游只表现为"效果差"而非"构建失败"。
+
+    现在：默认走真实服务；**Mock 只能显式注入**（单测或 CLI `--allow-mock-embedding`）。
+    真实服务不可用时由 `_assert_embedding_available()` 在构建前抛错，**不做静默降级**。
+    """
+    return BgeM3MedicalService(
+        base_url=f"http://{settings.bge_m3_host}:{settings.bge_m3_port}",
+    )
+
+
 class MockEmbeddingService:
-    """Deterministic offline embedding service used by the CLI default path.
+    """确定性离线 embedding 服务 —— **仅限显式注入**（单测 / CLI `--allow-mock-embedding`）。
 
     Produces a 768-dim vector derived from a hash of the input text. This is
-    not semantically meaningful but is stable, cheap, and unit-testable.
+    **not semantically meaningful** but is stable, cheap, and unit-testable.
+
+    ⚠️ 任何默认路径都**不得**使用本服务：用它建出的知识库无语义检索能力，
+    会污染检索召回率与一致性评估结论。
     """
 
     DIMENSION = 768
@@ -237,28 +260,82 @@ class KnowledgeIndexBuilderImpl(KnowledgeIndexBuilder):
 
     def __init__(
         self,
-        session_factory: Optional[async_sessionmaker[AsyncSession]] = None,
-        chunker: Optional[Chunker] = None,
-        feature_extractor: Optional[FeatureExtractor] = None,
-        indexer: Optional[PGVectorHybridIndexer] = None,
-        embedding_service: Optional[EmbeddingService] = None,
+        session_factory: async_sessionmaker[AsyncSession] | None = None,
+        chunker: Chunker | None = None,
+        feature_extractor: FeatureExtractor | None = None,
+        indexer: PGVectorHybridIndexer | None = None,
+        embedding_service: EmbeddingService | None = None,
         strategy: str = "sentence_boundary",
     ):
         self.session_factory = session_factory or AsyncSessionLocal
         self.feature_extractor = feature_extractor or FeatureExtractor()
         self.indexer = indexer or PGVectorHybridIndexer()
+        # 显式注入优先（**Mock 只能显式注入**）；否则构造真实 embedding 服务。
         self.embedding_service: EmbeddingService = (
-            embedding_service  # type: ignore[assignment]
+            embedding_service
             if embedding_service is not None
-            else MockEmbeddingService()  # type: ignore[assignment]
+            else _resolve_real_embedding_service()
         )
         self._chunker_factory: Callable[[str], Chunker] = lambda s: (
             chunker if chunker is not None else _resolve_chunker(s)
         )
         self._default_strategy = strategy
 
+    @staticmethod
+    def _attach_relations(
+        raw_chunks: list[KnowledgeChunk], enriched: list[KnowledgeChunk]
+    ) -> None:
+        """为同文档相邻块写 relations 边（graph_query.py 的边契约）。
+
+        - 只写新建（enriched）块的元数据：resume 跳过的块不动其已入库元数据；
+        - 边指向按 chunk_index 排序后的前后邻居，与 chunker 的单调重编号一致；
+        - 用 setdefault 不覆盖上游已给的 relations。
+        """
+        if len(raw_chunks) < 2:
+            return
+        ordered = sorted(
+            raw_chunks, key=lambda c: c.metadata.get("chunk_index", 0)
+        )
+        ids = [c.chunk_id for c in ordered]
+        pos = {cid: i for i, cid in enumerate(ids)}
+        for c in enriched:
+            i = pos.get(c.chunk_id)
+            if i is None:
+                continue
+            relations: list[dict[str, str]] = []
+            if i + 1 < len(ids):
+                relations.append({"target": ids[i + 1], "relation": "next_section"})
+            if i > 0:
+                relations.append({"target": ids[i - 1], "relation": "prev_section"})
+            if relations:
+                meta = dict(c.metadata)
+                meta.setdefault("relations", relations)
+                c.metadata = meta
+
+    async def _assert_embedding_available(self) -> None:
+        """建库前对 embedding 服务做一次**真实探活**，不可用即失败。
+
+        刻意**不做任何降级**：静默退回假向量会让知识库的检索能力整体失真，
+        且这种失真在下游表现为"召回率偏低"而不是"构建失败"，极难归因。
+        """
+        try:
+            await self.embedding_service.embed_text(
+                TextEmbeddingRequest(texts=["embedding probe"])
+            )
+        except Exception as exc:
+            raise IndexBuildError(
+                IndexBuildErrorCode.EMBEDDING_FAILED,
+                "embedding service unavailable; refusing to build the knowledge base "
+                "(mock vectors are forbidden on the default path)",
+                detail=f"{type(exc).__name__}: {exc}",
+                retryable=True,
+            ) from exc
+
     async def build(self, request: IndexBuildRequest) -> IndexBuildResult:
         started = time.monotonic()
+
+        # 0. 真实 embedding 探活：必须在**任何破坏性操作**（清库/写库）之前。
+        await self._assert_embedding_available()
 
         # 1. Validate kb_version format up front.
         kb_version_obj = parse_kb_version(request.kb_version)
@@ -313,7 +390,7 @@ class KnowledgeIndexBuilderImpl(KnowledgeIndexBuilder):
         chunker = self._chunker_factory(request.strategy or self._default_strategy)
         organ_breakdown: dict[str, int] = {}
         skipped_existing = 0
-        buffer: List[KnowledgeChunk] = []
+        buffer: list[KnowledgeChunk] = []
 
         async with self.session_factory() as session:
             for doc in source_docs:
@@ -326,7 +403,7 @@ class KnowledgeIndexBuilderImpl(KnowledgeIndexBuilder):
                 raw_chunks = chunker.chunk(src, request.kb_version)
 
                 # Extract features + check resume for each chunk.
-                enriched: List[KnowledgeChunk] = []
+                enriched: list[KnowledgeChunk] = []
                 for c in raw_chunks:
                     # Resume: skip if chunk_id already exists.
                     if await self.indexer.exists(c.chunk_id, session):
@@ -341,6 +418,10 @@ class KnowledgeIndexBuilderImpl(KnowledgeIndexBuilder):
                     merged_meta = {**c.metadata, **meta}
                     c.metadata = merged_meta
                     enriched.append(c)
+
+                # 图谱边投影（graph_query.py 契约）：同文档相邻块互指
+                # （next_section/prev_section），供 RAG depth-1 上下文扩展。
+                self._attach_relations(raw_chunks, enriched)
 
                 if not enriched:
                     continue
@@ -362,7 +443,7 @@ class KnowledgeIndexBuilderImpl(KnowledgeIndexBuilder):
                             ),
                             retryable=True,
                         )
-                    for c, emb in zip(batch, embed_response.embeddings):
+                    for c, emb in zip(batch, embed_response.embeddings, strict=False):
                         c.embedding = list(emb) if emb is not None else None
                     await self.indexer.upsert(batch, session)
 

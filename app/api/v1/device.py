@@ -1,28 +1,29 @@
-from fastapi import APIRouter, Depends, HTTPException, Header
-from typing import Optional
-from datetime import datetime, timezone, timedelta
-import secrets
-import structlog
 
+import secrets
+from datetime import datetime, timedelta, timezone
+
+import structlog
+from fastapi import APIRouter, Depends, Header, HTTPException
+
+from app.api.v1.errors import BadRequestException, NotFoundException
+from app.api.v1.utils import get_actor_id
+from app.dependencies import get_audit_service, get_device_repo
 from app.models.database import Device
 from app.models.schemas import (
-    DeviceRegisterRequest,
-    DeviceRegisterResponse,
-    DeviceRecoveryResponse,
-    DeviceRemoteRecoveryResponse,
-    DeviceDeregisterResponse,
     DeviceCheckInResponse,
-    DeviceHeartbeatRequest,
-    DeviceHeartbeatResponse,
+    DeviceDeregisterResponse,
     DeviceHealthProbeRequest,
     DeviceHealthProbeResponse,
+    DeviceHeartbeatRequest,
+    DeviceHeartbeatResponse,
+    DeviceRecoveryResponse,
+    DeviceRegisterRequest,
+    DeviceRegisterResponse,
+    DeviceRemoteRecoveryResponse,
 )
-from app.api.v1.errors import NotFoundException, BadRequestException
-from app.dependencies import get_device_repo, get_audit_service
-from app.api.v1.utils import get_actor_id
 from app.repositories import DeviceRepository
-from app.services.audit_service import AuditService
 from app.security.auth import RoleChecker
+from app.services.audit_service import AuditService
 
 logger = structlog.get_logger()
 router = APIRouter(tags=["device-management"])
@@ -58,7 +59,7 @@ async def register_device(
     request: DeviceRegisterRequest,
     device_repo: DeviceRepository = Depends(get_device_repo),
     audit_service: AuditService = Depends(get_audit_service),
-    current_user: Optional[dict] = Depends(admin_only),
+    current_user: dict | None = Depends(admin_only),
 ):
     existing = await device_repo.get_device_by_name(request.device_name)
     if existing and existing.status == "deregistered":
@@ -177,7 +178,7 @@ async def deregister_device(
     device_id: str,
     device_repo: DeviceRepository = Depends(get_device_repo),
     audit_service: AuditService = Depends(get_audit_service),
-    current_user: Optional[dict] = Depends(admin_only),
+    current_user: dict | None = Depends(admin_only),
 ):
     device = await device_repo.get_device(device_id)
     if not device:
@@ -211,7 +212,7 @@ async def recovery_device(
     device_id: str,
     device_repo: DeviceRepository = Depends(get_device_repo),
     audit_service: AuditService = Depends(get_audit_service),
-    current_user: Optional[dict] = Depends(admin_only),
+    current_user: dict | None = Depends(admin_only),
 ):
     device = await device_repo.get_device(device_id)
     if not device:
@@ -261,7 +262,7 @@ async def remote_recovery_device(
     device_id: str,
     device_repo: DeviceRepository = Depends(get_device_repo),
     audit_service: AuditService = Depends(get_audit_service),
-    current_user: Optional[dict] = Depends(admin_only),
+    current_user: dict | None = Depends(admin_only),
 ):
     device = await device_repo.get_device(device_id)
     if not device:

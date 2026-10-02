@@ -13,8 +13,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.embedding.protocols import VectorIndexError, VectorIndexErrorCode
-
+from app.embedding.protocols import VectorIndexError
 
 # ------------------------------------------------------------------
 # Scenario 1 & 2: Qdrant failures with auto_fallback=True → falls back
@@ -110,13 +109,12 @@ class TestNoAutoFallbackRaisesError:
         with patch(
             "app.embedding.qdrant_client.QdrantVectorIndex",
             mock_qdrant_cls,
-        ):
-            with pytest.raises(VectorIndexError):
-                await index_factory.create_index_client(
-                    backend="qdrant",
-                    auto_fallback=False,
-                    qdrant_timeout_seconds=1.0,
-                )
+        ), pytest.raises(VectorIndexError):
+            await index_factory.create_index_client(
+                backend="qdrant",
+                auto_fallback=False,
+                qdrant_timeout_seconds=1.0,
+            )
 
 
 # ------------------------------------------------------------------

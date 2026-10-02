@@ -23,8 +23,8 @@
 """
 from __future__ import annotations
 
+import asyncio
 import time
-from typing import Any, List, Optional, Tuple
 
 import structlog
 
@@ -38,8 +38,7 @@ from app.fusion.protocols import (
     FusionRequest,
     FusionResult,
 )
-from app.fusion.self_rag import SelfRAGEvaluator, SelfRAGEvalResult
-from app.rag.protocols import RAGService
+from app.fusion.self_rag import SelfRAGEvalResult, SelfRAGEvaluator
 
 logger = structlog.get_logger("app.fusion.layered_validator")
 
@@ -62,7 +61,7 @@ class LayeredValidator:
         self,
         conflict_detector: ConflictDetector,
         consistency_checker: ConsistencyChecker,
-        self_rag_evaluator: Optional[SelfRAGEvaluator] = None,
+        self_rag_evaluator: SelfRAGEvaluator | None = None,
     ) -> None:
         if conflict_detector is None:
             raise ValueError("conflict_detector must not be None")
@@ -91,7 +90,7 @@ class LayeredValidator:
         # Layer 1: 冲突检测
         try:
             conflict_report = self._conflict_detector.detect(request.agent_responses)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning(
                 "layered_validator_conflict_check_failed",
                 error=str(exc),
@@ -112,20 +111,19 @@ class LayeredValidator:
             )
             # 不直接 return：让 Layer 2 仍可继续（一致性可能更严重）
 
-        # Layer 2: 一致性校验
-        try:
-            consistency_result = await self._consistency_checker.check(request)
-        except Exception as exc:  # noqa: BLE001
-            logger.warning(
-                "layered_validator_consistency_check_failed",
-                error=str(exc),
-                error_type=type(exc).__name__,
+        # Layer 2 & 3 并行执行（T-Perf 措施#2）：两者输入相同（request）、
+        # 输出独立，原先串行 await 导致 LLM 调用链 2x 时延（fusion 19.6s
+        # 实测主因）。asyncio.gather 并行后取 max 而非 sum。
+        consistency_task = self._check_consistency_safe(request)
+        if request.use_self_rag and self._self_rag_evaluator is not None and request.agent_responses:
+            self_rag_task = self._evaluate_self_rag_safe(request)
+            consistency_result, self_rag_out = await asyncio.gather(
+                consistency_task, self_rag_task
             )
-            consistency_result = ConsistencyCheckResult(
-                is_consistent=True,
-                severity=ConsistencySeverity.INFO,
-                detail=f"consistency_check_failed: {type(exc).__name__}",
-            )
+        else:
+            consistency_result = await consistency_task
+            self_rag_out = None
+
         result.consistency_result = consistency_result
         if (
             not result.needs_review
@@ -138,12 +136,16 @@ class LayeredValidator:
                 detail=consistency_result.detail,
             )
 
-        # Layer 3: Self-RAG 质检（仅在请求启用时）
-        if request.use_self_rag and self._self_rag_evaluator is not None and request.agent_responses:
-            try:
-                # 取置信度最高的响应作为"主响应"（与编排器保持一致）
-                primary = self._select_primary_response(request.agent_responses)
-                self_rag_result = await self._self_rag_evaluator.evaluate(primary)
+        if self_rag_out is not None:
+            self_rag_result = self_rag_out
+            if isinstance(self_rag_result, Exception):
+                logger.warning(
+                    "layered_validator_self_rag_failed",
+                    error=str(self_rag_result),
+                    error_type=type(self_rag_result).__name__,
+                )
+                result.self_rag_passed = None  # 标记为「未执行」
+            elif self_rag_result is not None:
                 result.self_rag_passed = self_rag_result.passed
                 result.self_rag_score = self_rag_result.score
                 # P0-2 修复：写入完整评估结果，service.py 复用而非重新构造
@@ -156,13 +158,6 @@ class LayeredValidator:
                         score=self_rag_result.score,
                         reason=self_rag_result.reason,
                     )
-            except Exception as exc:  # noqa: BLE001
-                logger.warning(
-                    "layered_validator_self_rag_failed",
-                    error=str(exc),
-                    error_type=type(exc).__name__,
-                )
-                result.self_rag_passed = None  # 标记为「未执行」
 
         result.total_latency_ms = (time.monotonic() - start) * 1000.0
         return result
@@ -171,9 +166,37 @@ class LayeredValidator:
     # 内部
     # ------------------------------------------------------------------
 
+    async def _check_consistency_safe(
+        self, request: FusionRequest
+    ) -> ConsistencyCheckResult:
+        """一致性校验（失败安全：异常 → is_consistent=True 的占位结果）。"""
+        try:
+            return await self._consistency_checker.check(request)
+        except Exception as exc:
+            logger.warning(
+                "layered_validator_consistency_check_failed",
+                error=str(exc),
+                error_type=type(exc).__name__,
+            )
+            return ConsistencyCheckResult(
+                is_consistent=True,
+                severity=ConsistencySeverity.INFO,
+                detail=f"consistency_check_failed: {type(exc).__name__}",
+            )
+
+    async def _evaluate_self_rag_safe(
+        self, request: FusionRequest
+    ) -> SelfRAGEvalResult | Exception | None:
+        """Self-RAG 质检（失败安全：异常原样返回，由调用方记录降级）。"""
+        try:
+            primary = self._select_primary_response(request.agent_responses)
+            return await self._self_rag_evaluator.evaluate(primary)
+        except Exception as exc:
+            return exc
+
     @staticmethod
     def _select_primary_response(
-        responses: List[AgentResponse],
+        responses: list[AgentResponse],
     ) -> AgentResponse:
         """从多条响应中选取"主响应"（供 Self-RAG 评估用）。
 

@@ -17,12 +17,12 @@ Key improvements:
 import asyncio
 import statistics
 import time
-from typing import List, Dict, Any
 
 import pytest
 
-from app.observability.enums import LogCategory, NtpSyncStatus, DeploymentProfile
-from app.observability.logging import LogStorage, BatchLogStorageWrapper, LogRecord
+from app.observability.enums import DeploymentProfile, LogCategory, NtpSyncStatus
+from app.observability.logging import BatchLogStorageWrapper, LogRecord, LogStorage
+
 pytestmark = [pytest.mark.track_obs, pytest.mark.track_inf]
 
 
@@ -78,8 +78,8 @@ class TestLoggingPerformance:
             await asyncio.sleep(0.005)
             metrics = storage.get_metrics()
             # 安全获取flush_latencies，避免KeyError
-            if "flush_latencies" in metrics and metrics["flush_latencies"]:
-                flush_latencies.extend([l * 1000 for l in metrics["flush_latencies"]])
+            if metrics.get("flush_latencies"):
+                flush_latencies.extend([ln * 1000 for ln in metrics["flush_latencies"]])
                 # 重置后端的flush_latencies
                 if hasattr(storage._backend, "_metrics") and "flush_latencies" in storage._backend._metrics:
                     storage._backend._metrics["flush_latencies"] = []
@@ -263,7 +263,7 @@ class TestLoggingPerformance:
         assert p99 < 1.0, f"Enqueue P99 latency {p99:.2f}ms exceeds 1ms target"
 
     @staticmethod
-    def _calculate_percentile(data: List[float], percentile: int) -> float:
+    def _calculate_percentile(data: list[float], percentile: int) -> float:
         if not data:
             return 0.0
         sorted_data = sorted(data)
@@ -365,7 +365,7 @@ class TestBatchLogStorageWrapper:
         await asyncio.sleep(0.1)
 
         metrics = wrapper.get_metrics()
-        flush_latencies_ms = [l * 1000 for l in metrics["flush_latencies"]]
+        flush_latencies_ms = [ln * 1000 for ln in metrics["flush_latencies"]]
 
         if flush_latencies_ms:
             p99 = TestLoggingPerformance._calculate_percentile(flush_latencies_ms, 99)

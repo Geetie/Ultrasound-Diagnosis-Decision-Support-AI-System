@@ -1,9 +1,9 @@
+import asyncio
 from collections.abc import Callable
 from datetime import datetime, timezone
 from enum import Enum
 from inspect import iscoroutine
 from typing import Any
-import asyncio
 
 import structlog
 
@@ -21,7 +21,7 @@ class CircuitBreakerState(Enum):
 class CircuitBreaker:
     """
     熔断器模式实现，用于保护系统免受频繁失败的影响
-    
+
     状态转换:
     CLOSED → OPEN: 失败次数达到阈值
     OPEN → HALF_OPEN: 经过冷却时间后
@@ -42,7 +42,7 @@ class CircuitBreaker:
     ):
         """
         初始化熔断器
-        
+
         :param failure_threshold: 触发熔断的失败次数阈值
         :param success_threshold: 从半开状态恢复到闭合状态所需的成功次数
         :param cooldown_period: 从打开状态转换到半开状态的冷却时间（秒）
@@ -165,7 +165,7 @@ class CircuitBreaker:
     ) -> Any:
         """
         执行受熔断器保护的操作
-        
+
         :param func: 要执行的异步函数
         :param fallback: 熔断器打开时的回退函数
         :param args: 函数参数

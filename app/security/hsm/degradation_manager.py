@@ -5,12 +5,12 @@
 """
 
 import threading
-from typing import Optional, Dict, Any
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
+from typing import Any
 
 import structlog
 
-from app.security.hsm.enums import DegradedPhase, DegradedBehavior, DEGRADED_BEHAVIORS
+from app.security.hsm.enums import DEGRADED_BEHAVIORS, DegradedPhase
 
 logger = structlog.get_logger()
 
@@ -40,8 +40,8 @@ class DegradationManager:
         phase_2_threshold: timedelta = timedelta(minutes=30),
     ) -> None:
         self._is_degraded: bool = False
-        self._degraded_at: Optional[datetime] = None
-        self._degraded_reason: Optional[str] = None
+        self._degraded_at: datetime | None = None
+        self._degraded_reason: str | None = None
         self._lock = threading.RLock()
         self._phase_1_threshold = phase_1_threshold
         self._phase_2_threshold = phase_2_threshold
@@ -53,13 +53,13 @@ class DegradationManager:
             return self._is_degraded
 
     @property
-    def degraded_at(self) -> Optional[datetime]:
+    def degraded_at(self) -> datetime | None:
         """降级开始时间。"""
         with self._lock:
             return self._degraded_at
 
     @property
-    def degraded_reason(self) -> Optional[str]:
+    def degraded_reason(self) -> str | None:
         """降级原因。"""
         with self._lock:
             return self._degraded_reason
@@ -142,21 +142,21 @@ class DegradationManager:
         }
         return op_map.get(operation, False)
 
-    def get_degradation_info(self) -> Dict[str, Any]:
+    def get_degradation_info(self) -> dict[str, Any]:
         """获取降级状态信息。
 
         Returns:
             dict: 包含降级时间和原因的字典
         """
-        info: Dict[str, Any] = {}
+        info: dict[str, Any] = {}
         if self._degraded_at:
             info["degraded_at"] = self._degraded_at.isoformat()
         if self._degraded_reason:
             info["degraded_reason"] = self._degraded_reason
         return info
 
-    def restore_state(self, is_degraded: bool, degraded_at: Optional[datetime],
-                      degraded_reason: Optional[str]) -> None:
+    def restore_state(self, is_degraded: bool, degraded_at: datetime | None,
+                      degraded_reason: str | None) -> None:
         """从持久化存储恢复降级状态。
 
         Args:

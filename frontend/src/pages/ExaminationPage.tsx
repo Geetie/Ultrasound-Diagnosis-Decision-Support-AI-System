@@ -6,7 +6,10 @@ import NavigationOverlay from '@/components/navigation/NavigationOverlay';
 import { useNavigationAnnotations } from '@/hooks/useNavigationAnnotations';
 import { useSession } from '@/hooks/useSession';
 import { requestDiagnosis } from '@/services/diagnosisService';
+import { useNavigate } from 'react-router-dom';
 import { generateIdempotencyKey } from '@/utils/idGenerator';
+import { getApiErrorMessage } from '@/utils/apiError';
+import { wadouri } from '@/components/dicom/cornerstone';
 
 const { Title, Text } = Typography;
 
@@ -19,12 +22,9 @@ export default function ExaminationPage() {
   useNavigationAnnotations();
 
   const handleFileUpload = useCallback((file: File) => {
-    if (objectUrlRef.current) {
-      URL.revokeObjectURL(objectUrlRef.current);
-    }
-    const url = URL.createObjectURL(file);
-    objectUrlRef.current = url;
-    const dicomImageId = `wado:uri?url=${encodeURIComponent(url)}&type=DICOM`;
+    // Cornerstone3D：File 直接注册进 wadouri fileManager，返回可加载的 imageId
+    //（旧 wado:uri?url=... 是 cornerstone-wado-image-loader 4.x 专属 scheme）。
+    const dicomImageId = wadouri.fileManager.add(file);
     setImageId(dicomImageId);
     return false;
   }, []);
@@ -38,6 +38,8 @@ export default function ExaminationPage() {
     };
   }, []);
 
+  const navigate = useNavigate();
+
   const handleRequestDiagnosis = async () => {
     if (!sessionId) {
       message.warning('请先创建检查会话');
@@ -46,16 +48,19 @@ export default function ExaminationPage() {
     setDiagnosisLoading(true);
     try {
       const idempotencyKey = generateIdempotencyKey(selectedOrgan);
-      await requestDiagnosis({
+      const submitted = await requestDiagnosis({
         session_id: sessionId,
         image_ids: imageId ? [imageId] : [],
-        target_organ: selectedOrgan as any,
+        target_organ: selectedOrgan as 'thyroid' | 'liver' | 'cardiac',
         response_tier: 'standard',
         idempotency_key: idempotencyKey,
       });
-      message.success('诊断请求已提交，请等待结果');
-    } catch (err: any) {
-      message.error(err?.response?.data?.error_message || '诊断请求失败');
+      message.success('诊断请求已提交，正在跳转查看结果');
+      // 关键：把 request_id 交给结果页。此前提交成功后**既不跳转也不保存 id**，
+      // 医生停留在本页只看到"已提交"，而结果页无从知道该取哪一次 → 永远看不到 AI 结论。
+      navigate(`/diagnosis?request_id=${encodeURIComponent(submitted.request_id)}`);
+    } catch (err: unknown) {
+      message.error(getApiErrorMessage(err, '诊断请求失败'));
     } finally {
       setDiagnosisLoading(false);
     }

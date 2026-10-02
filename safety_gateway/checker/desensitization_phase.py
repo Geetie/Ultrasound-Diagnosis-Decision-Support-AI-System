@@ -2,9 +2,9 @@ from typing import Any
 
 import structlog
 
-from safety_gateway.validation_result import CheckResult, DegradedReason
+from safety_gateway.checker.phase_base import CheckContext, CheckPhase
 from safety_gateway.desensitization import sg_desensitization_engine
-from safety_gateway.checker.phase_base import CheckPhase, CheckContext
+from safety_gateway.validation_result import CheckResult, DegradedReason
 
 MAX_RECURSION_DEPTH = 20
 

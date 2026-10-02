@@ -1,127 +1,235 @@
-import cornerstone from 'cornerstone-core';
-import cornerstoneTools from 'cornerstone-tools';
-import cornerstoneWADOImageLoader from 'cornerstone-wado-image-loader';
-import dicomParser from 'dicom-parser';
-
-let coreInitialized = false;
-let toolsInitialized = false;
-
 /**
- * 只初始化 cornerstone core + WADO 影像加载器。
- *
- * 与工具栈拆开的原因：`cornerstoneTools.init()` 依赖页面上的 `Hammer`
- * （见 initCornerstoneTools），在没引入 hammer.js 的页面里会抛
- * `Cannot read properties of undefined (reading 'SUPPORT_POINTER_EVENTS')`。
- * 医生侧工作区的影像区是**只读展示**，不需要窗宽窗位/缩放/平移工具，
- * 因此那条路径只调 core，避免为看一眼图把整套 tools 栈也拉起来。
+ * Cornerstone3D 适配器（@cornerstonejs/* 5.x），迁移自 cornerstone-core 2.x。
+ * 对外签名与旧适配器一致，消费方零改动；工具名内部映射（WwwcTool→WindowLevel）。
+ * 并发：init 异步 fire-and-forget；engine/toolGroup 按 element 缓存。
  */
-export function initCornerstoneCore(): void {
-  if (coreInitialized) return;
+import {
+  RenderingEngine,
+  Enums as CoreEnums,
+  eventTarget,
+  getEnabledElement,
+  imageLoader,
+  init as coreInit,
+  type Types,
+} from '@cornerstonejs/core';
+import {
+  Enums as ToolsEnums,
+  PanTool,
+  ToolGroupManager,
+  WindowLevelTool,
+  ZoomTool,
+  init as toolsInit,
+  addTool,
+} from '@cornerstonejs/tools';
+import cornerstone, {
+  init as loaderInit,
+  wadouri,
+} from '@cornerstonejs/dicom-image-loader';
 
-  cornerstoneWADOImageLoader.external.cornerstone = cornerstone;
-  cornerstoneWADOImageLoader.external.dicomParser = dicomParser;
+let initStarted = false;
+const engineByElement = new WeakMap<HTMLElement, RenderingEngine>();
+const viewportIdByElement = new WeakMap<HTMLElement, string>();
+const toolGroupByElement = new WeakMap<HTMLElement, string>();
+let currentToolGroupId: string | null = null;
+let engineSeq = 0;
 
-  cornerstoneWADOImageLoader.configure({
-    useWebWorkers: true,
-    decodeConfig: {
-      convertFloatPixelDataToInt: false,
-    },
-  });
+const TOOL_MAP: Record<string, string> = {
+  WwwcTool: 'WindowLevel',
+  ZoomTool: 'Zoom',
+  PanTool: 'Pan',
+};
 
-  coreInitialized = true;
+function ensureInit(): void {
+  if (initStarted) return;
+  initStarted = true;
+  (async () => {
+    await coreInit();
+    await loaderInit();
+    toolsInit();
+    addTool(WindowLevelTool);
+    addTool(ZoomTool);
+    addTool(PanTool);
+  })().catch((err: unknown) => console.error('[cornerstone3d] init failed', err));
 }
 
-/** 初始化交互工具栈（需要页面已引入 hammer.js）。 */
-export function initCornerstoneTools(): void {
-  if (toolsInitialized) return;
-
-  const Hammer = (window as any).Hammer;
-  if (!Hammer) {
-    // 明确降级，而不是让 tools.init 抛一个难以定位的错
-    console.warn(
-      '[cornerstone] 未检测到 hammer.js，交互工具（窗宽窗位/缩放/平移）不启用；' +
-      '只读影像显示不受影响。'
-    );
-    return;
-  }
-
-  cornerstoneTools.external.cornerstone = cornerstone;
-  cornerstoneTools.external.Hammer = Hammer;
-
-  cornerstoneTools.init({
-    mouseEnabled: true,
-    touchEnabled: true,
-    globalToolSyncEnabled: false,
-    showSVGCursors: true,
-  });
-
-  const WwwcTool = cornerstoneTools.WwwcTool;
-  const ZoomTool = cornerstoneTools.ZoomTool;
-  const PanTool = cornerstoneTools.PanTool;
-
-  if (WwwcTool) cornerstoneTools.addTool(WwwcTool);
-  if (ZoomTool) cornerstoneTools.addTool(ZoomTool);
-  if (PanTool) cornerstoneTools.addTool(PanTool);
-
-  toolsInitialized = true;
-}
-
-/** core + 工具栈一起初始化（交互式阅片器用）。 */
 export function initCornerstone(): void {
-  initCornerstoneCore();
-  initCornerstoneTools();
-}
-
-export function activateTool(toolName: string): void {
-  cornerstoneTools.setToolActive(toolName, { mouseButtonMask: 1 });
-}
-
-export function deactivateTool(toolName: string): void {
-  cornerstoneTools.setToolPassive(toolName);
-}
-
-export function resetViewport(element: HTMLElement): void {
-  cornerstone.reset(element);
-}
-
-export function getViewport(element: HTMLElement) {
-  return cornerstone.getViewport(element);
-}
-
-export function setViewport(element: HTMLElement, viewport: Record<string, unknown>) {
-  cornerstone.setViewport(element, viewport);
+  ensureInit();
 }
 
 export function enable(element: HTMLElement): void {
-  try {
-    cornerstone.enable(element);
-  } catch {
-    // element may not have dimensions yet
+  ensureInit();
+  if (engineByElement.has(element)) return;
+  engineSeq += 1;
+  const engineId = `engine_${engineSeq}`;
+  const viewportId = `vp_${engineSeq}`;
+  const engine = new RenderingEngine(engineId);
+  engine.enableElement({
+    viewportId,
+    element: element as HTMLDivElement,
+    type: CoreEnums.ViewportType.STACK,
+  });
+  engineByElement.set(element, engine);
+  viewportIdByElement.set(element, viewportId);
+  const tg = ToolGroupManager.createToolGroup(`tg_${engineSeq}`);
+  if (tg) {
+    tg.addTool(WindowLevelTool.toolName);
+    tg.addTool(ZoomTool.toolName);
+    tg.addTool(PanTool.toolName);
+    tg.addViewport(viewportId, engineId);
+    tg.setToolActive('WindowLevel', {
+      bindings: [{ mouseButton: ToolsEnums.MouseBindings.Primary }],
+    });
+    currentToolGroupId = `tg_${engineSeq}`;
   }
+  eventTarget.addEventListener(
+    CoreEnums.Events.IMAGE_RENDERED,
+    ((evt: CustomEvent) => {
+      const vpId = (evt.detail as { viewportId?: string })?.viewportId;
+      if (vpId && vpId === viewportIdByElement.get(element)) {
+        element.dispatchEvent(new CustomEvent('cornerstoneimagerendered'));
+      }
+    }) as EventListener,
+  );
 }
 
 export function disable(element: HTMLElement): void {
+  const engine = engineByElement.get(element);
+  if (!engine) return;
   try {
-    cornerstone.disable(element);
+    const tgId = toolGroupByElement.get(element);
+    if (tgId) ToolGroupManager.destroyToolGroup(tgId);
+    engine.destroy();
   } catch {
-    // element may not have been enabled
+    // already detached
+  }
+  engineByElement.delete(element);
+  viewportIdByElement.delete(element);
+  toolGroupByElement.delete(element);
+  if (currentToolGroupId && !ToolGroupManager.getToolGroup(currentToolGroupId)) {
+    currentToolGroupId = null;
   }
 }
 
-export function loadAndCacheImage(imageId: string) {
-  return cornerstone.loadAndCacheImage(imageId);
+/** wadouri image 的 .data：dicomParser.DataSet 的最小接口（元数据提取用）。 */
+export interface DicomDataSet {
+  string(tag: string): string | undefined;
+  uint16(tag: string): number | undefined;
 }
 
-export function displayImage(element: HTMLElement, image: Record<string, unknown>, viewport?: Record<string, unknown>) {
-  cornerstone.displayImage(element, image, viewport);
+export function loadAndCacheImage(
+  imageId: string,
+): Promise<Types.IImage & { data?: DicomDataSet }> {
+  // wadouri 加载的 image 运行时带 dicomParser DataSet（.data），
+  // cs3d 的 IImage 类型未声明——消费方（DicomViewer 元数据提取）依赖它。
+  return imageLoader.loadAndCacheImage(imageId) as Promise<
+    Types.IImage & { data?: DicomDataSet }
+  >;
 }
 
-export function updateImage(element: HTMLElement) {
-  cornerstone.updateImage(element);
+export function displayImage(element: HTMLElement, image: { imageId?: string }): void {
+  const engine = engineByElement.get(element);
+  const viewportId = viewportIdByElement.get(element);
+  if (!engine || !viewportId || !image?.imageId) return;
+  const vp = engine.getViewports().find((v) => v.id === viewportId);
+  if (!vp) return;
+  (vp as Types.IStackViewport).setStack([image.imageId]).catch(() => undefined);
 }
 
-export function resize(element: HTMLElement) {
-  cornerstone.resize(element);
+export function getViewport(element: HTMLElement) {
+  try {
+    const enabled = getEnabledElement(element as HTMLDivElement);
+    if (!enabled) return null;
+    const viewport = enabled.viewport;
+    const props = viewport.getProperties() as {
+      voi?: { windowWidth?: number; windowCenter?: number };
+      invert?: boolean;
+    };
+    const cam = viewport.getCamera();
+    return {
+      voi: {
+        windowWidth: (props.voi?.windowWidth as number | undefined) ?? 1,
+        windowCenter: (props.voi?.windowCenter as number | undefined) ?? 0,
+      },
+      scale: cam.parallelScale as number,
+      translation: {
+        x: cam.focalPoint?.[0] ?? 0,
+        y: cam.focalPoint?.[1] ?? 0,
+      },
+      invert: Boolean(props.invert),
+    };
+  } catch {
+    return null;
+  }
 }
 
-export { cornerstone, cornerstoneTools, cornerstoneWADOImageLoader };
+
+export function setViewport(element: HTMLElement, viewport: Record<string, unknown>): void {
+  try {
+    const enabled = getEnabledElement(element as HTMLDivElement);
+    if (!enabled) return;
+    const vp = enabled.viewport as Types.IStackViewport;
+    // voi {windowWidth, windowCenter} → voiRange {lower, upper}
+    const voi = (viewport.voi ?? {}) as { windowWidth?: number; windowCenter?: number };
+    const ww = voi.windowWidth ?? 0;
+    const wc = voi.windowCenter ?? 0;
+    if (ww > 0) {
+      vp.setProperties({ voiRange: { lower: wc - ww / 2, upper: wc + ww / 2 } });
+    }
+    // invert / scale / translation：与 getViewport 读出口对称，旧签名完整兼容
+    if (typeof viewport.invert === 'boolean') {
+      vp.setProperties({ invert: viewport.invert });
+    }
+    const cam = vp.getCamera();
+    let camChanged = false;
+    if (typeof viewport.scale === 'number' && viewport.scale > 0) {
+      cam.parallelScale = viewport.scale;
+      camChanged = true;
+    }
+    const tr = viewport.translation as { x?: number; y?: number } | undefined;
+    if (tr && (typeof tr.x === 'number' || typeof tr.y === 'number')) {
+      const focal = [...(cam.focalPoint ?? [0, 0, 0])] as [number, number, number];
+      if (typeof tr.x === 'number') focal[0] = tr.x;
+      if (typeof tr.y === 'number') focal[1] = tr.y;
+      cam.focalPoint = focal;
+      camChanged = true;
+    }
+    if (camChanged) vp.setCamera(cam);
+  } catch {
+    // ignore
+  }
+}
+
+export function resetViewport(element: HTMLElement): void {
+  try {
+    const enabled = getEnabledElement(element as HTMLDivElement);
+    if (!enabled) return;
+    enabled.viewport.resetCamera();
+    enabled.viewport.resetProperties();
+  } catch {
+    // ignore
+  }
+}
+
+export function resize(element: HTMLElement): void {
+  engineByElement.get(element)?.resize();
+}
+
+function currentToolGroup() {
+  return currentToolGroupId
+    ? ToolGroupManager.getToolGroup(currentToolGroupId)
+    : null;
+}
+
+export function activateTool(toolName: string): void {
+  currentToolGroup()?.setToolActive(TOOL_MAP[toolName] ?? toolName, {
+    bindings: [{ mouseButton: ToolsEnums.MouseBindings.Primary }],
+  });
+}
+
+export function deactivateTool(toolName: string): void {
+  currentToolGroup()?.setToolDisabled(TOOL_MAP[toolName] ?? toolName);
+}
+
+export { cornerstone, wadouri };
+
+export type { Types };

@@ -1,0 +1,11 @@
+{
+  "dataset": "TN3K test (cross-dataset)",
+  "n": 1228,
+  "label_dist": {
+    "0": 614,
+    "1": 614
+  },
+  "malignancy_auc": 0.6789,
+  "acc_at_0.5": 0.5366,
+  "note": "AUL 探针零改动的跨数据集泛化（0=良性 1=恶性）"
+}

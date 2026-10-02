@@ -4,10 +4,8 @@ Revision ID: 0002_missing_indexes
 Revises: 0001_initial_migration
 Create Date: 2026-05-12
 """
-from alembic import op
-import sqlalchemy as sa
-from sqlalchemy.dialects.postgresql import JSONB
 
+from alembic import op
 
 revision = '0002_missing_indexes'
 down_revision = '0001'

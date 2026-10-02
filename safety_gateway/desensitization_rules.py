@@ -1,12 +1,11 @@
 import os
 import re
-from typing import Any
 
 import structlog
 import yaml
-from safety_gateway.sg_rule_model import SGDesensitizationRule as DesensitizationRule
 
 from safety_gateway.sg_config import sg_settings as settings
+from safety_gateway.sg_rule_model import SGDesensitizationRule as DesensitizationRule
 
 logger = structlog.get_logger()
 

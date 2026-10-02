@@ -1,7 +1,6 @@
-from typing import Dict, List
 
 
-def generate_thyroid_boundary_cases(n: int = 110) -> List[Dict]:
+def generate_thyroid_boundary_cases(n: int = 110) -> list[dict]:
     cases = []
     boundary_pairs = [
         ("3", "4a"), ("4a", "4b"), ("4b", "4c"), ("4", "5"),
@@ -32,7 +31,7 @@ def generate_thyroid_boundary_cases(n: int = 110) -> List[Dict]:
     return cases
 
 
-def generate_liver_boundary_cases(n: int = 110) -> List[Dict]:
+def generate_liver_boundary_cases(n: int = 110) -> list[dict]:
     cases = []
     boundary_pairs = [
         ("3", "4"), ("4", "5"), ("3", "5"),
@@ -59,7 +58,7 @@ def generate_liver_boundary_cases(n: int = 110) -> List[Dict]:
     return cases
 
 
-def generate_cardiac_boundary_cases(n: int = 110) -> List[Dict]:
+def generate_cardiac_boundary_cases(n: int = 110) -> list[dict]:
     cases = []
     boundary_pairs = [
         ("normal", "mild"), ("mild", "moderate"), ("moderate", "severe"),
@@ -87,7 +86,7 @@ def generate_cardiac_boundary_cases(n: int = 110) -> List[Dict]:
     return cases
 
 
-def generate_all_boundary_cases() -> List[Dict]:
+def generate_all_boundary_cases() -> list[dict]:
     return (
         generate_thyroid_boundary_cases()
         + generate_liver_boundary_cases()
@@ -96,7 +95,7 @@ def generate_all_boundary_cases() -> List[Dict]:
     )
 
 
-def generate_breast_boundary_cases(n: int = 110) -> List[Dict]:
+def generate_breast_boundary_cases(n: int = 110) -> list[dict]:
     cases = []
     boundary_pairs = [
         ("3", "4a"), ("4a", "4b"), ("4b", "4c"), ("4", "5"),
@@ -127,7 +126,7 @@ def generate_breast_boundary_cases(n: int = 110) -> List[Dict]:
     return cases
 
 
-def generate_routine_cases(n: int = 280) -> List[Dict]:
+def generate_routine_cases(n: int = 280) -> list[dict]:
     cases = []
     gradings = {
         "thyroid": ["2", "3", "4a", "4b", "4c", "5"],
@@ -183,7 +182,7 @@ def generate_routine_cases(n: int = 280) -> List[Dict]:
     return cases
 
 
-def generate_high_risk_cases(n: int = 140) -> List[Dict]:
+def generate_high_risk_cases(n: int = 140) -> list[dict]:
     cases = []
     high_risk_gradings = {
         "thyroid": ["4c", "5"],
@@ -228,7 +227,7 @@ def generate_high_risk_cases(n: int = 140) -> List[Dict]:
     return cases
 
 
-def generate_hallucination_ground_truth_cases() -> List[Dict]:
+def generate_hallucination_ground_truth_cases() -> list[dict]:
     """生成带幻觉标注的测试用例，用于FalseStats验证。每器官50例(25阳性+25阴性)。"""
     cases = [
         # ===== THYROID (50 cases: 25 positive + 25 negative) =====

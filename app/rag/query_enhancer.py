@@ -18,7 +18,6 @@ term normalization.
 from __future__ import annotations
 
 import re
-from typing import List, Optional, Set
 
 import structlog
 
@@ -35,7 +34,7 @@ logger = structlog.get_logger("app.rag.query_enhancer")
 _CJK_RE = re.compile(r"[\u4e00-\u9fff]+")
 
 
-def _extract_chinese_phrases(query: str) -> List[str]:
+def _extract_chinese_phrases(query: str) -> list[str]:
     """Return list of 2-char CJK windows + the full phrase from the query.
 
     CJK tokenization is done in 2-character sliding windows to surface
@@ -43,7 +42,7 @@ def _extract_chinese_phrases(query: str) -> List[str]:
     The full phrase is included as the last element to preserve exact-match
     coverage.
     """
-    phrases: List[str] = []
+    phrases: list[str] = []
     for m in _CJK_RE.finditer(query):
         cjk = m.group(0)
         for i in range(len(cjk) - 1):
@@ -69,7 +68,7 @@ class QueryEnhancer:
         self,
         vocabulary: UDAFVocabulary,
         udt_parser: UDTParser,
-        llm_enhancer: Optional[LLMEnhancer] = None,
+        llm_enhancer: LLMEnhancer | None = None,
         max_expansion_per_layer: int = 5,
     ):
         self.vocab = vocabulary
@@ -80,7 +79,7 @@ class QueryEnhancer:
     async def enhance(
         self,
         query: str,
-        organ_hint: Optional[str] = None,
+        organ_hint: str | None = None,
         use_llm: bool = True,
     ) -> EnhancedQuery:
         """Run the full enhancement pipeline.
@@ -98,7 +97,7 @@ class QueryEnhancer:
         # Step 1: UDT parse for organ + normalized terms (re-uses existing logic).
         parse_result = self.udt_parser.parse(query, organ=organ_hint)
         organ = parse_result.organ or organ_hint
-        normalized_terms: List[str] = [str(a.value) for a in parse_result.attributes]
+        normalized_terms: list[str] = [str(a.value) for a in parse_result.attributes]
 
         # Coverage is the share of detected normalized terms that the UDAF vocab knows.
         coverage = self.vocab.coverage_rate(normalized_terms) if normalized_terms else 1.0
@@ -116,8 +115,8 @@ class QueryEnhancer:
         for phrase in _extract_chinese_phrases(query):
             seed_terms.add(phrase)
 
-        l1_synonyms: List[str] = []
-        seen_l1: Set[str] = set()
+        l1_synonyms: list[str] = []
+        seen_l1: set[str] = set()
         for term in seed_terms:
             for syn in self.vocab.get_synonyms(term):
                 if syn in seen_l1:
@@ -131,9 +130,9 @@ class QueryEnhancer:
 
         # Step 3: L2 hypernyms. Use the category of the first detected attribute;
         # fall back to collecting terms from all categories we know about.
-        l2_hypernyms: List[str] = []
-        seen_l2: Set[str] = set()
-        categories: Set[str] = set()
+        l2_hypernyms: list[str] = []
+        seen_l2: set[str] = set()
+        categories: set[str] = set()
         for attr in parse_result.attributes:
             if attr.category:
                 categories.add(attr.category)
@@ -157,8 +156,8 @@ class QueryEnhancer:
         # Step 4: L3 organ-related terms. If an organ was detected, include
         # other terms registered for that organ (TI-RADS, anatomical locations,
         # heart conditions, etc.). These are highly relevant siblings.
-        l3_related: List[str] = []
-        seen_l3: Set[str] = set()
+        l3_related: list[str] = []
+        seen_l3: set[str] = set()
         if organ:
             for term in self.vocab.get_terms_by_organ(organ):
                 if term in seen_l3:
@@ -186,7 +185,7 @@ class QueryEnhancer:
                     udaf_expansion=expansion_tokens,
                     organ=organ,
                 )
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.info(
                     "llm_enhance_raised_exception",
                     error=str(exc),

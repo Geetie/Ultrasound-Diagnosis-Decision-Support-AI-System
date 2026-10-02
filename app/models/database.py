@@ -1,16 +1,27 @@
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
-    Column, Integer, String, Text, Float, Date, TIMESTAMP, Boolean, 
-    ARRAY, JSON, ForeignKey, BigInteger, Index
+    ARRAY,
+    TIMESTAMP,
+    BigInteger,
+    Boolean,
+    CheckConstraint,
+    Column,
+    Date,
+    Float,
+    Index,
+    Integer,
+    String,
+    Text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.sql import func
-from pgvector.sqlalchemy import Vector
+
 from app.config.database import Base
 
 
 class Patient(Base):
     __tablename__ = 'patients'
-    
+
     id = Column(Integer, primary_key=True, autoincrement=True)
     patient_id = Column(String(64), unique=True, nullable=False, index=True)
     name = Column(Text)
@@ -22,7 +33,7 @@ class Patient(Base):
 
 class ConsentRecord(Base):
     __tablename__ = 'consent_records'
-    
+
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     record_id = Column(BigInteger, unique=True, nullable=False, index=True)
     patient_id = Column(String(64), nullable=False, index=True)
@@ -31,6 +42,18 @@ class ConsentRecord(Base):
     withdrawn_at = Column(TIMESTAMP(timezone=True))
     consent_version = Column(String(16), nullable=False, default="1.0")
     created_at = Column(TIMESTAMP(timezone=True), nullable=False, default=func.current_timestamp())
+    # 2026-09-29 真机（第 1 例真实诊断）暴露：`consent_records` 被**两个服务各自声明**——
+    # app 这里是"表的所有者"（迁移建表），而 `safety_gateway/sg_models.py` 用自己的 Base
+    # 也声明了同名表，且**多出 updated_at**。SG 的同意查询是 `SELECT *`（ORM 全列），
+    # 于是真机报：`UndefinedColumnError: column consent_records.updated_at does not exist`
+    # → 503 `consent_check_db_error` → 主服务 fail-closed，诊断必 failed。
+    # 共享表必须取**双方所需列的并集**，故补上这一列（迁移 0013）。
+    updated_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+    )
 
     __table_args__ = (
         Index('idx_consent_patient_status', 'patient_id', 'status'),
@@ -58,7 +81,7 @@ class DiagnosisSession(Base):
 
 class DiagnosisResult(Base):
     __tablename__ = 'diagnosis_results'
-    
+
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     request_id = Column(String(64), unique=True, nullable=False, index=True)
     session_id = Column(String(64), index=True)
@@ -67,6 +90,11 @@ class DiagnosisResult(Base):
     # 医生提交的临床文本（含语音转写）。此前未落库，导致后台管线读取
     # ``request.clinical_text`` 抛 AttributeError → 调度阶段恒失败。
     clinical_text = Column(Text, nullable=True)
+    # 请求携带的患者上下文（age/gender/relevant_history/**conditions**）。
+    # 2026-09-29 真机暴露：`create_request(patient_context=...)` 收了这个参数却**从不写库**
+    # （模型里甚至没有对应列），于是后台管线拿不到患者条件，安全网关的禁忌判定只能走
+    # "缺条件数据 → 保守判命中"分支 → 每次诊断恒 requires_manual_review。
+    patient_context = Column(JSONB, nullable=True)
     confidence = Column(Float, nullable=False)
     findings = Column(JSONB)
     recommendations = Column(Text)
@@ -159,11 +187,11 @@ class ColdArchiveManifest(Base):
 
 class KnowledgeBase(Base):
     __tablename__ = 'knowledge_base'
-    
+
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     kb_id = Column(String(64), unique=True, nullable=False, index=True)
     content = Column(Text, nullable=False)
-    embedding = Column(Vector(768))
+    embedding = Column(Vector(1024))
     organ = Column(String(32))
     tier = Column(String(16))
     version = Column(String(32))
@@ -174,7 +202,7 @@ class KnowledgeBase(Base):
 
 class SafetyEvent(Base):
     __tablename__ = 'safety_events'
-    
+
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     event_id = Column(BigInteger, unique=True, nullable=False, index=True)
     event_type = Column(String(64), nullable=False, index=True)
@@ -193,7 +221,7 @@ class SafetyEvent(Base):
 
 class AuditLog(Base):
     __tablename__ = 'audit_logs'
-    
+
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     log_id = Column(String(36), unique=True, nullable=False, index=True)
     session_id = Column(String(64), index=True)
@@ -232,7 +260,7 @@ class AuditCrossChain(Base):
 
 class SessionArchive(Base):
     __tablename__ = 'sessions_archive'
-    
+
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     session_id = Column(String(64), unique=True, nullable=False, index=True)
     patient_id = Column(String(64), nullable=False)
@@ -250,7 +278,7 @@ class SessionArchive(Base):
 
 class Device(Base):
     __tablename__ = 'devices'
-    
+
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     device_id = Column(String(64), unique=True, nullable=False, index=True)
     device_name = Column(String(128), nullable=False)
@@ -265,7 +293,7 @@ class Device(Base):
 
 class FeedbackRecord(Base):
     __tablename__ = 'feedback_records'
-    
+
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     feedback_id = Column(String(64), unique=True, nullable=False, index=True)
     request_id = Column(String(64), nullable=False, index=True)
@@ -293,7 +321,7 @@ class User(Base):
 
 class OrganDiseaseThreshold(Base):
     __tablename__ = 'organ_disease_thresholds'
-    
+
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     organ = Column(String(32), nullable=False, index=True)
     disease_type = Column(String(64), index=True)
@@ -321,13 +349,27 @@ class KnowledgeChunkModel(Base):
     organ = Column(String(32), nullable=False, index=True)
     content = Column(Text, nullable=False)
     meta = Column('metadata', JSONB, nullable=False, default={})
-    embedding = Column(Vector(768))
+    embedding = Column(Vector(1024))
     source_doc_id = Column(String(128), nullable=False, index=True)
     section_path = Column(Text, nullable=False, default='')
     token_count = Column(Integer, nullable=False, default=0)
     created_at = Column(TIMESTAMP(timezone=True), nullable=False, default=func.current_timestamp())
     updated_at = Column(TIMESTAMP(timezone=True), nullable=False, default=func.current_timestamp(), onupdate=func.current_timestamp())
+    # 二期 §6 衰减（迁移 0012）：时间衰减看 last_referenced_at，反馈衰减看 dispute_count，
+    # confidence_score 是算出来的目标值（检索侧按其加权）。
+    last_referenced_at = Column(
+        TIMESTAMP(timezone=True), nullable=False, server_default=func.current_timestamp()
+    )
+    reference_count = Column(Integer, nullable=False, server_default='0')
+    dispute_count = Column(Integer, nullable=False, server_default='0')
+    confidence_score = Column(Float, nullable=False, server_default='1.0')
 
     __table_args__ = (
         Index('idx_kc_kb_organ', 'kb_version', 'organ'),
+        Index('idx_kc_last_referenced_at', 'last_referenced_at'),
+        Index('idx_kc_confidence_score', 'confidence_score'),
+        CheckConstraint(
+            'confidence_score >= 0.0 AND confidence_score <= 1.0',
+            name='ck_kc_confidence_score_range',
+        ),
     )

@@ -51,6 +51,8 @@ class TestUltrasoundCLIPModelInit:
             dataset_path=str(nonexistent),
             device="cpu",
             max_samples=3,
+            # 合成样本现在是显式 opt-in（本用例测的正是该路径）
+            allow_synthetic=True,
         )
         assert isinstance(model, UltrasoundCLIPModel)
         assert len(samples) == 3

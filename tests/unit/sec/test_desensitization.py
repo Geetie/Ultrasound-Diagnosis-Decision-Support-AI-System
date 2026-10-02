@@ -17,9 +17,12 @@
 """
 
 import re
-import pytest
 import time
-from app.security.desensitization import DesensitizationEngine, get_desensitization_engine
+
+import pytest
+
+from app.security.desensitization import get_desensitization_engine
+
 pytestmark = [pytest.mark.track_sec, pytest.mark.sec_domain_desens]
 
 PATIENT_TOKEN_PATTERN = re.compile(r'PATIENT_\d{3}')

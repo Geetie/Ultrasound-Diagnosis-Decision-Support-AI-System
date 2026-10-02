@@ -168,6 +168,10 @@ class VLLMEngine(BaseHttpInferenceEngine):
                 engine=self._logger_name,
                 request_id=request.request_id,
             )
+        # P0-2 约束解码：extra["guided_json"]（JSON Schema）透传给 vLLM server
+        guided = request.extra.get("guided_json")
+        if guided:
+            payload["guided_json"] = guided
 
         return payload
 

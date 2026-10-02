@@ -3,12 +3,16 @@ import { useDicomStore } from '@/stores/dicomStore';
 import { useWebSocketStore } from '@/stores/websocketStore';
 import AnnotationBox from './AnnotationBox';
 import AnnotationLegend from './AnnotationLegend';
+import ImageQualityHint from './ImageQualityHint';
+import PlaneStatusBadge from './PlaneStatusBadge';
 
 export default function NavigationOverlay() {
   const currentFrameAnnotations = useNavigationStore((s) => s.currentFrameAnnotations);
   const organSwitching = useNavigationStore((s) => s.organSwitching);
   const isNavigationActive = useNavigationStore((s) => s.isNavigationActive);
   const lowConfidenceFrameIds = useNavigationStore((s) => s.lowConfidenceFrameIds);
+  const planeAssessment = useNavigationStore((s) => s.currentFramePlaneAssessment);
+  const imageQuality = useNavigationStore((s) => s.currentFrameImageQuality);
   const currentFrameIndex = useDicomStore((s) => s.currentFrameIndex);
   const navChannelStatus = useWebSocketStore((s) => s.navChannelStatus);
 
@@ -114,6 +118,21 @@ export default function NavigationOverlay() {
               />
             ))}
       </svg>
+
+      {/* M1：切面状态徽标（图像左上角）。无数据时显示灰问，明确了"未部署
+          切面评估头"与"切面不合格"是两种不同状态。 */}
+      {!organSwitching && (
+        <div className="absolute top-2 left-4">
+          <PlaneStatusBadge assessment={planeAssessment} />
+        </div>
+      )}
+
+      {/* M6：图像质量提示（图像底部）。质量达标时不渲染任何内容。 */}
+      {!organSwitching && (
+        <div className="absolute bottom-4 left-4" style={{ maxWidth: '60%' }}>
+          <ImageQualityHint quality={imageQuality} />
+        </div>
+      )}
 
       <div className="absolute bottom-12 right-4">
         <AnnotationLegend />

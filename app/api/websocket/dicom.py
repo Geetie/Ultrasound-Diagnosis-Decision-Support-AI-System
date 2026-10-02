@@ -1,21 +1,20 @@
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query, WebSocketException, status
-from sqlalchemy.ext.asyncio import AsyncSession
-from datetime import datetime, timezone
-from typing import Dict, List, Optional
-from collections import OrderedDict
-import struct
+import asyncio
 import binascii
 import json
-import structlog
-import asyncio
+import struct
 import time
+from collections import OrderedDict
+from datetime import datetime, timezone
 
-from app.models.schemas import AuthMessage, AuthOKMessage, WebSocketMessageType, PingMessage, PongMessage
-from app.api.websocket.nav import manager as nav_manager
+import structlog
+from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect, status
+
+from app.api.v1.imaging import parse_and_validate_dicom, validate_dicom_format
 from app.api.websocket.nav import WS_CLOSE_AUTH_FAILED, WS_CLOSE_AUTH_TIMEOUT, get_timestamp
-from app.api.v1.imaging import validate_dicom_format, parse_and_validate_dicom
+from app.api.websocket.nav import manager as nav_manager
 from app.config.database import AsyncSessionLocal
 from app.config.settings import settings
+from app.models.schemas import AuthMessage, AuthOKMessage, PingMessage, WebSocketMessageType
 from app.services.audit_service import AuditService
 
 logger = structlog.get_logger()
@@ -38,10 +37,10 @@ class FrameBuffer:
         while len(self._buffer) > self._capacity:
             self._buffer.popitem(last=False)
 
-    def get(self, frame_index: int) -> Optional[bytes]:
+    def get(self, frame_index: int) -> bytes | None:
         return self._buffer.get(frame_index)
 
-    def get_range(self, start: int, end: int) -> Dict[int, bytes]:
+    def get_range(self, start: int, end: int) -> dict[int, bytes]:
         result = {}
         for idx in range(start, end + 1):
             data = self._buffer.get(idx)
@@ -57,7 +56,7 @@ def calculate_crc32(data: bytes) -> int:
     return binascii.crc32(data) & 0xffffffff
 
 
-def decompress_zstd(data: bytes) -> Optional[bytes]:
+def decompress_zstd(data: bytes) -> bytes | None:
     try:
         import zstandard as zstd
         decompressor = zstd.ZstdDecompressor()
@@ -77,7 +76,7 @@ async def websocket_dicom_endpoint(
     last_heartbeat_time = time.monotonic()
     missed_pongs = 0
     max_missed_pongs = 3
-    retransmit_counts: Dict[int, int] = {}
+    retransmit_counts: dict[int, int] = {}
     latest_frame_index = -1
     compression_enabled = False
     frame_buffer = FrameBuffer(capacity=settings.dicom_frame_buffer_capacity)

@@ -1,12 +1,35 @@
 import asyncio
-import httpx
-from typing import Any, Optional
 from datetime import datetime, timezone
+from typing import Any
+
+import httpx
 import structlog
 
 from app.config.settings import settings
 
 logger = structlog.get_logger()
+
+
+_CONSENT_STATUS_LITERALS = frozenset({"granted", "denied", "withdrawn", "pending"})
+
+
+def _normalize_consent_status(raw: Any) -> str | None:
+    """把对端返回的同意状态归一为契约值（`granted` / `denied` / ...）。
+
+    对端可能给出**枚举 repr**（`"ConsentStatus.GRANTED"`）。SG 侧已改为返回 `.value`，
+    但跨服务契约不能只靠对端守规矩：2026-09-29 真机上这个 repr 被原样回传给 SG 的
+    `Literal["granted","denied","withdrawn","pending"]` → **422** → 主服务连续失败进入
+    快速失败，表面症状是"安全网关不可用"，实际是两端对同一个字段的理解不同。
+
+    未知值一律返回 `None`（调用方按"拿不到同意状态"fail-closed），**不猜测**。
+    """
+    if not raw:
+        return None
+    value = str(raw).strip()
+    if "." in value:
+        value = value.rsplit(".", 1)[-1]
+    value = value.lower()
+    return value if value in _CONSENT_STATUS_LITERALS else None
 
 
 class SafetyGatewayClient:
@@ -65,23 +88,49 @@ class SafetyGatewayClient:
 
     async def _health_probe_loop(self) -> None:
         consecutive_unhealthy = 0
+        was_degraded = False
         while True:
             try:
                 result = await self.health_check()
-                is_healthy = result.get("status") == "healthy"
+                status = result.get("status")
+                # SG 的 `degraded` 是**设计内的可服务状态**：SG 自己的健康聚合文档写明
+                # "融合层不可用时 SG 仍可提供降级输出，由调用方决定策略"。把它当成
+                # unhealthy 会让主服务每 4s 记一条 critical —— 2026-09-28 真机上
+                # SG 因 `oom_protection=unknown`（非 compose 部署无法验证 OOM 保护）
+                # 恒为 degraded，主服务的 consecutive_unhealthy 一路涨到 14 并持续增长，
+                # 完全掩盖了真正需要告警的情形。因此分级：
+                #   healthy  → 正常
+                #   degraded → 可服务但降级：warning（仅在进入该状态时记一次）+ 不计数
+                #   其它/异常 → 不可服务：error + 计数（≥3 触发 critical）
+                is_healthy = status == "healthy"
+                is_degraded = status == "degraded"
+                serving = is_healthy or is_degraded
                 async with self._lock:
                     prev = self._sg_healthy
-                    self._sg_healthy = is_healthy
+                    self._sg_healthy = serving
                     self._last_health_check_time = asyncio.get_running_loop().time()
-                if prev and not is_healthy:
+                if prev and not serving:
                     logger.error("safety_gateway_health_probe_detected_unhealthy")
                     consecutive_unhealthy = 1
-                elif not prev and is_healthy:
+                elif not prev and serving:
                     logger.info("safety_gateway_health_probe_recovered")
                     consecutive_unhealthy = 0
-                elif not is_healthy:
+                elif is_degraded:
+                    if not was_degraded:
+                        degraded_components = {
+                            name: comp.get("status")
+                            for name, comp in (result.get("components") or {}).items()
+                            if isinstance(comp, dict) and comp.get("status") != "healthy"
+                        }
+                        logger.warning(
+                            "safety_gateway_health_probe_degraded",
+                            components=degraded_components,
+                        )
+                    consecutive_unhealthy = 0
+                elif not serving:
                     consecutive_unhealthy += 1
-                self._publish_health_metric(is_healthy, consecutive_unhealthy)
+                was_degraded = is_degraded
+                self._publish_health_metric(serving, consecutive_unhealthy)
             except Exception as e:
                 logger.warning("safety_gateway_health_probe_error", error=str(e))
                 async with self._lock:
@@ -101,8 +150,11 @@ class SafetyGatewayClient:
                     "safety_gateway_consecutive_unhealthy_critical",
                     consecutive_unhealthy=consecutive_unhealthy,
                 )
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug(
+                "safety_gateway_metric_publish_failed",
+                error=str(exc),
+            )
 
     @property
     def is_healthy(self) -> bool:
@@ -134,7 +186,7 @@ class SafetyGatewayClient:
         output_data: dict[str, Any],
         consent_status_at_input: str,
         desensitization_degraded: bool = False,
-    ) -> tuple[Optional[dict[str, Any]], bool, Optional[str]]:
+    ) -> tuple[dict[str, Any] | None, bool, str | None]:
         try:
             client = await self._get_client()
             response = await client.post(
@@ -263,7 +315,9 @@ class SafetyGatewayClient:
                 f"{self._base_url}/api/v1/consent-status/{patient_id}",
             )
             if response.status_code == 200:
-                return response.json().get("consent_status")
+                return _normalize_consent_status(
+                    response.json().get("consent_status")
+                )
             return None
         except Exception as e:
             logger.error("safety_gateway_consent_check_error", error=str(e), patient_id=patient_id)
@@ -299,7 +353,7 @@ class SafetyGatewayClient:
             return {"consistent": False, "conflicts": [], "message": "一致性校验超时"}
         except Exception as e:
             logger.error("safety_gateway_consistency_error", error=str(e), session_id=session_id)
-            return {"consistent": False, "conflicts": [], "message": f"一致性校验异常: {str(e)}"}
+            return {"consistent": False, "conflicts": [], "message": f"一致性校验异常: {e!s}"}
 
     async def check_contraindication(
         self,
@@ -333,7 +387,7 @@ class SafetyGatewayClient:
             return {"has_contraindication": True, "contraindications": [], "message": "禁忌校验超时，默认存在禁忌"}
         except Exception as e:
             logger.error("safety_gateway_contraindication_error", error=str(e), session_id=session_id)
-            return {"has_contraindication": True, "contraindications": [], "message": f"禁忌校验异常，默认存在禁忌: {str(e)}"}
+            return {"has_contraindication": True, "contraindications": [], "message": f"禁忌校验异常，默认存在禁忌: {e!s}"}
 
     async def health_check(self) -> dict[str, Any]:
         try:

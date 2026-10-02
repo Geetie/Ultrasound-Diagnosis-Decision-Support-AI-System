@@ -1,27 +1,37 @@
-from typing import Any, ClassVar
-
 import asyncio
 import time
+from typing import Any, ClassVar
 
 import structlog
 
-from safety_gateway.sg_config import sg_settings as settings
-from safety_gateway.validation_result import ConsentStatus
-from safety_gateway.validation_result import CheckResult, CheckResultStatus, DegradedReason
+from safety_gateway.checker.consent_phase import ConsentPhase
+from safety_gateway.checker.consistency_phase import ConsistencyPhase
+from safety_gateway.checker.contraindication_threshold_phase import ContraindicationThresholdPhase
+from safety_gateway.checker.desensitization_phase import DesensitizationPhase
+from safety_gateway.checker.edge_connectivity_phase import EdgeConnectivityPhase
+from safety_gateway.checker.phase_base import CheckContext
+from safety_gateway.checker.threshold_phase import ThresholdPhase
 from safety_gateway.consent_checker import ConsentCheckResult
-from safety_gateway.health import HealthChecker
 from safety_gateway.degraded_output import (
-    apply_degraded_output as _apply_degraded_output,
-    filter_forbidden_terms as _filter_forbidden_terms,
     FORBIDDEN_GRADING_TERMS,
 )
-from safety_gateway.checker.phase_base import CheckContext
-from safety_gateway.checker.consent_phase import ConsentPhase
-from safety_gateway.checker.edge_connectivity_phase import EdgeConnectivityPhase
-from safety_gateway.checker.desensitization_phase import DesensitizationPhase
-from safety_gateway.checker.contraindication_threshold_phase import ContraindicationThresholdPhase
-from safety_gateway.checker.threshold_phase import ThresholdPhase
-from safety_gateway.checker.consistency_phase import ConsistencyPhase
+from safety_gateway.degraded_output import (
+    apply_degraded_output as _apply_degraded_output,
+)
+from safety_gateway.degraded_output import (
+    filter_forbidden_terms as _filter_forbidden_terms,
+)
+from safety_gateway.health import HealthChecker
+from safety_gateway.sg_config import sg_settings as settings
+
+# ConsentStatus 的**单一来源**锚点：曾被本地重复定义过，守护测试
+# （tests/unit/sec/test_regression_fixes.py）钉住这行导入。即使当前未直接引用，
+# 也不得删除——它同时是"不要在 checker 里再定义一份枚举"的约束点。
+from safety_gateway.validation_result import (
+    CheckResult,
+    ConsentStatus,  # noqa: F401
+    DegradedReason,
+)
 
 logger = structlog.get_logger()
 
@@ -60,6 +70,18 @@ class SafetyGatewayChecker:
         "calcification",
         "lesion_size_measurements",
         "observations",
+        # M1 / M6 / M2 / M9 / M3（口径与 edge/safety.py 等 3 处一致）
+        "plane_assessment",
+        "image_quality",
+        "risk_flag",
+        "suggested_action",
+        "posterior_acoustic",
+        "measurement",
+        "aspect_ratio",
+        "distance_to_capsule",
+        "distance_to_organ_edge",
+        "distance_to_skin",
+        "volume",
     ]
 
     FORBIDDEN_GRADING_TERMS: ClassVar[tuple[str, ...]] = FORBIDDEN_GRADING_TERMS
@@ -196,7 +218,7 @@ class SafetyGatewayChecker:
                     health_checker.record_e2e_latency(total_elapsed),
                     timeout=_LATENCY_RECORD_TIMEOUT_SECONDS,
                 )
-            except Exception as exc:  # noqa: BLE001 - 观测失败不得影响校验结果
+            except Exception as exc:
                 logger.warning(
                     "sg_latency_record_failed",
                     error=str(exc),
@@ -260,8 +282,9 @@ class SafetyGatewayChecker:
         logger.info("safety_gateway_checker_closed")
 
 
-from safety_gateway.registry import sg_registry
 from threading import Lock
+
+from safety_gateway.registry import sg_registry
 
 _sg_checker_lock = Lock()
 _sg_health_checker_lock = Lock()

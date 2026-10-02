@@ -1,4 +1,6 @@
 
+import pytest
+
 from app.inference.consistency import (
     ConsistencyPair,
     ConsistencyReport,
@@ -7,18 +9,17 @@ from app.inference.consistency import (
     FalseStats,
     GateStatus,
     GradingResult,
-    extract_grading,
     detect_hallucination,
+    extract_grading,
     grading_semantic_equivalent,
+    mcnemar_test,
     text_consistency_with_grading,
     text_similarity,
     wilson_confidence_interval,
-    mcnemar_test,
 )
 from app.inference.protocols import InferenceEngine, InferenceRequest, InferenceResponse, TokenUsage
 from app.inference.verification_config import BenchmarkThresholdConfig
 
-import pytest
 pytestmark = [pytest.mark.track_llm, pytest.mark.track_inf]
 
 
@@ -168,6 +169,74 @@ class TestExtractGrading:
     def test_followup_months_not_extracted(self):
         text = "甲状腺结节，随访3月后复查"
         assert extract_grading(text, "thyroid") is None
+
+    # ------------------------------------------------------------------
+    # 2026-09-29 真机 780 例评测：61 例提取失败的实际输出形态
+    # （专项 prompt 输出 TR 码、结构化分级行、括号体系名、英文 cardiac 表述）
+    # ------------------------------------------------------------------
+
+    def test_thyroid_tr_code(self):
+        text = "分级: TR4a。随访建议 6-12 个月复查超声。"
+        assert extract_grading(text, "thyroid") == "4a"
+
+    def test_thyroid_tr_code_plain(self):
+        text = "超声表现典型，TR3，良性可能大"
+        assert extract_grading(text, "thyroid") == "3"
+
+    def test_thyroid_structured_grading_line(self):
+        text = "总分: 2 置信度: 0.78\n分级: 4a"
+        assert extract_grading(text, "thyroid") == "4a"
+
+    def test_thyroid_json_grading(self):
+        text = '根据 ACR TI-RADS 2017 评分规则：\n{"grading": "4b", "confidence": 0.8}'
+        assert extract_grading(text, "thyroid") == "4b"
+
+    def test_thyroid_colon_after_tirads(self):
+        text = "根据上述特征，TI-RADS: 4a。"
+        assert extract_grading(text, "thyroid") == "4a"
+
+    def test_thyroid_digit_level_with_paren_system(self):
+        text = "综上所述，该结节评为 3 级（TI-RADS）。"
+        assert extract_grading(text, "thyroid") == "3"
+
+    def test_liver_lr_numeric_compact(self):
+        text = "肝脏超声表现符合 LR3，中等风险"
+        assert extract_grading(text, "liver") == "3"
+
+    def test_liver_structured_grading_line(self):
+        text = "分级: 4，建议增强 MRI"
+        assert extract_grading(text, "liver") == "4"
+
+    def test_liver_json_grading(self):
+        text = '{"grading": "LR-3"}'
+        assert extract_grading(text, "liver") == "3"
+
+    def test_liver_colon_after_lirads(self):
+        text = "结论：LI-RADS: 4 类"
+        assert extract_grading(text, "liver") == "4"
+
+    def test_cardiac_english_mildly_reduced(self):
+        text = "LVEF 47%，practice: mildly_reduced"
+        assert extract_grading(text, "cardiac") == "mild"
+
+    def test_cardiac_english_normal(self):
+        text = "Contractility is normal, LVEF 62%"
+        assert extract_grading(text, "cardiac") == "normal"
+
+    def test_cardiac_json_grading(self):
+        text = '{"grading": "severe"}'
+        assert extract_grading(text, "cardiac") == "severe"
+
+    def test_cardiac_english_conflict_with_lvef(self):
+        # 英文描述与 LVEF 冲突时与中文同规则：LVEF 不优先（prefer_lvef=False）
+        text = "LVEF: 60%，moderately_reduced"
+        assert extract_grading(text, "cardiac") == "moderate"
+
+    def test_tr_code_negative_no_false_positive(self):
+        # 反例：随访/测量值/普通数字不得因新模式误抽
+        assert extract_grading("甲状腺结节，随访3月后复查", "thyroid") is None
+        assert extract_grading("结节大小约3mm，边界清晰", "thyroid") is None
+        assert extract_grading("建议3次复查，定期随访", "thyroid") is None
 
     def test_weeks_not_extracted(self):
         text = "甲状腺结节TI-RADS 4a类可能，建议4-6周复查"
@@ -693,7 +762,8 @@ class TestTextExactMatchRate:
 
     def test_exact_match_rate_gate_check(self):
         from unittest.mock import patch
-        from app.inference.verification_config import VerificationConfig, ConsistencyThresholdConfig
+
+        from app.inference.verification_config import ConsistencyThresholdConfig, VerificationConfig
         config = VerificationConfig(
             consistency_thresholds=ConsistencyThresholdConfig(
                 text_exact_match_rate=0.90,
@@ -715,7 +785,8 @@ class TestTextExactMatchRate:
 
     def test_exact_match_rate_passes_at_threshold(self):
         from unittest.mock import patch
-        from app.inference.verification_config import VerificationConfig, ConsistencyThresholdConfig
+
+        from app.inference.verification_config import ConsistencyThresholdConfig, VerificationConfig
         config = VerificationConfig(
             consistency_thresholds=ConsistencyThresholdConfig(
                 text_exact_match_rate=0.90,
@@ -742,7 +813,8 @@ class TestTextExactMatchRate:
 class TestLatencyDiffOrLogic:
     def test_or_logic_pct_exceeds_abs_within_passes(self):
         from unittest.mock import patch
-        from app.inference.verification_config import VerificationConfig, ConsistencyThresholdConfig
+
+        from app.inference.verification_config import ConsistencyThresholdConfig, VerificationConfig
         config = VerificationConfig(
             consistency_thresholds=ConsistencyThresholdConfig(
                 latency_diff_pct=20.0,
@@ -769,7 +841,8 @@ class TestLatencyDiffOrLogic:
 
     def test_or_logic_low_baseline_pct_exceeds_abs_within_passes(self):
         from unittest.mock import patch
-        from app.inference.verification_config import VerificationConfig, ConsistencyThresholdConfig
+
+        from app.inference.verification_config import ConsistencyThresholdConfig, VerificationConfig
         config = VerificationConfig(
             consistency_thresholds=ConsistencyThresholdConfig(
                 latency_diff_pct=20.0,
@@ -796,7 +869,8 @@ class TestLatencyDiffOrLogic:
 
     def test_or_logic_both_exceed_fails(self):
         from unittest.mock import patch
-        from app.inference.verification_config import VerificationConfig, ConsistencyThresholdConfig
+
+        from app.inference.verification_config import ConsistencyThresholdConfig, VerificationConfig
         config = VerificationConfig(
             consistency_thresholds=ConsistencyThresholdConfig(
                 latency_diff_pct=20.0,
@@ -824,7 +898,8 @@ class TestLatencyDiffOrLogic:
 class TestLatencyUnreliableGateFailed:
     def test_unreliable_latency_causes_gate_failed(self):
         from unittest.mock import patch
-        from app.inference.verification_config import VerificationConfig, ConsistencyThresholdConfig
+
+        from app.inference.verification_config import ConsistencyThresholdConfig, VerificationConfig
         config = VerificationConfig(
             consistency_thresholds=ConsistencyThresholdConfig(),
         )
@@ -844,7 +919,8 @@ class TestLatencyUnreliableGateFailed:
 
     def test_reliable_latency_allows_gate_passed(self):
         from unittest.mock import patch
-        from app.inference.verification_config import VerificationConfig, ConsistencyThresholdConfig
+
+        from app.inference.verification_config import ConsistencyThresholdConfig, VerificationConfig
         config = VerificationConfig(
             consistency_thresholds=ConsistencyThresholdConfig(),
         )
@@ -869,6 +945,7 @@ class TestLatencyUnreliableGateFailed:
 class TestLVEFThreadSafety:
     def test_concurrent_lvef_access(self):
         import threading
+
         from app.inference.grading_definitions import _map_lvef_to_grading
         results = []
         errors = []
@@ -1090,7 +1167,8 @@ class TestAdaptiveThreshold:
 
     def test_failed_high_ci_upper(self):
         from unittest.mock import patch
-        from app.inference.verification_config import VerificationConfig, ConsistencyThresholdConfig
+
+        from app.inference.verification_config import ConsistencyThresholdConfig, VerificationConfig
         config = VerificationConfig(
             consistency_thresholds=ConsistencyThresholdConfig(
                 verification_phase="phase2",
@@ -1959,7 +2037,8 @@ class TestOrganSampleSize:
 class TestPhase2GateCriteria:
     def test_phase2_fails_with_insufficient_organ_samples(self):
         from unittest.mock import patch
-        from app.inference.verification_config import VerificationConfig, ConsistencyThresholdConfig
+
+        from app.inference.verification_config import ConsistencyThresholdConfig, VerificationConfig
 
         phase2_config = VerificationConfig(
             consistency_thresholds=ConsistencyThresholdConfig(
@@ -1985,7 +2064,8 @@ class TestPhase2GateCriteria:
 
     def test_phase2_passes_with_sufficient_samples(self):
         from unittest.mock import patch
-        from app.inference.verification_config import VerificationConfig, ConsistencyThresholdConfig
+
+        from app.inference.verification_config import ConsistencyThresholdConfig, VerificationConfig
 
         phase2_config = VerificationConfig(
             consistency_thresholds=ConsistencyThresholdConfig(
@@ -2345,7 +2425,8 @@ class TestOverallTimeout:
 class TestOrganGateCheck:
     def test_global_passed_but_organ_conditional(self):
         from unittest.mock import patch
-        from app.inference.verification_config import VerificationConfig, ConsistencyThresholdConfig
+
+        from app.inference.verification_config import ConsistencyThresholdConfig, VerificationConfig
         config = VerificationConfig(
             consistency_thresholds=ConsistencyThresholdConfig(),
         )
@@ -2374,7 +2455,8 @@ class TestOrganGateCheck:
 
     def test_organ_severe_failure_gate_failed(self):
         from unittest.mock import patch
-        from app.inference.verification_config import VerificationConfig, ConsistencyThresholdConfig
+
+        from app.inference.verification_config import ConsistencyThresholdConfig, VerificationConfig
         config = VerificationConfig(
             consistency_thresholds=ConsistencyThresholdConfig(),
         )
@@ -2397,7 +2479,8 @@ class TestOrganGateCheck:
 
     def test_all_organs_pass_gate_passed(self):
         from unittest.mock import patch
-        from app.inference.verification_config import VerificationConfig, ConsistencyThresholdConfig
+
+        from app.inference.verification_config import ConsistencyThresholdConfig, VerificationConfig
         config = VerificationConfig(
             consistency_thresholds=ConsistencyThresholdConfig(),
         )
@@ -2426,7 +2509,8 @@ class TestOrganGateCheck:
 class TestLatencyDiffAndLogic:
     def test_and_logic_pct_exceeds_abs_ok(self):
         from unittest.mock import patch
-        from app.inference.verification_config import VerificationConfig, ConsistencyThresholdConfig
+
+        from app.inference.verification_config import ConsistencyThresholdConfig, VerificationConfig
         config = VerificationConfig(
             consistency_thresholds=ConsistencyThresholdConfig(
                 latency_diff_pct=20.0,
@@ -2451,7 +2535,8 @@ class TestLatencyDiffAndLogic:
 
     def test_and_logic_abs_exceeds_pct_ok(self):
         from unittest.mock import patch
-        from app.inference.verification_config import VerificationConfig, ConsistencyThresholdConfig
+
+        from app.inference.verification_config import ConsistencyThresholdConfig, VerificationConfig
         config = VerificationConfig(
             consistency_thresholds=ConsistencyThresholdConfig(
                 latency_diff_pct=20.0,
@@ -2476,7 +2561,8 @@ class TestLatencyDiffAndLogic:
 
     def test_and_logic_both_pass(self):
         from unittest.mock import patch
-        from app.inference.verification_config import VerificationConfig, ConsistencyThresholdConfig
+
+        from app.inference.verification_config import ConsistencyThresholdConfig, VerificationConfig
         config = VerificationConfig(
             consistency_thresholds=ConsistencyThresholdConfig(
                 latency_diff_pct=20.0,
@@ -2745,8 +2831,9 @@ class TestGPUFragmentationMonitor:
 
 class TestConfigConsistency:
     def test_default_config_loads_from_json(self):
-        from app.inference.verification_config import load_config_from_json, get_default_verification_config
         import os
+
+        from app.inference.verification_config import get_default_verification_config, load_config_from_json
         json_path = os.path.join(os.path.dirname(__file__), "..", "..", "..", "app", "inference", "data", "default_verification_config.json")
         json_path = os.path.normpath(json_path)
         if not os.path.exists(json_path):
@@ -2758,8 +2845,9 @@ class TestConfigConsistency:
         assert loaded.consistency_thresholds.clinical_boundary_diff_rate == default.consistency_thresholds.clinical_boundary_diff_rate
 
     def test_boundary_config_code_json_consistency(self):
-        from app.inference.verification_config import get_default_boundary_config, load_config_from_json
         import os
+
+        from app.inference.verification_config import get_default_boundary_config, load_config_from_json
         json_path = os.path.join(os.path.dirname(__file__), "..", "..", "..", "app", "inference", "data", "default_verification_config.json")
         json_path = os.path.normpath(json_path)
         if not os.path.exists(json_path):
@@ -2779,7 +2867,7 @@ class TestConfigConsistency:
 
 class TestWeightedBoundaryDiffRateFix:
     def test_weighted_rate_with_actual_weights(self):
-        from app.inference.consistency.report import ConsistencyReport, ConsistencyPair, GradingResult
+        from app.inference.consistency.report import ConsistencyPair, ConsistencyReport, GradingResult
         from app.inference.verification_config import get_verification_config
         config = get_verification_config()
         report = ConsistencyReport(
@@ -2815,9 +2903,9 @@ class TestWeightedBoundaryDiffRateFix:
 
 class TestHallucinationDetectionMerged:
     def test_detect_called_once_per_engine(self):
-        from unittest.mock import AsyncMock, MagicMock, patch
+        from unittest.mock import AsyncMock, MagicMock
+
         from app.inference.consistency.verifier import ConsistencyVerifier
-        from app.inference.consistency.report import ConsistencyPair
         from app.inference.protocols import InferenceResponse
         engine_a = AsyncMock()
         engine_b = AsyncMock()
@@ -2842,8 +2930,8 @@ class TestHallucinationDetectionMerged:
 
 class TestPhase1GateCriteria:
     def _make_report(self, grading_rate=0.96, boundary_rate=0.02, **kwargs):
-        from app.inference.consistency.report import ConsistencyReport, GateStatus
-        from app.inference.verification_config import VerificationConfig, get_default_verification_config
+        from app.inference.consistency.report import ConsistencyReport
+        from app.inference.verification_config import get_default_verification_config
         config = get_default_verification_config()
         config.consistency_thresholds.verification_phase = "phase1"
         report = ConsistencyReport(
@@ -2884,3 +2972,70 @@ class TestPhase1GateCriteria:
         report.organ_breakdown = {"thyroid": {"total": 300, "grading_consistency_rate": 0.96, "clinical_boundary_diff_rate": 0.015}}
         report._gate_status_cache = None
         assert report.gate_status != GateStatus.PASSED
+
+
+class _CapturingEngine(InferenceEngine):
+    """记录收到的 InferenceRequest，返回固定文本（验证结构化输出注入）。"""
+
+    def __init__(self, response: str):
+        self.requests: list[InferenceRequest] = []
+        self._response = response
+
+    async def generate(self, request: InferenceRequest) -> InferenceResponse:
+        self.requests.append(request)
+        return InferenceResponse(
+            text=self._response,
+            model="capture",
+            usage=TokenUsage(prompt_tokens=1, completion_tokens=1, total_tokens=2),
+            finish_reason="stop",
+            request_id=request.request_id,
+            latency_ms=1.0,
+        )
+
+    async def health_check(self) -> bool:
+        return True
+
+    async def get_model_info(self):
+        from app.inference.protocols import ModelInfo
+        return ModelInfo(model_name="capture")
+
+    async def close(self) -> None:
+        pass
+
+
+class TestVerifierStructuredOutput:
+    """守卫：结构化输出开关（两引擎追加完全相同的指令段；默认关闭零侵入）。"""
+
+    @pytest.mark.asyncio
+    async def test_default_off_keeps_prompt_untouched(self):
+        ea = _CapturingEngine("分级: 3")
+        eb = _CapturingEngine("分级: 3")
+        verifier = ConsistencyVerifier(engine_a=ea, engine_b=eb)
+        await verifier.verify([{"case_id": "T1", "organ": "thyroid", "prompt": "P"}])
+        assert ea.requests[0].prompt == "P"
+        assert eb.requests[0].prompt == "P"
+
+    @pytest.mark.asyncio
+    async def test_on_appends_identical_suffix_to_both_engines(self):
+        ea = _CapturingEngine("分级: 3")
+        eb = _CapturingEngine("分级: 3")
+        verifier = ConsistencyVerifier(engine_a=ea, engine_b=eb, structured_output=True)
+        await verifier.verify([{"case_id": "T1", "organ": "thyroid", "prompt": "P"}])
+        assert ea.requests[0].prompt != "P"
+        assert ea.requests[0].prompt == eb.requests[0].prompt
+        assert "分级: TI-RADS X" in ea.requests[0].prompt
+
+    @pytest.mark.asyncio
+    async def test_report_records_structured_flag(self):
+        from app.inference.consistency.serialization import report_to_dict
+
+        verifier = ConsistencyVerifier(
+            engine_a=_CapturingEngine("分级: 3"),
+            engine_b=_CapturingEngine("分级: 3"),
+            structured_output=True,
+        )
+        report = await verifier.verify(
+            [{"case_id": "T1", "organ": "thyroid", "prompt": "P"}]
+        )
+        assert report.structured_output is True
+        assert report_to_dict(report)["structured_output"] is True

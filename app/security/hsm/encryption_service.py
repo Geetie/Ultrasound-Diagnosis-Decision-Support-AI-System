@@ -5,17 +5,16 @@
 """
 
 import base64
-from typing import Dict, Any, Optional
-
-from cryptography.hazmat.primitives.asymmetric import padding
-from cryptography.hazmat.primitives import hashes
-from cryptography.exceptions import InvalidSignature
+from typing import Any
 
 import structlog
+from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import padding
 
-from app.security.hsm.enums import KeySlot, get_key_slot, DegradedPhase, DEGRADED_BEHAVIORS
-from app.security.hsm.key_manager import KeyManager
 from app.security.hsm.degradation_manager import DegradationManager
+from app.security.hsm.enums import DEGRADED_BEHAVIORS, KeySlot, get_key_slot
+from app.security.hsm.key_manager import KeyManager
 from app.security.hsm.soft_hsm_manager import SoftHSMManager
 
 logger = structlog.get_logger()
@@ -238,8 +237,8 @@ class EncryptionService:
             logger.debug("hsm_decrypt_completed", key_name=key_name, data_len=len(ciphertext))
             return plaintext
 
-    def sign_jwt(self, key_name: str, header: Dict[str, Any],
-                 payload: Dict[str, Any], algorithm: str = "RS256") -> str:
+    def sign_jwt(self, key_name: str, header: dict[str, Any],
+                 payload: dict[str, Any], algorithm: str = "RS256") -> str:
         """使用指定密钥签名 JWT。
 
         JWT 签名使用 PKCS1v15 填充（标准 JWT 格式）。
@@ -300,7 +299,7 @@ class EncryptionService:
                 _json.dumps(payload, separators=(',', ':'), default=_json_serialize).encode()
             ).rstrip(b'=').decode('utf-8')
 
-            signing_input = f"{header_b64}.{payload_b64}".encode('utf-8')
+            signing_input = f"{header_b64}.{payload_b64}".encode()
 
             signature = private_key.sign(
                 signing_input,

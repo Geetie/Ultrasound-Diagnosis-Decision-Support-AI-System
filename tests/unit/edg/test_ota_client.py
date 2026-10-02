@@ -1,6 +1,6 @@
 """T-GB-EDG-01 边缘端 OTA 客户端（断点续传 + 限速 + 校验）单测。"""
 import hashlib
-from typing import AsyncIterator, Dict, List
+from collections.abc import AsyncIterator
 
 import pytest
 
@@ -17,11 +17,11 @@ class _StreamRecorder:
     """可注入的字节流工厂：记录调用参数，按脚本产出分片或抛错。"""
 
     def __init__(self, chunks=None, failures=0):
-        self.calls: List[Dict[str, object]] = []
+        self.calls: list[dict[str, object]] = []
         self.chunks = chunks if chunks is not None else [b"x" * 1024] * 3
         self.remaining_failures = failures
 
-    def __call__(self, url: str, headers: Dict[str, str], start_byte: int):
+    def __call__(self, url: str, headers: dict[str, str], start_byte: int):
         self.calls.append({"url": url, "headers": headers, "start_byte": start_byte})
 
         async def _gen() -> AsyncIterator[bytes]:
@@ -51,7 +51,7 @@ class _SleeperRecorder:
     """记录 sleep 时长，并推进假时钟（模拟真实等待）。"""
 
     def __init__(self, clock: "_FakeClock | None" = None):
-        self.delays: List[float] = []
+        self.delays: list[float] = []
         self._clock = clock
 
     async def __call__(self, delay: float) -> None:
@@ -220,8 +220,8 @@ class TestRateLimit:
         thirty_four_minutes = 34 * 60
         required = two_gib / thirty_four_minutes
 
-        assert DEFAULT_RATE_LIMIT_BYTES_PER_SECOND >= required * 0.98
-        assert DEFAULT_RATE_LIMIT_BYTES_PER_SECOND <= required * 1.02
+        assert required * 0.98 <= DEFAULT_RATE_LIMIT_BYTES_PER_SECOND
+        assert required * 1.02 >= DEFAULT_RATE_LIMIT_BYTES_PER_SECOND
 
 
 class TestProgressFormatting:

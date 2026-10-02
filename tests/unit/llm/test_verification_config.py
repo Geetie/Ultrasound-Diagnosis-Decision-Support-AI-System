@@ -3,9 +3,6 @@
 单元测试：验证配置管理模块
 """
 
-import json
-import os
-import tempfile
 from pathlib import Path
 
 import pytest

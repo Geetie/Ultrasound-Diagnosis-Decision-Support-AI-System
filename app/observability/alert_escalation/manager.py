@@ -2,7 +2,7 @@ import asyncio
 import threading
 import time
 import uuid
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import structlog
 
@@ -18,11 +18,11 @@ _logger = structlog.get_logger("app.observability.alert_escalation")
 class AlertEscalationManager:
     def __init__(
         self,
-        warning_confirm_seconds: Optional[int] = None,
-        critical_confirm_seconds: Optional[int] = None,
-        warning_escalate_seconds: Optional[int] = None,
-        critical_escalate_seconds: Optional[int] = None,
-        webhook_url: Optional[str] = None,
+        warning_confirm_seconds: int | None = None,
+        critical_confirm_seconds: int | None = None,
+        warning_escalate_seconds: int | None = None,
+        critical_escalate_seconds: int | None = None,
+        webhook_url: str | None = None,
     ):
         self._warning_confirm_seconds = (
             warning_confirm_seconds
@@ -41,10 +41,10 @@ class AlertEscalationManager:
             or settings.alert_escalation_critical_escalate_seconds
         )
         self._webhook_url = webhook_url or settings.alert_webhook_url
-        self._contacts: List[AlertContact] = []
-        self._active_alerts: Dict[str, AlertEvent] = {}
-        self._pending_webhooks: List[Tuple[str, AlertEvent]] = []
-        self._check_task: Optional[asyncio.Task] = None
+        self._contacts: list[AlertContact] = []
+        self._active_alerts: dict[str, AlertEvent] = {}
+        self._pending_webhooks: list[tuple[str, AlertEvent]] = []
+        self._check_task: asyncio.Task | None = None
         self._shutdown_event = asyncio.Event()
         self._lock = threading.Lock()
         self._load_contacts()
@@ -97,7 +97,7 @@ class AlertEscalationManager:
         _logger.info("alert_confirmed", alert_id=alert_id)
         return True
 
-    async def check_escalations(self) -> List[str]:
+    async def check_escalations(self) -> list[str]:
         escalated = []
         now = time.time()
         alerts_snapshot = await asyncio.to_thread(self._snapshot_active_alerts)
@@ -240,7 +240,7 @@ class AlertEscalationManager:
         pending = await asyncio.to_thread(self._drain_pending_webhooks)
         if not pending:
             return
-        failed: List[Tuple[str, AlertEvent]] = []
+        failed: list[tuple[str, AlertEvent]] = []
         for level, alert in pending:
             try:
                 await self._send_webhook(level, alert)
@@ -254,11 +254,11 @@ class AlertEscalationManager:
         if failed:
             await asyncio.to_thread(self._requeue_failed_webhooks, failed)
 
-    def _snapshot_active_alerts(self) -> List[Tuple[str, AlertEvent]]:
+    def _snapshot_active_alerts(self) -> list[tuple[str, AlertEvent]]:
         with self._lock:
             return list(self._active_alerts.items())
 
-    def _drain_pending_webhooks(self) -> List[Tuple[str, AlertEvent]]:
+    def _drain_pending_webhooks(self) -> list[tuple[str, AlertEvent]]:
         with self._lock:
             if not self._pending_webhooks:
                 return []
@@ -266,11 +266,11 @@ class AlertEscalationManager:
             self._pending_webhooks.clear()
             return pending
 
-    def _requeue_failed_webhooks(self, failed: List[Tuple[str, AlertEvent]]) -> None:
+    def _requeue_failed_webhooks(self, failed: list[tuple[str, AlertEvent]]) -> None:
         with self._lock:
             self._pending_webhooks.extend(failed)
 
-    def get_active_alerts(self) -> List[Dict[str, Any]]:
+    def get_active_alerts(self) -> list[dict[str, Any]]:
         return [
             {
                 "alert_id": a.alert_id,
@@ -289,7 +289,7 @@ class AlertEscalationManager:
             for a in self._active_alerts.values()
         ]
 
-    def get_contacts(self) -> List[Dict[str, Any]]:
+    def get_contacts(self) -> list[dict[str, Any]]:
         return [
             {
                 "name": c.name,
@@ -321,7 +321,7 @@ class AlertEscalationManager:
         return True
 
 
-_alert_escalation_manager: Optional[AlertEscalationManager] = None
+_alert_escalation_manager: AlertEscalationManager | None = None
 _alert_escalation_manager_lock = threading.Lock()
 
 

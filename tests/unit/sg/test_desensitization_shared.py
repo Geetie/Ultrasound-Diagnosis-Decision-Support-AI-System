@@ -1,14 +1,13 @@
-import pytest
-from unittest.mock import MagicMock
 
-from app.common.desensitization.rule import DesensitizationRule
+import pytest
+
 from app.common.desensitization.base import BaseDesensitizationEngine
 from app.common.desensitization.recursive import (
-    desensitize_dict,
     compile_patterns,
+    desensitize_dict,
     validate_rules,
-    MAX_RECURSION_DEPTH,
 )
+from app.common.desensitization.rule import DesensitizationRule
 
 pytestmark = [pytest.mark.sec_domain_desens]
 

@@ -74,11 +74,11 @@ export default function DicomViewer({ imageId, onFrameChange }: DicomViewerProps
       }
     };
 
-    (element as any).addEventListener('cornerstoneimagerendered', handleImageRendered);
+    element.addEventListener('cornerstoneimagerendered', handleImageRendered);
 
     return () => {
       resizeObserver.disconnect();
-      (element as any).removeEventListener('cornerstoneimagerendered', handleImageRendered);
+      element.removeEventListener('cornerstoneimagerendered', handleImageRendered);
       useDicomStore.getState().setCornerstoneElement(null);
       try { disable(element); } catch { /* ignore */ }
     };
@@ -95,7 +95,7 @@ export default function DicomViewer({ imageId, onFrameChange }: DicomViewerProps
     setError(null);
 
     loadAndCacheImage(imageId)
-      .then((image: any) => {
+      .then((image) => {
         if (cancelled) return;
         try {
           displayImage(element, image);

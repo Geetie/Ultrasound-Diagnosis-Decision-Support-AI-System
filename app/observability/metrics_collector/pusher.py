@@ -1,10 +1,11 @@
 import asyncio
-from typing import Any, Dict, Optional
+from typing import Any
 
 import structlog
 
 from app.config.settings import settings
 from app.observability.constants import VMPusherConstants
+
 from .collector import MetricsCollector
 
 _logger = structlog.get_logger("app.observability.metrics_collector")
@@ -17,14 +18,14 @@ class VictoriaMetricsPusher:
 
     def __init__(
         self,
-        vm_url: Optional[str] = None,
+        vm_url: str | None = None,
         interval: float = 15.0,
-        collector: Optional[MetricsCollector] = None,
+        collector: MetricsCollector | None = None,
     ):
         self._vm_url = vm_url or settings.obs_victoriametrics_url
         self._interval = interval
         self._collector = collector or MetricsCollector.get_instance()
-        self._task: Optional[asyncio.Task] = None
+        self._task: asyncio.Task | None = None
         self._shutdown_event = asyncio.Event()
         self._push_count = 0
         self._fail_count = 0
@@ -96,7 +97,7 @@ class VictoriaMetricsPusher:
                 )
                 self._fail_count += 1
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         return {
             "push_count": self._push_count,
             "fail_count": self._fail_count,

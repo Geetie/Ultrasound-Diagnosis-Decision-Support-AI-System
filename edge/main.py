@@ -21,7 +21,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import signal
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import httpx
 import structlog
@@ -30,10 +30,12 @@ from edge.config import EdgeConfigError, EdgeSettings
 from edge.device_auth import EdgeDeviceAuth
 from edge.device_manager import EdgeDeviceManager
 from edge.dicom_scp import DicomSCPService
+from edge.image_quality import create_image_quality_adapter
 from edge.nav_backend import create_nav_backend
 from edge.navigation import NavigationInferenceService
 from edge.ota_client import OTAClient
 from edge.pipeline import EdgePipeline
+from edge.plane_assessment import create_plane_assessment_adapter
 from edge.protocols import Frame, NavResult
 from edge.safety import LocalSafetyChecker
 from edge.websocket_server import NAV_CHANNEL_PATH, EdgeWebSocketClient
@@ -56,7 +58,7 @@ class HttpDeviceTransport:
         self._auth = auth
         self._client = httpx.AsyncClient(timeout=timeout_seconds)
 
-    async def post(self, path: str, payload: Dict[str, Any]) -> Any:
+    async def post(self, path: str, payload: dict[str, Any]) -> Any:
         response = await self._client.post(
             f"{self._base_url}{path}",
             json=payload,
@@ -83,10 +85,10 @@ class EdgeService:
         *,
         pipeline: EdgePipeline,
         device_manager: EdgeDeviceManager,
-        uplink: Optional[EdgeWebSocketClient] = None,
-        dicom_scp: Optional[DicomSCPService] = None,
-        ota_client: Optional[OTAClient] = None,
-        transport: Optional[HttpDeviceTransport] = None,
+        uplink: EdgeWebSocketClient | None = None,
+        dicom_scp: DicomSCPService | None = None,
+        ota_client: OTAClient | None = None,
+        transport: HttpDeviceTransport | None = None,
     ) -> None:
         self.settings = settings
         self._pipeline = pipeline
@@ -96,11 +98,11 @@ class EdgeService:
         self._ota = ota_client
         self._transport = transport
 
-        self._loop: Optional[asyncio.AbstractEventLoop] = None
-        self._stop_event: Optional[asyncio.Event] = None
-        self._tasks: List[asyncio.Task] = []
+        self._loop: asyncio.AbstractEventLoop | None = None
+        self._stop_event: asyncio.Event | None = None
+        self._tasks: list[asyncio.Task] = []
         self._started = False
-        self._dicom_error: Optional[str] = None
+        self._dicom_error: str | None = None
 
     # ---- 生命周期 ----
     async def start(self) -> None:
@@ -201,8 +203,8 @@ class EdgeService:
 
     # ---- 帧处理 ----
     async def handle_frame(
-        self, frame: Frame, now: Optional[float] = None
-    ) -> Optional[NavResult]:
+        self, frame: Frame, now: float | None = None
+    ) -> NavResult | None:
         """处理一帧（业务入口；DICOM 回调也会走到这里）。"""
         try:
             return await self._pipeline.on_frame(frame, now=now)
@@ -279,10 +281,10 @@ class EdgeService:
                 continue
 
     # ---- 观测 ----
-    def _settings_snapshot(self) -> Dict[str, Any]:
+    def _settings_snapshot(self) -> dict[str, Any]:
         return self.settings.as_dict()
 
-    def status(self) -> Dict[str, Any]:
+    def status(self) -> dict[str, Any]:
         return {
             "started": self._started,
             "device_id": self.settings.device_id,
@@ -310,10 +312,10 @@ class EdgeService:
 def build_edge_service(
     settings: EdgeSettings,
     *,
-    uplink: Optional[EdgeWebSocketClient] = None,
-    dicom_scp: Optional[DicomSCPService] = None,
-    transport: Optional[HttpDeviceTransport] = None,
-    nav_service: Optional[NavigationInferenceService] = None,
+    uplink: EdgeWebSocketClient | None = None,
+    dicom_scp: DicomSCPService | None = None,
+    transport: HttpDeviceTransport | None = None,
+    nav_service: NavigationInferenceService | None = None,
 ) -> EdgeService:
     """按配置组装边缘端服务（可注入替换以实现离线测试/离线评估）。"""
     settings.validate()
@@ -341,6 +343,14 @@ def build_edge_service(
             backend,
             safety_checker=LocalSafetyChecker(),
             target_fps=settings.nav_target_fps,
+            # M1/M6：未部署评估头时为 null 适配器（不产出字段）
+            plane_assessment_adapter=create_plane_assessment_adapter(
+                settings.plane_assessment_adapter
+            ),
+            image_quality_adapter=create_image_quality_adapter(
+                settings.image_quality_adapter
+            ),
+            organ_code=settings.organ_code,
         )
 
     pipeline = EdgePipeline(nav_service, uplink=uplink, device_manager=device_manager)

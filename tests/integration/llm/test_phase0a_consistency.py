@@ -33,7 +33,6 @@ Gate 0A-Tech-P0 验证标准（来源: 06-开发环境与进度规划.md）:
 
 import json
 import os
-import time
 
 import httpx
 import pytest
@@ -45,7 +44,6 @@ from app.inference.consistency import (
     ConsistencyVerifier,
     GateStatus,
     extract_grading,
-    grading_semantic_equivalent,
 )
 from app.inference.hallucination_detector import get_default_detector
 from app.inference.protocols import InferenceRequest

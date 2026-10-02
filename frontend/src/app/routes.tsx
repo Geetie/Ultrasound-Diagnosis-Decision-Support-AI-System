@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { Routes, Route, Navigate, useSearchParams } from 'react-router-dom';
 import AppLayout from '@/components/layout/AppLayout';
 import AuthGuard from '@/components/common/AuthGuard';
@@ -17,6 +17,7 @@ const QcReportPage = lazy(() => import('@/pages/QcReportPage'));
 const KbManagementPage = lazy(() => import('@/pages/KbManagementPage'));
 const ConsentPage = lazy(() => import('@/pages/ConsentPage'));
 const FeedbackPage = lazy(() => import('@/pages/FeedbackPage'));
+const ReportPage = lazy(() => import('@/pages/ReportPage'));
 
 // DiagnosisPage 已按17-医生侧展示契约 §5 裁定 4 删除独立路由：
 // LoadingPhase / useProgressiveDiagnosis / reviewAcknowledged 三项能力
@@ -82,6 +83,15 @@ function WorkspaceRoute() {
   // 用来验证 AGENT_TASKS §九 标注的「叠加标注与真实组织纹理的对比度从未验证」。
   const dicomRel = isDev ? params.get('dicom') : null;
   const dicomImageId = dicomRel ? `/dev-dicom/${dicomRel}` : undefined;
+
+  // ?request_id=… —— 语音控件发起判读后带着它跳过来（AppLayout 的 onExecuted）。
+  // 那个请求已经发出并落库，所以走 resume() **只轮询取结果**，绝不重发判读。
+  const requestId = params.get('request_id');
+  useEffect(() => {
+    if (requestId) flow.resume(requestId);
+    // 只在 requestId 变化时接管；flow 身份稳定，不进依赖以免重复订阅
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requestId]);
 
   return (
     <PageSuspense>
@@ -167,6 +177,7 @@ export default function AppRoutes() {
         <Route path="/kb-management" element={<PageSuspense><KbManagementPage /></PageSuspense>} />
         <Route path="/consent" element={<PageSuspense><ConsentPage /></PageSuspense>} />
         <Route path="/feedback" element={<PageSuspense><FeedbackPage /></PageSuspense>} />
+        <Route path="/report" element={<PageSuspense><ReportPage /></PageSuspense>} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

@@ -16,11 +16,7 @@ warnings.warn(
     stacklevel=2,
 )
 
-from safety_gateway.validation_result import ConsentStatus  # noqa: F401
 from safety_gateway.errors import (  # noqa: F401
     SafetyGatewayError as SGError,
-    ServiceUnavailableError as SGServiceUnavailableError,
-    ConsentSafetyViolationError as SGConsentSafetyViolationError,
-    DatabaseUnavailableError as SGDatabaseUnavailableError,
-    CombinedUnavailableError as SGCombinedUnavailableError,
 )
+from safety_gateway.validation_result import ConsentStatus  # noqa: F401

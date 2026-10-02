@@ -1,22 +1,21 @@
 
+import pytest
+
 from app.inference.gpu_monitor import (
+    FragmentationCalculator,
+    FragmentationReport,
+    GPUMemoryMonitor,
     GPUMemorySnapshot,
     GPUScheduleStrategy,
-    GPUMemoryMonitor,
-    FragmentationReport,
     MemoryProfileReport,
-    SystemMemorySnapshot,
-    SystemMemoryProfiler,
     Platform,
-    get_platform,
-    FragmentationCalculator,
-    create_memory_reader,
     ScheduledRequest,
+    SystemMemoryProfiler,
+    SystemMemorySnapshot,
+    create_memory_reader,
+    get_platform,
 )
 
-
-
-import pytest
 pytestmark = [pytest.mark.track_inf, pytest.mark.track_obs]
 class TestGPUMemorySnapshot:
     def test_usage_pct(self):
@@ -417,8 +416,8 @@ class TestGPUScheduleStrategyEnhancements:
 
 class TestScheduledRequest:
     def test_create_scheduled_request(self):
-        from app.inference.gpu_monitor import ScheduledRequest
         import time
+
         req = ScheduledRequest(
             resource_type="llm",
             request_id="req-001",
@@ -431,8 +430,8 @@ class TestScheduledRequest:
         assert req.callback is None
 
     def test_scheduled_request_with_callback(self):
-        from app.inference.gpu_monitor import ScheduledRequest
         import time
+
         callback_called = []
         def cb(success: bool):
             callback_called.append(success)

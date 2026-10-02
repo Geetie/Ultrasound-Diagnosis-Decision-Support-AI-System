@@ -1,14 +1,15 @@
 import json
 from datetime import datetime, timedelta, timezone
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, patch
 
 import pytest
+
 pytestmark = [pytest.mark.track_sec, pytest.mark.track_inf, pytest.mark.sec_domain_token]
 
 from app.config.redis_keys import RedisKey
 from app.security.refresh_token import (
-    RedisRefreshTokenStore,
     MemoryRefreshTokenStore,
+    RedisRefreshTokenStore,
 )
 
 
@@ -93,7 +94,6 @@ class FakeRedisClient:
         return {m.encode() if isinstance(m, str) else m for m in self._sets[key]}
 
     async def scan_iter(self, match=None, count=None):
-        import fnmatch
         if match:
             pattern = match.replace("*", ".*")
             for k in self._data:

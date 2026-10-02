@@ -1,18 +1,23 @@
-from fastapi import APIRouter, Depends, Query
-from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import date
-from typing import Optional, List
-from pydantic import BaseModel, Field
-import structlog
 
-from app.config.database import get_db_session
-from app.security.auth import get_current_active_user
-from app.api.v1.errors import NotFoundException, BadRequestException, PatientNotConsentedException, PatientConsentWithdrawnException
-from app.models.database import Patient, DiagnosisSession, DiagnosisResult
-from app.repositories.consent_repository import ConsentRepository
-from app.services.audit_service import AuditService
-from app.models.schemas import ConsentStatus
+import structlog
+from fastapi import APIRouter, Depends, Query
+from pydantic import BaseModel, Field
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.api.v1.errors import (
+    BadRequestException,
+    NotFoundException,
+    PatientConsentWithdrawnException,
+    PatientNotConsentedException,
+)
+from app.config.database import get_db_session
+from app.models.database import DiagnosisResult, DiagnosisSession, Patient
+from app.models.schemas import ConsentStatus
+from app.repositories.consent_repository import ConsentRepository
+from app.security.auth import get_current_active_user
+from app.services.audit_service import AuditService
 
 logger = structlog.get_logger()
 router = APIRouter(tags=["fhir"])
@@ -21,11 +26,11 @@ router = APIRouter(tags=["fhir"])
 class FHIRCoding(BaseModel):
     system: str
     code: str
-    display: Optional[str] = None
+    display: str | None = None
 
 
 class FHIRCodeableConcept(BaseModel):
-    coding: List[FHIRCoding]
+    coding: list[FHIRCoding]
 
 
 class FHIRReference(BaseModel):
@@ -35,15 +40,15 @@ class FHIRReference(BaseModel):
 class FHIRPatient(BaseModel):
     resourceType: str = "Patient"
     id: str
-    name: List[dict]
+    name: list[dict]
     active: bool = True
 
 
 class FHIRImagingStudy(BaseModel):
     resourceType: str = "ImagingStudy"
-    id: Optional[str] = None
+    id: str | None = None
     status: str = Field(pattern=r"^(available|unavailable|unknown)$")
-    subject: Optional[FHIRReference] = None
+    subject: FHIRReference | None = None
     numberOfSeries: int = Field(ge=0)
     numberOfInstances: int = Field(ge=0)
 
@@ -52,23 +57,23 @@ class FHIRDiagnosticReport(BaseModel):
     resourceType: str = "DiagnosticReport"
     id: str
     status: str = Field(pattern=r"^(registered|partial|preliminary|final|amended|corrected|appended|cancelled|entered-in-error|unknown)$")
-    subject: Optional[FHIRReference] = None
-    code: Optional[FHIRCodeableConcept] = None
+    subject: FHIRReference | None = None
+    code: FHIRCodeableConcept | None = None
 
 
 class FHIRObservation(BaseModel):
     resourceType: str = "Observation"
     id: str
     status: str = Field(pattern=r"^(registered|preliminary|final|amended|corrected|cancelled|entered-in-error|unknown)$")
-    subject: Optional[FHIRReference] = None
-    basedOn: Optional[List[FHIRReference]] = None
+    subject: FHIRReference | None = None
+    basedOn: list[FHIRReference] | None = None
 
 
 class FHIRBundle(BaseModel):
     resourceType: str = "Bundle"
     type: str = "searchset"
     total: int = Field(ge=0)
-    entry: List[dict] = []
+    entry: list[dict] = []
 
 
 class ImagingStudyCreateRequest(BaseModel):
@@ -79,17 +84,17 @@ class FHIRPatientCreate(BaseModel):
     """T-GB-API-01：Patient 资源创建（映射到本地 patients 表）。"""
 
     patient_id: str = Field(min_length=1, max_length=64)
-    name: Optional[str] = None
-    birth_date: Optional[date] = None
-    gender: Optional[str] = Field(default=None, pattern=r"^(male|female|other|unknown)$")
+    name: str | None = None
+    birth_date: date | None = None
+    gender: str | None = Field(default=None, pattern=r"^(male|female|other|unknown)$")
 
 
 class FHIRPatientUpdate(BaseModel):
     """Patient 资源更新（仅允许可改字段）。"""
 
-    name: Optional[str] = None
-    birth_date: Optional[date] = None
-    gender: Optional[str] = Field(default=None, pattern=r"^(male|female|other|unknown)$")
+    name: str | None = None
+    birth_date: date | None = None
+    gender: str | None = Field(default=None, pattern=r"^(male|female|other|unknown)$")
 
 
 async def _load_patient_with_consent(db: AsyncSession, patient_id: str) -> Patient:
@@ -122,7 +127,7 @@ def _patient_resource(patient: Patient) -> dict:
 async def get_patient(
     id: str,
     db: AsyncSession = Depends(get_db_session),
-    current_user: Optional[dict] = Depends(get_current_active_user),
+    current_user: dict | None = Depends(get_current_active_user),
 ):
     consent_repo = ConsentRepository(db)
     consent_record = await consent_repo.get_latest_consent(id)
@@ -150,7 +155,7 @@ async def get_patient(
 async def create_patient(
     request: FHIRPatientCreate,
     db: AsyncSession = Depends(get_db_session),
-    current_user: Optional[dict] = Depends(get_current_active_user),
+    current_user: dict | None = Depends(get_current_active_user),
 ):
     """创建 Patient 资源（patient_id 已存在 → 409 语义的 400）。"""
     stmt = select(Patient).where(Patient.patient_id == request.patient_id)
@@ -187,7 +192,7 @@ async def update_patient(
     id: str,
     request: FHIRPatientUpdate,
     db: AsyncSession = Depends(get_db_session),
-    current_user: Optional[dict] = Depends(get_current_active_user),
+    current_user: dict | None = Depends(get_current_active_user),
 ):
     """更新 Patient 资源（仅 name / birth_date / gender）。"""
     patient = await _load_patient_with_consent(db, id)
@@ -208,7 +213,7 @@ async def update_patient(
 async def delete_patient(
     id: str,
     db: AsyncSession = Depends(get_db_session),
-    current_user: Optional[dict] = Depends(get_current_active_user),
+    current_user: dict | None = Depends(get_current_active_user),
 ):
     """删除 Patient 资源（同意校验通过后硬删除，并写审计）。"""
     patient = await _load_patient_with_consent(db, id)
@@ -233,7 +238,7 @@ async def delete_patient(
 async def create_imaging_study(
     request: ImagingStudyCreateRequest,
     db: AsyncSession = Depends(get_db_session),
-    current_user: Optional[dict] = Depends(get_current_active_user),
+    current_user: dict | None = Depends(get_current_active_user),
 ):
     session = await db.get(DiagnosisSession, request.session_id)
     if not session:
@@ -255,7 +260,7 @@ async def create_imaging_study(
 async def get_imaging_study(
     id: str,
     db: AsyncSession = Depends(get_db_session),
-    current_user: Optional[dict] = Depends(get_current_active_user),
+    current_user: dict | None = Depends(get_current_active_user),
 ):
     """读取 ImagingStudy（由会话派生：id = session_id）。"""
     session = await db.get(DiagnosisSession, id)
@@ -272,9 +277,9 @@ async def get_imaging_study(
 
 @router.get("/ImagingStudy")
 async def search_imaging_studies(
-    subject: Optional[str] = Query(None),
+    subject: str | None = Query(None),
     db: AsyncSession = Depends(get_db_session),
-    current_user: Optional[dict] = Depends(get_current_active_user),
+    current_user: dict | None = Depends(get_current_active_user),
 ):
     """按 subject（``Patient/{id}``）检索 ImagingStudy。"""
     if not subject:
@@ -306,7 +311,7 @@ async def search_imaging_studies(
 async def get_diagnostic_report(
     id: str,
     db: AsyncSession = Depends(get_db_session),
-    current_user: Optional[dict] = Depends(get_current_active_user),
+    current_user: dict | None = Depends(get_current_active_user),
 ):
     stmt = select(DiagnosisResult).where(DiagnosisResult.request_id == id)
     result = await db.execute(stmt)
@@ -335,9 +340,9 @@ async def get_diagnostic_report(
 
 @router.get("/DiagnosticReport")
 async def search_diagnostic_reports(
-    subject: Optional[str] = Query(None),
+    subject: str | None = Query(None),
     db: AsyncSession = Depends(get_db_session),
-    current_user: Optional[dict] = Depends(get_current_active_user),
+    current_user: dict | None = Depends(get_current_active_user),
 ):
     """按 subject（``Patient/{id}``）检索 DiagnosticReport（由诊断结果派生）。"""
     if not subject:
@@ -387,7 +392,7 @@ async def search_diagnostic_reports(
 async def get_observation(
     id: str,
     db: AsyncSession = Depends(get_db_session),
-    current_user: Optional[dict] = Depends(get_current_active_user),
+    current_user: dict | None = Depends(get_current_active_user),
 ):
     """读取 Observation（由诊断结果派生：id = ``obs-{request_id}``）。"""
     request_id = id[4:] if id.startswith("obs-") else id
@@ -408,9 +413,9 @@ async def get_observation(
 
 @router.get("/Observation")
 async def list_observations(
-    based_on: Optional[str] = Query(None, alias="based-on"),
+    based_on: str | None = Query(None, alias="based-on"),
     db: AsyncSession = Depends(get_db_session),
-    current_user: Optional[dict] = Depends(get_current_active_user),
+    current_user: dict | None = Depends(get_current_active_user),
 ):
     if not based_on:
         return FHIRBundle(total=0, entry=[]).model_dump()

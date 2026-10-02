@@ -1,5 +1,5 @@
 import threading
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 import structlog
 
@@ -24,8 +24,8 @@ class HallucinationCUSUMBridge:
 
     def __init__(self, monitor: CUSUMMonitor):
         self._monitor = monitor
-        self._disease_monitors: Dict[str, CUSUMMonitor] = {}
-        self._circuit_breaker: Optional[Any] = None
+        self._disease_monitors: dict[str, CUSUMMonitor] = {}
+        self._circuit_breaker: Any | None = None
 
     @classmethod
     def get_instance(cls) -> "HallucinationCUSUMBridge":
@@ -43,15 +43,15 @@ class HallucinationCUSUMBridge:
     def report_hallucination_result(
         self,
         is_severe: bool,
-        disease_type: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        disease_type: str | None = None,
+    ) -> dict[str, Any]:
         result = self._monitor.update(is_severe)
         if disease_type and disease_type in self._disease_monitors:
             disease_result = self._disease_monitors[disease_type].update(is_severe)
             result[f"disease_{disease_type}"] = disease_result
         return result
 
-    def register_disease_monitor(self, disease_type: str, config: Optional[CUSUMConfig] = None) -> None:
+    def register_disease_monitor(self, disease_type: str, config: CUSUMConfig | None = None) -> None:
         if disease_type not in self._disease_monitors:
             if config is None:
                 config = CUSUMConfig(
@@ -69,17 +69,17 @@ class HallucinationCUSUMBridge:
     def set_circuit_breaker(self, circuit_breaker: Any) -> None:
         self._circuit_breaker = circuit_breaker
 
-    def get_disease_monitor(self, disease_type: str) -> Optional[CUSUMMonitor]:
+    def get_disease_monitor(self, disease_type: str) -> CUSUMMonitor | None:
         return self._disease_monitors.get(disease_type)
 
     def report_monthly_overall(
         self, month: int, total: int, hallucinations: int
-    ) -> List[str]:
+    ) -> list[str]:
         return self._monitor.record_monthly_stats(month, total, hallucinations)
 
     def report_biweekly_disease(
         self, disease_type: str, period: int, total: int, hallucinations: int
-    ) -> List[str]:
+    ) -> list[str]:
         monitor = self._disease_monitors.get(disease_type)
         if monitor is None:
             _logger.warning(

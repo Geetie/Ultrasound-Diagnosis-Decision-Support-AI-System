@@ -1,12 +1,11 @@
+import pytest
+
 from app.inference.vram_fragmentation import (
     VRAMFragmentationReport,
-    VRAMSnapshot,
     VRAMFragmentationVerifier,
+    VRAMSnapshot,
 )
 
-
-
-import pytest
 pytestmark = [pytest.mark.track_inf, pytest.mark.track_obs]
 class TestVRAMSnapshot:
     def test_snapshot_fields(self):

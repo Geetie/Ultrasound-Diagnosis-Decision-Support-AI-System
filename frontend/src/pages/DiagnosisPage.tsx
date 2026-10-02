@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, Typography, Button, Spin, Empty, Progress, Tag } from 'antd';
 import { ReloadOutlined, ClockCircleOutlined, LoadingOutlined } from '@ant-design/icons';
 import { tokens } from '@/styles/tokens';
@@ -13,6 +14,12 @@ import EvidenceTrace from '@/components/diagnosis/EvidenceTrace';
 import { normalizeEvidence } from '@/components/diagnosis/evidence';
 import HallucinationWarning from '@/components/diagnosis/HallucinationWarning';
 import QualityControlBadge from '@/components/diagnosis/QualityControlBadge';
+import MeasurementTable from '@/components/diagnosis/MeasurementTable';
+import DifferentialDiagnosisList from '@/components/diagnosis/DifferentialDiagnosisList';
+import ClinicalActions from '@/components/diagnosis/ClinicalActions';
+import { getConsentDisplayText, isPureReportMode } from '@/utils/consentGuard';
+import PatientExplanation from '@/components/diagnosis/PatientExplanation';
+import ResearchMetrics from '@/components/diagnosis/ResearchMetrics';
 import ProgressiveBlock from '@/components/diagnosis/ProgressiveBlock';
 
 const { Text, Title } = Typography;
@@ -24,7 +31,12 @@ export default function DiagnosisPage() {
   const touch = useTouchAdaptation();
   const [result, setResult] = useState<DiagnosisResult | null>(null);
   const [phase, setPhase] = useState<LoadingPhase>('idle');
-  const [requestId] = useState<string | null>(null);
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  // 结果页的数据来源是 URL 上的 request_id（由检查主界面或语音控件在提交成功后带上）。
+  // **这里原先写的是 `useState<string | null>(null)` 且没有 setter**：于是 requestId 恒为
+  // null，`handleRetry` 永远提前返回、轮询入口是死代码，页面拿不到任何诊断结果。
+  const requestId = searchParams.get('request_id');
   const [reviewAcknowledged, setReviewAcknowledged] = useState(false);
   const [responseTier] = useState<'realtime' | 'standard' | 'full'>('standard');
   const [stage, setStage] = useState<DiagnosisStageEvent | null>(null);
@@ -68,6 +80,14 @@ export default function DiagnosisPage() {
     },
     [handleResult, handleTimeout, responseTier],
   );
+
+  // 带上 request_id 进入本页即开始轮询（提交方负责把它放进 URL）。
+  // 放进 then 回调触发：既与"轮询是异步过程"的语义一致，也避免在 effect 体内同步
+  // setState 引发的级联渲染告警。
+  useEffect(() => {
+    if (!requestId) return;
+    Promise.resolve().then(() => startPolling(requestId));
+  }, [requestId, startPolling]);
 
   const handleRetry = useCallback(() => {
     if (!requestId) return;
@@ -257,6 +277,46 @@ export default function DiagnosisPage() {
     const evidence = normalizeEvidence(result.evidence as Record<string, unknown> | undefined);
     const stageTimings = progressive.stageTimings;
 
+    const consentText = getConsentDisplayText(result.consent_status_at_output);
+    const pureReportMode = isPureReportMode(result.consent_status_at_output);
+
+    // T-G1-INT-06：同意状态展示拦截。
+    // 同意被撤回（或从未授权）时，本结果可能是在同意失效前算出来的，或来自
+    // 纯报告模式——继续把 AI 结论、恶性概率、鉴别诊断当诊断意见展示，医生会
+    // 在不知情的情况下使用一份不该使用的输出。故此处整段拦截。
+    if (pureReportMode) {
+      return (
+        <div
+          data-testid="consent-blocked-notice"
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: tokens.spacing.sm,
+            background: tokens.color.bg.secondary,
+            border: `1px solid ${tokens.color.accent.warning}60`,
+            borderLeft: `3px solid ${tokens.color.accent.warning}`,
+            borderRadius: tokens.radius.md,
+            padding: tokens.spacing.lg,
+          }}
+        >
+          <Text
+            style={{
+              fontFamily: tokens.font.display,
+              color: tokens.color.accent.warning,
+              fontSize: 12,
+              letterSpacing: '0.05em',
+            }}
+          >
+            AI OUTPUT BLOCKED
+          </Text>
+          <Text style={{ color: tokens.color.text.primary, fontSize: 14 }}>{consentText}</Text>
+          <Text style={{ color: tokens.color.text.muted, fontSize: 12 }}>
+            AI 辅助诊断结论已按同意状态拦截，不在此处展示。请以超声原始报告与执业医师判断为准。
+          </Text>
+        </div>
+      );
+    }
+
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacing.lg }}>
         {/* 结论先行：医生最需要的信息第一时间落地 */}
@@ -318,9 +378,136 @@ export default function DiagnosisPage() {
           </Card>
         </ProgressiveBlock>
 
+        {/* M7 处置建议：无建议时整块不渲染（不展示"无需处置"这种误导性结论） */}
+        {result.clinical_actions && result.clinical_actions.length > 0 && (
+          <ProgressiveBlock ready={progressive.isRevealed('quality')} skeletonRows={2} label="处置建议">
+            <Card
+              size="small"
+              style={{
+                background: tokens.color.bg.secondary,
+                border: `1px solid ${tokens.color.border.default}`,
+                borderRadius: tokens.radius.md,
+              }}
+              styles={{ body: { padding: tokens.spacing.md } }}
+            >
+              <Text
+                style={{
+                  display: 'block',
+                  marginBottom: tokens.spacing.sm,
+                  fontFamily: tokens.font.display,
+                  color: tokens.color.accent.secondary,
+                  fontSize: 12,
+                  letterSpacing: '0.05em',
+                }}
+              >
+                CLINICAL ACTIONS
+              </Text>
+              <ClinicalActions actions={result.clinical_actions} />
+            </Card>
+          </ProgressiveBlock>
+        )}
+
+        {/* M4 鉴别诊断清单：无清单时整块不渲染 */}
+        {result.differential_diagnoses && result.differential_diagnoses.length > 0 && (
+          <ProgressiveBlock ready={progressive.isRevealed('quality')} skeletonRows={3} label="鉴别诊断">
+            <Card
+              size="small"
+              style={{
+                background: tokens.color.bg.secondary,
+                border: `1px solid ${tokens.color.border.default}`,
+                borderRadius: tokens.radius.md,
+              }}
+              styles={{ body: { padding: tokens.spacing.md } }}
+            >
+              <Text
+                style={{
+                  display: 'block',
+                  marginBottom: tokens.spacing.sm,
+                  fontFamily: tokens.font.display,
+                  color: tokens.color.accent.secondary,
+                  fontSize: 12,
+                  letterSpacing: '0.05em',
+                }}
+              >
+                DIFFERENTIAL DIAGNOSIS
+              </Text>
+              <DifferentialDiagnosisList items={result.differential_diagnoses} />
+            </Card>
+          </ProgressiveBlock>
+        )}
+
+        {/* M3 自动测量：无测量数据时整块不渲染（不展示空表格） */}
+        {result.measurement && (
+          <ProgressiveBlock ready={progressive.isRevealed('quality')} skeletonRows={2} label="自动测量">
+            <Card
+              size="small"
+              style={{
+                background: tokens.color.bg.secondary,
+                border: `1px solid ${tokens.color.border.default}`,
+                borderRadius: tokens.radius.md,
+              }}
+              styles={{ body: { padding: tokens.spacing.md } }}
+            >
+              <MeasurementTable measurement={result.measurement} />
+            </Card>
+          </ProgressiveBlock>
+        )}
+
         <ProgressiveBlock ready={progressive.isRevealed('evidence')} skeletonRows={4} label="证据链">
-          <EvidenceTrace evidence={evidence} />
+          <EvidenceTrace
+            evidence={evidence}
+            crossModalityHints={result.cross_modality_hints ?? []}
+          />
         </ProgressiveBlock>
+
+        {/* M11 科研指标：默认折叠（科研用途，展开会稀释临床结论） */}
+        {result.research_metrics && (
+          <ResearchMetrics metrics={result.research_metrics} />
+        )}
+
+        {/* M10 患者解释话术：默认折叠在底部，标注为非正式报告内容 */}
+        {result.patient_explanation && (
+          <PatientExplanation explanation={result.patient_explanation} />
+        )}
+
+        {/* M8：报告查看与签发入口。放在结果页——医生看完结论，最自然的下一步就是出报告 */}
+        {result.status === 'completed' && (
+          <Card
+            size="small"
+            style={{
+              background: tokens.color.bg.secondary,
+              border: `1px solid ${tokens.color.border.default}`,
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: tokens.spacing.md,
+                flexWrap: 'wrap',
+              }}
+            >
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <Text style={{ color: tokens.color.text.primary, fontSize: 13 }}>
+                  报告查看与签发
+                </Text>
+                <Text style={{ color: tokens.color.text.muted, fontSize: 12 }}>
+                  按器官模板生成草稿 → 签发（HSM 数字签名）→ 推送 PACS/HIS
+                </Text>
+              </div>
+              <Button
+                type="primary"
+                onClick={() =>
+                  navigate(`/report?request_id=${encodeURIComponent(result.request_id)}`)
+                }
+                style={{ minHeight: tokens.touch.hitTarget }}
+              >
+                打开报告
+              </Button>
+            </div>
+          </Card>
+        )}
 
         {/* 真实阶段耗时：来自后端 findings.timings_ms，仅在有数据时展示 */}
         {stageTimings.length > 0 && (

@@ -6,12 +6,11 @@
     python tests/unit/obs/coverage_compare.py --report     # 生成完整报告
 """
 import json
-import os
 import subprocess
 import sys
 import time
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 OBS_TEST_DIR = PROJECT_ROOT / "tests" / "unit" / "obs"
@@ -83,7 +82,7 @@ def parse_durations(stdout):
     durations = []
     in_durations = False
     for line in stdout.split("\n"):
-        if "slowest durations" in line.lower() or line.startswith("=") and "durations" in line:
+        if "slowest durations" in line.lower() or (line.startswith("=") and "durations" in line):
             in_durations = True
             continue
         if in_durations and line.strip():
@@ -153,12 +152,12 @@ def print_report(report):
     print("=" * 70)
 
     perf = report["performance"]
-    print(f"\n📊 性能对比:")
+    print("\n📊 性能对比:")
     print(f"  基线时间: {perf['baseline_elapsed_s']:.1f}s")
     print(f"  当前时间: {perf['current_elapsed_s']:.1f}s")
     print(f"  改善幅度: {perf['improvement_pct']}%")
 
-    print(f"\n📈 覆盖率对比:")
+    print("\n📈 覆盖率对比:")
     for module, data in report["coverage"].items():
         print(f"  {module}: {data['baseline_pct']} → {data['current_pct']} ({data['change']})")
 

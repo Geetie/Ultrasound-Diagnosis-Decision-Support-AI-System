@@ -18,9 +18,9 @@ from __future__ import annotations
 
 import json
 import os
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterator
 
 import structlog
 
@@ -61,9 +61,21 @@ class BUSIAdapter:
         use_hf: 是否使用 HuggingFace datasets 加载(parquet 后端)
     """
 
-    def __init__(self, dataset_path: str, use_hf: bool = False):
+    def __init__(
+        self,
+        dataset_path: str,
+        use_hf: bool = False,
+        allow_synthetic: bool = False,
+    ):
+        """Args:
+            allow_synthetic: 路径不存在时是否允许产出**合成占位样本**。
+                默认 False —— 与 `busi_adapter` 的既有行为相反（它会静默造 6 条
+                假样本，使评估脚本在空目录上也能"跑出"指标）。合成样本的
+                `image_path` 指向不存在的文件，任何训练/评估都必须显式opt-in。
+        """
         self._dataset_path = Path(dataset_path)
         self._use_hf = use_hf
+        self._allow_synthetic = allow_synthetic
 
     def load(
         self,
@@ -82,9 +94,20 @@ class BUSIAdapter:
         if self._use_hf:
             return list(self._iter_hf(split, max_samples))
         if not self._dataset_path.exists():
+            # **fail-fast**：路径不存在时默认拒绝，而不是悄悄造合成样本。
+            # 静默造假的后果不是"少测一点"，而是**评估脚本在假数据上产出指标**，
+            # 与 MockEmbeddingService 让检索指标失真属同一类缺陷。
+            if not self._allow_synthetic:
+                raise FileNotFoundError(
+                    f"数据集路径不存在：{self._dataset_path}。"
+                    "拒绝用合成样本冒充真实数据集（那会让评估/训练在假数据上"
+                    "产出看似正常的结果）。如确为冒烟测试，请显式传入 "
+                    "allow_synthetic=True。"
+                )
             logger.warning(
                 "busi_dataset_path_not_found",
                 path=str(self._dataset_path),
+                allow_synthetic=True,
             )
             return self._generate_synthetic_samples(max_samples)
         if self._dataset_path.is_file() and self._dataset_path.suffix == ".jsonl":
@@ -134,10 +157,15 @@ class BUSIAdapter:
                 if max_samples is not None and count >= max_samples:
                     return
                 row = json.loads(line.strip())
+                # 字段别名：公开超声图文数据集（如 US-365K）用的是
+                # `{"image": "<file>.jpg", "caption": "..."}`，既没有
+                # `image_path`/`text`，也**没有 label**。这里做别名兼容；
+                # **缺 label 时保持 None，不伪造** —— 把无标注语料当
+                # `benign` 会让任何按标签统计的指标系统性偏错。
                 yield CLIPSample(
-                    image_path=row["image_path"],
-                    text=row["text"],
-                    label=row.get("label", "benign"),
+                    image_path=row.get("image_path") or row.get("image", ""),
+                    text=row.get("text") or row.get("caption", ""),
+                    label=row.get("label"),
                 )
                 count += 1
 

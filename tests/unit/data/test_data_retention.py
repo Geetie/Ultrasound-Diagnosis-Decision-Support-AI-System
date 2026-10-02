@@ -1,8 +1,10 @@
-import pytest
+from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
-from datetime import datetime, timezone, timedelta
+
+import pytest
 
 from app.services.data_retention import DataRetentionService
+
 pytestmark = [pytest.mark.track_data, pytest.mark.track_sec]
 
 

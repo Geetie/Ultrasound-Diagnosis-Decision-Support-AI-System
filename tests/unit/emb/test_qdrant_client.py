@@ -14,7 +14,6 @@ Covers:
 """
 from __future__ import annotations
 
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
@@ -26,20 +25,18 @@ pytestmark = [pytest.mark.track_emb]
 # qdrant_client is an optional dep. Tests requiring qmodels skip if absent;
 # the rest of the tests (constants, prefix logic, lazy import) always run.
 qdrant_client = pytest.importorskip("qdrant_client", reason="qdrant-client not installed")
-from qdrant_client.http import models as qmodels  # noqa: E402
 from qdrant_client.http.exceptions import UnexpectedResponse  # noqa: E402
 
-from app.embedding.qdrant_client import (  # noqa: E402
-    QdrantVectorIndex,
-    _DISTANCE_MAP,
-)
 from app.embedding.protocols import (  # noqa: E402
     SearchResult,
     VectorIndexError,
     VectorIndexErrorCode,
     VectorRecord,
 )
-
+from app.embedding.qdrant_client import (  # noqa: E402
+    _DISTANCE_MAP,
+    QdrantVectorIndex,
+)
 
 # ---------------------------------------------------------------------------
 # Module-level constants

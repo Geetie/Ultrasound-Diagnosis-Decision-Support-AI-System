@@ -12,7 +12,7 @@
 """
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 import structlog
 
@@ -32,7 +32,7 @@ class EdgePipeline:
         nav_service: NavigationInferenceService,
         *,
         uplink: Any = None,
-        device_manager: Optional[EdgeDeviceManager] = None,
+        device_manager: EdgeDeviceManager | None = None,
     ) -> None:
         self._nav = nav_service
         self._uplink = uplink
@@ -49,8 +49,8 @@ class EdgePipeline:
         return self._device.should_uplink
 
     async def on_frame(
-        self, frame: Frame, now: Optional[float] = None
-    ) -> Optional[NavResult]:
+        self, frame: Frame, now: float | None = None
+    ) -> NavResult | None:
         """处理一帧。
 
         Args:
@@ -96,7 +96,7 @@ class EdgePipeline:
         """上报温度并刷新推理门控。"""
         return self._nav.record_temperature(celsius)
 
-    def status(self) -> Dict[str, Any]:
+    def status(self) -> dict[str, Any]:
         health = self._device.health.as_dict() if self._device else None
         return {
             "frames_seen": self._frames_seen,

@@ -18,10 +18,8 @@
 """
 from __future__ import annotations
 
-import asyncio
 import time
 from dataclasses import dataclass
-from typing import List, Optional
 
 import pytest
 
@@ -30,8 +28,8 @@ pytestmark = [
     pytest.mark.integration,
 ]
 
-from app.agents.dispatcher import DispatcherAgentImpl, dispatch_all
-from app.agents.protocols import AgentContext, AgentResponse
+from app.agents.dispatcher import dispatch_all
+from app.agents.protocols import AgentContext
 from app.agents.specialist import (
     CardiacSpecialistAgent,
     LiverSpecialistAgent,
@@ -44,7 +42,6 @@ from tests.unit.agt.conftest import (
     FakeKnowledgeAgent,
     make_chunks,
 )
-
 
 # =====================================================================
 # 临床病例库（参数化）
@@ -268,7 +265,7 @@ class TestP99Latency:
             "分级: TR4\n总分: 5",
             latency_seconds=0.05,
         )
-        latencies: List[float] = []
+        latencies: list[float] = []
         for i in range(20):
             start = time.monotonic()
             resp = await s.invoke(_ctx(Organ.THYROID, f"query {i}", f"r{i}"))
@@ -284,7 +281,7 @@ class TestP99Latency:
         s = _make_specialist(
             Organ.LIVER, "分级: LR-4", latency_seconds=0.05
         )
-        latencies: List[float] = []
+        latencies: list[float] = []
         for i in range(20):
             start = time.monotonic()
             resp = await s.invoke(_ctx(Organ.LIVER, f"query {i}", f"r{i}"))
@@ -299,7 +296,7 @@ class TestP99Latency:
         s = _make_specialist(
             Organ.CARDIAC, "EF 50%, mildly_reduced", latency_seconds=0.05
         )
-        latencies: List[float] = []
+        latencies: list[float] = []
         for i in range(20):
             start = time.monotonic()
             resp = await s.invoke(_ctx(Organ.CARDIAC, f"query {i}", f"r{i}"))

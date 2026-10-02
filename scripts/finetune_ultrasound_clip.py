@@ -76,6 +76,13 @@ def parse_args() -> argparse.Namespace:
         "--use-hf", action="store_true",
         help="使用 HuggingFace datasets 后端加载 parquet",
     )
+    parser.add_argument(
+        "--allow-synthetic", action="store_true",
+        help=(
+            "冒烟专用：数据集路径不存在时允许用合成占位样本（默认关闭）。"
+            "合成样本的 image_path 指向不存在的文件，训练结果无意义。"
+        ),
+    )
     return parser.parse_args()
 
 
@@ -91,8 +98,16 @@ def main() -> int:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     print(f"[INFO] 加载数据集: {args.dataset_path}")
-    adapter = BUSIAdapter(dataset_path=args.dataset_path, use_hf=args.use_hf)
-    train_samples = adapter.load(max_samples=args.max_samples)
+    adapter = BUSIAdapter(
+        dataset_path=args.dataset_path,
+        use_hf=args.use_hf,
+        allow_synthetic=args.allow_synthetic,
+    )
+    try:
+        train_samples = adapter.load(max_samples=args.max_samples)
+    except FileNotFoundError as exc:
+        print(f"[ERROR] {exc}")
+        return 4
     print(f"[INFO] 训练样本数: {len(train_samples)}")
 
     if not train_samples:
@@ -101,7 +116,11 @@ def main() -> int:
 
     eval_samples = None
     if args.eval_dataset_path:
-        eval_adapter = BUSIAdapter(dataset_path=args.eval_dataset_path, use_hf=args.use_hf)
+        eval_adapter = BUSIAdapter(
+            dataset_path=args.eval_dataset_path,
+            use_hf=args.use_hf,
+            allow_synthetic=args.allow_synthetic,
+        )
         eval_samples = eval_adapter.load(max_samples=min(args.max_samples or 50, 50))
         print(f"[INFO] 评估样本数: {len(eval_samples)}")
 

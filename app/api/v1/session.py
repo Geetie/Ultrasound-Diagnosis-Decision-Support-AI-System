@@ -1,30 +1,30 @@
-from fastapi import APIRouter, Depends
 from datetime import datetime, timezone
-from typing import List, Optional
 
+from fastapi import APIRouter, Depends
+
+from app.api.v1.errors import NotFoundException
+from app.api.v1.utils import check_consent_status, get_actor_id
+from app.dependencies import get_audit_service, get_consent_repo, get_session_repo
 from app.models.schemas import (
+    ConsentStatus,
+    OrganStatus,
     SessionCreateRequest,
     SessionListItem,
     SessionListResponse,
     SessionResponse,
-    SessionUpdateRequest,
     SessionStatus,
-    OrganStatus,
-    ConsentStatus,
+    SessionUpdateRequest,
 )
-from app.api.v1.errors import NotFoundException
-from app.dependencies import get_session_repo, get_consent_repo, get_audit_service
-from app.api.v1.utils import get_actor_id, check_consent_status
-from app.repositories import SessionRepository, ConsentRepository
-from app.services.audit_service import AuditService
+from app.repositories import ConsentRepository, SessionRepository
 from app.security.auth import get_current_active_user
+from app.services.audit_service import AuditService
 
 router = APIRouter(tags=["sessions"])
 
 SESSION_TTL_SECONDS = 7200
 
 
-def _calc_ttl_remaining(updated_at: Optional[datetime]) -> Optional[int]:
+def _calc_ttl_remaining(updated_at: datetime | None) -> int | None:
     if not updated_at:
         return None
     elapsed = (datetime.now(timezone.utc) - updated_at).total_seconds()
@@ -47,7 +47,7 @@ def _build_session_response(session) -> SessionResponse:
     )
 
 
-def _mask_name(name: Optional[str]) -> Optional[str]:
+def _mask_name(name: str | None) -> str | None:
     """姓名脱敏：姓 + **。
 
     列表是共享屏幕，暴露全名即泄露面。**脱敏必须在服务端做** ——
@@ -61,7 +61,7 @@ def _mask_name(name: Optional[str]) -> Optional[str]:
     return f"{first}{'*' * 2}"
 
 
-def _age_from(birth_date) -> Optional[int]:
+def _age_from(birth_date) -> int | None:
     """从出生日期派生年龄。缺失或非法一律 None —— 不猜。"""
     if not birth_date:
         return None
@@ -77,7 +77,7 @@ def _age_from(birth_date) -> Optional[int]:
 async def list_sessions(
     limit: int = 20,
     session_repo: SessionRepository = Depends(get_session_repo),
-    current_user: Optional[dict] = Depends(get_current_active_user),
+    current_user: dict | None = Depends(get_current_active_user),
 ):
     """工作列表 —— 设计稿 01_工作列表 / 15_工作列表浅色 的数据源。
 
@@ -92,8 +92,8 @@ async def list_sessions(
     # 不含 completed / failed / terminated —— 那些不是"待处理"。
     rows = await session_repo.list_sessions(limit=limit)
 
-    in_progress: List[SessionListItem] = []
-    pending_today: List[SessionListItem] = []
+    in_progress: list[SessionListItem] = []
+    pending_today: list[SessionListItem] = []
     today = datetime.now(timezone.utc).date()
 
     for r in rows:
@@ -119,7 +119,9 @@ async def list_sessions(
     return SessionListResponse(
         in_progress=in_progress,
         pending_today=pending_today,
-        total_pending=len(in_progress) + len(pending_today),
+        # 只数待处理：画布 01 的「今日 3 例待处理」指下面那组，不含进行中那一行。
+        # 把进行中也计入会让医生以为还有 4 份要看。
+        total_pending=len(pending_today),
     )
 
 
@@ -129,7 +131,7 @@ async def create_session(
     session_repo: SessionRepository = Depends(get_session_repo),
     consent_repo: ConsentRepository = Depends(get_consent_repo),
     audit_service: AuditService = Depends(get_audit_service),
-    current_user: Optional[dict] = Depends(get_current_active_user),
+    current_user: dict | None = Depends(get_current_active_user),
 ):
     consent_record = await consent_repo.get_latest_consent(request.patient_id)
     consent_status = check_consent_status(consent_record, request.patient_id)
@@ -162,7 +164,7 @@ async def create_session(
 async def get_session(
     session_id: str,
     session_repo: SessionRepository = Depends(get_session_repo),
-    current_user: Optional[dict] = Depends(get_current_active_user),
+    current_user: dict | None = Depends(get_current_active_user),
 ):
     session = await session_repo.get_session(session_id)
     if not session:
@@ -177,7 +179,7 @@ async def update_session(
     request: SessionUpdateRequest,
     session_repo: SessionRepository = Depends(get_session_repo),
     audit_service: AuditService = Depends(get_audit_service),
-    current_user: Optional[dict] = Depends(get_current_active_user),
+    current_user: dict | None = Depends(get_current_active_user),
 ):
     session = await session_repo.update_session(
         session_id=session_id,

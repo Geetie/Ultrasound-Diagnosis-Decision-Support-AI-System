@@ -5,13 +5,12 @@
 """
 
 import threading
-from typing import Optional, Dict, Any, List, Tuple
-
-from cryptography.hazmat.primitives.asymmetric import rsa, padding
-from cryptography.hazmat.primitives import serialization, hashes
-from cryptography.hazmat.backends import default_backend
+from typing import Any
 
 import structlog
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
 
 from app.security.hsm.enums import KeySlot, get_key_slot
 from app.security.hsm.persistence_manager import PersistenceManager
@@ -38,14 +37,14 @@ class KeyManager:
     KEY_CLEANUP_INTERVAL_HOURS = 24
 
     def __init__(self, persistence_manager: PersistenceManager) -> None:
-        self._key_slots: Dict[KeySlot, Dict[str, Dict[str, Any]]] = {
+        self._key_slots: dict[KeySlot, dict[str, dict[str, Any]]] = {
             slot: {} for slot in KeySlot
         }
         self._lock = threading.RLock()
         self._persistence_manager = persistence_manager
 
     @property
-    def key_slots(self) -> Dict[KeySlot, Dict[str, Dict[str, Any]]]:
+    def key_slots(self) -> dict[KeySlot, dict[str, dict[str, Any]]]:
         """密钥槽位字典（用于向后兼容测试访问）。"""
         return self._key_slots
 
@@ -54,7 +53,7 @@ class KeyManager:
         """线程锁（用于向后兼容测试访问）。"""
         return self._lock
 
-    def find_key(self, key_name: str) -> Tuple[Optional[Dict[str, Any]], Optional[KeySlot]]:
+    def find_key(self, key_name: str) -> tuple[dict[str, Any] | None, KeySlot | None]:
         """查找密钥信息。
 
         首先在密钥名称对应的默认槽位中查找，
@@ -79,8 +78,8 @@ class KeyManager:
         self,
         key_name: str,
         key_size: int = 2048,
-        slot: Optional[KeySlot] = None,
-    ) -> Dict[str, Any]:
+        slot: KeySlot | None = None,
+    ) -> dict[str, Any]:
         """生成 RSA 密钥对。
 
         生成密钥对后存储到内存槽位和 Redis 持久化。
@@ -127,7 +126,7 @@ class KeyManager:
                 'slot': slot.value,
             }
 
-    def rotate_key(self, key_name: str, parallel_days: int = 7) -> Dict[str, Any]:
+    def rotate_key(self, key_name: str, parallel_days: int = 7) -> dict[str, Any]:
         """轮换密钥。
 
         生成新的密钥对，旧密钥保留 parallel_days 天的并行期。
@@ -140,7 +139,7 @@ class KeyManager:
         Returns:
             dict: 新密钥信息
         """
-        from datetime import datetime, timezone, timedelta
+        from datetime import datetime, timedelta, timezone
 
         with self._lock:
             slot = get_key_slot(key_name)
@@ -215,7 +214,7 @@ class KeyManager:
 
         with self._lock:
             now = datetime.now(timezone.utc)
-            expired_keys: List[Tuple[str, KeySlot]] = []
+            expired_keys: list[tuple[str, KeySlot]] = []
 
             for slot, keys in self._key_slots.items():
                 for key_name, key_info in keys.items():
@@ -233,7 +232,7 @@ class KeyManager:
 
             return len(expired_keys)
 
-    def get_key_info(self, key_name: str) -> Optional[Dict[str, Any]]:
+    def get_key_info(self, key_name: str) -> dict[str, Any] | None:
         """获取密钥信息。
 
         Args:
@@ -253,7 +252,7 @@ class KeyManager:
                 }
             return None
 
-    def list_keys(self) -> List[str]:
+    def list_keys(self) -> list[str]:
         """列出所有密钥名称。
 
         Returns:
@@ -265,7 +264,7 @@ class KeyManager:
                 result.extend(keys.keys())
             return result
 
-    def list_keys_by_slot(self, slot: KeySlot) -> List[str]:
+    def list_keys_by_slot(self, slot: KeySlot) -> list[str]:
         """列出指定槽位的密钥名称。
 
         Args:
@@ -277,7 +276,7 @@ class KeyManager:
         with self._lock:
             return list(self._key_slots[slot].keys())
 
-    def get_public_key(self, key_name: str) -> Optional[str]:
+    def get_public_key(self, key_name: str) -> str | None:
         """获取密钥的公钥 PEM 字符串。
 
         Args:
@@ -407,7 +406,7 @@ class KeyManager:
         return private_pem, public_pem
 
     @staticmethod
-    def _get_key_encryption_password() -> Optional[bytes]:
+    def _get_key_encryption_password() -> bytes | None:
         """获取密钥加密密码。
 
         Returns:
@@ -431,6 +430,7 @@ class KeyManager:
             ValueError: 如果密钥不是有效的 Fernet 密钥
         """
         import os
+
         from cryptography.fernet import Fernet as _Fernet
 
         key_env = os.environ.get("HSM_KEY_ENCRYPTION_KEY")

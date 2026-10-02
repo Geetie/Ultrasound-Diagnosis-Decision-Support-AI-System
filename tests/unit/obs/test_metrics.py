@@ -4,19 +4,19 @@ Unit tests for the VictoriaMetrics memory monitoring module.
 """
 
 import asyncio
-import time
+from unittest.mock import AsyncMock, Mock, patch
+
 import pytest
-from unittest.mock import Mock, patch, AsyncMock
 
 pytestmark = [pytest.mark.track_obs, pytest.mark.track_inf]
 
 from app.observability import metrics as metrics_module
 from app.observability.metrics import (
-    VictoriaMetricsMemoryMonitor,
-    MemoryMonitorConfig,
-    MemoryMetrics,
-    MemoryThreshold,
     AlertLevel,
+    MemoryMetrics,
+    MemoryMonitorConfig,
+    MemoryThreshold,
+    VictoriaMetricsMemoryMonitor,
     get_memory_monitor,
     shutdown_memory_monitor,
 )
@@ -250,11 +250,11 @@ class TestVictoriaMetricsMemoryMonitor:
     async def test_monitor_start_stop(self):
         monitor = VictoriaMetricsMemoryMonitor()
         await monitor.start()
-        
+
         # 验证任务正在运行
         assert monitor._monitor_task is not None
         assert not monitor._monitor_task.done()  # 任务未完成
-        
+
         await monitor.stop()
         # 验证任务已结束
         assert monitor._monitor_task.done()
@@ -264,11 +264,11 @@ class TestVictoriaMetricsMemoryMonitor:
         monitor = VictoriaMetricsMemoryMonitor()
         await monitor.start()
         await monitor.start()
-        
+
         # 验证任务正在运行（多次调用start后任务仍正常运行）
         assert monitor._monitor_task is not None
         assert not monitor._monitor_task.done()
-        
+
         await monitor.stop()
         # 验证任务已结束
         assert monitor._monitor_task.done()
@@ -287,13 +287,13 @@ class TestMemoryMonitorIntegration:
     async def test_full_monitoring_cycle(self):
         monitor = VictoriaMetricsMemoryMonitor()
         await monitor.start()
-        
+
         for _ in range(20):
             metrics = monitor.get_metrics()
             if metrics["total_checks"] >= 1:
                 break
             await asyncio.sleep(0.1)
-        
+
         assert metrics["total_checks"] >= 1
         assert metrics["current_rss_mb"] > 0
         await monitor.stop()
@@ -327,14 +327,14 @@ class TestMemoryMonitorEdgeCases:
         monitor = VictoriaMetricsMemoryMonitor()
         # 验证进程对象已正确初始化
         assert monitor._process is not None
-        
+
         # 通过实际调用_check_memory()测试峰值追踪
         # 使用真实进程对象，验证真实内存获取逻辑
         await monitor._check_memory()
         # 验证峰值内存被正确记录（应该大于0）
         assert monitor._metrics.peak_rss_mb > 0.0
         initial_peak = monitor._metrics.peak_rss_mb
-        
+
         # 再次调用，验证峰值更新逻辑
         await monitor._check_memory()
         # 峰值应大于等于初始值
@@ -345,9 +345,9 @@ class TestMemoryMonitorEdgeCases:
     async def test_check_memory_with_process_error(self):
         """测试进程对象获取失败时的异常处理"""
         import psutil
-        
+
         monitor = VictoriaMetricsMemoryMonitor()
-        
+
         # 模拟进程获取失败的情况
         with patch.object(monitor._process, 'memory_info', side_effect=psutil.NoSuchProcess("Process does not exist")):
             # 验证异常被静默处理
@@ -355,7 +355,7 @@ class TestMemoryMonitorEdgeCases:
                 await monitor._check_memory()
             except Exception:
                 pytest.fail("_check_memory should handle process errors silently")
-        
+
         await monitor.stop()
 
     @pytest.mark.asyncio
@@ -368,13 +368,13 @@ class TestMemoryMonitorEdgeCases:
             max_allowed_mb=200.0,
         )
         monitor = VictoriaMetricsMemoryMonitor(config=config)
-        
+
         # 验证进程对象已正确初始化
         assert monitor._process is not None
-        
+
         # 通过实际调用_check_memory()测试告警计数
         await monitor._check_memory()
-        
+
         # 验证监控正常运行（根据当前进程内存状态验证相应的告警级别）
         # 如果内存低于警告阈值，告警计数应为0
         # 如果内存超过警告阈值，警告计数应增加

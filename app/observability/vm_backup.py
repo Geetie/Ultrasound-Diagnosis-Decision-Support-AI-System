@@ -1,8 +1,8 @@
 import asyncio
 import shutil
+from collections.abc import Callable
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Callable, Dict, Optional
 
 import httpx
 import structlog
@@ -15,12 +15,12 @@ _logger = structlog.get_logger("app.observability.vm_backup")
 class VictoriaMetricsBackup:
     def __init__(
         self,
-        vm_url: Optional[str] = None,
-        backup_dir: Optional[str] = None,
-        vm_data_path: Optional[str] = None,
+        vm_url: str | None = None,
+        backup_dir: str | None = None,
+        vm_data_path: str | None = None,
         retention_days: int = 7,
         interval_hours: int = 1,
-        on_failure: Optional[Callable[[str], None]] = None,
+        on_failure: Callable[[str], None] | None = None,
     ):
         self._vm_url = vm_url or settings.obs_victoriametrics_url
         self._backup_dir = Path(backup_dir or "./data/vm_backups")
@@ -28,7 +28,7 @@ class VictoriaMetricsBackup:
         self._retention_days = retention_days
         self._interval_hours = interval_hours
         self._on_failure = on_failure or self._default_failure_callback
-        self._task: Optional[asyncio.Task] = None
+        self._task: asyncio.Task | None = None
         self._shutdown_event = asyncio.Event()
         self._backup_count = 0
         self._fail_count = 0
@@ -124,7 +124,7 @@ class VictoriaMetricsBackup:
             await self._delete_snapshot(snapshot_name)
             await self._cleanup_old_backups()
 
-    async def _create_snapshot(self) -> Optional[str]:
+    async def _create_snapshot(self) -> str | None:
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
                 url = f"{self._vm_url}/snapshot/create"
@@ -178,7 +178,7 @@ class VictoriaMetricsBackup:
         except Exception as e:
             _logger.warning("vm_backup_cleanup_error", error=str(e))
 
-    def get_stats(self) -> Dict[str, object]:
+    def get_stats(self) -> dict[str, object]:
         return {
             "backup_count": self._backup_count,
             "fail_count": self._fail_count,

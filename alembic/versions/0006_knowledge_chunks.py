@@ -9,11 +9,11 @@ pipeline. Distinct from the existing `knowledge_base` table (which serves as
 the RAG retrieval fast cache); this table holds chunked content with
 structured metadata and pgvector embeddings.
 """
-from alembic import op
 import sqlalchemy as sa
-from sqlalchemy.dialects.postgresql import JSONB
 from pgvector.sqlalchemy import Vector
+from sqlalchemy.dialects.postgresql import JSONB
 
+from alembic import op
 
 revision = '0006'
 down_revision = '0005'
@@ -74,8 +74,8 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.execute(f'DROP INDEX IF EXISTS idx_kc_embedding_hnsw')
-    op.execute(f'DROP INDEX IF EXISTS idx_kc_metadata_gin')
+    op.execute('DROP INDEX IF EXISTS idx_kc_embedding_hnsw')
+    op.execute('DROP INDEX IF EXISTS idx_kc_metadata_gin')
     op.drop_index('idx_kc_source_doc', table_name=_TABLE)
     op.drop_index('idx_kc_kb_organ', table_name=_TABLE)
     op.drop_index('idx_kc_organ', table_name=_TABLE)

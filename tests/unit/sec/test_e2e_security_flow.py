@@ -1,25 +1,24 @@
-from unittest.mock import AsyncMock, patch, MagicMock
-from datetime import datetime, timedelta, timezone
 import os
 import threading
+from datetime import datetime, timedelta, timezone
+from unittest.mock import AsyncMock, patch
 
 import pytest
+
 pytestmark = [pytest.mark.track_sec, pytest.mark.track_int, pytest.mark.hsm_crypto, pytest.mark.sec_critical]
 
-from app.security.three_layer_desensitization import (
-    ThreeLayerDesensitizationManager,
-    ThreeLayerDesensitizationResult,
-    DesensitizationLayer,
-)
 from app.security.desensitization import DesensitizationEngine
-from app.security.hsm import HSMManager, DegradedPhase, KeySlot, hsm_manager
 from app.security.emergency_signing import EmergencySigningManager
+from app.security.hsm import HSMManager, hsm_manager
 from app.security.refresh_token import MemoryRefreshTokenStore
-from app.security.auth import create_access_token, decode_access_token
+from app.security.three_layer_desensitization import (
+    DesensitizationLayer,
+    ThreeLayerDesensitizationManager,
+)
 
 
 def _make_lightweight_hsm():
-    from app.security.hsm import HSMManager, KeySlot as _KS
+    from app.security.hsm import KeySlot as _KS
     mgr = HSMManager.__new__(HSMManager)
     mgr._use_soft_hsm = os.environ.get("USE_SOFT_HSM", "false").lower() == "true"
     mgr._hsm_available = False

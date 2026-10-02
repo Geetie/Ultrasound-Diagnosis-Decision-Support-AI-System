@@ -9,15 +9,15 @@ import pytest
 pytestmark = [pytest.mark.track_llm, pytest.mark.track_sec]
 
 from app.inference.hallucination_detector import (
-    HallucinationDetector,
+    ContextAwareDetector,
+    ContradictoryGradingDetector,
     DetectionStrategy,
     ForbiddenTermsDetector,
-    ContradictoryGradingDetector,
+    HallucinationDetector,
     MedicalCommonSenseDetector,
     NumericalValidityDetector,
-    ContextAwareDetector,
     detect_hallucination,
-    get_default_detector
+    get_default_detector,
 )
 from app.inference.verification_config import get_default_forbidden_terms_config
 
@@ -422,8 +422,11 @@ class TestContextWindowDetection:
 
     def test_context_outside_window_detected(self):
         from app.inference.verification_config import (
-            ForbiddenTermConfig, ForbiddenTermsConfig, StrategyWeightConfig,
-            VerificationConfig, get_default_boundary_config,
+            ForbiddenTermConfig,
+            ForbiddenTermsConfig,
+            StrategyWeightConfig,
+            VerificationConfig,
+            get_default_boundary_config,
             get_default_numerical_validation_config,
         )
         custom_terms = ForbiddenTermsConfig(
@@ -697,7 +700,6 @@ class TestCustomConfigDetection:
             StrategyWeightConfig,
             VerificationConfig,
             get_default_boundary_config,
-            get_default_forbidden_terms_config,
             get_default_numerical_validation_config,
         )
         custom_terms = ForbiddenTermsConfig(

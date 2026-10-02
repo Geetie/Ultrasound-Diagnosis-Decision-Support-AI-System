@@ -1,12 +1,12 @@
 """OBS可观测性常量集中管理 — 替代散布在代码中的魔法数字。"""
 
 __all__ = [
+    "AlertConstants",
     "CUSUMConstants",
-    "CacheMonitorConstants",
     "CacheAlertThresholds",
+    "CacheMonitorConstants",
     "DiskAlertThresholds",
     "EdgeGPUConstants",
-    "AlertConstants",
     "LoggingConstants",
     "VMConstants",
     "VMPusherConstants",

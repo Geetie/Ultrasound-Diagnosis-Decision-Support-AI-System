@@ -32,7 +32,7 @@ const versionColumns = [
   {
     title: '操作',
     key: 'action',
-    render: (_: any, record: any) => (
+    render: (_: unknown, record: KbVersionRecord) => (
       <Button
         type="link"
         size="small"
@@ -45,7 +45,16 @@ const versionColumns = [
   },
 ];
 
-const versionData = [
+interface KbVersionRecord {
+  key: string;
+  version: string;
+  releaseDate: string;
+  status: string;
+  ruleCount: number;
+  reviewer: string;
+}
+
+const versionData: KbVersionRecord[] = [
   { key: '1', version: 'v3.2.1', releaseDate: '2026-05-10', status: 'active', ruleCount: 12847, reviewer: '张主任' },
   { key: '2', version: 'v3.2.0', releaseDate: '2026-04-22', status: 'archived', ruleCount: 12653, reviewer: '张主任' },
   { key: '3', version: 'v3.1.9', releaseDate: '2026-04-05', status: 'archived', ruleCount: 12401, reviewer: '李主任' },
@@ -79,7 +88,7 @@ const reviewNotifications = [
   { id: '3', version: 'v3.2.0', type: 'success' as const, message: 'v3.2.0 版本归档完成', time: '3周前' },
 ];
 
-const showChangeDetail = (record: any) => {
+const showChangeDetail = (record: KbVersionRecord) => {
   const records = changeRecords[record.version] || [];
   Modal.info({
     title: (

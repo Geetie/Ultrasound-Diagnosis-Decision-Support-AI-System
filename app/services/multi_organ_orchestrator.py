@@ -32,9 +32,10 @@ from __future__ import annotations
 
 import asyncio
 import time
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any
 
 import structlog
 
@@ -69,16 +70,16 @@ class OrganRunResult:
 
     organ: str
     status: str  # OrganStatus 值
-    request_id: Optional[str] = None
+    request_id: str | None = None
     confidence: float = 0.0
     elapsed_ms: float = 0.0
-    reason: Optional[str] = None
+    reason: str | None = None
 
     @property
     def succeeded(self) -> bool:
         return self.status == OrganStatus.COMPLETED.value
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         return {
             "organ": self.organ,
             "status": self.status,
@@ -95,32 +96,32 @@ class MultiOrganOutcome:
 
     session_id: str
     session_status: str  # SessionStatus 值
-    organs: List[str] = field(default_factory=list)
-    organ_results: List[OrganRunResult] = field(default_factory=list)
-    organ_statuses: Dict[str, str] = field(default_factory=dict)
+    organs: list[str] = field(default_factory=list)
+    organ_results: list[OrganRunResult] = field(default_factory=list)
+    organ_statuses: dict[str, str] = field(default_factory=dict)
     total_ms: float = 0.0
     partial: bool = False
 
-    def organs_with_status(self, status: str) -> List[str]:
+    def organs_with_status(self, status: str) -> list[str]:
         return [r.organ for r in self.organ_results if r.status == status]
 
     @property
-    def completed_organs(self) -> List[str]:
+    def completed_organs(self) -> list[str]:
         return self.organs_with_status(OrganStatus.COMPLETED.value)
 
     @property
-    def failed_organs(self) -> List[str]:
+    def failed_organs(self) -> list[str]:
         return self.organs_with_status(OrganStatus.FAILED.value)
 
     @property
-    def skipped_organs(self) -> List[str]:
+    def skipped_organs(self) -> list[str]:
         return self.organs_with_status(OrganStatus.SKIPPED.value)
 
     @property
-    def needs_review_organs(self) -> List[str]:
+    def needs_review_organs(self) -> list[str]:
         return self.organs_with_status(OrganStatus.NEEDS_REVIEW.value)
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         return {
             "session_id": self.session_id,
             "session_status": self.session_status,
@@ -144,10 +145,10 @@ class MultiOrganOutcome:
 async def run_multi_organ_diagnosis(
     session_id: str,
     *,
-    organs: Optional[Sequence[str]] = None,
-    per_organ_timeout_s: Optional[float] = None,
-    total_timeout_s: Optional[float] = None,
-    response_tier: Optional[ResponseTier] = None,
+    organs: Sequence[str] | None = None,
+    per_organ_timeout_s: float | None = None,
+    total_timeout_s: float | None = None,
+    response_tier: ResponseTier | None = None,
 ) -> MultiOrganOutcome:
     """对会话执行多器官串行诊断。
 
@@ -198,7 +199,7 @@ async def run_multi_organ_diagnosis(
             return outcome
 
         # 会话进入 active：多器官串行进行中。
-        organ_statuses: Dict[str, str] = dict(getattr(session, "organ_statuses", None) or {})
+        organ_statuses: dict[str, str] = dict(getattr(session, "organ_statuses", None) or {})
         for organ in organ_list:
             organ_statuses.setdefault(organ.value, OrganStatus.PENDING.value)
         await _persist_progress(
@@ -275,7 +276,7 @@ async def _run_single_organ(
     db: Any,
     session_id: str,
     organ: Organ,
-    request_id: Optional[str],
+    request_id: str | None,
     budget_s: float,
 ) -> OrganRunResult:
     """串行执行单个器官的完整管线（含超时与异常降级）。"""
@@ -287,7 +288,7 @@ async def _run_single_organ(
         )
 
     t0 = time.monotonic()
-    reason: Optional[str] = None
+    reason: str | None = None
     try:
         from app.services.diagnosis_pipeline import run_diagnosis_pipeline
 
@@ -305,7 +306,7 @@ async def _run_single_organ(
             budget_s=budget_s,
         )
         await _mark_organ_timeout(diagnosis_repo, request_id)
-    except Exception as exc:  # noqa: BLE001 - 单器官失败不得阻断其余器官
+    except Exception as exc:
         ok = False
         reason = f"{REASON_PIPELINE_ERROR}:{type(exc).__name__}"
         logger.error(
@@ -342,7 +343,7 @@ async def _read_back_status(
     db: Any,
     request_id: str,
     fallback_ok: bool,
-    reason: Optional[str],
+    reason: str | None,
 ) -> tuple[str, float]:
     """回读管线写入的最终状态并映射为 ``OrganStatus``。
 
@@ -354,7 +355,7 @@ async def _read_back_status(
         if expire is not None:
             expire()
         row = await diagnosis_repo.get_result(request_id)
-    except Exception as exc:  # noqa: BLE001 - 回读失败按管线返回值降级
+    except Exception as exc:
         logger.warning(
             "multi_organ_status_readback_failed",
             request_id=request_id,
@@ -404,7 +405,7 @@ async def _mark_organ_timeout(
             },
         )
         await _commit_if_possible(getattr(diagnosis_repo, "db", None))
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.warning(
             "multi_organ_mark_timeout_failed",
             request_id=request_id,
@@ -466,8 +467,8 @@ def _is_partial(results: Sequence[OrganRunResult]) -> bool:
 async def _persist_progress(
     session_repo: SessionRepository,
     session_id: str,
-    organ_statuses: Dict[str, str],
-    status: Optional[SessionStatus] = None,
+    organ_statuses: dict[str, str],
+    status: SessionStatus | None = None,
 ) -> None:
     """把器官进度写回会话（每器官提交一次，保证外部可见）。"""
     try:
@@ -477,7 +478,7 @@ async def _persist_progress(
             organ_statuses=dict(organ_statuses),
         )
         await _commit_if_possible(getattr(session_repo, "db", None))
-    except Exception as exc:  # noqa: BLE001 - 进度回写失败不得中断诊断
+    except Exception as exc:
         logger.warning(
             "multi_organ_progress_persist_failed",
             session_id=session_id,
@@ -503,7 +504,7 @@ async def _push_organ_switching(session_id: str, organ: str, *, switching: bool)
             },
             session_id,
         )
-    except Exception as exc:  # noqa: BLE001 - 推送失败不影响诊断
+    except Exception as exc:
         logger.warning(
             "multi_organ_progress_push_failed",
             session_id=session_id,
@@ -524,7 +525,7 @@ async def _resolve_request_id(
     session_id: str,
     organ: Organ,
     response_tier: ResponseTier,
-) -> Optional[str]:
+) -> str | None:
     """复用会话内该器官的可重跑请求；不存在则新建。"""
     candidates = [
         row
@@ -542,7 +543,7 @@ async def _resolve_request_id(
             organ=organ.value,
             response_tier=response_tier,
         )
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.error(
             "multi_organ_create_request_failed",
             session_id=session_id,
@@ -554,11 +555,11 @@ async def _resolve_request_id(
 
 
 def _resolve_organs(
-    organs: Optional[Sequence[str]], session_organs: Optional[Sequence[str]]
-) -> List[Organ]:
+    organs: Sequence[str] | None, session_organs: Sequence[str] | None
+) -> list[Organ]:
     """归一化器官列表：按规格顺序排序、去重、丢弃非法值。"""
     raw = list(organs) if organs else list(session_organs or [])
-    resolved: List[Organ] = []
+    resolved: list[Organ] = []
     for item in raw:
         value = getattr(item, "value", item)
         try:
@@ -613,7 +614,7 @@ def _record_latency(outcome: MultiOrganOutcome) -> None:
             outcome.total_ms / 1000.0,
             with_retry=needs_retry,
         )
-    except Exception as exc:  # noqa: BLE001 - 埋点失败不得影响业务
+    except Exception as exc:
         logger.debug("multi_organ_latency_metric_failed", error=str(exc))
 
 
@@ -626,7 +627,7 @@ async def _commit_if_possible(db: Any) -> None:
         return
     try:
         maybe = commit()
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.warning("multi_organ_commit_call_failed", error=str(exc))
         return
     if inspect.isawaitable(maybe):

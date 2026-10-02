@@ -13,13 +13,13 @@
 """
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from app.agents.knowledge import KnowledgeAgentImpl
-from app.agents.protocols import Agent, AgentContext, AgentResponse
+from app.agents.protocols import AgentContext, AgentResponse
 from app.agents.routing import (
     QueryComplexity,
     RetrievalProfile,
@@ -29,9 +29,7 @@ from app.agents.routing import (
 from app.agents.specialist.base import RAGSpecialistAgent
 from app.models.schemas import Organ, ResponseTier
 from app.rag.query_enhancer import QueryEnhancer
-
 from tests.unit.agt.conftest import FakeRAGService, FakeRedis, make_chunk
-
 
 # ----------------------------------------------------------------------
 # 桩件
@@ -42,7 +40,7 @@ class _ProfileAwareKnowledge:
     """支持 ``profile`` 的知识智能体替身。"""
 
     def __init__(self) -> None:
-        self.calls: List[Dict[str, Any]] = []
+        self.calls: list[dict[str, Any]] = []
 
     async def query(self, query, organ, top_k=10, profile=None):
         self.calls.append(
@@ -55,7 +53,7 @@ class _LegacyKnowledge:
     """仅支持三参数签名的历史实现（不得因新增 profile 而崩）。"""
 
     def __init__(self) -> None:
-        self.calls: List[Dict[str, Any]] = []
+        self.calls: list[dict[str, Any]] = []
 
     async def query(self, query, organ, top_k=10):
         self.calls.append({"query": query, "organ": organ, "top_k": top_k})
@@ -71,14 +69,14 @@ class _StubSpecialist(RAGSpecialistAgent):
     def get_grading_system(self) -> str:
         return "TI-RADS"
 
-    async def _parse_response(self, llm_text, chunks, context):  # noqa: D102
+    async def _parse_response(self, llm_text, chunks, context):
         return AgentResponse(
             agent_name="stub_thyroid", organ=Organ.THYROID, content=llm_text or ""
         )
 
 
 class _StubUDT:
-    def __init__(self, organ: Optional[str] = None, terms: Optional[list] = None):
+    def __init__(self, organ: str | None = None, terms: list | None = None):
         self._organ = organ
         self._terms = terms or []
 
@@ -336,7 +334,7 @@ class TestPipelineInjectsProfile:
     async def test_safe_dispatch_sets_context_profile(self):
         from app.services.diagnosis_pipeline import _safe_dispatch
 
-        captured: Dict[str, Any] = {}
+        captured: dict[str, Any] = {}
 
         async def _invoke(context):
             captured["context"] = context
@@ -363,7 +361,7 @@ class TestPipelineInjectsProfile:
     async def test_safe_dispatch_without_routing_leaves_profile_none(self):
         from app.services.diagnosis_pipeline import _safe_dispatch
 
-        captured: Dict[str, Any] = {}
+        captured: dict[str, Any] = {}
 
         async def _invoke(context):
             captured["context"] = context

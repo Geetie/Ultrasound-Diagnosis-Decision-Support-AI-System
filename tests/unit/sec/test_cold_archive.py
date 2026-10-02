@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -36,7 +36,6 @@ from app.services.cold_archive import (
     _to_jsonl,
 )
 
-
 # ----------------------------------------------------------------------
 # 桩件
 # ----------------------------------------------------------------------
@@ -50,10 +49,10 @@ class _FakeDb:
     记录）误拿到业务行。
     """
 
-    def __init__(self, execute_rows: Optional[List[Any]] = None) -> None:
+    def __init__(self, execute_rows: list[Any] | None = None) -> None:
         self._execute_rows = list(execute_rows or [])
-        self.added: List[Any] = []
-        self.execute_calls: List[Any] = []
+        self.added: list[Any] = []
+        self.execute_calls: list[Any] = []
         self.flushed = 0
         self._call_index = 0
 
@@ -80,9 +79,9 @@ class _FakeDb:
 def _audit_row(
     row_id: int,
     *,
-    session_id: Optional[str] = "sess_1",
-    hash_prev: Optional[str] = "h_prev",
-    created_at: Optional[datetime] = None,
+    session_id: str | None = "sess_1",
+    hash_prev: str | None = "h_prev",
+    created_at: datetime | None = None,
 ) -> AuditLog:
     return AuditLog(
         id=row_id,
@@ -377,7 +376,7 @@ class TestArchiveSessionArchives:
         """默认截止时间按门诊/住院年限推算（15 / 30 年）。"""
         from app.config.settings import settings
 
-        captured: Dict[str, Any] = {}
+        captured: dict[str, Any] = {}
 
         async def _execute(stmt):
             captured["stmt"] = stmt
@@ -460,9 +459,8 @@ class TestVerifyAndRestore:
         service = ColdArchiveService(_FakeDb(), storage=storage)
         manifest = self._manifest("c.jsonl", b'{"id": 999}\n', 1)
 
-        with patch.object(service, "get_manifest", AsyncMock(return_value=manifest)):
-            with pytest.raises(ValueError):
-                await service.restore_manifest("cam_1")
+        with patch.object(service, "get_manifest", AsyncMock(return_value=manifest)), pytest.raises(ValueError):
+            await service.restore_manifest("cam_1")
 
     @pytest.mark.asyncio
     async def test_restore_missing_object_raises(self):

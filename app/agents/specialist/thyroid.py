@@ -12,11 +12,10 @@
 from __future__ import annotations
 
 import re
-from typing import List, Optional
 
 import structlog
 
-from app.agents.protocols import AgentContext, AgentResponse
+from app.agents.protocols import AgentResponse
 from app.agents.specialist.base import RAGSpecialistAgent, normalize_grading_text
 from app.knowledge.protocols import KnowledgeChunk
 from app.models.schemas import Organ
@@ -67,7 +66,7 @@ class ThyroidSpecialistAgent(RAGSpecialistAgent):
     def _parse_response(
         self,
         llm_text: str,
-        chunks: List[KnowledgeChunk],
+        chunks: list[KnowledgeChunk],
     ) -> AgentResponse:
         """从 LLM 输出中抽取 TR1-TR5 分级码。
 
@@ -84,7 +83,7 @@ class ThyroidSpecialistAgent(RAGSpecialistAgent):
         - 封顶 1.0。
         """
         normalized = normalize_grading_text(llm_text)
-        grade: Optional[str] = None
+        grade: str | None = None
         score_bonus = 0.0
 
         # 1) 优先匹配完整 TI-RADS 关键字
@@ -122,7 +121,7 @@ class ThyroidSpecialistAgent(RAGSpecialistAgent):
                 confidence=0.0,
                 evidence_chunk_ids=[c.chunk_id for c in chunks[:5]],
                 reasoning_trace=[
-                    f"grading_system -> TI-RADS",
+                    "grading_system -> TI-RADS",
                     "grade_unparseable: no TR1-TR5 match",
                 ],
             )
@@ -156,7 +155,7 @@ class ThyroidSpecialistAgent(RAGSpecialistAgent):
             confidence=final_conf,
             evidence_chunk_ids=evidence_ids,
             reasoning_trace=[
-                f"grading_system -> TI-RADS",
+                "grading_system -> TI-RADS",
                 f"grade -> {grade}",
                 f"score_bonus -> {score_bonus}",
             ],
@@ -183,6 +182,6 @@ class ThyroidSpecialistAgent(RAGSpecialistAgent):
 
 
 __all__ = [
-    "ThyroidSpecialistAgent",
     "TI_RADS_LEVELS",
+    "ThyroidSpecialistAgent",
 ]

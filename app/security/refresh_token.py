@@ -1,15 +1,14 @@
-from datetime import datetime, timedelta, timezone
-from typing import Optional, Dict, Any, List
-from jose import JWTError, jwt
-import uuid
-import structlog
-import threading
-import secrets
 import json
 import os
+import secrets
+import threading
+from datetime import datetime, timedelta, timezone
+from typing import Any
 
+import structlog
+
+from app.config.redis_keys import RedisKey
 from app.config.settings import settings
-from app.config.redis_keys import RedisKey, LegacyRedisKey
 
 logger = structlog.get_logger()
 
@@ -17,12 +16,12 @@ class RefreshTokenStore:
     def create_refresh_token(
         self,
         user_id: str,
-        user_info: Dict[str, Any],
-        family_id: Optional[str] = None
+        user_info: dict[str, Any],
+        family_id: str | None = None
     ) -> str:
         raise NotImplementedError
 
-    def verify_refresh_token(self, token_id: str) -> Optional[Dict[str, Any]]:
+    def verify_refresh_token(self, token_id: str) -> dict[str, Any] | None:
         raise NotImplementedError
 
     def rotate_refresh_token(self, old_token_id: str) -> str:
@@ -40,7 +39,7 @@ class RefreshTokenStore:
     def cleanup_expired_tokens(self) -> int:
         raise NotImplementedError
 
-    def get_token_count(self) -> Dict[str, int]:
+    def get_token_count(self) -> dict[str, int]:
         raise NotImplementedError
 
     def get_user_token_count(self, user_id: str) -> int:
@@ -53,33 +52,33 @@ class RefreshTokenStore:
 class MemoryRefreshTokenStore(RefreshTokenStore):
     _instance = None
     _init_lock = threading.Lock()
-    
+
     def __new__(cls):
         with cls._init_lock:
             if cls._instance is None:
-                cls._instance = super(MemoryRefreshTokenStore, cls).__new__(cls)
-                cls._instance._store: Dict[str, Dict[str, Any]] = {}
-                cls._instance._family_store: Dict[str, str] = {}
-                cls._instance._user_tokens: Dict[str, List[str]] = {}
+                cls._instance = super().__new__(cls)
+                cls._instance._store: dict[str, dict[str, Any]] = {}
+                cls._instance._family_store: dict[str, str] = {}
+                cls._instance._user_tokens: dict[str, list[str]] = {}
                 cls._instance._lock = threading.RLock()
         return cls._instance
-    
+
     def create_refresh_token(
         self,
         user_id: str,
-        user_info: Dict[str, Any],
-        family_id: Optional[str] = None
+        user_info: dict[str, Any],
+        family_id: str | None = None
     ) -> str:
         with self._lock:
             # 检查并限制并发会话数
             self._enforce_concurrent_session_limit(user_id)
-            
+
             token_id = secrets.token_urlsafe(32)
             now = datetime.now(timezone.utc)
-            
+
             if family_id is None:
                 family_id = secrets.token_urlsafe(16)
-            
+
             token_data = {
                 "token_id": token_id,
                 "user_id": user_id,
@@ -91,14 +90,14 @@ class MemoryRefreshTokenStore(RefreshTokenStore):
                 "revoked_at": None,
                 "last_used_at": None
             }
-            
+
             self._store[token_id] = token_data
             self._family_store[token_id] = family_id
-            
+
             if user_id not in self._user_tokens:
                 self._user_tokens[user_id] = []
             self._user_tokens[user_id].append(token_id)
-            
+
             logger.info(
                 "refresh_token_created",
                 token_id=token_id[:8] + "...",
@@ -106,22 +105,22 @@ class MemoryRefreshTokenStore(RefreshTokenStore):
                 family_id=family_id,
                 expires_at=token_data["expires_at"]
             )
-            
+
             return token_id
-    
+
     def _enforce_concurrent_session_limit(self, user_id: str) -> None:
         """强制并发会话限制，超过限制时撤销最旧的token"""
         if user_id not in self._user_tokens:
             return
-        
+
         current_count = self.get_user_token_count(user_id)
         if current_count >= settings.max_concurrent_sessions_per_user:
             self.revoke_oldest_user_token(user_id)
-    
-    def verify_refresh_token(self, token_id: str) -> Optional[Dict[str, Any]]:
+
+    def verify_refresh_token(self, token_id: str) -> dict[str, Any] | None:
         with self._lock:
             token_data = self._store.get(token_id)
-            
+
             if token_data is None:
                 family_id = self._family_store.get(token_id)
                 if family_id:
@@ -133,7 +132,7 @@ class MemoryRefreshTokenStore(RefreshTokenStore):
                     )
                     self.revoke_token_family(family_id)
                 return None
-            
+
             if token_data["revoked"]:
                 family_id = token_data.get("family_id")
                 if family_id:
@@ -145,15 +144,15 @@ class MemoryRefreshTokenStore(RefreshTokenStore):
                     )
                     self.revoke_token_family(family_id)
                 return None
-            
+
             now = datetime.now(timezone.utc)
             expires_at = datetime.fromisoformat(token_data["expires_at"])
             if now > expires_at:
                 logger.warning("refresh_token_expired", token_id=token_id[:8] + "...")
                 return None
-            
+
             token_data["last_used_at"] = now.isoformat()
-            
+
             return token_data.copy()
 
     def rotate_refresh_token(self, old_token_id: str) -> str:
@@ -224,26 +223,26 @@ class MemoryRefreshTokenStore(RefreshTokenStore):
     def revoke_refresh_token(self, token_id: str) -> bool:
         with self._lock:
             token_data = self._store.get(token_id)
-            
+
             if token_data is None:
                 logger.warning("refresh_token_not_found_for_revoke", token_id=token_id[:8] + "...")
                 return False
-            
+
             if token_data["revoked"]:
                 logger.warning("refresh_token_already_revoked", token_id=token_id[:8] + "...")
                 return True
-            
+
             token_data["revoked"] = True
             token_data["revoked_at"] = datetime.now(timezone.utc).isoformat()
-            
+
             user_id = token_data["user_id"]
             if user_id in self._user_tokens and token_id in self._user_tokens[user_id]:
                 self._user_tokens[user_id].remove(token_id)
-            
+
             logger.info("refresh_token_revoked", token_id=token_id[:8] + "...", user_id=user_id)
-            
+
             return True
-    
+
     def revoke_token_family(self, family_id: str) -> int:
         with self._lock:
             revoked_count = 0
@@ -254,24 +253,24 @@ class MemoryRefreshTokenStore(RefreshTokenStore):
                 if token_data["family_id"] == family_id and not token_data["revoked"]:
                     token_data["revoked"] = True
                     token_data["revoked_at"] = datetime.now(timezone.utc).isoformat()
-                    
+
                     user_id = token_data["user_id"]
                     if user_id in self._user_tokens and token_id in self._user_tokens[user_id]:
                         self._user_tokens[user_id].remove(token_id)
-                    
+
                     revoked_count += 1
-            
+
             logger.info("refresh_token_family_revoked", family_id=family_id, count=revoked_count)
-            
+
             return revoked_count
-    
+
     def revoke_all_user_tokens(self, user_id: str) -> int:
         with self._lock:
             revoked_count = 0
-            
+
             if user_id not in self._user_tokens:
                 return 0
-            
+
             token_ids = list(self._user_tokens[user_id])
             for token_id in token_ids:
                 token_data = self._store.get(token_id)
@@ -279,49 +278,49 @@ class MemoryRefreshTokenStore(RefreshTokenStore):
                     token_data["revoked"] = True
                     token_data["revoked_at"] = datetime.now(timezone.utc).isoformat()
                     revoked_count += 1
-            
+
             self._user_tokens[user_id] = []
-            
+
             logger.info("all_user_refresh_tokens_revoked", user_id=user_id, count=revoked_count)
-            
+
             return revoked_count
-    
+
     def cleanup_expired_tokens(self) -> int:
         with self._lock:
             now = datetime.now(timezone.utc)
             expired_tokens = []
-            
+
             for token_id, data in self._store.items():
                 if not isinstance(data, dict) or "expires_at" not in data:
                     continue
                 expires_at = datetime.fromisoformat(data["expires_at"])
                 if now > expires_at:
                     expired_tokens.append(token_id)
-            
+
             for token_id in expired_tokens:
                 token_data = self._store.get(token_id)
                 if token_data:
                     user_id = token_data["user_id"]
                     if user_id in self._user_tokens and token_id in self._user_tokens[user_id]:
                         self._user_tokens[user_id].remove(token_id)
-                    
+
                     del self._store[token_id]
                     if token_id in self._family_store:
                         del self._family_store[token_id]
-            
+
             if expired_tokens:
                 logger.info("expired_tokens_cleaned", count=len(expired_tokens))
-            
+
             return len(expired_tokens)
-    
-    def get_token_count(self) -> Dict[str, int]:
+
+    def get_token_count(self) -> dict[str, int]:
         with self._lock:
             now = datetime.now(timezone.utc)
             total = 0
             active = 0
             revoked = 0
             expired = 0
-            
+
             for key, data in self._store.items():
                 if not isinstance(data, dict) or "revoked" not in data:
                     continue
@@ -334,19 +333,19 @@ class MemoryRefreshTokenStore(RefreshTokenStore):
                         expired += 1
                     else:
                         active += 1
-            
+
             return {
                 "total": total,
                 "active": active,
                 "revoked": revoked,
                 "expired": expired
             }
-    
+
     def get_user_token_count(self, user_id: str) -> int:
         with self._lock:
             if user_id not in self._user_tokens:
                 return 0
-            
+
             now = datetime.now(timezone.utc)
             count = 0
             for token_id in self._user_tokens[user_id]:
@@ -356,15 +355,15 @@ class MemoryRefreshTokenStore(RefreshTokenStore):
                     if now <= expires_at:
                         count += 1
             return count
-    
+
     def revoke_oldest_user_token(self, user_id: str) -> bool:
         with self._lock:
             if user_id not in self._user_tokens or not self._user_tokens[user_id]:
                 return False
-            
+
             oldest_token = None
             oldest_time = None
-            
+
             for token_id in self._user_tokens[user_id]:
                 token_data = self._store.get(token_id)
                 if token_data and not token_data["revoked"]:
@@ -372,34 +371,34 @@ class MemoryRefreshTokenStore(RefreshTokenStore):
                     if oldest_time is None or created_at < oldest_time:
                         oldest_time = created_at
                         oldest_token = token_id
-            
+
             if oldest_token:
                 return self.revoke_refresh_token(oldest_token)
-            
+
             return False
 
 
 class RedisRefreshTokenStore(RefreshTokenStore):
     _instance = None
-    
+
     def __new__(cls):
         if cls._instance is None:
-            cls._instance = super(RedisRefreshTokenStore, cls).__new__(cls)
+            cls._instance = super().__new__(cls)
             cls._instance._lock = threading.RLock()
             cls._instance._redis_client = None
         return cls._instance
-    
+
     async def _get_redis_client(self):
         if self._redis_client is None:
             from app.config.redis import RedisPool
             self._redis_client = await RedisPool.get_client()
         return self._redis_client
-    
+
     async def create_refresh_token(
         self,
         user_id: str,
-        user_info: Dict[str, Any],
-        family_id: Optional[str] = None
+        user_info: dict[str, Any],
+        family_id: str | None = None
     ) -> str:
         current_count = await self.get_user_token_count(user_id)
         if current_count >= settings.max_concurrent_sessions_per_user:
@@ -413,10 +412,10 @@ class RedisRefreshTokenStore(RefreshTokenStore):
 
         token_id = secrets.token_urlsafe(32)
         now = datetime.now(timezone.utc)
-        
+
         if family_id is None:
             family_id = secrets.token_urlsafe(16)
-        
+
         token_data = {
             "token_id": token_id,
             "user_id": user_id,
@@ -428,12 +427,12 @@ class RedisRefreshTokenStore(RefreshTokenStore):
             "revoked_at": None,
             "last_used_at": None
         }
-        
+
         redis_client = await self._get_redis_client()
-        
+
         token_ttl = timedelta(days=settings.jwt_refresh_expire_days + 1)
         token_ttl_seconds = int(token_ttl.total_seconds())
-        
+
         async with redis_client.pipeline(transaction=True) as pipe:
             await pipe.set(RedisKey.auth_token(token_id), json.dumps(token_data), ex=token_ttl_seconds)
             await pipe.sadd(RedisKey.auth_user_tokens(user_id), token_id)
@@ -442,19 +441,19 @@ class RedisRefreshTokenStore(RefreshTokenStore):
             await pipe.sadd(RedisKey.auth_family_tokens(family_id), token_id)
             await pipe.expire(RedisKey.auth_family_tokens(family_id), token_ttl_seconds)
             await pipe.execute()
-        
+
         logger.info(
             "refresh_token_created_redis",
             token_id=token_id[:8] + "...",
             user_id=user_id,
             family_id=family_id
         )
-        
+
         return token_id
-    
-    async def verify_refresh_token(self, token_id: str) -> Optional[Dict[str, Any]]:
+
+    async def verify_refresh_token(self, token_id: str) -> dict[str, Any] | None:
         redis_client = await self._get_redis_client()
-        
+
         token_data_str = await redis_client.get(RedisKey.auth_token(token_id))
         if not token_data_str:
             family_id_str = await redis_client.get(RedisKey.auth_token_family(token_id))
@@ -479,13 +478,13 @@ class RedisRefreshTokenStore(RefreshTokenStore):
             else:
                 logger.warning("refresh_token_not_found_redis", token_id=token_id[:8] + "...")
             return None
-        
+
         try:
             token_data = json.loads(token_data_str)
         except json.JSONDecodeError:
             logger.error("refresh_token_data_corrupted", token_id=token_id[:8] + "...")
             return None
-        
+
         family_id = token_data.get("family_id")
         if family_id:
             family_already_revoked = await redis_client.exists(RedisKey.auth_family_revoked(family_id))
@@ -508,7 +507,7 @@ class RedisRefreshTokenStore(RefreshTokenStore):
                 )
                 await self.revoke_token_family(family_id)
             return None
-        
+
         now = datetime.now(timezone.utc)
         expires_at = datetime.fromisoformat(token_data["expires_at"])
         if now > expires_at:
@@ -516,7 +515,7 @@ class RedisRefreshTokenStore(RefreshTokenStore):
             await redis_client.delete(RedisKey.auth_token(token_id))
             await redis_client.srem(RedisKey.auth_user_tokens(token_data['user_id']), token_id)
             return None
-        
+
         token_data["last_used_at"] = now.isoformat()
         try:
             _UPDATE_LAST_USED_SCRIPT = """
@@ -542,7 +541,7 @@ return 0
             logger.debug("failed_to_update_last_used_at", token_id=token_id[:8] + "...", error=str(e))
 
         return token_data.copy()
-    
+
     async def rotate_refresh_token(self, old_token_id: str) -> str:
         redis_client = await self._get_redis_client()
 
@@ -635,28 +634,28 @@ return 0
 
     async def revoke_refresh_token(self, token_id: str) -> bool:
         redis_client = await self._get_redis_client()
-        
+
         token_data_str = await redis_client.get(RedisKey.auth_token(token_id))
         if not token_data_str:
             logger.warning("refresh_token_not_found_for_revoke_redis", token_id=token_id[:8] + "...")
             return False
-        
+
         try:
             token_data = json.loads(token_data_str)
         except json.JSONDecodeError:
             logger.error("refresh_token_data_corrupted_for_revoke", token_id=token_id[:8] + "...")
             return False
-        
+
         if token_data.get("revoked", False):
             logger.warning("refresh_token_already_revoked_redis", token_id=token_id[:8] + "...")
             return True
-        
+
         token_data["revoked"] = True
         token_data["revoked_at"] = datetime.now(timezone.utc).isoformat()
-        
+
         user_id = token_data["user_id"]
         family_id = token_data["family_id"]
-        
+
         async with redis_client.pipeline(transaction=True) as pipe:
             ttl = await redis_client.ttl(RedisKey.auth_token(token_id))
             if ttl > 0:
@@ -666,11 +665,11 @@ return 0
             await pipe.srem(RedisKey.auth_user_tokens(user_id), token_id)
             await pipe.srem(RedisKey.auth_family_tokens(family_id), token_id)
             await pipe.execute()
-        
+
         logger.info("refresh_token_revoked_redis", token_id=token_id[:8] + "...", user_id=user_id)
-        
+
         return True
-    
+
     async def revoke_token_family(self, family_id: str) -> int:
         redis_client = await self._get_redis_client()
 
@@ -717,7 +716,7 @@ return 0
         logger.info("refresh_token_family_revoked_redis", family_id=family_id, count=revoked_count)
 
         return revoked_count
-    
+
     async def revoke_all_user_tokens(self, user_id: str) -> int:
         redis_client = await self._get_redis_client()
 
@@ -764,13 +763,13 @@ return 0
         logger.info("all_user_refresh_tokens_revoked_redis", user_id=user_id, count=revoked_count)
 
         return revoked_count
-    
+
     async def cleanup_expired_tokens(self) -> int:
         redis_client = await self._get_redis_client()
-        
+
         now = datetime.now(timezone.utc)
         expired_count = 0
-        
+
         async for key in redis_client.scan_iter(RedisKey.AUTH_TOKEN_PATTERN, count=100):
             token_data_str = await redis_client.get(key)
             if token_data_str:
@@ -782,22 +781,22 @@ return 0
                         token_id = key_str.split(":")[-1]
                         user_id = token_data["user_id"]
                         family_id = token_data["family_id"]
-                        
+
                         async with redis_client.pipeline(transaction=True) as pipe:
                             await pipe.delete(key)
                             await pipe.srem(RedisKey.auth_user_tokens(user_id), token_id)
                             await pipe.srem(RedisKey.auth_family_tokens(family_id), token_id)
                             await pipe.execute()
-                        
+
                         expired_count += 1
                 except (json.JSONDecodeError, KeyError):
                     await redis_client.delete(key)
-        
+
         logger.info("expired_tokens_cleaned_redis", count=expired_count)
-        
+
         return expired_count
-    
-    async def get_token_count(self) -> Dict[str, int]:
+
+    async def get_token_count(self) -> dict[str, int]:
         redis_client = await self._get_redis_client()
 
         all_keys = []
@@ -839,7 +838,7 @@ return 0
             "revoked": revoked,
             "expired": expired
         }
-    
+
     async def get_user_token_count(self, user_id: str) -> int:
         redis_client = await self._get_redis_client()
 
@@ -869,7 +868,7 @@ return 0
                     pass
 
         return count
-    
+
     async def revoke_oldest_user_token(self, user_id: str) -> bool:
         redis_client = await self._get_redis_client()
 
@@ -913,14 +912,14 @@ else:
     refresh_token_store = MemoryRefreshTokenStore()
 
 
-async def create_refresh_token(user_id: str, user_info: Dict[str, Any], family_id: Optional[str] = None) -> str:
+async def create_refresh_token(user_id: str, user_info: dict[str, Any], family_id: str | None = None) -> str:
     if isinstance(refresh_token_store, RedisRefreshTokenStore):
         return await refresh_token_store.create_refresh_token(user_id, user_info, family_id)
     else:
         return refresh_token_store.create_refresh_token(user_id, user_info, family_id)
 
 
-async def verify_refresh_token(token_id: str) -> Optional[Dict[str, Any]]:
+async def verify_refresh_token(token_id: str) -> dict[str, Any] | None:
     if isinstance(refresh_token_store, RedisRefreshTokenStore):
         return await refresh_token_store.verify_refresh_token(token_id)
     else:
@@ -962,7 +961,7 @@ async def cleanup_expired_tokens() -> int:
         return refresh_token_store.cleanup_expired_tokens()
 
 
-async def get_refresh_token_count() -> Dict[str, int]:
+async def get_refresh_token_count() -> dict[str, int]:
     if isinstance(refresh_token_store, RedisRefreshTokenStore):
         return await refresh_token_store.get_token_count()
     else:

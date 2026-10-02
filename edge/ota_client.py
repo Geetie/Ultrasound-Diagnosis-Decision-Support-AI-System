@@ -15,9 +15,10 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import time
+from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, AsyncIterator, Callable, Dict, Optional, Protocol
+from typing import Any, Protocol
 
 import structlog
 
@@ -44,13 +45,13 @@ class ByteStreamFactory(Protocol):
     """
 
     def __call__(
-        self, url: str, headers: Dict[str, str], start_byte: int
+        self, url: str, headers: dict[str, str], start_byte: int
     ) -> AsyncIterator[bytes]:
         ...
 
 
 async def _httpx_stream(
-    url: str, headers: Dict[str, str], start_byte: int
+    url: str, headers: dict[str, str], start_byte: int
 ) -> AsyncIterator[bytes]:
     """默认实现：httpx 流式下载，支持 Range 续传。"""
     import httpx
@@ -92,7 +93,7 @@ class OTAProgress:
     elapsed_seconds: float
     completed: bool
     retries: int = 0
-    sha256_ok: Optional[bool] = None
+    sha256_ok: bool | None = None
 
     @property
     def throughput_bytes_per_second(self) -> float:
@@ -100,7 +101,7 @@ class OTAProgress:
             return 0.0
         return self.downloaded_bytes / self.elapsed_seconds
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         return {
             "package": self.package,
             "version": self.version,
@@ -129,7 +130,7 @@ class OTAClient:
         rate_limit_bytes_per_second: int = DEFAULT_RATE_LIMIT_BYTES_PER_SECOND,
         chunk_size: int = DEFAULT_CHUNK_SIZE,
         max_retries: int = DEFAULT_MAX_RETRIES,
-        stream_factory: Optional[ByteStreamFactory] = None,
+        stream_factory: ByteStreamFactory | None = None,
         sleeper: Callable[[float], Any] = asyncio.sleep,
         clock: Callable[[], float] = time.monotonic,
     ) -> None:
@@ -166,7 +167,7 @@ class OTAClient:
         package: str,
         version: str,
         *,
-        expected_sha256: Optional[str] = None,
+        expected_sha256: str | None = None,
         total_bytes_hint: int = 0,
     ) -> OTAProgress:
         """下载（或续传）一个 OTA 包。
@@ -210,7 +211,7 @@ class OTAClient:
                 # 断点续传：下一轮从当前已写入字节继续
 
         downloaded = part.stat().st_size
-        sha256_ok: Optional[bool] = None
+        sha256_ok: bool | None = None
         if expected_sha256:
             sha256_ok = self._verify_sha256(part, expected_sha256)
             if not sha256_ok:
@@ -276,7 +277,7 @@ __all__ = [
     "DEFAULT_MAX_RETRIES",
     "DEFAULT_RATE_LIMIT_BYTES_PER_SECOND",
     "ByteStreamFactory",
+    "OTAClient",
     "OTAError",
     "OTAProgress",
-    "OTAClient",
 ]

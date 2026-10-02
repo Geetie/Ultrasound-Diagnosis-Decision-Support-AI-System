@@ -1,0 +1,60 @@
+{
+  "mechanism": "finetuned_visual_tower + logistic_probe",
+  "weights": "/mnt/ee16/home/student03/uai/src/reports/t2a_finetune.pt",
+  "probe": "/mnt/ee16/home/student03/uai/models/t2a_v2/t2a_probe_lr.joblib",
+  "test_n": 111,
+  "mal_vs_rest_auc": 0.8751,
+  "gate": 0.75,
+  "pass": true,
+  "accuracy": 0.7027,
+  "confusion_matrix_rows_true_cols_pred": {
+    "true_Normal": {
+      "pred_Normal": 8,
+      "pred_Benign": 7,
+      "pred_Malignant": 0
+    },
+    "true_Benign": {
+      "pred_Normal": 1,
+      "pred_Benign": 8,
+      "pred_Malignant": 21
+    },
+    "true_Malignant": {
+      "pred_Normal": 1,
+      "pred_Benign": 3,
+      "pred_Malignant": 62
+    }
+  },
+  "per_class_report": {
+    "Normal": {
+      "precision": 0.8,
+      "recall": 0.5333333333333333,
+      "f1-score": 0.64,
+      "support": 15.0
+    },
+    "Benign": {
+      "precision": 0.4444444444444444,
+      "recall": 0.26666666666666666,
+      "f1-score": 0.3333333333333333,
+      "support": 30.0
+    },
+    "Malignant": {
+      "precision": 0.7469879518072289,
+      "recall": 0.9393939393939394,
+      "f1-score": 0.8322147651006712,
+      "support": 66.0
+    },
+    "accuracy": 0.7027027027027027,
+    "macro avg": {
+      "precision": 0.6638107987505578,
+      "recall": 0.5797979797979799,
+      "f1-score": 0.6018493661446681,
+      "support": 111.0
+    },
+    "weighted avg": {
+      "precision": 0.672383226600094,
+      "recall": 0.7027027027027027,
+      "f1-score": 0.671406977447246,
+      "support": 111.0
+    }
+  }
+}

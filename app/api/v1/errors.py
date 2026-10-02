@@ -1,20 +1,63 @@
-from fastapi import Request, HTTPException
-from fastapi.responses import JSONResponse
-from typing import Dict, Any, Optional
+import json
+from http import HTTPStatus
+from typing import Any
+
 import structlog
+from fastapi import HTTPException, Request
+from fastapi.responses import JSONResponse
+
 from app.models.schemas import ErrorResponse
+from app.observability.request_id import get_current_request_id
 
 logger = structlog.get_logger()
 
 
-_ERROR_CODE_REGISTRY: Dict[str, str] = {}
+def _coerce_detail(detail: Any) -> str | None:
+    """把 ``HTTPException.detail`` 归一为字符串（``ErrorResponse`` 的字段都是 str）。
+
+    ## 为什么必须归一（2026-09-28 真机部署暴露）
+
+    FastAPI 允许 ``detail`` 是任意 JSON 可序列化对象，项目里**确实**这么用：
+    ``app/api/v1/health.py`` 在 unhealthy 时把整份健康报告 dict 作为 detail 抛出。
+
+    而原实现是 ``error_message=exc.detail or "Request error"`` 直接塞进 ``str``
+    字段，于是**异常处理器自己抛 pydantic ValidationError**：
+
+        pydantic_core.ValidationError: 1 validation error for ErrorResponse
+        error_message
+          Input should be a valid string [input_value={'status': 'unhealthy', ...}]
+
+    处理器一崩，响应根本没有机会发出；异常再穿过 ``BaseHTTPMiddleware``
+    （rate_limit）的 task group 抛出 ExceptionGroup —— 客户端看到的是**连接被重置**
+    （curl ``http=000``），而不是 503 + 健康报告。真机表现极具误导性：
+    "端口在 LISTEN，但任何非 2xx 请求都像被黑洞吞掉"。
+    """
+    if detail is None:
+        return None
+    if isinstance(detail, str):
+        return detail
+    try:
+        return json.dumps(detail, ensure_ascii=False, default=str)
+    except Exception:
+        return str(detail)
+
+
+def _default_message(status_code: int) -> str:
+    """按状态码给出可读的兜底描述（结构化 detail 不适合放进 error_message）。"""
+    try:
+        return HTTPStatus(status_code).phrase
+    except ValueError:
+        return "Request error"
+
+
+_ERROR_CODE_REGISTRY: dict[str, str] = {}
 
 
 class ErrorSpec:
-    __slots__ = ("code", "message", "status_code", "suggestion", "retryable", "retry_strategy")
+    __slots__ = ("code", "message", "retry_strategy", "retryable", "status_code", "suggestion")
 
     def __init__(self, code: str, message: str, status_code: int,
-                 suggestion: Optional[str] = None, retryable: bool = False,
+                 suggestion: str | None = None, retryable: bool = False,
                  retry_strategy: str = "no_retry"):
         self.code = code
         self.message = message
@@ -24,14 +67,14 @@ class ErrorSpec:
         self.retry_strategy = retry_strategy
 
 
-_SPEC_REGISTRY: Dict[str, ErrorSpec] = {}
+_SPEC_REGISTRY: dict[str, ErrorSpec] = {}
 
 
 class AppBaseException(HTTPException):
     _error_code: str = ""
     _error_message: str = ""
     _status_code: int = 400
-    _suggestion: Optional[str] = None
+    _suggestion: str | None = None
     _retryable: bool = False
     _retry_strategy: str = "no_retry"
 
@@ -53,12 +96,12 @@ class AppBaseException(HTTPException):
         error_code: str,
         error_message: str,
         status_code: int = 400,
-        detail: Optional[str] = None,
-        request_id: Optional[str] = None,
-        suggestion: Optional[str] = None,
+        detail: str | None = None,
+        request_id: str | None = None,
+        suggestion: str | None = None,
         retryable: bool = False,
         retry_strategy: str = "no_retry",
-        headers: Optional[Dict[str, Any]] = None,
+        headers: dict[str, Any] | None = None,
     ):
         self.error_code = error_code
         self.error_message = error_message
@@ -75,7 +118,7 @@ class BadRequestException(AppBaseException):
     _error_message = "Bad request"
     _status_code = 400
 
-    def __init__(self, error_code: Optional[str] = None, error_message: Optional[str] = None, **kwargs):
+    def __init__(self, error_code: str | None = None, error_message: str | None = None, **kwargs):
         super().__init__(
             error_code=error_code or self._error_code,
             error_message=error_message or self._error_message,
@@ -87,7 +130,7 @@ class NotFoundException(AppBaseException):
     _error_message = "Resource not found"
     _status_code = 404
 
-    def __init__(self, error_code: Optional[str] = None, error_message: Optional[str] = None, **kwargs):
+    def __init__(self, error_code: str | None = None, error_message: str | None = None, **kwargs):
         super().__init__(error_code=error_code or self._error_code, error_message=error_message or self._error_message, status_code=404, **kwargs)
 
 
@@ -226,7 +269,7 @@ class ServerErrorException(AppBaseException):
     _error_message = "Internal server error"
     _status_code = 500
 
-    def __init__(self, error_code: Optional[str] = None, error_message: Optional[str] = None, status_code: int = 500, **kwargs):
+    def __init__(self, error_code: str | None = None, error_message: str | None = None, status_code: int = 500, **kwargs):
         super().__init__(
             error_code=error_code or self._error_code,
             error_message=error_message or self._error_message,
@@ -768,7 +811,9 @@ async def app_exception_handler(request: Request, exc: AppBaseException):
         error_code=exc.error_code,
         error_message=exc.error_message,
         detail=exc.detail,
-        request_id=exc.request_id,
+        # exc 自带的 request_id 优先（调用方显式指定时语义更准）；缺省时
+        # 回退到 RequestIdMiddleware 注入的请求级 id（P0-1.5 接线）。
+        request_id=exc.request_id or get_current_request_id(),
         suggestion=exc.suggestion,
         retryable=exc.retryable,
         retry_strategy=exc.retry_strategy,
@@ -793,10 +838,16 @@ async def http_exception_handler(request: Request, exc: HTTPException):
         503: "E4005",
     }
     error_code = status_to_error_code.get(exc.status_code, "E2000")
+    # `detail` 可能是 dict（健康检查就拿它当结构化载荷用）。必须先归一为字符串，
+    # 否则 pydantic 拒收 → 处理器自身崩溃 → 响应根本发不出去（详见 _coerce_detail）。
+    detail_text = _coerce_detail(exc.detail)
     error_response = ErrorResponse(
         error_code=error_code,
-        error_message=exc.detail or "Request error",
-        detail=str(exc.detail),
+        error_message=(
+            detail_text if isinstance(exc.detail, str) else _default_message(exc.status_code)
+        ) or "Request error",
+        detail=detail_text,
+        request_id=get_current_request_id(),
     )
     return JSONResponse(
         status_code=exc.status_code,
@@ -812,6 +863,7 @@ async def general_exception_handler(request: Request, exc: Exception):
         error_message="Internal server error",
         detail=None,
         suggestion="Please contact administrator",
+        request_id=get_current_request_id(),
     )
     return JSONResponse(
         status_code=500,
@@ -827,7 +879,7 @@ def define_simple_error(
     error_code: str,
     error_message: str,
     status_code: int = 400,
-    suggestion: Optional[str] = None,
+    suggestion: str | None = None,
     retryable: bool = False,
     retry_strategy: str = "no_retry",
     base_class=AppBaseException,
@@ -872,7 +924,7 @@ def register_error(code: str, message: str, status_code: int, **kwargs) -> Error
     return spec
 
 
-def raise_error(code: str, message_override: Optional[str] = None, **kwargs):
+def raise_error(code: str, message_override: str | None = None, **kwargs):
     spec = _SPEC_REGISTRY.get(code)
     if not spec:
         raise ServerErrorException(error_code="E2999", error_message=f"Unknown error code: {code}")

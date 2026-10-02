@@ -1,0 +1,98 @@
+{
+ "task": "T2c 端到端诊断评测（US-365K caption 作所见输入，并发 6）",
+ "dataset_block_note": "ALN-ULTRA Zenodo 15003119 files=0（发布不完整）",
+ "n_total": 8,
+ "n_completed": 4,
+ "n_scored": 4,
+ "judge_support_rate": 0.0,
+ "manual_review_rate": 0.0,
+ "avg_processing_ms": 12680.0,
+ "wall_clock_seconds": 452.3,
+ "conclusion": "三列对照=输入所见(caption) / AI 结论 / 判官裁决。caption 非金标准，不得解读为诊断准确率。",
+ "results": [
+  {
+   "query_id": "t2c-000",
+   "organ": "thyroid",
+   "caption": "No discrete thyroid abnormality is identified on this ultrasound examination.",
+   "session_id": "t2c-session-000",
+   "request_id": "req_20260929_b539f7cc",
+   "status": "timeout"
+  },
+  {
+   "query_id": "t2c-001",
+   "organ": "thyroid",
+   "caption": "Within the thyroid gland, a nodule is identified containing cystic components.",
+   "session_id": "t2c-session-001",
+   "request_id": "req_20260929_26a42fdf",
+   "status": "completed",
+   "ai_conclusion": "",
+   "requires_manual_review": false,
+   "processing_time_ms": 14802,
+   "judge_verdict": 0,
+   "judge_reason": "empty-conclusion"
+  },
+  {
+   "query_id": "t2c-002",
+   "organ": "thyroid",
+   "caption": "A thyroid mass/nodule is observed, appearing irregular in shape and hypoechoic, with internal calcifications and inhomogeneous vascularity on Doppler evaluation.",
+   "session_id": "t2c-session-002",
+   "request_id": "req_20260929_2908d52f",
+   "status": "timeout"
+  },
+  {
+   "query_id": "t2c-003",
+   "organ": "thyroid",
+   "caption": "A hypoechoic lesion is identified within the thyroid gland, demonstrating well-defined margins and no discernible vascularity.",
+   "session_id": "t2c-session-003",
+   "request_id": "req_20260929_ee8ca9a6",
+   "status": "completed",
+   "ai_conclusion": "",
+   "requires_manual_review": false,
+   "processing_time_ms": 11587,
+   "judge_verdict": 0,
+   "judge_reason": "empty-conclusion"
+  },
+  {
+   "query_id": "t2c-004",
+   "organ": "thyroid",
+   "caption": "Within the thyroid gland, an anechoic cyst is identified, demonstrating internal solid components and increased vascularity.",
+   "session_id": "t2c-session-004",
+   "request_id": "req_20260929_8756e4ae",
+   "status": "poll_timeout"
+  },
+  {
+   "query_id": "t2c-005",
+   "organ": "thyroid",
+   "caption": "The visualized portions of the thyroid gland, including the left lobe, appear sonographically unremarkable.",
+   "session_id": "t2c-session-005",
+   "request_id": "req_20260929_53c3bb04",
+   "status": "completed",
+   "ai_conclusion": "",
+   "requires_manual_review": false,
+   "processing_time_ms": 10141,
+   "judge_verdict": 0,
+   "judge_reason": "empty-conclusion"
+  },
+  {
+   "query_id": "t2c-006",
+   "organ": "thyroid",
+   "caption": "Ultrasound of the thyroid gland reveals diffuse hypervascularity, presenting as the 'inferno sign' on color flow imaging.",
+   "session_id": "t2c-session-006",
+   "request_id": "req_20260929_90222d33",
+   "status": "completed",
+   "ai_conclusion": "",
+   "requires_manual_review": false,
+   "processing_time_ms": 14190,
+   "judge_verdict": 0,
+   "judge_reason": "empty-conclusion"
+  },
+  {
+   "query_id": "t2c-007",
+   "organ": "thyroid",
+   "caption": "Sonography of the head and neck region demonstrates a thyroid cyst.",
+   "session_id": "t2c-session-007",
+   "request_id": "req_20260929_3cad27fd",
+   "status": "timeout"
+  }
+ ]
+}

@@ -10,10 +10,11 @@ GPU和系统内存监控模块
 import asyncio
 import time
 from abc import ABC, abstractmethod
+from collections import deque
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Dict, List, Optional, Deque, Callable
-from collections import deque
+
 import structlog
 
 
@@ -67,7 +68,7 @@ class SystemMemorySnapshot:
     cached_mb: float = 0.0
     buffers_mb: float = 0.0
     process_used_mb: float = 0.0
-    process_memory_mb: Dict[str, float] = field(default_factory=dict)
+    process_memory_mb: dict[str, float] = field(default_factory=dict)
 
     @property
     def usage_pct(self) -> float:
@@ -91,7 +92,7 @@ class FragmentationReport:
     fragmentation_exceeded_threshold_count: int = 0
     warning_threshold: float = 0.30
     critical_threshold: float = 0.40
-    snapshots: List[GPUMemorySnapshot] = field(default_factory=list)
+    snapshots: list[GPUMemorySnapshot] = field(default_factory=list)
 
     @property
     def passed(self) -> bool:
@@ -106,9 +107,9 @@ class MemoryProfileReport:
     measured_total_used_mb: float = 0.0
     measured_effective_used_mb: float = 0.0
     measured_available_mb: float = 0.0
-    component_breakdown: Dict[str, float] = field(default_factory=dict)
+    component_breakdown: dict[str, float] = field(default_factory=dict)
     budget_limit_mb: float = 22048.0
-    snapshots: List[SystemMemorySnapshot] = field(default_factory=list)
+    snapshots: list[SystemMemorySnapshot] = field(default_factory=list)
 
     @property
     def within_budget(self) -> bool:
@@ -303,7 +304,7 @@ class DarwinMemoryReader(SystemMemoryReader):
         structlog.get_logger("app.inference.darwin_memory_reader").warning(event, error=error)
 
 
-def create_memory_reader(platform: Optional[Platform] = None) -> SystemMemoryReader:
+def create_memory_reader(platform: Platform | None = None) -> SystemMemoryReader:
     """
     创建适合当前平台的内存读取器
 
@@ -345,7 +346,7 @@ class ScheduledRequest:
     request_id: str
     timestamp: float
     timeout_seconds: float
-    callback: Optional[Callable[[bool], None]] = None
+    callback: Callable[[bool], None] | None = None
 
 
 class GPUScheduleStrategy:
@@ -365,11 +366,11 @@ class GPUScheduleStrategy:
 
         self._llama_cpp_active = False
         self._retrieval_active = False
-        self._llama_cpp_acquired_at: Optional[float] = None
-        self._retrieval_acquired_at: Optional[float] = None
+        self._llama_cpp_acquired_at: float | None = None
+        self._retrieval_acquired_at: float | None = None
 
-        self._pending_requests: Deque[ScheduledRequest] = deque()
-        self._timeout_check_task: Optional[asyncio.Task] = None
+        self._pending_requests: deque[ScheduledRequest] = deque()
+        self._timeout_check_task: asyncio.Task | None = None
         self._lock = asyncio.Lock()
         self._llm_available = asyncio.Event()
         self._retrieval_available = asyncio.Event()
@@ -440,7 +441,7 @@ class GPUScheduleStrategy:
     async def acquire_with_timeout(
         self,
         resource_type: str,
-        timeout_seconds: Optional[float] = None
+        timeout_seconds: float | None = None
     ) -> bool:
         """
         带超时的资源获取
@@ -490,7 +491,7 @@ class GPUScheduleStrategy:
         )
         return False
 
-    async def check_timeouts(self, max_hold_seconds: Optional[float] = None) -> List[str]:
+    async def check_timeouts(self, max_hold_seconds: float | None = None) -> list[str]:
         """
         检查超时占用
 
@@ -542,7 +543,7 @@ class GPUScheduleStrategy:
                 request_id=next_req.request_id
             )
 
-    def get_schedule_state(self) -> Dict:
+    def get_schedule_state(self) -> dict:
         """获取调度状态"""
         now = time.monotonic()
         return {
@@ -582,9 +583,9 @@ class GPUMemoryMonitor:
         self._snapshot_interval = snapshot_interval_seconds
         self._max_snapshots = 1440
         self._log = structlog.get_logger("app.inference.gpu_monitor")
-        self._snapshots: List[GPUMemorySnapshot] = []
+        self._snapshots: list[GPUMemorySnapshot] = []
         self._fragmentation_calculator = FragmentationCalculator()
-        self._fragmentation_exceeded_since: Optional[float] = None
+        self._fragmentation_exceeded_since: float | None = None
 
     @classmethod
     def from_settings(cls, snapshot_interval_seconds: float = 60.0) -> "GPUMemoryMonitor":
@@ -742,7 +743,7 @@ class SystemMemoryProfiler:
     def __init__(self, budget_limit_mb: float = 22048.0):
         self._budget_limit_mb = budget_limit_mb
         self._log = structlog.get_logger("app.inference.memory_profiler")
-        self._snapshots: List[SystemMemorySnapshot] = []
+        self._snapshots: list[SystemMemorySnapshot] = []
         self._memory_reader = create_memory_reader()
 
     @classmethod
@@ -786,9 +787,9 @@ class SystemMemoryProfiler:
 
         return report
 
-    async def _measure_docker_containers(self) -> Dict[str, float]:
+    async def _measure_docker_containers(self) -> dict[str, float]:
         """测量Docker容器内存使用"""
-        containers: Dict[str, float] = {}
+        containers: dict[str, float] = {}
         try:
             import shutil
             if shutil.which("docker"):

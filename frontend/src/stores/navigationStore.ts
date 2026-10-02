@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { AnnotationWithStatus, AnnotationValidationStatus } from '@/types/navigation';
+import type { ImageQuality, PlaneAssessment } from '@/types/api';
 
 interface NavigationActions {
   setAnnotations: (annotations: AnnotationWithStatus[]) => void;
@@ -11,6 +12,8 @@ interface NavigationActions {
   setOrganSwitching: (switching: boolean) => void;
   setCurrentOrgan: (organ: string | null) => void;
   addLowConfidenceFrame: (frameId: string) => void;
+  /** M1/M6：设置本帧的切面评估与图像质量（帧级属性） */
+  setFrameAttributes: (planeAssessment: PlaneAssessment | null, imageQuality: ImageQuality | null) => void;
 }
 
 export const useNavigationStore = create<NavigationActions & {
@@ -19,14 +22,20 @@ export const useNavigationStore = create<NavigationActions & {
   organSwitching: boolean;
   currentOrgan: string | null;
   lowConfidenceFrameIds: Set<string>;
+  currentFramePlaneAssessment: PlaneAssessment | null;
+  currentFrameImageQuality: ImageQuality | null;
 }>((set) => ({
   currentFrameAnnotations: [],
   isNavigationActive: false,
   organSwitching: false,
   currentOrgan: null,
   lowConfidenceFrameIds: new Set<string>(),
+  currentFramePlaneAssessment: null,
+  currentFrameImageQuality: null,
 
   setAnnotations: (currentFrameAnnotations) => set({ currentFrameAnnotations }),
+  setFrameAttributes: (currentFramePlaneAssessment, currentFrameImageQuality) =>
+    set({ currentFramePlaneAssessment, currentFrameImageQuality }),
   addAnnotation: (annotation) =>
     set((state) => ({
       currentFrameAnnotations: [...state.currentFrameAnnotations, annotation],
@@ -45,7 +54,12 @@ export const useNavigationStore = create<NavigationActions & {
         (a) => !(a.frameId === frameId && annotationIds.includes(a.annotation.id))
       ),
     })),
-  clearAnnotations: () => set({ currentFrameAnnotations: [] }),
+  clearAnnotations: () =>
+    set({
+      currentFrameAnnotations: [],
+      currentFramePlaneAssessment: null,
+      currentFrameImageQuality: null,
+    }),
   setNavigationActive: (isNavigationActive) => set({ isNavigationActive }),
   setOrganSwitching: (organSwitching) => set({ organSwitching }),
   setCurrentOrgan: (currentOrgan) => set({ currentOrgan }),

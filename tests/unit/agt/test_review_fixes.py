@@ -13,24 +13,20 @@
 """
 from __future__ import annotations
 
-import re
-from typing import List
-
 import pytest
 
 pytestmark = [pytest.mark.track_agt]
 
 from app.agents.protocols import AgentContext, AgentResponse
 from app.agents.specialist import (
+    DEFAULT_ORGAN_THRESHOLDS,
     CardiacSpecialistAgent,
     LiverSpecialistAgent,
     ThyroidSpecialistAgent,
     build_dispatcher,
     load_organ_thresholds,
-    DEFAULT_ORGAN_THRESHOLDS,
 )
 from app.agents.specialist.base import (
-    RAGSpecialistAgent,
     _LLM_TEXT_SATURATION_CHARS,
 )
 from app.models.schemas import Organ
@@ -39,7 +35,6 @@ from tests.unit.agt.conftest import (
     FakeKnowledgeAgent,
     make_chunks,
 )
-
 
 # ----------------------------------------------------------------------
 # 公共 fixtures
@@ -366,7 +361,6 @@ class TestD1OrganThresholdBoundary:
 
     def test_factory_default_thresholds_injected(self):
         """D1: build_dispatcher 默认注入器官级阈值到 specialist。"""
-        from app.agents.specialist.base import PlaceholderSpecialistAgent
 
         inference = FakeInferenceEngine()
         rag = FakeKnowledgeAgent(chunks=make_chunks(3))
@@ -653,7 +647,6 @@ class TestLLMSaturationThreshold:
         )
         # 验证 _compute_heuristic_confidence 在 300 vs 500 字符下给出不同 llm_factor
         # 300/500 = 0.6；500/500 = 1.0 — 应该有差异
-        from app.knowledge.protocols import KnowledgeChunk
 
         chunks = make_chunks(5, organ="thyroid")
         c300 = s300._compute_heuristic_confidence(chunks, "分级: TR4\n" + "理由: " + "A" * 287)

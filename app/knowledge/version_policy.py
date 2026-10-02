@@ -17,7 +17,6 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Dict, Optional, Set
 
 from app.knowledge.version import KBVersion, parse_kb_version
 
@@ -43,12 +42,12 @@ class KBVersionPolicy:
     ) -> None:
         self._current = parse_kb_version(current_version)
         self._session_version_lock = session_version_lock
-        self._locked_sessions: Dict[str, KBVersion] = {}
-        self._latest_safety_critical: Optional[KBVersion] = None
-        self._active_sessions: Set[str] = set()
+        self._locked_sessions: dict[str, KBVersion] = {}
+        self._latest_safety_critical: KBVersion | None = None
+        self._active_sessions: set[str] = set()
 
     @property
-    def current_version(self) -> Optional[KBVersion]:
+    def current_version(self) -> KBVersion | None:
         """当前默认版本。"""
         return self._current
 
@@ -59,9 +58,9 @@ class KBVersionPolicy:
 
     def resolve_version(
         self,
-        requested_version: Optional[str] = None,
-        session_id: Optional[str] = None,
-    ) -> Optional[KBVersion]:
+        requested_version: str | None = None,
+        session_id: str | None = None,
+    ) -> KBVersion | None:
         """4 步缓存读取判定链。
 
         Step 1: 请求指定版本 → 优先使用
@@ -94,7 +93,7 @@ class KBVersionPolicy:
         self,
         new_version: str,
         severity: UpdateSeverity = UpdateSeverity.NORMAL,
-    ) -> Set[str]:
+    ) -> set[str]:
         """处理 KB 版本更新。
 
         Args:
@@ -104,7 +103,7 @@ class KBVersionPolicy:
         Returns:
             被终止的会话 ID 集合（仅 safety_critical 更新时会终止会话）。
         """
-        terminated: Set[str] = set()
+        terminated: set[str] = set()
         new_ver = parse_kb_version(new_version)
         if severity == UpdateSeverity.SAFETY_CRITICAL:
             self._latest_safety_critical = new_ver

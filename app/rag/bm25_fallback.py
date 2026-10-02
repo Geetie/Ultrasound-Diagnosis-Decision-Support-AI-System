@@ -20,8 +20,8 @@ from __future__ import annotations
 import asyncio
 import re
 import time
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from typing import Awaitable, Callable, List, Optional, Sequence
 
 import structlog
 from rank_bm25 import BM25Okapi
@@ -45,7 +45,7 @@ _CJK_RE = re.compile(r"[\u4e00-\u9fff]+")
 _NON_WORD_RE = re.compile(r"[^A-Za-z0-9]+")
 
 
-def tokenize(text: str) -> List[str]:
+def tokenize(text: str) -> list[str]:
     """Simple CJK+alphanumeric tokenizer with 2-char window for CJK.
 
     Examples:
@@ -58,7 +58,7 @@ def tokenize(text: str) -> List[str]:
     if not text:
         return []
     text = text.lower()
-    tokens: List[str] = []
+    tokens: list[str] = []
     for cjk_match in _CJK_RE.finditer(text):
         cjk = cjk_match.group(0)
         tokens.append(cjk)
@@ -77,10 +77,10 @@ def tokenize(text: str) -> List[str]:
 class _BuiltIndex:
     """Internal holder for a built BM25 index + metadata."""
     bm25: BM25Okapi
-    chunk_ids: List[str]            # index position -> chunk_id
-    chunks: List[KnowledgeChunk]     # index position -> chunk
-    organs: List[str]                # index position -> organ
-    kb_version: Optional[str]
+    chunk_ids: list[str]            # index position -> chunk_id
+    chunks: list[KnowledgeChunk]     # index position -> chunk
+    organs: list[str]                # index position -> organ
+    kb_version: str | None
     built_at: float
 
 
@@ -109,10 +109,10 @@ class BM25Index:
     ):
         self._session_factory = session_factory
         self._max_chunks = max_chunks or settings.rag_bm25_max_chunks
-        self._built: Optional[_BuiltIndex] = None
+        self._built: _BuiltIndex | None = None
         self._lock = asyncio.Lock()
 
-    async def ensure_built(self, kb_version: Optional[str] = None) -> None:
+    async def ensure_built(self, kb_version: str | None = None) -> None:
         """Build the index if not built or if kb_version changed.
 
         Idempotent and concurrency-safe via an asyncio.Lock.
@@ -128,7 +128,7 @@ class BM25Index:
                 )
             await self._build_locked(kb_version)
 
-    async def _build_locked(self, kb_version: Optional[str]) -> None:
+    async def _build_locked(self, kb_version: str | None) -> None:
         session = self._session_factory()
         try:
             stmt = select(
@@ -162,10 +162,10 @@ class BM25Index:
                 max_chunks=self._max_chunks,
             )
 
-        corpus: List[List[str]] = []
-        chunk_ids: List[str] = []
-        chunks: List[KnowledgeChunk] = []
-        organs: List[str] = []
+        corpus: list[list[str]] = []
+        chunk_ids: list[str] = []
+        chunks: list[KnowledgeChunk] = []
+        organs: list[str] = []
         for row in rows:
             tokenized = tokenize(row.content or "")
             if not tokenized:
@@ -209,8 +209,8 @@ class BM25Index:
         self,
         query: str,
         top_k: int = 20,
-        organ_filter: Optional[str] = None,
-    ) -> List[BM25Hit]:
+        organ_filter: str | None = None,
+    ) -> list[BM25Hit]:
         """Run a BM25 search against the (already built) index.
 
         Returns an empty list if the index has not been built yet (caller
@@ -228,7 +228,7 @@ class BM25Index:
         scores = self._built.bm25.get_scores(tokenized_query)
 
         # Collect (score, position) pairs and filter by organ.
-        scored: List[tuple[float, int]] = []
+        scored: list[tuple[float, int]] = []
         for idx, score in enumerate(scores):
             if organ_filter is not None and self._built.organs[idx] != organ_filter:
                 continue
@@ -308,8 +308,8 @@ class BM25Fallback:
         self,
         query: str,
         top_k: int,
-        organ: Optional[str],
-    ) -> List[ScoredChunk]:
+        organ: str | None,
+    ) -> list[ScoredChunk]:
         """Run BM25 search and wrap hits as ScoredChunks.
 
         Returns an empty list if the index has not been built yet.
@@ -329,8 +329,8 @@ class BM25Fallback:
 
 
 __all__ = [
-    "BM25Index",
     "BM25Fallback",
     "BM25Hit",
+    "BM25Index",
     "tokenize",
 ]

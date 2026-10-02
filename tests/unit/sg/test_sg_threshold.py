@@ -1,8 +1,8 @@
 import pytest
 
 from safety_gateway.threshold import (
-    ThresholdEngine,
     OrganThreshold,
+    ThresholdEngine,
     get_threshold_engine,
 )
 from safety_gateway.validation_result import ThresholdCheckResult

@@ -11,9 +11,10 @@
 """
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Protocol, Sequence, Tuple
+from typing import Any, Protocol
 
 import numpy as np
 import structlog
@@ -22,7 +23,7 @@ from edge.protocols import Frame, NavLabel
 
 logger = structlog.get_logger(__name__)
 
-DEFAULT_INPUT_SIZE: Tuple[int, int] = (512, 512)
+DEFAULT_INPUT_SIZE: tuple[int, int] = (512, 512)
 DEFAULT_SCORE_THRESHOLD = 0.5
 DEFAULT_IOU_THRESHOLD = 0.45
 
@@ -33,7 +34,7 @@ class EngineRunner(Protocol):
     name: str
 
     @property
-    def input_shape(self) -> Tuple[int, int, int, int]:
+    def input_shape(self) -> tuple[int, int, int, int]:
         """(N, C, H, W)"""
 
     def load(self) -> None:
@@ -48,11 +49,11 @@ class EngineRunner(Protocol):
 
 def preprocess_frame(
     frame: Frame,
-    input_size: Tuple[int, int] = DEFAULT_INPUT_SIZE,
+    input_size: tuple[int, int] = DEFAULT_INPUT_SIZE,
     *,
     channels: int = 3,
     normalize: bool = True,
-) -> Tuple[np.ndarray, float, float, float]:
+) -> tuple[np.ndarray, float, float, float]:
     """letterbox 预处理。
 
     Returns:
@@ -114,12 +115,12 @@ def _iou(box_a: np.ndarray, box_b: np.ndarray) -> float:
 
 def nms(
     detections: np.ndarray, iou_threshold: float = DEFAULT_IOU_THRESHOLD
-) -> List[int]:
+) -> list[int]:
     """按类别分组做非极大值抑制，返回保留的下标。"""
     if len(detections) == 0:
         return []
 
-    keep: List[int] = []
+    keep: list[int] = []
     for class_id in np.unique(detections[:, 5]):
         indices = [
             i for i in range(len(detections)) if detections[i, 5] == class_id
@@ -142,15 +143,15 @@ def nms(
 def postprocess_detections(
     detections: np.ndarray,
     *,
-    frame_shape: Tuple[int, int],
-    input_size: Tuple[int, int] = DEFAULT_INPUT_SIZE,
+    frame_shape: tuple[int, int],
+    input_size: tuple[int, int] = DEFAULT_INPUT_SIZE,
     scale: float = 1.0,
     pad_x: float = 0.0,
     pad_y: float = 0.0,
     labels: Sequence[str] = (),
     score_threshold: float = DEFAULT_SCORE_THRESHOLD,
     iou_threshold: float = DEFAULT_IOU_THRESHOLD,
-) -> List[NavLabel]:
+) -> list[NavLabel]:
     """把引擎原始输出转成归一化坐标的 NavLabel 列表。
 
     Args:
@@ -173,7 +174,7 @@ def postprocess_detections(
     if src_w <= 0 or src_h <= 0:
         raise ValueError("frame_shape 必须为正数")
 
-    results: List[NavLabel] = []
+    results: list[NavLabel] = []
     for index in keep:
         x1, y1, x2, y2, score, class_id = filtered[index][:6]
 
@@ -217,8 +218,8 @@ class TensorRTNavBackend:
     """
 
     engine_path: str
-    runner: Optional[EngineRunner] = None
-    input_size: Tuple[int, int] = DEFAULT_INPUT_SIZE
+    runner: EngineRunner | None = None
+    input_size: tuple[int, int] = DEFAULT_INPUT_SIZE
     labels: Sequence[str] = ()
     score_threshold: float = DEFAULT_SCORE_THRESHOLD
     iou_threshold: float = DEFAULT_IOU_THRESHOLD
@@ -238,7 +239,7 @@ class TensorRTNavBackend:
             input_shape=getattr(runner, "input_shape", None),
         )
 
-    def infer(self, frame: Frame) -> List[NavLabel]:
+    def infer(self, frame: Frame) -> list[NavLabel]:
         if not self._loaded:
             self.load()
 
@@ -284,18 +285,18 @@ class TensorRTRunner:
         self._engine_path = engine_path
         self._engine: Any = None
         self._context: Any = None
-        self._inputs: List[Any] = []
-        self._outputs: List[Any] = []
-        self._output_shape: Tuple[int, int, int, int] = (1, 0, 0, 0)
+        self._inputs: list[Any] = []
+        self._outputs: list[Any] = []
+        self._output_shape: tuple[int, int, int, int] = (1, 0, 0, 0)
 
     @property
-    def input_shape(self) -> Tuple[int, int, int, int]:
+    def input_shape(self) -> tuple[int, int, int, int]:
         return self._output_shape
 
     def load(self) -> None:
         try:
-            import tensorrt as trt  # noqa: F401
             import pycuda.driver as cuda  # noqa: F401
+            import tensorrt as trt
         except ImportError as e:
             raise RuntimeError(
                 "TensorRT/pycuda 未安装（边缘设备请安装 requirements-edge.txt 与 JetPack）"
@@ -358,7 +359,7 @@ class NullNavBackend:
     def load(self) -> None:
         logger.warning("edge_nav_backend_null_in_use")
 
-    def infer(self, frame: Frame) -> List[NavLabel]:
+    def infer(self, frame: Frame) -> list[NavLabel]:
         return []
 
     def close(self) -> None:
@@ -366,9 +367,9 @@ class NullNavBackend:
 
 
 def create_nav_backend(
-    engine_path: Optional[str] = None,
+    engine_path: str | None = None,
     *,
-    input_size: Tuple[int, int] = DEFAULT_INPUT_SIZE,
+    input_size: tuple[int, int] = DEFAULT_INPUT_SIZE,
     labels: Sequence[str] = (),
     score_threshold: float = DEFAULT_SCORE_THRESHOLD,
 ) -> Any:

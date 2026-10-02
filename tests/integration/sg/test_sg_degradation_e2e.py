@@ -1,6 +1,7 @@
-import pytest
-import httpx
 import asyncio
+
+import httpx
+import pytest
 
 SG_BASE_URL = "http://localhost:9001"
 MAIN_SERVICE_URL = "http://localhost:8000"

@@ -1,11 +1,13 @@
 import asyncio
-from contextlib import asynccontextmanager
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-from sqlalchemy.orm import declarative_base
 from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
+
+import structlog
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.orm import declarative_base
 
 from safety_gateway.sg_config import sg_settings
-import structlog
+
 logger = structlog.get_logger()
 
 _async_engine = None

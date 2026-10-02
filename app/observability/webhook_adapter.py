@@ -5,13 +5,12 @@
 IM平台webhook URL通过环境变量配置。
 """
 
-import json
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import httpx
 import structlog
-from fastapi import FastAPI, Request, Response, HTTPException
+from fastapi import FastAPI, HTTPException, Request, Response
 
 app = FastAPI(title="AlertManager Webhook Adapter", version="1.0.0")
 
@@ -22,7 +21,7 @@ DINGTALK_WEBHOOK_URL = os.getenv("DINGTALK_WEBHOOK_URL", "")
 WECOM_WEBHOOK_URL = os.getenv("WECOM_WEBHOOK_URL", "")
 
 
-def _format_alerts_text(alerts: List[Dict[str, Any]]) -> str:
+def _format_alerts_text(alerts: list[dict[str, Any]]) -> str:
     if not alerts:
         return "无告警详情"
     lines = []
@@ -39,7 +38,7 @@ def _format_alerts_text(alerts: List[Dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
-def _build_feishu_payload(text: str) -> Dict[str, Any]:
+def _build_feishu_payload(text: str) -> dict[str, Any]:
     return {
         "msg_type": "interactive",
         "card": {
@@ -54,7 +53,7 @@ def _build_feishu_payload(text: str) -> Dict[str, Any]:
     }
 
 
-def _build_dingtalk_payload(text: str) -> Dict[str, Any]:
+def _build_dingtalk_payload(text: str) -> dict[str, Any]:
     return {
         "msgtype": "markdown",
         "markdown": {
@@ -64,7 +63,7 @@ def _build_dingtalk_payload(text: str) -> Dict[str, Any]:
     }
 
 
-def _build_wecom_payload(text: str) -> Dict[str, Any]:
+def _build_wecom_payload(text: str) -> dict[str, Any]:
     return {
         "msgtype": "markdown",
         "markdown": {
@@ -73,7 +72,7 @@ def _build_wecom_payload(text: str) -> Dict[str, Any]:
     }
 
 
-async def _forward_to_im(webhook_url: str, payload: Dict[str, Any], platform: str) -> None:
+async def _forward_to_im(webhook_url: str, payload: dict[str, Any], platform: str) -> None:
     if not webhook_url:
         _logger.warning("webhook_not_configured", platform=platform)
         return

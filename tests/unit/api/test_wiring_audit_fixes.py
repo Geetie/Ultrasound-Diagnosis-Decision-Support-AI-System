@@ -23,8 +23,8 @@ pytestmark = [pytest.mark.track_api]
 class TestNavTokenExchange:
     @pytest.fixture(autouse=True)
     def _user(self):
-        from app.security.auth import get_current_active_user
         from app.main import app
+        from app.security.auth import get_current_active_user
 
         self._app = app
         app.dependency_overrides[get_current_active_user] = lambda: {
@@ -37,7 +37,7 @@ class TestNavTokenExchange:
 
     @pytest.mark.asyncio
     async def test_exchange_returns_nav_token(self):
-        from app.api.v1.auth import exchange_nav_token, NavTokenExchangeRequest
+        from app.api.v1.auth import NavTokenExchangeRequest, exchange_nav_token
         from app.api.websocket import nav as nav_mod
 
         with patch.object(
@@ -57,7 +57,7 @@ class TestNavTokenExchange:
     async def test_exchange_rejects_empty_session_id(self):
         from fastapi import HTTPException
 
-        from app.api.v1.auth import exchange_nav_token, NavTokenExchangeRequest
+        from app.api.v1.auth import NavTokenExchangeRequest, exchange_nav_token
 
         with pytest.raises(HTTPException) as exc_info:
             await exchange_nav_token(
@@ -172,8 +172,8 @@ class TestDeviceCheckInEndpoints:
     def _setup(self):
         from fastapi.testclient import TestClient
 
-        from app.main import app
         from app.dependencies import get_device_repo
+        from app.main import app
 
         self._app = app
         self._client = TestClient(app)
@@ -297,9 +297,9 @@ class TestSGThresholdProducer:
 
     @pytest.mark.asyncio
     async def test_producer_endpoint_xadds_to_stream(self):
-        from unittest.mock import patch, MagicMock
+        from unittest.mock import MagicMock, patch
 
-        from app.api.v1.alert_admin import publish_sg_threshold_update, SGThresholdUpdateRequest
+        from app.api.v1.alert_admin import SGThresholdUpdateRequest, publish_sg_threshold_update
         from app.config.redis_keys import RedisKey
 
         mock_client = AsyncMock()
@@ -321,7 +321,7 @@ class TestSGThresholdProducer:
     async def test_producer_update_requires_organ_and_threshold(self):
         import fastapi
 
-        from app.api.v1.alert_admin import publish_sg_threshold_update, SGThresholdUpdateRequest
+        from app.api.v1.alert_admin import SGThresholdUpdateRequest, publish_sg_threshold_update
 
         with pytest.raises(fastapi.HTTPException) as exc_info:
             await publish_sg_threshold_update(

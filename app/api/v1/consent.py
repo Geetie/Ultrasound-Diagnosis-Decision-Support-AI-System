@@ -1,22 +1,23 @@
+from datetime import datetime, timezone
+from typing import Any
+
+import structlog
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from datetime import datetime, timezone
-from typing import Dict, Any
-import structlog
 
-from app.models.schemas import (
-    ConsentQueryResponse,
-    ConsentUpdateRequest,
-    ConsentUpdateResponse,
-    ConsentStatus,
-    ConsentAction,
-)
 from app.api.v1.errors import BadRequestException
 from app.config.database import get_db_session
-from app.config.redis import RedisPool  # noqa: F401  (shutdown/其他用途保留导入面)
+from app.config.redis import RedisPool  # noqa: F401  (保留导入面)
 from app.config.redis_keys import RedisKey  # noqa: F401
+from app.models.schemas import (
+    ConsentAction,
+    ConsentQueryResponse,
+    ConsentStatus,
+    ConsentUpdateRequest,
+    ConsentUpdateResponse,
+)
 from app.repositories.consent_repository import ConsentRepository, record_hsm_degradation_if_needed
-from app.security.auth import get_current_active_user, RoleChecker
+from app.security.auth import RoleChecker, get_current_active_user
 
 router = APIRouter(tags=["consent"])
 logger = structlog.get_logger()
@@ -27,11 +28,11 @@ async def get_consent(
     patient_id: str,
     db: AsyncSession = Depends(get_db_session),
     current_user: dict = Depends(get_current_active_user),
-    _: Dict[str, Any] = Depends(RoleChecker(["SYSTEM_ADMIN", "QUALITY_CONTROL", "DEPARTMENT_HEAD"])),
+    _: dict[str, Any] = Depends(RoleChecker(["SYSTEM_ADMIN", "QUALITY_CONTROL", "DEPARTMENT_HEAD"])),
 ):
     repo = ConsentRepository(db)
     consent_record = await repo.get_latest_consent(patient_id)
-    
+
     if consent_record:
         current_status = ConsentStatus(consent_record.status)
         return ConsentQueryResponse(
@@ -41,7 +42,7 @@ async def get_consent(
             withdrawn_at=consent_record.withdrawn_at,
             consent_version=consent_record.consent_version,
         )
-    
+
     return ConsentQueryResponse(
         patient_id=patient_id,
         consent_status=ConsentStatus.DENIED,
@@ -56,12 +57,12 @@ async def update_consent(
     request: ConsentUpdateRequest,
     db: AsyncSession = Depends(get_db_session),
     current_user: dict = Depends(get_current_active_user),
-    _: Dict[str, Any] = Depends(RoleChecker(["SYSTEM_ADMIN", "QUALITY_CONTROL", "DEPARTMENT_HEAD"])),
+    _: dict[str, Any] = Depends(RoleChecker(["SYSTEM_ADMIN", "QUALITY_CONTROL", "DEPARTMENT_HEAD"])),
 ):
     """更新知情同意状态"""
     if request.action not in [ConsentAction.GRANT, ConsentAction.WITHDRAW]:
         raise BadRequestException(error_message="无效的操作类型")
-    
+
     repo = ConsentRepository(db)
     operator_id = current_user.get("user_id") or current_user.get("username")
     if not operator_id:
@@ -69,13 +70,13 @@ async def update_consent(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Cannot identify operator for consent operation",
         )
-    
+
     consent_status = (
         ConsentStatus.GRANTED
         if request.action == ConsentAction.GRANT
         else ConsentStatus.WITHDRAWN
     )
-    
+
     consent_record = await repo.create_consent(
         patient_id=request.patient_id,
         status=consent_status,

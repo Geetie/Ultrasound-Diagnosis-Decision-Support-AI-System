@@ -12,7 +12,6 @@ Covers T-GA-RAG-01:
 """
 from __future__ import annotations
 
-from typing import List, Optional
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -21,9 +20,9 @@ pytestmark = [pytest.mark.track_rag]
 
 from app.knowledge.udt_parser import (
     ParsedAttribute,
-    UDTParseResult,
     UDTParser,
     UDTParserConfig,
+    UDTParseResult,
 )
 from app.knowledge.vocabulary import UDAFVocabulary
 from app.rag.llm_enhancer import LLMEnhancer
@@ -31,9 +30,9 @@ from app.rag.query_enhancer import QueryEnhancer, _extract_chinese_phrases
 
 
 def _stub_udt(
-    organ: Optional[str] = None,
-    terms: Optional[List[str]] = None,
-    categories: Optional[List[str]] = None,
+    organ: str | None = None,
+    terms: list[str] | None = None,
+    categories: list[str] | None = None,
 ) -> UDTParser:
     """Build a UDTParser whose parse() returns a fixed UDTParseResult."""
     parser = UDTParser.__new__(UDTParser)
@@ -44,7 +43,7 @@ def _stub_udt(
         list(parser.vocab.iter_synonym_mappings()), key=lambda x: -len(x[0])
     )
 
-    attrs: List[ParsedAttribute] = []
+    attrs: list[ParsedAttribute] = []
     cats = categories or ["echogenicity"]
     for i, term in enumerate(terms or []):
         cat = cats[min(i, len(cats) - 1)]

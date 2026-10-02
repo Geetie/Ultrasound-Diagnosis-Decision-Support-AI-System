@@ -4,9 +4,9 @@ from typing import Any
 import structlog
 from sqlalchemy import text
 
-from safety_gateway.redis_pool import SafetyGatewayRedisPool
 from safety_gateway.circuit_breaker import circuit_breaker_manager
 from safety_gateway.desensitization import sg_desensitization_engine
+from safety_gateway.redis_pool import SafetyGatewayRedisPool
 from safety_gateway.threshold import get_threshold_engine
 
 logger = structlog.get_logger()
@@ -29,6 +29,7 @@ async def check_redis() -> dict[str, Any]:
 
 async def check_database() -> dict[str, Any]:
     from datetime import datetime, timezone
+
     from safety_gateway.sg_db import _get_async_engine
     try:
         start = datetime.now(timezone.utc)
@@ -137,7 +138,7 @@ def _read_oom_from_docker_compose() -> int | None:
         for compose_path in compose_paths:
             if not os.path.isfile(compose_path):
                 continue
-            with open(compose_path, "r") as f:
+            with open(compose_path) as f:
                 compose_data = yaml.safe_load(f)
             services = compose_data.get("services", {})
             sg_service = services.get("safety-gateway", {})

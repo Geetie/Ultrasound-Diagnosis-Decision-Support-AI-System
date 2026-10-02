@@ -36,11 +36,7 @@
 from __future__ import annotations
 
 import asyncio
-import os
-import time
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
-from unittest.mock import AsyncMock, MagicMock
+from dataclasses import dataclass
 
 import pytest
 
@@ -63,8 +59,8 @@ class ClinicalCase:
     case_id: str
     organ: str
     clinical_text: str
-    voice_text: Optional[str]
-    expected_grade: Optional[str] = None
+    voice_text: str | None
+    expected_grade: str | None = None
     expected_review: bool = False
     expected_organ_specific: bool = True
     knowledge_markers: tuple = ()
@@ -228,7 +224,7 @@ class ClinicalFakeRAGService:
     def __init__(
         self,
         latency_seconds: float = 0.0,
-        simulate_error: Optional[Exception] = None,
+        simulate_error: Exception | None = None,
     ) -> None:
         self.latency_seconds = latency_seconds
         self._simulate_error = simulate_error
@@ -242,14 +238,13 @@ class ClinicalFakeRAGService:
             await asyncio.sleep(self.latency_seconds)
         # 简化：返回与 organ 匹配 + KB 版本匹配的"模拟临床知识"
         from app.rag.protocols import (
+            RetrievalMethod,
             RetrievalResult,
             ScoredChunk,
-            RetrievalMethod,
         )
-        from app.knowledge.protocols import KnowledgeChunk
 
         organ = request.organ
-        chunks: List[ScoredChunk] = []
+        chunks: list[ScoredChunk] = []
         for marker in (request.query or "").lower().split():
             if not marker:
                 continue
@@ -275,8 +270,8 @@ class ClinicalFakeRAGService:
 
 
 def _append_clinical_chunk(chunks, marker, organ, request, source_id):
-    from app.rag.protocols import ScoredChunk
     from app.knowledge.protocols import KnowledgeChunk
+    from app.rag.protocols import ScoredChunk
 
     chunk = KnowledgeChunk(
         chunk_id=f"{source_id}:{marker}",
@@ -309,7 +304,7 @@ class ClinicalFakeSpecialist:
         self,
         organ: str,
         confidence: float = 0.8,
-        raise_exc: Optional[Exception] = None,
+        raise_exc: Exception | None = None,
     ) -> None:
         self.organ = organ
         self.confidence = confidence
@@ -372,11 +367,11 @@ class TestClinicalE2E:
         from app.agents.dispatcher import DispatcherAgentImpl
         from app.agents.knowledge import KnowledgeAgentImpl
         from app.agents.monitor import MonitorAgentImpl
-        from app.models.schemas import Organ, DiagnosisRequest, DiagnosisResult
-        from app.agents.protocols import AgentContext, AgentResponse
+        from app.agents.protocols import AgentContext
+        from app.models.schemas import DiagnosisRequest, DiagnosisResult, Organ
 
         # Spy monitor 的 warning 日志:R1/R2/R3 异常都通过 logger.warning 发出
-        captured_warnings: List[dict] = []
+        captured_warnings: list[dict] = []
         original_warning = monitor_mod.logger.warning
 
         def _spy_warning(*args, **kwargs):
@@ -494,9 +489,9 @@ class TestDegradationPaths:
     @pytest.mark.asyncio
     async def test_rag_backend_5xx_propagates(self):
         """RAG 后端 5xx → RAGError 向上抛（调用方降级为 confidence=0.0）。"""
-        from app.rag.protocols import RAGError, RAGErrorCode
         from app.agents.knowledge import KnowledgeAgentImpl
         from app.models.schemas import Organ
+        from app.rag.protocols import RAGError, RAGErrorCode
 
         rag = ClinicalFakeRAGService(
             simulate_error=RAGError(
@@ -530,8 +525,8 @@ class TestDegradationPaths:
     async def test_specialist_timeout_degrades_to_placeholder(self):
         """specialist 抛超时异常 → dispatcher 返回 confidence=0.0 占位响应。"""
         from app.agents.dispatcher import DispatcherAgentImpl
-        from app.models.schemas import Organ
         from app.agents.protocols import AgentContext
+        from app.models.schemas import Organ
 
         slow_specialist = ClinicalFakeSpecialist(
             "thyroid", raise_exc=TimeoutError("LLM inference timeout")
@@ -593,9 +588,6 @@ class TestKBVersionChange:
         """``RAGServiceImpl.update_kb_version()`` 推送新版本后,KnowledgeAgent
         应自动感知并失效旧缓存。"""
         from app.rag.service import RAGServiceImpl
-        from app.agents.knowledge import KnowledgeAgentImpl
-        from app.models.schemas import Organ
-        from tests.unit.agt.conftest import FakeRAGService, make_chunk
 
         rag = RAGServiceImpl(
             query_enhancer=None,  # type: ignore[arg-type]
@@ -627,7 +619,7 @@ class TestKBVersionChange:
         """
         from app.agents.knowledge import KnowledgeAgentImpl
         from app.models.schemas import Organ
-        from tests.unit.agt.conftest import FakeRAGService, make_chunk, FakeRedis
+        from tests.unit.agt.conftest import FakeRedis
 
         # 单 Redis 实例,跨 v1/v2 复用
         redis_store = FakeRedis()
@@ -643,10 +635,12 @@ class TestKBVersionChange:
 
             async def retrieve(self, request):
                 self.retrieve_call_count += 1
-                from app.rag.protocols import (
-                    RetrievalResult, ScoredChunk, RetrievalMethod,
-                )
                 from app.knowledge.protocols import KnowledgeChunk
+                from app.rag.protocols import (
+                    RetrievalMethod,
+                    RetrievalResult,
+                    ScoredChunk,
+                )
                 v = kb_version_holder["v"]
                 content = f"content-for-{v}"
                 chunk = KnowledgeChunk(
@@ -809,11 +803,15 @@ class TestMonitorR3Realistic:
     async def test_consecutive_failures_trigger_anomaly(self):
         from app.agents.monitor import MonitorAgentImpl
         from app.models.schemas import (
-            Organ, DiagnosisRequest, DiagnosisResult, DesensitizationStatus,
-            ConsentStatus, FusionStatus,
+            ConsentStatus,
+            DesensitizationStatus,
+            DiagnosisRequest,
+            DiagnosisResult,
+            FusionStatus,
+            Organ,
         )
 
-        captured_health_rates: List[float] = []
+        captured_health_rates: list[float] = []
         original_record_health = MonitorAgentImpl._record_health
 
         def _spy_record_health(self, rate: float) -> None:
@@ -910,6 +908,7 @@ class TestLifespanAgentsHealthCheck:
         - extra 字段:``dispatcher`` / ``knowledge_agent`` / ``monitor_agent`` (均为 True)
         """
         import logging
+
         from app.agents.dispatcher import DispatcherAgentImpl
         from app.agents.knowledge import KnowledgeAgentImpl
         from app.agents.monitor import MonitorAgentImpl
@@ -986,7 +985,7 @@ class TestLifespanAgentsHealthCheck:
         from app.agents.knowledge import KnowledgeAgentImpl
         from app.agents.monitor import MonitorAgentImpl
 
-        call_order: List[str] = []
+        call_order: list[str] = []
         original_d_close = DispatcherAgentImpl.close
         original_k_close = KnowledgeAgentImpl.close
         original_m_close = MonitorAgentImpl.close

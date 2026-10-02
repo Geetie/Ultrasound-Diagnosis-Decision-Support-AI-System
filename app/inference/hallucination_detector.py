@@ -12,20 +12,24 @@
 - 执行日志记录
 """
 
+import json
 import re
 import threading
 import time
-import structlog
 from abc import ABC, abstractmethod
+from collections import deque
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, List, Dict, Set, Optional, Tuple
+from pathlib import Path
+from typing import Any
 
+import structlog
+
+from app.inference.grading_definitions import _GRADE_HIERARCHY, _GRADING_PATTERNS
 from app.inference.verification_config import (
-    get_verification_config,
     VerificationConfig,
+    get_verification_config,
 )
-from app.inference.grading_definitions import _GRADING_PATTERNS, _GRADE_HIERARCHY
 
 logger = structlog.get_logger("app.inference.hallucination_detector")
 
@@ -44,17 +48,17 @@ class DetectionIssue:
     """检测到的问题"""
     strategy: DetectionStrategy
     description: str
-    location: Optional[str] = None
+    location: str | None = None
     severity: int = 1
     weight: float = 1.0
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: dict[str, Any] | None = None
 
 
 @dataclass
 class DetectionResult:
     """检测结果"""
     is_hallucination: bool
-    issues: List[DetectionIssue] = field(default_factory=list)
+    issues: list[DetectionIssue] = field(default_factory=list)
     confidence: float = 0.0
     execution_time_ms: float = 0.0
     test_data_version: str = ""
@@ -63,11 +67,11 @@ class DetectionResult:
 class BaseDetector(ABC):
     """检测器基类"""
 
-    def __init__(self, config: Optional[VerificationConfig] = None):
+    def __init__(self, config: VerificationConfig | None = None):
         self.config = config or get_verification_config()
 
     @abstractmethod
-    def detect(self, text: str, organ: str) -> List[DetectionIssue]:
+    def detect(self, text: str, organ: str) -> list[DetectionIssue]:
         pass
 
 
@@ -97,7 +101,7 @@ class ForbiddenTermsDetector(BaseDetector):
                 neg_pos = context.find(neg, neg_pos + 1)
         return False
 
-    def detect(self, text: str, organ: str) -> List[DetectionIssue]:
+    def detect(self, text: str, organ: str) -> list[DetectionIssue]:
         issues = []
         skipped_by_context = []
         organ_terms = self.config.forbidden_terms_config.organ_terms.get(organ, [])
@@ -162,7 +166,7 @@ class ForbiddenTermsDetector(BaseDetector):
 class ContradictoryGradingDetector(BaseDetector):
     """矛盾分级检测器"""
 
-    def detect(self, text: str, organ: str) -> List[DetectionIssue]:
+    def detect(self, text: str, organ: str) -> list[DetectionIssue]:
         issues = []
         patterns = _GRADING_PATTERNS.get(organ, [])
 
@@ -206,7 +210,7 @@ class MedicalCommonSenseDetector(BaseDetector):
 
     _BENIGN_KEYWORDS = {"良性", "无恶性", "考虑良性", "倾向良性"}
     _MALIGNANT_KEYWORDS = {"恶性", "转移", "侵袭", "浸润"}
-    _ORGAN_MALIGNANT_TERMS: Dict[str, Set[str]] = {
+    _ORGAN_MALIGNANT_TERMS: dict[str, set[str]] = {
         "thyroid": {"甲状腺癌", "甲状腺恶性肿瘤"},
         "liver": {"肝癌", "肝细胞癌", "肝脏恶性肿瘤", "肝转移癌"},
         "breast": {"乳腺癌", "乳腺恶性肿瘤"},
@@ -215,7 +219,7 @@ class MedicalCommonSenseDetector(BaseDetector):
     _EXCLUSION_PATTERNS = {"排除", "需排除", "应排除", "待排除", "需鉴别"}
     _AUGMENT_PATTERNS = {"不除外", "不能除外", "无法除外"}
 
-    def detect(self, text: str, organ: str) -> List[DetectionIssue]:
+    def detect(self, text: str, organ: str) -> list[DetectionIssue]:
         issues = []
 
         has_benign = any(keyword in text for keyword in self._BENIGN_KEYWORDS)
@@ -262,7 +266,7 @@ class NumericalValidityDetector(BaseDetector):
         re.IGNORECASE
     )
 
-    def detect(self, text: str, organ: str) -> List[DetectionIssue]:
+    def detect(self, text: str, organ: str) -> list[DetectionIssue]:
         issues = []
         organ_ranges = self.config.numerical_validation_config.organ_ranges.get(organ, [])
 
@@ -274,7 +278,7 @@ class NumericalValidityDetector(BaseDetector):
 
         return issues
 
-    def _check_lvef(self, text: str, range_config, issues: List[DetectionIssue]):
+    def _check_lvef(self, text: str, range_config, issues: list[DetectionIssue]):
         matches = self._LVEF_PATTERN.findall(text)
         for match in matches:
             try:
@@ -289,7 +293,7 @@ class NumericalValidityDetector(BaseDetector):
             except ValueError:
                 pass
 
-    def _check_nodule_size(self, text: str, range_config, issues: List[DetectionIssue]):
+    def _check_nodule_size(self, text: str, range_config, issues: list[DetectionIssue]):
         matches = self._NODULE_SIZE_PATTERN.findall(text)
         for value_str, unit in matches:
             try:
@@ -311,18 +315,66 @@ class NumericalValidityDetector(BaseDetector):
                 pass
 
 
+# ---------------------------------------------------------------------------
+# 上下文感知词表资产（v1, 2026-10-02）：JSON 资产加载，失败回退内置默认
+# ---------------------------------------------------------------------------
+
+_VOCAB_ASSET_PATH = Path(__file__).parent / "data" / "hallucination_vocab.json"
+
+_DEFAULT_CONTEXT_AWARE_VOCAB: dict[str, set[str]] = {
+    "benign_desc": {"边界清晰", "形态规则", "边界尚清晰", "形态尚规则", "无钙化", "无血流", "囊性"},
+    "malignant_desc": {"边界模糊", "边界不清", "形态不规则", "微钙化", "丰富血流", "实性低回声", "纵横比大于1"},
+    "benign_conclusion": {"良性", "考虑良性", "倾向良性", "TI-RADS 2", "TI-RADS 3", "LI-RADS 2", "LI-RADS 3", "BI-RADS 2", "BI-RADS 3"},
+    "malignant_conclusion": {"恶性", "考虑恶性", "倾向恶性", "TI-RADS 5", "LI-RADS 5", "BI-RADS 5", "建议穿刺", "建议手术"},
+    "cardiac_benign_desc": {"收缩功能正常", "舒张功能正常", "室壁运动正常", "瓣膜正常", "心包正常"},
+    "cardiac_crisis_desc": {
+        # 原 cardiac 恶性描述词
+        "收缩功能减低", "室壁运动异常", "心包积液", "瓣膜重度反流", "全心扩大",
+        # UDT 任务2 危象词（语料实证 + 规范危象术语）
+        "主动脉夹层", "主动脉瘤破裂", "心包填塞", "心脏压塞", "心包积液合并心脏压塞",
+        "大量心包积液", "心脏破裂", "左心室穿破", "右心室穿破", "室间隔穿孔",
+        "室壁穿孔", "腱索断裂", "瓣膜赘生物", "赘生物", "血栓", "血栓形成",
+        "心脏游离血栓", "感染性心内膜炎", "瓣叶穿孔", "瓣周漏", "瓣叶瘤", "重度瓣膜反流",
+    },
+    "cardiac_benign_conclusion": {"正常", "功能正常", "mild", "轻度"},
+    "cardiac_crisis_conclusion": {"严重", "重度", "severe", "心衰", "心力衰竭"},
+}
+
+
+def _load_context_aware_vocab() -> dict[str, set[str]]:
+    """从 JSON 资产加载上下文感知词表；失败时回退内置默认。"""
+    try:
+        raw = json.loads(_VOCAB_ASSET_PATH.read_text(encoding="utf-8"))
+        section = raw.get("context_aware") or {}
+        vocab: dict[str, set[str]] = {}
+        for key, default in _DEFAULT_CONTEXT_AWARE_VOCAB.items():
+            words = section.get(key)
+            vocab[key] = set(words) if isinstance(words, list) and words else set(default)
+        return vocab
+    except Exception as exc:
+        logger.warning(
+            "hallucination_vocab_asset_load_failed",
+            path=str(_VOCAB_ASSET_PATH),
+            error=str(exc),
+        )
+        return {key: set(default) for key, default in _DEFAULT_CONTEXT_AWARE_VOCAB.items()}
+
+
 class ContextAwareDetector(BaseDetector):
     """上下文感知检测器"""
 
-    _BENIGN_DESC_KEYWORDS = {"边界清晰", "形态规则", "边界尚清晰", "形态尚规则", "无钙化", "无血流", "囊性"}
-    _MALIGNANT_DESC_KEYWORDS = {"边界模糊", "边界不清", "形态不规则", "微钙化", "丰富血流", "实性低回声", "纵横比大于1"}
-    _BENIGN_CONCLUSION_KEYWORDS = {"良性", "考虑良性", "倾向良性", "TI-RADS 2", "TI-RADS 3", "LI-RADS 2", "LI-RADS 3", "BI-RADS 2", "BI-RADS 3"}
-    _MALIGNANT_CONCLUSION_KEYWORDS = {"恶性", "考虑恶性", "倾向恶性", "TI-RADS 5", "LI-RADS 5", "BI-RADS 5", "建议穿刺", "建议手术"}
+    _VOCAB = _load_context_aware_vocab()
+    _BENIGN_DESC_KEYWORDS = _VOCAB["benign_desc"]
+    _MALIGNANT_DESC_KEYWORDS = _VOCAB["malignant_desc"]
+    _BENIGN_CONCLUSION_KEYWORDS = _VOCAB["benign_conclusion"]
+    _MALIGNANT_CONCLUSION_KEYWORDS = _VOCAB["malignant_conclusion"]
 
-    _CARDIAC_BENIGN_DESC_KEYWORDS = {"收缩功能正常", "舒张功能正常", "室壁运动正常", "瓣膜正常", "心包正常"}
-    _CARDIAC_MALIGNANT_DESC_KEYWORDS = {"收缩功能减低", "室壁运动异常", "心包积液", "瓣膜重度反流", "全心扩大"}
-    _CARDIAC_BENIGN_CONCLUSION_KEYWORDS = {"正常", "功能正常", "mild", "轻度"}
-    _CARDIAC_MALIGNANT_CONCLUSION_KEYWORDS = {"严重", "重度", "severe", "心衰", "心力衰竭"}
+    _CARDIAC_BENIGN_DESC_KEYWORDS = _VOCAB["cardiac_benign_desc"]
+    # cardiac 语义切换：原"恶性描述"并入危象词，现按"危象描述"检测
+    _CARDIAC_CRISIS_DESC_KEYWORDS = _VOCAB["cardiac_crisis_desc"]
+    _CARDIAC_BENIGN_CONCLUSION_KEYWORDS = _VOCAB["cardiac_benign_conclusion"]
+    # cardiac 语义切换："恶性结论"改为"危象结论"
+    _CARDIAC_CRISIS_CONCLUSION_KEYWORDS = _VOCAB["cardiac_crisis_conclusion"]
 
     _OVERREACTION_PATTERNS = [
         (re.compile(r'TI[-_]?RADS\s*2', re.IGNORECASE), re.compile(r'立即手术|紧急手术|穿刺活检|尽快手术')),
@@ -338,7 +390,7 @@ class ContextAwareDetector(BaseDetector):
         (re.compile(r'轻度', re.IGNORECASE), re.compile(r'紧急手术|立即干预')),
     ]
 
-    def detect(self, text: str, organ: str) -> List[DetectionIssue]:
+    def detect(self, text: str, organ: str) -> list[DetectionIssue]:
         issues = []
         if organ == "cardiac":
             self._check_cardiac_description_conclusion_conflict(text, issues)
@@ -348,7 +400,7 @@ class ContextAwareDetector(BaseDetector):
             self._check_overreaction(text, organ, issues)
         return issues
 
-    def _check_description_conclusion_conflict(self, text: str, organ: str, issues: List[DetectionIssue]):
+    def _check_description_conclusion_conflict(self, text: str, organ: str, issues: list[DetectionIssue]):
         has_benign_desc = any(kw in text for kw in self._BENIGN_DESC_KEYWORDS)
         has_malignant_desc = any(kw in text for kw in self._MALIGNANT_DESC_KEYWORDS)
         has_benign_conclusion = any(kw in text for kw in self._BENIGN_CONCLUSION_KEYWORDS)
@@ -370,24 +422,24 @@ class ContextAwareDetector(BaseDetector):
                 weight=self.config.strategy_weights.context_aware,
             ))
 
-    def _check_overreaction(self, text: str, organ: str, issues: List[DetectionIssue]):
+    def _check_overreaction(self, text: str, organ: str, issues: list[DetectionIssue]):
         for grading_pattern, action_pattern in self._OVERREACTION_PATTERNS:
             if grading_pattern.search(text) and action_pattern.search(text):
                 issues.append(DetectionIssue(
                     strategy=DetectionStrategy.CONTEXT_AWARE,
-                    description=f"低风险分级但建议激进治疗，存在过度反应",
+                    description="低风险分级但建议激进治疗，存在过度反应",
                     severity=2,
                     weight=self.config.strategy_weights.context_aware,
                 ))
                 break
 
-    def _check_cardiac_description_conclusion_conflict(self, text: str, issues: List[DetectionIssue]):
+    def _check_cardiac_description_conclusion_conflict(self, text: str, issues: list[DetectionIssue]):
         has_benign_desc = any(kw in text for kw in self._CARDIAC_BENIGN_DESC_KEYWORDS)
-        has_malignant_desc = any(kw in text for kw in self._CARDIAC_MALIGNANT_DESC_KEYWORDS)
+        has_crisis_desc = any(kw in text for kw in self._CARDIAC_CRISIS_DESC_KEYWORDS)
         has_benign_conclusion = any(kw in text for kw in self._CARDIAC_BENIGN_CONCLUSION_KEYWORDS)
-        has_malignant_conclusion = any(kw in text for kw in self._CARDIAC_MALIGNANT_CONCLUSION_KEYWORDS)
+        has_crisis_conclusion = any(kw in text for kw in self._CARDIAC_CRISIS_CONCLUSION_KEYWORDS)
 
-        if has_benign_desc and has_malignant_conclusion and not has_malignant_desc:
+        if has_benign_desc and has_crisis_conclusion and not has_crisis_desc:
             issues.append(DetectionIssue(
                 strategy=DetectionStrategy.CONTEXT_AWARE,
                 description="心脏描述特征正常但结论提示严重异常，存在描述-结论矛盾",
@@ -395,7 +447,7 @@ class ContextAwareDetector(BaseDetector):
                 weight=self.config.strategy_weights.context_aware,
             ))
 
-        if has_malignant_desc and has_benign_conclusion and not has_benign_desc:
+        if has_crisis_desc and has_benign_conclusion and not has_benign_desc:
             issues.append(DetectionIssue(
                 strategy=DetectionStrategy.CONTEXT_AWARE,
                 description="心脏描述特征异常但结论提示正常，存在描述-结论矛盾",
@@ -403,7 +455,7 @@ class ContextAwareDetector(BaseDetector):
                 weight=self.config.strategy_weights.context_aware,
             ))
 
-    def _check_cardiac_overreaction(self, text: str, issues: List[DetectionIssue]):
+    def _check_cardiac_overreaction(self, text: str, issues: list[DetectionIssue]):
         for grading_pattern, action_pattern in self._CARDIAC_OVERREACTION_PATTERNS:
             if grading_pattern.search(text) and action_pattern.search(text):
                 issues.append(DetectionIssue(
@@ -420,9 +472,9 @@ class HallucinationDetector:
 
     def __init__(
         self,
-        strategies: Optional[List[DetectionStrategy]] = None,
+        strategies: list[DetectionStrategy] | None = None,
         severity_threshold: int = 2,
-        config: Optional[VerificationConfig] = None,
+        config: VerificationConfig | None = None,
     ):
         """
         初始化幻觉检测器
@@ -445,7 +497,7 @@ class HallucinationDetector:
             test_data_version=self.config.test_data_version,
         )
 
-    def _init_detectors(self) -> Dict[DetectionStrategy, BaseDetector]:
+    def _init_detectors(self) -> dict[DetectionStrategy, BaseDetector]:
         """初始化各策略检测器"""
         detectors = {}
         if DetectionStrategy.FORBIDDEN_TERMS in self.strategies:
@@ -588,12 +640,12 @@ class HallucinationDetector:
                 collector.set_high_risk_hallucination_rate(
                     max(disease_rates)
                 )
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             logger.debug("hallucination_rate_gauge_update_failed", error=str(e))
 
 
 # 全局默认检测器实例
-_default_detector: Optional[HallucinationDetector] = None
+_default_detector: HallucinationDetector | None = None
 _default_detector_lock = threading.Lock()
 
 

@@ -40,6 +40,11 @@ class RedisKey:
     def consent_withdrawn_session(session_id: str) -> str:
         return f"{_PREFIX}:consent:withdrawn:session:{session_id}"
 
+    # T-GR-INT-01 灰度发布：按轨道的会话计数（用于 compact 档位爬坡）
+    @staticmethod
+    def rollout_session_counter(track: str) -> str:
+        return f"{_PREFIX}:rollout:session_counter:{track}"
+
     # Edge 相关键名
     @staticmethod
     def edge_session(session_id: str, patient_id: str) -> str:

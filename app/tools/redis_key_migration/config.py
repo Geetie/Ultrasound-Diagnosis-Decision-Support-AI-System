@@ -1,6 +1,7 @@
-from typing import Dict, List, Any
-import yaml
 import os
+from typing import Any
+
+import yaml
 
 DEFAULT_CONFIG = {
     'mappings': [
@@ -104,25 +105,25 @@ DEFAULT_CONFIG = {
 }
 
 
-def load_config(config_path: str = None) -> Dict[str, Any]:
+def load_config(config_path: str = None) -> dict[str, Any]:
     """加载配置文件"""
     if config_path and os.path.exists(config_path):
-        with open(config_path, 'r') as f:
+        with open(config_path) as f:
             return yaml.safe_load(f)
     return DEFAULT_CONFIG
 
 
-def save_config(config: Dict[str, Any], config_path: str) -> None:
+def save_config(config: dict[str, Any], config_path: str) -> None:
     """保存配置文件"""
     with open(config_path, 'w') as f:
         yaml.dump(config, f, default_flow_style=False)
 
 
-def get_migration_config(config: Dict[str, Any]) -> Dict[str, Any]:
+def get_migration_config(config: dict[str, Any]) -> dict[str, Any]:
     """获取迁移配置"""
     return config.get('migration', DEFAULT_CONFIG['migration'])
 
 
-def get_mappings(config: Dict[str, Any]) -> List[Dict[str, Any]]:
+def get_mappings(config: dict[str, Any]) -> list[dict[str, Any]]:
     """获取键名映射列表"""
     return config.get('mappings', DEFAULT_CONFIG['mappings'])

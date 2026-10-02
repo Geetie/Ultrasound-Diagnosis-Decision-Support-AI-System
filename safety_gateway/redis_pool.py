@@ -12,16 +12,29 @@
 """
 
 import asyncio
-import redis.asyncio as aioredis
-from redis.retry import Retry
-from redis.backoff import ExponentialBackoff
 from typing import Any, ClassVar
 
+import redis.asyncio as aioredis
 import structlog
+from redis.backoff import ExponentialBackoff
+from redis.retry import Retry
 
 from safety_gateway.sg_config import sg_settings as settings
 
 logger = structlog.get_logger()
+
+
+def effective_socket_timeout() -> int:
+    """本服务 Redis 连接的 socket 读超时（**单一事实源**）。
+
+    不变量：**任何阻塞读的等待时长都必须严格小于它**，否则每次读都以
+    `TimeoutError: Timeout reading from ...` 收场 —— 真机上已先后踩到两处：
+    `xreadgroup(block=5000)`（阈值流消费者）与 `pubsub.listen()` 的无限阻塞读
+    （脱敏规则订阅）。这类"读超时"会被上层判成依赖不可用（SG 回 E4005B），
+    进而让主服务进入快速失败。
+    下游（subscriber / consumer）请从本函数取值推导自己的 block / poll 时长。
+    """
+    return max(settings.redis_pool_timeout, 8)
 
 
 class SafetyGatewayRedisPool:
@@ -104,6 +117,8 @@ class SafetyGatewayRedisPool:
             async with cls._get_lock():
                 if cls._client is None:
                     from urllib.parse import urlparse, urlunparse
+
+                    from app.config.dsn import redact_url
                     parsed = urlparse(settings.redis_url)
                     path_parts = parsed.path.rsplit("/", 1)
                     new_path = "/1" if len(path_parts) <= 1 else f"{path_parts[0]}/1"
@@ -111,7 +126,13 @@ class SafetyGatewayRedisPool:
 
                     connection_kwargs = dict(
                         max_connections=settings.redis_pool_max_connections,
-                        socket_timeout=settings.redis_pool_timeout,
+                        # `socket_timeout` 必须**严格大于**任何阻塞读的 block 上限
+                        # （本服务最长的是 xreadgroup 的 5000ms，见 redis_subscriber.py）。
+                        # 原实现直接取 redis_pool_timeout=5 → 阻塞读每次都在同一秒上
+                        # 与 socket 读超时打平，真机上每 ~6s 一条
+                        #   sg_redis_stream_consume_error error=Timeout reading from ...
+                        # 并触发重连重试（既刷日志又拖慢阈值下发）。
+                        socket_timeout=effective_socket_timeout(),
                         socket_connect_timeout=settings.redis_pool_timeout,
                         retry_on_timeout=True,
                         retry=Retry(
@@ -124,7 +145,9 @@ class SafetyGatewayRedisPool:
 
                     cls._client = aioredis.Redis.from_url(sg_redis_url, **connection_kwargs)
                     cls._consecutive_failures = 0
-                    logger.info("sg_redis_pool_initialized", url=sg_redis_url)
+                    # 必须脱敏：sg_redis_url 里带 requirepass 口令，
+                    # 原实现把明文口令写进了日志文件（合规红线）。
+                    logger.info("sg_redis_pool_initialized", url=redact_url(sg_redis_url))
         else:
             await cls._ensure_connected()
             if cls._client is None:

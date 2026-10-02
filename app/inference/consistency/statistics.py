@@ -1,22 +1,17 @@
 import math
 import re
-from typing import Any, Dict, List, Optional, Set, Tuple
 
-from app.inference.verification_config import (
-    get_verification_config,
-    VerificationConfig,
-)
 from app.inference.grading_definitions import (
-    _GRADING_PATTERNS,
-    _GRADE_HIERARCHY,
-    _get_lvef_grading_table,
-    _CN_CARDIAC_TO_GRADING,
-    _CN_CARDIAC_CLASS_TO_GRADING,
     _CLINICALLY_SIGNIFICANT_SUBCLASS_PAIRS,
+    _GRADE_HIERARCHY,
+)
+from app.inference.verification_config import (
+    VerificationConfig,
+    get_verification_config,
 )
 
 
-def wilson_confidence_interval(successes: int, total: int, confidence: float = 0.95) -> Tuple[float, float]:
+def wilson_confidence_interval(successes: int, total: int, confidence: float = 0.95) -> tuple[float, float]:
     if total == 0:
         return (0.0, 0.0)
     p_hat = successes / total
@@ -28,7 +23,7 @@ def wilson_confidence_interval(successes: int, total: int, confidence: float = 0
     return (max(0.0, center - margin), min(1.0, center + margin))
 
 
-def mcnemar_test(engine_a_results: List[bool], engine_b_results: List[bool]) -> Tuple[float, float]:
+def mcnemar_test(engine_a_results: list[bool], engine_b_results: list[bool]) -> tuple[float, float]:
     b = sum(1 for a, bb in zip(engine_a_results, engine_b_results) if a and not bb)
     c = sum(1 for a, bb in zip(engine_a_results, engine_b_results) if not a and bb)
     if b + c == 0:
@@ -50,7 +45,7 @@ def mcnemar_test(engine_a_results: List[bool], engine_b_results: List[bool]) -> 
     return (statistic, p_value)
 
 
-def grading_semantic_equivalent(grade_a: Optional[str], grade_b: Optional[str], organ: str) -> bool:
+def grading_semantic_equivalent(grade_a: str | None, grade_b: str | None, organ: str) -> bool:
     if grade_a is None or grade_b is None:
         return False
     if grade_a == grade_b:
@@ -70,7 +65,7 @@ def grading_semantic_equivalent(grade_a: Optional[str], grade_b: Optional[str], 
     return False
 
 
-def grading_clinically_equivalent(grade_a: Optional[str], grade_b: Optional[str], organ: str) -> bool:
+def grading_clinically_equivalent(grade_a: str | None, grade_b: str | None, organ: str) -> bool:
     if grade_a is None or grade_b is None:
         return False
     if grade_a == grade_b:
@@ -98,9 +93,9 @@ def text_similarity(text_a: str, text_b: str, max_chars: int = 500,
         return 0.0
     trunc_a = _smart_truncate(text_a, head=head, tail=tail)
     trunc_b = _smart_truncate(text_b, head=head, tail=tail)
-    def _bigrams(text: str) -> Set[str]:
+    def _bigrams(text: str) -> set[str]:
         return {text[i:i+2] for i in range(len(text) - 1)}
-    def _trigrams(text: str) -> Set[str]:
+    def _trigrams(text: str) -> set[str]:
         return {text[i:i+3] for i in range(len(text) - 2)}
     set_a_bi = _bigrams(trunc_a)
     set_b_bi = _bigrams(trunc_b)
@@ -142,7 +137,7 @@ def _levenshtein_distance(s1: str, s2: str) -> int:
 
 def text_consistency_with_grading(
     text_a: str, text_b: str,
-    grading_a: Optional[str], grading_b: Optional[str],
+    grading_a: str | None, grading_b: str | None,
     organ: str,
 ) -> bool:
     config = get_verification_config()
@@ -153,7 +148,7 @@ def text_consistency_with_grading(
 
 
 def _grades_cross_clinical_boundary(
-    grade_a: str, grade_b: str, organ: str, config: Optional[VerificationConfig] = None
+    grade_a: str, grade_b: str, organ: str, config: VerificationConfig | None = None
 ) -> bool:
     if config is None:
         config = get_verification_config()
@@ -205,7 +200,7 @@ def _numeric_fallback_match(
     grade_a: str, grade_b: str,
     from_grade: str, to_grade: str,
 ) -> bool:
-    def _extract_num(grade: str) -> Optional[float]:
+    def _extract_num(grade: str) -> float | None:
         m = re.match(r'(\d+)', grade)
         return float(m.group(1)) if m else None
     num_a = _extract_num(grade_a)

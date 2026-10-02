@@ -2,14 +2,15 @@ import asyncio
 import hashlib
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import structlog
-from sqlalchemy import select, and_
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.database import AuditLog
 from app.config.settings import settings
+from app.models.database import AuditLog
+
 from .verify_utils import verify_chain_integrity
 
 _logger = structlog.get_logger("app.observability.audit_chain.critical_audit")
@@ -24,10 +25,10 @@ class CriticalOperationAudit:
         self,
         operation: str,
         operator: str,
-        before_value: Optional[str] = None,
-        after_value: Optional[str] = None,
-        session_id: Optional[str] = None,
-        detail: Optional[Dict[str, Any]] = None,
+        before_value: str | None = None,
+        after_value: str | None = None,
+        session_id: str | None = None,
+        detail: dict[str, Any] | None = None,
     ) -> AuditLog:
         try:
             async with _critical_chain_lock:
@@ -78,7 +79,7 @@ class CriticalOperationAudit:
             _logger.error("log_critical_operation_failed", operation=operation, error=str(e), exc_info=True)
             raise
 
-    async def _get_last_critical_hash(self, operation: str) -> Optional[str]:
+    async def _get_last_critical_hash(self, operation: str) -> str | None:
         result = await self.db.execute(
             select(AuditLog)
             .where(
@@ -93,7 +94,7 @@ class CriticalOperationAudit:
         last_log = result.scalar_one_or_none()
         return last_log.hash_self if last_log else None
 
-    async def verify_critical_chain(self, operation: str) -> Tuple[bool, Optional[str], Optional[str], Optional[str]]:
+    async def verify_critical_chain(self, operation: str) -> tuple[bool, str | None, str | None, str | None]:
         result = await self.db.execute(
             select(AuditLog)
             .where(
@@ -107,7 +108,7 @@ class CriticalOperationAudit:
         logs = result.scalars().all()
         return verify_chain_integrity(logs)
 
-    async def verify_all_critical_chains(self) -> Dict[str, Tuple[bool, Optional[str], Optional[str], Optional[str]]]:
+    async def verify_all_critical_chains(self) -> dict[str, tuple[bool, str | None, str | None, str | None]]:
         result = await self.db.execute(
             select(AuditLog)
             .where(AuditLog.log_type == "critical")

@@ -1,34 +1,32 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from pydantic import BaseModel
-from typing import Optional, Dict, Any
 from datetime import timedelta
-import os
+from typing import Any
+
 import structlog
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordRequestForm
+from pydantic import BaseModel
 from sqlalchemy import select
+
+from app.config.database import get_db_session
+from app.config.settings import settings
+from app.models.database import User
 from app.security.auth import (
-    create_access_token,
-    verify_password,
-    get_password_hash,
-    get_current_user,
-    get_current_active_user,
-    RoleChecker,
-    ROLES,
     PERMISSIONS,
-    check_permission,
-    _ensure_jwt_key_exists
+    ROLES,
+    RoleChecker,
+    _ensure_jwt_key_exists,
+    create_access_token,
+    get_current_active_user,
+    verify_password,
 )
 from app.security.refresh_token import (
     create_refresh_token,
-    verify_refresh_token,
-    rotate_refresh_token,
-    revoke_refresh_token,
-    revoke_all_user_tokens,
     get_refresh_token_count,
+    revoke_all_user_tokens,
+    revoke_refresh_token,
+    rotate_refresh_token,
+    verify_refresh_token,
 )
-from app.config.settings import settings
-from app.config.database import get_db_session
-from app.models.database import User
 
 router = APIRouter()
 logger = structlog.get_logger()
@@ -38,20 +36,20 @@ class Token(BaseModel):
     access_token: str
     token_type: str
     expires_in: int
-    refresh_token: Optional[str] = None
-    user_info: Dict[str, Any]
+    refresh_token: str | None = None
+    user_info: dict[str, Any]
 
 
 class TokenData(BaseModel):
-    user_id: Optional[str] = None
+    user_id: str | None = None
 
 
 class UserResponse(BaseModel):
     username: str
-    email: Optional[str] = None
-    full_name: Optional[str] = None
-    disabled: Optional[bool] = None
-    role: Optional[str] = None
+    email: str | None = None
+    full_name: str | None = None
+    disabled: bool | None = None
+    role: str | None = None
 
 
 class UserInDB(UserResponse):
@@ -67,7 +65,7 @@ class RefreshTokenRequest(BaseModel):
     refresh_token: str
 
 
-async def get_user_by_username(username: str) -> Optional[UserInDB]:
+async def get_user_by_username(username: str) -> UserInDB | None:
     async for db_session in get_db_session():
         result = await db_session.execute(
             select(User).where(User.username == username)
@@ -95,7 +93,7 @@ async def authenticate_user(username: str, password: str):
     return user
 
 
-def _build_user_info(user) -> Dict[str, Any]:
+def _build_user_info(user) -> dict[str, Any]:
     return {
         "username": user.username,
         "full_name": user.full_name,
@@ -180,7 +178,7 @@ async def login(login_request: LoginRequest):
 
 
 @router.get("/verify-token")
-async def verify_token(current_user: Dict[str, Any] = Depends(get_current_active_user)):
+async def verify_token(current_user: dict[str, Any] = Depends(get_current_active_user)):
     return {
         "valid": True,
         "user_id": current_user.get("user_id"),
@@ -202,7 +200,7 @@ async def refresh_token(refresh_request: RefreshTokenRequest):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired refresh token",
             headers={"WWW-Authenticate": "Bearer"},
-        )
+        ) from e
 
     token_data = await verify_refresh_token(new_token_id)
     if not token_data:
@@ -232,7 +230,7 @@ async def refresh_token(refresh_request: RefreshTokenRequest):
 @router.post("/revoke-refresh-token")
 async def revoke_token(
     refresh_request: RefreshTokenRequest,
-    current_user: Dict[str, Any] = Depends(get_current_active_user)
+    current_user: dict[str, Any] = Depends(get_current_active_user)
 ):
     token_data = await verify_refresh_token(refresh_request.refresh_token)
     if token_data:
@@ -259,7 +257,7 @@ async def revoke_token(
 
 
 @router.post("/revoke-all-tokens")
-async def revoke_all_tokens(current_user: Dict[str, Any] = Depends(get_current_active_user)):
+async def revoke_all_tokens(current_user: dict[str, Any] = Depends(get_current_active_user)):
     user_id = current_user.get("user_id") or current_user.get("username")
 
     revoked_count = await revoke_all_user_tokens(user_id)
@@ -273,7 +271,7 @@ async def revoke_all_tokens(current_user: Dict[str, Any] = Depends(get_current_a
 
 @router.get("/token-stats")
 async def get_token_stats(
-    current_user: Dict[str, Any] = Depends(
+    current_user: dict[str, Any] = Depends(
         RoleChecker(["SYSTEM_ADMIN"])
     )
 ):
@@ -288,7 +286,7 @@ async def get_token_stats(
 
 
 @router.get("/users/me", response_model=UserResponse)
-async def read_users_me(current_user: Dict[str, Any] = Depends(get_current_active_user)):
+async def read_users_me(current_user: dict[str, Any] = Depends(get_current_active_user)):
     return UserResponse(
         username=current_user.get("username"),
         email=current_user.get("email"),
@@ -299,12 +297,12 @@ async def read_users_me(current_user: Dict[str, Any] = Depends(get_current_activ
 
 
 @router.get("/roles")
-async def get_roles(current_user: Dict[str, Any] = Depends(get_current_active_user)):
+async def get_roles(current_user: dict[str, Any] = Depends(get_current_active_user)):
     return {"roles": ROLES}
 
 
 @router.get("/permissions")
-async def get_permissions(current_user: Dict[str, Any] = Depends(get_current_active_user)):
+async def get_permissions(current_user: dict[str, Any] = Depends(get_current_active_user)):
     user_role = current_user.get("role")
     permissions = PERMISSIONS.get(user_role, [])
     return {
@@ -315,8 +313,8 @@ async def get_permissions(current_user: Dict[str, Any] = Depends(get_current_act
 
 @router.get("/protected/test")
 async def protected_test(
-    current_user: Dict[str, Any] = Depends(get_current_active_user),
-    _: Dict[str, Any] = Depends(RoleChecker(["ULTRASOUND_DOCTOR", "DEPARTMENT_HEAD"]))
+    current_user: dict[str, Any] = Depends(get_current_active_user),
+    _: dict[str, Any] = Depends(RoleChecker(["ULTRASOUND_DOCTOR", "DEPARTMENT_HEAD"]))
 ):
     return {"message": "This is a protected endpoint", "user": current_user}
 
@@ -328,7 +326,7 @@ class NavTokenExchangeRequest(BaseModel):
 @router.post("/nav-token")
 async def exchange_nav_token(
     request: NavTokenExchangeRequest,
-    current_user: Dict[str, Any] = Depends(get_current_active_user),
+    current_user: dict[str, Any] = Depends(get_current_active_user),
 ):
     """JWT → 导航 WS nav token 交换端点（审计 P0-2）。
 
@@ -361,7 +359,7 @@ async def exchange_nav_token(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to issue navigation token",
-        )
+        ) from exc
 
     logger.info(
         "nav_token_exchanged",

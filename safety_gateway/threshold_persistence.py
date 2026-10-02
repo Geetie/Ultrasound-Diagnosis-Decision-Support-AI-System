@@ -1,3 +1,5 @@
+import asyncio
+
 import structlog
 from sqlalchemy import delete, select
 
@@ -103,7 +105,6 @@ class ThresholdPersistence:
 
     @staticmethod
     def handle_persist_result(task: "asyncio.Task") -> None:
-        import asyncio
         try:
             task.result()
         except Exception as e:

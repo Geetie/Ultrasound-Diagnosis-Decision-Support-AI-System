@@ -3,13 +3,13 @@ from __future__ import annotations
 import asyncio
 import time
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from .protocols import InferenceEngine
 from .hallucination_detector import HallucinationDetector
+from .protocols import InferenceEngine
 
 
-def _percentile(values: List[float], p: int) -> float:
+def _percentile(values: list[float], p: int) -> float:
     if not values:
         return 0.0
     sorted_vals = sorted(values)
@@ -35,7 +35,7 @@ class SustainedLoadTestReport:
     total_requests: int = 0
     total_errors: int = 0
     total_hallucinations: int = 0
-    windows: List[TimeWindowStats] = field(default_factory=list)
+    windows: list[TimeWindowStats] = field(default_factory=list)
     latency_degradation_pct: float = 0.0
     hallucination_drift: float = 0.0
     passed: bool = False
@@ -45,7 +45,7 @@ class SustainedLoadTest:
     def __init__(
         self,
         engine: InferenceEngine,
-        hallucination_detector: Optional[HallucinationDetector] = None,
+        hallucination_detector: HallucinationDetector | None = None,
         window_seconds: float = 300.0,
         max_latency_degradation_pct: float = 20.0,
         max_hallucination_drift: float = 0.005,
@@ -58,7 +58,7 @@ class SustainedLoadTest:
 
     async def run(
         self,
-        cases: List[Dict[str, Any]],
+        cases: list[dict[str, Any]],
         duration_seconds: float = 14400.0,
         interval_seconds: float = 1.0,
     ) -> SustainedLoadTestReport:
@@ -66,7 +66,7 @@ class SustainedLoadTest:
         report = SustainedLoadTestReport(duration_seconds=duration_seconds)
 
         window_start = start_time
-        window_latencies: List[float] = []
+        window_latencies: list[float] = []
         window_errors = 0
         window_requests = 0
         window_hallucinations = 0

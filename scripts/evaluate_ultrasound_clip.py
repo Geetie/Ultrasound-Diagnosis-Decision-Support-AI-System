@@ -7,6 +7,15 @@
         --test-dataset-path ./data/busi_test \\
         --k 10
 
+    # 直接用真实公开数据集（US-365K 的 jsonl，字段为 image/caption，无 label）
+    python scripts/evaluate_ultrasound_clip.py \\
+        --model-path <本地权重> \\
+        --test-dataset-path data/external/us365k/test.jsonl \\
+        --max-samples 8 --device cpu
+
+    # 注意：数据集路径不存在时**默认报错退出**（不会再用合成样本糊过去）；
+    # 仅冒烟测试可显式加 --allow-synthetic。
+
 输出:
     - I2T@k 分数
     - top-k 准确率
@@ -17,7 +26,6 @@
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from pathlib import Path
 
@@ -48,6 +56,13 @@ def parse_args() -> argparse.Namespace:
         help="使用 HuggingFace datasets 后端",
     )
     parser.add_argument(
+        "--allow-synthetic", action="store_true",
+        help=(
+            "冒烟专用：数据集路径不存在时允许用合成占位样本（默认关闭）。"
+            "开启后产出的指标**没有意义**，禁止用于验收/汇报。"
+        ),
+    )
+    parser.add_argument(
         "--output", default="eval_report.json",
         help="评估报告输出路径(默认 eval_report.json)",
     )
@@ -58,8 +73,18 @@ def main() -> int:
     args = parse_args()
 
     print(f"[INFO] 加载测试集: {args.test_dataset_path}")
-    adapter = BUSIAdapter(dataset_path=args.test_dataset_path, use_hf=args.use_hf)
-    test_samples = adapter.load(max_samples=args.max_samples)
+    adapter = BUSIAdapter(
+        dataset_path=args.test_dataset_path,
+        use_hf=args.use_hf,
+        allow_synthetic=args.allow_synthetic,
+    )
+    try:
+        test_samples = adapter.load(max_samples=args.max_samples)
+    except FileNotFoundError as exc:
+        # 退出码 4：**数据集侧**失败（区别于 2=模型加载失败 / 3=评估失败）。
+        # 明确失败而不是用合成样本产出一份"看起来正常"的报告。
+        print(f"[ERROR] {exc}")
+        return 4
     print(f"[INFO] 测试样本数: {len(test_samples)}")
 
     if not test_samples:

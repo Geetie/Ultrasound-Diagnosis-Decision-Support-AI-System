@@ -25,8 +25,6 @@ from __future__ import annotations
 
 import asyncio
 import time
-from contextlib import asynccontextmanager
-from typing import List, Optional
 
 import structlog
 
@@ -41,10 +39,10 @@ logger = structlog.get_logger("app.services.diagnosis_worker")
 # 全局 worker 池状态
 # ----------------------------------------------------------------------
 
-_workers: List[asyncio.Task] = []
+_workers: list[asyncio.Task] = []
 _worker_pool_started: bool = False
 _worker_pool_lock = asyncio.Lock()
-_fallback_queue: Optional[asyncio.Queue] = None  # Redis 不可用时降级
+_fallback_queue: asyncio.Queue | None = None  # Redis 不可用时降级
 
 
 def _get_fallback_queue() -> asyncio.Queue:
@@ -114,7 +112,7 @@ async def enqueue_diagnosis(request_id: str) -> bool:
         return False
 
 
-async def _dequeue_with_timeout(timeout: int) -> Optional[str]:
+async def _dequeue_with_timeout(timeout: int) -> str | None:
     """从 Redis BLPOP（带超时），失败时回退到 in-process queue。
 
     Args:
@@ -148,7 +146,12 @@ async def _dequeue_with_timeout(timeout: int) -> Optional[str]:
             return await asyncio.wait_for(q.get(), timeout=1.0)
         except asyncio.TimeoutError:
             return None
-        except Exception:
+        except Exception as exc:
+            logger.warning(
+            "worker_blpop_fallback_failed",
+            error=str(exc),
+            error_type=type(exc).__name__,
+        )
             return None
 
 
@@ -265,8 +268,12 @@ async def _clear_retry_count(request_id: str) -> None:
     try:
         client = await RedisPool.get_client()
         await client.delete(RedisKey.diagnosis_retry_count(request_id))
-    except Exception:
-        pass  # best-effort
+    except Exception as exc:
+        logger.warning(
+            "diagnosis_worker_shutdown_task_failed",
+            error=str(exc),
+            error_type=type(exc).__name__,
+        )  # best-effort
 
 
 # ----------------------------------------------------------------------
@@ -274,7 +281,7 @@ async def _clear_retry_count(request_id: str) -> None:
 # ----------------------------------------------------------------------
 
 
-async def start_worker_pool(app, n: Optional[int] = None) -> None:
+async def start_worker_pool(app, n: int | None = None) -> None:
     """启动 N 个 worker 协程（默认从 settings 读取）。
 
     Args:
@@ -345,8 +352,8 @@ def get_active_worker_count() -> int:
 
 __all__ = [
     "enqueue_diagnosis",
+    "get_active_worker_count",
+    "is_worker_pool_started",
     "start_worker_pool",
     "stop_worker_pool",
-    "is_worker_pool_started",
-    "get_active_worker_count",
 ]

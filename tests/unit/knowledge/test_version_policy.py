@@ -3,9 +3,8 @@ from __future__ import annotations
 
 import pytest
 
+from app.knowledge.version import parse_kb_version
 from app.knowledge.version_policy import KBVersionPolicy, UpdateSeverity
-from app.knowledge.version import KBVersion, parse_kb_version
-
 
 # ------------------------------------------------------------------
 # 4 步判定链测试

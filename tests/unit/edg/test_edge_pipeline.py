@@ -1,5 +1,5 @@
 """边缘端主流程编排（推理 + 温度门控 + 隔离门控 + 上行）单测。"""
-from typing import Any, Dict, List
+from typing import Any
 
 import numpy as np
 import pytest
@@ -36,7 +36,7 @@ class _FakeBackend:
 
 class _FakeUplink:
     def __init__(self, fail=False):
-        self.pushed: List[Any] = []
+        self.pushed: list[Any] = []
         self.fail = fail
 
     async def push_nav_result(self, result) -> bool:
@@ -50,7 +50,7 @@ class _FakeTransport:
     def __init__(self, fail=False):
         self.fail = fail
 
-    async def post(self, path: str, payload: Dict[str, Any]):
+    async def post(self, path: str, payload: dict[str, Any]):
         if self.fail:
             raise ConnectionError("backend unreachable")
         return {"status": "ok"}

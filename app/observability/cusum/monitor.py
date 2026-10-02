@@ -5,8 +5,9 @@
 """
 
 import threading
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 
 import structlog
 
@@ -23,7 +24,7 @@ class CUSUMState:
     total_observations: int = 0
     total_severe: int = 0
     alert_triggered: bool = False
-    last_reset_time: Optional[float] = None
+    last_reset_time: float | None = None
 
 
 @dataclass
@@ -37,22 +38,22 @@ class CUSUMConfig:
 
 class CUSUMMonitor:
 
-    def __init__(self, config: Optional[CUSUMConfig] = None):
+    def __init__(self, config: CUSUMConfig | None = None):
         self._config = config or CUSUMConfig(
             target_rate=settings.obs_cusum_target_rate,
             decision_threshold=settings.obs_cusum_decision_threshold,
         )
         self._state = CUSUMState()
-        self._alert_callbacks: List[Callable] = []
-        self._weekly_rate_exceeded_callbacks: List[Callable] = []
-        self._weekly_stats: List[Dict[str, Any]] = []
-        self._biweekly_stats: List[Dict[str, Any]] = []
-        self._monthly_stats: List[Dict[str, Any]] = []
-        self._alert_escalation_callback: Optional[Callable[[str, str, float, float, str], None]] = None
+        self._alert_callbacks: list[Callable] = []
+        self._weekly_rate_exceeded_callbacks: list[Callable] = []
+        self._weekly_stats: list[dict[str, Any]] = []
+        self._biweekly_stats: list[dict[str, Any]] = []
+        self._monthly_stats: list[dict[str, Any]] = []
+        self._alert_escalation_callback: Callable[[str, str, float, float, str], None] | None = None
         self._lock = threading.Lock()
 
-    def update(self, is_severe_hallucination: bool) -> Dict[str, Any]:
-        pending_notifications: List[tuple] = []
+    def update(self, is_severe_hallucination: bool) -> dict[str, Any]:
+        pending_notifications: list[tuple] = []
         with self._lock:
             self._state.total_observations += 1
             if is_severe_hallucination:
@@ -119,7 +120,7 @@ class CUSUMMonitor:
             self._state = CUSUMState()
             _logger.info("cusum_reset")
 
-    def get_state(self) -> Dict[str, Any]:
+    def get_state(self) -> dict[str, Any]:
         with self._lock:
             return {
                 "s_plus": self._state.s_plus,
@@ -188,7 +189,7 @@ class CUSUMMonitor:
                 severe=severe,
             )
 
-    def record_monthly_stats(self, month: int, total: int, hallucinations: int) -> List[str]:
+    def record_monthly_stats(self, month: int, total: int, hallucinations: int) -> list[str]:
         rate = hallucinations / max(total, 1)
         with self._lock:
             self._monthly_stats.append({
@@ -242,7 +243,7 @@ class CUSUMMonitor:
     def register_alert_escalation_callback(self, callback: Callable[[str, str, float, float, str], None]) -> None:
         self._alert_escalation_callback = callback
 
-    def check_compact_rules(self) -> List[str]:
+    def check_compact_rules(self) -> list[str]:
         with self._lock:
             weekly_snapshot = list(self._weekly_stats)
             biweekly_snapshot = list(self._biweekly_stats)

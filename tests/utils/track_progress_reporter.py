@@ -145,9 +145,9 @@ class SourceChangeDetector:
         cache_file = os.path.join(self._cache_dir, "source_hashes.json")
         try:
             if os.path.exists(cache_file):
-                with open(cache_file, "r", encoding="utf-8") as f:
+                with open(cache_file, encoding="utf-8") as f:
                     return json.load(f)
-        except (json.JSONDecodeError, IOError):
+        except (OSError, json.JSONDecodeError):
             pass
         return {}
 
@@ -184,6 +184,7 @@ class SourceChangeDetector:
 
     def check_and_skip(self, items, config, env_var, marker_name, key, source_files):
         import os
+
         import pytest
         skip_enabled = os.environ.get(env_var, "false").lower() == "true"
         if not skip_enabled:

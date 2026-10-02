@@ -1,16 +1,10 @@
 """Shared fixtures for AGT track tests."""
 from __future__ import annotations
 
-from typing import Any, List, Optional
-from unittest.mock import AsyncMock
-
 import pytest
 
 from app.agents.protocols import Agent, AgentContext, AgentResponse
 from app.inference.protocols import (
-    InferenceEngine,
-    InferenceError,
-    InferenceErrorCode,
     InferenceRequest,
     InferenceResponse,
     ModelInfo,
@@ -18,7 +12,6 @@ from app.inference.protocols import (
 )
 from app.knowledge.protocols import KnowledgeChunk
 from app.models.schemas import Organ
-
 
 # ----------------------------------------------------------------------
 # helpers
@@ -43,7 +36,7 @@ def make_chunk(
     )
 
 
-def make_chunks(n: int, organ: str = "thyroid") -> List[KnowledgeChunk]:
+def make_chunks(n: int, organ: str = "thyroid") -> list[KnowledgeChunk]:
     """构造 n 个知识 chunk（用于 specialist 测试）。"""
     return [
         KnowledgeChunk(
@@ -70,8 +63,8 @@ class FakeSpecialist(Agent):
         organ: Organ,
         content: str = "ok",
         confidence: float = 0.8,
-        evidence: Optional[List[str]] = None,
-        raise_exc: Optional[Exception] = None,
+        evidence: list[str] | None = None,
+        raise_exc: Exception | None = None,
         healthy: bool = True,
     ) -> None:
         self._name = name
@@ -96,7 +89,7 @@ class FakeSpecialist(Agent):
             reasoning_trace=[f"{self._name}_done"],
         )
 
-    def get_capability_tags(self) -> List[str]:
+    def get_capability_tags(self) -> list[str]:
         return [self._organ.value, "specialist"]
 
     async def health_check(self) -> bool:
@@ -115,7 +108,7 @@ class FakeSpecialist(Agent):
 class FakeRAGService:
     """可配置的 RAG service 替身：默认返回空结果，可注入异常。"""
 
-    def __init__(self, chunks: Optional[List[KnowledgeChunk]] = None, raise_exc: Optional[Exception] = None) -> None:
+    def __init__(self, chunks: list[KnowledgeChunk] | None = None, raise_exc: Exception | None = None) -> None:
         self._chunks = chunks or []
         self._raise = raise_exc
         self.retrieve_call_count = 0
@@ -126,7 +119,7 @@ class FakeRAGService:
         self.last_request = request
         if self._raise is not None:
             raise self._raise
-        from app.rag.protocols import RetrievalResult, ScoredChunk, RetrievalMethod
+        from app.rag.protocols import RetrievalMethod, RetrievalResult, ScoredChunk
         return RetrievalResult(
             chunks=[
                 ScoredChunk(
@@ -156,7 +149,7 @@ class FakeRedis:
         self.get_count = 0
         self.setex_count = 0
 
-    async def get_client(self) -> "FakeRedis":
+    async def get_client(self) -> FakeRedis:
         return self
 
     async def get(self, key: str):
@@ -193,8 +186,8 @@ class FakeKnowledgeAgent:
 
     def __init__(
         self,
-        chunks: Optional[List[KnowledgeChunk]] = None,
-        raise_exc: Optional[Exception] = None,
+        chunks: list[KnowledgeChunk] | None = None,
+        raise_exc: Exception | None = None,
     ) -> None:
         self._chunks = chunks if chunks is not None else make_chunks(3)
         self._raise = raise_exc
@@ -208,7 +201,7 @@ class FakeKnowledgeAgent:
         query: str,
         organ: Organ,
         top_k: int = 10,
-    ) -> List[KnowledgeChunk]:
+    ) -> list[KnowledgeChunk]:
         self.query_call_count += 1
         self.last_query = query
         self.last_organ = organ
@@ -236,14 +229,14 @@ class FakeInferenceEngine:
     def __init__(
         self,
         text: str = "TR4",
-        raise_exc: Optional[Exception] = None,
+        raise_exc: Exception | None = None,
         latency_ms: float = 0.0,
     ) -> None:
         self.text = text
         self.raise_exc = raise_exc
         self.latency_ms = latency_ms
         self.generate_call_count = 0
-        self.last_request: Optional[InferenceRequest] = None
+        self.last_request: InferenceRequest | None = None
 
     async def generate(self, request: InferenceRequest) -> InferenceResponse:
         self.generate_call_count += 1

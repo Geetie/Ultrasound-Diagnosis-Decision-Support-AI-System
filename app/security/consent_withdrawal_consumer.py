@@ -1,9 +1,9 @@
 import asyncio
-import structlog
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import List, Optional
+
+import structlog
 
 logger = structlog.get_logger()
 
@@ -54,9 +54,10 @@ class SafetyActionHandler(ConsentWithdrawalHandler):
 
         if redis_client is not None:
             try:
+                from sqlalchemy import select
+
                 from app.config.database import get_session
                 from app.models.database import DiagnosisSession
-                from sqlalchemy import select, update
 
                 async for db_session in get_session():
                     result = await db_session.execute(
@@ -83,17 +84,25 @@ class SafetyActionHandler(ConsentWithdrawalHandler):
                             patient_id=event.patient_id, error=str(e))
 
             try:
+                # wiring-audit P2-2：此通知频道当前无订阅者（前端/边缘侧语义
+                # 待产品确认）。发布保留——Streams/ Pub/Sub 语义上无害，若产品
+                # 确认"通知患者端"由轮询兜底，可移除此发布并删除常量。
                 await redis_client.publish(
                     RedisKey.CONSENT_WITHDRAWAL_NOTIFICATION,
                     event.patient_id,
                 )
                 logger.info("consent_withdrawal_notification_published",
-                           patient_id=event.patient_id)
+                           patient_id=event.patient_id,
+                           note="no subscriber registered (P2-2 pending product decision)")
             except Exception as e:
                 logger.error("failed_to_publish_withdrawal_notification",
                             patient_id=event.patient_id, error=str(e))
 
             try:
+                # wiring-audit P2-2：edge_stop_ai_annotation 同样无订阅方
+                # （edge/ 未实现该频道的消费）。撤回后停止边缘标注的实际兜底
+                # 由在途诊断取消（下方 cancel_for_patient）+ 轮询会话状态实现；
+                # 是否补 edge 侧订阅待产品确认。
                 cursor = 0
                 while True:
                     cursor, keys = await redis_client.scan(
@@ -107,7 +116,8 @@ class SafetyActionHandler(ConsentWithdrawalHandler):
                             event.patient_id,
                         )
                         logger.info("edge_stop_ai_annotation_published",
-                                   session_id=session_id, patient_id=event.patient_id)
+                                   session_id=session_id, patient_id=event.patient_id,
+                                   note="no edge-side subscriber registered (P2-2)")
                     if cursor == 0:
                         break
                     await asyncio.sleep(0)
@@ -115,9 +125,26 @@ class SafetyActionHandler(ConsentWithdrawalHandler):
                 logger.error("failed_to_notify_edge_stop_annotation",
                             patient_id=event.patient_id, error=str(e))
 
+        # T-G1-INT-06：取消该患者的在途诊断。
+        # 仅标记 session 是不够的——已在跑的那次诊断会继续算完并写库，医生在
+        # 撤回后仍可能看到基于已撤回同意的结论；这里直接把在途任务打断。
         try:
-            from app.services.audit_service import AuditService
+            from app.services.inflight_diagnosis import get_inflight_registry
+
+            cancelled = get_inflight_registry().cancel_for_patient(event.patient_id)
+            if cancelled:
+                logger.info(
+                    "consent_withdrawal_inflight_diagnosis_cancelled",
+                    patient_id=event.patient_id,
+                    request_ids=cancelled,
+                )
+        except Exception as e:
+            logger.error("failed_to_cancel_inflight_diagnosis",
+                        patient_id=event.patient_id, error=str(e))
+
+        try:
             from app.config.database import get_session
+            from app.services.audit_service import AuditService
             async for _db in get_session():
                 audit_svc = AuditService(_db)
                 await audit_svc.log_action(
@@ -141,12 +168,21 @@ class SafetyActionHandler(ConsentWithdrawalHandler):
 
 
 class SchedulingAgentHandler(ConsentWithdrawalHandler):
+    """排程智能体联动（wiring-audit P2-3：半成品接入，显式禁用）。
+
+    排程系统尚未对接；此 handler **不得**注册进
+    ``create_consent_withdrawal_consumer`` 的默认 handler 列表——
+    注册后每次撤回都会抛 NotImplementedError 进入死信流。
+    当前实现为显式 no-op + 日志留痕，接入排程系统时替换 handle_withdrawal。
+    """
+
     async def handle_withdrawal(self, event: ConsentWithdrawalEvent) -> None:
-        logger.info("scheduling_agent_handler_withdrawal_received",
-                    patient_id=event.patient_id,
-                    event_id=event.event_id,
-                    status="integration_pending")
-        raise NotImplementedError("SchedulingAgentHandler must be implemented before production use")
+        logger.warning(
+            "scheduling_agent_handler_disabled",
+            patient_id=event.patient_id,
+            event_id=event.event_id,
+            status="explicitly_disabled_no_scheduling_integration",
+        )
 
     def get_handler_name(self) -> str:
         return "scheduling_agent_pending"
@@ -181,9 +217,10 @@ class DataCleanupHandler(ConsentWithdrawalHandler):
                         patient_id=event.patient_id, error=str(e))
 
         try:
+            from sqlalchemy import select
+
             from app.config.database import get_session
             from app.models.database import DiagnosisSession
-            from sqlalchemy import select, update
 
             async for db_session in get_session():
                 result = await db_session.execute(
@@ -206,8 +243,8 @@ class DataCleanupHandler(ConsentWithdrawalHandler):
                         patient_id=event.patient_id, error=str(e))
 
         try:
-            from app.services.audit_service import AuditService
             from app.config.database import get_session
+            from app.services.audit_service import AuditService
             async for _db in get_session():
                 audit_svc = AuditService(_db)
                 await audit_svc.log_action(
@@ -230,10 +267,10 @@ class DataCleanupHandler(ConsentWithdrawalHandler):
 
 
 class ConsentWithdrawalConsumer:
-    def __init__(self, handlers: List[ConsentWithdrawalHandler]) -> None:
+    def __init__(self, handlers: list[ConsentWithdrawalHandler]) -> None:
         self._handlers = handlers
         self._running = False
-        self._consumer_task: Optional[asyncio.Task] = None
+        self._consumer_task: asyncio.Task | None = None
 
     async def start(self) -> None:
         if self._running:
@@ -337,6 +374,8 @@ class ConsentWithdrawalConsumer:
                                 patient_id=event.patient_id,
                                 error=str(e))
 
+            self._record_e2e_latency(event)
+
             logger.info("consent_withdrawal_event_processed",
                        patient_id=event.patient_id, event_id=event.event_id)
 
@@ -344,6 +383,49 @@ class ConsentWithdrawalConsumer:
             logger.error("consent_withdrawal_event_processing_failed",
                         msg_id=msg_id, error=str(e))
             await self._handle_processing_error(msg_id, fields, e)
+
+    @staticmethod
+    def _record_e2e_latency(event: ConsentWithdrawalEvent) -> None:
+        """T-G1-INT-06：撤回生效时延 = withdrawn_at -> 各处理器执行完毕。
+
+        验收线是"撤回后 <500ms 生效"，所以计时起点取**医生点撤回的时刻**
+        （流消息里的 withdrawn_at），不是消费者读到消息的时刻——把队列积压
+        排除在计时之外，指标就永远好看，而医生感受到的延迟才是真延迟。
+        """
+        from app.config.settings import settings
+
+        withdrawn_at = event.withdrawn_at
+        if withdrawn_at.tzinfo is None:
+            # 上游（API 端）可能写入 naive UTC 时间戳，不补时区会直接 TypeError
+            withdrawn_at = withdrawn_at.replace(tzinfo=timezone.utc)
+
+        elapsed_seconds = (datetime.now(timezone.utc) - withdrawn_at).total_seconds()
+        target_seconds = settings.consent_withdrawal_e2e_latency_target_ms / 1000.0
+
+        try:
+            from app.observability.metrics_collector import get_metrics_collector
+
+            get_metrics_collector().record_consent_withdrawal_latency(
+                elapsed_seconds, target_seconds
+            )
+        except Exception as exc:
+            logger.warning("consent_withdrawal_metric_failed", error=str(exc))
+
+        if elapsed_seconds > target_seconds:
+            logger.warning(
+                "consent_withdrawal_e2e_latency_exceeded_target",
+                patient_id=event.patient_id,
+                event_id=event.event_id,
+                elapsed_ms=round(elapsed_seconds * 1000.0, 2),
+                target_ms=settings.consent_withdrawal_e2e_latency_target_ms,
+            )
+        else:
+            logger.info(
+                "consent_withdrawal_e2e_latency",
+                patient_id=event.patient_id,
+                event_id=event.event_id,
+                elapsed_ms=round(elapsed_seconds * 1000.0, 2),
+            )
 
     async def _handle_processing_error(
         self, msg_id: bytes, fields: dict, error: Exception
@@ -372,7 +454,7 @@ class ConsentWithdrawalConsumer:
 async def create_consent_withdrawal_consumer() -> ConsentWithdrawalConsumer:
     from app.config.settings import settings
 
-    handlers: List[ConsentWithdrawalHandler] = []
+    handlers: list[ConsentWithdrawalHandler] = []
     handler_names = getattr(settings, 'consent_withdrawal_handlers', None)
     if handler_names is None:
         handler_names = ["safety_action", "data_cleanup"]

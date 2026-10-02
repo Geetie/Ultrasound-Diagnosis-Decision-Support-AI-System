@@ -25,13 +25,11 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
 
 from app.agents.protocols import AgentResponse
-from app.models.schemas import Organ
-
 
 # ----------------------------------------------------------------------
 # 冲突类型
@@ -101,16 +99,16 @@ class ConflictReport(BaseModel):
     """
 
     has_conflict: bool = False
-    conflict_types: List[ConflictType] = Field(default_factory=list)
-    conflicting_responses: List[AgentResponse] = Field(default_factory=list)
+    conflict_types: list[ConflictType] = Field(default_factory=list)
+    conflicting_responses: list[AgentResponse] = Field(default_factory=list)
     resolution_suggestion: ConflictResolution = ConflictResolution.KEEP_HIGHEST_CONFIDENCE
     detail: str = ""
 
     @field_validator("conflict_types")
     @classmethod
     def _conflict_types_consistent_with_has_conflict(
-        cls, v: List[ConflictType], info: Any
-    ) -> List[ConflictType]:
+        cls, v: list[ConflictType], info: Any
+    ) -> list[ConflictType]:
         """``conflict_types`` 非空时必须 ``has_conflict=True``，反之亦然。"""
         # Pydantic v1/v2 兼容：info.data 在 v2 是 dict，v1 是 ValuesView
         has_conflict = getattr(info, "data", {}).get("has_conflict", False)
@@ -135,14 +133,14 @@ class ConsistencyCheckResult(BaseModel):
 
     is_consistent: bool = True
     severity: ConsistencySeverity = ConsistencySeverity.INFO
-    inconsistent_organ_pairs: List[Tuple[str, str]] = Field(default_factory=list)
+    inconsistent_organ_pairs: list[tuple[str, str]] = Field(default_factory=list)
     compared_with_prior: bool = False
     compared_with_guidelines: bool = False
     detail: str = ""
 
     @field_validator("inconsistent_organ_pairs")
     @classmethod
-    def _pairs_well_formed(cls, v: List[Tuple[str, str]]) -> List[Tuple[str, str]]:
+    def _pairs_well_formed(cls, v: list[tuple[str, str]]) -> list[tuple[str, str]]:
         for pair in v:
             if not isinstance(pair, (list, tuple)) or len(pair) != 2:
                 raise ValueError(
@@ -171,9 +169,9 @@ class FusionRequest(BaseModel):
         use_crag: Self-RAG 失败后是否触发 CRAG（默认 True）。
     """
 
-    agent_responses: List[AgentResponse] = Field(default_factory=list)
-    prior_diagnosis: Optional[Dict[str, Any]] = None
-    clinical_context: Dict[str, Any] = Field(default_factory=dict)
+    agent_responses: list[AgentResponse] = Field(default_factory=list)
+    prior_diagnosis: dict[str, Any] | None = None
+    clinical_context: dict[str, Any] = Field(default_factory=dict)
     request_id: str = ""
     session_id: str = ""
     use_self_rag: bool = True
@@ -181,7 +179,7 @@ class FusionRequest(BaseModel):
 
     @field_validator("agent_responses")
     @classmethod
-    def _responses_optional(cls, v: List[AgentResponse]) -> List[AgentResponse]:
+    def _responses_optional(cls, v: list[AgentResponse]) -> list[AgentResponse]:
         # 允许空列表：FusionEngineImpl 内部会返回占位响应
         return list(v) if v is not None else []
 
@@ -209,29 +207,29 @@ class FusionResult(BaseModel):
     # Pydantic 允许任意类型（SelfRAGEvalResult 是 dataclass）
     model_config = {"arbitrary_types_allowed": True}
 
-    final_response: Optional[AgentResponse] = None
+    final_response: AgentResponse | None = None
     conflict_report: ConflictReport = Field(default_factory=ConflictReport)
     consistency_result: ConsistencyCheckResult = Field(default_factory=ConsistencyCheckResult)
-    self_rag_passed: Optional[bool] = None
-    self_rag_score: Optional[float] = None
+    self_rag_passed: bool | None = None
+    self_rag_score: float | None = None
     # P0-2 修复：保存完整评估结果，service.py 复用而非伪造
-    self_rag_result: Optional[Any] = None
+    self_rag_result: Any | None = None
     crag_triggered: bool = False
     crag_recovered: bool = False
     needs_review: bool = False
-    review_reason: Optional[str] = None
+    review_reason: str | None = None
     total_latency_ms: float = 0.0
 
     @field_validator("self_rag_score")
     @classmethod
-    def _score_in_range(cls, v: Optional[float]) -> Optional[float]:
+    def _score_in_range(cls, v: float | None) -> float | None:
         if v is not None and (v < 0.0 or v > 5.0):
             raise ValueError("self_rag_score must be in [0.0, 5.0]")
         return v
 
     @field_validator("review_reason")
     @classmethod
-    def _review_reason_valid(cls, v: Optional[str]) -> Optional[str]:
+    def _review_reason_valid(cls, v: str | None) -> str | None:
         if v is not None and v not in _ALLOWED_REVIEW_REASONS:
             # 不抛错 — 兼容未来扩展；只 log warning（由调用方负责）
             return v
@@ -303,12 +301,12 @@ class FusionEngine(ABC):
 
 
 __all__ = [
-    "ConflictType",
-    "ConflictResolution",
     "ConflictReport",
-    "ConsistencySeverity",
+    "ConflictResolution",
+    "ConflictType",
     "ConsistencyCheckResult",
+    "ConsistencySeverity",
+    "FusionEngine",
     "FusionRequest",
     "FusionResult",
-    "FusionEngine",
 ]

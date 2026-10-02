@@ -16,8 +16,6 @@ Covers:
 from __future__ import annotations
 
 import json
-import re
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -38,12 +36,10 @@ from app.embedding.pgvector_client import (  # noqa: E402
     _validate_meta_key,
 )
 from app.embedding.protocols import (  # noqa: E402
-    SearchResult,
     VectorIndexError,
     VectorIndexErrorCode,
     VectorRecord,
 )
-
 
 # ---------------------------------------------------------------------------
 # Collection / metadata key validation
@@ -259,7 +255,9 @@ class TestSearch:
             filter={"organ": "thyroid"},
         )
         sql = conn.fetch.call_args.args[0]
-        assert "WHERE metadata->>organ" in sql
+        # 键必须带单引号（JSON 字符串字面量）：不带引号 PG 会把 organ 当**列名**
+        # 解析 → `column "organ" does not exist`（真机 2026-09-29 实测）。
+        assert "WHERE metadata->>'organ'" in sql
         assert "$1::text" in sql
         # conn.fetch was called as fetch(sql, "thyroid", [0.1, 0.2], 10)
         # (the *query_params in the source unpacks the param list).

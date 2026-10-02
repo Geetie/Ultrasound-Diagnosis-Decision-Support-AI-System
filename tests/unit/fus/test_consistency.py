@@ -8,15 +8,11 @@
 """
 from __future__ import annotations
 
-from typing import Optional
-
 import pytest
 
 pytestmark = [pytest.mark.track_fus]
 
 from app.fusion.consistency import (
-    DEFAULT_PRIOR_CONFIDENCE_GAP_CRITICAL,
-    DEFAULT_PRIOR_CONFIDENCE_GAP_WARNING,
     ConsistencyChecker,
 )
 from app.fusion.protocols import (
@@ -29,7 +25,6 @@ from tests.unit.fus.conftest import (
     make_response,
     make_scored,
 )
-
 
 # ======================================================================
 # 与既往诊断对比

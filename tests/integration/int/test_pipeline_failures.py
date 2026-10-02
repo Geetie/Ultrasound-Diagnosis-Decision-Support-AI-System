@@ -13,13 +13,11 @@
 """
 from __future__ import annotations
 
-import asyncio
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from typing import List
+
+import pytest
 
 from app.agents.protocols import AgentResponse
-from app.models.schemas import Organ
 
 
 class TestPipelineFailurePaths:
@@ -98,11 +96,16 @@ class TestPipelineFailurePaths:
         from app.services.diagnosis_pipeline import _safe_safety_check
 
         with patch("app.services.diagnosis_pipeline.safety_gateway_client") as mock_sg:
+            mock_sg.get_consent_status = AsyncMock(return_value="granted")
             mock_sg.check_output = AsyncMock(side_effect=RuntimeError("SG down"))
             sg_result, sg_ok = await _safe_safety_check(
                 request=MagicMock(),
                 fusion_result=MagicMock(),
                 request_id="req_test_sg1",
+                # 2026-09-29：`patient_id` 解析不出时管线**先** fail-closed
+                # （不拿 "unknown" 去查同意记录），不提供它就会在到达 SG 之前返回，
+                # 使这条用例"因错误的原因通过"（测的是患者守卫，不是 SG 异常）。
+                patient_id="P001",
             )
 
         assert sg_result is None
@@ -114,6 +117,7 @@ class TestPipelineFailurePaths:
         from app.services.diagnosis_pipeline import _safe_safety_check
 
         with patch("app.services.diagnosis_pipeline.safety_gateway_client") as mock_sg:
+            mock_sg.get_consent_status = AsyncMock(return_value="granted")
             mock_sg.check_output = AsyncMock(
                 return_value={"passed": True, "consent_status_at_output": "granted"}
             )
@@ -121,6 +125,7 @@ class TestPipelineFailurePaths:
                 request=MagicMock(),
                 fusion_result=MagicMock(),
                 request_id="req_test_sg2",
+                patient_id="P001",
             )
 
         assert sg_result is not None
@@ -160,8 +165,8 @@ class TestWriteResultFallback:
     @pytest.mark.asyncio
     async def test_write_result_with_needs_review(self):
         """fusion_result.needs_review=True 时 status='needs_review'。"""
-        from app.services.diagnosis_pipeline import _write_result_to_db
         from app.fusion.protocols import FusionResult
+        from app.services.diagnosis_pipeline import _write_result_to_db
 
         mock_repo = MagicMock()
         mock_repo.update_result = AsyncMock(return_value=MagicMock())

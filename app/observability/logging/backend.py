@@ -1,19 +1,18 @@
 import asyncio
 from abc import ABC, abstractmethod
-from typing import List, Optional
 
 from .record import LogRecord
 
 
 class LogStorageBackend(ABC):
-    _async_lock: Optional[asyncio.Lock] = None
+    _async_lock: asyncio.Lock | None = None
 
     @abstractmethod
     async def awrite(self, record: LogRecord) -> None:
         raise NotImplementedError
 
     @abstractmethod
-    async def awrite_batch(self, records: List[LogRecord]) -> None:
+    async def awrite_batch(self, records: list[LogRecord]) -> None:
         raise NotImplementedError
 
     @abstractmethod

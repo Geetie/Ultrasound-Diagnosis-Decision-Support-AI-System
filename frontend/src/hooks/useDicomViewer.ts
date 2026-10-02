@@ -55,7 +55,7 @@ export function useDicomViewer(element: HTMLElement | null, imageId?: string) {
     setError(null);
 
     loadAndCacheImage(imageId)
-      .then((image: any) => {
+      .then((image) => {
         if (cancelled) return;
         displayImage(element, image);
         setLoaded(true);
@@ -82,7 +82,9 @@ export function useDicomViewer(element: HTMLElement | null, imageId?: string) {
     return () => {
       cancelled = true;
     };
-  }, [element, imageId]);
+    // setError/setLoaded/setLoading 是 useState setter、setViewport 是 zustand action，
+    // 引用天然稳定：补进依赖数组不会导致 effect 重跑，只是让"用了谁"对编译器显式化。
+  }, [element, imageId, setError, setLoaded, setLoading, setViewport]);
 
   useEffect(() => {
     if (!element) return;

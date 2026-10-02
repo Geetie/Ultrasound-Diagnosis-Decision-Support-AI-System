@@ -1,20 +1,20 @@
 import asyncio
-from typing import Optional
 
 import structlog
 
 from app.config.settings import settings
+
 from .cross_chain import AuditCrossChain
 from .verifier import AuditChainVerifier
 
 _logger = structlog.get_logger("app.observability.audit_chain.periodic")
-_periodic_task: Optional[asyncio.Task] = None
+_periodic_task: asyncio.Task | None = None
 _periodic_running = False
 
 
 async def start_audit_chain_periodic_tasks(
     db_session_factory,
-    interval_hours: Optional[int] = None,
+    interval_hours: int | None = None,
 ) -> None:
     global _periodic_task, _periodic_running
     if _periodic_running:

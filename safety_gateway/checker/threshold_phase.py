@@ -1,9 +1,10 @@
-import structlog
 from typing import Any
 
-from safety_gateway.validation_result import CheckResult, CheckResultStatus, DegradedReason
-from safety_gateway.checker.phase_base import CheckPhase, CheckContext
+import structlog
+
+from safety_gateway.checker.phase_base import CheckContext, CheckPhase
 from safety_gateway.threshold import get_threshold_engine
+from safety_gateway.validation_result import CheckResult, DegradedReason
 
 logger = structlog.get_logger()
 
@@ -50,7 +51,7 @@ class ThresholdPhase(CheckPhase):
         if is_combined:
             return CheckResult.degraded(
                 consent_status=context.consent_status,
-                message=f"置信度低于阈值且存在组合故障，进入降级模式",
+                message="置信度低于阈值且存在组合故障，进入降级模式",
                 degraded_reason=DegradedReason.COMBINED_FAILURE,
                 elapsed_ms=elapsed_ms,
                 threshold_results=context.threshold_results,

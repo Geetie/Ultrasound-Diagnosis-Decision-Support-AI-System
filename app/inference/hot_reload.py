@@ -29,8 +29,9 @@ from __future__ import annotations
 
 import asyncio
 import time
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from typing import Any, Awaitable, Callable, Dict, Optional, Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 import structlog
 
@@ -80,10 +81,10 @@ class LocalFakeReloadAdapter:
         return True
 
 
-_default_adapter: Optional[ModelReloadAdapter] = None
+_default_adapter: ModelReloadAdapter | None = None
 
 
-def set_reload_adapter(adapter: Optional[ModelReloadAdapter]) -> None:
+def set_reload_adapter(adapter: ModelReloadAdapter | None) -> None:
     """注入（或清除）进程级重载适配器。现场对接时调用。"""
     global _default_adapter
     _default_adapter = adapter
@@ -122,16 +123,16 @@ class HotReloadOutcome:
     executed: bool = False
     deferred: bool = False
     forced: bool = False
-    success: Optional[bool] = None
+    success: bool | None = None
     fragmentation_rate: float = 0.0
     trigger_threshold: float = 0.0
     active_sessions: int = 0
     waited_seconds: float = 0.0
     duration_seconds: float = 0.0
     reason: str = ""
-    skipped_reason: Optional[str] = None
+    skipped_reason: str | None = None
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         return {
             "triggered": self.triggered,
             "executed": self.executed,
@@ -159,7 +160,7 @@ class HotReloadStats:
     failed: int = 0
     last_rate: float = 0.0
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         return {
             "samples": self.samples,
             "warnings": self.warnings,
@@ -214,15 +215,15 @@ class HotReloadController:
 
     def __init__(
         self,
-        adapter: Optional[ModelReloadAdapter] = None,
-        active_sessions_provider: Optional[Callable[[], Any]] = None,
+        adapter: ModelReloadAdapter | None = None,
+        active_sessions_provider: Callable[[], Any] | None = None,
         *,
-        warning_threshold: Optional[float] = None,
-        trigger_threshold: Optional[float] = None,
-        max_defer_seconds: Optional[float] = None,
-        poll_interval_seconds: Optional[float] = None,
-        metrics_factory: Optional[Callable[[], Any]] = None,
-        sleep: Optional[Callable[[float], Awaitable[None]]] = None,
+        warning_threshold: float | None = None,
+        trigger_threshold: float | None = None,
+        max_defer_seconds: float | None = None,
+        poll_interval_seconds: float | None = None,
+        metrics_factory: Callable[[], Any] | None = None,
+        sleep: Callable[[float], Awaitable[None]] | None = None,
     ) -> None:
         warn = (
             warning_threshold
@@ -440,7 +441,7 @@ class HotReloadController:
 # 进程级单例
 # ----------------------------------------------------------------------
 
-_controller: Optional[HotReloadController] = None
+_controller: HotReloadController | None = None
 
 
 def get_hot_reload_controller() -> HotReloadController:
