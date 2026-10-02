@@ -97,6 +97,11 @@ _GRADE_HIERARCHY: dict[str, dict[str, tuple[int, int]]] = {
     "cardiac": {"normal": (0, 0), "mild": (1, 0), "moderate": (2, 0), "severe": (3, 0)},
 }
 
+# LVEF→分级切点（normal/mild/moderate/severe）：超声报告常用的收缩功能
+# 减低程度分级惯例（≥55 / 45~54 / 30~44 / <30），与 ASE 及《中国心力衰竭
+# 诊断和治疗指南》的 HFrEF（LVEF≤40%）/HFmrEF（41~49%）口径兼容但不等价。
+# 可经 verification_config 的 cardiac LVEF 区间覆写（_sync_lvef_thresholds_from_config）；
+# 上线前须由心脏超声专家复核确认本院口径。来源：清单自审 #5（2026-10-02 补注）。
 _LVEF_TO_GRADING_DEFAULTS: list[tuple[float, str]] = [
     (55.0, "normal"),
     (45.0, "mild"),
