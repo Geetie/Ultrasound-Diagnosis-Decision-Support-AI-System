@@ -115,10 +115,10 @@ def main() -> int:
     cap2view = {r["caption"]: r["view"] for rows in splits.values() for r in rows}
     view_of_cap = [cap2view[c] for c in prompts]
 
-    model, _, preprocess = open_clip.create_model_and_transforms(
-        str(model_dir), cache_dir="/tmp/oc_cache")
-    model = model.to(device)
-    tokenizer = open_clip.get_tokenizer(str(model_dir))
+    # 1) 官方库加载（local-dir: schema——与 8003 嵌入服务/t2a 同款，零网络）
+    uri = "local-dir:" + str(model_dir)
+    model, _, preprocess = open_clip.create_model_and_transforms(uri, device=device)
+    tokenizer = open_clip.get_tokenizer(uri)
 
     loaders = [
         make_loader(CactusDataset(splits["train"], preprocess),

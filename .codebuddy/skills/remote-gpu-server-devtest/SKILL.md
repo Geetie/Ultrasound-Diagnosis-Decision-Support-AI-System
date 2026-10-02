@@ -136,6 +136,8 @@ PYTHONPATH=$HOME/uai/src ~/uai/venv/bin/python scripts/server_populate_vector_in
 | Windows 端内联命令 | PowerShell 里 ssh 内联 `python -c` 多行/复杂引号必炸——**一律本地写脚本 → scp → bash 执行**（fish 铁律的 Windows 端变体）；`head` 等 Unix 命令 PowerShell 没有，用 `Select-Object` |
 | CACTUS/T2b 资产 | ~/uai/data/cactus（29,963 张 5 视图 + 分级 CSV）、~/uai/data/t2b_cactus/{train,val,test}.csv（分层 21k/4.5k/4.5k）；训练 `scripts/t2b_cactus_run.sh` 一键（停双 vLLM→训练→串行恢复），需服务窗口批准 |
 | KB v1.3.0 | 生产切换完成（thyroid 601/liver 313/cardiac 343 = 1257 chunks）；RAGAS golden 口径语料路线**已饱和**（+83 指南文档 A/B 实测 -1.7pp 噪声内偏负），提升空间在生产 T2c 口径与 query-context 对齐 |
+| open_clip 本地权重加载 | `create_model_and_transforms("local-dir:" + 路径)`（与 8003/t2a 同款）；**路径直传 model name 会报 not found in built-ins**；open_clip_train CLI 需 repo 版库，脚本层用官方 API 即可 |
+| T2b 战果 | CACTUS 切面头训练完成：test Top-1 **0.9793**（门 ≥0.75 通过；基线 0.921，体模数据偏高属预期）；质量 MAE 0.773/R² 0.765；资产 reports/t2b_cactus.{pt,json}；训练 3 epochs×150s，bs 256 显存 ~21GB（嵌入常驻下可共存，无需停嵌入） |
 
 ## 压测结论（2026-10-01）
 
