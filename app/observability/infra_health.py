@@ -203,6 +203,41 @@ async def stop_infra_health_checks() -> None:
         _infra_shutdown_event.set()
 
 
+async def check_dlq_depth(threshold: int = 1) -> int:
+    """读诊断死信队列深度（并发审查 P2-8：DLQ 此前**只写不读**，没有出口）。
+
+    DLQ 的语义是"失败 >= int_dlq_max_retries 次、待人工排查"，没有出口就等于这些
+    任务被静默丢弃——诊断请求永久停在 processing，医生看不到任何提示。
+
+    最小可用出口：随基础设施巡检读一次深度，非零即 error（只报条数，不读 payload
+    ——payload 含错误摘要，避免把临床内容写进日志）。返回深度；Redis 不可用返回 -1
+    （不抛，避免打断巡检循环）。
+
+    "谁看、多久看"仍需产品决策（reports/concurrency_perf_audit.md 第 4 节）；本函数
+    只负责让 DLQ 不再是哑巴。
+    """
+    try:
+        from app.config.redis import RedisPool
+        from app.config.redis_keys import RedisKey
+
+        client = await RedisPool.get_client()
+        depth = int(await client.llen(RedisKey.DIAGNOSIS_DLQ))
+    except Exception as e:
+        _logger.warning("dlq_depth_check_failed", error=str(e))
+        return -1
+
+    if depth >= threshold:
+        _logger.error(
+            "diagnosis_dlq_not_empty",
+            extra={
+                "depth": depth,
+                "threshold": threshold,
+                "action": "人工排查 Redis 列表 ultrasound:diagnosis:dlq（P2-8 尚无重放工具）",
+            },
+        )
+    return depth
+
+
 async def run_infra_health_checks(
     redis_url: str | None = None,
     pg_dsn: str | None = None,
@@ -240,6 +275,7 @@ async def run_infra_health_checks(
     while not shutdown_event.is_set():
         await check_redis_health(redis_url)
         await check_pg_health(pg_dsn)
+        await check_dlq_depth()
         for path in disk_paths:
             try:
                 check_disk_usage(path)

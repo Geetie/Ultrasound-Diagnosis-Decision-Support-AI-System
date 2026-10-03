@@ -56,12 +56,22 @@ class TestRateLimitConfig:
         assert RATE_LIMITS["/api/v1/feedback"]["capacity"] == 20
 
     def test_auth_token_rate_limit(self):
+        # 并发审查 P1-12：IP 桶 5 -> 30/min。原先登录请求没有 token，user_id 落回
+        # client_ip，于是同一医院出口 NAT 下**所有医生共享一个 5/min 桶**（真机实测：
+        # 压测准备 10 个账号时被逼退避重试）。撞库防护改由端点内的"用户名桶"承担
+        # （见 app/config/rate_limit.py: enforce_login_rate_limit）。
         assert "/api/v1/auth/token" in RATE_LIMITS
-        assert RATE_LIMITS["/api/v1/auth/token"]["capacity"] == 5
+        assert RATE_LIMITS["/api/v1/auth/token"]["capacity"] == 30
 
     def test_auth_login_rate_limit(self):
         assert "/api/v1/auth/login" in RATE_LIMITS
-        assert RATE_LIMITS["/api/v1/auth/login"]["capacity"] == 5
+        assert RATE_LIMITS["/api/v1/auth/login"]["capacity"] == 30
+
+    def test_report_chain_rate_limits(self):
+        """并发审查 P2-1：报告链路原先完全无限流；带路径参数的用 `/*` 通配登记。"""
+        assert RATE_LIMITS["/api/v1/report"]["capacity"] == 20
+        assert RATE_LIMITS["/api/v1/report/*/sign"]["capacity"] == 10
+        assert RATE_LIMITS["/api/v1/report/*/push"]["capacity"] == 10
 
     def test_consent_rate_limit(self):
         assert "/api/v1/consent" in RATE_LIMITS

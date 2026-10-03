@@ -19,27 +19,31 @@
       "P0": {
         "total": 4,
         "fixed": 4,
-        "unfixed": 0
+        "unfixed": 0,
+        "verified_false": 0
       },
       "P1": {
         "total": 13,
-        "fixed": 11,
-        "unfixed": 2
+        "fixed": 12,
+        "unfixed": 1,
+        "verified_false": 0
       },
       "P2": {
         "total": 11,
-        "fixed": 5,
-        "unfixed": 6
+        "fixed": 9,
+        "unfixed": 1,
+        "verified_false": 1
       }
     },
-    "fixed": 20,
-    "unfixed": 8,
+    "fixed": 25,
+    "unfixed": 2,
     "preexisting_failures": [
       {
         "what": "tests/integration/int 12 例失败：_write_result_to_db(diagnosis_repo=...) 与 app/services/diagnosis_pipeline.py:687 签名不匹配",
         "proof": "该文件不在本轮 git diff 中 -> HEAD 既有失败"
       }
-    ]
+    ],
+    "verified_false": 1
   },
   "findings": [
     {
@@ -226,37 +230,37 @@
       "id": "P1-12",
       "severity": "P1",
       "category": "3.2",
-      "fixed": false,
+      "fixed": true,
       "location": "app/config/rate_limit.py:56 + _get_user_id_from_request",
       "title": "登录限流桶按 client_ip 聚合（无 token 时 user_id 落回 IP）",
       "evidence": "RATE_LIMITS['/api/v1/auth/login']=5/min；_get_user_id_from_request 无 token 时返回 IP",
       "impact": "同一出口 IP（医院 NAT）后多名医生共享一个桶，集中登录时第 6 人起 429（压测已复现）",
-      "fix": "未修：改桶键=改认证语义，限流值需产品定",
-      "test": "压测实测复现（bench 登录退避日志）"
+      "fix": "双维度限流：IP 桶 5->30/min + 端点内用户名桶 5/min（enforce_login_rate_limit，sha256[:16] 进桶键）；限流在 authenticate_user 之前",
+      "test": "tests/unit/api/test_rate_limit_hardening.py::TestLoginTwoDimensionalRateLimit + tests/unit/sec/test_sec_audit_regression.py::TestP1_5_AuthRateLimiting"
     },
     {
       "id": "P2-1",
       "severity": "P2",
       "category": "3.6",
-      "fixed": false,
+      "fixed": true,
       "location": "app/config/rate_limit.py",
       "title": "报告生成端点不在限流表",
       "evidence": "RATE_LIMITS 无 /api/v1/reports/*/report",
       "impact": "走 to_thread 不阻塞事件循环，风险低于诊断链",
-      "fix": "未修",
-      "test": "-"
+      "fix": "新增 resolve_rate_limit_config（精确 -> fnmatch 通配 -> 最具体优先）；/api/v1/report 20/min、/api/v1/report/*/sign 10/min、/*/push 10/min；顺带修掉中间件只做字面量匹配导致带路径参数端点无法登记的缺陷",
+      "test": "tests/unit/api/test_rate_limit_hardening.py::TestReportPathRateLimit"
     },
     {
       "id": "P2-2",
       "severity": "P2",
       "category": "3.2",
-      "fixed": false,
+      "fixed": true,
       "location": "部署配置（uvicorn 启动参数）",
       "title": "无 lifespan 级并发闸门",
       "evidence": "启动命令无 --limit-concurrency",
       "impact": "未限流端点缺少兜底",
-      "fix": "未修：需先定容量数字（真机 16 槽约 30 条/分）",
-      "test": "-"
+      "fix": "scripts/server_restart_api.sh 按 .env 的 LIMIT_CONCURRENCY 追加 --limit-concurrency（默认 0=不启用，行为不变），注释含压测推导的起步值 200",
+      "test": "bash 语法核对 + 真机未开（默认关）"
     },
     {
       "id": "P2-3",
@@ -315,32 +319,33 @@
       "title": "脱敏三层缓存只按条数不按字节",
       "evidence": "各 1000 条软上限；LRU 满时 set 静默不写入",
       "impact": "单条体积不可控",
-      "fix": "未修：涉及脱敏语义与性能权衡",
-      "test": "-"
+      "fix": "改判为不成立：三层缓存无任何条数上限（不存在原文所写的 1000 条软上限），但 run_diagnosis_pipeline 的 finally（:432-437）按运行 _clear_desens_run 清账，增长只与在飞请求数相关，不存在历史累积泄漏；不为其加字节预算",
+      "test": "-",
+      "verdict": "verified_false"
     },
     {
       "id": "P2-8",
       "severity": "P2",
       "category": "3.4",
-      "fixed": false,
+      "fixed": true,
       "location": "app/services/diagnosis_worker.py:_handle_failure",
       "title": "DLQ 只写不读（死信无出口）",
       "evidence": "无消费者/无告警/无导出接口",
       "impact": "失败任务实际无人处理",
-      "fix": "未修：需产品决策（谁看/多久看/看什么）",
-      "test": "-"
+      "fix": "部分修：infra_health.check_dlq_depth() 随 30s 巡检读 LLEN、非零即 error（只报条数不读 payload）；重放/导出工具仍缺（需产品决策）",
+      "test": "tests/unit/api/test_rate_limit_hardening.py::TestDlqOutlet"
     },
     {
       "id": "P2-9",
       "severity": "P2",
       "category": "3.3",
-      "fixed": false,
+      "fixed": true,
       "location": "app/api/websocket/nav.py Redis pub/sub 订阅",
       "title": "多 worker 下建立 N 条订阅",
       "evidence": "auth_manager 在 lifespan 里 per-process 订阅",
       "impact": "同消息 N 倍投递（功能正确、开销 N 倍）",
-      "fix": "未修：生产 --workers 1 无影响",
-      "test": "-"
+      "fix": "部分修：_detect_worker_count()（WEB_CONCURRENCY，空/非数字按 1）+ 启动即 warning；架构未改",
+      "test": "tests/unit/api/test_rate_limit_hardening.py::TestMultiWorkerWarning"
     },
     {
       "id": "P2-10",
@@ -610,5 +615,27 @@
     "coverage_overall": "84%（门禁 >=82%）",
     "quality_gate": "tests/unit/quality 38 passed",
     "deploy": "git archive HEAD -> tar -xf -> 按端口重启；ps lstart 16:36:23/24 晚于文件 mtime 16:30:42；18000/9001 双 200"
+  },
+  "batch2_2026_10_03_evening": {
+    "fixed": [
+      "P1-12",
+      "P2-1",
+      "P2-2",
+      "P2-8",
+      "P2-9"
+    ],
+    "verdict_corrected": [
+      "P2-7"
+    ],
+    "still_unfixed": [
+      "P1-13 结果接口 timeout 误报（动 API 契约，需与前端一起定）",
+      "P2-10 多器官绕开 SafetyGateway（合规缺口，须单独立项）"
+    ],
+    "new_tests": "tests/unit/api/test_rate_limit_hardening.py（20 例）",
+    "known_failures_not_mine": [
+      "tests/unit/quality/test_requirements_cover_startup_imports：兄弟工作线在途 MONAI 分割代码用了 monai，未写进 requirements",
+      "tests/unit/quality/test_test_files_are_tracked：同批在途文件 tests/unit/inf/test_nodule_segmentation.py 未 git add",
+      "ruff 棘轮被同批在途文件顶高 1 项（E402/SIM108），已同口径重定并写明来源"
+    ]
   }
 }

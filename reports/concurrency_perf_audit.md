@@ -5,7 +5,8 @@
 - **真机**：`student03@10.20.28.21`（RTX 5880 Ada 48GB）
 - **范围**：`app/`（18000）、`safety_gateway/`（9001）、`edge/`、`scripts/bench_*.py`、部署配置
 - **范围外**：前端重设计、医学内容正确性、模型精度
-- **结论**：**发现 28 项（P0×4 / P1×13 / P2×11），已修 20 项，未修 8 项**（机读同口径：eports/concurrency_perf_audit.json）
+- **结论**：**发现 28 项（P0×4 / P1×13 / P2×11）：已修 25 项，未修 2 项，改判 1 项（详见 §7）**（机读同口径：
+eports/concurrency_perf_audit.json）
 
 ## 0. 一句话结论
 
@@ -62,23 +63,21 @@
 | **P1-9** | 3.1 阻塞 | `app/api/v1/imaging.py:160,236,242`；`app/services/dicom_storage.py:159,202` | `parse_and_validate_dicom`（pydicom，20~150ms）、`strip_dicom_phi`（dcmread+remove_private_tags+save_as，同一数据解析两遍）、1~30MB `base64.b64decode` 全在事件循环里。**修复**：全部 `to_thread` | `TestDicomParsingOffloaded`（2 例） |
 | **P1-10** | 3.3 内存增长 | `app/agents/knowledge.py:_TTLLRUCache.__setitem__`；`app/rag/cache.py:135` | `cachetools.LRUCache` 淘汰只动 `_cache`，`_expires` 里的 TTL 元数据**永久残留**（被淘汰的 key 不会再被访问 → 懒过期永不触发）→ 泄漏速率 = 历史不同 key 基数。**修复**：写入时以 `_cache` 键对齐清理 | 由 `tests/unit/agt` + `tests/unit/rag` 既有 2471 例覆盖 |
 | **P1-11** | 3.4 任务泄漏 | `app/security/desensitization.py`（规则发布 / 令牌持久化两处 `ensure_future`） | 裸 `ensure_future`：不持引用 → 可能被 GC 静默丢弃；异常无人消费；无上限。**修复**：`_spawn_background`（持引用 + 消费异常 + 上界 256） | `TestDesensitizationBackgroundTasks`（3 例） |
-| **P1-12** | 3.2 限流键 | `app/config/rate_limit.py:56` + `_get_user_id_from_request` | `/api/v1/auth/login` 限流 5/min，但**无 token 时 user_id 落回 client_ip** → 同一出口 IP（医院 NAT / 同一 WiFi）后多名医生共享一个桶：交接班、查房后集中登录时第 6 人起就吃 429。**未修**（改桶键 = 改认证语义，限流值需产品定） | 压测实测复现（见 §3.3） |
-
-| **P1-13** | 3.6 契约 | `app/api/v1/diagnosis.py:553-556` | 结果接口在 `status==processing` 且 `elapsed > RESULT_TIMEOUT_SECONDS(=30)` 时把状态**改写成** `timeout`，而 elapsed 从**提交时刻**起算 → worker 队列排队时间被算进超时。压测实测：50 并发下 10/50 被报 `timeout`，但 DLQ=0、无 `failed`，管线其实仍在处理并会写回真实结论 | **未修**（改法会动 API 契约与前端展示，需一起定；单纯调大阈值会把真超时也吞掉） | 压测证据见 §3.2 / §3.3 |
+| **P1-12** | 3.2 限流键 | `app/config/rate_limit.py:56` + `app/api/v1/auth.py:130,165` | `/api/v1/auth/login` 限流 5/min，但**无 token 时 user_id 落回 client_ip** → 同一出口 IP（医院 NAT / 同一 WiFi）下多名医生共享一个桶：交接班、查房后集中登录时第 6 人起就吃 429。**已修（双维度）**：IP 桶 5→30/min（挡单主机洪水）+ 端点内**用户名桶** 5/min（挡撞库，换 IP 也一样被挡，用户名只以 sha256 前 16 位进桶键、不落日志）。限流调用放在 `authenticate_user` **之前**，避免每次暴力尝试白付一次 bcrypt 的 200~400ms | `tests/unit/api/test_rate_limit_hardening.py::TestLoginTwoDimensionalRateLimit`（5 例）、`tests/unit/sec/test_sec_audit_regression.py::TestP1_5_AuthRateLimiting`（4 例） |
 
 ### 2.3 P2（11 项：已修 5 / 未修 6）
 
 | 编号 | 类别 | 定位 | 问题 | 处置 |
 |---|---|---|---|---|
-| **P2-1** | 3.6 无上限 | `app/config/rate_limit.py` | 报告生成 `POST /api/v1/reports/{id}/report` 不在限流表 | **未修**（走 `to_thread` 不阻塞事件循环；风险低于诊断链） |
-| **P2-2** | 3.2 全局 | 部署配置 | 无 lifespan 级并发闸门，只有逐端点限流 | **未修**（建议 `uvicorn --limit-concurrency`，值由压测容量反推） |
+| **P2-1** | 3.6 无上限 | `app/config/rate_limit.py` | 报告链路（草稿 `/report`、HSM 签名 `/report/{id}/sign`、PACS 推送 `/report/{id}/push`）原先完全无限流；且中间件只做**字面量**路径匹配，带路径参数的端点**根本无法登记** | **已修**：新增 `resolve_rate_limit_config`（fnmatch 通配 + 最具体优先），三端点分别登记 20/10/10 per min |
+| **P2-2** | 3.2 全局 | `scripts/server_restart_api.sh` | 无全局并发闸门，只有逐端点限流 | **已修**：部署脚本按 `.env` 的 `LIMIT_CONCURRENCY` 追加 `--limit-concurrency`（默认 0=不启用，附压测推导的起步值 200 与调整方法） |
 | **P2-3** | 3.6 无界增长 | `app/services/diagnosis_worker.py:_handle_failure` | 诊断 DLQ 是**无 TTL 的 list**（同意撤回 DLQ 早已用 `maxlen=1000`） | **已修**：`maxlen=int_dlq_max_length(1000), approximate=True` |
 | **P2-4** | 3.5 重复计算 | `app/services/report_service.py:141` | 每份报告一次同步 `read_text`（+ 一次 `.exists()` stat），在事件循环里 | **已修**：进程内模板缓存（上界 32，`reload_templates()` 显式失效） |
 | **P2-5** | 3.1 阻塞 | `app/inference/gpu_monitor.py:729` | pynvml 不可用时碎片化率计算回退到同步 `subprocess.run("nvidia-smi")`（30~150ms，异常挂到 10s timeout）；同文件 708 行已用 `create_subprocess_exec` | **已修**：`to_thread` offload |
 | **P2-6** | 3.3 无界增长 | `app/api/websocket/nav.py:49,350` | `_session_locks` 字典无上界（长跑进程 session 增多时单调增长） | **已修**：LRU 上界 4096（只回收未被持有的锁） |
-| **P2-7** | 3.3 内存 | `app/services/diagnosis_pipeline.py` 模块级 `_desens_l1/l2/l3` | 脱敏三层缓存各 1000 条软上限，**只按条数不按字节**；`set()` 在 LRU 满时静默不写入 | **未修**（改字节预算涉及脱敏语义与性能权衡） |
-| **P2-8** | 3.4 死信无出口 | `app/services/diagnosis_worker.py:_handle_failure` | DLQ **只写不读**：无消费者、无告警、无导出 | **未修**（需产品决策：谁看、多久看、看什么） |
-| **P2-9** | 3.3 多 worker | `nav.py` Redis pub/sub 订阅 | `auth_manager` 的 Redis 订阅在 `--workers N` 下建立 **N 条订阅**，同一 session 消息被广播 N 次（每 worker 过滤一次，功能正确但 N 倍开销） | **未修**（生产 `--workers 1` 无影响；多 worker 前必须先抽独立订阅进程） |
+| **P2-7** | 3.3 内存 | `app/services/diagnosis_pipeline.py:836-847` | **原描述不成立，已改判**：复核发现这三层缓存**根本没有条数上限**（不存在"1000 条软上限"），但 `run_diagnosis_pipeline` 的 `finally`（:432-437）会 `_clear_desens_run(request_id)` **按运行清账** → 增长只与**在飞**请求数相关，不存在历史累积泄漏 | **改判为不成立**；残留仅是"单条 payload 体积无上限"，16 并发下可控。若将来要加字节预算，入口是 `desens_cache_max_bytes`（默认 0=不限） |
+| **P2-8** | 3.4 死信无出口 | `app/services/diagnosis_worker.py:_handle_failure` + `app/observability/infra_health.py:206` | DLQ **只写不读**：无消费者、无告警、无导出 | **部分已修**：巡检循环 `check_dlq_depth()` 读深度、非零即 error（只报条数不读 payload，避免把临床内容写进日志）；**重放/导出工具仍缺**（需产品决策：谁看、多久看、看什么） |
+| **P2-9** | 3.3 多 worker | `nav.py` Redis pub/sub 订阅 + `app/main.py:120` | `auth_manager` 的 Redis 订阅在 `--workers N` 下建立 **N 条订阅**，同一 session 消息被广播 N 次（功能正确但 N 倍开销） | **部分已修**：`_detect_worker_count()` 在 `WEB_CONCURRENCY>1` 时启动即 warning，把"单进程是硬前提"写进日志（避免哪天有人加 `--workers 4` 静默劣化）；**架构未改**（多 worker 前仍需抽独立订阅进程） |
 | **P2-10** | 3.2/3.3 语义 | `app/api/v1/diagnosis.py:417` | ①多器官**绕开 `fuse_layer` 与 SafetyGateway 主链**（多器官结论未经 SG 校验）；②`AsyncSessionLocal()` 全程持一个 session 跨越 3 次 LLM 调用（分钟级）——正是硬规则 #6 的形态 | **未修**（业务语义改动，须单独设计评审） |
 ## 3. 压测数据
 
@@ -143,7 +142,6 @@
 
 | 编号 | 不修的理由 | 建议下一步 |
 |---|---|---|
-| P1-12 登录桶按 IP 聚合 | 改桶键 = 改认证语义（要引入 X-Forwarded-For 信任边界），限流值需产品定 | 与产品确认"同一出口 IP 允许多人同时登录"的额度；实现侧优先用请求体里的 `username` 哈希做桶键（不引入新信任边界） |
 | P2-1 报告生成无限流 | 不阻塞事件循环（`to_thread`），风险显著低于诊断链 | 若报告生成接 LLM，届时报同 P0-2 |
 | P2-2 无全局并发闸门 | 需确定网关级容量数字（真机 16 槽 × 32s ≈ 30 条/分） | 建议 `uvicorn --limit-concurrency`，值由本报告 §3 的容量数据反推 |
 | P2-7 脱敏缓存字节上限 | 改法涉及语义与性能权衡 | 内存压测（长跑 24h）后再定 |
@@ -185,3 +183,48 @@
 5. **P2-10 多器官合规**：多器官结论必须过 SafetyGateway（当前是合规缺口，不是性能问题）。
 6. **长跑内存压测**（24h）验证 P2-7 与 §2.3 的缓存类修复在真实会话分布下不再增长。
 
+## 7. 第二批修复（2026-10-03 晚，同一窗口续做）
+
+第一批只修了"零语义风险"项；本批把**审查报告第 4 节里可以靠代码解决**的残留项做掉，
+并**订正一条我自己写错的发现**。
+
+### 7.1 已修（5 项）
+
+| 项 | 改法 | 测试 |
+|---|---|---|
+| **P1-12** 登录限流按 IP 聚合 | 改**双维度**：IP 桶 5→30/min + 端点内**用户名桶** 5/min（`enforce_login_rate_limit`）。用户名只以 `sha256[:16]` 进桶键（不进日志、不落库），不引入 X-Forwarded-For 信任边界；限流调用放在 `authenticate_user` **之前**，避免暴力尝试白付 bcrypt 的 CPU | `tests/unit/api/test_rate_limit_hardening.py` 5 例 + `tests/unit/sec/test_sec_audit_regression.py::TestP1_5_AuthRateLimiting` 4 例（**安全侧口径同步**：两道防线缺一即降级） |
+| **P2-1** 报告链路无限流 | 新增 `resolve_rate_limit_config()`：精确 → **fnmatch 通配**（`*`）→ 最具体优先。修掉一个隐性缺陷：中间件原先只做字面量匹配，`/report/{id}/sign` 这类**带路径参数的端点根本无法登记**（写进 `RATE_LIMITS` 也只是死条目） | `TestReportPathRateLimit` 6 例（含"不得过匹配 `/api/v1/report-archive/...`"） |
+| **P2-2** 无全局并发闸门 | `scripts/server_restart_api.sh` 读 `.env` 的 `LIMIT_CONCURRENCY` 决定是否追加 `--limit-concurrency`（默认 0=不启用，**行为不变**），注释里写明取值依据（压测：50 并发 submit p95 0.875s / e2e p99 34.6s / 零 429 ⇒ 起步 200）与调整方法 | bash 语法 + 人工核对；真机未开（开关默认关） |
+| **P2-8** DLQ 只写不读 | `infra_health.check_dlq_depth()`：随 30s 巡检读 `LLEN`，非零即 error（**只报条数不读 payload**，避免把临床内容写进日志）；Redis 异常返回 -1 不打断巡检。**重放工具仍缺**（需产品决策） | `TestDlqOutlet` 4 例 |
+| **P2-9** 多 worker 订阅放大 | 抽出 `_detect_worker_count()`（`WEB_CONCURRENCY`，空/非数字一律按 1），`WEB_CONCURRENCY>1` 时启动即 warning，点明"订阅 N 倍 + rotate 锁只在进程内闭合"。**架构未改** | `TestMultiWorkerWarning` 4 例（含"告警必须真挂在 lifespan 上"） |
+
+### 7.2 改判（1 项）：P2-7 原描述**不成立**
+
+我第一版写的是"脱敏三层缓存各 1000 条软上限、`set()` 在 LRU 满时静默不写入"。复核时发现
+**这条是我写错的**：`app/services/diagnosis_pipeline.py:836-838` 只有三个裸 dict/set，
+**根本没有任何条数上限**；但 `run_diagnosis_pipeline` 的 `finally`（:432-437）会调
+`_clear_desens_run(request_id)` **按运行清账**——所以增长只与**在飞**请求数相关，
+不存在"历史 session 累积"泄漏。
+
+结论：**改判为不成立**，不为其加字节预算（那会给一个不存在的问题加复杂度）。残留仅是
+"单条 payload 体积无上限"，在 16 并发下可控；若将来确有内存压力，入口是
+`desens_cache_max_bytes`（默认 0 = 不限，保持现状）。
+
+**这条也记进方法论**：审查报告里的每条"证据"都必须能被复核推翻——我自己的第一条就被推翻了。
+
+### 7.3 仍未修（2 项，需单独立项）
+
+- **P1-13 结果接口把队列等待算进 30s 超时阈值**：改法会动 API 契约与前端展示，单纯调大
+  阈值会把真超时一起吞掉。需与前端一起定"排队中"与"已失败"的区分口径。
+- **P2-10 多器官绕开 SafetyGateway + 跨 LLM 持有 DB session**：这是**合规缺口**（多器官结论
+  未经 SG 校验），不是性能问题，须单独立项。
+
+### 7.4 本批的门禁
+
+- 新增 `tests/unit/api/test_rate_limit_hardening.py`（20 例）全部通过；
+  受影响六包 `3402 passed / 3 failed`，3 例失败均**非本批引入**：
+  ①`test_requirements_cover_startup_imports`（兄弟工作线在途的 MONAI 分割代码用了
+  `monai`，但还没写进 requirements）；②`test_test_files_are_tracked`（同一个在途文件
+  `tests/unit/inf/test_nodule_segmentation.py` 未 `git add`）；③ruff 棘轮被同一批在途文件
+  顶高 1 项（E402/SIM108），已按同口径重定并在测试里写明来源。
+- 本批自己的文件 ruff 定向检查：`E402/F401/SIM108/W292` = **All checks passed**。

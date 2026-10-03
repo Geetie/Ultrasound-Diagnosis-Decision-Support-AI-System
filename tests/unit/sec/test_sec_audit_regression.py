@@ -188,15 +188,43 @@ class TestP1_2_ChainLocksCleanup:
 
 
 class TestP1_5_AuthRateLimiting:
+    """登录限流（并发审查 P1-12 后为**双维度**）。
+
+    原断言把登录限流钉成"单一 5/min 桶"。实测该口径在真实医院网络下是错的：
+    限流桶键是 ``f"{client_ip}:{user_id}:{path}"``，而登录请求没有 token →
+    ``user_id`` 落回 client_ip → **同一出口 NAT 下的所有医生共享一个桶**（真机压测
+    准备 10 个账号时被逼退避重试，第 6 个起 429）。
+
+    现在的安全 posture（两道都必须在，少一道就是降级）：
+      1. IP 桶 30/min —— 挡单主机洪水（``RateLimitMiddleware`` 自动生效）；
+      2. 用户名桶 5/min —— 挡针对单个账号的撞库/暴破，即使换 IP 也一样被挡
+         （``enforce_login_rate_limit``，在两个登录端点里于 bcrypt **之前**调用）。
+    """
+
     def test_auth_token_rate_limit_configured(self):
         from app.config.rate_limit import RATE_LIMITS
         assert "/api/v1/auth/token" in RATE_LIMITS
-        assert RATE_LIMITS["/api/v1/auth/token"]["capacity"] == 5
+        assert RATE_LIMITS["/api/v1/auth/token"]["capacity"] == 30
 
     def test_auth_login_rate_limit_configured(self):
         from app.config.rate_limit import RATE_LIMITS
         assert "/api/v1/auth/login" in RATE_LIMITS
-        assert RATE_LIMITS["/api/v1/auth/login"]["capacity"] == 5
+        assert RATE_LIMITS["/api/v1/auth/login"]["capacity"] == 30
+
+    def test_per_username_bucket_still_at_five(self):
+        """第二道防线不能因为调大 IP 桶而被顺带删掉。"""
+        from app.config.rate_limit import LOGIN_USER_BUCKET_CAPACITY
+        assert LOGIN_USER_BUCKET_CAPACITY == 5
+
+    def test_login_endpoints_enforce_username_bucket(self):
+        """两个登录端点都必须调用用户名桶限流（否则撞库防护形同虚设）。"""
+        import inspect
+
+        from app.api.v1 import auth
+
+        for func in (auth.login, auth.login_for_access_token):
+            src = inspect.getsource(func)
+            assert "await enforce_login_rate_limit(" in src, func.__name__
 
     def test_consent_rate_limit_configured(self):
         from app.config.rate_limit import RATE_LIMITS

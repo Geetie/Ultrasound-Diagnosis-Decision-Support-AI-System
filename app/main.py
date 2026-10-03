@@ -1,3 +1,4 @@
+import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -21,6 +22,7 @@ from app.api.v1.imaging import router as imaging_router
 from app.api.v1.obs_dashboard import router as obs_dashboard_router
 from app.api.v1.report import router as report_router
 from app.api.v1.security import router as security_router
+from app.api.v1.segmentation import router as segmentation_router
 from app.api.v1.session import router as session_router
 from app.api.v1.speech import router as speech_router
 from app.api.v1.voice import router as voice_router
@@ -40,6 +42,18 @@ from app.security.security_headers import SecurityHeadersMiddleware
 # 于是真机上只剩一行光秃秃的 `rag_service_init_failed`，**失败原因被整个丢掉**，
 # 排查全靠猜。改成 structlog 后 `error=...` 才会真正出现在日志里。
 logger = structlog.get_logger(__name__)
+
+
+def _detect_worker_count() -> int:
+    """当前进程的 uvicorn worker 数（``WEB_CONCURRENCY``，缺省 1）。
+
+    单进程是本系统的**硬前提**（见 lifespan 里的 nav 订阅放大与 rotate 锁告警），
+    所以这个判定必须容错：缺失/空串/非数字一律按 1 处理，绝不抛。
+    """
+    try:
+        return int(os.environ.get("WEB_CONCURRENCY", "1") or "1")
+    except ValueError:
+        return 1
 
 
 @asynccontextmanager
@@ -119,6 +133,19 @@ async def lifespan(app: FastAPI):
 
     from app.api.websocket.nav import manager as nav_manager
     await nav_manager.start_redis_subscriber()
+
+    # 并发审查 P2-9：多 worker 下每个进程都会建一条 Redis 订阅，同一条 nav 消息会被
+    # 广播 N 次（每进程各过滤一次，功能正确但开销 N 倍）。生产是 --workers 1，
+    # 这里在 workers>1 时显式告警，避免"哪天有人加了 --workers 4"静默劣化。
+    _worker_count = _detect_worker_count()
+    if _worker_count > 1:
+        logger.warning(
+            "multi_worker_nav_redis_subscription_amplified",
+            workers=_worker_count,
+            impact="每条 nav 消息被 Redis pub/sub 广播 N 次；且 refresh token rotate 的"
+            " per-token 锁只在进程内闭合（跨进程需改 Lua/WATCH）",
+            action="上线前先做 P2-9（抽独立订阅进程）与 P0-4 残留（Lua 原子轮换）",
+        )
 
     # SEC：脱敏引擎的 HMAC 密钥 / 令牌映射 / 计数器必须从 Redis 恢复。
     # 这件事**不能**在 import 期做（那时已有事件循环，见
@@ -685,6 +712,8 @@ app.include_router(consent_router, prefix="/api/v1/consent")
 app.include_router(device_router, prefix="/api/v1/admin/device")
 app.include_router(feedback_router, prefix="/api/v1/feedback")
 app.include_router(imaging_router, prefix="/api/v1/imaging")
+# 结节分割（app/inference/nodule_segmentation.py；权重缺失时端点 503 + 原因）
+app.include_router(segmentation_router, prefix="/api/v1/segmentation")
 app.include_router(speech_router, prefix="/api/v1/speech")
 app.include_router(voice_router, prefix="/api/v1/voice")
 app.include_router(security_router, prefix="/api/v1/security")

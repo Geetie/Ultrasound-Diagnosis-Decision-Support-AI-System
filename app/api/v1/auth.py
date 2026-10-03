@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 
 from app.config.database import get_db_session
+from app.config.rate_limit import enforce_login_rate_limit
 from app.config.settings import settings
 from app.models.database import User
 from app.security.auth import (
@@ -124,6 +125,9 @@ async def _issue_access_token(user_id: str, user_info: dict[str, Any]) -> str:
 @router.post("/token", response_model=Token)
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
     _ensure_jwt_key_exists()
+    # 并发审查 P1-12：用户名维度限流，挡「换 IP 撞库」；必须放在 authenticate_user
+    # 之前——否则每次暴力尝试都要先付一次 bcrypt 的 200~400ms CPU 代价。
+    await enforce_login_rate_limit(form_data.username)
 
     user = await authenticate_user(form_data.username, form_data.password)
     if not user:
@@ -157,6 +161,8 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
 @router.post("/login", response_model=Token)
 async def login(login_request: LoginRequest):
     _ensure_jwt_key_exists()
+    # 并发审查 P1-12：同 /token，用户名维度限流必须在 bcrypt 之前。
+    await enforce_login_rate_limit(login_request.username)
 
     user = await authenticate_user(login_request.username, login_request.password)
     if not user:
