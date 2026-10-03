@@ -11,9 +11,9 @@ from __future__ import annotations
 
 import pytest
 
-pytestmark = [pytest.mark.track_inf]
-
 from app.inference.attribute_hints import AttributeHintEngine
+
+pytestmark = [pytest.mark.track_inf]
 
 
 class _FakeTensor:
