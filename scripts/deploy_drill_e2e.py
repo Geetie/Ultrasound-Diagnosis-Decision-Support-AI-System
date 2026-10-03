@@ -176,16 +176,12 @@ def main() -> int:
 
     print("=== 7) 等管线完成（最多 300s）===")
     status = None
-    findings_seg = None
     for _ in range(60):
         time.sleep(5)
         code, res = _req(f"/api/v1/diagnosis/result/{request_id}", token=token, timeout=30)
         if code == 200:
             status = res.get("status")
             if status in ("completed", "failed", "timeout", "partial"):
-                f = res.get("findings")
-                if isinstance(f, dict):
-                    findings_seg = f.get("segmentation")
                 break
         print(f"    ... status={status or code}")
     print(f"  status={status}")
