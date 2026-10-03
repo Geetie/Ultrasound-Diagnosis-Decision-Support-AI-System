@@ -1,0 +1,13 @@
+# 行尾规范（2026-10-03 新增）
+# 背景：实测 111 个 .sh 里 107 个是 CRLF，在 Linux 上直接执行必然报
+# `行 N: 未预期的记号 "do\r"`——服务器上 ~/uai/src/scripts/*.sh 全部中招，
+# 运维脚本（vLLM 拉起、窗口切换、部署）只能靠手动 sed 去 CR 才能跑。
+# 规则：shell/python/yaml 等文本一律 LF；PowerShell 保持 CRLF（Windows 侧执行）。
+* text=auto eol=lf
+*.sh text eol=lf
+*.py text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.md text eol=lf
+*.ps1 text eol=crlf
+*.bat text eol=crlf
