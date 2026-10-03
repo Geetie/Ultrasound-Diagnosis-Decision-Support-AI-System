@@ -21,6 +21,7 @@ from app.api.v1.health import router as health_router
 from app.api.v1.imaging import router as imaging_router
 from app.api.v1.obs_dashboard import router as obs_dashboard_router
 from app.api.v1.report import router as report_router
+from app.api.v1.attributes import router as attributes_router
 from app.api.v1.security import router as security_router
 from app.api.v1.segmentation import router as segmentation_router
 from app.api.v1.session import router as session_router
@@ -716,6 +717,8 @@ app.include_router(imaging_router, prefix="/api/v1/imaging")
 # router 自带 prefix="/segmentation"，此处不再叠加，否则路径会变成
 # /api/v1/segmentation/segmentation/*
 app.include_router(segmentation_router, prefix="/api/v1")
+# 属性提示（app/inference/attribute_hints.py；ULC 文本塔 zero-shot，仅 6/9 维）
+app.include_router(attributes_router, prefix="/api/v1")
 app.include_router(speech_router, prefix="/api/v1/speech")
 app.include_router(voice_router, prefix="/api/v1/voice")
 app.include_router(security_router, prefix="/api/v1/security")

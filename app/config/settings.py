@@ -336,6 +336,16 @@ class Settings(BaseSettings):
     # auto | cuda | cpu；auto 在 CUDA_VISIBLE_DEVICES 无效时会退 CPU（慢但可用）
     nodule_segmentation_device: str = "auto"
 
+    # 诊断属性提示（app/inference/attribute_hints.py，ULC 文本塔 zero-shot）
+    # 依据 A.21 全量实测（US-365K 71,919 张，image→attribute）：
+    #   ULC 9 维宏平均 0.6894 / BiomedCLIP 0.4092（低于多数类基线=无判别力）
+    #   仅启用 6 个显著超基线的维度；Vascularity −0.056 / InternalChar +0.143 /
+    #   PosteriorAcoustics +0.045 三维不启用（见 attribute_hints.DISABLED_REASON）
+    # 定位是**旁路一致性校验**，不参与诊断结论。默认 cpu：GPU 常被 vLLM 占满。
+    attribute_hints_enabled: bool = True
+    attribute_hints_clip_weights: str = "~/uai/models/ultrasound_clip/checkpoints.pt"
+    attribute_hints_device: str = "auto"
+
     # bge-reranker (T-GA-RAG-03)
     bge_reranker_host: str = 'localhost'
     bge_reranker_port: int = 8005
