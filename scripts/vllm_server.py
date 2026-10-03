@@ -65,6 +65,64 @@ async def completions(request: Request) -> JSONResponse:
     )
 
 
+async def chat_completions(request: Request) -> JSONResponse:
+    """OpenAI 兼容的 /v1/chat/completions —— **主服务实际调的就是这个端点**。
+
+    为什么必须有它（2026-10-04 交付阻塞事故）：
+    `app/inference/vllm.py` 的端点是 ``/v1/chat/completions``（OpenAI 兼容），
+    而本文件原先只提供裸 ``/completions`` → 主服务每次生成都拿到 **404**，
+    于是整条诊断的 LLM 环节全退化为 ``llm_unavailable: InferenceError``
+    （报告里诊断意见出不来）。两个端点都提供，避免再出现契约漂移。
+
+    请求：``{"model": ..., "messages": [{"role","content"}...], "max_tokens", "temperature"}``
+    响应：OpenAI chat.completion 形状（含 choices[].message.content 与 usage）。
+    """
+    body = await request.json()
+    messages = body.get("messages") or []
+    max_tokens = int(body.get("max_tokens") or 256)
+    temperature = float(body.get("temperature") or 0.7)
+
+    # 拼成单轮 prompt：取最后一条 user 消息（多轮场景保留 assistant 上下文代价高，
+    # 本项目 LLM 客户端只用单轮；真需要多轮再上 chat template）。
+    prompt = ""
+    for msg in reversed(messages):
+        if msg.get("role") == "user":
+            prompt = str(msg.get("content") or "")
+            break
+    if not prompt and messages:
+        prompt = str(messages[-1].get("content") or "")
+
+    from vllm import SamplingParams
+
+    sampling_params = SamplingParams(max_tokens=max_tokens, temperature=temperature)
+    outputs = llm.generate([prompt], sampling_params)
+    text = outputs[0].outputs[0].text
+    model_name = body.get("model") or getattr(
+        getattr(llm, "model_config", None), "model", ""
+    )
+    return JSONResponse(
+        {
+            "id": f"chatcmpl-{uuid.uuid4().hex[:12]}",
+            "object": "chat.completion",
+            "created": int(time.time()),
+            "model": model_name,
+            "choices": [
+                {
+                    "index": 0,
+                    "message": {"role": "assistant", "content": text},
+                    "finish_reason": "stop",
+                }
+            ],
+            "usage": {
+                "prompt_tokens": len(outputs[0].prompt_token_ids or []),
+                "completion_tokens": len(outputs[0].outputs[0].token_ids or []),
+                "total_tokens": len(outputs[0].prompt_token_ids or [])
+                + len(outputs[0].outputs[0].token_ids or []),
+            },
+        }
+    )
+
+
 async def metrics(request: Request) -> JSONResponse:
     """极简运行时指标（不引 prometheus 依赖，够健康巡检用）。"""
     return JSONResponse(
@@ -83,6 +141,9 @@ def build_app(engine) -> Starlette:
         routes=[
             Route("/health", health),
             Route("/completions", completions, methods=["POST"]),
+            # OpenAI 兼容端点：**主服务 LLM 客户端调的就是它**（app/inference/vllm.py
+            # 的 _generate_endpoint）。缺这个路由 → 每次生成 404 → 诊断结论退化。
+            Route("/v1/chat/completions", chat_completions, methods=["POST"]),
             Route("/metrics", metrics),
         ]
     )
