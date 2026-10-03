@@ -18,6 +18,13 @@ os.environ.setdefault(
     os.path.join(tempfile.gettempdir(), "ultrasound_test_soft_hsm_enabled_at.txt"),
 )
 os.environ.setdefault("USE_SOFT_HSM", "false")
+# === ENV 必须是 test，否则 HSM 走生产路径 = 本地假红 ===
+# HSMManager.__init__ 的密钥恢复/校验分支按 is_test 判定跳过，而 is_test 依赖
+# ENV=test（CI 在 ci.yml 里设了，**本地没设**）→ 本地 `pytest tests/unit/api`
+# 会在 `from app.main import app` 处抛
+# "HSM_KEY_ENCRYPTION_KEY environment variable is not set"，一次假红 48 个用例，
+# 极易被误判成回归。CI 已有该变量，这里 setdefault 只影响本地。
+os.environ.setdefault("ENV", "test")
 
 import httpx
 import pytest

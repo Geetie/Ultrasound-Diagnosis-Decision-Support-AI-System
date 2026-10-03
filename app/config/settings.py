@@ -325,6 +325,17 @@ class Settings(BaseSettings):
     graph_query_enabled: bool = False
     rag_rrf_k: int = 60
 
+    # 甲状腺结节分割（app/inference/nodule_segmentation.py）
+    # 权重来自 scripts/tn3k_seg_unet.py 的官方划分训练（TN3K trainval 2879 张），
+    # 官方 test(614 张) 全量评测 DSC 0.7961 / IoU 0.7004（reports/tn3k_seg_unet.json）。
+    # 权重为部署产物，默认放在 ~/uai/models/nodule_seg/（仓库不分发二进制）。
+    # 依赖缺失/权重缺失时端点返回 503 并带原因，不静默返回空掩码。
+    nodule_segmentation_enabled: bool = True
+    nodule_segmentation_model_path: str = "~/uai/models/nodule_seg/unet_tn3k.pt"
+    nodule_segmentation_threshold: float = 0.5
+    # auto | cuda | cpu；auto 在 CUDA_VISIBLE_DEVICES 无效时会退 CPU（慢但可用）
+    nodule_segmentation_device: str = "auto"
+
     # bge-reranker (T-GA-RAG-03)
     bge_reranker_host: str = 'localhost'
     bge_reranker_port: int = 8005

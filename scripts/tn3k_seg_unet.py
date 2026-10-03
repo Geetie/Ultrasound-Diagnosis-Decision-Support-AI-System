@@ -145,6 +145,23 @@ def main() -> int:
                   f"({time.time()-t0:.0f}s)", flush=True)
 
     dscs, ious = evaluate(net, test_pairs, device)
+    ckpt_dir = Path("/mnt/ee16/home/student03/uai/models/nodule_seg")
+    ckpt_dir.mkdir(parents=True, exist_ok=True)
+    ckpt = ckpt_dir / "unet_tn3k.pt"
+    torch.save(
+        {
+            "state_dict": {k: v.cpu() for k, v in net.state_dict().items()},
+            "arch": "monai.UNet(spatial_dims=2, channels=(32,64,128,256,320), "
+                    "strides=(2,2,2,2), num_res_units=2, dropout=0.1)",
+            "input_size": SIZE,
+            "train_split": "TN3K official trainval (2879)",
+            "test_dice": round(float(np.mean(dscs)), 4),
+            "test_iou": round(float(np.mean(ious)), 4),
+            "epochs": EPOCHS,
+            "generated_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+        },
+        ckpt,
+    )
     result = {
         "protocol": f"MONAI UNet from scratch, 25 epochs, AdamW lr1e-3 cosine, bs16, 256px, flip/rot/scale/affine+brightness aug, official TN3K split (2879/614, no sampling)",
         "params_M": round(n_params / 1e6, 1),
