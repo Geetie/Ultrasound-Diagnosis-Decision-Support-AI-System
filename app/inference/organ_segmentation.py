@@ -49,6 +49,9 @@ class OrganSegmentationSpec:
     metrics: dict[str, Any] = field(default_factory=dict)
     dataset: str | None = None
     note: str = ""
+    # 架构键：加载权重前用它与 checkpoint 里的 arch_key 比对，不一致直接判不可用。
+    # 目的：宁可明确失败，也不能拿不匹配的权重 strict-load 崩溃或（更糟）静默错载。
+    arch_key: str = "unet_2d_321264256320"
 
     @property
     def available(self) -> bool:
@@ -70,6 +73,7 @@ class OrganSegmentationSpec:
             "available": self.available,
             "weight_path": self.weight_path,
             "arch": self.arch,
+            "arch_key": self.arch_key,
             "input_size": self.input_size,
             "preprocess": self.preprocess,
             "dataset": self.dataset,
@@ -79,17 +83,20 @@ class OrganSegmentationSpec:
         }
 
 
-_UNET_TN3K = (
+# 当前唯一实现的架构（甲状腺与心脏训练都用它——两处训练脚本同配方）。
+UNET_ARCH_KEY = "unet_2d_321264256320"
+UNET_ARCH_DESC = (
     "monai.UNet(spatial_dims=2, channels=(32,64,128,256,320), strides=(2,2,2,2),"
     " num_res_units=2, dropout=0.1)"
 )
+
 
 REGISTRY: dict[str, OrganSegmentationSpec] = {
     "thyroid": OrganSegmentationSpec(
         organ="thyroid",
         weight_path="~/uai/models/nodule_seg/unet_tn3k.pt",
         status="trained",
-        arch=_UNET_TN3K,
+        arch=UNET_ARCH_DESC,
         dataset="TN3K 官方划分（trainval 2879 / test 614）",
         metrics={"dice": 0.7961, "iou": 0.7004, "eval": "官方 test 614 张全量"},
         note="甲状腺结节（浅低回声病灶）分割，已全量验证",
@@ -98,7 +105,7 @@ REGISTRY: dict[str, OrganSegmentationSpec] = {
         organ="cardiac",
         weight_path="~/uai/models/cardiac_seg/unet_camus.pt",
         status="trained",
-        arch=_UNET_TN3K,
+        arch=UNET_ARCH_DESC,
         dataset="CAMUS-Lite（hf-mirror，500 患者 2CH/4CH；每 half_sequence 取中间 3 帧）",
         metrics={
             "dice": 0.8395, "iou": 0.7280,
@@ -111,7 +118,7 @@ REGISTRY: dict[str, OrganSegmentationSpec] = {
         organ="liver",
         weight_path=None,
         status="data_unavailable",
-        arch=_UNET_TN3K + "（结构一致，权重另训）",
+        arch=UNET_ARCH_DESC,
         dataset=None,
         metrics={},
         note="无公开超声肝分割数据（公开肝基准 LiTS 是 CT；BUSI/BUS-UCLM 是乳腺）",

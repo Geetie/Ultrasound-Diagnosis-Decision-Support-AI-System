@@ -130,7 +130,7 @@ class TestDegradation:
     def test_missing_weights_raises_unavailable(self, monkeypatch):
         monkeypatch.setattr(
             "app.inference.nodule_segmentation._model_path",
-            lambda: __import__("pathlib").Path("/nonexistent/unet_tn3k.pt"),
+            lambda organ="thyroid": __import__("pathlib").Path("/nonexistent/unet_tn3k.pt"),
         )
         seg = NoduleSegmenter.get()
         seg._net = None
@@ -153,7 +153,7 @@ class TestDegradation:
 
         monkeypatch.setattr(
             "app.inference.nodule_segmentation._model_path",
-            lambda: Path("/nonexistent/unet_tn3k.pt"),
+            lambda organ="thyroid": Path("/nonexistent/unet_tn3k.pt"),
         )
         seg = NoduleSegmenter.get()
         seg._net = None

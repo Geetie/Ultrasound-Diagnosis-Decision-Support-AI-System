@@ -23,7 +23,7 @@ import threading
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, ClassVar
 
 import structlog
 
@@ -55,31 +55,72 @@ class SegmentationResult:
     model_dice_official: float | None
 
 
-def _model_path() -> Path:
+def _model_path(organ: str = "thyroid") -> Path:
+    """器官权重路径解析。
+
+    - thyroid：读 settings.nodule_segmentation_model_path（保持既有部署行为不变）
+    - 其他器官：注册表 weight_path，可被 ``<ORGAN>_SEGMENTATION_MODEL_PATH`` 环境变量
+      覆盖（如 ``CARDIAC_SEGMENTATION_MODEL_PATH``）——部署时不必改代码。
+    """
     from app.config.settings import settings
 
-    p = Path(getattr(settings, "nodule_segmentation_model_path", "") or
-             "~/uai/models/nodule_seg/unet_tn3k.pt").expanduser()
-    return p
+    if organ == "thyroid":
+        return Path(
+            getattr(settings, "nodule_segmentation_model_path", "")
+            or "~/uai/models/nodule_seg/unet_tn3k.pt"
+        ).expanduser()
+
+    import os
+
+    env_key = f"{organ.upper()}_SEGMENTATION_MODEL_PATH"
+    env_val = os.environ.get(env_key, "").strip()
+    if env_val:
+        return Path(env_val).expanduser()
+
+    from app.inference.organ_segmentation import get_spec
+
+    spec = get_spec(organ)
+    return Path(spec.weight_path or "").expanduser()
 
 
 class NoduleSegmenter:
-    """懒加载单例包装（``NoduleSegmenter.get()``）。"""
+    """懒加载单例包装（``NoduleSegmenter.get(organ)``，按器官各一个实例）。
 
-    _instance: NoduleSegmenter | None = None
+    命名保留 NoduleSegmenter 是历史兼容——它现在按注册表服务任意器官
+    （thyroid 结节 / cardiac 左心室）。调用方应通过 ``organ=`` 显式指定，
+    默认 thyroid 以保证旧调用行为不变。
+    """
+
+    _instances: ClassVar[dict[str, NoduleSegmenter]] = {}
     _lock = threading.Lock()
 
-    def __init__(self) -> None:
+    def __init__(self, organ: str = "thyroid") -> None:
+        from app.inference.organ_segmentation import get_spec
+
+        self._organ = get_spec(organ).organ  # 归一化 + 校验（未注册即 KeyError）
         self._net: Any = None
         self._device: str = "cpu"
         self._meta: dict[str, Any] = {}
 
+    @property
+    def organ(self) -> str:
+        return self._organ
+
     @classmethod
-    def get(cls) -> NoduleSegmenter:
+    def get(cls, organ: str = "thyroid") -> NoduleSegmenter:
+        key = (organ or "thyroid").strip().lower()
         with cls._lock:
-            if cls._instance is None:
-                cls._instance = cls()
-            return cls._instance
+            inst = cls._instances.get(key)
+            if inst is None:
+                inst = cls(key)
+                cls._instances[key] = inst
+            return inst
+
+    @classmethod
+    def reset_instances(cls) -> None:
+        """清空实例缓存（测试用：换权重/换设备后重新加载）。"""
+        with cls._lock:
+            cls._instances.clear()
 
     # ---------------------------------------------------------------- 加载
     def _resolve_device(self) -> str:
@@ -104,12 +145,16 @@ class NoduleSegmenter:
         if self._net is not None:
             return
         from app.config.settings import settings
+        from app.inference.organ_segmentation import UNET_ARCH_KEY, resolve
+
+        # 1) 注册表闸门：未训练/无数据的器官在此明确失败（不静默换器官权重）
+        spec = resolve(self._organ)
 
         if not bool(getattr(settings, "nodule_segmentation_enabled", True)):
             raise SegmentationUnavailableError("结节分割功能已关闭（nodule_segmentation_enabled=false）")
 
         device = self._resolve_device()
-        path = _model_path()
+        path = _model_path(self._organ)
         if not path.exists():
             raise SegmentationUnavailableError(f"分割权重不存在：{path}")
 
@@ -124,6 +169,19 @@ class NoduleSegmenter:
         except Exception as exc:
             raise SegmentationUnavailableError(f"权重加载失败：{exc}") from exc
 
+        # 2) 架构闸门：权重与注册表 arch 不匹配 → 明确失败（宁可不服务，
+        #    也不能拿不匹配的权重 strict-load 崩掉或静默错载）
+        ckpt_arch = str(ckpt.get("arch_key") or "")
+        if ckpt_arch and ckpt_arch != spec.arch_key:
+            raise SegmentationUnavailableError(
+                f"权重架构与注册表不符：{path} arch_key={ckpt_arch} "
+                f"期望 {spec.arch_key}（{spec.organ}）"
+            )
+        if ckpt_arch == "" and spec.arch_key != UNET_ARCH_KEY:
+            raise SegmentationUnavailableError(
+                f"权重未登记 arch_key，无法确认与 {spec.organ} 架构兼容"
+            )
+
         net = UNet(
             spatial_dims=2, in_channels=3, out_channels=1,
             channels=(32, 64, 128, 256, 320), strides=(2, 2, 2, 2),
@@ -134,15 +192,18 @@ class NoduleSegmenter:
         self._net = net
         self._device = device
         self._meta = {
-            "input_size": int(ckpt.get("input_size", INPUT_SIZE)),
-            "test_dice": ckpt.get("test_dice"),
-            "test_iou": ckpt.get("test_iou"),
-            "train_split": ckpt.get("train_split"),
+            "organ": self._organ,
+            "arch_key": ckpt_arch or UNET_ARCH_KEY,
+            "input_size": int(ckpt.get("input_size", spec.input_size)),
+            "test_dice": ckpt.get("test_dice", spec.metrics.get("dice")),
+            "test_iou": ckpt.get("test_iou", spec.metrics.get("iou")),
+            "train_split": ckpt.get("train_split", spec.metrics.get("eval")),
             "generated_at": ckpt.get("generated_at"),
             "path": str(path),
         }
         logger.info(
             "nodule_segmentation_loaded",
+            organ=self._organ,
             device=device,
             path=str(path),
             official_dice=self._meta["test_dice"],
@@ -216,10 +277,9 @@ class NoduleSegmenter:
         thr = float(threshold if threshold is not None
                     else getattr(settings, "nodule_segmentation_threshold", DEFAULT_THRESHOLD))
 
-        if image_bytes is not None:
-            pil = Image.open(io.BytesIO(image_bytes))
-        else:  # pragma: no cover - 参数校验已保证二者互斥
-            pil = Image.open(str(image_path))
+        # 参数校验已保证二者互斥（else 分支仅类型收窄）
+        pil = (Image.open(io.BytesIO(image_bytes)) if image_bytes is not None
+               else Image.open(str(image_path)))
         ow, oh = pil.size
         out_w, out_h = out_size or (ow, oh)
 
@@ -262,11 +322,16 @@ class NoduleSegmenter:
         try:
             self._ensure_loaded()
         except SegmentationUnavailableError as exc:
-            return {"available": False, "reason": str(exc)}
+            return {"available": False, "organ": self._organ, "reason": str(exc)}
         except Exception as exc:  # pragma: no cover
-            return {"available": False, "reason": f"{type(exc).__name__}: {exc}"}
+            return {
+                "available": False,
+                "organ": self._organ,
+                "reason": f"{type(exc).__name__}: {exc}",
+            }
         return {
             "available": True,
+            "organ": self._organ,
             "device": self._device,
             "model": self._meta,
         }

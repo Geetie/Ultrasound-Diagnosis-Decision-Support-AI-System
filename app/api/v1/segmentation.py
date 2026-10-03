@@ -32,14 +32,13 @@ class NoduleSegmentationResponse(BaseModel):
     latency_ms: float
     device: str
     model_dice_official: float | None
+    organ: str = "thyroid"
 
 
-@router.post("/nodule", response_model=NoduleSegmentationResponse)
-async def segment_nodule(
-    file: UploadFile = File(..., description="超声图像（PNG/JPEG）"),
-    threshold: float | None = Query(None, ge=0.0, le=1.0),
-) -> NoduleSegmentationResponse:
-    """对一张甲状腺超声图做结节分割。"""
+async def _segment(file: UploadFile, threshold: float | None, organ: str):
+    """共用实现：读文件 → 分割 → 装配响应（两个路由共用，避免逻辑漂移）。"""
+    import asyncio
+
     from app.inference.nodule_segmentation import (
         NoduleSegmenter,
         SegmentationUnavailableError,
@@ -52,18 +51,23 @@ async def segment_nodule(
         raise HTTPException(status_code=413, detail="文件超过 20MB 上限")
 
     try:
-        result = await __import__("asyncio").to_thread(
-            NoduleSegmenter.get().infer,
+        result = await asyncio.to_thread(
+            NoduleSegmenter.get(organ).infer,
             image_bytes=data,
             threshold=threshold,
         )
     except SegmentationUnavailableError as exc:
-        logger.warning("nodule_segmentation_unavailable", error=str(exc))
+        logger.warning("nodule_segmentation_unavailable", organ=organ, error=str(exc))
         raise HTTPException(status_code=503, detail=f"结节分割不可用：{exc}") from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:  # pragma: no cover
-        logger.error("nodule_segmentation_failed", error=str(exc), error_type=type(exc).__name__)
+        logger.error(
+            "nodule_segmentation_failed",
+            organ=organ,
+            error=str(exc),
+            error_type=type(exc).__name__,
+        )
         raise HTTPException(status_code=500, detail="结节分割执行失败") from exc
 
     return NoduleSegmentationResponse(
@@ -78,15 +82,45 @@ async def segment_nodule(
         latency_ms=result.latency_ms,
         device=result.device,
         model_dice_official=result.model_dice_official,
+        organ=organ,
     )
 
 
+@router.post("/nodule", response_model=NoduleSegmentationResponse)
+async def segment_nodule(
+    file: UploadFile = File(..., description="超声图像（PNG/JPEG）"),
+    threshold: float | None = Query(None, ge=0.0, le=1.0),
+) -> NoduleSegmentationResponse:
+    """对一张甲状腺超声图做结节分割（兼容路由，等价 organ=thyroid）。"""
+    return await _segment(file, threshold, "thyroid")
+
+
+@router.post("/organ/{organ}/nodule", response_model=NoduleSegmentationResponse)
+async def segment_organ_nodule(
+    organ: str,
+    file: UploadFile = File(..., description="超声图像（PNG/JPEG）"),
+    threshold: float | None = Query(None, ge=0.0, le=1.0),
+) -> NoduleSegmentationResponse:
+    """按器官分割（thyroid 结节 / cardiac 左心室）。
+
+    器官未训练或无公开数据时返回 **503 + 明确原因**（见 /segmentation/organs），
+    绝不静默换一个器官的权重——器官错配会产出看似合理的错误轮廓。
+    """
+    from app.inference.organ_segmentation import get_spec
+
+    try:
+        spec = get_spec(organ)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=f"未注册的器官：{organ}") from exc
+    return await _segment(file, threshold, spec.organ)
+
+
 @router.get("/health")
-async def segmentation_health() -> dict:
+async def segmentation_health(organ: str = Query("thyroid", description="器官名")) -> dict:
     """分割能力可用性（永远 200，故障体现在 available/reason）。"""
     from app.inference.nodule_segmentation import NoduleSegmenter
 
-    return NoduleSegmenter.get().health()
+    return NoduleSegmenter.get(organ).health()
 
 
 @router.get("/organs")
