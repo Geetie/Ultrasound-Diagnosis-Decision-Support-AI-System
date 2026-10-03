@@ -1009,6 +1009,52 @@ def _get_monitor_agent():
         return None
 
 
+def _pixel_spacing_from_dicom(content: bytes) -> list[float] | None:
+    """从 DICOM 字节读 PixelSpacing（行距, 列距，单位 mm）。
+
+    语义：**缺 PixelSpacing 就不换算 mm²**（返回 None，报告只报像素面积）。
+    绝不拿默认间距猜物理尺寸——医生会把那个数字当真实病灶大小。
+
+    容错要点：pydicom 的 DS 可能是 str / MultiValue / None；任何异常都不
+    换算，但**必须留痕**（静默 return None 会让"单位缺失"变成查不到原因）。
+    """
+    import io
+
+    try:
+        import pydicom
+
+        ds = pydicom.dcmread(io.BytesIO(content), stop_before_pixels=True)
+    except Exception as exc:
+        logger.debug("nodule_pixel_spacing_parse_failed", error=str(exc),
+                     error_type=type(exc).__name__)
+        return None
+
+    ps = getattr(ds, "PixelSpacing", None)
+    if ps is None:
+        logger.debug("nodule_pixel_spacing_absent")
+        return None
+    try:
+        # pydicom 多值标签是 MultiValue（**不是** list/tuple 子类），
+        # 故按"非字符串即可迭代"判定，别用 isinstance(list, tuple)。
+        items = list(ps) if not isinstance(ps, str) else [ps]
+        values = [float(str(v).strip()) for v in items]
+    except (TypeError, ValueError) as exc:
+        logger.warning("nodule_pixel_spacing_invalid", value=str(ps), error=str(exc))
+        return None
+    if len(values) < 2 or any(v <= 0 for v in values[:2]):
+        logger.warning("nodule_pixel_spacing_rejected", parsed=values)
+        return None
+    return [round(values[0], 6), round(values[1], 6)]
+
+
+def _area_mm2_from_dicom(content: bytes, area_px: int) -> float | None:
+    """像素面积 → mm²。缺 PixelSpacing 或参数非法时返回 None（不猜）。"""
+    ps = _pixel_spacing_from_dicom(content)
+    if ps is None or area_px <= 0:
+        return None
+    return round(area_px * ps[0] * ps[1], 3)
+
+
 async def _safe_nodule_contour(request_row: Any) -> dict[str, Any]:
     """超声结节/目标分割旁路：把轮廓与面积挂进 findings（2026-10-03）。
 
@@ -1079,6 +1125,11 @@ async def _safe_nodule_contour(request_row: Any) -> dict[str, Any]:
             NoduleSegmenter.get(organ_raw).infer,
             image_bytes=frame.png_bytes,
         )
+        area_px = round(result.lesion_area_ratio * result.width * result.height)
+        # mm² 换算：**必须**有 PixelSpacing，否则宁可不换算也不猜。
+        # 超声 DICOM 普遍带 PixelSpacing（行距/列距 mm）；缺失时只报像素面积，
+        # 由报告层写明"未提供像素间距，无法换算 mm²"。
+        mm2 = _area_mm2_from_dicom(content, area_px)
         return {
             "available": True,
             "organ": organ_raw,
@@ -1088,7 +1139,9 @@ async def _safe_nodule_contour(request_row: Any) -> dict[str, Any]:
             "width": result.width,
             "height": result.height,
             "lesion_area_ratio": round(result.lesion_area_ratio, 6),
-            "area_px": round(result.lesion_area_ratio * result.width * result.height),
+            "area_px": area_px,
+            "area_mm2": mm2,
+            "pixel_spacing_mm": _pixel_spacing_from_dicom(content),
             "bbox": list(result.bbox) if result.bbox else None,
             "mean_prob": round(result.mean_prob, 6),
             "max_prob": round(result.max_prob, 6),

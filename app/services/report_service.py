@@ -284,9 +284,13 @@ def _format_nodule_segmentation(segmentation: Any) -> str:
 
     parts: list[str] = []
     area_px = segmentation.get("area_px")
+    area_mm2 = segmentation.get("area_mm2")
     ratio = segmentation.get("lesion_area_ratio")
     if isinstance(area_px, int | float) and area_px > 0:
         parts.append(f"分割面积 {round(float(area_px))} 像素²")
+    if isinstance(area_mm2, int | float) and area_mm2 > 0:
+        # 有 PixelSpacing 才换算 mm²（旁路在缺间距时返回 None，不猜默认值）
+        parts.append(f"约 {round(float(area_mm2), 1)} mm²")
     if isinstance(ratio, int | float):
         parts.append(f"占画面 {round(float(ratio) * 100, 2)}%")
     bbox = segmentation.get("bbox")
