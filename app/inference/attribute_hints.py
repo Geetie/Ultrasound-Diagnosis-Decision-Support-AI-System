@@ -372,7 +372,12 @@ class AttributeHintEngine:
 
         with torch.no_grad():
             toks = self._tokenizer([text]).to(self._device)
+            # 归一到 tower 所在设备再算相似度：prompt 缓存为了省显存存在 CPU，
+            # 而编码结果在 self._device（GPU 路径实测在这里报
+            # "Expected all tensors to be on the same device"——2026-10-04）。
+            # 缓存总量仅数 MB（6 维 × ~10 类 × 512 维），搬上设备比逐维搬 tf 划算。
             tf = F.normalize(self._text_tower(toks).float(), dim=-1)[0]
+            tf_dev = tf.to(self._device)
 
         hints: list[DimensionHint] = []
         conflicts = 0
@@ -380,8 +385,8 @@ class AttributeHintEngine:
             if not enabled:
                 continue
             labels = LABELS[field_name]
-            pf = self._prompt_feats[field_name]
-            sims = (pf @ tf).tolist()
+            pf = self._prompt_feats[field_name].to(self._device)
+            sims = (pf @ tf_dev).tolist()
             order = sorted(range(len(sims)), key=lambda i: sims[i], reverse=True)
             top1 = labels[order[0]]
             conf = float(sims[order[0]])
