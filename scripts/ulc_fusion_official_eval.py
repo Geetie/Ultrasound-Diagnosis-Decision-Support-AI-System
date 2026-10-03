@@ -40,8 +40,8 @@ import open_clip
 
 sys.path.insert(0, "/tmp")
 from ulc_ref.enhanced_clip_model import EnhancedCLIP
-from ulc_ref.graph_encoder import GraphEncoder
 from ulc_ref.graph_builder import build_single_sample_graph
+from ulc_ref.graph_encoder import GraphEncoder
 
 model, _, preprocess = open_clip.create_model_and_transforms(
     "hf-hub:microsoft/BiomedCLIP-PubMedBERT_256-vit_base_patch16_224",

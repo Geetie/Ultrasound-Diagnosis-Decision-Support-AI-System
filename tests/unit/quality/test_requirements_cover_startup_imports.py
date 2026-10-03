@@ -55,6 +55,9 @@ _MODULE_TO_PACKAGE = {
     # bcrypt 为独立直依赖（app/security/auth.py 直接 import bcrypt）。
     "jwt": "pyjwt",
     "bcrypt": "bcrypt",
+    # open_clip → open_clip_torch（2026-10-03 属性提示接入时补：import 名与
+    # PyPI 包名不同，此前守卫把 open_clip 判为"未声明的硬导入"而误报）
+    "open_clip": "open-clip-torch",
 }
 
 # 允许"未声明"的模块 —— 每一条都必须给出理由，且被测试校验其确实是软导入。
@@ -69,6 +72,18 @@ _OPTIONAL_UNDECLARED = {
         " try/except（ImportError + JSONDecodeError 双兜底）软导入——约束输出"
         "为单字段枚举 JSON，损坏概率极低，缺失时 extract_guided_grading 返回"
         " None 回退正则抽取器，故不入清单"
+    ),
+    "monai": (
+        "结节分割网络实现（app/inference/nodule_segmentation.py 的 UNet）；"
+        "软导入，缺失时抛 SegmentationUnavailableError → 端点 503 + 原因，"
+        "诊断主链路不受影响。真机验证版本 1.6.1，部署走 requirements-dev.txt"
+    ),
+    "open_clip": (
+        "ULC/BiomedCLIP 文本塔装载（app/inference/attribute_hints.py，离线装载 "
+        "BiomedCLIP 配置 + PubMedBERT 分词器）；软导入，缺失时抛 "
+        "AttributeHintsUnavailableError → 端点 503 + 原因。"
+        "PyPI 包名是 open_clip_torch（见 _MODULE_TO_PACKAGE），"
+        "真机验证版本 3.3.0，部署走 requirements-dev.txt"
     ),
 }
 

@@ -72,6 +72,7 @@ ds.save_as(out, enforce_file_format=True)
 print("SAVED", out, os.path.getsize(out), "bytes")
 
 import pydicom  # 回读校验
+
 chk = pydicom.dcmread(out)
 print("verify: TS =", chk.file_meta.TransferSyntaxUID.name)
 print("verify: Photo =", chk.PhotometricInterpretation, " Rows =", chk.Rows, " Cols =", chk.Columns)

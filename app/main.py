@@ -10,6 +10,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.api.v1.alert_admin import router as alert_admin_router
 from app.api.v1.alerts import router as internal_alerts_router
+from app.api.v1.attributes import router as attributes_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.consent import router as consent_router
 from app.api.v1.device import router as device_router
@@ -21,7 +22,6 @@ from app.api.v1.health import router as health_router
 from app.api.v1.imaging import router as imaging_router
 from app.api.v1.obs_dashboard import router as obs_dashboard_router
 from app.api.v1.report import router as report_router
-from app.api.v1.attributes import router as attributes_router
 from app.api.v1.security import router as security_router
 from app.api.v1.segmentation import router as segmentation_router
 from app.api.v1.session import router as session_router

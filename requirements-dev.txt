@@ -10,6 +10,12 @@ pytest-cov==4.1.0
 pytest-xdist==3.6.1
 pytest-timeout==2.3.1
 freezegun==1.5.1
+# 影像侧 AI 能力（2026-10-03）：结节分割（UNet）与属性提示（ULC/BiomedCLIP 文本塔）。
+# 放在 dev 组而非 requirements.txt：主服务**不在启动路径**上 import 它们，
+# 缺包时功能显式降级（端点 503 + 原因），诊断主链路不受影响。
+# 真机验证版本：monai 1.6.1 / open_clip_torch 3.3.0（torch 由其传递依赖引入）。
+monai>=1.6.1
+open_clip_torch>=3.3.0
 pre-commit==3.6.0
 fakeredis[lua]==2.26.1
 # 代码规范与安全扫描（CI 用，见 .github/workflows）

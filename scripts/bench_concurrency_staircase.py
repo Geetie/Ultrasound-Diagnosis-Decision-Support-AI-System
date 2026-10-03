@@ -240,8 +240,9 @@ async def direct_enqueue(count: int) -> list[dict]:
 
     前置：``diagnosis_results`` 行要先落库（管线按 request_id 读它）。
     """
-    import asyncpg
     import uuid
+
+    import asyncpg
 
     from app.config.dsn import to_asyncpg_dsn
     from app.config.redis_keys import RedisKey

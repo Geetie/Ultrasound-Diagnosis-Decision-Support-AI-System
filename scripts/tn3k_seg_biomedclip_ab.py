@@ -25,7 +25,11 @@ from PIL import Image
 
 sys.path.insert(0, "/mnt/ee16/home/student03/uai/src/scripts")
 from tn3k_seg_echocare import (  # noqa: E402
-    BS, FPNDecoder, dice_loss, list_pairs, load_img_mask,
+    BS,
+    FPNDecoder,
+    dice_loss,
+    list_pairs,
+    load_img_mask,
 )
 
 M = Path("/mnt/ee16/home/student03/uai/models")

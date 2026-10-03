@@ -58,6 +58,18 @@ qdrant-client>=1.12.0
 scipy>=1.18.0
 zstandard>=0.25.0
 
+# 影像侧 AI 能力（结节分割 / 属性提示）的重依赖**刻意不列入本清单**：
+# monai（分割网络）、open_clip_torch（ULC/BiomedCLIP 文本塔）走
+# requirements-dev.txt 同组，理由：
+#   1) 缺任一包时对应功能**显式降级**——SegmentationUnavailableError /
+#      AttributeHintsUnavailableError → 端点 503 + 原因，诊断主链路不受影响；
+#   2) 本清单由 `uv pip compile` 产出 requirements.lock，加重依赖会让 lock
+#      体积与解析成本暴涨，而主服务并不在启动路径上 import 它们。
+# 真机验证版本：monai 1.6.1 / open_clip_torch 3.3.0。
+# ⚠️ 守卫测试 test_requirements_cover_startup_imports 的"已声明"判定是
+# **子串匹配**：不要在本文件注释里写出未声明的包名（如"torch 已在上面声明"），
+# 那会造成假阳性，让真正的漏声明长期藏身。
+
 # pkuseg 刻意**不列入**：PyPI 无 py3.12 wheel，源码构建需要 C++ 工具链且在本机
 # 构建失败。代码侧是软依赖（app/knowledge/segmentation_validation.py 的
 # `try: import pkuseg / except ImportError` → 退回 jieba），

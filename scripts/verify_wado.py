@@ -7,9 +7,9 @@
 
 同时验证安全边界：非法 id 必须被拒绝（防目录穿越）。
 """
+import asyncio
 import os
 import sys
-import asyncio
 import tempfile
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -70,6 +70,7 @@ with tempfile.TemporaryDirectory() as tmp:
         len(back) <= len(payload),
     )
     import io as _io
+
     import pydicom
 
     ds = pydicom.dcmread(_io.BytesIO(back), force=True)

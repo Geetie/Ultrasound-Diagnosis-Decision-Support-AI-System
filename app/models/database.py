@@ -95,6 +95,11 @@ class DiagnosisResult(Base):
     # （模型里甚至没有对应列），于是后台管线拿不到患者条件，安全网关的禁忌判定只能走
     # "缺条件数据 → 保守判命中"分支 → 每次诊断恒 requires_manual_review。
     patient_context = Column(JSONB, nullable=True)
+    # 请求携带的影像 ID 列表（对应 DICOM 上传时返回的 image_id）。
+    # 2026-10-03 接入结节分割时暴露：`create_request(image_ids=...)` 收了参数却
+    # **从不写库**（与 patient_context 同构的"收了就丢"），于是后台管线完全拿不到
+    # 影像标识——报告里无法输出结节轮廓/面积。先把标识持久化，是取图链路的地基。
+    image_ids = Column(ARRAY(Text))
     confidence = Column(Float, nullable=False)
     findings = Column(JSONB)
     recommendations = Column(Text)

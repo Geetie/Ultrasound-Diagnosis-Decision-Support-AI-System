@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import json
+import sys
 import time
 from pathlib import Path
 
@@ -14,11 +15,15 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-import sys
 sys.path.insert(0, "/mnt/ee16/home/student03/uai/src")
 sys.path.insert(0, "/tmp")
 from tn3k_seg_echocare import (  # noqa: E402
-    FPNDecoder, build_encoder, list_pairs, load_img_mask, dice_loss, BS,
+    BS,
+    FPNDecoder,
+    build_encoder,
+    dice_loss,
+    list_pairs,
+    load_img_mask,
 )
 
 OUT = Path("/mnt/ee16/home/student03/uai/reports/tn3k_seg_echocare.json")

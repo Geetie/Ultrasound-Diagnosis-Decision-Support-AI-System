@@ -80,6 +80,9 @@ class DiagnosisRepository:
             # 此前这个入参**收了就丢**（模型无对应列），导致禁忌判定永远拿不到条件数据
             # → 每次诊断都保守判"命中禁忌" → 恒 requires_manual_review。
             patient_context=patient_context,
+            # 影像标识必须落库：结节分割等影像侧增强要用它找回 DICOM。
+            # 此前同样是"收了就丢"（模型连列都没有），管线完全拿不到影像。
+            image_ids=list(image_ids) if image_ids else None,
             confidence=0.0,  # 初始置信度
             findings={"status": "processing"},
             status="processing",
