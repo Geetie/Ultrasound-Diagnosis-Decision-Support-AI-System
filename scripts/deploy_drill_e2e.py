@@ -193,19 +193,22 @@ def main() -> int:
         print(f"  PIPELINE_NOT_COMPLETED ({status})")
         return 3
 
-    print("=== 8) 查 findings.segmentation ===")
-    if not findings_seg:
-        print("  NO_SEGMENTATION（旁路未产出；可能旁路开关未开或未取到图）")
+    print("=== 8) 查分割旁路结果 ===")
+    # ⚠️ 口径纠正（实测踩过）：API 的 DiagnosisResult **不含 findings**
+    # （设计如此：写库结构不进 API 契约），旁路结果对外是
+    # **nodule_segmentation** 字段。读 findings 会永远得到 None。
+    code, res = _req(f"/api/v1/diagnosis/result/{request_id}", token=token, timeout=30)
+    seg = res.get("nodule_segmentation") if code == 200 else None
+    if not seg:
+        print(f"  NO_SEGMENTATION http={code}（旁路未产出；检查旁路开关与取图）")
         return 4
-    print("  keys:", sorted(findings_seg.keys()))
-    for k in ("organ", "status", "model_dice_reference", "lesion_area_ratio",
-              "lesion_area_mm2", "bbox", "latency_ms", "device", "reason"):
-        if k in findings_seg:
-            v = findings_seg[k]
-            if k == "latency_ms" or k == "model_dice_reference":
-                print(f"  {k}: {v}")
-            else:
-                print(f"  {k}: {v}")
+    print(f"  available={seg.get('available')} organ={seg.get('organ')} "
+          f"device={seg.get('device')}")
+    print(f"  area_px={seg.get('area_px')} area_mm2={seg.get('area_mm2')} "
+          f"ratio={seg.get('lesion_area_ratio')} bbox={seg.get('bbox')}")
+    print(f"  pixel_spacing_mm={seg.get('pixel_spacing_mm')}")
+    if not seg.get("area_mm2"):
+        print("  WARN: 无 mm²（DICOM 应带 PixelSpacing，需查旁路实现）")
 
     print("=== 9) 生成报告查 nodule_summary ===")
     code, rep = _req("/api/v1/report", {"request_id": request_id}, token, timeout=60)
