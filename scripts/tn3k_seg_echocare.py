@@ -83,8 +83,9 @@ class FPNDecoder(nn.Module):
     """四段金字塔（Swin 输出 feats[1..4] = 256/512/1024/2048 @ /4/8/16/32）
     → top-down 融合 → 1ch logits。"""
 
-    def __init__(self, dims=(256, 512, 1024, 2048), width=128):
+    def __init__(self, dims=(256, 512, 1024, 2048), width=128, same_res=False):
         super().__init__()
+        self.same_res = same_res
         c1, c2, c3, c4 = dims
         self.lat4 = nn.Conv2d(c4, width, 1)
         self.lat3 = nn.Conv2d(c3, width, 1)
@@ -96,11 +97,21 @@ class FPNDecoder(nn.Module):
         self.head = nn.Conv2d(width, 1, 1)
 
     def forward(self, feats):
-        c1, c2, c3, c4 = feats[1], feats[2], feats[3], feats[4]  # /4 /8 /16 /32
+        # 兼容两种输入：SwinV2 返回 5 级（feats[0] 是 /2 的 stem，丢掉）、
+        # ViT hook 版直接给 4 级
+        if len(feats) == 5:
+            feats = feats[1:]
+        c1, c2, c3, c4 = feats  # /4 /8 /16 /32
         p4 = self.lat4(c4)
-        p3 = self.smooth3(self.lat3(c3) + F.interpolate(p4, scale_factor=2, mode="bilinear", align_corners=False))
-        p2 = self.smooth2(self.lat2(c2) + F.interpolate(p3, scale_factor=2, mode="bilinear", align_corners=False))
-        p1 = self.smooth1(self.lat1(c1) + F.interpolate(p2, scale_factor=2, mode="bilinear", align_corners=False))
+        if self.same_res:
+            # ViT hook 版：四级同分辨率，只做 1x1 lateral 后逐级相加
+            p3 = self.smooth3(self.lat3(c3) + p4)
+            p2 = self.smooth2(self.lat2(c2) + p3)
+            p1 = self.smooth1(self.lat1(c1) + p2)
+        else:
+            p3 = self.smooth3(self.lat3(c3) + F.interpolate(p4, scale_factor=2, mode="bilinear", align_corners=False))
+            p2 = self.smooth2(self.lat2(c2) + F.interpolate(p3, scale_factor=2, mode="bilinear", align_corners=False))
+            p1 = self.smooth1(self.lat1(c1) + F.interpolate(p2, scale_factor=2, mode="bilinear", align_corners=False))
         return self.head(p1)  # /4 → 上采样到全分辨率由 eval/train 做
 
 
