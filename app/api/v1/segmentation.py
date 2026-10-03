@@ -87,3 +87,11 @@ async def segmentation_health() -> dict:
     from app.inference.nodule_segmentation import NoduleSegmenter
 
     return NoduleSegmenter.get().health()
+
+
+@router.get("/organs")
+async def segmentation_organs() -> dict:
+    """多器官分割能力矩阵（哪些器官已训练/待训练/无数据）。"""
+    from app.inference.organ_segmentation import list_specs
+
+    return {"organs": list_specs()}
