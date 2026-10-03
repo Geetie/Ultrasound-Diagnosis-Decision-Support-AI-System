@@ -24,6 +24,15 @@
 from __future__ import annotations
 
 import os
+
+# ⚠️ 必须在**任何** huggingface_hub / open_clip import 之前设离线标志。
+# huggingface_hub.constants 在 import 时把 HF_HUB_OFFLINE 固化成常量，
+# 之后再 os.environ.setdefault 已经太晚——实测 2026-10-04 真机：
+# 方法内 setdefault 没生效，属性提示请求触发 huggingface.co HEAD 重试 5 次
+# （网络不可达），同步阻塞 event loop，整个 18000 无响应。
+os.environ.setdefault("HF_HUB_OFFLINE", "1")
+os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
+
 import threading
 import time
 from dataclasses import dataclass, field
@@ -234,10 +243,18 @@ class AttributeHintEngine:
         except Exception as exc:
             raise AttributeHintsUnavailableError(f"依赖不可用（torch）：{exc}") from exc
 
-        # 关键：open_clip 装载前必须先设离线标志，否则它会向 huggingface.co
-        # 发 HEAD 请求探测 safetensors（实测网络不可达时白等 ~14s、5 次重试）。
-        os.environ.setdefault("HF_HUB_OFFLINE", "1")
-        os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
+        # open_clip 装载前确保**真的**离线：huggingface_hub 在 import 时已把
+        # HF_HUB_OFFLINE 固化为常量，只改环境变量对它无效（见文件顶部注释）。
+        # 这里显式改常量，双保险。
+        try:
+            import huggingface_hub.constants as hf_constants
+
+            if not getattr(hf_constants, "HF_HUB_OFFLINE", False):
+                hf_constants.HF_HUB_OFFLINE = True
+        except Exception:  # pragma: no cover - 旧版无该常量时靠环境变量
+            pass
+        os.environ["HF_HUB_OFFLINE"] = "1"
+        os.environ["TRANSFORMERS_OFFLINE"] = "1"
 
         # 离线 CLIP：先把权重/配置放到 HF 离线缓存，再 create_model（见 A.21 踩坑记录）
         try:

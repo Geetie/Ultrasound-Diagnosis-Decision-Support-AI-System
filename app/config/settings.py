@@ -342,6 +342,13 @@ class Settings(BaseSettings):
     # 开启后结果挂 findings["segmentation"]，缺权重/缺影像一律 available=False
     # 带原因，不影响诊断状态与置信度。
     nodule_contour_in_pipeline_enabled: bool = False
+    # AI 依赖的**硬离线**闸门（2026-10-04 真机事故驱动）：
+    # open_clip / huggingface_hub 在装载模型时会向 huggingface.co 发 HEAD 探测
+    # 权重；网络不可达时每次 5 次重试 ~14s，且这段是**同步**代码——跑在请求
+    # 路径上会把 event loop 整个卡死（实测 18000 端口全 000、health 无响应）。
+    # 这里在进程启动最早期打开离线开关（两个变量都设：hub 端与 transformers 端），
+    # 让所有模型装载只认本地缓存/本地路径，找不到就显式报"缺权重"。
+    ai_offline_mode: bool = True
 
     # 诊断属性提示（app/inference/attribute_hints.py，ULC 文本塔 zero-shot）
     # 依据 A.21 全量实测（US-365K 71,919 张，image→attribute）：

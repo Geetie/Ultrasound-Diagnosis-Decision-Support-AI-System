@@ -1,4 +1,14 @@
 import os
+
+# ⚠️ 必须在任何 huggingface_hub / open_clip / transformers import 之前设离线
+# 闸门。实测 2026-10-04：属性提示在请求路径上装载 CLIP 时向 huggingface.co 发
+# HEAD 探测，网络不可达 → 5 次同步重试 → event loop 卡死 → 18000 端口无响应。
+# 详见 app/config/settings.py 的 ai_offline_mode 注释。
+if os.environ.get("AI_OFFLINE_MODE", "1") not in ("0", "false", "False"):
+    os.environ.setdefault("HF_HUB_OFFLINE", "1")
+    os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
+    os.environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")
+
 from contextlib import asynccontextmanager
 from pathlib import Path
 
