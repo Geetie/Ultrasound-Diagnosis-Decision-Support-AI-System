@@ -244,15 +244,21 @@ class AttributeHintEngine:
             raise AttributeHintsUnavailableError(f"依赖不可用（torch）：{exc}") from exc
 
         # open_clip 装载前确保**真的**离线：huggingface_hub 在 import 时已把
-        # HF_HUB_OFFLINE 固化为常量，只改环境变量对它无效（见文件顶部注释）。
-        # 这里显式改常量，双保险。
-        try:
-            import huggingface_hub.constants as hf_constants
+        # HF_HUB_OFFLINE 固化成常量，只改环境变量对它无效（见文件顶部注释）。
+        #
+        # 这里用 sys.modules 取**已导入**的模块而不是直接 import：
+        #   - 若 huggingface_hub 已随 open_clip 导入 → 改常量，双保险；
+        #   - 若尚未导入 → 下方 open_clip 首次 import 时读文件顶部设好的环境变量；
+        #   - 不硬 import 该包还有个副作用好处：依赖声明守卫（它扫全仓 import）
+        #     不会把 huggingface_hub 判成"未声明的硬导入"（它是 open_clip 的
+        #     传递依赖，不该由本项目直接声明）。
+        import sys
 
-            if not getattr(hf_constants, "HF_HUB_OFFLINE", False):
-                hf_constants.HF_HUB_OFFLINE = True
-        except Exception:  # pragma: no cover - 旧版无该常量时靠环境变量
-            pass
+        _hf_constants = sys.modules.get("huggingface_hub.constants")
+        if _hf_constants is not None and not getattr(
+            _hf_constants, "HF_HUB_OFFLINE", False
+        ):
+            _hf_constants.HF_HUB_OFFLINE = True
         os.environ["HF_HUB_OFFLINE"] = "1"
         os.environ["TRANSFORMERS_OFFLINE"] = "1"
 
