@@ -713,7 +713,9 @@ app.include_router(device_router, prefix="/api/v1/admin/device")
 app.include_router(feedback_router, prefix="/api/v1/feedback")
 app.include_router(imaging_router, prefix="/api/v1/imaging")
 # 结节分割（app/inference/nodule_segmentation.py；权重缺失时端点 503 + 原因）
-app.include_router(segmentation_router, prefix="/api/v1/segmentation")
+# router 自带 prefix="/segmentation"，此处不再叠加，否则路径会变成
+# /api/v1/segmentation/segmentation/*
+app.include_router(segmentation_router, prefix="/api/v1")
 app.include_router(speech_router, prefix="/api/v1/speech")
 app.include_router(voice_router, prefix="/api/v1/voice")
 app.include_router(security_router, prefix="/api/v1/security")
