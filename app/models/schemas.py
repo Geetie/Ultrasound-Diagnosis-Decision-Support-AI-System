@@ -401,6 +401,12 @@ class DiagnosisResult(BaseModel):
     research_metrics: Optional[ResearchMetrics] = None
     cross_modality_hints: List[CrossModalityHint] = Field(default_factory=list)
     posterior_acoustic: Optional[PosteriorAcoustic] = None
+    # 分割旁路结果（2026-10-03）：轮廓/面积/概率/降级原因。
+    # 用 Optional[Dict] 而非新 schema —— 它是**旁路辅助信息**，形态还会随
+    # 器官与模型演进（甲状腺结节 vs 左心室），过早固化 schema 只会带来
+    # 无谓的契约迁移。``available=False`` 时带 ``reason``，前端应显示
+    # "未做分割：<原因>"，**不能**显示成"未检出结节"。
+    nodule_segmentation: Optional[Dict[str, Any]] = None
 
 
 # ============== DICOM 相关模型 ==============

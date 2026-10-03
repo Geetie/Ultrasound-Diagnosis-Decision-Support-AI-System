@@ -199,7 +199,26 @@ class DicomStorageService:
         patient_id: str,
         session_id: str,
         sop_instance_uid: str,
+        storage_id: str | None = None,
     ) -> str:
+        """落盘一份 DICOM（去 PHI 后）。
+
+        Args:
+            storage_id: **传了就按 ID 命名**（``{date}/{storage_id}.dcm`` 扁平布局），
+                与 :meth:`path_for_id` 严格自洽——这是"用 image_ids 取回字节"的前提。
+                不传则沿用旧的 ``{date}/{patient}/{session}/{sop}.dcm`` 三层布局
+                （保留给既有调用方与历史数据）。
+                传 ID 还顺带消除一个坑：旧布局的日期取 ``datetime.now(UTC)``，
+                与 ``generate_image_id()`` 的日期在**跨零点**时会不一致，
+                导致 path_for_id 的确定性推导再错一列。
+
+        Returns:
+            可直接传给 :meth:`retrieve` 的 storage_path。
+        """
+        if storage_id:
+            # 走按 ID 落盘：路径由 ID 推导，天然与 path_for_id 一致
+            return await self.save_by_id(content, storage_id, patient_id)
+
         if len(content) > self._max_file_size:
             raise ValueError(
                 f"DICOM file size {len(content)} exceeds maximum {self._max_file_size}"

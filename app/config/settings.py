@@ -335,6 +335,13 @@ class Settings(BaseSettings):
     nodule_segmentation_threshold: float = 0.5
     # auto | cuda | cpu；auto 在 CUDA_VISIBLE_DEVICES 无效时会退 CPU（慢但可用）
     nodule_segmentation_device: str = "auto"
+    # 把分割旁路接进诊断管线（app/services/diagnosis_pipeline.py 的
+    # _safe_nodule_contour）。**默认关闭**：分割要读磁盘 + 跑 UNet 推理，是在
+    # 分钟级 LLM 诊断之外额外的 IO/算力；开启前应先用甲状腺/心脏分割真机
+    # 验证过取图链路（dicom_images 索引 + storage_id 命名落盘）。
+    # 开启后结果挂 findings["segmentation"]，缺权重/缺影像一律 available=False
+    # 带原因，不影响诊断状态与置信度。
+    nodule_contour_in_pipeline_enabled: bool = False
 
     # 诊断属性提示（app/inference/attribute_hints.py，ULC 文本塔 zero-shot）
     # 依据 A.21 全量实测（US-365K 71,919 张，image→attribute）：

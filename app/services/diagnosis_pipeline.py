@@ -37,6 +37,10 @@ from app.config.database import AsyncSessionLocal
 from app.config.redis import RedisPool
 from app.config.redis_keys import RedisKey
 from app.config.settings import settings
+from app.inference.nodule_segmentation import (
+    NoduleSegmenter,
+    SegmentationUnavailableError,
+)
 from app.models.schemas import (
     ConsentStatus,
     DesensitizationStatus,
@@ -50,6 +54,7 @@ from app.models.schemas import (
 from app.repositories import (
     DiagnosisRepository,
 )
+from app.repositories.dicom_image_repository import DicomImageRepository
 from app.security.three_layer_desensitization import (
     get_three_layer_desensitization_manager,
 )
@@ -322,6 +327,11 @@ async def run_diagnosis_pipeline(request_id: str) -> bool:
         )
         timings["sg.check_output_ms"] = (time.monotonic() - t) * 1000.0
 
+        # 3.5) 分割旁路（辅助信息，失败不影响诊断结论；默认配置关闭）
+        t = time.monotonic()
+        segmentation = await _safe_nodule_contour(request)
+        timings["segmentation.bypass_ms"] = (time.monotonic() - t) * 1000.0
+
         # 4) 组装 DiagnosisResult 并写 DB（独立短会话，见 _write_result_to_db）
         t = time.monotonic()
         write_ok = await _write_result_to_db(
@@ -332,6 +342,7 @@ async def run_diagnosis_pipeline(request_id: str) -> bool:
             timings=timings,
             routing=routing_decision,
             rollout=rollout_decision,
+            segmentation=segmentation,
             # 传入起点，使落库 findings 里带上真实的 pipeline.total_ms
             # （否则该键只在写库后才出现在本地 timings 中，接口读不到，
             #  processing_time_ms 会静默回退到 mock 值）
@@ -692,6 +703,7 @@ async def _write_result_to_db(
     timings: dict[str, float],
     routing: RoutingDecision | None = None,
     rollout: RolloutDecision | None = None,
+    segmentation: dict[str, Any] | None = None,
     t_start: float | None = None,
 ) -> bool:
     """根据 fusion_result + sg_result 决定 status / findings / confidence 并写 DB。
@@ -745,6 +757,12 @@ async def _write_result_to_db(
         "routing": routing.as_dict() if routing is not None else None,
         # T-GR-INT-01：灰度判定落库，观测侧据此统计各轨道放量比例
         "rollout": rollout.as_dict() if rollout is not None else None,
+        # 分割旁路结果（轮廓/面积/概率）。**总是写入**（含 available=False
+        # 的情形）——报告层据此显示"未做分割"与原因，而不是字段整体消失，
+        # 那会让医生以为"没 nodules"或"系统没这项能力"。
+        "segmentation": segmentation
+        if segmentation is not None
+        else {"available": False, "reason": "not_run"},
     }
 
     # 三层脱敏 L2（融合层）：对**即将持久化**的输出载荷再脱敏一次。
@@ -989,6 +1007,115 @@ def _get_monitor_agent():
             error_type=type(exc).__name__,
         )
         return None
+
+
+async def _safe_nodule_contour(request_row: Any) -> dict[str, Any]:
+    """超声结节/目标分割旁路：把轮廓与面积挂进 findings（2026-10-03）。
+
+    ## 为什么是旁路
+
+    分割是**辅助信息**，不是诊断结论。缺权重/缺影像/解码失败/器官未训练
+    统统只写 ``available=False + reason``，**绝不影响诊断状态与置信度**——
+    与 :func:`_safe_track_diagnosis` 同一套失败安全哲学。
+
+    ## 取图链路（此前完全断裂）
+
+    ``request.image_ids`` → ``dicom_images`` 索引 → ``storage_path`` →
+    :meth:`DicomStorageService.retrieve` → :func:`extract_frame_from_bytes`
+    → :meth:`NoduleSegmenter.infer`。三处曾经的断点已修：
+      1. ``image_ids`` 收了就丢（0016 迁移补列）；
+      2. 返回的 image_id 与落盘文件名是两套命名空间（``save(storage_id=...)``）；
+      3. session→image 映射只存在于 audit_logs（0017 迁移建 ``dicom_images``）。
+
+    ## 为什么默认关闭
+
+    分割要读磁盘 + 跑 UNet 推理，是**分钟级 LLM 诊断之外的额外 IO/算力**。
+    默认 ``enabled=false``，由配置显式开启——避免在没验证过的部署上
+    悄悄给每例诊断加几百毫秒与磁盘读。
+    """
+    from app.config.settings import settings
+
+    if not bool(getattr(settings, "nodule_contour_in_pipeline_enabled", False)):
+        return {"available": False, "reason": "not_enabled", "skipped": True}
+
+    organ_raw = str(getattr(request_row, "organ", "") or "").strip().lower()
+    image_ids = list(getattr(request_row, "image_ids", None) or [])
+    if not image_ids:
+        return {"available": False, "reason": "no_image_ids", "skipped": True}
+
+    t0 = time.monotonic()
+    try:
+        async with AsyncSessionLocal() as db:
+            repo = DicomImageRepository(db)
+            rows = await repo.filter_existing_in_session(
+                str(getattr(request_row, "session_id", "") or ""), image_ids
+            )
+            if not rows:
+                # 上传时索引写失败/跨 session/客户端自报了不存在的 ID
+                return {
+                    "available": False,
+                    "reason": "image_not_indexed",
+                    "requested_image_ids": image_ids[:5],
+                }
+            row = rows[0]
+            storage_path = row.storage_path
+
+        from app.imaging.dicom_pixels import (
+            DicomPixelExtractionError,
+            extract_frame_from_bytes,
+        )
+        from app.services.dicom_storage import get_dicom_storage
+
+        content = await get_dicom_storage().retrieve(storage_path)
+        if not content:
+            return {
+                "available": False,
+                "reason": "image_bytes_unavailable",
+                "image_id": row.image_id,
+            }
+
+        frame = extract_frame_from_bytes(content)
+        result = await asyncio.to_thread(
+            NoduleSegmenter.get(organ_raw).infer,
+            image_bytes=frame.png_bytes,
+        )
+        return {
+            "available": True,
+            "organ": organ_raw,
+            "image_id": row.image_id,
+            "frame_index": frame.frame_index,
+            "total_frames": frame.total_frames,
+            "width": result.width,
+            "height": result.height,
+            "lesion_area_ratio": round(result.lesion_area_ratio, 6),
+            "area_px": round(result.lesion_area_ratio * result.width * result.height),
+            "bbox": list(result.bbox) if result.bbox else None,
+            "mean_prob": round(result.mean_prob, 6),
+            "max_prob": round(result.max_prob, 6),
+            "threshold": result.threshold,
+            "model_dice_official": result.model_dice_official,
+            "device": result.device,
+            "infer_latency_ms": result.latency_ms,
+            "bypass_latency_ms": round((time.monotonic() - t0) * 1000, 1),
+        }
+    except SegmentationUnavailableError as exc:
+        # 器官未训练 / 无公开数据 / 权重缺失 —— 明确原因，不是静默无结果
+        logger.warning("nodule_contour_unavailable", organ=organ_raw, reason=str(exc))
+        return {"available": False, "organ": organ_raw, "reason": str(exc)}
+    except DicomPixelExtractionError as exc:
+        logger.warning("nodule_contour_pixel_extraction_failed", error=str(exc))
+        return {"available": False, "organ": organ_raw, "reason": f"dicom_decode_failed: {exc}"}
+    except Exception as exc:  # pragma: no cover - 旁路兜底
+        logger.warning(
+            "nodule_contour_bypass_failed",
+            error=str(exc),
+            error_type=type(exc).__name__,
+        )
+        return {
+            "available": False,
+            "organ": organ_raw,
+            "reason": f"{type(exc).__name__}: {exc}",
+        }
 
 
 async def _safe_track_diagnosis(

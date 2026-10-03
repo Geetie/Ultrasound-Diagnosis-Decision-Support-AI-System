@@ -15,10 +15,12 @@ from app.api.v1.errors import (
     ServerErrorException,
 )
 from app.api.v1.utils import get_actor_id
+from app.config.database import AsyncSessionLocal
 from app.config.settings import settings
 from app.dependencies import get_audit_service, get_session_repo
 from app.models.schemas import DICOMStreamRequest, DICOMStreamResponse, DICOMUploadResponse
 from app.repositories import SessionRepository
+from app.repositories.dicom_image_repository import DicomImageRepository
 from app.security.auth import get_current_active_user
 from app.services.audit_service import AuditService
 from app.services.dicom_storage import get_dicom_storage
@@ -89,6 +91,20 @@ def parse_and_validate_dicom(content: bytes) -> tuple[pydicom.Dataset | None, st
         return None, f"BitsAllocated must be 1-16, got {bits_allocated}", [f"BitsAllocated={bits_allocated}"]
 
     return ds, None, []
+
+
+def _safe_int(value) -> int | None:
+    """DICOM 数值标签 → int；IS 类型/字符串都能吃，失败返回 None。
+
+    pydicom 的 IS（整数串）类型不直接是 int；None、空串、非法值都必须安全
+    降级——影像索引是旁路，不能因一个标签把上传请求打回。
+    """
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
 
 
 def _desensitize_patient_id(value: str) -> str:
@@ -176,11 +192,15 @@ async def upload_dicom(
     sop_instance_uid = internal_metadata.get("sop_instance_uid", image_id)
     try:
         storage = get_dicom_storage()
+        # storage_id=image_id：落盘路径与 DicomStorageService.path_for_id(image_id)
+        # 严格自洽——这是"用 diagnosis_results.image_ids 取回字节"的前提。
+        # 旧布局（{date}/{patient}/{session}/{sop}.dcm）保留给不传 ID 的调用方。
         storage_path = await storage.save(
             content=content,
             patient_id=raw_patient_id,
             session_id=session_id,
             sop_instance_uid=sop_instance_uid,
+            storage_id=image_id,
         )
         internal_metadata["storage_path"] = storage_path
     except Exception as e:
@@ -189,7 +209,29 @@ async def upload_dicom(
             error_code="E2000",
             error_message="DICOM file storage failed",
             detail=str(e),
-        )
+        ) from e
+
+    # 写影像索引（dicom_images）：把"image_id ↔ session ↔ 字节位置"显式化。
+    # 失败只告警不阻断上传——影像已经落盘可用，索引缺失只让"按 session 取图"
+    # 退化为不可用（管线侧会显式降级），不该把用户的上传请求打回。
+    try:
+        async with AsyncSessionLocal() as db:
+            await DicomImageRepository(db).create(
+                image_id=image_id,
+                session_id=session_id,
+                storage_path=storage_path,
+                patient_id=raw_patient_id,
+                sop_instance_uid=sop_instance_uid,
+                modality=str(getattr(dataset, "Modality", "") or "") or None,
+                width=_safe_int(getattr(dataset, "Rows", None)),
+                height=_safe_int(getattr(dataset, "Columns", None)),
+                frame_count=_safe_int(getattr(dataset, "NumberOfFrames", None)) or 1,
+                size_bytes=len(content),
+                original_filename=file.filename,
+            )
+            await db.commit()
+    except Exception as e:  # pragma: no cover - 索引是旁路，不阻断上传
+        logger.warning("dicom_image_index_write_failed", error=str(e), image_id=image_id)
 
     actor_id = get_actor_id(current_user)
     await audit_service.log_action(
@@ -237,8 +279,8 @@ async def stream_dicom_frame(
         # 并发审查 P1-9：关键帧 base64 常 1~30MB，b64decode 是纯 CPU（每秒几十 MB
         # 量级），放事件循环里会拖慢所有并发请求。offload。
         frame_data = await asyncio.to_thread(base64.b64decode, request.frame_data)
-    except Exception:
-        raise BadRequestException(error_message="Invalid base64 data")
+    except Exception as e:
+        raise BadRequestException(error_message="Invalid base64 data") from e
 
     if len(frame_data) >= 132 and frame_data[128:132] == b"DICM":
         if request.is_key_frame:

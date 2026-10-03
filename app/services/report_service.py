@@ -89,19 +89,23 @@ _FALLBACK_TEMPLATE = """# 超声诊断报告
 
 {{findings}}
 
-## 二、诊断意见
+## 二、影像分割（模型辅助）
+
+{{nodule_summary}}
+
+## 三、诊断意见
 
 {{diagnosis}}
 
-## 三、建议
+## 四、建议
 
 {{recommendation}}
 
-## 四、证据来源
+## 五、证据来源
 
 {{evidence}}
 
-## 五、质量控制
+## 六、质量控制
 
 - 融合一致性：{{consistency_status}}
 - 人工复核：{{review_required}}
@@ -264,6 +268,38 @@ def _format_measurement(measurement: Any) -> str:
     return "；".join(parts)
 
 
+def _format_nodule_segmentation(segmentation: Any) -> str:
+    """分割旁路摘要（2026-10-03）。
+
+    语义要求（临床安全）：
+      - ``available=True`` → 报面积/占比/框选，**并显式标注这是模型辅助结果**；
+      - ``available=False`` → 写明原因，**绝不能**写成"未检出"（两者含义
+        完全不同：前者是能力没跑，后者是跑了且没找到目标）。
+    """
+    if not isinstance(segmentation, Mapping) or not segmentation:
+        return "（本次未执行影像分割）"
+    if not segmentation.get("available"):
+        reason = str(segmentation.get("reason") or "未提供原因")
+        return f"（未执行影像分割：{reason}）"
+
+    parts: list[str] = []
+    area_px = segmentation.get("area_px")
+    ratio = segmentation.get("lesion_area_ratio")
+    if isinstance(area_px, int | float) and area_px > 0:
+        parts.append(f"分割面积 {round(float(area_px))} 像素²")
+    if isinstance(ratio, int | float):
+        parts.append(f"占画面 {round(float(ratio) * 100, 2)}%")
+    bbox = segmentation.get("bbox")
+    if isinstance(bbox, list) and len(bbox) == 4:
+        parts.append(
+            f"边界框 {bbox[0]},{bbox[1]} → {bbox[2]},{bbox[3]}（原图像素坐标）"
+        )
+    if not parts:
+        return "（分割未检出目标区域）"
+    organ = segmentation.get("organ") or "目标"
+    return f"模型辅助分割（{organ}）：" + "；".join(parts)
+
+
 def _format_actions(actions: Any) -> str:
     """M7 处置建议段落文本。"""
     placeholder = "（本次未生成结构化处置建议，请结合临床判断）"
@@ -360,6 +396,11 @@ def build_report_content(result: Any, session: Any = None) -> dict[str, Any]:
         # M3 测量摘要 / M7 处置建议（器官模板中的独立段落）
         "measurement_summary": _format_measurement(measurement),
         "clinical_actions": _format_actions(actions),
+        # 分割旁路摘要（2026-10-03）：轮廓/面积。**未做分割时如实写明原因**，
+        # 不留空——空段落会让医生以为"做了分割但没发现东西"。
+        "nodule_summary": _format_nodule_segmentation(
+            findings_raw.get("segmentation")
+        ),
         # M10 患者解释话术：**刻意不放进模板**——报告是医疗文书，面向患者的
         # 安抚性表述混入正文会改变文书性质；由医生按需追加（见 render_report）。
         "patient_explanation": _format_patient_explanation(

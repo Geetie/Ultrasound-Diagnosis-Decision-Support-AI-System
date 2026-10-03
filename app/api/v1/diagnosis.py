@@ -611,6 +611,15 @@ async def get_diagnosis_result(
         fusion_status=FusionStatus.NORMAL,
         diagnosis=diagnosis_payload,
         **clinical_attribute_fields(diagnosis_payload),
+        # 分割旁路：findings 顶层的 segmentation（不进 clinical_attributes——
+        # 它不是"医生直接信息需求 M1~M12"那一族，而是影像辅助结果）。
+        # 缺失时给 {"available": False, "reason": "not_run"}，让前端能区分
+        # "没做分割"与"分割了但没检出目标"。
+        nodule_segmentation=(
+            (diagnosis_payload or {}).get("segmentation")
+            if isinstance((diagnosis_payload or {}).get("segmentation"), dict)
+            else {"available": False, "reason": "not_run"}
+        ),
         evidence=DiagnosisEvidence(
             knowledge_ids=result.knowledge_ids if hasattr(result, "knowledge_ids") and result.knowledge_ids else None,
             content=result.findings if result.findings else None,

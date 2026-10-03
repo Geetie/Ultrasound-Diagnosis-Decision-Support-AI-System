@@ -109,6 +109,47 @@ class DiagnosisResult(Base):
     created_at = Column(TIMESTAMP(timezone=True), default=func.current_timestamp())
 
 
+class DicomImage(Base):
+    """上传的 DICOM 影像索引（2026-10-03 接入结节分割时补）。
+
+    为什么需要这张表
+    ----------------
+    此前"哪张影像属于哪个 session"**只存在于 audit_logs 的 JSONB detail**，
+    没有表、没有 Repository、没有 API 可查，于是：
+      - ``diagnosis_results.image_ids`` 是**客户端自报**，服务端零校验；
+      - 后台管线拿到 image_ids 也**取不回字节**（返回的 img_... ID 与落盘
+        文件名是两套命名空间，见 DicomStorageService.path_for_id 注释）。
+
+    本表把映射显式化：``image_id``（客户端拿到的 ID）↔ ``session_id`` ↔
+    ``storage_path``（可交给 retrieve()）。有了它才能做三件事：
+    按 session 拉全部影像、校验 image_ids 归属、管线侧取图做分割。
+
+    存储路径刻意冗余存一份：即便日后布局规则变更，历史行仍指向当时的真实路径
+    （不依赖 path_for_id 的推导规则仍然成立）。
+    """
+
+    __tablename__ = 'dicom_images'
+    __table_args__ = (
+        Index('idx_dicom_images_session_created', 'session_id', 'created_at'),
+    )
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    # 与 DicomStorageService.STORAGE_ID_PATTERN 对齐（img_/frame_ + 日期 + hex8）
+    image_id = Column(String(64), unique=True, nullable=False, index=True)
+    session_id = Column(String(64), nullable=False)
+    patient_id = Column(String(64), nullable=True)
+    # 可直接交给 DicomStorageService.retrieve() 的路径（local 绝对路径或 minio:// URL）
+    storage_path = Column(Text, nullable=False)
+    sop_instance_uid = Column(String(128), nullable=True)
+    modality = Column(String(8), nullable=True)
+    width = Column(Integer, nullable=True)
+    height = Column(Integer, nullable=True)
+    frame_count = Column(Integer, nullable=True)
+    size_bytes = Column(Integer, nullable=True)
+    original_filename = Column(String(255), nullable=True)
+    created_at = Column(TIMESTAMP(timezone=True), default=func.current_timestamp())
+
+
 class DiagnosisReport(Base):
     """T-GB-API-02：诊断报告（草稿 → 签名 → PACS/HIS 推送）。
 
