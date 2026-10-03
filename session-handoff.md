@@ -5,7 +5,7 @@
 
 ## Last Updated
 
-2026-10-02（HEAD `0eeb3cb`）
+2026-10-03（HEAD `957901a`；并发与性能审查已收口）
 
 ## Current Objective
 
@@ -18,6 +18,21 @@ Harness 工程收口：把项目现状、踩坑、禁则、可复用流程沉淀
 - 本轮 harness 变更：新增/重写 `AGENTS.md`、`feature_list.json`、`progress.md`、`session-handoff.md`、`init.sh`；
   新增 SKILL `uai-harness-maintenance`；更新 SKILL `remote-gpu-server-devtest`。
 - 未跟踪文件待处置：`scripts/_verify_services.sh`、`scripts/server_restart_api.sh`、`scripts/_smoke_graph.py`。
+
+## 并发与性能审查（2026-10-03，本轮）
+
+- **发现 26 项（P0×4 / P1×12 / P2×10），已修 17 项**，全部零语义风险项（加锁/信号量/上界/
+  超时/回收/offload）；9 项未修并写明理由（其中 2 项需产品决策、1 项是 HEAD 既有 INT 失败）。
+- 关键 P0：①多器官联合诊断**原先完全无限流**；②**refresh token rotate 的 check-then-act
+  竞态**（同一 token 可派生两个有效后继 → reuse 检测被绕过）；③WS 下行**持锁 await
+  send_json**；④登录 bcrypt + HSM 签名、onnxruntime、pydicom 解析在事件循环里同步执行。
+- 关键 P1：诊断管线**无端到端超时**（`pipeline_dispatch/fusion_budget_s=6.0` 是从未被读取的
+  孤儿配置，最坏 ~240s 占死全部 worker 槽位）→ 新增 `pipeline_total_budget_s=180`。
+- 报告：`reports/concurrency_perf_audit.md` / `.json`；压测：`reports/concurrency_perf_report.json`
+  （脚本 `scripts/bench_concurrency_staircase.py`，1/5/10 走 HTTP 多医生、20/50 走 direct_enqueue）。
+- 回归：新增 46 例（4 个 `test_concurrency_audit_fixes.py`）；核心四包覆盖率 **91%**（上轮 90.04%）。
+- **真机遗留**：接手时 8002 未监听（被并行工作线开 GPU 窗口时 `pkill VLLM::EngineCore` 连杀），
+  本轮以 `--gpu-memory-utilization 0.40` 拉起 Qwen2.5-7B-Instruct（与判官 8006 共卡）。
 
 ## Blockers
 

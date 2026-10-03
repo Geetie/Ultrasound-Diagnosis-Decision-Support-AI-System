@@ -82,3 +82,11 @@ soft_hsm_enabled_at.txt
 
 # 部署脚本写入的部署标记（记录当前 src 对应的 commit）
 .deployed_sha
+
+# === 一次性探针脚本（项目惯例：`_` 前缀，用完即删） ===
+# 为什么要 ignore 而不是"记得删"：ruff 棘轮（tests/unit/quality/test_ruff_ratchet.py）
+# 扫的是**工作树**，未跟踪的探针会实打实地把违规计数拽动（实测 ±15），
+# 于是"别的窗口还剩几个探针"变成了本仓库的门禁噪声。ignore 掉探针后，
+# 本地计数与 CI 干净检出同口径。
+scripts/_*.py
+scripts/_*.sh

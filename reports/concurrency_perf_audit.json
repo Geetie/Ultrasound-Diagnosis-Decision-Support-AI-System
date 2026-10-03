@@ -1,0 +1,614 @@
+{
+  "audit": "concurrency_perf_audit",
+  "date": "2026-10-03",
+  "scope": [
+    "app/(18000)",
+    "safety_gateway/(9001)",
+    "edge/",
+    "scripts/bench_*.py",
+    "deploy config"
+  ],
+  "out_of_scope": [
+    "前端重设计",
+    "医学内容正确性",
+    "模型精度"
+  ],
+  "summary": {
+    "total": 28,
+    "by_severity": {
+      "P0": {
+        "total": 4,
+        "fixed": 4,
+        "unfixed": 0
+      },
+      "P1": {
+        "total": 13,
+        "fixed": 11,
+        "unfixed": 2
+      },
+      "P2": {
+        "total": 11,
+        "fixed": 5,
+        "unfixed": 6
+      }
+    },
+    "fixed": 20,
+    "unfixed": 8,
+    "preexisting_failures": [
+      {
+        "what": "tests/integration/int 12 例失败：_write_result_to_db(diagnosis_repo=...) 与 app/services/diagnosis_pipeline.py:687 签名不匹配",
+        "proof": "该文件不在本轮 git diff 中 -> HEAD 既有失败"
+      }
+    ]
+  },
+  "findings": [
+    {
+      "id": "P0-1",
+      "severity": "P0",
+      "category": "3.1",
+      "fixed": true,
+      "location": "app/api/v1/auth.py:95",
+      "title": "bcrypt 校验与 HSM 签名在事件循环里同步执行",
+      "evidence": "async def login 内直接 verify_password(...)（bcrypt cost 12，200~400ms 持 GIL）；另 3 处 create_access_token 同步签名（持 threading.RLock）",
+      "impact": "并发登录/发码时全站请求一起停 0.2~0.4s/次",
+      "fix": "asyncio.to_thread offload + 抽出 _issue_access_token（并消除 3 处 F841 死变量）",
+      "test": "tests/unit/api/test_concurrency_audit_fixes.py::TestAuthOffloadsBlockingCrypto"
+    },
+    {
+      "id": "P0-2",
+      "severity": "P0",
+      "category": "3.2",
+      "fixed": true,
+      "location": "app/config/rate_limit.py:44",
+      "title": "多器官联合诊断完全无限流",
+      "evidence": "RATE_LIMITS 中无 /api/v1/diagnosis/multi-organ；端点内无 check_rate_limit 兜底",
+      "impact": "30 并发即耗尽 DB 连接池(20+10)，pool_timeout=30s 全卡——级联雪崩最短路径",
+      "fix": "登记 capacity=10 refill=10/60（对齐单器官）",
+      "test": "tests/unit/api/test_concurrency_audit_fixes.py::TestMultiOrganRateLimit"
+    },
+    {
+      "id": "P0-3",
+      "severity": "P0",
+      "category": "3.4",
+      "fixed": true,
+      "location": "app/observability/logging/backend.py:63, batch.py:94",
+      "title": "日志 fire-and-forget 任务无引用/无上限/无 in-flight 去重",
+      "evidence": "每条日志 asyncio.create_task(self.awrite(record))；满批 asyncio.create_task(self._flush_batch())",
+      "impact": "asyncio 只持弱引用 → 日志（含审计）静默丢失；异常无人消费；突发写入时 flush 任务无上限",
+      "fix": "spawn_tracked()：强引用集合 + 消费异常 + 上界 1000 + in-flight 去重",
+      "test": "tests/unit/obs/test_concurrency_audit_fixes.py"
+    },
+    {
+      "id": "P0-4",
+      "severity": "P0",
+      "category": "3.3",
+      "fixed": true,
+      "location": "app/security/refresh_token.py:548,569",
+      "title": "refresh token rotate 是 check-then-act，可派生两个有效后继",
+      "evidence": "pipeline(transaction=True) 只保证写批次原子；GET 与 revoked 判据在事务外",
+      "impact": "并发 rotate 绕过 reuse 检测（等价于 refresh token 无限续期）",
+      "fix": "per-token asyncio.Lock 串行化（_rotate_guard，锁字典上界 4096）；残留：跨 worker 需 Lua/WATCH",
+      "test": "tests/unit/sec/test_concurrency_audit_fixes.py::TestRotateIsSerializedPerToken"
+    },
+    {
+      "id": "P1-1",
+      "severity": "P1",
+      "category": "3.4",
+      "fixed": true,
+      "location": "app/services/diagnosis_worker.py:56",
+      "title": "Redis 降级队列无 maxsize 且入队不查长度",
+      "evidence": "asyncio.Queue() 无参 + await q.put()",
+      "impact": "Redis 抖动期间任务无限堆积直到进程 OOM",
+      "fix": "maxsize=int_pending_queue_max_length + put_nowait 满即拒",
+      "test": "tests/unit/services/test_concurrency_audit_fixes.py::TestFallbackQueueIsBounded"
+    },
+    {
+      "id": "P1-2",
+      "severity": "P1",
+      "category": "3.2",
+      "fixed": true,
+      "location": "app/services/diagnosis_worker.py:224",
+      "title": "诊断管线无端到端超时（dispatch/fusion 预算字段是孤儿配置）",
+      "evidence": "pipeline_dispatch_budget_s / pipeline_fusion_budget_s=6.0 全仓无读取点；int_pipeline_total_timeout_ms 已被删",
+      "impact": "最坏 ~240s 占死 worker 槽位 → 队列积压雪崩且无法自愈",
+      "fix": "新增 pipeline_total_budget_s=180.0 + asyncio.wait_for（超时走既有计数/DLQ）",
+      "test": "tests/unit/services/test_concurrency_audit_fixes.py::TestPipelineTotalBudget"
+    },
+    {
+      "id": "P1-3",
+      "severity": "P1",
+      "category": "3.3",
+      "fixed": true,
+      "location": "app/api/websocket/nav.py:481",
+      "title": "_deliver_local 持 per-session 锁 await ws.send_json",
+      "evidence": "原实现 send 在 session_lock 临界区内",
+      "impact": "慢客户端阻塞同 session 全部下行消息（导航 P99<200ms 验收击穿）",
+      "fix": "锁内只做连接快照，发送在锁外",
+      "test": "tests/unit/api/test_concurrency_audit_fixes.py::TestDeliverLocalDoesNotHoldLock"
+    },
+    {
+      "id": "P1-4",
+      "severity": "P1",
+      "category": "3.3",
+      "fixed": true,
+      "location": "app/api/websocket/nav.py:564,503",
+      "title": "锁回收在临界区内 del 锁字典条目",
+      "evidence": "del self._session_locks[session_id] 与 get_or_create 共用同一把锁但删除在等待者之后才发生",
+      "impact": "后续协程新建的锁与仍在等待旧锁的协程并发进入，互斥失效",
+      "fix": "锁外回收 + 只删未被持有的锁",
+      "test": "tests/unit/api/test_concurrency_audit_fixes.py::TestSessionLockReclamation"
+    },
+    {
+      "id": "P1-5",
+      "severity": "P1",
+      "category": "3.3",
+      "fixed": true,
+      "location": "app/api/websocket/nav.py:54,686",
+      "title": "_patient_id_cache 无上界/无清扫/断开不清理",
+      "evidence": "仅 60s TTL 软失效，disconnect 只清连接表",
+      "impact": "条目数 = 历史 session 总数单调增长",
+      "fix": "LRU 上界 4096 + 过期优先清扫 + disconnect 清理",
+      "test": "tests/unit/api/test_concurrency_audit_fixes.py::TestPatientIdCacheIsBounded"
+    },
+    {
+      "id": "P1-6",
+      "severity": "P1",
+      "category": "3.6",
+      "fixed": true,
+      "location": "app/main.py:1721",
+      "title": "停机链裸 await 可中断，且从不 dispose PG 连接池",
+      "evidence": "await inference_engine.close() / speech_engine.close() 无 try；全链无 async_engine.dispose()",
+      "impact": "异常重启泄漏整个 Redis + DB 连接池；滚动发布残留连接打满 max_connections",
+      "fix": "逐个 try/except + async_engine.dispose()",
+      "test": "tests/unit/services/test_concurrency_audit_fixes.py::TestShutdownChainReleasesResources"
+    },
+    {
+      "id": "P1-7",
+      "severity": "P1",
+      "category": "3.1",
+      "fixed": true,
+      "location": "app/speech/funasr.py:322",
+      "title": "onnxruntime 推理同步跑在事件循环里",
+      "evidence": "outputs = self._model.run(None, feeds)",
+      "impact": "一次语音识别全站卡 0.1~0.8s",
+      "fix": "asyncio.to_thread offload",
+      "test": "（未单列断言，由 tests/unit/sec 语音相关既有用例间接覆盖）"
+    },
+    {
+      "id": "P1-8",
+      "severity": "P1",
+      "category": "3.1",
+      "fixed": true,
+      "location": "edge/pipeline.py:66",
+      "title": "on_frame 每帧同步跑推理/切面/质量评估",
+      "evidence": "result = self._nav.process_frame(frame, now=now)",
+      "impact": "超声帧率下每帧阻塞事件循环，WS 上行与心跳被卡",
+      "fix": "asyncio.to_thread offload",
+      "test": "tests/unit/edg 既有 1283 例"
+    },
+    {
+      "id": "P1-9",
+      "severity": "P1",
+      "category": "3.1",
+      "fixed": true,
+      "location": "app/api/v1/imaging.py:160,236,242; app/services/dicom_storage.py:159,202",
+      "title": "pydicom 解析与大 base64 解码在事件循环里",
+      "evidence": "parse_and_validate_dicom / strip_dicom_phi / base64.b64decode 同步调用",
+      "impact": "并发上传互相排队（单份 20~150ms CPU）",
+      "fix": "全部 to_thread offload",
+      "test": "tests/unit/api/test_concurrency_audit_fixes.py::TestDicomParsingOffloaded"
+    },
+    {
+      "id": "P1-10",
+      "severity": "P1",
+      "category": "3.3",
+      "fixed": true,
+      "location": "app/agents/knowledge.py:_TTLLRUCache; app/rag/cache.py:135",
+      "title": "LRU 淘汰后 _expires 的 TTL 元数据永久残留",
+      "evidence": "cachetools.LRUCache 淘汰只动 _cache，_expires 不动；被淘汰 key 懒过期永不触发",
+      "impact": "泄漏速率 = 历史不同 key 基数（无界）",
+      "fix": "写入时以 _cache 键对齐清理 _expires",
+      "test": "tests/unit/agt + tests/unit/rag 既有 2471 例"
+    },
+    {
+      "id": "P1-11",
+      "severity": "P1",
+      "category": "3.4",
+      "fixed": true,
+      "location": "app/security/desensitization.py（两处 ensure_future）",
+      "title": "规则发布/令牌持久化 fire-and-forget 无引用无上限",
+      "evidence": "asyncio.ensure_future(_do_publish()) / (_do_persist())",
+      "impact": "可能 GC 静默丢弃；异常无人消费；无数量上限",
+      "fix": "_spawn_background：强引用 + 消费异常 + 上界 256",
+      "test": "tests/unit/sec/test_concurrency_audit_fixes.py::TestDesensitizationBackgroundTasks"
+    },
+    {
+      "id": "P1-12",
+      "severity": "P1",
+      "category": "3.2",
+      "fixed": false,
+      "location": "app/config/rate_limit.py:56 + _get_user_id_from_request",
+      "title": "登录限流桶按 client_ip 聚合（无 token 时 user_id 落回 IP）",
+      "evidence": "RATE_LIMITS['/api/v1/auth/login']=5/min；_get_user_id_from_request 无 token 时返回 IP",
+      "impact": "同一出口 IP（医院 NAT）后多名医生共享一个桶，集中登录时第 6 人起 429（压测已复现）",
+      "fix": "未修：改桶键=改认证语义，限流值需产品定",
+      "test": "压测实测复现（bench 登录退避日志）"
+    },
+    {
+      "id": "P2-1",
+      "severity": "P2",
+      "category": "3.6",
+      "fixed": false,
+      "location": "app/config/rate_limit.py",
+      "title": "报告生成端点不在限流表",
+      "evidence": "RATE_LIMITS 无 /api/v1/reports/*/report",
+      "impact": "走 to_thread 不阻塞事件循环，风险低于诊断链",
+      "fix": "未修",
+      "test": "-"
+    },
+    {
+      "id": "P2-2",
+      "severity": "P2",
+      "category": "3.2",
+      "fixed": false,
+      "location": "部署配置（uvicorn 启动参数）",
+      "title": "无 lifespan 级并发闸门",
+      "evidence": "启动命令无 --limit-concurrency",
+      "impact": "未限流端点缺少兜底",
+      "fix": "未修：需先定容量数字（真机 16 槽约 30 条/分）",
+      "test": "-"
+    },
+    {
+      "id": "P2-3",
+      "severity": "P2",
+      "category": "3.6",
+      "fixed": true,
+      "location": "app/services/diagnosis_worker.py:_handle_failure",
+      "title": "诊断 DLQ 是无 TTL 无 maxlen 的 list",
+      "evidence": "rpush(DIAGNOSIS_DLQ, ...) 无 maxlen（同意撤回 DLQ 早已有 maxlen=1000）",
+      "impact": "下游长时间故障时单调增长吃 Redis 内存",
+      "fix": "maxlen=1000 + approximate=True",
+      "test": "tests/unit/services/test_concurrency_audit_fixes.py::TestDlqIsCapped"
+    },
+    {
+      "id": "P2-4",
+      "severity": "P2",
+      "category": "3.5",
+      "fixed": true,
+      "location": "app/services/report_service.py:141",
+      "title": "每份报告一次同步 read_text + exists stat",
+      "evidence": "path.read_text() 在请求路径上",
+      "impact": "同步 IO 阻塞事件循环",
+      "fix": "进程内模板缓存（上界 32 + reload_templates()）",
+      "test": "tests/unit/services/test_concurrency_audit_fixes.py::TestReportTemplateCache"
+    },
+    {
+      "id": "P2-5",
+      "severity": "P2",
+      "category": "3.1",
+      "fixed": true,
+      "location": "app/inference/gpu_monitor.py:729",
+      "title": "碎片化率回退到同步 subprocess nvidia-smi",
+      "evidence": "_compute_fragmentation_via_smi 用 subprocess.run（30~150ms，异常挂 10s）",
+      "impact": "阻塞监控协程",
+      "fix": "to_thread offload",
+      "test": "tests/unit/inference 既有覆盖"
+    },
+    {
+      "id": "P2-6",
+      "severity": "P2",
+      "category": "3.3",
+      "fixed": true,
+      "location": "app/api/websocket/nav.py:49,350",
+      "title": "_session_locks 字典无上界",
+      "evidence": "只增不删（直到 disconnect 且无活动连接）",
+      "impact": "长跑进程 session 增多时单调增长",
+      "fix": "LRU 上界 4096（只回收未被持有的锁）",
+      "test": "TestSessionLockReclamation::test_lock_registry_is_bounded"
+    },
+    {
+      "id": "P2-7",
+      "severity": "P2",
+      "category": "3.3",
+      "fixed": false,
+      "location": "app/services/diagnosis_pipeline.py 模块级 _desens_l1/l2/l3",
+      "title": "脱敏三层缓存只按条数不按字节",
+      "evidence": "各 1000 条软上限；LRU 满时 set 静默不写入",
+      "impact": "单条体积不可控",
+      "fix": "未修：涉及脱敏语义与性能权衡",
+      "test": "-"
+    },
+    {
+      "id": "P2-8",
+      "severity": "P2",
+      "category": "3.4",
+      "fixed": false,
+      "location": "app/services/diagnosis_worker.py:_handle_failure",
+      "title": "DLQ 只写不读（死信无出口）",
+      "evidence": "无消费者/无告警/无导出接口",
+      "impact": "失败任务实际无人处理",
+      "fix": "未修：需产品决策（谁看/多久看/看什么）",
+      "test": "-"
+    },
+    {
+      "id": "P2-9",
+      "severity": "P2",
+      "category": "3.3",
+      "fixed": false,
+      "location": "app/api/websocket/nav.py Redis pub/sub 订阅",
+      "title": "多 worker 下建立 N 条订阅",
+      "evidence": "auth_manager 在 lifespan 里 per-process 订阅",
+      "impact": "同消息 N 倍投递（功能正确、开销 N 倍）",
+      "fix": "未修：生产 --workers 1 无影响",
+      "test": "-"
+    },
+    {
+      "id": "P2-10",
+      "severity": "P2",
+      "category": "3.3",
+      "fixed": false,
+      "location": "app/api/v1/diagnosis.py:417",
+      "title": "多器官绕开 fuse_layer/SafetyGateway 且跨 LLM 持 DB session",
+      "evidence": "run_multi_organ_diagnosis 在请求协程内串行跑 3 器官，全程持 AsyncSessionLocal()",
+      "impact": "多器官结论未经 SG 校验（合规缺口）；DB session 跨分钟级 LLM 调用（硬规则 #6 形态）",
+      "fix": "未修：业务语义改动须单独设计",
+      "test": "-"
+    },
+    {
+      "id": "P2-11",
+      "severity": "P2",
+      "category": "3.6",
+      "fixed": true,
+      "location": "ruff.toml / tests/unit/quality/test_ruff_ratchet.py",
+      "title": "ruff 棘轮基线被工作树未跟踪探针拽动",
+      "evidence": "本工作树被并行工作线写入，ruff check . 计数漂移 ±15",
+      "impact": "棘轮在本地/CI 之间不可比",
+      "fix": "exclude=scripts/_*.py + 同口径重定基线（并写明兄弟工作线干扰判据）",
+      "test": "tests/unit/quality 38 passed"
+    },
+    {
+      "id": "P1-13",
+      "severity": "P1",
+      "category": "3.6",
+      "fixed": false,
+      "location": "app/api/v1/diagnosis.py:553-556",
+      "title": "结果接口把队列等待时间算进超时，50 并发下 20% 被误报 timeout",
+      "evidence": "status==processing 且 elapsed > RESULT_TIMEOUT_SECONDS(=30) 即改写为 timeout；elapsed 从提交时刻(created_at)起算，含 worker 队列等待",
+      "impact": "客户端误判失败（实际仍在处理并会写回结论）-> 重试则重复计算+重复写；实测 50 并发 10/50 被报 timeout，DLQ=0 无 failed",
+      "fix": "未修：改法会动 API 契约与前端展示；单纯调大阈值会吞掉真超时",
+      "test": "压测证据 reports/concurrency_perf_report.json（levels[4]）"
+    }
+  ],
+  "bench": {
+    "bench": "concurrency_staircase_18000",
+    "generated_at": "2026-10-03T16:55:37",
+    "api": "http://127.0.0.1:18000",
+    "session_id": "smoke-session-0001",
+    "limits": [
+      1,
+      5,
+      10,
+      20,
+      50
+    ],
+    "distinct_users": 10,
+    "notes": [
+      "1/5/10 档：多医生账号（10 个）各提交 1 条，走公开入口 POST /api/v1/diagnosis/request",
+      "20/50 档：同入口 2 个账号（登录端点自身限流 5/min，无法准备更多 token）",
+      "50 并发下 10/50 被结果接口报为 timeout：阈值 RESULT_TIMEOUT_SECONDS=30 从提交时刻起算，把 worker 队列等待时间算进了超时（管线其实仍在处理并会写回真实结论）——见审查报告 P1-13",
+      "环境：单进程 uvicorn（--workers 未设）、worker 池 16（.env INT_WORKER_POOL_SIZE）、8002 Qwen2.5-7B-Instruct gpu-mem 0.40、8006 Qwen3-8B、GPU 45669/49140 MiB"
+    ],
+    "levels": [
+      {
+        "concurrency": 1,
+        "mode": "http",
+        "submitted": 1,
+        "accepted": 1,
+        "rejected": 0,
+        "rejected_429": 0,
+        "rejected_other": [],
+        "submit_latency": {
+          "n": 1,
+          "mean_s": 0.028,
+          "p50_s": 0.028,
+          "p95_s": 0.028,
+          "p99_s": 0.028,
+          "max_s": 0.028
+        },
+        "submit_wall_s": 0.028,
+        "e2e_latency_accepted": {
+          "n": 1,
+          "mean_s": 32.232,
+          "p50_s": 32.232,
+          "p95_s": 32.232,
+          "p99_s": 32.232,
+          "max_s": 32.232
+        },
+        "poll_timeouts": 0,
+        "final_status_hist": {
+          "completed": 1
+        },
+        "queue_before": {
+          "error": "AttributeError: 'Settings' object has no attribute 'redis_host'"
+        },
+        "queue_after": {
+          "error": "AttributeError: 'Settings' object has no attribute 'redis_host'"
+        },
+        "wall_s": 32.261,
+        "throughput_rps": 0.031
+      },
+      {
+        "concurrency": 5,
+        "mode": "http",
+        "submitted": 5,
+        "accepted": 5,
+        "rejected": 0,
+        "rejected_429": 0,
+        "rejected_other": [],
+        "submit_latency": {
+          "n": 5,
+          "mean_s": 0.071,
+          "p50_s": 0.066,
+          "p95_s": 0.083,
+          "p99_s": 0.083,
+          "max_s": 0.083
+        },
+        "submit_wall_s": 0.085,
+        "e2e_latency_accepted": {
+          "n": 5,
+          "mean_s": 32.56,
+          "p50_s": 32.559,
+          "p95_s": 32.562,
+          "p99_s": 32.562,
+          "max_s": 32.562
+        },
+        "poll_timeouts": 0,
+        "final_status_hist": {
+          "completed": 5
+        },
+        "queue_before": {
+          "error": "AttributeError: 'Settings' object has no attribute 'redis_host'"
+        },
+        "queue_after": {
+          "error": "AttributeError: 'Settings' object has no attribute 'redis_host'"
+        },
+        "wall_s": 32.648,
+        "throughput_rps": 0.153
+      },
+      {
+        "concurrency": 10,
+        "mode": "http",
+        "submitted": 10,
+        "accepted": 10,
+        "rejected": 0,
+        "rejected_429": 0,
+        "rejected_other": [],
+        "submit_latency": {
+          "n": 10,
+          "mean_s": 0.142,
+          "p50_s": 0.146,
+          "p95_s": 0.162,
+          "p99_s": 0.162,
+          "max_s": 0.162
+        },
+        "submit_wall_s": 0.166,
+        "e2e_latency_accepted": {
+          "n": 10,
+          "mean_s": 33.449,
+          "p50_s": 33.443,
+          "p95_s": 33.474,
+          "p99_s": 33.474,
+          "max_s": 33.474
+        },
+        "poll_timeouts": 0,
+        "final_status_hist": {
+          "completed": 10
+        },
+        "queue_before": {
+          "error": "AttributeError: 'Settings' object has no attribute 'redis_host'"
+        },
+        "queue_after": {
+          "error": "AttributeError: 'Settings' object has no attribute 'redis_host'"
+        },
+        "wall_s": 33.64,
+        "throughput_rps": 0.297
+      },
+      {
+        "concurrency": 20,
+        "mode": "http",
+        "submitted": 20,
+        "accepted": 20,
+        "rejected": 0,
+        "rejected_429": 0,
+        "rejected_other": [],
+        "submit_latency": {
+          "n": 20,
+          "mean_s": 0.388,
+          "p50_s": 0.393,
+          "p95_s": 0.426,
+          "p99_s": 0.431,
+          "max_s": 0.431
+        },
+        "submit_wall_s": 0.434,
+        "e2e_latency_accepted": {
+          "n": 20,
+          "mean_s": 34.118,
+          "p50_s": 34.186,
+          "p95_s": 34.204,
+          "p99_s": 34.204,
+          "max_s": 34.204
+        },
+        "poll_timeouts": 0,
+        "final_status_hist": {
+          "completed": 20
+        },
+        "queue_before": {
+          "pending_queue_len": 0,
+          "dlq_len": 0
+        },
+        "queue_after": {
+          "pending_queue_len": 0,
+          "dlq_len": 0
+        },
+        "wall_s": 34.638,
+        "throughput_rps": 0.577
+      },
+      {
+        "concurrency": 50,
+        "mode": "http",
+        "submitted": 50,
+        "accepted": 50,
+        "rejected": 0,
+        "rejected_429": 0,
+        "rejected_other": [],
+        "submit_latency": {
+          "n": 50,
+          "mean_s": 0.789,
+          "p50_s": 0.788,
+          "p95_s": 0.875,
+          "p99_s": 0.887,
+          "max_s": 0.887
+        },
+        "submit_wall_s": 0.89,
+        "e2e_latency_accepted": {
+          "n": 50,
+          "mean_s": 34.287,
+          "p50_s": 34.478,
+          "p95_s": 34.562,
+          "p99_s": 34.564,
+          "max_s": 34.564
+        },
+        "poll_timeouts": 0,
+        "final_status_hist": {
+          "completed": 39,
+          "timeout": 10,
+          "needs_review": 1
+        },
+        "queue_before": {
+          "pending_queue_len": 0,
+          "dlq_len": 0
+        },
+        "queue_after": {
+          "pending_queue_len": 0,
+          "dlq_len": 0
+        },
+        "wall_s": 35.455,
+        "throughput_rps": 1.41
+      }
+    ]
+  },
+  "regression_evidence": {
+    "new_tests": "46 passed (tests/unit/{api,services,obs,sec}/test_concurrency_audit_fixes.py)",
+    "unit_blocks": [
+      "2483 passed",
+      "1617 passed",
+      "1759 passed / 1 skipped",
+      "2761 passed / 3 skipped"
+    ],
+    "integration": "95 passed / 12 failed（存量）",
+    "coverage_core_four": "91%（门禁 >=86%，上轮 90.04%）",
+    "coverage_overall": "84%（门禁 >=82%）",
+    "quality_gate": "tests/unit/quality 38 passed",
+    "deploy": "git archive HEAD -> tar -xf -> 按端口重启；ps lstart 16:36:23/24 晚于文件 mtime 16:30:42；18000/9001 双 200"
+  }
+}

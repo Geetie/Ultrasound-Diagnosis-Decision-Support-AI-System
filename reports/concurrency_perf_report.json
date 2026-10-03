@@ -1,0 +1,218 @@
+{
+  "bench": "concurrency_staircase_18000",
+  "generated_at": "2026-10-03T16:55:37",
+  "api": "http://127.0.0.1:18000",
+  "session_id": "smoke-session-0001",
+  "limits": [
+    1,
+    5,
+    10,
+    20,
+    50
+  ],
+  "distinct_users": 10,
+  "notes": [
+    "1/5/10 档：多医生账号（10 个）各提交 1 条，走公开入口 POST /api/v1/diagnosis/request",
+    "20/50 档：同入口 2 个账号（登录端点自身限流 5/min，无法准备更多 token）",
+    "50 并发下 10/50 被结果接口报为 timeout：阈值 RESULT_TIMEOUT_SECONDS=30 从提交时刻起算，把 worker 队列等待时间算进了超时（管线其实仍在处理并会写回真实结论）——见审查报告 P1-13",
+    "环境：单进程 uvicorn（--workers 未设）、worker 池 16（.env INT_WORKER_POOL_SIZE）、8002 Qwen2.5-7B-Instruct gpu-mem 0.40、8006 Qwen3-8B、GPU 45669/49140 MiB"
+  ],
+  "levels": [
+    {
+      "concurrency": 1,
+      "mode": "http",
+      "submitted": 1,
+      "accepted": 1,
+      "rejected": 0,
+      "rejected_429": 0,
+      "rejected_other": [],
+      "submit_latency": {
+        "n": 1,
+        "mean_s": 0.028,
+        "p50_s": 0.028,
+        "p95_s": 0.028,
+        "p99_s": 0.028,
+        "max_s": 0.028
+      },
+      "submit_wall_s": 0.028,
+      "e2e_latency_accepted": {
+        "n": 1,
+        "mean_s": 32.232,
+        "p50_s": 32.232,
+        "p95_s": 32.232,
+        "p99_s": 32.232,
+        "max_s": 32.232
+      },
+      "poll_timeouts": 0,
+      "final_status_hist": {
+        "completed": 1
+      },
+      "queue_before": {
+        "error": "AttributeError: 'Settings' object has no attribute 'redis_host'"
+      },
+      "queue_after": {
+        "error": "AttributeError: 'Settings' object has no attribute 'redis_host'"
+      },
+      "wall_s": 32.261,
+      "throughput_rps": 0.031
+    },
+    {
+      "concurrency": 5,
+      "mode": "http",
+      "submitted": 5,
+      "accepted": 5,
+      "rejected": 0,
+      "rejected_429": 0,
+      "rejected_other": [],
+      "submit_latency": {
+        "n": 5,
+        "mean_s": 0.071,
+        "p50_s": 0.066,
+        "p95_s": 0.083,
+        "p99_s": 0.083,
+        "max_s": 0.083
+      },
+      "submit_wall_s": 0.085,
+      "e2e_latency_accepted": {
+        "n": 5,
+        "mean_s": 32.56,
+        "p50_s": 32.559,
+        "p95_s": 32.562,
+        "p99_s": 32.562,
+        "max_s": 32.562
+      },
+      "poll_timeouts": 0,
+      "final_status_hist": {
+        "completed": 5
+      },
+      "queue_before": {
+        "error": "AttributeError: 'Settings' object has no attribute 'redis_host'"
+      },
+      "queue_after": {
+        "error": "AttributeError: 'Settings' object has no attribute 'redis_host'"
+      },
+      "wall_s": 32.648,
+      "throughput_rps": 0.153
+    },
+    {
+      "concurrency": 10,
+      "mode": "http",
+      "submitted": 10,
+      "accepted": 10,
+      "rejected": 0,
+      "rejected_429": 0,
+      "rejected_other": [],
+      "submit_latency": {
+        "n": 10,
+        "mean_s": 0.142,
+        "p50_s": 0.146,
+        "p95_s": 0.162,
+        "p99_s": 0.162,
+        "max_s": 0.162
+      },
+      "submit_wall_s": 0.166,
+      "e2e_latency_accepted": {
+        "n": 10,
+        "mean_s": 33.449,
+        "p50_s": 33.443,
+        "p95_s": 33.474,
+        "p99_s": 33.474,
+        "max_s": 33.474
+      },
+      "poll_timeouts": 0,
+      "final_status_hist": {
+        "completed": 10
+      },
+      "queue_before": {
+        "error": "AttributeError: 'Settings' object has no attribute 'redis_host'"
+      },
+      "queue_after": {
+        "error": "AttributeError: 'Settings' object has no attribute 'redis_host'"
+      },
+      "wall_s": 33.64,
+      "throughput_rps": 0.297
+    },
+    {
+      "concurrency": 20,
+      "mode": "http",
+      "submitted": 20,
+      "accepted": 20,
+      "rejected": 0,
+      "rejected_429": 0,
+      "rejected_other": [],
+      "submit_latency": {
+        "n": 20,
+        "mean_s": 0.388,
+        "p50_s": 0.393,
+        "p95_s": 0.426,
+        "p99_s": 0.431,
+        "max_s": 0.431
+      },
+      "submit_wall_s": 0.434,
+      "e2e_latency_accepted": {
+        "n": 20,
+        "mean_s": 34.118,
+        "p50_s": 34.186,
+        "p95_s": 34.204,
+        "p99_s": 34.204,
+        "max_s": 34.204
+      },
+      "poll_timeouts": 0,
+      "final_status_hist": {
+        "completed": 20
+      },
+      "queue_before": {
+        "pending_queue_len": 0,
+        "dlq_len": 0
+      },
+      "queue_after": {
+        "pending_queue_len": 0,
+        "dlq_len": 0
+      },
+      "wall_s": 34.638,
+      "throughput_rps": 0.577
+    },
+    {
+      "concurrency": 50,
+      "mode": "http",
+      "submitted": 50,
+      "accepted": 50,
+      "rejected": 0,
+      "rejected_429": 0,
+      "rejected_other": [],
+      "submit_latency": {
+        "n": 50,
+        "mean_s": 0.789,
+        "p50_s": 0.788,
+        "p95_s": 0.875,
+        "p99_s": 0.887,
+        "max_s": 0.887
+      },
+      "submit_wall_s": 0.89,
+      "e2e_latency_accepted": {
+        "n": 50,
+        "mean_s": 34.287,
+        "p50_s": 34.478,
+        "p95_s": 34.562,
+        "p99_s": 34.564,
+        "max_s": 34.564
+      },
+      "poll_timeouts": 0,
+      "final_status_hist": {
+        "completed": 39,
+        "timeout": 10,
+        "needs_review": 1
+      },
+      "queue_before": {
+        "pending_queue_len": 0,
+        "dlq_len": 0
+      },
+      "queue_after": {
+        "pending_queue_len": 0,
+        "dlq_len": 0
+      },
+      "wall_s": 35.455,
+      "throughput_rps": 1.41
+    }
+  ]
+}
