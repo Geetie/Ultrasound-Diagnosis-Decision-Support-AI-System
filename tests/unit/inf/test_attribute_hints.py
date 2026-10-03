@@ -66,7 +66,9 @@ class TestTaskConfig:
 
 class TestHints:
     def test_returns_six_dims(self, fake_engine):
-        r = fake_engine.hints_for_text("甲状腺内低回声结节，边界清，形态规则")
+        r = fake_engine.hints_for_text(
+            "hypoechoic thyroid nodule with well-defined margins"
+        )
         assert len(r.hints) == 6
         assert r.device == "cpu"
         assert r.text_length > 0
@@ -75,15 +77,13 @@ class TestHints:
         assert len(d["disabled"]) == 3
 
     def test_conflicts_counted(self, fake_engine):
-        r = fake_engine.hints_for_text("边界清的低回声结节")
-        # 报告声明与 fake 判定（argmax 恒为第 0 类）可能一致或冲突，
-        # 关键是有 agree 字段且计数自洽
+        r = fake_engine.hints_for_text("hypoechoic nodule")
         claims = [h for h in r.hints if h.report_claim is not None]
         expected = sum(1 for h in claims if h.agree is False)
         assert r.conflicts == expected
 
     def test_no_claim_returns_none_agree(self, fake_engine):
-        r = fake_engine.hints_for_text("甲状腺结节")
+        r = fake_engine.hints_for_text("thyroid nodule")
         for h in r.hints:
             if h.report_claim is None:
                 assert h.agree is None
@@ -93,10 +93,29 @@ class TestHints:
             fake_engine.hints_for_text("")
 
     def test_confidence_and_margin_bounded(self, fake_engine):
-        r = fake_engine.hints_for_text("低回声")
+        r = fake_engine.hints_for_text("hypoechoic nodule")
         for h in r.hints:
             assert -1.0 <= h.confidence <= 1.0
             assert h.margin >= -1.0
+
+
+class TestLanguageGuard:
+    """语言护栏：中文报告必须被拒（ULC 文本塔是英文 PubMedBERT）。"""
+
+    def test_detect_language(self):
+        assert AttributeHintEngine.detect_language("hypoechoic nodule") == "en"
+        assert AttributeHintEngine.detect_language("甲状腺低回声结节") == "zh"
+        assert AttributeHintEngine.detect_language("") == "unknown"
+
+    def test_chinese_report_raises_with_reason(self, fake_engine):
+        with pytest.raises(AttributeHintsUnavailableError) as ei:
+            fake_engine.hints_for_text("甲状腺右叶低回声结节，边界清晰")
+        msg = str(ei.value)
+        assert "仅支持" in msg and "PubMedBERT" in msg
+
+    def test_english_report_passes(self, fake_engine):
+        r = fake_engine.hints_for_text("hypoechoic nodule, ill-defined margins")
+        assert len(r.hints) == 6
 
 
 class TestClaimExtraction:

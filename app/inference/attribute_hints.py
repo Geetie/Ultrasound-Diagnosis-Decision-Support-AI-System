@@ -23,6 +23,7 @@
 """
 from __future__ import annotations
 
+import os
 import threading
 import time
 from dataclasses import dataclass, field
@@ -181,6 +182,20 @@ class AttributeHintEngine:
                 cls._instance = cls()
             return cls._instance
 
+    @staticmethod
+    def detect_language(text: str) -> str:
+        """粗判文本主要语言（CJK 占比 ≥20% 判为 zh）。
+
+        **为什么必须判**：ULC 文本塔是英文 PubMedBERT，中文报告进分词器
+        近全 [UNK]，语义完全丢失。实测中文报告"甲状腺低回声结节"被判成
+        Breast and Axilla / Abdominal wall / cyst / anechoic（4 维全错）。
+        中文场景发冲突提示等于给医生制造假警报——必须挡住。
+        """
+        if not text:
+            return "unknown"
+        cjk = sum(1 for ch in text if "\u4e00" <= ch <= "\u9fff")
+        return "zh" if cjk / max(len(text), 1) >= 0.2 else "en"
+
     # ---------------------------------------------------------------- 加载
     def _resolve_device(self) -> str:
         from app.config.settings import settings
@@ -219,6 +234,11 @@ class AttributeHintEngine:
         except Exception as exc:
             raise AttributeHintsUnavailableError(f"依赖不可用（torch）：{exc}") from exc
 
+        # 关键：open_clip 装载前必须先设离线标志，否则它会向 huggingface.co
+        # 发 HEAD 请求探测 safetensors（实测网络不可达时白等 ~14s、5 次重试）。
+        os.environ.setdefault("HF_HUB_OFFLINE", "1")
+        os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
+
         # 离线 CLIP：先把权重/配置放到 HF 离线缓存，再 create_model（见 A.21 踩坑记录）
         try:
             import open_clip
@@ -256,7 +276,7 @@ class AttributeHintEngine:
         self._device = device
         self._meta = {
             "weights": str(wpath),
-            "tower": "ULC text tower (PubMedBERT 512-d)",
+            "tower": "ULC text tower (PubMedBERT 512-d, **English only**)",
             "official_zero_shot_macro_acc": 0.6894,
             "enabled_dims": [f for f, _, _, on in TASKS if on],
         }
@@ -304,12 +324,26 @@ class AttributeHintEngine:
 
     # -------------------------------------------------------------- 推理
     def hints_for_text(self, text: str) -> AttributeHintsResult:
-        """对一段报告文本给出各维度 zero-shot 提示 + 与报告声明的一致性比对。"""
+        """对一段报告文本给出各维度 zero-shot 提示 + 与报告声明的一致性比对。
+
+        **语言护栏**：ULC 文本塔是英文 PubMedBERT，中文文本进去近全 [UNK]，
+        输出无意义。中文文本时**直接拒绝**并抛
+        ``AttributeHintsUnavailableError``——绝不用垃圾输出生成"冲突提示"
+        （临床危险：实测中文报告被判 4 维全错，会给医生制造假警报）。
+        """
         import torch
         import torch.nn.functional as F
 
         if not text or not text.strip():
             raise ValueError("text 不能为空")
+        lang = self.detect_language(text)
+        if lang == "zh":
+            raise AttributeHintsUnavailableError(
+                "属性提示当前仅支持**英文**报告文本：ULC 文本塔是英文 PubMedBERT，"
+                "中文报告经分词后近全 [UNK]，实测会把『甲状腺低回声结节』判成 "
+                "Breast and Axilla/cyst/anechoic（4 维全错）。中文报告需要中文医学"
+                "文本塔（如 CBLUE / MedBERT-zh）并重做零样本评测后方可启用。"
+            )
         t0 = time.perf_counter()
         self._ensure_loaded()
 
