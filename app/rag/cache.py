@@ -135,6 +135,13 @@ class _LocalTTLCache:
     def set(self, key: str, value: Any, ttl_seconds: float | None = None) -> None:
         self._cache[key] = value
         self._expires[key] = time.monotonic() + (ttl_seconds or self._ttl)
+        # 并发审查 P2-1：``cachetools.LRUCache`` 淘汰条目时只动 ``_cache``，
+        # ``_expires`` 里的 TTL 元数据会**永久残留**（被淘汰的 key 不会再被访问，
+        # 懒过期永远不触发）→ 泄漏速率 = 历史不同 key 基数。以 _cache 的键为准
+        # 做一次对齐（LRU 有界，代价 O(maxsize) 且 maxsize 是小常数）。
+        if len(self._expires) > len(self._cache):
+            for stale in [k for k in self._expires if k not in self._cache]:
+                del self._expires[stale]
 
     def clear(self) -> None:
         self._cache.clear()

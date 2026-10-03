@@ -1,3 +1,4 @@
+import asyncio
 import hashlib
 import hmac
 import os
@@ -13,6 +14,37 @@ from pydantic import BaseModel
 from app.common.desensitization.rule import DesensitizationRule
 
 logger = structlog.get_logger()
+
+# 并发审查 P1-8：规则热更新/令牌持久化的后台任务追踪。
+# 裸 ``ensure_future`` 不持强引用 → task 可能在完成前被 GC，规则发布/持久化
+# 静默丢失；异常无人消费；且无数量上限。现统一走 _spawn_background。
+_BACKGROUND_TASKS: set[asyncio.Task] = set()
+_MAX_BACKGROUND_TASKS = 256
+
+
+def _on_background_done(task: asyncio.Task) -> None:
+    _BACKGROUND_TASKS.discard(task)
+    if task.cancelled():
+        return
+    exc = task.exception()
+    if exc is not None:
+        logger.warning("desensitization_background_task_failed", error=str(exc))
+
+
+def _spawn_background(coro) -> None:
+    """持强引用地调度后台协程；超过上界时直接丢弃（不阻塞调用方）。"""
+    if len(_BACKGROUND_TASKS) >= _MAX_BACKGROUND_TASKS:
+        logger.warning("desensitization_background_task_saturated", in_flight=len(_BACKGROUND_TASKS))
+        coro.close()
+        return
+    try:
+        task = asyncio.ensure_future(coro)
+    except RuntimeError:
+        coro.close()
+        return
+    _BACKGROUND_TASKS.add(task)
+    task.add_done_callback(_on_background_done)
+
 
 DESENSITIZATION_RULES_PATH = os.environ.get(
     "DESENSITIZATION_RULES_PATH",
@@ -370,8 +402,8 @@ class DesensitizationEngine:
                 logger.info("desensitization_rules_update_published")
 
             try:
-                loop = asyncio.get_running_loop()
-                asyncio.ensure_future(_do_publish())
+                asyncio.get_running_loop()
+                _spawn_background(_do_publish())
             except RuntimeError:
                 loop = asyncio.new_event_loop()
                 loop.run_until_complete(_do_publish())
@@ -477,8 +509,8 @@ class DesensitizationEngine:
                 await pipe.execute()
 
             try:
-                loop = asyncio.get_running_loop()
-                asyncio.ensure_future(_do_persist())
+                asyncio.get_running_loop()
+                _spawn_background(_do_persist())
             except RuntimeError:
                 loop = asyncio.new_event_loop()
                 loop.run_until_complete(_do_persist())

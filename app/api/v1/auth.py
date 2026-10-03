@@ -1,3 +1,4 @@
+import asyncio
 from datetime import timedelta
 from typing import Any
 
@@ -88,7 +89,10 @@ async def authenticate_user(username: str, password: str):
     user = await get_user_by_username(username)
     if not user:
         return False
-    if not verify_password(password, user.hashed_password):
+    # 并发审查 P0-1：bcrypt 是故意做慢的 KDF（默认 12 rounds，200~400ms，
+    # 且全程持 GIL）。直接在这里校验会把整个事件循环卡住——单医生登录无感，
+    # 多人并发登录时全站请求一起停摆。必须 offload 到线程池。
+    if not await asyncio.to_thread(verify_password, password, user.hashed_password):
         return False
     return user
 
@@ -101,6 +105,20 @@ def _build_user_info(user) -> dict[str, Any]:
         "role": user.role,
         "disabled": user.disabled,
     }
+
+
+async def _issue_access_token(user_id: str, user_info: dict[str, Any]) -> str:
+    """签发 access token。
+
+    并发审查 P0-6：``create_access_token`` 内部走 HSM 签名（RSA-PSS 或 gmssl
+    SM2），是同步 CPU 运算且内部持 ``threading.RLock``——在事件循环里执行会
+    阻塞所有并发请求（SM2 常态 >5ms）。故 offload 到线程池。
+    """
+    return await asyncio.to_thread(
+        create_access_token,
+        data={"sub": user_id, "user_info": user_info},
+        expires_delta=timedelta(minutes=settings.jwt_expire_minutes),
+    )
 
 
 @router.post("/token", response_model=Token)
@@ -118,13 +136,9 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
 
     logger.info("auth_login_success", username=user.username, endpoint="token")
 
-    access_token_expires = timedelta(minutes=settings.jwt_expire_minutes)
     user_info = _build_user_info(user)
 
-    access_token = create_access_token(
-        data={"sub": user.username, "user_info": user_info},
-        expires_delta=access_token_expires
-    )
+    access_token = await _issue_access_token(user.username, user_info)
 
     refresh_token_str = await create_refresh_token(
         user_id=user.username,
@@ -155,13 +169,9 @@ async def login(login_request: LoginRequest):
 
     logger.info("auth_login_success", username=user.username, endpoint="login")
 
-    access_token_expires = timedelta(minutes=settings.jwt_expire_minutes)
     user_info = _build_user_info(user)
 
-    access_token = create_access_token(
-        data={"sub": user.username, "user_info": user_info},
-        expires_delta=access_token_expires
-    )
+    access_token = await _issue_access_token(user.username, user_info)
 
     refresh_token_str = await create_refresh_token(
         user_id=user.username,
@@ -212,11 +222,7 @@ async def refresh_token(refresh_request: RefreshTokenRequest):
 
     user_info = token_data["user_info"]
 
-    access_token_expires = timedelta(minutes=settings.jwt_expire_minutes)
-    access_token = create_access_token(
-        data={"sub": token_data["user_id"], "user_info": user_info},
-        expires_delta=access_token_expires
-    )
+    access_token = await _issue_access_token(token_data["user_id"], user_info)
 
     return {
         "access_token": access_token,

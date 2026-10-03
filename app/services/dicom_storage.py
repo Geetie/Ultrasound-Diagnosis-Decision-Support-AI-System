@@ -1,4 +1,5 @@
 """DICOM文件存储服务 - 支持本地文件系统和MinIO后端"""
+import asyncio
 import os
 import re
 import shutil
@@ -156,7 +157,12 @@ class DicomStorageService:
         if storage_path is None:
             raise ValueError(f"Invalid storage id: {storage_id}")
 
-        stripped_content, was_stripped = strip_dicom_phi(content, patient_id)
+        # 并发审查 P0-3：strip_dicom_phi 内部 dcmread + remove_private_tags +
+        # save_as（同一份数据解析两遍、序列化一遍），超声单帧 1~30MB 时
+        # 典型 20~150ms 纯 CPU——必须 offload，否则并发上传会把事件循环打满。
+        stripped_content, was_stripped = await asyncio.to_thread(
+            strip_dicom_phi, content, patient_id
+        )
         if was_stripped:
             logger.info("dicom_phi_stripped_before_save", storage_id=storage_id)
 
@@ -199,7 +205,9 @@ class DicomStorageService:
                 f"DICOM file size {len(content)} exceeds maximum {self._max_file_size}"
             )
 
-        stripped_content, was_stripped = strip_dicom_phi(content, patient_id)
+        stripped_content, was_stripped = await asyncio.to_thread(
+            strip_dicom_phi, content, patient_id
+        )
         if was_stripped:
             logger.info("dicom_phi_stripped_before_save", patient_id=patient_id, session_id=session_id)
 

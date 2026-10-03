@@ -12,6 +12,7 @@
 """
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 import structlog
@@ -63,7 +64,11 @@ class EdgePipeline:
         """
         self._frames_seen += 1
 
-        result = self._nav.process_frame(frame, now=now)
+        # 并发审查 P0-5：process_frame 内含模型推理 + 切面评估 + 图像质量评估
+        # （edge/navigation.py:169/207/208），是数十~数百毫秒级的同步 CPU/GPU
+        # 工作。超声帧率下**每帧**都阻塞事件循环，WS 上行与心跳被整段卡住。
+        # offload 到线程池。
+        result = await asyncio.to_thread(self._nav.process_frame, frame, now=now)
         if result is None:
             return None
 

@@ -225,6 +225,19 @@ class Settings(BaseSettings):
     pipeline_dispatch_budget_s: float = 6.0
     pipeline_fusion_budget_s: float = 6.0
     pipeline_sg_budget_s: float = 2.0
+    # 并发审查 P0-1：worker 槽位被分钟级管线占死的雪崩防线。
+    # dispatch/fusion 两段的预算字段（6.0s）自 T-Perf 起就是**孤儿配置**
+    # （全仓无读取点），而这两段恰是分钟级 LLM 调用——单阶段最坏可达
+    # inference_timeout(30s) × max_retries(3) + 退避 ≈ 120s，dispatch+fusion
+    # 串行最坏 ~240s，4 个 worker 槽位会同时被占死，队列积压到
+    # int_pending_queue_max_length 后整条诊断链不可用且无法自愈。
+    # 这里补一个**端到端**总预算（超时按普通失败处理 → 走既有 _handle_failure
+    # 计数/DLQ 路径），不动上面两个 6.0s：实测 dispatch/fusion 常态已达 ~4.7s，
+    # 直接把 6.0s 强制生效会造成大面积超时降级（比不设更糟）。
+    pipeline_total_budget_s: float = 180.0
+    # 并发审查 P2-3：诊断 DLQ 是无 TTL 的 list，下游长时间故障时单调增长
+    # （同意撤回 DLQ 早已用 maxlen=1000，此处补齐同口径）。
+    int_dlq_max_length: int = 1000
 
     # === RAG 检索结果缓存（覆盖 fusion 的 consistency / crag 直连检索路径）===
     # 关闭时 RAGServiceImpl 走真实流水线，行为与引入缓存前完全一致。

@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import uuid
 from datetime import datetime, timezone
@@ -157,7 +158,11 @@ async def upload_dicom(
     if not is_valid:
         raise BadRequestException(error_code="E1004", error_message=error_msg or "Invalid DICOM file")
 
-    dataset, tags_error, missing_tags = parse_and_validate_dicom(content)
+    # 并发审查 P0-4：dcmread + 标签校验是纯 CPU 同步解析（单份 1~30MB，
+    # 典型 5~50ms），在事件循环里做会让并发上传互相排队。offload 到线程池。
+    dataset, tags_error, missing_tags = await asyncio.to_thread(
+        parse_and_validate_dicom, content
+    )
     if dataset is None:
         raise MissingDICOMTagException(error_message=tags_error or "Missing required DICOM tags", detail=",".join(missing_tags))
 
@@ -229,13 +234,17 @@ async def stream_dicom_frame(
         raise NotFoundException(error_message=f"Session not found: {request.session_id}")
 
     try:
-        frame_data = base64.b64decode(request.frame_data)
+        # 并发审查 P1-9：关键帧 base64 常 1~30MB，b64decode 是纯 CPU（每秒几十 MB
+        # 量级），放事件循环里会拖慢所有并发请求。offload。
+        frame_data = await asyncio.to_thread(base64.b64decode, request.frame_data)
     except Exception:
         raise BadRequestException(error_message="Invalid base64 data")
 
     if len(frame_data) >= 132 and frame_data[128:132] == b"DICM":
         if request.is_key_frame:
-            _, validation_error, _ = parse_and_validate_dicom(frame_data)
+            _, validation_error, _ = await asyncio.to_thread(
+                parse_and_validate_dicom, frame_data
+            )
             if validation_error:
                 raise BadRequestException(
                     error_code="E1004",

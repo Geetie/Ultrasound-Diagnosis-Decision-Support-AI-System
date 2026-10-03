@@ -9,7 +9,7 @@ import structlog
 
 from app.observability.utils import calculate_percentile
 
-from .backend import LogStorageBackend
+from .backend import LogStorageBackend, spawn_tracked
 from .file import FileLogStorage
 from .record import LogRecord
 
@@ -34,6 +34,8 @@ class BatchLogStorageWrapper(LogStorageBackend):
         self._max_queue_size = max_queue_size
         self._queue: deque = deque()
         self._flush_task: asyncio.Task | None = None
+        # 并发审查 P0-3：满批触发的即时 flush 任务句柄（in-flight 去重用）
+        self._flush_batch_inflight: asyncio.Task | None = None
         self._lock = threading.Lock()
         self._async_lock: asyncio.Lock | None = None
         self._shutdown_event = asyncio.Event()
@@ -136,11 +138,12 @@ class BatchLogStorageWrapper(LogStorageBackend):
             self._metrics["queue_sizes"].append(len(self._queue))
 
             if len(self._queue) >= self._batch_size:
-                try:
-                    asyncio.get_running_loop()
-                    asyncio.create_task(self._flush_batch())
-                except RuntimeError:
-                    pass
+                # 并发审查 P0-3：原为裸 create_task（无引用 → 可能被 GC 丢日志；
+                # 无 in-flight 去重 → 突发写入时 flush 任务数无上限）。改用
+                # spawn_tracked（持引用 + 消费异常 + 全局上界），并加 in-flight
+                # 去重：同一时刻只允许一个 flush 任务在飞。
+                if self._flush_batch_inflight is None or self._flush_batch_inflight.done():
+                    self._flush_batch_inflight = spawn_tracked(self._flush_batch())
 
     async def awrite_batch(self, records: list[LogRecord]) -> None:
         for record in records:

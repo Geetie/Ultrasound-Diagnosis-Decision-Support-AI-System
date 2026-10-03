@@ -726,10 +726,15 @@ class GPUMemoryMonitor:
                     snapshot.gpu_name = parts[5] if len(parts) > 5 else ""
 
                     # 计算碎片化率
-                    snapshot.fragmentation_rate = self._fragmentation_calculator.calculate_fragmentation(
+                    # 并发审查 P1-4：pynvml 不可用时该计算会回退到同步
+                    # ``subprocess.run("nvidia-smi")``（30~150ms，异常时挂到
+                    # 10s timeout）——同文件 :708 已用 create_subprocess_exec，
+                    # 这里补一次 to_thread offload，避免阻塞监控协程。
+                    snapshot.fragmentation_rate = await asyncio.to_thread(
+                        self._fragmentation_calculator.calculate_fragmentation,
                         snapshot.total_memory_mb,
                         snapshot.used_memory_mb,
-                        snapshot.free_memory_mb
+                        snapshot.free_memory_mb,
                     )
         except Exception as e:
             self._log.warning("gpu_metrics_read_failed", error=str(e))

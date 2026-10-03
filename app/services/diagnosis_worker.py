@@ -46,10 +46,15 @@ _fallback_queue: asyncio.Queue | None = None  # Redis 不可用时降级
 
 
 def _get_fallback_queue() -> asyncio.Queue:
-    """获取或创建 in-process fallback 队列（仅 Redis 不可用时使用）。"""
+    """获取或创建 in-process fallback 队列（仅 Redis 不可用时使用）。
+
+    并发审查 P1-1：原为无界 ``asyncio.Queue()``，且入队分支不做长度检查——
+    Redis 抖动期间降级进来的任务会无限堆积直到进程 OOM。现与 Redis 路径同口径：
+    maxsize = ``int_pending_queue_max_length``，put 用 ``put_nowait`` 快速失败。
+    """
     global _fallback_queue
     if _fallback_queue is None:
-        _fallback_queue = asyncio.Queue()
+        _fallback_queue = asyncio.Queue(maxsize=settings.int_pending_queue_max_length)
     return _fallback_queue
 
 
@@ -95,13 +100,29 @@ async def enqueue_diagnosis(request_id: str) -> bool:
     # 2) 降级到 in-process queue
     try:
         q = _get_fallback_queue()
-        await q.put(request_id)
+        # 并发审查 P1-1：与 Redis 路径同口径做长度检查，且不阻塞等待（满即拒）
+        if q.qsize() >= settings.int_pending_queue_max_length:
+            logger.error(
+                "diagnosis_queue_full_fallback",
+                request_id=request_id,
+                queue_len=q.qsize(),
+                max_length=settings.int_pending_queue_max_length,
+            )
+            return False
+        q.put_nowait(request_id)
         logger.warning(
             "diagnosis_enqueue_fallback",
             request_id=request_id,
             queue_size=q.qsize(),
         )
         return True
+    except asyncio.QueueFull as exc:
+        logger.error(
+            "diagnosis_queue_full_fallback",
+            request_id=request_id,
+            error=str(exc),
+        )
+        return False
     except Exception as exc:
         logger.error(
             "diagnosis_enqueue_failed",
@@ -195,7 +216,15 @@ async def _worker_loop(worker_id: int) -> None:
                 # 延迟导入避免循环依赖（pipeline 依赖 main lifespan 中实例化的组件）
                 from app.services.diagnosis_pipeline import run_diagnosis_pipeline
 
-                success = await run_diagnosis_pipeline(request_id)
+                # 并发审查 P0-1：端到端总预算。dispatch/fusion 两段是分钟级
+                # LLM 调用且原先无任何超时门控（int_pipeline_total_timeout_ms
+                # 早已被删、pipeline_dispatch/fusion_budget_s 是孤儿配置），
+                # 最坏 ~240s 会长时间占死 worker 槽位 → 队列积压雪崩。
+                # 超时按普通失败处理（走既有计数/DLQ 路径），不吞异常。
+                success = await asyncio.wait_for(
+                    run_diagnosis_pipeline(request_id),
+                    timeout=settings.pipeline_total_budget_s,
+                )
                 elapsed_ms = (time.monotonic() - t_start) * 1000.0
                 logger.info(
                     "worker_task_completed",
@@ -243,10 +272,13 @@ async def _handle_failure(request_id: str, error_message: str) -> None:
         await client.expire(retry_key, 86400)
 
         if new_count >= settings.int_dlq_max_retries:
-            # 写 DLQ
+            # 写 DLQ（并发审查 P2-3：加 maxlen 上界，与同意撤回 DLQ 同口径，
+            # 避免下游长时间故障时 DLQ 无界增长把 Redis 内存吃满）
             await client.rpush(
                 RedisKey.DIAGNOSIS_DLQ,
                 f"{request_id}|{int(time.time())}|{error_message[:200]}",
+                maxlen=settings.int_dlq_max_length,
+                approximate=True,
             )
             logger.error(
                 "diagnosis_written_to_dlq",

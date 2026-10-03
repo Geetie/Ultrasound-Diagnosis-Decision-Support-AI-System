@@ -319,7 +319,13 @@ class FunASROnnxEngine(SpeechEngine):
             else:
                 feeds[name] = audio_array.reshape(1, -1).astype(np.float32)
 
-        outputs = self._model.run(None, feeds)
+        # 并发审查 P0-2：onnxruntime InferenceSession.run 是同步 C++ 调用，
+        # 数秒音频典型 100~800ms 纯 CPU。放在事件循环里 = 单人语音识别时
+        # 全站请求一起卡。offload 到线程池（onnxruntime session 的 Run 是
+        # 线程安全的，多线程并发推理由 ORT 内部调度）。
+        import asyncio as _asyncio
+
+        outputs = await _asyncio.to_thread(self._model.run, None, feeds)
 
         if outputs and len(outputs) > 0 and isinstance(outputs[0], np.ndarray):
             if outputs[0].ndim == 0:

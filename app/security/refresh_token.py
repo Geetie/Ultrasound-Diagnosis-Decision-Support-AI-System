@@ -1,7 +1,9 @@
+import asyncio
 import json
 import os
 import secrets
 import threading
+from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -11,6 +13,9 @@ from app.config.redis_keys import RedisKey
 from app.config.settings import settings
 
 logger = structlog.get_logger()
+
+# 并发审查 P0：per-token rotate 锁字典上界（避免长跑进程无界增长）
+_MAX_ROTATE_LOCKS = 4096
 
 class RefreshTokenStore:
     def create_refresh_token(
@@ -386,7 +391,41 @@ class RedisRefreshTokenStore(RefreshTokenStore):
             cls._instance = super().__new__(cls)
             cls._instance._lock = threading.RLock()
             cls._instance._redis_client = None
+            # 并发审查 P0：rotate 的 per-token 串行化锁（见 _rotate_guard）
+            cls._instance._rotate_locks = {}
+            cls._instance._rotate_locks_guard = threading.Lock()
         return cls._instance
+
+    @asynccontextmanager
+    async def _rotate_guard(self, token_id: str):
+        """串行化同一 token 的 rotate（并发审查 P0：令牌复制）。
+
+        ``rotate_refresh_token`` 是典型的 check-then-act：``pipeline(transaction=True)``
+        只保证 **写批次** 原子，``GET``（:548）与 ``revoked`` 判定（:569）都在事务
+        之外。两个并发 rotate 会同时读到 ``revoked=false``，各自生成一个新
+        token——同一 refresh token 派生出 **两个有效后继**，reuse 检测被永久
+        绕过（等价于把 7 天 refresh token 变成无限续期）。
+
+        单进程内用 per-token ``asyncio.Lock`` 串行化即可闭合该窗口（生产部署为
+        ``uvicorn --workers 1``）。**残留风险**：多 worker / 多实例部署下仍需把
+        这段改成 Lua 脚本或 ``WATCH``+``MULTI``，已登记在审查报告。
+        """
+        with self._rotate_locks_guard:
+            lock = self._rotate_locks.get(token_id)
+            if lock is None:
+                lock = asyncio.Lock()
+                self._rotate_locks[token_id] = lock
+                # 上界保护：只回收未被持有的锁
+                while len(self._rotate_locks) > _MAX_ROTATE_LOCKS:
+                    victim = next(
+                        (k for k, v in self._rotate_locks.items() if v is lock or not v.locked()),
+                        None,
+                    )
+                    if victim is None or victim == token_id:
+                        break
+                    self._rotate_locks.pop(victim, None)
+        async with lock:
+            yield
 
     async def _get_redis_client(self):
         if self._redis_client is None:
@@ -543,6 +582,11 @@ return 0
         return token_data.copy()
 
     async def rotate_refresh_token(self, old_token_id: str) -> str:
+        """轮换 refresh token（并发审查 P0：per-token 串行化，见 ``_rotate_guard``）。"""
+        async with self._rotate_guard(old_token_id):
+            return await self._rotate_refresh_token_locked(old_token_id)
+
+    async def _rotate_refresh_token_locked(self, old_token_id: str) -> str:
         redis_client = await self._get_redis_client()
 
         token_data_str = await redis_client.get(RedisKey.auth_token(old_token_id))

@@ -116,6 +116,11 @@ _FALLBACK_TEMPLATE = """# 超声诊断报告
 # 模板
 # ----------------------------------------------------------------------
 
+# 并发审查 P1-1：模板文本进程内缓存（模板为启动期固定资产，避免每份报告一次
+# 同步磁盘读阻塞事件循环）。模板名空间极小，用 dict + 上界即可。
+_TEMPLATE_CACHE: dict[str, str] = {}
+_TEMPLATE_CACHE_MAX = 32
+
 
 def select_template_name(
     organ: str | None = None, name: str | None = None
@@ -139,11 +144,19 @@ def select_template_name(
 
 
 def load_template(name: str | None = None, organ: str | None = None) -> str:
-    """加载报告模板；文件缺失/不可读时回退内置模板。"""
+    """加载报告模板；文件缺失/不可读时回退内置模板。
+
+    并发审查 P1-1：原实现每份报告都 ``read_text`` 一次（同步 IO 在事件循环里），
+    且 ``select_template_name`` 还要 ``.exists()`` 一次 stat。模板是启动期就固定
+    好的静态资产，故按最终模板名做进程内缓存（``reload_templates()`` 可显式失效）。
+    """
     template_name = select_template_name(organ=organ, name=name)
+    cached = _TEMPLATE_CACHE.get(template_name)
+    if cached is not None:
+        return cached
     path = TEMPLATE_DIR / template_name
     try:
-        return path.read_text(encoding="utf-8")
+        text = path.read_text(encoding="utf-8")
     except Exception as exc:
         logger.warning(
             "report_template_load_failed",
@@ -152,6 +165,15 @@ def load_template(name: str | None = None, organ: str | None = None) -> str:
             error_type=type(exc).__name__,
         )
         return _FALLBACK_TEMPLATE
+    if len(_TEMPLATE_CACHE) >= _TEMPLATE_CACHE_MAX:
+        _TEMPLATE_CACHE.clear()
+    _TEMPLATE_CACHE[template_name] = text
+    return text
+
+
+def reload_templates() -> None:
+    """清空模板缓存（模板文件热更新后调用）。"""
+    _TEMPLATE_CACHE.clear()
 
 
 def _is_missing(value: Any) -> bool:

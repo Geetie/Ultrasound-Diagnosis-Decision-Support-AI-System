@@ -601,10 +601,16 @@ async def lifespan(app: FastAPI):
                 _shutdown_logger.warning(
                     "agents_close_failed", agent=agent_attr, error=str(e)
                 )
-    if hasattr(app.state, "inference_engine") and app.state.inference_engine:
-        await app.state.inference_engine.close()
-    if hasattr(app.state, "speech_engine") and app.state.speech_engine:
-        await app.state.speech_engine.close()
+    # 并发审查 P1：每个 close() 独立兜底——原先 inference/speech 的 close() 一旦
+    # 抛错会中断整条 shutdown 链（后面的 fusion/rag/RedisPool.close 永不执行，
+    # 等于每次异常重启泄漏整个 Redis 连接池 + DB 连接池）。
+    for attr in ("inference_engine", "speech_engine"):
+        engine = getattr(app.state, attr, None)
+        if engine is not None:
+            try:
+                await engine.close()
+            except Exception as e:
+                logger.warning(f"{attr}_close_failed", error=str(e))
     if hasattr(app.state, "fusion_engine") and app.state.fusion_engine:
         try:
             await app.state.fusion_engine.close()
@@ -619,6 +625,14 @@ async def lifespan(app: FastAPI):
             logger.warning(
                 "rag_service_close_failed", error=str(e)
             )
+    # 并发审查 P0-6：停机时释放 SQLAlchemy 连接池。原实现只关 Redis，PG 连接池
+    # 靠进程退出回收——滚动发布/多副本场景下残留连接会打满 PG max_connections。
+    try:
+        from app.config.database import async_engine
+
+        await async_engine.dispose()
+    except Exception as e:
+        logger.warning("db_engine_dispose_failed", error=str(e))
     await RedisPool.close()
 
 

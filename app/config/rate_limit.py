@@ -43,6 +43,12 @@ class TokenBucket:
 
 RATE_LIMITS = {
     "/api/v1/diagnosis/request": {"capacity": 10, "refill_rate": 10 / 60, "endpoint_managed": True},
+    # 并发审查 P0-2：多器官联合诊断原先**完全无限流**。它比单器官重得多——
+    # 请求协程内串行跑满 3 个器官（每器官完整管线，最长 90s），且全程持有一个
+    # DB session；30 个并发即可耗尽连接池（pool_size 20 + max_overflow 10），
+    # 随后 pool_timeout=30s 让全部请求一起卡死——级联雪崩最短路径。
+    # 容量对齐单器官（10/60），留出一次多器官会话的额度。
+    "/api/v1/diagnosis/multi-organ": {"capacity": 10, "refill_rate": 10 / 60},
     "/api/v1/imaging/dicom/upload": {"capacity": 30, "refill_rate": 30 / 60},
     "/api/v1/imaging/dicom/stream": {"capacity": 30, "refill_rate": 30 / 60},
     "/api/v1/feedback": {"capacity": 20, "refill_rate": 20 / 60},

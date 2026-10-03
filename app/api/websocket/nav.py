@@ -45,6 +45,14 @@ router = APIRouter(tags=["websocket-nav"])
 WS_CLOSE_AUTH_FAILED = 4001
 WS_CLOSE_AUTH_TIMEOUT = 4002
 
+# 并发审查 P1-3：session 锁字典的 LRU 上界（防止长跑进程无界增长）
+_MAX_SESSION_LOCKS = 4096
+
+# 并发审查 P2：patient_id 缓存上界（原先只有 60s TTL 软失效、无清扫、无上界，
+# 且 disconnect 不清理 → 条目数 = 历史 session 总数，单调增长）
+_PATIENT_ID_CACHE_TTL = 60.0
+_PATIENT_ID_CACHE_MAX = 4096
+
 _nav_verification_semaphore: asyncio.Semaphore | None = None
 
 # M2：自动升级的后台任务引用（持引用避免被 GC；非 asyncio 原语，无需绑定事件循环）
@@ -337,11 +345,36 @@ class AuthTokenManager:
         async with self._locks_lock:
             if session_id not in self._session_locks:
                 self._session_locks[session_id] = asyncio.Lock()
+                # 并发审查 P1-3：锁字典的 LRU 上界（长跑进程 session 增多时
+                # 不得无界增长）。只回收未被持有的锁，绝不碰正在等/正在用的。
+                while len(self._session_locks) > _MAX_SESSION_LOCKS:
+                    victim = next(
+                        (
+                            sid
+                            for sid, lk in self._session_locks.items()
+                            if sid != session_id and not lk.locked()
+                        ),
+                        None,
+                    )
+                    if victim is None:
+                        break
+                    del self._session_locks[victim]
             return self._session_locks[session_id]
 
     def _cleanup_session_lock(self, session_id: str, has_active_connections: bool) -> None:
-        if not has_active_connections and session_id in self._session_locks:
-            del self._session_locks[session_id]
+        """回收 session 锁（无活动连接时）。
+
+        并发审查 P1-3：原实现无条件 ``del``，而调用点（``disconnect``）当时
+        **正持有该锁**——删掉字典条目后，第三个协程会新建一把锁，与「仍持有
+        旧锁引用并在等待」的协程同时进入临界区，互斥直接失效（_tokens 读改写
+        lost update）。现改为：①调用点移出临界区后调用；②锁仍被持有时跳过；
+        ③加 LRU 上界兜底，防止长跑进程字典无界增长。
+        """
+        if not has_active_connections:
+            lock = self._session_locks.get(session_id)
+            # 正被持有时不删（留到下一次 disconnect 再回收）
+            if lock is None or not lock.locked():
+                self._session_locks.pop(session_id, None)
 
     async def generate_token(self, session_id: str) -> str:
         lock = await self._get_session_lock(session_id)
@@ -446,44 +479,62 @@ class ConnectionManager:
             logger.warning("redis_pubsub_publish_failed", session_id=session_id, error=str(e))
 
     async def _deliver_local(self, message: dict, session_id: str) -> None:
+        # 并发审查 P1-1：原实现**持锁 await ws.send_json()**。send_json 是真网络
+        # IO，弱网/客户端零窗口时会挂数百毫秒，把同 session 所有其它设备的下行
+        # 消息一起串行阻塞（导航 P99 < 200ms 的验收直接击穿）。现改为：锁内只做
+        # 连接快照，实际发送在锁外进行。
         lock = await self._get_session_lock(session_id)
         async with lock:
-            keys = self.session_index.get(session_id, [])
-            for key in keys:
-                ws = self.active_connections.get(key)
-                if ws:
-                    try:
-                        await ws.send_json(message)
-                    except Exception as e:
-                        logger.error("Failed to deliver local message", session_id=key[0], device_id=key[1], error=str(e))
+            keys = list(self.session_index.get(session_id, []))
+            sockets = [
+                (key, ws)
+                for key in keys
+                if (ws := self.active_connections.get(key)) is not None
+            ]
+        for key, ws in sockets:
+            try:
+                await ws.send_json(message)
+            except Exception as e:
+                logger.error("Failed to deliver local message", session_id=key[0], device_id=key[1], error=str(e))
 
     async def _get_session_lock(self, session_id: str) -> asyncio.Lock:
         return await self.auth_manager._get_session_lock(session_id)
 
     def _cleanup_session_lock(self, session_id: str) -> None:
         has_active = session_id in self.session_index
-        self.auth_manager._cleanup_session_lock(session_id, has_active)
+        if has_active:
+            # 仍有活动连接时不做任何回收（含 LRU 裁剪），保持原语义
+            self.auth_manager._cleanup_session_lock(session_id, True)
+            return
+        self.auth_manager._cleanup_session_lock(session_id, False)
 
     async def connect(self, websocket: WebSocket, session_id: str, device_id: str):
         await websocket.accept()
         key = (session_id, device_id)
         lock = await self._get_session_lock(session_id)
+        over_limit = False
+        current_count = 0
         async with lock:
             current_count = len(self.session_index.get(session_id, []))
             if current_count >= settings.nav_max_connections_per_session:
-                logger.warning(
-                    "WebSocket session connection limit exceeded",
-                    session_id=session_id,
-                    current_count=current_count,
-                    max_connections=settings.nav_max_connections_per_session,
-                )
-                await websocket.close(code=status.WS_1001_GOING_AWAY)
-                return False
-            self.active_connections[key] = websocket
-            self.last_heartbeat[key] = time.time()
-            if session_id not in self.session_index:
-                self.session_index[session_id] = []
-            self.session_index[session_id].append(key)
+                over_limit = True
+            else:
+                self.active_connections[key] = websocket
+                self.last_heartbeat[key] = time.time()
+                if session_id not in self.session_index:
+                    self.session_index[session_id] = []
+                self.session_index[session_id].append(key)
+        # 并发审查 P1-3：close 是网络 IO，移出临界区（否则拒绝路径会把同 session
+        # 其它设备的下行消息阻塞到握手超时）。
+        if over_limit:
+            logger.warning(
+                "WebSocket session connection limit exceeded",
+                session_id=session_id,
+                current_count=current_count,
+                max_connections=settings.nav_max_connections_per_session,
+            )
+            await websocket.close(code=status.WS_1001_GOING_AWAY)
+            return False
         logger.info("WebSocket connected", session_id=session_id, device_id=device_id)
         return True
 
@@ -506,7 +557,11 @@ class ConnectionManager:
             for dev_id, sess_id in list(self.device_sessions.items()):
                 if sess_id == session_id and dev_id == device_id:
                     del self.device_sessions[dev_id]
-            self._cleanup_session_lock(session_id)
+        # 并发审查 P1-3：锁回收必须在临界区之外（原来在锁内 del 字典条目，
+        # 会让后续协程拿到新锁而与仍在等待旧锁的协程并发进入）。
+        self._cleanup_session_lock(session_id)
+        # 并发审查 P2：断开时清理 patient_id 缓存（原先只清连接表，缓存单调增长）
+        self.invalidate_patient_id_cache(session_id)
         logger.info("WebSocket disconnected", session_id=session_id, device_id=device_id)
 
     async def send_personal_message(self, message: dict, session_id: str):
@@ -604,7 +659,6 @@ class ConnectionManager:
         return timeout_keys
 
     async def get_patient_id(self, session_id: str) -> str:
-        _PATIENT_ID_CACHE_TTL = 60.0
         now = time.time()
         if session_id in self._patient_id_cache:
             cached_pid, cached_at = self._patient_id_cache[session_id]
@@ -616,11 +670,30 @@ class ConnectionManager:
                 session_record = await db.get(DiagnosisSession, session_id)
                 if session_record:
                     patient_id = session_record.patient_id or "unknown"
+                    self._evict_patient_id_cache_if_needed(session_id)
                     self._patient_id_cache[session_id] = (patient_id, now)
                     return patient_id
         except Exception:
             logger.warning("nav_patient_id_lookup_failed", session_id=session_id)
         return "unknown"
+
+    def _evict_patient_id_cache_if_needed(self, incoming_key: str) -> None:
+        """缓存超上界时先淘汰已过期项，仍超限再淘汰最早写入项。
+
+        并发审查 P2：原先只靠 60s TTL 软失效（只在再次访问时覆盖），无 maxsize、
+        无后台清扫，条目数 = 历史 session 总数单调增长。
+        """
+        if len(self._patient_id_cache) < _PATIENT_ID_CACHE_MAX:
+            return
+        now = time.time()
+        for key, (_, cached_at) in list(self._patient_id_cache.items()):
+            if now - cached_at >= _PATIENT_ID_CACHE_TTL:
+                self._patient_id_cache.pop(key, None)
+        while len(self._patient_id_cache) >= _PATIENT_ID_CACHE_MAX and self._patient_id_cache:
+            oldest = min(self._patient_id_cache, key=lambda k: self._patient_id_cache[k][1])
+            if oldest == incoming_key:
+                break
+            self._patient_id_cache.pop(oldest, None)
 
     def invalidate_patient_id_cache(self, session_id: str) -> None:
         self._patient_id_cache.pop(session_id, None)

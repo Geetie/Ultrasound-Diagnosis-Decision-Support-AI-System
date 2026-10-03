@@ -15,6 +15,10 @@ async_engine = create_async_engine(
     max_overflow=settings.db_max_overflow,
     pool_timeout=settings.db_pool_timeout,
     pool_recycle=1800,
+    # 并发审查 P1：LIFO 回收空闲连接——池打满时新建连接优先复用刚释放的热的，
+    # 避免 QueuePool 的 FIFO 把长期空闲的冷连接留着（idle 事务/idle_in_transaction
+    # 超时风险 + 冷连接首包延迟）。
+    pool_use_lifo=True,
     connect_args={
         # `command_timeout` 是 asyncpg 真正支持的**连接参数**，留在 connect_args。
         "command_timeout": settings.db_query_timeout,

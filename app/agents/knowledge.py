@@ -142,6 +142,11 @@ class _TTLLRUCache:
     def __setitem__(self, key: Any, value: Any) -> None:
         self._cache[key] = value
         self._expires[key] = time.monotonic() + self._ttl
+        # 并发审查 P2-1：LRU 淘汰只动 _cache，_expires 的 TTL 元数据永久残留
+        # （被淘汰的 key 不会再被访问 → 懒过期永不触发）→ 缓慢无界泄漏。
+        if len(self._expires) > len(self._cache):
+            for stale in [k for k in self._expires if k not in self._cache]:
+                del self._expires[stale]
 
     def __getitem__(self, key: Any) -> Any:
         if not self._is_alive(key):

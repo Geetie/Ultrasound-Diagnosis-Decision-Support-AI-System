@@ -39,3 +39,11 @@ extend-immutable-calls = [
 [format]
 quote-style = "double"
 indent-style = "space"
+
+# 一次性探针脚本（项目惯例：`_` 前缀，如 scripts/_tn3k_seg_probe.py）不入库、
+# 用完即删。它们留在工作树里会让 `ruff check .` 的计数随"别的窗口还剩几个探针"
+# 漂移，进而让 tests/unit/quality/test_ruff_ratchet.py 的棘轮基线在本地与 CI
+# 之间对不上（CI 是干净检出，探针不存在 → 触发"变少请调小基线"假失败）。
+exclude = [
+    "scripts/_*.py",
+]
