@@ -97,11 +97,15 @@ REGISTRY: dict[str, OrganSegmentationSpec] = {
     "cardiac": OrganSegmentationSpec(
         organ="cardiac",
         weight_path="~/uai/models/cardiac_seg/unet_camus.pt",
-        status="untrained",
-        arch=_UNET_TN3K + "（结构一致，权重另训）",
-        dataset="CAMUS（500 患者 2CH/4CH，LV 心内膜/心外膜 + 左心房）",
-        metrics={},
-        note="架构就绪；公开数据可得（hf-mirror 有 1000 张子集），待训练",
+        status="trained",
+        arch=_UNET_TN3K,
+        dataset="CAMUS-Lite（hf-mirror，500 患者 2CH/4CH；每 half_sequence 取中间 3 帧）",
+        metrics={
+            "dice": 0.8395, "iou": 0.7280,
+            "eval": "按患者 80/20（400/100 患者，2400/600 帧）——**按患者划分**防同患者多帧泄漏",
+        },
+        note="左心室腔二值分割（label=2）。对照：CAMUS 文献 LV DSC 常见 0.88~0.92，"
+             "但多为 ED/ES 两帧 + 512 输入 + 更长训练；此处为自设轻配方（256 输入 25 epoch）",
     ),
     "liver": OrganSegmentationSpec(
         organ="liver",

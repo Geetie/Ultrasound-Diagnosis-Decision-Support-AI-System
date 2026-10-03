@@ -17,6 +17,7 @@ pytestmark = [pytest.mark.track_inf]
 class TestRegistry:
     def test_three_organs_registered(self):
         assert set(REGISTRY) == {"thyroid", "cardiac", "liver"}
+        assert sum(1 for v in REGISTRY.values() if v.available) == 2
 
     def test_thyroid_is_trained_with_official_metrics(self):
         s = get_spec("thyroid")
@@ -26,12 +27,13 @@ class TestRegistry:
         assert s.metrics["iou"] == 0.7004
         assert "614" in s.metrics["eval"]
 
-    def test_cardiac_untrained_but_data_available(self):
+    def test_cardiac_trained_with_metrics(self):
         s = get_spec("cardiac")
-        assert s.available is False
-        assert s.status == "untrained"
+        assert s.available is True
+        assert s.status == "trained"
         assert s.dataset and "CAMUS" in s.dataset
-        assert s.unavailable_reason() and "尚未训练" in s.unavailable_reason()
+        assert s.metrics["dice"] == 0.8395
+        assert s.unavailable_reason() is None
 
     def test_liver_has_no_public_data(self):
         s = get_spec("liver")
@@ -51,9 +53,8 @@ class TestRegistry:
     def test_resolve_returns_trained_spec(self):
         assert resolve("thyroid").available is True
 
-    def test_resolve_raises_for_untrained(self):
-        with pytest.raises(SegmentationUnavailableError, match="尚未训练"):
-            resolve("cardiac")
+    def test_resolve_accepts_cardiac(self):
+        assert resolve("cardiac").available is True
 
     def test_resolve_raises_for_no_data(self):
         with pytest.raises(SegmentationUnavailableError, match="无公开"):

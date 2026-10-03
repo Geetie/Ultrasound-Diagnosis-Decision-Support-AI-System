@@ -106,8 +106,78 @@ def dice_bce(logits, target):
     return bce + dice
 
 
+def preload(pairs):
+    """一次性把目标帧读进内存（image uint8 + LV mask uint8）。
+
+    之前每个 step 都重开 .nii.gz（gzip 解压 3.4MB→15MB），150 steps/epoch
+    ×25 epoch 实测 >15 分钟没到 epoch5。预加载后 3000 项约 1.2GB 内存，
+    训练吞吐提升一个数量级。
+    """
+    n = len(pairs)
+    imgs = np.zeros((n, SIZE, SIZE), dtype=np.uint8)
+    masks = np.zeros((n, SIZE, SIZE), dtype=np.uint8)
+
+    t0 = time.time()
+    for i, (ip, mp, fi) in enumerate(pairs):
+        import nibabel as nib
+        from PIL import Image as _Image
+
+        arr = np.asarray(nib.load(str(ip)).dataobj)[:, :, fi]
+        if arr.max() > 1.5:
+            arr = arr / 255.0
+        # 方形缩放到 SIZE（与 load_pair 同一套预处理；缺这步直接形状不匹配）
+        imgs[i] = np.asarray(
+            _Image.fromarray(np.clip(arr * 255.0, 0, 255).astype(np.uint8))
+            .resize((SIZE, SIZE), _Image.BILINEAR)
+        )
+        mk = np.asarray(nib.load(str(mp)).dataobj)[:, :, fi]
+        masks[i] = np.asarray(
+            _Image.fromarray((mk == LV_LABEL).astype(np.uint8))
+            .resize((SIZE, SIZE), _Image.NEAREST)
+        )
+        if (i + 1) % 500 == 0:
+            print(f"  preload {i+1}/{n} ({time.time()-t0:.0f}s)", flush=True)
+    return imgs, masks
+
+
+def tensors_from_arrays(imgs, masks, idxs, rng=None):
+    xs, ys = [], []
+    for i in idxs:
+        x = torch.from_numpy(np.stack([imgs[i]] * 3, axis=-1).copy()).permute(2, 0, 1).float() / 255.0
+        y = torch.from_numpy(masks[i].copy()).float().unsqueeze(0)
+        if rng is not None:
+            x, y = augment(x, y, rng)
+        xs.append(x)
+        ys.append(y)
+    return xs, ys
+
+
+@torch.no_grad()
+def evaluate_preloaded(net, imgs, masks, idxs, device, need_myo=False):
+    net.eval()
+    lv_d, lv_i, myo_d = [], [], []
+    for i in range(0, len(idxs), BS):
+        sel = idxs[i:i + BS]
+        # 注意堆叠轴：np.stack(..., axis=0) → (B, H, W)；axis=-1 会得到 (H, W, B)
+        xs = torch.from_numpy(np.stack([imgs[j] for j in sel], axis=0).copy())
+        xs = xs.unsqueeze(1).repeat(1, 3, 1, 1).float().to(device) / 255.0
+        yl = torch.from_numpy(masks[sel].copy()).float().to(device).unsqueeze(1)
+        with torch.autocast("cuda", dtype=torch.bfloat16):
+            logits = net(xs)
+        pr = (torch.sigmoid(logits.float()) > 0.5).float()
+        inter = (pr * yl).sum(dim=(1, 2, 3))
+        card = pr.sum(dim=(1, 2, 3)) + yl.sum(dim=(1, 2, 3))
+        union = card - inter
+        for di, ui, ci in zip(inter, union, card, strict=False):
+            d = float(2 * di / ci) if ci > 0 else 1.0
+            lv_d.append(d)
+            lv_i.append(float(di / ui) if ui > 0 else 1.0)
+    net.train()
+    return lv_d, lv_i, myo_d
+
+
 def patient_of(path: Path) -> str:
-    """CAMUS 文件名形如 patient001_2CH_ED.png → 患者键 patient001。"""
+    """CAMUS 文件名形如 patient001_2CH_half_sequence.nii.gz → 患者键 patient001。"""
     return path.stem.split("_")[0]
 
 
@@ -119,34 +189,6 @@ def build_unet():
         channels=(32, 64, 128, 256, 320), strides=(2, 2, 2, 2),
         num_res_units=2, dropout=0.1,
     )
-
-
-@torch.no_grad()
-def evaluate(net, pairs, device, need_myo=True):
-    net.eval()
-    lv_d, lv_i, myo_d = [], [], []
-    for i in range(0, len(pairs), BS):
-        batch = [load_pair(p[0], p[1], p[2]) for p in pairs[i:i + BS]]
-        batch = [b for b in batch if b is not None]
-        if not batch:
-            continue
-        xs = torch.stack([b[0] for b in batch]).to(device)
-        yl = torch.stack([(b[1] == LV_LABEL).float() for b in batch]).to(device)
-        ym = torch.stack([(b[1] == MYO_LABEL).float() for b in batch]).to(device)
-        with torch.autocast("cuda", dtype=torch.bfloat16):
-            logits = net(xs)
-        pr = (torch.sigmoid(logits.float()) > 0.5).float()
-        for tgt, store_d, store_i in ((yl, lv_d, lv_i), (ym, myo_d, None)):
-            inter = (pr * tgt).sum(dim=(1, 2, 3))
-            card = pr.sum(dim=(1, 2, 3)) + tgt.sum(dim=(1, 2, 3))
-            union = card - inter
-            for di, ui, ci in zip(inter, union, card, strict=False):
-                d = float(2 * di / ci) if ci > 0 else 1.0
-                store_d.append(d)
-                if store_i is not None:
-                    store_i.append(float(di / ui) if ui > 0 else 1.0)
-    net.train()
-    return lv_d, lv_i, (myo_d if need_myo else [])
 
 
 def main() -> int:
@@ -161,16 +203,20 @@ def main() -> int:
         print("NO_DATA —— 先跑 scripts/camus_download.sh")
         return 2
     by_pat = defaultdict(list)
-    for p in pairs:
-        by_pat[patient_of(p[0])].append(p)
+    for idx, p in enumerate(pairs):
+        by_pat[patient_of(p[0])].append(idx)
     pats = sorted(by_pat)
     rng.shuffle(pats)
     n_test = max(1, int(len(pats) * 0.2))
     test_pats = set(pats[:n_test])
-    train_pairs = [p for p in pairs if patient_of(p[0]) not in test_pats]
-    test_pairs = [p for p in pairs if patient_of(p[0]) in test_pats]
+    train_idx = [i for i, p in enumerate(pairs) if patient_of(p[0]) not in test_pats]
+    test_idx = [i for i, p in enumerate(pairs) if patient_of(p[0]) in test_pats]
     print(f"pairs={len(pairs)} patients={len(pats)} "
-          f"train={len(train_pairs)}/{len(pats)-n_test}pat test={len(test_pairs)}/{n_test}pat", flush=True)
+          f"train={len(train_idx)}/{len(pats)-n_test}pat test={len(test_idx)}/{n_test}pat", flush=True)
+
+    imgs, masks = preload(pairs)
+    print(f"preloaded imgs={imgs.shape} masks={masks.shape} "
+          f"({imgs.nbytes/1e9:.2f}GB) ({time.time()-t0:.0f}s)", flush=True)
 
     net = build_unet().to(device)
     n_params = sum(p.numel() for p in net.parameters())
@@ -180,18 +226,11 @@ def main() -> int:
     best = {"lv_dice": 0.0}
     for epoch in range(EPOCHS):
         net.train()
-        perm = rng.permutation(len(train_pairs))
+        perm = rng.permutation(len(train_idx))
         losses = []
         for i in range(0, len(perm), BS):
-            xs, ys = [], []
-            for j in perm[i:i + BS]:
-                im = load_pair(train_pairs[j][0], train_pairs[j][1], train_pairs[j][2])
-                if im is not None:
-                    # 关键：图像与掩码必须**同一次**增强（两次调用会各自抽随机数
-                    # → 掩码与图像错位，训练直接失效）
-                    ax, ay = augment(im[0], (im[1] == LV_LABEL).float(), rng)
-                    xs.append(ax)
-                    ys.append(ay)
+            sel = [train_idx[j] for j in perm[i:i + BS]]
+            xs, ys = tensors_from_arrays(imgs, masks, sel, rng)
             if not xs:
                 continue
             xs = torch.stack(xs).to(device)
@@ -204,16 +243,15 @@ def main() -> int:
             losses.append(float(loss.detach()))
         sched.step()
         if (epoch + 1) % 5 == 0 or epoch == EPOCHS - 1:
-            lv_d, lv_i, myo_d = evaluate(net, test_pairs, device)
+            lv_d, lv_i, _ = evaluate_preloaded(net, imgs, masks, test_idx, device)
             d = float(np.mean(lv_d))
             if d > best["lv_dice"]:
-                best = {"lv_dice": d, "lv_iou": float(np.mean(lv_i)),
-                        "myo_dice": float(np.mean(myo_d)), "epoch": epoch + 1}
+                best = {"lv_dice": d, "lv_iou": float(np.mean(lv_i)), "epoch": epoch + 1}
             print(f"  epoch{epoch+1} loss={np.mean(losses):.4f} "
-                  f"LV_DSC={d:.4f} LV_IoU={np.mean(lv_i):.4f} myo_DSC={np.mean(myo_d):.4f} "
+                  f"LV_DSC={d:.4f} LV_IoU={np.mean(lv_i):.4f} "
                   f"({time.time()-t0:.0f}s)", flush=True)
 
-    lv_d, lv_i, myo_d = evaluate(net, test_pairs, device)
+    lv_d, lv_i, _ = evaluate_preloaded(net, imgs, masks, test_idx, device)
     CKPT.parent.mkdir(parents=True, exist_ok=True)
     torch.save({
         "state_dict": {k: v.cpu() for k, v in net.state_dict().items()},
@@ -222,11 +260,9 @@ def main() -> int:
         "input_size": SIZE,
         "task": "CAMUS 左心室腔二值分割（label=2）",
         "train_split": f"CAMUS-Lite 按患者 80/20（{len(pats)-n_test}/{n_test} 患者，"
-                       f"{len(train_pairs)}/{len(test_pairs)} 张）",
+                       f"{len(train_idx)}/{len(test_idx)} 张）",
         "test_lv_dice": round(float(np.mean(lv_d)), 4),
-        "test_lv_iou": round(float(np.mean(lv_i)), 4),
-        "test_myo_dice": round(float(np.mean(myo_d)), 4),
-        "epochs": EPOCHS,
+        "test_lv_iou": round(float(np.mean(lv_i)), 4),        "epochs": EPOCHS,
         "generated_at": time.strftime("%Y-%m-%d %H:%M:%S"),
     }, CKPT)
 
@@ -237,14 +273,12 @@ def main() -> int:
         "patients_total": len(pats),
         "patients_test": n_test,
         "images_total": len(pairs),
-        "images_train": len(train_pairs),
-        "images_test": len(test_pairs),
+        "images_train": len(train_idx),
+        "images_test": len(test_idx),
         "params_M": round(n_params / 1e6, 1),
         "lv_dice_mean": round(float(np.mean(lv_d)), 4),
         "lv_dice_std": round(float(np.std(lv_d)), 4),
-        "lv_iou_mean": round(float(np.mean(lv_i)), 4),
-        "myo_dice_mean": round(float(np.mean(myo_d)), 4),
-        "best_during_training": {k: (round(v, 4) if isinstance(v, float) else v)
+        "lv_iou_mean": round(float(np.mean(lv_i)), 4),        "best_during_training": {k: (round(v, 4) if isinstance(v, float) else v)
                                  for k, v in best.items()},
         "checkpoint": str(CKPT),
         "wall_seconds": round(time.time() - t0, 1),
