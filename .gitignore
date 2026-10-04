@@ -35,9 +35,22 @@ build/
 .trae/documents/
 .trae/*.log
 archive_of_achivement/
-docs-for-guiding generating docs/
 docs/reviews/
 harness_engineering_guide-main/
+
+# === 铁律 #9 复发修复（2026-10-05）===
+# 原先这里有一行 `docs-for-guiding generating docs/`（**目录级**忽略），它同时干了
+# 两件坏事：①`git add` 对被 ignore 的路径静默跳过（除非 -f），于是提交
+# `0352929 docs(交付): 18 号交付使用手册` 实际只入库了 `scripts/sync_final.sh`，
+# 手册本体从未进仓库，A.24.4 却按"已交付"记账；②目录级排除会阻止 git 下探，
+# 使下方反白名单失效（同 `data/*` 注释所述机制，一模一样的坑第二次）。
+# 现状：该目录磁盘 109 个文件、仅 28 个 tracked，81 个从未入库。
+#
+# 修法与 data/* 一致：**删掉目录级规则**，只用内容级 `**` + 逐级反白名单。
+# 只放行 .md（规格与交付文档）；.json/.png/.svg 保持忽略（运行期产物与素材）。
+docs-for-guiding generating docs/**
+!docs-for-guiding generating docs/**/
+!docs-for-guiding generating docs/**/*.md
 
 # 敏感数据与模型（`data/*` 根锚定：目录级排除会阻止 git 下探，
 # 使下方 !data/medical_resources/ 逐级反白名单失效；无锚点 `data/`
