@@ -38,6 +38,7 @@ from app.services.diagnosis_pipeline import (
     _safe_safety_check,
     _write_result_to_db,
 )
+from tests.integration.int.int_test_helpers import patch_write_deps
 
 RID = "req-degradation"
 
@@ -72,9 +73,13 @@ def repo():
 
 
 @pytest.fixture
-def captured_findings(repo):
+def captured_findings(repo, monkeypatch):
     async def _run(**kwargs):
-        kwargs.setdefault("diagnosis_repo", repo)
+        # ⚠️ 不要再 setdefault("diagnosis_repo", ...)：`_write_result_to_db` 自开
+        # 短会话（diagnosis_pipeline.py:783，2026-09-28 session 治理——只有
+        # flush 不 commit 会丢写），该形参早已不存在。这里 patch 它真正用的
+        # 两个依赖，见 int_test_helpers.patch_write_deps。
+        patch_write_deps(monkeypatch, repo)
         kwargs.setdefault("request", _request())
         kwargs.setdefault("sg_result", {"passed": True})
         kwargs.setdefault("sg_ok", True)
