@@ -54,10 +54,10 @@ fi
 
 echo "=== E. 报告与签名链 ==="
 rm -f /tmp/_rid_env.sh
-~/uai/venv/bin/python /tmp/_pick_report.py >/dev/null 2>&1
+~/uai/venv/bin/python $UAI/src/scripts/drill_pick_report.py >/dev/null 2>&1
 if [ -f /tmp/_rid_env.sh ]; then
   RID=$(cut -d= -f2 /tmp/_rid_env.sh)
-  TOK=$(~/uai/venv/bin/python /tmp/_tok.py 2>/dev/null | tr -d '\r\n')
+  TOK=$(~/uai/venv/bin/python $UAI/src/scripts/drill_token.py 2>/dev/null | tr -d '\r\n')
   curl -s --max-time 90 -X POST -H "Authorization: Bearer $TOK" \
     -H "Content-Type: application/json" -d '{}' \
     "http://127.0.0.1:18000/api/v1/report/$RID/sign" > /tmp/_sign.json 2>&1
@@ -66,7 +66,7 @@ if [ -f /tmp/_rid_env.sh ]; then
     -H "Content-Type: application/json" -d '{}' \
     "http://127.0.0.1:18000/api/v1/report/$RID/verify" > /tmp/_verify.json 2>&1
   grep -q '"signature_verified":true' /tmp/_verify.json && ok "验签通过" || bad "验签失败"
-  ~/uai/venv/bin/python /tmp/_tamper.py "$RID" 2>&1 | grep -q TAMPER_DETECTED \
+  ~/uai/venv/bin/python $UAI/src/scripts/drill_tamper_check.py "$RID" 2>&1 | grep -q TAMPER_DETECTED \
     && ok "篡改检测生效" || bad "篡改未被发现（严重）"
 else
   bad "找不到可签报告"

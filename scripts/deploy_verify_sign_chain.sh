@@ -13,7 +13,7 @@ say() { echo "[$(date +%H:%M:%S)] $*"; }
 
 say "=== 0) 定位可签报告 ==="
 rm -f /tmp/_rid_env.sh
-~/uai/venv/bin/python /tmp/_pick_report.py 2>&1 | tail -2
+~/uai/venv/bin/python $UAI/src/scripts/drill_pick_report.py 2>&1 | tail -2
 if [ ! -f /tmp/_rid_env.sh ]; then
   say "  NO_REPORT_YET"
   exit 2
@@ -22,7 +22,7 @@ RID=$(cut -d= -f2 /tmp/_rid_env.sh)
 say "  report_id=$RID"
 
 say "=== 1) 登录 ==="
-TOK=$(~/uai/venv/bin/python /tmp/_tok.py 2>/dev/null | tr -d '\r\n')
+TOK=$(~/uai/venv/bin/python $UAI/src/scripts/drill_token.py 2>/dev/null | tr -d '\r\n')
 if [ -z "$TOK" ]; then
   say "  LOGIN_FAIL"
   exit 2
@@ -47,7 +47,7 @@ curl -s --max-time 90 -X POST -H "Authorization: Bearer $TOK" \
   | ~/uai/venv/bin/python -c "import json,sys;d=json.load(sys.stdin);print('  verified=',d.get('signature_verified'),'status=',d.get('status'))"
 
 say "=== 5) 篡改检测（核心：改了内容签名必须失效）==="
-~/uai/venv/bin/python /tmp/_tamper.py "$RID" 2>&1 | tail -4
+~/uai/venv/bin/python $UAI/src/scripts/drill_tamper_check.py "$RID" 2>&1 | tail -4
 
 say "=== 6) 重复签名 ==="
 curl -s -o /dev/null -w "  re-sign http=%{http_code}\n" --max-time 60 -X POST \
