@@ -28,6 +28,7 @@ from app.agents.routing import (
 )
 from app.fusion.protocols import FusionResult
 from app.models.schemas import ResponseTier
+from tests.integration.int.int_test_helpers import FakeSession as _FakeSession
 
 
 class _AsyncCtx:
@@ -120,7 +121,7 @@ async def test_full_chain_and_adaptive_profile_reaches_specialist():
     nav_manager.send_diagnosis_result = AsyncMock()
 
     with patch.object(
-        pipeline, "AsyncSessionLocal", MagicMock(return_value=_AsyncCtx(MagicMock()))
+        pipeline, "AsyncSessionLocal", MagicMock(return_value=_AsyncCtx(_FakeSession()))
     ), patch.object(
         pipeline, "DiagnosisRepository", MagicMock(return_value=diagnosis_repo)
     ), patch.object(
@@ -214,7 +215,7 @@ async def test_full_chain_sg_unavailable_marks_failed_but_completes():
     diagnosis_repo.db = MagicMock()
 
     with patch.object(
-        pipeline, "AsyncSessionLocal", MagicMock(return_value=_AsyncCtx(MagicMock()))
+        pipeline, "AsyncSessionLocal", MagicMock(return_value=_AsyncCtx(_FakeSession()))
     ), patch.object(
         pipeline, "DiagnosisRepository", MagicMock(return_value=diagnosis_repo)
     ), patch.object(
@@ -259,7 +260,7 @@ async def test_full_chain_request_missing_returns_false():
     diagnosis_repo.get_result = AsyncMock(return_value=None)
 
     with patch.object(
-        pipeline, "AsyncSessionLocal", MagicMock(return_value=_AsyncCtx(MagicMock()))
+        pipeline, "AsyncSessionLocal", MagicMock(return_value=_AsyncCtx(_FakeSession()))
     ), patch.object(
         pipeline, "DiagnosisRepository", MagicMock(return_value=diagnosis_repo)
     ):

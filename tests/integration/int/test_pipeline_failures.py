@@ -137,19 +137,25 @@ class TestWriteResultFallback:
     """测试 _write_result_to_db 在各场景下的写库行为。"""
 
     @pytest.mark.asyncio
-    async def test_write_result_with_sg_unavailable(self):
-        """SG 不可用时 status='failed'。"""
+    async def test_write_result_with_sg_unavailable(self, monkeypatch):
+        """SG 不可用时 status='failed'。
+
+        ⚠️ 不要再传 ``diagnosis_repo=``：`_write_result_to_db` 现在自己开短会话
+        （diagnosis_pipeline.py:783，2026-09-28 的 session 治理：只有 flush 不
+        commit 会丢写）。要 mock 就 patch 它真正用的两个依赖，见 int_test_helpers。
+        """
         from app.services.diagnosis_pipeline import _write_result_to_db
+        from tests.integration.int.int_test_helpers import patch_write_deps
 
         mock_repo = MagicMock()
         mock_repo.update_result = AsyncMock(return_value=MagicMock())
+        patch_write_deps(monkeypatch, mock_repo)
 
         mock_request = MagicMock()
         mock_request.request_id = "req_test_w1"
         mock_request.organ = "thyroid"
 
         result = await _write_result_to_db(
-            diagnosis_repo=mock_repo,
             request=mock_request,
             fusion_result=None,
             sg_result=None,
@@ -163,13 +169,15 @@ class TestWriteResultFallback:
         assert call_kwargs["confidence"] == 0.0
 
     @pytest.mark.asyncio
-    async def test_write_result_with_needs_review(self):
+    async def test_write_result_with_needs_review(self, monkeypatch):
         """fusion_result.needs_review=True 时 status='needs_review'。"""
         from app.fusion.protocols import FusionResult
         from app.services.diagnosis_pipeline import _write_result_to_db
+        from tests.integration.int.int_test_helpers import patch_write_deps
 
         mock_repo = MagicMock()
         mock_repo.update_result = AsyncMock(return_value=MagicMock())
+        patch_write_deps(monkeypatch, mock_repo)
 
         mock_request = MagicMock()
         mock_request.request_id = "req_test_w2"
@@ -184,7 +192,6 @@ class TestWriteResultFallback:
         )
 
         result = await _write_result_to_db(
-            diagnosis_repo=mock_repo,
             request=mock_request,
             fusion_result=mock_fusion,
             sg_result={"passed": True, "consent_status_at_output": "granted"},

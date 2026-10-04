@@ -17,6 +17,7 @@ from app.services.diagnosis_pipeline import (
     _write_result_to_db,
     get_routing_router,
 )
+from tests.integration.int.int_test_helpers import patch_write_deps
 
 pytestmark = pytest.mark.track_int
 
@@ -120,15 +121,16 @@ class TestRoutingAssessment:
 
 class TestFindingsPersistRouting:
     @pytest.mark.asyncio
-    async def test_write_result_includes_routing_section(self):
+    async def test_write_result_includes_routing_section(self, monkeypatch):
         request = _StubRequest(clinical_text="低回声+边界不清+微钙化+血流信号",
                                tier="standard")
         decision = _assess_routing(request)
         repo = MagicMock()
         repo.update_result = AsyncMock(return_value=MagicMock())
 
+        patch_write_deps(monkeypatch, repo)
+
         ok = await _write_result_to_db(
-            diagnosis_repo=repo,
             request=request,
             fusion_result=None,
             sg_result={"passed": True},
@@ -145,13 +147,14 @@ class TestFindingsPersistRouting:
         assert findings["routing"]["retrieval_profile"]["top_k"] == 10
 
     @pytest.mark.asyncio
-    async def test_write_result_without_routing_marks_none(self):
+    async def test_write_result_without_routing_marks_none(self, monkeypatch):
         request = _StubRequest()
         repo = MagicMock()
         repo.update_result = AsyncMock(return_value=MagicMock())
 
+        patch_write_deps(monkeypatch, repo)
+
         await _write_result_to_db(
-            diagnosis_repo=repo,
             request=request,
             fusion_result=None,
             sg_result={"passed": True},

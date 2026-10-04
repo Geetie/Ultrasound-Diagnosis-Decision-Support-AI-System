@@ -164,19 +164,22 @@ class TestE2EScenarioT5SafetyRejection:
     """T5: SafetyGateway 拒绝（禁忌触发）。"""
 
     @pytest.mark.asyncio
-    async def test_t5_sg_rejection_marks_failed(self):
+    async def test_t5_sg_rejection_marks_failed(self, monkeypatch):
         """SG 返回 passed=False 但 service_unavailable=True 时 status='failed'。"""
         from app.services.diagnosis_pipeline import _write_result_to_db
+        from tests.integration.int.int_test_helpers import patch_write_deps
 
         mock_repo = MagicMock()
         mock_repo.update_result = AsyncMock(return_value=MagicMock())
+        # ⚠️ 不要传 diagnosis_repo=：该函数自开短会话（diagnosis_pipeline.py:783），
+        # 形参已不存在；要 mock 就 patch 它真正用的两个依赖。
+        patch_write_deps(monkeypatch, mock_repo)
 
         mock_request = MagicMock()
         mock_request.request_id = "req_t5_001"
         mock_request.organ = "thyroid"
 
         result = await _write_result_to_db(
-            diagnosis_repo=mock_repo,
             request=mock_request,
             fusion_result=_mock_fusion_result("thyroid"),
             sg_result={"passed": False, "service_unavailable": True, "error_code": "E4005A1"},

@@ -10,6 +10,7 @@ import pytest
 
 from app.agents.protocols import AgentResponse
 from app.fusion.protocols import FusionResult
+from tests.integration.int.int_test_helpers import patch_write_deps
 
 
 def _mock_specialist_response() -> AgentResponse:
@@ -33,7 +34,7 @@ class TestLatencyInstrumentation:
     """延迟埋点测试。"""
 
     @pytest.mark.asyncio
-    async def test_pipeline_writes_all_6_timings(self):
+    async def test_pipeline_writes_all_6_timings(self, monkeypatch):
         """管线写 DB 时, timings 包含全部 6 阶段。"""
         from app.services.diagnosis_pipeline import _write_result_to_db
 
@@ -56,8 +57,9 @@ class TestLatencyInstrumentation:
         with patch("app.services.diagnosis_pipeline.RedisPool") as mock_redis:
             mock_redis.setex = AsyncMock()
 
+            patch_write_deps(monkeypatch, mock_repo)
+
             await _write_result_to_db(
-                diagnosis_repo=mock_repo,
                 request=mock_request,
                 fusion_result=_mock_fusion_result(),
                 sg_result={"passed": True},
@@ -77,7 +79,7 @@ class TestLatencyInstrumentation:
         assert findings["timings_ms"]["pipeline.total_ms"] == 400.0
 
     @pytest.mark.asyncio
-    async def test_pipeline_overhead_under_1ms(self):
+    async def test_pipeline_overhead_under_1ms(self, monkeypatch):
         """time.monotonic() 自身开销 < 1ms。"""
         import time
 
