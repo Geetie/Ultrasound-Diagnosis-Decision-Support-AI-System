@@ -97,8 +97,14 @@ def collect_frontend_paths() -> tuple[set[str], list[tuple[str, int]]]:
 
 
 def normalize(path: str) -> str:
-    """把路径参数统一成 {}，便于 /x/{id} 与 /x/{name} 对齐。"""
-    return re.sub(r"\{[^}]+\}", "{}", path.rstrip("/") or "/")
+    """路径参数统一成 {}，便于对齐。
+
+    两边写法不同：后端 ``/x/{id}``，前端模板串 ``/x/${id}``——都要归一，
+    否则会把同一路径误报成"断链"（首次实跑 8 个全是这种假阳性）。
+    """
+    p = re.sub(r"\$\{[^}]+\}", "{}", path)   # 前端模板串
+    p = re.sub(r"\{[^}]+\}", "{}", p)          # 后端路径参数
+    return p.rstrip("/") or "/"
 
 
 def fetch_backend_paths(api_base: str, openapi_file: str | None) -> set[str]:
