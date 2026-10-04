@@ -59,7 +59,19 @@ router = APIRouter(tags=["diagnosis"])
 logger = structlog.get_logger()
 
 IDEMPOTENCY_TTL_SECONDS = 600
-RESULT_TIMEOUT_SECONDS = 30
+# 结果读取的 processing 超时阈值（秒）。
+#
+# P1-13 修复（2026-10-04）：原为硬编码 30 秒，而真实诊断管线要 90 秒以上
+# （含 dispatcher + fusion 的 LLM 串行链；压测记录单例稳态 9.5~9.7s 是 LLM
+# 已热的情形，冷启动还要更久）。30 秒会把**正常在跑**的诊断误报成 timeout，
+# 前端据此停止轮询 → 用户看到"超时失败"而后台其实快要出结果了。
+#
+# 现从配置读取（不同部署规模差异大：LLM 换小模型可调小、换大模型必须调大），
+# 默认 180 秒。这个值**只影响读路径展示**，不终止后台管线——真超时由
+# diagnosis_pipeline 自己的预算控制。
+RESULT_TIMEOUT_SECONDS = int(
+    getattr(settings, "result_read_timeout_seconds", 180)
+)
 
 
 def _generate_request_id() -> str:
