@@ -7,6 +7,7 @@ set -a
 source ~/uai/.env
 set +a
 export PYTHONPATH=~/uai/src
+UAI=$HOME/uai
 export NODULE_CONTOUR_IN_PIPELINE_ENABLED=1
 export ATTRIBUTE_HINTS_ENABLED=1
 
