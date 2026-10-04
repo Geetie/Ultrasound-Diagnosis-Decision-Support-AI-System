@@ -17,6 +17,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.responses import FileResponse
 
 from app.api.v1.alert_admin import router as alert_admin_router
 from app.api.v1.alerts import router as internal_alerts_router
@@ -25,7 +26,14 @@ from app.api.v1.auth import router as auth_router
 from app.api.v1.consent import router as consent_router
 from app.api.v1.device import router as device_router
 from app.api.v1.diagnosis import router as diagnosis_router
-from app.api.v1.errors import AppBaseException, app_exception_handler, general_exception_handler, http_exception_handler
+from app.api.v1.errors import (
+    AppBaseException,
+    NotFoundException,
+    ServerErrorException,
+    app_exception_handler,
+    general_exception_handler,
+    http_exception_handler,
+)
 from app.api.v1.feedback import router as feedback_router
 from app.api.v1.fhir import router as fhir_router
 from app.api.v1.health import router as health_router
@@ -748,6 +756,42 @@ app.add_exception_handler(Exception, general_exception_handler)
 _dashboard_dir = Path(__file__).parent / "static" / "dashboard"
 if _dashboard_dir.is_dir():
     app.mount("/dashboard", StaticFiles(directory=str(_dashboard_dir), html=True), name="dashboard")
+
+
+# 临床前端（React + Cornerstone3D，2026-10-04 交付部署）
+# 产物在 app/static/ui/（由 `cd frontend && VITE_BASE=/ui/ npm run build` 生成，
+# 仓库不分发构建产物）。挂 /ui 而不是 / 的原因：/ 已被根 JSON 占用、
+# /dashboard 是运维可观测性仪表盘，两者都不能让位。
+#
+# SPA fallback：前端是 history 路由（/ui/workspace、/ui/report/xxx…），
+# 直接访问子路由时静态目录里没有对应文件 → 必须回落到 index.html，
+# 否则医生刷新页面就 404（前端路由拿不到入口）。
+_ui_dir = Path(__file__).parent / "static" / "ui"
+if _ui_dir.is_dir():
+    app.mount(
+        "/ui",
+        StaticFiles(directory=str(_ui_dir), html=True),
+        name="ui",
+    )
+
+    @app.get("/ui/{spa_path:path}", include_in_schema=False)
+    async def ui_spa_fallback(spa_path: str):
+        """SPA history 路由回落：非静态文件路径一律交回 index.html。"""
+        index = _ui_dir / "index.html"
+        if not index.is_file():  # pragma: no cover - 挂载存在时必有
+            raise NotFoundException(error_message="UI build incomplete: index.html missing")
+        return FileResponse(str(index))
+
+else:  # pragma: no cover - 未构建时给出可执行的提示而非 404 谜语
+    @app.get("/ui", include_in_schema=False)
+    async def ui_not_built():
+        raise ServerErrorException(
+            error_message=(
+                "临床前端未构建：在 frontend/ 执行 "
+                "`VITE_BASE=/ui/ npm ci && VITE_BASE=/ui/ npm run build`，"
+                "再把 dist/ 内容复制到 app/static/ui/"
+            ),
+        )
 
 
 @app.get("/")

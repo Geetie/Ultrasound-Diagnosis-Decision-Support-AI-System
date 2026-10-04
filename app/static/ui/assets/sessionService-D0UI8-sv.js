@@ -1,0 +1,1 @@
+import{c as e}from"./index-C764W3hm.js";async function t(t){return(await e.post(`/sessions`,t)).data}async function n(t=20){return(await e.get(`/sessions`,{params:{limit:t}})).data}export{n,t};

@@ -49,6 +49,13 @@ function devDicomServer(): Plugin {
 }
 
 export default defineConfig({
+  /**
+   * 部署形态（2026-10-04 交付）：产物挂到后端 `/ui`（见 app/main.py 的
+   * StaticFiles 挂载），`/ui/` 之外还有运维仪表盘 `/dashboard` 与根 JSON `/`，
+   * 因此 base **不能**是 `/`（会与后端路由抢占 `/`）。用环境变量兼顾 dev：
+   * 本地 dev 不设 VITE_BASE → base='/'，开发体验不变。
+   */
+  base: process.env.VITE_BASE ?? '/',
   plugins: [react(), devDicomServer()],
   resolve: {
     alias: {

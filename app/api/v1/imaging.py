@@ -7,6 +7,7 @@ from io import BytesIO
 import pydicom
 import structlog
 from fastapi import APIRouter, Depends, File, Form, UploadFile
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.errors import (
     BadRequestException,
@@ -15,7 +16,7 @@ from app.api.v1.errors import (
     ServerErrorException,
 )
 from app.api.v1.utils import get_actor_id
-from app.config.database import AsyncSessionLocal
+from app.config.database import get_db_session
 from app.config.settings import settings
 from app.dependencies import get_audit_service, get_session_repo
 from app.models.schemas import DICOMStreamRequest, DICOMStreamResponse, DICOMUploadResponse
@@ -149,6 +150,7 @@ async def upload_dicom(
     priority: int = Form(1),
     session_repo: SessionRepository = Depends(get_session_repo),
     audit_service: AuditService = Depends(get_audit_service),
+    db: AsyncSession = Depends(get_db_session),
     current_user: dict | None = Depends(get_current_active_user),
 ):
 
@@ -212,26 +214,36 @@ async def upload_dicom(
         ) from e
 
     # 写影像索引（dicom_images）：把"image_id ↔ session ↔ 字节位置"显式化。
-    # 失败只告警不阻断上传——影像已经落盘可用，索引缺失只让"按 session 取图"
-    # 退化为不可用（管线侧会显式降级），不该把用户的上传请求打回。
+    # 用 Depends(get_db_session) 注入的会话（由框架统一提交）——**不手动 commit**
+    # （tests/unit/sec/test_audit.py::test_imaging_upload_no_manual_commit 守着这条：
+    #  手动 commit 会与依赖的提交重复，正是当初双提交事故的形状）。
+    # 失败只告警不阻断上传——影像已落盘可用，索引缺失只让"按 session 取图"
+    # 退化为不可用（管线侧显式降级），不该把用户的上传请求打回。
     try:
-        async with AsyncSessionLocal() as db:
-            await DicomImageRepository(db).create(
-                image_id=image_id,
-                session_id=session_id,
-                storage_path=storage_path,
-                patient_id=raw_patient_id,
-                sop_instance_uid=sop_instance_uid,
-                modality=str(getattr(dataset, "Modality", "") or "") or None,
-                width=_safe_int(getattr(dataset, "Rows", None)),
-                height=_safe_int(getattr(dataset, "Columns", None)),
-                frame_count=_safe_int(getattr(dataset, "NumberOfFrames", None)) or 1,
-                size_bytes=len(content),
-                original_filename=file.filename,
-            )
-            await db.commit()
+        await DicomImageRepository(db).create(
+            image_id=image_id,
+            session_id=session_id,
+            storage_path=storage_path,
+            patient_id=raw_patient_id,
+            sop_instance_uid=sop_instance_uid,
+            modality=str(getattr(dataset, "Modality", "") or "") or None,
+            width=_safe_int(getattr(dataset, "Rows", None)),
+            height=_safe_int(getattr(dataset, "Columns", None)),
+            frame_count=_safe_int(getattr(dataset, "NumberOfFrames", None)) or 1,
+            size_bytes=len(content),
+            original_filename=file.filename,
+        )
     except Exception as e:  # pragma: no cover - 索引是旁路，不阻断上传
         logger.warning("dicom_image_index_write_failed", error=str(e), image_id=image_id)
+        # 必须显式 rollback：flush 失败后该 session 处于 PendingRollbackError 状态，
+        # 框架后续提交时会抛 "This Session's transaction has been rolled back"
+        # 把整个上传请求打成 500 —— 实测踩过（DB 不可达时必现）。
+        # 这里只回滚本请求内的写（上传路径没有其他 DB 写入），不会丢数据。
+        try:
+            await db.rollback()
+        except Exception as rb_exc:  # pragma: no cover - rollback 自身失败属环境异常
+            logger.warning("dicom_image_index_rollback_failed",
+                           error=str(rb_exc), image_id=image_id)
 
     actor_id = get_actor_id(current_user)
     await audit_service.log_action(
