@@ -64,7 +64,20 @@ class TestDiagnosisPhase0AMockConstants:
         assert RESULT_CACHE_TTL_SECONDS == 600
 
     def test_result_timeout(self):
-        assert RESULT_TIMEOUT_SECONDS == 30
+        """P1-13：阈值不再是硬编码 30s。
+
+        原断言 ``== 30`` 是在**钉住一个 bug**：真实诊断管线要 90s 以上
+        （dispatcher + fusion 的 LLM 串行链 + 冷启动），30s 会把正常在跑的
+        诊断误报成 timeout，前端据此停止轮询。
+
+        现在钉住的是正确语义：可配置 + 不低于真实管线下界。
+        """
+        from app.config.settings import settings
+
+        assert settings.result_read_timeout_seconds == RESULT_TIMEOUT_SECONDS
+        assert RESULT_TIMEOUT_SECONDS >= 90, (
+            f"阈值 {RESULT_TIMEOUT_SECONDS}s 低于真实管线耗时，会误报 timeout"
+        )
 
 
 class TestDiagnosisRequestModel:
