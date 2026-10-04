@@ -39,6 +39,9 @@ PROBE="http://127.0.0.1:$PORT/api/v1/health"
 
 say() { echo "[$(date '+%H:%M:%S')] $*"; }
 
+# 本脚本起始时刻，用于末尾判定"进程是不是真换过"（见健康探测段）
+T0=$(date +%s)
+
 [ -x "$PY" ] || { say "FATAL: 找不到 $PY"; exit 1; }
 [ -d "$SRC" ] || { say "FATAL: 找不到 $SRC"; exit 1; }
 mkdir -p "$UAI/logs"
@@ -92,17 +95,25 @@ for i in $(seq 1 40); do
   code=$(curl -s -o /dev/null -w '%{http_code}' -m 3 "$PROBE" 2>/dev/null || true)
   if [ "$code" = "200" ]; then
     PID=$(pgrep -f "uvicorn app.main:app" | head -1)
-    # 铁律：探活 200 可能是**旧进程假活**。核对新进程启动时间晚于脚本启动
-    # 时刻，确认真的换过（否则重启失败会被误判成成功）。
-    AGE=$(( $(date +%s) - $(ps -o lstart= -p "$PID" 2>/dev/null | xargs -I{} date -d "{}" +%s 2>/dev/null || echo 0) ))
+    # 铁律：探活 200 可能是**旧进程假活**。核对新进程确实比本脚本启动还晚。
+    #
+    # 用 `ps -o etimes=`（已运行秒数），不要用 `ps -o lstart=` + `date -d`：
+    # 后者在真机实测静默解析失败返回 0，age 变成"当前 epoch 秒"（1.79e9），
+    # 每次启动都误报"疑似未真正重启"（2026-10-05 踩到，已修）。
+    NOW=$(date +%s)
+    AGE=$(ps -o etimes= -p "$PID" 2>/dev/null | tr -d ' ')
     BIND=$(ss -ltn 2>/dev/null | awk -v p=":$PORT\$" '$4 ~ p {print $4}' | head -1)
-    say "api-ready($((i*3))s) pid=$PID age=${AGE}s bind=${BIND:-unknown}"
+    say "api-ready($((i*3))s) pid=$PID age=${AGE:-?}s (本次脚本已跑 $((NOW-T0))s) bind=${BIND:-unknown}"
     case "$BIND" in
       127.0.0.1:*) say "绑定合规（loopback）" ;;
       "")           say "WARN: 读不到监听地址，ss 不可用？" ;;
       *)            say "FATAL: 绑定不是 loopback（$BIND），违反硬规则 #3"; exit 1 ;;
     esac
-    [ "${AGE:-0}" -gt 300 ] && say "WARN: 进程已存在 ${AGE}s，疑似未真正重启"
+    # AGE 明显大于脚本自身运行时长 → 该进程在脚本跑之前就存在 = 没真正重启
+    if [ -n "${AGE:-}" ] && [ "$AGE" -gt $(( NOW - T0 + 30 )) ]; then
+      say "FATAL: 进程已存在 ${AGE}s 而本次脚本仅跑 $((NOW-T0))s，判定为旧进程假活"
+      exit 1
+    fi
     exit 0
   fi
 done
