@@ -189,18 +189,37 @@ def main() -> int:
         return 1
 
     print("--- 7) 结果字段是否够前端渲染 ---")
-    # WorkspaceConclusionBody 至少要用到这些
-    for field in ("diagnosis", "confidence", "requires_manual_review",
-                  "evidence", "malignancy_risk", "clinical_actions"):
+    # ⚠️ 断言必须照抄 frontend/src/types/api.ts 的 DiagnosisResult。
+    # 第一版按"常识"测了顶层 confidence，报"后端缺字段"——其实**前端也不读它**
+    # （置信度在 diagnosis.fusion_result 里）。断言写错会造出假缺陷、浪费一轮排查。
+    for field in ("diagnosis", "requires_manual_review", "evidence",
+                  "malignancy_risk", "clinical_actions", "consistency_flag",
+                  "fusion_status", "desensitization_status"):
         if field in result:
             ok(f"结果含 {field}")
         else:
             bad(f"结果缺 {field}（前端会渲染空）")
-    ev = result.get("evidence")
-    if isinstance(ev, list) and ev:
-        ok(f"证据条目 {len(ev)} 条")
+    # 结论文本在 diagnosis.fusion_result.content（前端注释明确指出这点）
+    detail = result.get("diagnosis") or {}
+    fr = detail.get("fusion_result") or {}
+    content = fr.get("content")
+    if isinstance(content, str) and content.strip():
+        ok(f"结论文本非空（{len(content)} 字）")
     else:
-        bad("证据为空（前端证据区会空白）")
+        bad("diagnosis.fusion_result.content 为空（前端结论区会空白）")
+    if fr.get("final_confidence") is not None:
+        ok(f"融合置信度 {fr.get('final_confidence')}")
+    # evidence 是 Record（不是数组）——按前端类型断言
+    ev = result.get("evidence")
+    if isinstance(ev, dict) and ev:
+        ok(f"证据对象非空（键: {list(ev)[:4]}）")
+    else:
+        print(f"  [INFO] evidence 为空/非字典：{type(ev).__name__} {str(ev)[:60]}")
+    sg = detail.get("sg_result") or {}
+    if "allowed" in sg:
+        ok(f"安全网关 allowed={sg.get('allowed')}")
+    else:
+        bad("缺 sg_result.allowed（前端确认动作区依赖它）")
     seg = result.get("nodule_segmentation")
     if isinstance(seg, dict) and seg.get("available"):
         ok(f"分割旁路 area_mm2={seg.get('area_mm2')}")
