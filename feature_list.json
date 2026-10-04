@@ -307,6 +307,58 @@
       "status": "done",
       "dependencies": [],
       "evidence": "merge commit 2d8e4b3；真机门禁 PASS=23 FAIL=0；RUF043 超基线已修"
+    },
+    {
+      "id": "ui-blank-screen-cornerstone",
+      "name": "P0 临床前端白屏（vendor-cornerstone 跨 chunk 循环依赖）",
+      "description": "2026-10-05 首次真实浏览器走查抓到：TypeError: Class extends value undefined，堆栈全在 vendor-cornerstone-*.js，#root 子节点 0，React 从未挂载。根因：@cornerstonejs/* 5.11.3 内部循环依赖 + vite.config.ts 的 manualChunks 强行把它切独立 chunk，Vite 8（Rolldown）下跨 chunk 循环引用在 ESM 严格求值顺序下基类未初始化即 extends。修法：从 manualChunks 移除 cornerstone，交给 Rolldown 自动分割（变成懒加载 chunk）。此前所有验证（门禁 23 项、契约对账 18 路径）都只验 HTTP 层、未验浏览器渲染，故全绿未发现",
+      "status": "done",
+      "dependencies": [],
+      "evidence": "修复后浏览器实测 ROOT_CHILDREN=1、JS 错误 0、9 条路由全部渲染；16 号附录 A.27"
+    },
+    {
+      "id": "ui-login-422-json-vs-form",
+      "name": "P0 前端登录永远失败（JSON 打到 OAuth2 form 端点）",
+      "description": "LoginPage 打 POST /auth/token 并发 JSON，但该端点是 OAuth2PasswordRequestForm=Depends()，只收 application/x-www-form-urlencoded，FastAPI 校验失败返回 422，于是登录功能完全不可用。实证：JSON→/auth/token=422、form→/auth/token=200、JSON→/auth/login=401（仅密码错）。修法：改打 /auth/login（收 JSON 的 LoginRequest）",
+      "status": "done",
+      "dependencies": [],
+      "evidence": "修复后浏览器实测登录成功、落地 /ui/ 工作区；16 号附录 A.27"
+    },
+    {
+      "id": "ui-login-redirect-backend-root",
+      "name": "P0 登录后跳到后端根 JSON（界面直接断掉）",
+      "description": "登录成功后 window.location.href='/'，但 / 是后端根 JSON，医生看到一串 JSON 而非系统界面。修法：改用 import.meta.env.BASE_URL（生产='/ui/'、dev='/'，两边都对）",
+      "status": "done",
+      "dependencies": [],
+      "evidence": "修复后落地 http://127.0.0.1:8000/ui/ 工作区；16 号附录 A.27"
+    },
+    {
+      "id": "ui-router-basename-missing",
+      "name": "P0 所有二级页面打不开（BrowserRouter 缺 basename）",
+      "description": "providers.tsx 的 BrowserRouter 无 basename（默认 '/'），而产物挂在 /ui。访问 /ui/worklist 时路由看到 pathname=/ui/worklist，匹配不到任何路由，落到 Route path='*' 的 Navigate to='/'，跳后端根。实测 9 条路由一律回落成同一个工作区：工作列表/新建会话/报告签发/质控/知识库/知情同意/反馈/设置全部不可达。修法：basename={import.meta.env.BASE_URL 去尾斜杠}",
+      "status": "done",
+      "dependencies": [],
+      "evidence": "修复后 9 条路由全部正常渲染（各页 textLen 不同）；16 号附录 A.27"
+    },
+    {
+      "id": "ui-no-dicom-upload-entry",
+      "name": "P0 医生无法在 UI 上传 DICOM 影像",
+      "description": "走查实测：全站 0 个 input[type=file]（连 display:none 的隐藏 input 也为 0），医生无法在界面装载影像。手册 18 号的『步骤 2 上传 DICOM』在 UI 上做不到，只能调 API。需补上传入口（工作区影像区或新建会话页），并明确上传后如何触发判读（现文案称『冻结当前帧即自动发起判读』，但无影像则无从冻结）",
+      "status": "planned",
+      "dependencies": [
+        "ui-router-basename-missing"
+      ],
+      "evidence": "走查 v3 实测 fileInputs(all)=0；16 号附录 A.27"
+    },
+    {
+      "id": "ui-workspace-no-nav-exit",
+      "name": "P1 工作区无导航出口（页面间无法切换）",
+      "description": "工作区(/ui/)刻意不套 AppLayout，实测 btn=[]：无任何按钮与侧栏，医生登录后无法切换到工作列表/新建会话/报告等任何页面，只能手动改 URL。routes.tsx 注释称『三个真页面自带侧栏 200』，但实测工作区并未渲染侧栏——设计意图与实现不符。需补返回/菜单出口",
+      "status": "planned",
+      "dependencies": [
+        "ui-router-basename-missing"
+      ],
+      "evidence": "走查实测工作区 btn=[]、10 个导航项全部未找到；16 号附录 A.27"
     }
   ]
 }

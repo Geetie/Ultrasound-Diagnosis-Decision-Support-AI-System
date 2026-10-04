@@ -88,6 +88,20 @@ export default defineConfig({
     cssCodeSplit: true,
     rollupOptions: {
       output: {
+        /**
+         * **不要**把 cornerstone 单独拆成 chunk。
+         *
+         * 2026-10-05 真实浏览器走查抓到白屏：`TypeError: Class extends value
+         * undefined is not a constructor or null`，堆栈全部落在
+         * `vendor-cornerstone-*.js`。根因是 @cornerstonejs/* 5.11.3 内部存在
+         * 循环依赖，Vite 8（Rolldown 打包器）按 `manualChunks` 强行把它切成一个
+         * 独立 chunk 后，跨 chunk 的循环引用在 ESM 严格求值顺序下**基类尚未
+         * 初始化就执行 `extends`**，整个 vendor chunk 抛错 → React 从未挂载，
+         * `#root` 子节点为 0，白屏。
+         *
+         * 交给 Rolldown 自动分割即可（它会把相互依赖的模块放进同一 chunk）。
+         * 代价是主 chunk 变大（约 +3.5MB），但正确性优先于体积。
+         */
         manualChunks(id) {
           if (id.includes('node_modules')) {
             if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
@@ -95,9 +109,6 @@ export default defineConfig({
             }
             if (id.includes('antd') || id.includes('@ant-design')) {
               return 'vendor-antd';
-            }
-            if (id.includes('cornerstone') || id.includes('dicom-parser')) {
-              return 'vendor-cornerstone';
             }
             if (id.includes('echarts')) {
               return 'vendor-echarts';

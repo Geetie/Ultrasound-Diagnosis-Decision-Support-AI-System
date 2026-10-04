@@ -13,7 +13,15 @@ export default function LoginPage() {
   const handleLogin = async (values: { username: string; password: string }) => {
     setLoading(true);
     try {
-      const response = await apiClient.post('/auth/token', {
+      // 2026-10-05 医生视角浏览器走查抓到：这里原来打的是 `/auth/token`。
+      // 该端点用 `OAuth2PasswordRequestForm = Depends()`，**只接受
+      // application/x-www-form-urlencoded**（OAuth2 密码流规范），而 axios 发的是
+      // JSON —— FastAsyncAPI 校验失败返回 422，于是**登录永远失败**（实测
+      // JSON→/auth/token = 422，form→/auth/token = 200）。
+      //
+      // 改用 `/auth/login`：它收 JSON 的 `LoginRequest`，与本文件其余调用方式一致，
+      // 不必把 axios 全局改成 form 序列化。
+      const response = await apiClient.post('/auth/login', {
         username: values.username,
         password: values.password,
       });
@@ -23,7 +31,12 @@ export default function LoginPage() {
         if (refresh_token) {
           localStorage.setItem('refresh_token', refresh_token);
         }
-        window.location.href = '/';
+        // 2026-10-05 走查抓到：原来写的是 `window.location.href = '/'`，但 `/` 是
+        // **后端**的根 JSON（`{"message": "..."}`），不是前端页面 —— 登录成功后
+        // 医生看到的是一串 JSON，界面直接断掉。
+        // 前端产物挂在 `/ui`（base 由 VITE_BASE 注入），工作区路由就是 base 本身，
+        // 所以用 BASE_URL：生产='/ui/'，dev(不加 VITE_BASE)='/'，两边都对。
+        window.location.href = import.meta.env.BASE_URL;
       }
     } catch (err: unknown) {
       message.error(getApiErrorMessage(err, '登录失败'));
