@@ -18,6 +18,40 @@ async def _check_redis():
         return False, f"{type(e).__name__}: {e!s}"
 
 
+def _refresh_store_health() -> dict:
+    """刷新令牌存储的部署适配性（并发审查 P0 最后一项，2026-10-04）。
+
+    MemoryRefreshTokenStore 把 token 存在**进程内字典**，多 worker 各持一份。
+    后果不是"竞态"而是**跨 worker 直接不可用**——worker A 签发的 refresh token
+    到 worker B 上会报 Refresh token not found。当前单 worker 部署无影响。
+
+    这里如实报告后端与进程局部性，让误开 --workers > 1 的配置立刻暴露，
+    而不是变成"刷新偶发失败"这种极难定位的现象。
+    """
+    import os
+
+    from app.security.refresh_token import RedisRefreshTokenStore, refresh_token_store
+
+    store = refresh_token_store
+    # 进程局部 = 不是 Redis 后端（内存字典多 worker 各持一份，跨 worker 不可用）
+    process_local = not isinstance(store, RedisRefreshTokenStore)
+    try:
+        workers = int(os.environ.get("WEB_CONCURRENCY", "1"))
+    except ValueError:
+        workers = 1
+    return {
+        "backend": type(store).__name__,
+        "process_local": process_local,
+        "workers": workers,
+        "multi_worker_safe": not (process_local and workers > 1),
+        "warning": (
+            "进程内存储 + 多 worker：刷新令牌跨 worker 不可用（需先改为 Redis 后端）"
+            if process_local and workers > 1
+            else None
+        ),
+    }
+
+
 async def _check_db():
     try:
         async with async_engine.connect() as conn:
@@ -50,6 +84,12 @@ async def health_check():
         "retrieval_cache": (
             cache.health() if cache is not None else {"status": "disabled"}
         ),
+        # 刷新令牌存储（并发审查 P0 的最后一项，2026-10-04）：
+        # MemoryRefreshTokenStore 是**进程内**字典，多 worker 下各持一份 →
+        # worker A 签发的 refresh token 到 worker B 上会 "not found"。
+        # 单 worker 部署下无影响，故不参与 all_healthy，但必须**显式可见**，
+        # 否则运维误开 --workers > 1 会得到"刷新偶发失败"这种极难定位的现象。
+        "refresh_token_store": _refresh_store_health(),
     }
 
     if all_healthy:

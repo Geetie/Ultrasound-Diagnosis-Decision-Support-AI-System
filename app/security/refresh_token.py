@@ -3,6 +3,7 @@ import json
 import os
 import secrets
 import threading
+import time
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -16,6 +17,15 @@ logger = structlog.get_logger()
 
 # 并发审查 P0：per-token rotate 锁字典上界（避免长跑进程无界增长）
 _MAX_ROTATE_LOCKS = 4096
+
+# 跨进程 rotate 互斥（2026-10-04 闭合并发审查 P0 残留项）：
+# 键前缀 + 短锁 TTL（秒）+ 抢锁等待上限（秒）。
+# TTL 取 5s：rotate 是纯内存字典操作 + 一次 Redis 事务，毫秒级；5s 足够覆盖
+# 最坏情况，又保证进程被 kill 时锁自动过期（不会永久卡死刷新）。
+# 等待上限 2s：抢不到就报错让客户端重试，不无限等待。
+_ROTATE_LOCK_PREFIX = "refresh:rotate:"
+_REDIS_LOCK_TTL_S = 5
+_REDIS_LOCK_WAIT_S = 2.0
 
 class RefreshTokenStore:
     def create_refresh_token(
@@ -425,7 +435,63 @@ class RedisRefreshTokenStore(RefreshTokenStore):
                         break
                     self._rotate_locks.pop(victim, None)
         async with lock:
-            yield
+            # 跨进程互斥（并发审查 P0 残留项，2026-10-04 闭合）：
+            # 上面的 per-token asyncio.Lock 只在**单进程内**有效；多 worker /
+            # 多实例部署时两个进程仍能同时读到 revoked=false，各派生一个后继
+            # → 同一 refresh token 变无限续期，reuse 检测被绕过。
+            # 这里用 Redis SET NX 抢一把带 TTL 的短锁，把窗口闭合到跨进程；
+            # 抢不到就退化为"稍等重试"（最多 _REDIS_LOCK_WAIT_S 秒），
+            # 拿不到锁**不放行**——宁可让这一次刷新失败，也不能放过复制。
+            client = None
+            lock_key = f"{_ROTATE_LOCK_PREFIX}{token_id}"
+            acquired = False
+            try:
+                client = await self._get_redis_client()
+                deadline = time.monotonic() + _REDIS_LOCK_WAIT_S
+                while time.monotonic() < deadline:
+                    acquired = bool(
+                        await client.set(
+                            lock_key, "1", nx=True, ex=_REDIS_LOCK_TTL_S
+                        )
+                    )
+                    if acquired:
+                        break
+                    await asyncio.sleep(0.02)
+                if not acquired:
+                    logger.warning(
+                        "refresh_token_rotate_lock_timeout",
+                        token_id=token_id[:8] + "...",
+                        wait_s=_REDIS_LOCK_WAIT_S,
+                    )
+                    raise RuntimeError(
+                        "refresh token 轮换繁忙（另一进程正在轮换同一 token），请重试"
+                    )
+            except RuntimeError:
+                raise
+            except Exception as exc:
+                # Redis 不可用时**保守失败**：宁可这次刷新报错，也不能退回
+                # 无跨进程保护（那等于静默降级到有复制风险的老行为）。
+                logger.warning(
+                    "refresh_token_rotate_lock_unavailable",
+                    token_id=token_id[:8] + "...",
+                    error=str(exc),
+                    error_type=type(exc).__name__,
+                )
+                raise RuntimeError(
+                    f"无法获取 refresh token 轮换锁（Redis 不可用）：{exc}"
+                ) from exc
+            try:
+                yield
+            finally:
+                if acquired and client is not None:
+                    try:
+                        await client.delete(lock_key)
+                    except Exception as exc:  # pragma: no cover - 锁泄漏靠 TTL 兜底
+                        logger.warning(
+                            "refresh_token_rotate_lock_release_failed",
+                            token_id=token_id[:8] + "...",
+                            error=str(exc),
+                        )
 
     async def _get_redis_client(self):
         if self._redis_client is None:

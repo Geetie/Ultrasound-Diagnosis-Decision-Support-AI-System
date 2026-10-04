@@ -117,12 +117,17 @@ class FakeAsyncRedis:
     async def get(self, key):
         return self.strings.get(key)
 
-    async def set(self, key, value, ex=None):
+    async def set(self, key, value, ex=None, nx=False):
+        # nx 语义对齐 redis-py：仅当键**不存在**才写入，返回 True/False。
+        # 跨进程 rotate 互斥（refresh_token._rotate_guard）依赖它。
+        if nx and key in self.strings:
+            return False
         self.strings[key] = value
         if ex:
             self.ttls[key] = ex
         else:
             self.ttls.pop(key, None)
+        return True
 
     async def setex(self, key, ttl, value):
         self.strings[key] = value
