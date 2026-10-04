@@ -1,7 +1,7 @@
 # progress.md — 当前状态（唯一「现在在哪」来源）
 
 **Last Updated**: 2026-10-05
-**HEAD**: `59b4c5c`（分支 `main`；本轮：主服务改绑 loopback + 本机浏览器验证通道，详见 16 号附录 A.25）
+**HEAD**: 分支 `main`（本轮：主服务改绑 loopback + 本机浏览器验证通道 + feature 分支并回，详见 16 号附录 A.25）
 **Owner of truth**: 本文件只记「当前状态/下一步/阻塞」；**功能与门控状态在 `feature_list.json`**，长期证据在 `16-开发进展汇报-20260928.md` 附录 A。
 
 ## Current Objective
@@ -50,11 +50,9 @@
 1. **交付收口（2026-10-05 盘点，距 10-17 交付）**：①**临床前端真机交互验证**——访问通道本轮已打通
    （`http://127.0.0.1:8000/ui/`，隧道常驻），"登录→会话→上传→诊断→报告"全流程端点已逐条核对可达
    （upload/diagnosis/report/auth 401~422 = 路由与校验生效），但**仍缺医生视角的人工点击走查**；
-   ②**交付文档仍未落地**——A.24.4 声称已出 `18-交付使用手册-20261004.md`，但该文件**从未入库**
-     （本轮查明是 `.gitignore` 整目录忽略所致，见 A.25.6），须真正补写，且必须含「隧道访问方式」
-     一节（`keep_tunnel.ps1` + 计划任务 `UaiKeepTunnel` + 只绑 loopback 的理由）；
-   ③**P1-13** 结果接口把队列等待算进 30s 超时（动 API 契约）；④NMPA 验收材料；
-2. **并发审查残留项收口**（详见 `reports/concurrency_perf_audit.md` 第 4 节）：①refresh token rotate 改 Redis Lua/WATCH 闭合跨 worker 竞态（放开 `uvicorn --workers > 1` 的前置条件）；②按压测容量给网关加全局并发闸门。P2-10 已修复并订正表述（见 16 号附录 A.23：真实缺口是临床事实漏传，非"绕开 SG"）。
+   ②**交付文档**——`18-交付使用手册-20261004.md`（A.24.4 曾声称交付但被 .gitignore 吞掉，见 A.25.6）
+   本轮已补写并入库，须含「隧道访问方式」一节；③NMPA 验收材料。
+2. **并发审查残留项收口**（详见 `reports/concurrency_perf_audit.md` 第 4 节）：①refresh token rotate 跨进程互斥**已闭合**（3dab8f2 随 feature 分支并回 main，配 `test_refresh_token_rotate_cross_process.py` 122 行真机级测试）——放开 `uvicorn --workers > 1` 的前置条件已就绪；②按压测容量给网关加全局并发闸门。P2-10 已修复并订正表述（见 16 号附录 A.23：真实缺口是临床事实漏传，非"绕开 SG"）。
 3. **口径决策收口**：`faithfulness ≥95%` 门控是否需要调整口径（NLI 允许同义概括）或走语料扩展——需项目组拍板（对应 `feature_list.json: faithfulness-gate`）。
 4. **UDT 草案送审**：把 `data/udt/vocab_v2_final.json`（~1650 条，含逐词条溯源分层）交医生勾选背书。
 5. **存量失败清收**：`tests/integration/int` 12 例（`_write_result_to_db(diagnosis_repo=...)` 与 `app/services/diagnosis_pipeline.py:687` 签名不匹配，**HEAD 即存在，非并发审查引入**）。

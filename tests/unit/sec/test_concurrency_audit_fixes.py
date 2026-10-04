@@ -21,10 +21,24 @@ pytestmark = pytest.mark.asyncio
 
 
 @pytest.fixture(autouse=True)
-def _reset_rotate_locks():
+def _reset_rotate_locks(monkeypatch):
+    # 2026-10-04：rotate 新增跨进程互斥（Redis SET NX 短锁），本文件测的是
+    # 单进程串行化，故注入假 Redis——真 Redis 在测试环境被禁用，
+    # 不注入会撞 ConnectionError 而与被测行为无关地失败。
+    from tests.unit.sec.test_refresh_token_redis import FakeAsyncRedis
+
     store = RedisRefreshTokenStore()
     with store._rotate_locks_guard:
         store._rotate_locks.clear()
+
+    async def _fake_get_client(self):
+        if self._redis_client is None:
+            self._redis_client = FakeAsyncRedis()
+        return self._redis_client
+
+    monkeypatch.setattr(
+        RedisRefreshTokenStore, '_get_redis_client', _fake_get_client
+    )
     yield
 
 
