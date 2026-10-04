@@ -28,7 +28,6 @@ from app.api.v1.device import router as device_router
 from app.api.v1.diagnosis import router as diagnosis_router
 from app.api.v1.errors import (
     AppBaseException,
-    NotFoundException,
     ServerErrorException,
     app_exception_handler,
     general_exception_handler,
@@ -760,27 +759,39 @@ if _dashboard_dir.is_dir():
 
 # 临床前端（React + Cornerstone3D，2026-10-04 交付部署）
 # 产物在 app/static/ui/（由 `cd frontend && VITE_BASE=/ui/ npm run build` 生成，
-# 仓库不分发构建产物）。挂 /ui 而不是 / 的原因：/ 已被根 JSON 占用、
-# /dashboard 是运维可观测性仪表盘，两者都不能让位。
+# 仓库随包分发——与 app/static/dashboard 同一惯例）。
 #
-# SPA fallback：前端是 history 路由（/ui/workspace、/ui/report/xxx…），
-# 直接访问子路由时静态目录里没有对应文件 → 必须回落到 index.html，
-# 否则医生刷新页面就 404（前端路由拿不到入口）。
+# 为什么不直接 mount("/ui")：Starlette 按**注册顺序**匹配路由，mount("/ui") 一旦
+# 先注册就会吃掉所有 /ui/*，SPA 回落路由永远匹配不到（实测 /ui/workspace 全 404）。
+# 所以拆成：静态资源挂 /ui/assets（精确路径），/ui/{path} 由回落路由接管。
 _ui_dir = Path(__file__).parent / "static" / "ui"
-if _ui_dir.is_dir():
-    app.mount(
-        "/ui",
-        StaticFiles(directory=str(_ui_dir), html=True),
-        name="ui",
-    )
+if _ui_dir.is_dir() and (_ui_dir / "index.html").is_file():
+    # 只挂 assets 目录（打包产物都在这里）；其余路径走下面的 SPA 回落，
+    # 那里会先判断是不是真实文件（favicon.svg 等根级静态文件也能取到）。
+    _ui_assets = _ui_dir / "assets"
+    if _ui_assets.is_dir():
+        app.mount(
+            "/ui/assets",
+            StaticFiles(directory=str(_ui_assets)),
+            name="ui-assets",
+        )
 
     @app.get("/ui/{spa_path:path}", include_in_schema=False)
     async def ui_spa_fallback(spa_path: str):
-        """SPA history 路由回落：非静态文件路径一律交回 index.html。"""
-        index = _ui_dir / "index.html"
-        if not index.is_file():  # pragma: no cover - 挂载存在时必有
-            raise NotFoundException(error_message="UI build incomplete: index.html missing")
-        return FileResponse(str(index))
+        """SPA history 路由回落：非静态文件路径一律交回 index.html。
+
+        医生在 /ui/workspace、/ui/report/xxx 这类前端路由上**刷新页面**是常态，
+        静态目录里没有对应文件 → 必须回 index.html，否则一刷新就 404。
+        """
+        # 防目录穿越：解析后必须仍落在 ui 目录内
+        candidate = (_ui_dir / spa_path).resolve()
+        if candidate.is_file() and str(candidate).startswith(str(_ui_dir.resolve())):
+            return FileResponse(str(candidate))
+        return FileResponse(str(_ui_dir / "index.html"))
+
+    @app.get("/ui", include_in_schema=False)
+    async def ui_index():
+        return FileResponse(str(_ui_dir / "index.html"))
 
 else:  # pragma: no cover - 未构建时给出可执行的提示而非 404 谜语
     @app.get("/ui", include_in_schema=False)
