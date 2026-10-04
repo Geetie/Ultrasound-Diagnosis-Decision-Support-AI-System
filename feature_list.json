@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "project": "超声诊疗决策支持 AI 系统",
   "updated_at": "2026-10-05",
-  "head_commit": "f08f3e4",
+  "head_commit": "2d8e4b3",
   "branch": "main",
   "status_legend": {
     "done": "已交付且有证据（命令/报告/测试）",
@@ -285,22 +285,28 @@
       "evidence": "16 号 §六 P2；app/services/dicom_storage.py:71-73"
     },
     {
-      "id": "merge-feature-branch-into-main",
-      "name": "feature/T-GA-INT-01-e2e-integration 的 3 个提交并入 main",
-      "description": "git cherry 确认 10790da(前端走查断言修正)/3dab8f2(refresh token rotate 跨进程互斥,P0 安全)/9689ab7(19 号核验材料包) 三个提交无 main 等价物。服务器 ~/uai/src 由 main 线 git archive 铺设，故缺 3dab8f2 的互斥保护；当前 start_main.sh 单 worker(--workers 1)下跨进程竞态不触发，实际风险有限，但放开多 worker 前必须合并。合并前需查 10790da 的历史成因(tar 覆盖导致修正版流失)以免再次丢文件",
-      "status": "planned",
-      "dependencies": [],
-      "evidence": "git cherry main feature/T-GA-INT-01-e2e-integration -> 3 个 +；16 号附录 A.25.7"
-    },
-    {
       "id": "delivery-manual-18",
       "name": "18 号交付使用手册真正落地",
-      "description": "A.24.4 记账不实：声称已交付但文件从未入库(被 .gitignore 整目录忽略静默吞掉，提交 0352929 只含 scripts/sync_final.sh)。须真正补写，且必须含「隧道访问方式」一节(keep_tunnel.ps1 + 计划任务 UaiKeepTunnel + 只绑 loopback 的理由)",
+      "description": "A.24.4 曾记账'已交付'但文件被 .gitignore 整目录忽略静默吞掉（提交 0352929 只含 scripts/sync_final.sh）。2026-10-05 已真正补写并入库：医生三步 + 访问入口(SSH 隧道) + 管理员运维(拓扑/一键动作/部署回滚) + 7 条已知限制 + 排障表 + 8 条钉子 + 交付清单自检。引用的 8 个脚本与 2 个测试文件已逐个核对存在",
+      "status": "done",
+      "dependencies": [],
+      "evidence": "18-交付使用手册-20261004.md（215 行）；16 号附录 A.25.7"
+    },
+    {
+      "id": "refresh-token-grace-period",
+      "name": "refresh token 旋转宽限期（合法并发刷新被误判为窃取）",
+      "description": "真机 6 进程并发验证（2026-10-05，真实 Redis 16379）证明跨进程互斥已闭合：恰好 1 个成功、其余 5 个被拒、旧 token 重放被拒。但同时实测到失败原因为 'Refresh token has already been used, family XXX revoked' —— 任何 reuse 都撤销整个会话族（OAuth2 BCP 的标准取舍，非 bug）。后果：医生在同一账号开多个标签页/双击刷新等**合法**并发会被判为窃取，全设备被踢下线。正确解法是加旋转宽限期（旧 token 在短窗口内可再换一次并返回同一新 token），**不可**放松 reuse 检测（等于把 7 天令牌变成无限续期）。需产品决策宽限期时长后再实现",
       "status": "planned",
-      "dependencies": [
-        "merge-feature-branch-into-main"
-      ],
-      "evidence": "16 号附录 A.25.6 更正；git show --name-only 0352929"
+      "dependencies": [],
+      "evidence": "真机探针 /tmp/probe_rotate_real.py（6 进程并发 PASS，family revoked 现象已实测）"
+    },
+    {
+      "id": "merge-feature-branch-into-main",
+      "name": "feature/T-GA-INT-01-e2e-integration 的 3 个提交并入 main",
+      "description": "git cherry 确认 10790da/3dab8f2/9689ab7 无 main 等价物。2026-10-05 已 merge（2d8e4b3），冲突 6 处已裁决：fe_walkthrough_check.py 取 feature 修正版（main 版断言写错、造过假缺陷）、两个核验脚本取 main 的 lint 修复版、三个状态文件取 main 侧 A.25",
+      "status": "done",
+      "dependencies": [],
+      "evidence": "merge commit 2d8e4b3；真机门禁 PASS=23 FAIL=0；RUF043 超基线已修"
     }
   ]
 }
