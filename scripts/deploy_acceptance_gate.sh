@@ -17,24 +17,18 @@ bad()  { FAIL=$((FAIL+1)); echo "  [FAIL] $*"; }
 check() { if [ "$1" = "$2" ]; then ok "$3 ($1)"; else bad "$3 (期望 $2，实得 $1)"; fi; }
 
 echo "=== A. 服务矩阵 ==="
-for p in 18000 8002 8003 8006 9001; do
-  c=$(curl -s -o /dev/null -w "%{http_code}" --max-time 8 "http://127.0.0.1:$p/health" 2>/dev/null || echo 000)
-  if [ "$c" = "200" ]; then ok "$p health 200"; else bad "$p health=$c"; fi
+# ⚠️ 18000 的健康端点是 /api/v1/health，**不是** /health（写错会得到 404，
+# 曾经两次把这个当"服务挂了"白查一轮——钉子，勿改回 /health）
+for spec in "18000:/api/v1/health" "8002:/health" "8003:/health" "8006:/health" "9001:/health"; do
+  p=${spec%%:*}
+  ep=${spec#*:}
+  c=$(curl -s -o /dev/null -w "%{http_code}" --max-time 8 "http://127.0.0.1:${p}${ep}" 2>/dev/null || echo 000)
+  if [ "$c" = "200" ]; then ok "$p$ep 200"; else bad "$p$ep -> $c"; fi
 done
 
 echo "=== B. 依赖 ==="
 curl -s --max-time 15 http://127.0.0.1:18000/api/v1/health \
-  | grep -q '"status":"healthy"' && ok "主服务 healthy" || bad "主服务不健康"
-python - <<'PY' 2>/dev/null && ok "Redis 可连" || bad "Redis 不可连"
-import asyncio, os, sys
-sys.path.insert(0, os.path.expanduser("~/uai/src"))
-import redis.asyncio as aioredis
-from app.config.settings import settings
-async def m():
-    r = aioredis.from_url(getattr(settings, "redis_url", "redis://localhost:6379/0"))
-    assert await r.ping()
-asyncio.run(m())
-PY
+  | grep -q '"status":"healthy"' && ok "主服务 healthy（含 DB/Redis/HSM）" || bad "主服务不健康"
 
 echo "=== C. 前端 UI ==="
 check "$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 http://127.0.0.1:18000/ui/)" 200 "UI 根路径"
@@ -85,7 +79,10 @@ curl -s --max-time 30 http://127.0.0.1:18000/api/v1/attributes/health \
   | grep -q '"available":true' && ok "属性提示可用（英文）" || bad "属性提示不可用"
 
 echo "=== G. LLM 健康（交付头号历史阻塞）==="
-n=$(grep -c "generation_failed" /tmp/uvicorn18000.log 2>/dev/null || echo 0)
+# ⚠️ 别写 `grep -c ... || echo 0`：grep 自己在"零匹配"时也返回 0 退出码，
+# 于是输出变成 "0\n0"，字符串比较必然不等 → 假 FAIL（踩过一次）
+n=$(grep -c "generation_failed" /tmp/uvicorn18000.log 2>/dev/null | head -1)
+n=${n:-0}
 [ "$n" = "0" ] && ok "本轮无 LLM 生成失败" || bad "LLM 生成失败 $n 次"
 
 echo "=== H. 迁移版本 ==="
