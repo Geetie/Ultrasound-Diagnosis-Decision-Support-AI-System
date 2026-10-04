@@ -525,8 +525,16 @@ async def _resolve_request_id(
     session_id: str,
     organ: Organ,
     response_tier: ResponseTier,
+    clinical_text: str | None = None,
+    patient_context: dict | None = None,
+    image_ids: list[str] | None = None,
 ) -> str | None:
-    """复用会话内该器官的可重跑请求；不存在则新建。"""
+    """复用会话内该器官的可重跑请求；不存在则新建。
+
+    临床事实（clinical_text / patient_context / image_ids）会透传给
+    ``create_request``——它们是 SafetyGateway 的检查对象，漏传会让禁忌检查
+    失去事实依据（P2-10）。缺省时从同会话已有请求继承。
+    """
     candidates = [
         row
         for row in existing
@@ -538,10 +546,39 @@ async def _resolve_request_id(
         return str(getattr(candidates[0], "request_id", "") or "") or None
 
     try:
+        # ⚠️ 合规必填（P2-10 修复，2026-10-04）：clinical_text / patient_context /
+        # image_ids 是 **SafetyGateway 的检查对象**。不传 →
+        # build_sg_output_data 拿到的患者事实全空 → SG 的禁忌匹配
+        # （contraindication）拿不到既往症，只能走"缺事实 → 保守判命中"分支，
+        # **等于把合规检查变成了摆设**。单器官路径（api/v1/diagnosis.py:207-215）
+        # 一直是全量传入的，多器官这里只传三字段是漏传，不是设计选择。
+        #
+        # 数据来源：优先用调用方显式传入的；否则从该会话**已有的诊断请求**继承
+        # （医生在单器官路径下已经录过 clinical_text/patient_context/image_ids，
+        #   多器官请求属于同一会话，继承它才能让 SG 看到与单器官一致的事实）。
+        donor = next(
+            (
+                r
+                for r in existing
+                if getattr(r, "clinical_text", None)
+                or getattr(r, "patient_context", None)
+                or getattr(r, "image_ids", None)
+            ),
+            None,
+        )
+        eff_text = clinical_text or (str(getattr(donor, "clinical_text", "") or "") or None)
+        eff_ctx = patient_context if patient_context is not None else (
+            getattr(donor, "patient_context", None) if donor is not None else None
+        )
+        eff_images = image_ids or (list(getattr(donor, "image_ids", None) or []) or None)
+
         return await diagnosis_repo.create_request(
             session_id=session_id,
             organ=organ.value,
             response_tier=response_tier,
+            clinical_text=eff_text,
+            patient_context=eff_ctx,
+            image_ids=eff_images,
         )
     except Exception as exc:
         logger.error(
