@@ -350,6 +350,11 @@ class Settings(BaseSettings):
     # 让所有模型装载只认本地缓存/本地路径，找不到就显式报"缺权重"。
     ai_offline_mode: bool = True
 
+    # 结果接口把"还在 processing"判成 timeout 的阈值（秒）。P1-13：原硬编码 30s，
+    # 而真实诊断 90s+（LLM 串行链 + 冷启动），会把正常在跑的诊断误报成超时，
+    # 前端据此停轮询。默认 180s；换更大模型时必须调大。
+    result_read_timeout_seconds: int = 180
+
     # 诊断属性提示（app/inference/attribute_hints.py，ULC 文本塔 zero-shot）
     # 依据 A.21 全量实测（US-365K 71,919 张，image→attribute）：
     #   ULC 9 维宏平均 0.6894 / BiomedCLIP 0.4092（低于多数类基线=无判别力）
