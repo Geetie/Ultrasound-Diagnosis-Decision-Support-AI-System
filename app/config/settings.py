@@ -14,7 +14,18 @@ class Settings(BaseSettings):
 
     postgres_password: str = ''
 
-    api_host: str = '0.0.0.0'
+    # 绑定地址的安全默认：**loopback**（AGENTS.md 硬规则 #3——共享 GPU 服务器
+    # 不许把临床 API 暴露到校园网，跨机访问走
+    # `ssh -N -L 8000:127.0.0.1:18000 student03@10.20.28.21`）。
+    #
+    # ⚠️ 本字段**不是** uvicorn 实际绑定的来源。真实绑定来自命令行 `--host`：
+    #   · 容器：`Dockerfile.dev` 硬编码 `--host 0.0.0.0`（容器内必须，否则
+    #     `ports: 8000:8000` 映射不通）—— 所以改这里对 compose 零影响；
+    #   · 裸机：一律走 `scripts/start_main.sh`，别再手写启动命令
+    #     （历史上 7 个 deploy_*.sh 各自写死 `--host 0.0.0.0`，导致铁律 #3
+    #     被反复违反：2026-10-05 真机实测 `ss -ltn` 就是 `0.0.0.0:18000`）。
+    # 保留此字段只为给部署与文档一个可读的真值来源，别当成"改了就会生效"。
+    api_host: str = '127.0.0.1'
     api_port: int = 8000
 
     safety_gateway_host: str = 'localhost'
