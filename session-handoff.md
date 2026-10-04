@@ -5,18 +5,30 @@
 
 ## Last Updated
 
-2026-10-03（HEAD `957901a`；并发与性能审查已收口）
+2026-10-04（HEAD `c71dad8`；交付冲刺：全链路真机打通，门禁 23/23，详见 16 号附录 A.23）
 
 ## Current Objective
 
-Harness 工程收口：把项目现状、踩坑、禁则、可复用流程沉淀为 Agent 可快速掌握的文档与 SKILL 体系
-（`AGENTS.md` + 状态三件套 + `init.sh` + 两个 SKILL），使后续会话可直接 clean restart。
+**10-17 交付**：系统已达到"能用"基线（真机全链路 PASS），剩余为前端真机交互人工验证、
+P1-13、交付文档与 NMPA 材料。技术侧无已知阻塞。
 
 ## Snapshot（交接摘要）
 
-- 项目处于**生产化收口期**：技术轨道已达标（检索/推理/融合/SG/降级/可观测），剩余为口径决策、外部数据与 NMPA 交付物。
-- 本轮 harness 变更：新增/重写 `AGENTS.md`、`feature_list.json`、`progress.md`、`session-handoff.md`、`init.sh`；
-  新增 SKILL `uai-harness-maintenance`；更新 SKILL `remote-gpu-server-devtest`。
+- **交付三大阻塞已修**（A.23）：①8002 缺 `/v1/chat/completions` → LLM 全链路 404，已换回
+  官方 OpenAI server（Qwen2.5-7B-Instruct，gpu-mem 0.46）；②临床前端**从未部署**——已构建
+  （VITE_BASE=/ui/）并挂载 `/ui` + SPA 回落，契约对账 18 路径全命中；③8006 判官被误改为
+  vLLM，已恢复 llama_cpp_server + GGUF（**启动必须串行**，并发互踩 memory probe）。
+- **P2-10 订正并修复**：多器官并未"绕开 SG"（逐器官跑完整管线），真实缺口是
+  `create_request` 漏传 clinical_text/patient_context/image_ids → SG 无事实运行；
+  已透传 + 从同会话继承，5 条单测钉住。
+- **新守卫**：`test_deploy_script_refs.py`（部署脚本悬空引用——llama_cpp_server.py 与
+  vllm_server.py 先后被当探针删除但脚本仍引用，同款事故两次）；`check_frontend_api_contract.py`
+  （前后端契约对账——**不能用 ast.parse**，TSX 必炸且静默 continue 会产出假通过）。
+- **验收门禁**：`scripts/deploy_acceptance_gate.sh` 8 组 23 项，当前 PASS=23 FAIL=0；
+  助手脚本已正式入库（drill_token/drill_pick_report/drill_tamper_check），/tmp 探针已清零。
+- 分割旁路默认**关闭**（`nodule_contour_in_pipeline_enabled=False`），演练时用
+  `NODULE_CONTOUR_IN_PIPELINE_ENABLED=1` 环境变量开启；**必须在重启主服务前 export**。
+- 多器官分割矩阵：thyroid 0.7961 / cardiac 0.8395（CAMUS，按患者划分）/ liver 无公开数据。
 - 未跟踪文件待处置：`scripts/_verify_services.sh`、`scripts/server_restart_api.sh`、`scripts/_smoke_graph.py`。
 
 ## 并发与性能审查（2026-10-03，本轮）

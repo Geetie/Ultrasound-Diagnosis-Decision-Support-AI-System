@@ -1,7 +1,7 @@
 # progress.md — 当前状态（唯一「现在在哪」来源）
 
-**Last Updated**: 2026-10-03
-**HEAD**: `957901a`（分支 `feature/T-GA-INT-01-e2e-integration`；并发与性能审查修复 + 压测脚本）
+**Last Updated**: 2026-10-04
+**HEAD**: `c71dad8`（分支 `feature/T-GA-INT-01-e2e-integration`；交付冲刺：全链路真机打通 + 三大阻塞修复，详见 16 号附录 A.23）
 **Owner of truth**: 本文件只记「当前状态/下一步/阻塞」；**功能与门控状态在 `feature_list.json`**，长期证据在 `16-开发进展汇报-20260928.md` 附录 A。
 
 ## Current Objective
@@ -41,11 +41,11 @@
 
 ## Recommended Next Step
 
-1. **并发审查残留项收口**（详见 `reports/concurrency_perf_audit.md` 第 4 节）：①refresh token rotate 改 Redis Lua/WATCH 闭合跨 worker 竞态（放开 `uvicorn --workers > 1` 的前置条件）；②登录限流桶键从 client_ip 改成用户名哈希（同一医院 NAT 下多名医生现共享一个 5/min 桶）；③按压测容量给网关加全局并发闸门。
-2. **口径决策收口**：`faithfulness ≥95%` 门控是否需要调整口径（NLI 允许同义概括）或走语料扩展（TN3K 渠道 / 域内中文甲状腺语料）——需项目组拍板（对应 `feature_list.json: faithfulness-gate`）。
-2. **UDT 草案送审**：把 `data/udt/vocab_v2_final.json`（~1650 条，含逐词条溯源分层）交医生勾选背书，把 Phase 1 从「无词可审」推到「可审」。
-4. **存量失败清收**：`tests/integration/int` 12 例（`_write_result_to_db(diagnosis_repo=...)` 与 `app/services/diagnosis_pipeline.py:687` 签名不匹配，**HEAD 即存在，非并发审查引入**）。
-5. **清收工作区未跟踪文件**：`scripts/_srv_*.sh`、`scripts/_gen_audit_json.py` 等本轮探针（用完即删，勿入库）。
+1. **交付收口（2026-10-04 盘点，距 10-17 交付）**：①**临床前端真机交互验证**——`/ui` 已部署（构建产物 10.6MB、SPA 回落通过、契约对账 18 路径全命中），但尚未有真实浏览器会话跑通"登录→会话→上传→诊断→报告"全流程，需医生视角人工点一遍；②**P1-13** 结果接口把队列等待算进 30s 超时（动 API 契约）；③**交付文档**：医生操作手册 + 部署/回滚手册 + NMPA 验收材料。
+2. **并发审查残留项收口**（详见 `reports/concurrency_perf_audit.md` 第 4 节）：①refresh token rotate 改 Redis Lua/WATCH 闭合跨 worker 竞态（放开 `uvicorn --workers > 1` 的前置条件）；②按压测容量给网关加全局并发闸门。P2-10 已修复并订正表述（见 16 号附录 A.23：真实缺口是临床事实漏传，非"绕开 SG"）。
+3. **口径决策收口**：`faithfulness ≥95%` 门控是否需要调整口径（NLI 允许同义概括）或走语料扩展——需项目组拍板（对应 `feature_list.json: faithfulness-gate`）。
+4. **UDT 草案送审**：把 `data/udt/vocab_v2_final.json`（~1650 条，含逐词条溯源分层）交医生勾选背书。
+5. **存量失败清收**：`tests/integration/int` 12 例（`_write_result_to_db(diagnosis_repo=...)` 与 `app/services/diagnosis_pipeline.py:687` 签名不匹配，**HEAD 即存在，非并发审查引入**）。
 
 ## Blockers
 
