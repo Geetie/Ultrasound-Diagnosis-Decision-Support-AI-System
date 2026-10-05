@@ -1,8 +1,21 @@
 /* 设计字体：--font-cjk = Noto Sans SC，--font-numeric = Inter。
    Orbitron / JetBrains Mono 属旧设计系统，仅遗留页面在用，
-   待那批页面按设计重做后随 styles/tokens.ts 一并移除。 */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@400;500&family=JetBrains+Mono:wght@400;500;600&family=Orbitron:wght@400;500;600;700;800;900&display=swap');
+   待那批页面按设计重做后随 styles/tokens.ts 一并移除。
 
+   ⚠️ 不再从 fonts.googleapis.com 外联字体（2026-10-06）。
+   之前这里有一行 @import url('https://fonts.googleapis.com/...')，但后端 CSP 是
+   `style-src 'self' 'unsafe-inline'` / `font-src 'self' data:`
+   （app/security/security_headers.py），请求一直被拦 —— 真机实测每次加载
+   产生 12 条 CSP 违规，而字体从未真正生效过。也就是说界面一直用的是
+   回退字体，删掉这行**零视觉变化**。
+
+   为什么不放宽 CSP 而是删外联：①这是院内网部署的临床系统，每次打开页面
+   都向 Google 发请求，既不必要也不该发生；②医院内网大概率根本出不去，
+   放宽 CSP 也换不来字体。**要恢复设计字体，正确做法是自托管字体文件**
+   （放 frontend/public/fonts/，用 @font-face 引本地路径，font-src 'self' 即可）。
+
+   下面的 --font-display / --font-body / --font-mono 声明**保留**：
+   自托管后无需改任何组件。 */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -88,10 +88,57 @@ describe('ReportPage（M8 报告查看与签发）', () => {
     expect(screen.getByText(/未签发不可推送/)).toBeInTheDocument();
   });
 
-  it('签发后状态变为已签发且推送按钮解禁', async () => {
+  it('签发后状态变为已签发且推送按钮解禁（完整性未过 → 先确认再签）', async () => {
     const user = userEvent.setup();
     postMock.mockResolvedValueOnce({
       data: { ...draftReport, status: 'signed', signature_present: true, signed_by: 'doc_1' },
+    });
+    renderPage();
+    await screen.findByTestId('report-status');
+
+    await user.click(screen.getByRole('button', { name: /签发报告/ }));
+    // 完整性未过（draftReport.missing = ['measurement_summary']）→ 必须先过知情确认
+    await screen.findByTestId('sign-confirm-ok');
+    await user.click(screen.getByTestId('sign-confirm-ok'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('report-status')).toHaveTextContent('已签发')
+    );
+    expect(postMock).toHaveBeenCalledWith('/report/rep_1/sign', {});
+    expect(screen.getByRole('button', { name: /推送 PACS\/HIS/ })).toBeEnabled();
+  });
+
+  it('完整性未过时点签发先弹缺失清单，取消则不发请求', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByTestId('report-status');
+
+    await user.click(screen.getByRole('button', { name: /签发报告/ }));
+    // 缺失项要**列出来**，而不是一句"有缺失" —— 医生得知道具体缺什么才能决策。
+    // 用 within(dialog) 限定：页面本身的完整性面板也有一份「缺失：」，不限定会撞重复。
+    expect(await screen.findByTestId('sign-confirm-cancel')).toBeInTheDocument();
+    expect(within(screen.getByRole('dialog')).getByText(/缺失：/)).toHaveTextContent('测量摘要');
+    await user.click(screen.getByTestId('sign-confirm-cancel'));
+
+    expect(postMock).not.toHaveBeenCalled();
+  });
+
+  it('完整性通过时点签发直接签，不再多弹一层', async () => {
+    const user = userEvent.setup();
+    getMock.mockResolvedValueOnce({
+      data: {
+        ...draftReport,
+        completeness: {
+          organ: 'thyroid',
+          template: 'thyroid_standard',
+          required: ['findings', 'conclusion'],
+          missing: [],
+          passed: true,
+        },
+      },
+    });
+    postMock.mockResolvedValueOnce({
+      data: { ...draftReport, status: 'signed', signature_present: true },
     });
     renderPage();
     await screen.findByTestId('report-status');
@@ -101,8 +148,33 @@ describe('ReportPage（M8 报告查看与签发）', () => {
     await waitFor(() =>
       expect(screen.getByTestId('report-status')).toHaveTextContent('已签发')
     );
-    expect(postMock).toHaveBeenCalledWith('/report/rep_1/sign', {});
-    expect(screen.getByRole('button', { name: /推送 PACS\/HIS/ })).toBeEnabled();
+    // 没有缺失就不该打扰医生 —— 弹窗只在真正有缺失时出现
+    expect(screen.queryByTestId('sign-confirm-ok')).toBeNull();
+  });
+
+  it('缺失项包含「超声所见」时，弹窗要说明它是主体段落（不是普通缺一段）', async () => {
+    const user = userEvent.setup();
+    getMock.mockResolvedValueOnce({
+      data: {
+        ...draftReport,
+        completeness: {
+          organ: 'thyroid',
+          template: 'thyroid_standard',
+          required: ['findings', 'conclusion'],
+          missing: ['findings'],
+          passed: false,
+        },
+      },
+    });
+    renderPage();
+    await screen.findByTestId('report-status');
+
+    await user.click(screen.getByRole('button', { name: /签发报告/ }));
+
+    await screen.findByTestId('sign-confirm-ok');
+    expect(screen.getByText(/「超声所见」是超声报告的主体段落/)).toBeInTheDocument();
+    await user.click(screen.getByTestId('sign-confirm-cancel'));
+    expect(postMock).not.toHaveBeenCalled();
   });
 
   it('签名校验未通过时明确报出"正文可能已被改动"', async () => {

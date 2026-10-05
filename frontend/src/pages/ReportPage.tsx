@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Alert, Button, Card, Input, Space, Tag, Typography, message } from 'antd';
+import { Alert, Button, Card, Input, Modal, Space, Tag, Typography, message } from 'antd';
 import {
   CheckCircleOutlined,
   CloseCircleOutlined,
@@ -116,13 +116,21 @@ export default function ReportPage() {
     }
   }, [inputRequestId]);
 
-  const handleSign = useCallback(async () => {
+  // 完整性信息在 handleSign 里要用（它决定要不要弹确认），必须先声明 ——
+  // 原本在组件尾部，被 useCallback 的依赖数组提前引用会踩 TDZ。
+  const completeness = report?.completeness ?? null;
+  const [signConfirmOpen, setSignConfirmOpen] = useState(false);
+  const missingSections = completeness && !completeness.passed ? completeness.missing : [];
+
+  /** 真正执行签发（无任何前置确认）。完整性已过时由 handleSign 直接走这里。 */
+  const doSign = useCallback(async () => {
     if (!report) return;
     setLoading(true);
     try {
       const signed = await signReport(report.report_id);
       setReport(signed);
       setVerifyNote(null);
+      setSignConfirmOpen(false);
       message.success('报告已签发');
     } catch (err: unknown) {
       message.error(getApiErrorMessage(err, '签发失败'));
@@ -130,6 +138,34 @@ export default function ReportPage() {
       setLoading(false);
     }
   }, [report]);
+
+  /**
+   * 签发。完整性未过时先弹知情确认 —— 这是本页唯一一处「拦截」，且**不改变结果**：
+   * 医生确认后仍然可以签。
+   *
+   * 为什么必须弹：本页完整性面板自己写着「缺失内容不应带病签发」，但那行字在页面
+   * 别处，医生点签发时根本看不到（A.29 真机实测：签发成功的同时完整性显示缺失三段，
+   * 全程无任何提示）。签名把「医生对内容负责」固化进审计链，所以这个决策点必须是
+   * **绕不过去的**，而不是一行可以略过的文字。
+   *
+   * 为什么不做硬禁用：医生是最终责任方。AI 信息不足不等于医生没做完检查 ——
+   * 禁掉签发等于把医生推向纸质流程。而「哪些段落缺失就禁止签发」是临床/合规口径
+   * （需要项目组定），不是前端能替他们决定的。所以这里只保证：**决定是知情的、
+   * 且对着缺失清单做出的**。服务端留痕与硬门禁见 feature_list 的
+   * report-sign-with-missing-sections。
+   *
+   * 为什么用受控 <Modal> 而不是 Modal.confirm 静态方法：
+   *   ①静态方法渲染在 ConfigProvider **之外**，拿不到暗室主题与 token；
+   *   ②它挂在 React 树外，RTL 的 cleanup 拆不到，测试里会跨用例残留。
+   */
+  const handleSign = useCallback(() => {
+    if (!report) return;
+    if (missingSections.length === 0) {
+      void doSign();
+      return;
+    }
+    setSignConfirmOpen(true);
+  }, [report, missingSections, doSign]);
 
   const handlePush = useCallback(async () => {
     if (!report) return;
@@ -165,7 +201,6 @@ export default function ReportPage() {
     }
   }, [report]);
 
-  const completeness = report?.completeness ?? null;
   const signed = Boolean(report?.signature_present);
 
   return (
@@ -349,6 +384,37 @@ export default function ReportPage() {
           </Space>
         </Card>
       )}
+
+      {/* 签发知情确认 —— 只在完整性未过时被 handleSign 打开。
+          受控而非 Modal.confirm：见 handleSign 的说明。 */}
+      <Modal
+        title="报告存在缺失段落，确认仍要签发？"
+        open={signConfirmOpen}
+        onCancel={() => setSignConfirmOpen(false)}
+        onOk={() => void doSign()}
+        okText="我已知晓缺失，仍要签发"
+        okButtonProps={{ danger: true, 'data-testid': 'sign-confirm-ok' }}
+        cancelText="返回补录"
+        cancelButtonProps={{ 'data-testid': 'sign-confirm-cancel' }}
+        width={520}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <p style={{ margin: 0 }}>
+            缺失：
+            <strong>{missingSections.map(labelOf).join('、')}</strong>
+          </p>
+          {missingSections.includes('findings') && (
+            <p style={{ margin: 0, color: tokens.color.accent.danger }}>
+              「超声所见」是超声报告的主体段落，缺失时本报告不构成完整的检查记录。
+            </p>
+          )}
+          <p style={{ margin: 0, color: tokens.color.text.muted, fontSize: 12 }}>
+            签发会用 HSM 数字签名锁定当前正文，并把「医生对内容负责」写入审计链；
+            此后任何改动都会被签名校验拦下。补录功能尚未上线，请确认你已在别处
+            完成记录、且确需现在签发。
+          </p>
+        </div>
+      </Modal>
     </div>
   );
 }
