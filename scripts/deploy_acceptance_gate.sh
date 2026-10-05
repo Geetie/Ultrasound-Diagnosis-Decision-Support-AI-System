@@ -13,8 +13,12 @@ export ATTRIBUTE_HINTS_ENABLED=1
 
 PASS=0
 FAIL=0
+SKIP=0
 ok()   { PASS=$((PASS+1)); echo "  [PASS] $*"; }
 bad()  { FAIL=$((FAIL+1)); echo "  [FAIL] $*"; }
+# SKIP 不计入 PASS 也不计入 FAIL，但**必须显示**。
+# 把"没跑"记成通过比不检查更糟 —— 那会让门禁给出假绿灯。
+skip() { SKIP=$((SKIP+1)); echo "  [SKIP] $*"; }
 check() { if [ "$1" = "$2" ]; then ok "$3 ($1)"; else bad "$3 (期望 $2，实得 $1)"; fi; }
 
 echo "=== A. 服务矩阵 ==="
@@ -90,8 +94,32 @@ echo "=== H. 迁移版本 ==="
 cur=$(PYTHONPATH=~/uai/src ~/uai/venv/bin/alembic current 2>/dev/null | grep -oE "0017" | head -1)
 check "${cur:-none}" "0017" "数据库迁移到 0017"
 
+echo "=== I. 前端渲染守卫（静态层）==="
+# 为什么 C 组不够：C 组只验 /ui/ 返回 200 与 SPA 子路由 200，而**白屏也返回 200**。
+# 2026-10-05 实测：契约对账 18 路径全命中、门禁 23 项全绿，而真实浏览器里
+# 整个前端一帧都渲染不出来（4 个 P0，见 16 号附录 A.27）。
+# 这里跑 stdlib-only 的运行器（服务器 venv 没有 pytest，见脚本 docstring）。
+if [ -f "$UAI/src/scripts/run_frontend_render_guard.py" ]; then
+  PYTHONPATH=~/uai/src ~/uai/venv/bin/python "$UAI/src/scripts/run_frontend_render_guard.py" \
+    > /tmp/_render_guard.txt 2>&1
+  rc=$?
+  rg_line=$(grep -oE "PASS=[0-9]+ FAIL=[0-9]+" /tmp/_render_guard.txt | tail -1)
+  if [ "$rc" = "0" ]; then
+    ok "渲染守卫通过（$rg_line）"
+  else
+    bad "渲染守卫未通过（${rg_line:-无输出}）"
+    sed -n '/^--- /,$p' /tmp/_render_guard.txt | head -30
+  fi
+else
+  skip "渲染守卫运行器缺失（scripts/run_frontend_render_guard.py）"
+fi
+
+# 真浏览器层（scripts/frontend_browser_smoke.mjs）**不在门禁里**：
+# 它需要 Playwright + 真 Chrome（本机在 C:\Users\ghf\.agent-browser\...），
+# 服务器没有；且 --upload 那一步要GPU 在线。手工跑法见 16 号附录 A.28。
+
 echo ""
 echo "================================"
-echo "PASS=$PASS FAIL=$FAIL"
+echo "PASS=$PASS FAIL=$FAIL SKIP=$SKIP"
 echo "================================"
 [ "$FAIL" = "0" ] || exit 1
