@@ -85,6 +85,30 @@ const ACCEPTED_CONSOLE_PATTERNS = [
 
 const isAcceptedConsoleError = (text) => ACCEPTED_CONSOLE_PATTERNS.some((re) => re.test(text));
 
+/**
+ * 预期内的 404 —— 报告草稿**还没生成**时，前端会去探一次报告，
+ * 后端按契约返回 404（`ReportPage` 自己也把这个 404 渲染成一句人话：
+ * 「请确认该诊断已完成并写入结果后，再生成报告草稿」）。
+ *
+ * 这是**正常的否定探测**，不是断链。但门禁规则「同源不许有 4xx/5xx」本身是对的，
+ * 所以这里显式列出豁免、并且**照样打印计数**——长期红的守卫没人再信它，
+ * 但豁免项也不能消失（与 ACCEPTED_CONSOLE_PATTERNS 同一原则）。
+ *
+ * 真正的断链不会被这条盖住：`/report/by-request/` 之外的任何 4xx 仍然判FAIL。
+ */
+const EXPECTED_404_PATTERNS = [
+  /\/api\/v1\/report\/by-request\//,
+];
+
+/** 404 的浏览器镜像（资源加载失败）也走同一份豁免表 —— 它们是同一个事件。 */
+const EXPECTED_404_CONSOLE = [
+  /Failed to load resource: the server responded with a status of 404/,
+];
+
+const isExpected404 = (text) => EXPECTED_404_PATTERNS.some((re) => re.test(text));
+const isExpected404Console = (text) => EXPECTED_404_CONSOLE.some((re) => re.test(text));
+
+
 /* ------------------------------------------------------------------ 运行环境 */
 
 /**
@@ -195,6 +219,10 @@ async function dump(page, tag) {
   return `证据：${shot} 与 ${html}`;
 }
 
+/** 证据截图目录（与 dump() 同一个）。 */
+function outdirOf() {
+  return path.join(os.tmpdir(), 'uai_browser_smoke');
+}
 function summarize() {
   const failed = checks.filter((c) => !c.ok);
   return { total: checks.length, failed: failed.length, failed_checks: failed };
@@ -488,7 +516,7 @@ async function main() {
             '报告草稿',
           );
           record('报告草稿生成（或如实回报缺什么）', drafted);
-          await page.screenshot({ path: `${SHOT_DIR}/flow-report.png`, fullPage: true });
+          await page.screenshot({ path: `${outdirOf(page)}/flow-report.png`, fullPage: true });
 
           const signBtn = await waitForAny(page, [/签发报告|已签发/], 20_000, '签发按钮');
           if (signBtn) {
@@ -502,7 +530,7 @@ async function main() {
             // 不把"签发成功"写成 PASS 断言：被安全网关依法拒绝也是正确行为，
             // 只把界面上的真实结果记下来（下面 dump 全文）。
             record('走到签发这一步（结果原样记录，不预设必须成功）', signed);
-            await page.screenshot({ path: `${SHOT_DIR}/flow-signed.png`, fullPage: true });
+            await page.screenshot({ path: `${outdirOf(page)}/flow-signed.png`, fullPage: true });
             console.log(
               `# 签发后页面正文：${JSON.stringify(
                 (await page.innerText('body')).replace(/\s+/g, ' ').slice(0, 300),
@@ -516,8 +544,13 @@ async function main() {
     }
 
     // ---- 5. 零 console error / 零同源错误响应
-    const blockingErrors = consoleErrors.filter((t) => !isAcceptedConsoleError(t));
+    const blockingErrors = consoleErrors.filter(
+      (t) => !isAcceptedConsoleError(t) && !isExpected404Console(t),
+    );
     const acceptedErrors = consoleErrors.filter(isAcceptedConsoleError);
+    const expected404 = consoleErrors.filter(
+      (t) => !isAcceptedConsoleError(t) && isExpected404Console(t),
+    );
     record(
       '全程 0 个非豁免 console error',
       blockingErrors.length === 0,
@@ -530,7 +563,20 @@ async function main() {
           `${JSON.stringify([...new Set(acceptedErrors)].slice(0, 2))}`,
       );
     }
-    record('全程 0 个同源 4xx/5xx', badResponses.length === 0, `${badResponses.length} 条：${JSON.stringify(badResponses.slice(0, 5))}`);
+    if (expected404.length > 0) {
+      console.log(`# ${expected404.length} 条 404 属预期（草稿生成前的否定探测，见 EXPECTED_404_PATTERNS）`);
+    }
+
+    const badBlocking = badResponses.filter((t) => !isExpected404(t));
+    const badExpected = badResponses.filter(isExpected404);
+    record(
+      '全程 0 个非豁免同源 4xx/5xx',
+      badBlocking.length === 0,
+      `${badBlocking.length} 条：${JSON.stringify(badBlocking.slice(0, 5))}`,
+    );
+    if (badExpected.length > 0) {
+      console.log(`# ${badExpected.length} 条 4xx 属预期：${JSON.stringify([...new Set(badExpected)].slice(0, 3))}`);
+    }
   } catch (e) {
     if (e instanceof Failure) {
       record('运行时判定', false, e.message);
