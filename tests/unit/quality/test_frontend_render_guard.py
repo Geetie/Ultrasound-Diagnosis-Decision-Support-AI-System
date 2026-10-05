@@ -271,3 +271,34 @@ class TestWorkspaceHasNavExit:
     def test_workspace_route_passes_nav(self):
         routes = _code(SRC / "app" / "routes.tsx")
         assert "navItems={" in routes, "路由层没把导航出口传给工作区"
+
+class TestNavigationPaths:
+    """导航路径**不得重复 basename**。
+
+    A.28 真机走查实测：`navigate('/ui/report?...')` 在 `basename="/ui"` 下被补成
+    `/ui/ui/report` → 路由匹配不到 → `path="*"` 把医生悄悄弹回工作区。
+    按钮点得动、看起来有反应，实际什么都没发生 —— 这类缺陷**只有真点一次才会暴露**。
+    """
+
+    def test_no_navigate_call_carries_the_base_prefix(self):
+        offenders: list[str] = []
+        for path in SRC.rglob("*.tsx"):
+            text = _code(path)
+            for m in re.finditer(r"navigate\(\s*[`'\"](/[^`'\"?]*)(?=[`'\"?])", text):
+                target = m.group(1)
+                # /ui 开头且后面还有内容 => basename 被写进了导航路径
+                if target.startswith("/ui/") and len(target) > len("/ui/"):
+                    offenders.append(f"{path.relative_to(REPO_ROOT)} -> {target}")
+        assert not offenders, (
+            f"这些 navigate 目标带了 /ui 前缀：{offenders} —— BrowserRouter 的 basename "
+            "已是 /ui，navigate 会再补一次，路径变成 /ui/ui/* 而匹配不到任何路由，"
+            "path='*' 会把用户悄悄弹回工作区"
+        )
+
+    def test_workspace_nav_targets_are_relative_to_base(self):
+        routes = _code(SRC / "app" / "routes.tsx")
+        # 四个导航项分别指向工作列表 / 新建会话 / 设置 / 报告，都应是 base 相对路径
+        for expected in ("/worklist", "/session/new", "/settings", "/report"):
+            assert f"'{expected}" in routes or f"`{expected}" in routes, (
+                f"工作区导航缺少指向 {expected} 的入口"
+            )

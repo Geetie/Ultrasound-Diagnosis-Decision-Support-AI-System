@@ -217,6 +217,43 @@ async function waitForUrlMatch(page, re, timeoutMs) {
   return false;
 }
 
+/**
+ * 等页面上出现任一匹配的正则（对 `body` 的 innerText）。
+ *
+ * 用来判"某个阶段到了没有"，而不是去点某个具体元素 ——
+ * 阶段文案是医生看得见的东西，判据就该用那个。
+ */
+async function waitForAny(page, regexes, timeoutMs, label) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const text = await page.innerText('body');
+    if (regexes.some((re) => re.test(text))) return true;
+    await page.waitForTimeout(1500);
+  }
+  console.log(`# 等待超时：${label}（${timeoutMs / 1000}s）`);
+  return false;
+}
+
+/**
+ * 按可见文字点按钮。
+ *
+ * 不用 `page.click(sel)`：SPA 懒加载时 URL 先变、组件后渲染，
+ * 直接点会扑空（第一版就踩了：点「报告」成功进了报告页，
+ * 紧接着点「生成草稿」却超时 —— 因为 ReportPage 是 lazy chunk）。
+ */
+async function clickByText(page, text, timeoutMs = 30_000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const btn = page.locator(`button:has-text("${text}")`).first();
+    if ((await btn.count()) > 0 && (await btn.isVisible())) {
+      await btn.click();
+      return true;
+    }
+    await page.waitForTimeout(300);
+  }
+  return false;
+}
+
 /* -------------------------------------------------------------------- 主流程 */
 
 async function main() {
@@ -404,6 +441,78 @@ async function main() {
       }
     } else {
       console.log('# 跳过真实上传（加 --upload <dicom路径> 可验证「装载→自动发起判读」）');
+    }
+
+    // ---- 4c 可选：走完医生流程最后一跳（结论 → 报告草稿 → 签名 → 验签）
+    //
+    // 为什么要单独一个开关：它需要 GPU 在线（判读要真跑一次）**且**会真的写一条
+    // 已签发报告。默认不做。
+    //
+    // ⚠️ 这一段刻意**不断言"签发一定成功"**：本次样本触发了 4 条禁忌 +
+    // Self-RAG 校验未通过，草稿可能因必填段缺失而**依法拒绝签发** ——
+    // 那是安全网关的正确行为，不是缺陷。所以只断言"链路通到了那一步"，
+    // 并把界面上的真实结果原样记下来。
+    if (uploadPath && process.argv.includes('--report')) {
+      const concluded = await waitForAny(
+        page,
+        [/恶性风险/, /建议：/, /需人工确认/],
+        300_000,
+        '判读结论',
+      );
+      record('判读出结论（不是永远停在「分析中」）', concluded);
+      if (!concluded) {
+        throw new Failure(`等了 300s 仍无结论。${await dump(page, 'no-conclusion')}`);
+      }
+
+      // SPA 懒加载：URL 先变、组件后渲染。直接点会扑空，所以等按钮真的出现。
+      // 用 /报告/ 而不是 /^报告$/：这里匹配的是整页 innerText（多行），
+      // 不带 m 标志的 ^ $ 匹配不到单独一行 —— 第一版就栽在这。
+      const reportBtn = await waitForAny(page, [/报告/], 20_000, '报告入口');
+      record('结论区出现「报告」入口（默认沉默 → 有结论才出现）', reportBtn);
+      if (reportBtn) {
+        await clickByText(page, '报告');
+        const onReport = await waitForUrlMatch(page, /\/ui\/report\?request_id=/, 20_000);
+        record('点「报告」进入报告页并带上 request_id', onReport, `url=${page.url()}`);
+        if (!onReport) {
+          throw new Failure(`点「报告」没进报告页。${await dump(page, 'report-no-jump')}`);
+        }
+
+        const draftBtn = await waitForAny(page, [/生成草稿/], 30_000, '生成草稿按钮');
+        record('报告页可操作（生成草稿按钮存在）', draftBtn);
+        if (draftBtn) {
+          await clickByText(page, '生成草稿');
+          const drafted = await waitForAny(
+            page,
+            [/Report not found/, /草稿/, /完整性/, /缺少/],
+            120_000,
+            '报告草稿',
+          );
+          record('报告草稿生成（或如实回报缺什么）', drafted);
+          await page.screenshot({ path: `${SHOT_DIR}/flow-report.png`, fullPage: true });
+
+          const signBtn = await waitForAny(page, [/签发报告|已签发/], 20_000, '签发按钮');
+          if (signBtn) {
+            await clickByText(page, '签发报告');
+            const signed = await waitForAny(
+              page,
+              [/已签发|签名完成|HSM|签发成功/],
+              120_000,
+              '签发结果',
+            );
+            // 不把"签发成功"写成 PASS 断言：被安全网关依法拒绝也是正确行为，
+            // 只把界面上的真实结果记下来（下面 dump 全文）。
+            record('走到签发这一步（结果原样记录，不预设必须成功）', signed);
+            await page.screenshot({ path: `${SHOT_DIR}/flow-signed.png`, fullPage: true });
+            console.log(
+              `# 签发后页面正文：${JSON.stringify(
+                (await page.innerText('body')).replace(/\s+/g, ' ').slice(0, 300),
+              )}`,
+            );
+          } else {
+            record('未出现签发按钮（草稿未达可签发态）', true, '如实记录，不判失败');
+          }
+        }
+      }
     }
 
     // ---- 5. 零 console error / 零同源错误响应

@@ -179,13 +179,18 @@ function WorkspaceRoute() {
    *
    * 为什么放常驻条而不是结论区：结论区一级只给三样（结论 + 恶性风险 + 建议动作），
    * 往里塞导航会破坏那条口径；常驻条高度 40 不变，900 骨架不受影响。
+   *
+   * ⚠️ 路径**不带 `/ui` 前缀**，与上面三个导航项同一约定：`BrowserRouter` 的
+   * basename 已经是 `/ui`，`navigate()` 会自动补上。写成 `/ui/report` 会变成
+   * `/ui/ui/report` → 路由匹配不到 → `path="*"` 把医生悄悄弹回工作区 ——
+   * 按钮点得动、看起来有反应，实际什么都没发生（真机走查实测）。
    */
   if (flow.requestId) {
     const rid = flow.requestId;
     navItems.push({
       key: 'report',
       label: '报告',
-      onClick: () => navigate(`/ui/report?request_id=${encodeURIComponent(rid)}`),
+      onClick: () => navigate(`/report?request_id=${encodeURIComponent(rid)}`),
     });
   }
 
