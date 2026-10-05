@@ -344,21 +344,48 @@
       "id": "ui-no-dicom-upload-entry",
       "name": "P0 医生无法在 UI 上传 DICOM 影像",
       "description": "走查实测：全站 0 个 input[type=file]（连 display:none 的隐藏 input 也为 0），医生无法在界面装载影像。手册 18 号的『步骤 2 上传 DICOM』在 UI 上做不到，只能调 API。需补上传入口（工作区影像区或新建会话页），并明确上传后如何触发判读（现文案称『冻结当前帧即自动发起判读』，但无影像则无从冻结）",
-      "status": "planned",
+      "status": "done",
       "dependencies": [
         "ui-router-basename-missing"
       ],
-      "evidence": "走查 v3 实测 fileInputs(all)=0；16 号附录 A.27"
+      "resolution": "勘察发现端点与前端封装早已存在、只是从未被调用：POST /api/v1/imaging/dicom/upload（app/api/v1/imaging.py）可用，imagingService.uploadDicom() 已写好但全站零调用；useWorkspaceFlow.start 也从无调用方——判读主链没有起点。落地：新增 hooks/useDicomUpload.ts（本地 Cornerstone fileManager 注册 + 上行后端取 image_id）与 components/workspace/WorkspaceImageUpload.tsx（file input 用 clip 隐藏，对键盘/读屏可达）；上传入口落在结论区 02 扫查态（设计稿该格原文『等待冻结取图』预设了设备端冻结键，浏览器部署没有，故文案改为『等待装载影像』，影像区 600 与 900 骨架未动）；路由层读 ?session_id= → GET /sessions/{id} 取 target_organs[0] → 上传成功后 flow.start({sessionId, imageIds:[image_id], targetOrgan})，这是 start() 第一次真正有调用方；工作列表『继续/查看』带上 session_id",
+      "evidence": "真机 Playwright 走查：file input 数=1 accept=['.dcm,.dicom']，且装载后界面自动进入『分析中』= 判读主链起点已接通（20/20 PASS）；D 组门禁端到端演练 PASS；16 号附录 A.28"
     },
     {
       "id": "ui-workspace-no-nav-exit",
       "name": "P1 工作区无导航出口（页面间无法切换）",
       "description": "工作区(/ui/)刻意不套 AppLayout，实测 btn=[]：无任何按钮与侧栏，医生登录后无法切换到工作列表/新建会话/报告等任何页面，只能手动改 URL。routes.tsx 注释称『三个真页面自带侧栏 200』，但实测工作区并未渲染侧栏——设计意图与实现不符。需补返回/菜单出口",
-      "status": "planned",
+      "status": "done",
       "dependencies": [
         "ui-router-basename-missing"
       ],
-      "evidence": "走查实测工作区 btn=[]、10 个导航项全部未找到；16 号附录 A.27"
+      "resolution": "不加侧栏（工作区是通栏，900 骨架放不下侧栏），改为在常驻条 40 内右侧放导航（identity 的 flex-grow:1 天然把它推到右边，条高与 900 骨架均不变）：工作列表 / 新建会话 / 设置三项，由 routes.tsx 传入 navItems，不传则不渲染（默认沉默）。无会话时结论区另给『去工作列表选择会话』按钮，医生不会被困死",
+      "evidence": "真机 Playwright 走查：/ui/ 的 button 数=4（原 0），且点击后正确跳转到 /ui/worklist；16 号附录 A.28"
+    },
+    {
+      "id": "ui-no-real-browser-render-guard",
+      "name": "P1 前端『契约对账』不等于『页面能渲染』，缺运行时守卫",
+      "description": "A.27 的 4 个 P0（白屏 / 登录 422 / 登录后跳后端根 / 二级页全打不开）全部靠人工点击才发现，而当时门禁 23 项 curl 与契约对账 18 路径全绿。契约对账原理上抓不到它们：它只证明路径字符串存在，不证明端点收 JSON、不证明 basename 配了、不证明 chunk 无循环依赖、不证明渲染得出来",
+      "status": "done",
+      "dependencies": [],
+      "resolution": "补两层守卫。静态层 tests/unit/quality/test_frontend_render_guard.py（17 例）钉住 A.27 四类缺陷的静态可判定形态（manualChunks 不得含 cornerstone / 前端不得打 /auth/token 且后端 /login 必须收 JSON / 跳转不得写死根路径 / BrowserRouter 必须有来自 BASE_URL 的 basename / /ui/assets 精确挂载）+ 上传与导航入口不得消失，并带 5 例守卫自测（扫源码前必须剥注释，否则会被LoginPage 里记录踩坑的注释判红）。运行时层 scripts/frontend_browser_smoke.mjs（Playwright + 真 Chrome）判白屏、登录落地、9 条路由 textLen 互不相同、导航出口、file input 存在，以及可选的 --upload 真传一个 DICOM 验证『装载→自动发起判读』。已豁免项必须显式逐条列出且照样计数打印——长期红的守卫没人再信",
+      "evidence": "静态层 17 passed；运行时层真机 20/20 PASS（含 --upload 真传 DICOM 后自动进入『分析中』）；两次假红（剥注释、SPA pushState 的 waitForURL）均已定位并修；16 号附录 A.28"
+    },
+    {
+      "id": "ui-external-font-blocked-by-csp",
+      "name": "P2 外部字体被 CSP 拦掉，临床界面一直在用回退字体",
+      "description": "frontend/src/styles/global.css 顶部 @import 了 fonts.googleapis.com，而 app/security/security_headers.py 的 CSP 是 style-src 'self' 'unsafe-inline' / font-src 'self' data:，请求被拦。真机走查实测每次加载产生 12 条同款 CSP 违规。后果有二：①设计稿指定的 Inter / Noto Sans SC / JetBrains Mono / Orbitron 全部没生效，界面用回退字体渲染；②每次打开页面都尝试外联 Google——对医院内网部署既不生效也不该外联",
+      "status": "planned",
+      "dependencies": [],
+      "evidence": "真机 Playwright console 12 条 CSP 违规（已记为 scripts/frontend_browser_smoke.mjs 的 ACCEPTED_CONSOLE_PATTERNS 唯一豁免项）；16 号附录 A.28"
+    },
+    {
+      "id": "ui-build-artifact-stale-files",
+      "name": "P2 前端产物陈旧文件堆积（仓库与服务器都清不掉）",
+      "description": "app/static/ui 入库，构建产物带内容哈希。本机从 33 个涨到 47 个 assets（新增 18 个、残留 19 个旧哈希），服务器从 82 涨到 100 —— git archive 解包只覆盖不删除，历史构建残留永久留在两侧。index.html 只引用当前哈希，故不影响运行，但仓库体积与审计都在被拖慢。删除动作因审批未通过未执行",
+      "status": "planned",
+      "dependencies": [],
+      "evidence": "本机 app/static/ui/assets 47 个（dist 实际 28）；服务器 find -type f = 100（A.27 时为 82）；16 号附录 A.28.6列出了 19 个陈旧文件名"
     }
   ]
 }

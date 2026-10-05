@@ -5,13 +5,13 @@
 
 ## Last Updated
 
-2026-10-05（分支 `main`；主服务改绑 loopback + 本机浏览器验证通道 + feature 分支并回，
-详见 16 号附录 A.25）
+2026-10-05 下午（分支 `main` @ `008b6da`；DICOM 上传入口 + 工作区导航出口 +
+真浏览器渲染守卫，详见 16 号附录 A.28）
 
 ## Current Objective
 
-**10-17 交付**：医生视角真机走查**已完成**（抓到并修掉 4 个 P0 阻断缺陷，见下），
-剩余为**补 UI 的 DICOM 上传入口 + 工作区导航出口**、**补真浏览器渲染守卫**、NMPA 材料。
+**10-17 交付**：医生主流程**已打通**（4 个 P0 + DICOM 上传入口 + 导航出口 + 三层守卫），
+剩余为**报告签名环节走查未重走**、**影像回取（WADO）接口缺失**、**NMPA 验收材料**。
 
 ## 医生视角走查结论（2026-10-05 夜，下一位 Agent 先读这段）
 
@@ -26,18 +26,38 @@
 | 3 | 登录后跳后端根 JSON | `window.location.href='/'` | 改用 `import.meta.env.BASE_URL` |
 | 4 | 9 条二级路由全打不开 | `BrowserRouter` 缺 `basename` | `basename={BASE_URL 去尾斜杠}` |
 
-**未修的 2 个（已登记 feature_list）**：UI 无 DICOM 上传入口（P0，全站 file input=0）、
-工作区无导航出口（P1，`btn=[]`）。
+**A.28 已闭合这2 个**（2026-10-05 下午，详见 16 号附录 A.28）：DICOM 上传入口（结论区
+扫查态「选择 DICOM 影像」，装载后自动发起判读）+ 工作区导航出口（常驻条右侧三项）。
+真机 Playwright 20/20 PASS，含**真传一个 DICOM 后界面自动进入「分析中」**——
+`useWorkspaceFlow.start()` 第一次真正有调用方，此前判读主链没有起点。
+
+**勘察结论值得记住**：上传端点（`POST /api/v1/imaging/dicom/upload`）与前端封装
+（`imagingService.uploadDicom`）**早就写好了，只是从未被调用**。所以这类"功能缺失"
+要先查是不是接线问题，而不是急着加接口。
+
+**新增三层守卫**（下一位直接用）：
+- 静态：`tests/unit/quality/test_frontend_render_guard.py`（pytest，17 例，含 5 例自测）
+- 运行时：`scripts/frontend_browser_smoke.mjs`（Playwright + 真 Chrome，20 项）
+  密码只能从环境变量注入：`UAI_DOCTOR_USER` / `UAI_DOCTOR_PASSWORD` / `UAI_BASE_URL`
+  加 `--upload <dicom>` 可真传一份并验证自动发起判读（需 GPU 在线）
+- 走查样本：`python scripts/make_test_dicom.py <路径>` 现造合规 DICOM
+  （**不能取自 `dicom_storage/`**：落盘副本已被 PHI 剥离，回传必然 400）
+
+**仍未做**：报告签名环节的走查未重走（沿用 A.27 结论）；影像回取（WADO）接口缺失；
+外部字体被 CSP 拦；产物陈旧文件堆积。均已登记 feature_list。
 
 录像：`C:\Users\ghf\Videos\US-DX-医生视角走查-20261005.webm`（2.71MB）。
 走查脚本用 Playwright + 复用 `~\.agent-browser\browsers\chrome-154\chrome.exe`，
 录屏需 `npx playwright install ffmpeg`。**下一位做真浏览器验证时直接复用这套**。
 
-## ⚠️ 待处置：凭据泄漏
+## 凭据泄漏：已决定不轮换（A.28.10 更正 A.27.7 的建议）
 
-`smoke-doctor` 密码（`~/uai/.smoke_pw`）明文进入过会话记录（A.27.7），
-**建议轮换**。该文件是纯密码、无 `=` 结构，别再用 `cut -d= -f1`「只看键名」——
-那等于打印密码。
+`smoke-doctor` 密码明文进入过A.27 会话记录。**本轮决定不轮换**，理由与适用边界见
+16 号附录 A.28.10：它是测试账号、只访问合成病例、主服务只绑回环、轮换会打断正在进行的
+交付走查。**若该账号将来用于任何真实数据，必须立即轮换。**
+
+该文件是纯密码、无 `=` 结构，别再用 `cut -d= -f1`「只看键名」—— 那等于打印密码。
+本轮所有脚本已改为从环境变量注入，脚本与命令行均无密码字面值。
 
 ## 本机如何做浏览器验证（2026-10-05 新增，下一位 Agent 直接用）
 
