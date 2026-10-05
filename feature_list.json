@@ -380,12 +380,41 @@
       "evidence": "真机 Playwright console 12 条 CSP 违规（已记为 scripts/frontend_browser_smoke.mjs 的 ACCEPTED_CONSOLE_PATTERNS 唯一豁免项）；16 号附录 A.28"
     },
     {
-      "id": "ui-build-artifact-stale-files",
-      "name": "P2 前端产物陈旧文件堆积（仓库与服务器都清不掉）",
-      "description": "app/static/ui 入库，构建产物带内容哈希。本机从 33 个涨到 47 个 assets（新增 18 个、残留 19 个旧哈希），服务器从 82 涨到 100 —— git archive 解包只覆盖不删除，历史构建残留永久留在两侧。index.html 只引用当前哈希，故不影响运行，但仓库体积与审计都在被拖慢。删除动作因审批未通过未执行",
+      "id": "ui-diagnosis-result-never-arrives",
+      "name": "P0 判读结果永远等不到（前端轮询上限 30s）",
+      "description": "pollDiagnosisResult 的 maxWaitMs 默认 30_000，而真实管线要 90~300s（LLM 串行链 + 冷启动），于是前端 30s 就 onTimeout 放弃；PHASE_TO_STATE 又把 timeout 映射回 progress，界面永远停在「分析中」，医生永远拿不到结论、也永远走不到报告与签名。A.24.1 只把服务端 result_read_timeout_seconds 从 30s 抬到 180s（其注释写明「前端据此停轮询」），前端这一侧从未跟上，属典型「修了一边」。门禁 D 组全绿是因为它是服务器侧自己轮询的，用自己的 300s 预算绕开了前端",
+      "status": "done",
+      "dependencies": [],
+      "resolution": "导出 RESULT_WAIT_MS=210_000（服务端 180s + 30s 余量）并作为 maxWaitMs 默认；把 status==='timeout' 也当终态（超时是服务端的判定，不该由客户端先放弃）。新增 frontend/src/services/__tests__/diagnosisWait.test.ts 6 例：上限必须 >180s、不得等于 30s、timeout 是终态、processing 持续轮询 60s 不放弃、start/resume 都交出 request_id",
+      "evidence": "真机实测：修前装载 DICOM 后等 300s 仍停在「分析中」；修后 33s 出结论，并一路走完 报告草稿 → 签发成功（26/26 PASS）；16 号附录 A.29.2"
+    },
+    {
+      "id": "ui-report-entry-unreachable",
+      "name": "P0 报告与签名在 UI 上不可达",
+      "description": "/ui/report 靠 URL 上的 request_id 取报告，而 request_id 是发起判读时后端给的，useWorkspaceFlow 从不把它交出去 —— 判读出结论后工作区按钮仍只有 工作列表/新建会话/设置/确认结论，医生只能手敲 /ui/report?request_id=… 才能写报告与签名。设计稿侧：工作区报告侧面板（07/12 屏）靠 onSign / onStructuredProofout，而路由层从未传，状态 report / signed 不可达",
+      "status": "done",
+      "dependencies": [
+        "ui-no-dicom-upload-entry"
+      ],
+      "resolution": "useWorkspaceFlow 交出 requestId（start 与 resume 都记）；路由层在有 requestId 时追加一个「报告」导航项。放常驻条而非结论区（结论区一级只给三样，塞导航会破坏那条口径；常驻条高度 40 不变，900 骨架不受影响）。沿用默认沉默：没有 requestId 就不渲染",
+      "evidence": "真机实测：修后结论区出现「报告」入口，点击进入 /ui/report?request_id=… 并签发成功；16 号附录 A.29.3"
+    },
+    {
+      "id": "report-sign-with-missing-sections",
+      "name": "P2 报告在存在缺失段落时仍可签发",
+      "description": "真机实测签发成功的同时，报告页如实回报完整性缺失「超声所见、测量摘要、处置建议」。按「口径以代码为准」查 ReportPage 确认这是**模板层的既定行为**（报告模板不强制这些段落），如实回报缺什么这一点是对的。但「已签发」与「存在缺失段落」并存，在临床上是要被追问的：签发等于医生对内容负责，缺段落的责任归属需要产品与合规定口径",
       "status": "planned",
       "dependencies": [],
-      "evidence": "本机 app/static/ui/assets 47 个（dist 实际 28）；服务器 find -type f = 100（A.27 时为 82）；16 号附录 A.28.6列出了 19 个陈旧文件名"
+      "evidence": "真机走查：已签发 / 报告 ID rep_20261005_ab0d30b4 / 签发人 smoke-doctor（report_signing_v1），同页显示完整性校验存在缺失段落；16 号附录 A.29.5"
+    },
+    {
+      "id": "ui-build-artifact-stale-files",
+      "name": "P2 前端产物陈旧文件堆积（本轮已根治）",
+      "description": "app/static/ui 入库，构建产物带内容哈希。历史累积原因：git archive 解包只覆盖不删除，本机从 33 涨到 50，服务器从 82 涨到 100。index.html 只引用当前哈希，故不影响运行，但仓库体积与审计都在被拖慢",
+      "status": "done",
+      "dependencies": [],
+      "resolution": "根治：同步脚本改为解包前先清空 app/static/ui，且**先校验 tar 里确实带着 app/static/ui/index.html 才清**（顺序反了会把线上站点清空）。服务器 100 → 31 个文件，与本机仓库一致，本轮不再随构建增长",
+      "evidence": "真机实测服务器 ui 文件数 100 → 31；16 号附录 A.29.6"
     }
   ]
 }

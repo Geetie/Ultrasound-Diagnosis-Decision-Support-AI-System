@@ -5,8 +5,7 @@
 
 ## Last Updated
 
-2026-10-05 下午（分支 `main` @ `008b6da`；DICOM 上传入口 + 工作区导航出口 +
-真浏览器渲染守卫，详见 16 号附录 A.28）
+2026-10-06（分支 `main` @ `58f52cd`；医生全流程走通 + 修 2 个 P0，详见 16 号附录 A.28 / A.29）
 
 ## Current Objective
 
@@ -43,8 +42,18 @@
 - 走查样本：`python scripts/make_test_dicom.py <路径>` 现造合规 DICOM
   （**不能取自 `dicom_storage/`**：落盘副本已被 PHI 剥离，回传必然 400）
 
-**仍未做**：报告签名环节的走查未重走（沿用 A.27 结论）；影像回取（WADO）接口缺失；
-外部字体被 CSP 拦；产物陈旧文件堆积。均已登记 feature_list。
+**A.29（2026-10-06）**：补走「报告签名」这一跳时挖出**两个 P0**，均已修并加守卫 ——
+①**判读结果永远等不到**：前端 `pollDiagnosisResult` 的 `maxWaitMs` 默认 30s，
+而真实管线 90~300s；`timeout` 又被 `PHASE_TO_STATE` 映射回 `progress`，
+于是界面**永久停在「分析中」**。A.24.1 只把服务端阈值抬到 180s，前端没跟着改。
+②**报告与签名在 UI 上不可达**：`request_id` 从不交给界面，医生只能手敲 URL。
+现两处都通：真机 26/26 PASS，直到**签发成功**（HSM 签名、签发人 smoke-doctor）。
+
+**下一位先读这段**：医生主流程已全通，别再重复走查；直接看
+`feature_list.json` 里 `planned` 的 4 项（NMPA 材料最急）。
+
+**仍未做**：影像回取（WADO）接口缺失；外部字体被 CSP 拦（界面一直用回退字体）；
+报告缺段落仍可签发（需产品与合规定口径）。均已登记 feature_list。
 
 录像：`C:\Users\ghf\Videos\US-DX-医生视角走查-20261005.webm`（2.71MB）。
 走查脚本用 Playwright + 复用 `~\.agent-browser\browsers\chrome-154\chrome.exe`，
