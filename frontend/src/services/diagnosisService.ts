@@ -133,6 +133,25 @@ export function extractStageTimings(result: DiagnosisResult | null): StageTiming
   return stages;
 }
 
+/**
+ * 前端轮询的总等待上限（毫秒）。
+ *
+ * ⚠️ 这个值**必须大于服务端 `result_read_timeout_seconds`（默认 180s）**，
+ * 两者是耦合的：服务端在结果接口里把超过阈值的 processing 判成 `status="timeout"`，
+ * 客户端要**先收到这个终态信号**才能如实呈现，而不是自己先放弃。
+ *
+ * A.28.9 的教训：这里的默认值曾是 **30_000**，而真实管线要 90~300s
+ * （LLM 串行链 + 冷启动）。于是前端 30s 就 `onTimeout()` 放弃轮询，
+ * 而 `timeout` 又被 `PHASE_TO_STATE` 映射回 `progress` ——
+ * **界面永远停在「分析中」，医生永远拿不到结论，也永远走不到报告与签名。**
+ * A.24.1 当时只把服务端阈值从 30s 抬到 180s，前端这一侧没跟着改，
+ * 属于典型的「修了一边」；真浏览器走查才把它暴露出来
+ * （门禁 D 组是**服务器侧**自己轮询的，用的是自己的 300s 预算，所以全绿）。
+ *
+ * 取210s =服务端 180s + 30s 余量，让终态由服务端给出。
+ */
+export const RESULT_WAIT_MS = 210_000;
+
 export interface PollOptions {
   signal?: AbortSignal;
   firstPollDelay?: number;
@@ -155,7 +174,7 @@ export function pollDiagnosisResult(
     signal,
     firstPollDelay = 1000,
     pollInterval = 2000,
-    maxWaitMs = 30000,
+    maxWaitMs = RESULT_WAIT_MS,
     maxBackoffMs = 8000,
     tier = 'standard',
     onStage,
@@ -204,7 +223,14 @@ export function pollDiagnosisResult(
       try {
         const result = await getDiagnosisResult(requestId);
         if (checkCancelled()) return;
-        if (result.status === 'completed' || result.status === 'failed') {
+        // 'timeout' 是**终态**：服务端在结果接口里把超阈值仍processing 的请求
+        // 标成它。不当作终态的话，客户端会一直轮询到 maxWaitMs 才放弃，
+        // 期间界面停在「分析中」—— 医生看到的是"还在跑"，而后台早已判超时。
+        if (
+          result.status === 'completed' ||
+          result.status === 'failed' ||
+          result.status === 'timeout'
+        ) {
           // 结果已到：阶段切换为真实（estimated=false），再由调用方分段揭示
           emitStage({
             key: 'finalizing',

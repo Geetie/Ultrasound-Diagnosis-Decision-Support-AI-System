@@ -1,1 +1,0 @@
-var e={thyroid:`甲状腺`,cervical_ln:`颈部淋巴结`,liver:`肝脏`,cardiac:`心脏`},t=[`thyroid`,`cervical_ln`,`liver`];export{t as n,e as t};

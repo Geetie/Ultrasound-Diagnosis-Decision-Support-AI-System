@@ -168,6 +168,27 @@ function WorkspaceRoute() {
     { key: 'settings', label: '设置', onClick: () => navigate('/settings') },
   ];
 
+  /**
+   * 「报告」入口 —— **仅在判读已发起后出现**（默认沉默）。
+   *
+   * 为什么必须有：`/ui/report` 靠 URL 上的 `request_id` 取报告（`ReportPage` 只认这个
+   * 参数），而 request_id 是发起判读时后端给的。以前工作区**完全没有**通往报告的入口
+   * （真机实测：判读跑完后按钮仍只有那三个导航项），医生只能手敲 URL 才能写报告、
+   * 签名 —— 医生流程的最后一环是断的。设计稿里的工作区报告侧面板（07 / 12 屏）靠
+   * `onSign` / `onStructuredProofout`，但路由层从未传，状态 `report` / `signed` 不可达。
+   *
+   * 为什么放常驻条而不是结论区：结论区一级只给三样（结论 + 恶性风险 + 建议动作），
+   * 往里塞导航会破坏那条口径；常驻条高度 40 不变，900 骨架不受影响。
+   */
+  if (flow.requestId) {
+    const rid = flow.requestId;
+    navItems.push({
+      key: 'report',
+      label: '报告',
+      onClick: () => navigate(`/ui/report?request_id=${encodeURIComponent(rid)}`),
+    });
+  }
+
   return (
     <PageSuspense>
       <WorkspacePage

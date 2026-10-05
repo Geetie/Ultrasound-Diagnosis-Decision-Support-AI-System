@@ -1,1 +1,0 @@
-function e(e){return typeof e==`object`&&!!e}function t(t,n){if(e(t)){let n=t.response;if(n&&e(n.data)){let e=n.data;if(e.error_message)return e.error_message;if(e.detail)return e.detail}if(typeof t.message==`string`){let e=t.message;if(e&&!/network|timeout/i.test(e))return e}}return n}export{t};

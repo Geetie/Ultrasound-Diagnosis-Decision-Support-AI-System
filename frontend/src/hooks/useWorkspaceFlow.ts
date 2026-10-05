@@ -27,6 +27,14 @@ export interface WorkspaceFlow {
   overtimeNote: string | null;
   result: DiagnosisResult | null;
   error: string | null;
+  /**
+   * 本次判读的 request_id —— **报告与签名页的入口靠它**。
+   *
+   * 为什么必须由flow 暴露：`/ui/report` 是靠 URL 上的 `request_id` 取报告的
+   * （`ReportPage` 只认这个参数），而 request_id 是发起判读时**后端**给的。
+   * 不把它交出去，医生在界面上就只能手敲 URL 才能写报告 —— 实测确实如此。
+   */
+  requestId: string | null;
   /** 发起判读（冻结后自动触发，不需要医生点按钮）。 */
   start: (input: { sessionId: string; imageIds: string[]; targetOrgan: string; tier?: 'realtime' | 'standard' | 'full' }) => Promise<void>;
   /** 「确认结论」三选一等效里的点按钮那条（说「确认」/ 脚踏走各自的通道）。 */
@@ -51,6 +59,7 @@ export function useWorkspaceFlow(): WorkspaceFlow {
   const [overtimeNote, setOvertimeNote] = useState<string | null>(null);
   const [result, setResult] = useState<DiagnosisResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [requestId, setRequestId] = useState<string | null>(null);
   const [acknowledged, setAcknowledged] = useState(false);
 
   const startedAt = useRef<number>(0);
@@ -66,7 +75,7 @@ export function useWorkspaceFlow(): WorkspaceFlow {
     setOvertimeNote(null);
     startedAt.current = Date.now();
 
-    let requestId: string;
+    let newRequestId: string;
     try {
       const resp = await requestDiagnosis({
         session_id: input.sessionId,
@@ -75,22 +84,24 @@ export function useWorkspaceFlow(): WorkspaceFlow {
         response_tier: input.tier ?? 'standard',
         // 幂等键：留空由后端按会话去重，避免前端每次生成随机 key 造成永不命中
       } as never);
-      requestId = (resp as { request_id?: string }).request_id ?? '';
+      newRequestId = (resp as { request_id?: string }).request_id ?? '';
     } catch (e) {
       setError((e as Error)?.message || '判读请求失败');
       setPhase('error');
       return;
     }
 
-    if (!requestId) {
+    if (!newRequestId) {
       setError('后端未返回 request_id');
       setPhase('error');
       return;
     }
+    // 交给上层做「报告与签名」入口 —— 不暴露它，医生就只能手敲 URL
+    setRequestId(newRequestId);
 
     cancelPoll.current?.cancel();
     cancelPoll.current = pollDiagnosisResult(
-      requestId,
+      newRequestId,
       (r) => {
         setResult(r);
         setPhase('concluded');
@@ -117,6 +128,7 @@ export function useWorkspaceFlow(): WorkspaceFlow {
   /** 接管已有 request_id —— 只轮询，不重新提交判读。 */
   const resume = useCallback<WorkspaceFlow['resume']>((requestId, tier) => {
     if (!requestId) return;
+    setRequestId(requestId);
     setPhase('analyzing');
     setError(null);
     setResult(null);
@@ -145,6 +157,7 @@ export function useWorkspaceFlow(): WorkspaceFlow {
     overtimeNote,
     result,
     error,
+    requestId,
     start,
     resume,
     confirm,
