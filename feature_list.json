@@ -375,9 +375,10 @@
       "id": "ui-external-font-blocked-by-csp",
       "name": "P2 外部字体被 CSP 拦掉，临床界面一直在用回退字体",
       "description": "frontend/src/styles/global.css 顶部 @import 了 fonts.googleapis.com，而 app/security/security_headers.py 的 CSP 是 style-src 'self' 'unsafe-inline' / font-src 'self' data:，请求被拦。真机走查实测每次加载产生 12 条同款 CSP 违规。后果有二：①设计稿指定的 Inter / Noto Sans SC / JetBrains Mono / Orbitron 全部没生效，界面用回退字体渲染；②每次打开页面都尝试外联 Google——对医院内网部署既不生效也不该外联",
-      "status": "planned",
+      "status": "done",
       "dependencies": [],
-      "evidence": "真机 Playwright console 12 条 CSP 违规（已记为 scripts/frontend_browser_smoke.mjs 的 ACCEPTED_CONSOLE_PATTERNS 唯一豁免项）；16 号附录 A.28"
+      "resolution": "删除外联 @import（保留 --font-* 变量声明，将来自托管无需改组件）。不放宽 CSP 的原因：院内网临床系统每次开页都外联 Google 既不必要也不该发生，且医院内网大概率出不去，放宽也换不来字体。**要恢复设计字体，正确做法是自托管**：字体文件放 frontend/public/fonts/，用 @font-face 引本地路径（font-src 'self' 天然放行），无需改任何组件",
+      "evidence": "真机复测：12 条 CSP 违规全部消失（0 条 console error）；视觉零变化（字体本来就没加载过）；16 号附录 A.30"
     },
     {
       "id": "ui-diagnosis-result-never-arrives",
@@ -401,11 +402,12 @@
     },
     {
       "id": "report-sign-with-missing-sections",
-      "name": "P2 报告在存在缺失段落时仍可签发",
-      "description": "真机实测签发成功的同时，报告页如实回报完整性缺失「超声所见、测量摘要、处置建议」。按「口径以代码为准」查 ReportPage 确认这是**模板层的既定行为**（报告模板不强制这些段落），如实回报缺什么这一点是对的。但「已签发」与「存在缺失段落」并存，在临床上是要被追问的：签发等于医生对内容负责，缺段落的责任归属需要产品与合规定口径",
+      "name": "P2 报告缺段落：知情确认已上线，补录入口与硬门禁待口径",
+      "description": "真机实测签发成功的同时，报告页如实回报完整性缺失「超声所见、测量摘要、处置建议」。三个代码事实：①报告页**没有任何编辑能力**（只能生成草稿→签发）；②check_completeness 的 docstring 写明「医生可回到诊断页补录」，但该回路在 UI 上不存在；③sign_report 直接签 rendered，完整性只是展示字段。页面自己写着「缺失内容不应带病签发」，行为却没跟上——这是自相矛盾，不是没有政策",
       "status": "planned",
       "dependencies": [],
-      "evidence": "真机走查：已签发 / 报告 ID rep_20261005_ab0d30b4 / 签发人 smoke-doctor（report_signing_v1），同页显示完整性校验存在缺失段落；16 号附录 A.29.5"
+      "resolution": "机制层已上线（2026-10-06）：完整性未过时点「签发报告」先弹出**知情确认**，逐项列明缺失段落（缺「超声所见」额外说明它是主体段落），医生确认后才能签——把决策点从「藏在页面别处的一行字」变成签发那一刻绕不过去的选择。**刻意不做硬禁用**：医生是最终责任方，禁签等于把医生推向纸质流程；「哪些段落缺失就禁止签发」是临床/合规口径，前端不越权。剩余两件事需项目组拍板：①**补录入口**（让医生能填缺失段落再重渲染草稿，Repository 需加 update 方法；measurement_summary 是结构化对象，医生可编辑的形态要产品定）；②**服务端硬门禁 + 审计留痕**（ReportSignRequest 增加 acknowledged_missing_sections，进审计链）",
+      "evidence": "真机复测：知情确认弹窗出现并列明缺失项，确认后签发成功（27/27 PASS）；16 号附录 A.30"
     },
     {
       "id": "ui-build-artifact-stale-files",

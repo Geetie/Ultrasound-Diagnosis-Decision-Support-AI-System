@@ -521,6 +521,28 @@ async function main() {
           const signBtn = await waitForAny(page, [/签发报告|已签发/], 20_000, '签发按钮');
           if (signBtn) {
             await clickByText(page, '签发报告');
+
+            // A.30：完整性未过时，签发必须先过**知情确认**（列出缺失项）。
+            // 这里验证的是「决策点真的存在」，而不是直接签发 ——
+            // 上一版脚本没有这一步，结果签发静默完成，医生全程没见过缺失清单。
+            const confirmShown = await waitForAny(
+              page,
+              [/报告存在缺失段落，确认仍要签发/],
+              8_000,
+              '签发知情确认',
+            );
+            // 缺失清单要在弹窗里**列出来**，而不是一句"有缺失"
+            const listedMissing = /缺失：/.test(await page.innerText('body'));
+            record(
+              '签发前弹出知情确认并列明缺失项',
+              confirmShown && listedMissing,
+              `确认框=${confirmShown} 列明缺失=${listedMissing}`,
+            );
+            await page.screenshot({ path: `${outdirOf(page)}/flow-sign-confirm.png`, fullPage: true });
+
+            if (confirmShown) {
+              await clickByText(page, '我已知晓缺失，仍要签发');
+            }
             const signed = await waitForAny(
               page,
               [/已签发|签名完成|HSM|签发成功/],
