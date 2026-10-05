@@ -10,8 +10,34 @@
 
 ## Current Objective
 
-**10-17 交付**：系统已达到"能用"基线（真机全链路 PASS），剩余为**医生视角人工点击走查**、
-NMPA 材料。技术侧无已知阻塞。
+**10-17 交付**：医生视角真机走查**已完成**（抓到并修掉 4 个 P0 阻断缺陷，见下），
+剩余为**补 UI 的 DICOM 上传入口 + 工作区导航出口**、**补真浏览器渲染守卫**、NMPA 材料。
+
+## 医生视角走查结论（2026-10-05 夜，下一位 Agent 先读这段）
+
+此前所有验证只到 HTTP 层（门禁 23 项 curl + 契约对账 18 路径字符串比对），
+**从未在真实浏览器里渲染过一行前端代码**。首次真实点击即发现
+**临床前端此前完全不可用**，4 个 P0 全部已修并复验（commit `1ac92d5`）：
+
+| # | 缺陷 | 根因 | 修法 |
+|---|---|---|---|
+| 1 | 白屏（`#root` 子节点 0） | `vendor-cornerstone` 跨 chunk 循环依赖 + Vite 8/Rolldown 求值顺序 | 从 `manualChunks` 移除 cornerstone |
+| 2 | 登录永远 422 | 前端发 JSON 打到 `OAuth2PasswordRequestForm` 端点 | 改打 `/auth/login` |
+| 3 | 登录后跳后端根 JSON | `window.location.href='/'` | 改用 `import.meta.env.BASE_URL` |
+| 4 | 9 条二级路由全打不开 | `BrowserRouter` 缺 `basename` | `basename={BASE_URL 去尾斜杠}` |
+
+**未修的 2 个（已登记 feature_list）**：UI 无 DICOM 上传入口（P0，全站 file input=0）、
+工作区无导航出口（P1，`btn=[]`）。
+
+录像：`C:\Users\ghf\Videos\US-DX-医生视角走查-20261005.webm`（2.71MB）。
+走查脚本用 Playwright + 复用 `~\.agent-browser\browsers\chrome-154\chrome.exe`，
+录屏需 `npx playwright install ffmpeg`。**下一位做真浏览器验证时直接复用这套**。
+
+## ⚠️ 待处置：凭据泄漏
+
+`smoke-doctor` 密码（`~/uai/.smoke_pw`）明文进入过会话记录（A.27.7），
+**建议轮换**。该文件是纯密码、无 `=` 结构，别再用 `cut -d= -f1`「只看键名」——
+那等于打印密码。
 
 ## 本机如何做浏览器验证（2026-10-05 新增，下一位 Agent 直接用）
 
