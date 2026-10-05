@@ -417,6 +417,32 @@ class DICOMUploadResponse(BaseModel):
     status: str = "accepted"
 
 
+class DICOMImageMeta(BaseModel):
+    """影像索引条目（2026-10-06 影像回取）。
+
+    刻意**不含** ``storage_path`` / ``patient_id``：前者是服务端内部路径
+    （local 绝对路径或 minio:// URL），泄露它等于把存储布局交给客户端；
+    后者与 audit_logs 的脱敏口径不一致（dicom_images.patient_id 存的是
+    脱敏前的原始 ID，见 imaging.upload_dicom 的 raw_patient_id）。
+    """
+
+    image_id: str
+    session_id: str
+    modality: Optional[str] = None
+    width: Optional[int] = None
+    height: Optional[int] = None
+    frame_count: Optional[int] = None
+    size_bytes: Optional[int] = None
+    original_filename: Optional[str] = None
+    created_at: Optional[datetime] = None
+
+
+class DICOMImageListResponse(BaseModel):
+    session_id: str
+    count: int
+    images: List[DICOMImageMeta]
+
+
 class DICOMStreamRequest(BaseModel):
     session_id: str
     frame_data: str

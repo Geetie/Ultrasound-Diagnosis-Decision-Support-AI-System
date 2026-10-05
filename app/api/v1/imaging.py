@@ -6,7 +6,7 @@ from io import BytesIO
 
 import pydicom
 import structlog
-from fastapi import APIRouter, Depends, File, Form, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Query, Response, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.errors import (
@@ -18,8 +18,18 @@ from app.api.v1.errors import (
 from app.api.v1.utils import get_actor_id
 from app.config.database import get_db_session
 from app.config.settings import settings
-from app.dependencies import get_audit_service, get_session_repo
-from app.models.schemas import DICOMStreamRequest, DICOMStreamResponse, DICOMUploadResponse
+from app.dependencies import (
+    get_audit_service,
+    get_dicom_image_repo,
+    get_session_repo,
+)
+from app.models.schemas import (
+    DICOMImageListResponse,
+    DICOMImageMeta,
+    DICOMStreamRequest,
+    DICOMStreamResponse,
+    DICOMUploadResponse,
+)
 from app.repositories import SessionRepository
 from app.repositories.dicom_image_repository import DicomImageRepository
 from app.security.auth import get_current_active_user
@@ -267,6 +277,107 @@ async def upload_dicom(
         session_id=session_id,
         metadata=response_metadata,
         status="accepted"
+    )
+
+
+# ----------------------------------------------------------------------
+# 影像回取（2026-10-06，A.30/A.31）
+#
+# 为什么现在才补：上传端点一直在，但**没有任何 GET**——浏览器显示影像
+# 只能用上传瞬间的浏览器本地副本（wadouri fileManager），刷新页面后影像区
+# 回到占位底色，且"显示的字节"与"管线用的字节"（服务端那份，已 PHI 剥离）
+# 不是同一份。imagingService.ts 顶部注释从 2026-10-05 起就把这标注为
+# 「真实的 API 缺口」，本节闭合它。
+#
+# 显示路径刻意**不走 Cornerstone 的远程加载**（wadouri:http://... 需要给
+# 加载器配鉴权头、且加载器内部 XHR 拿不到 axios 的 Bearer 注入），而是：
+# 前端用 axios（自动带 Bearer）把字节取回 → wadouri.fileManager.add(blob)
+# → 走已验证的本地显示路径。这样鉴权天然一致，也不依赖加载器内部实现。
+# ----------------------------------------------------------------------
+
+
+@router.get("/dicom", response_model=DICOMImageListResponse)
+async def list_session_dicom(
+    session_id: str = Query(..., description="检查会话 ID"),
+    limit: int = Query(50, ge=1, le=200),
+    image_repo: DicomImageRepository = Depends(get_dicom_image_repo),
+    session_repo: SessionRepository = Depends(get_session_repo),
+    current_user: dict | None = Depends(get_current_active_user),
+):
+    """按会话列出影像索引（最早优先）——工作区「继续检查」时恢复影像用。"""
+    session = await session_repo.get_session(session_id)
+    if not session:
+        raise NotFoundException(error_message=f"Session not found: {session_id}")
+
+    rows = await image_repo.list_by_session(session_id, limit=limit)
+    return DICOMImageListResponse(
+        session_id=session_id,
+        count=len(rows),
+        images=[
+            DICOMImageMeta(
+                image_id=row.image_id,
+                session_id=row.session_id,
+                modality=row.modality,
+                width=row.width,
+                height=row.height,
+                frame_count=row.frame_count,
+                size_bytes=row.size_bytes,
+                original_filename=row.original_filename,
+                created_at=row.created_at,
+            )
+            for row in rows
+        ],
+    )
+
+
+@router.get("/dicom/{image_id}")
+async def retrieve_dicom(
+    image_id: str,
+    image_repo: DicomImageRepository = Depends(get_dicom_image_repo),
+    audit_service: AuditService = Depends(get_audit_service),
+    current_user: dict | None = Depends(get_current_active_user),
+):
+    """按 image_id 取回 DICOM 字节（``application/dicom``）。
+
+    服务端这份与管线用是**同一份**（已 PHI 剥离）：显示它，医生看到的
+    就是 AI 看到的。404 时**如实报 404**——不返回占位图或空字节。
+    """
+    row = await image_repo.get(image_id)
+    if not row:
+        raise NotFoundException(error_message=f"DICOM image not found: {image_id}")
+
+    storage = get_dicom_storage()
+    content = await storage.retrieve(row.storage_path)
+    if not content:
+        # 索引在、字节没了：这是真实的存储损坏，不能伪装成"图是空的"
+        logger.error(
+            "dicom_retrieve_bytes_missing", image_id=image_id, storage_path=row.storage_path
+        )
+        raise NotFoundException(
+            error_message=f"DICOM bytes unavailable for {image_id}",
+            detail="indexed but bytes missing — check dicom_storage backend",
+        )
+
+    actor_id = get_actor_id(current_user)
+    await audit_service.log_action(
+        action="dicom_retrieve",
+        actor=actor_id,
+        session_id=row.session_id,
+        target_type="dicom",
+        target_id=image_id,
+        detail={"size_bytes": len(content), "modality": row.modality},
+    )
+
+    logger.info(
+        "DICOM file retrieved",
+        image_id=image_id,
+        session_id=row.session_id,
+        file_size=len(content),
+    )
+    return Response(
+        content=content,
+        media_type="application/dicom",
+        headers={"Content-Disposition": f'inline; filename="{image_id}.dcm"'},
     )
 
 

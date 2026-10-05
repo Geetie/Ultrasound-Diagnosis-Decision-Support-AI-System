@@ -22,6 +22,7 @@ from app.repositories import (
     ReportRepository,
     SessionRepository,
 )
+from app.repositories.dicom_image_repository import DicomImageRepository
 from app.services.audit_service import AuditService
 from app.speech.protocols import SpeechEngine
 
@@ -62,6 +63,15 @@ def get_feedback_repo(db: AsyncSession = Depends(get_db_session)) -> FeedbackRep
 def get_report_repo(db: AsyncSession = Depends(get_db_session)) -> ReportRepository:
     """获取诊断报告仓储（T-GB-API-02）。"""
     return ReportRepository(db)
+
+
+def get_dicom_image_repo(db: AsyncSession = Depends(get_db_session)) -> DicomImageRepository:
+    """DICOM 影像索引仓储（影像回取 / 按 session 列图）。
+
+    单独给一个 provider（而不是让 imaging.py 直接 new）：
+    retrieve 是 **PHI 读路径**，测试必须能像 session_repo 一样整体替换。
+    """
+    return DicomImageRepository(db)
 
 
 def get_audit_service(db: AsyncSession = Depends(get_db_session)) -> AuditService:

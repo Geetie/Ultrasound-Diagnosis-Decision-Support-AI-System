@@ -52,6 +52,11 @@ RATE_LIMITS = {
     "/api/v1/diagnosis/multi-organ": {"capacity": 10, "refill_rate": 10 / 60},
     "/api/v1/imaging/dicom/upload": {"capacity": 30, "refill_rate": 30 / 60},
     "/api/v1/imaging/dicom/stream": {"capacity": 30, "refill_rate": 30 / 60},
+    # 影像回取（2026-10-06）：这是 **PHI 读路径**，而且响应体是完整 DICOM 字节
+    # （0.3~30MB/次），可被单客户端反复刷。60/min 覆盖"工作区逐帧回看"的量级；
+    # 通配只命中新增的 list/retrieve（upload/stream 有精确键优先）。
+    "/api/v1/imaging/dicom": {"capacity": 60, "refill_rate": 60 / 60},
+    "/api/v1/imaging/dicom/*": {"capacity": 60, "refill_rate": 60 / 60},
     "/api/v1/feedback": {"capacity": 20, "refill_rate": 20 / 60},
     # 并发审查 P1-12：登录端点的 IP 桶由 5/min 提到 30/min，改由"用户名桶"承担
     # 撞库防护（见 enforce_login_rate_limit）。原因：桶键是

@@ -458,6 +458,160 @@ class TestDICOMEndpointsIntegration:
             app.dependency_overrides.clear()
 
 
+class TestDICOMRetrieveIntegration:
+    """影像回取（2026-10-06，A.31）——闭合「上传后没有任何 GET」的 API 缺口。
+
+    这条读路径是 **PHI 出口**：签名用 HSM、上传有脱敏，而"把字节发给客户端"
+    是同一信任边界上的最后一段。测试钉三件事：
+      ①字节按 image_id 可取回且与上传内容一致（round trip）；
+      ②索引在、字节没了 → 404（**不能**返回占位图或空字节糊弄）；
+      ③按 session 列表**不暴露** storage_path / patient_id（内部布局与原始 PHI）。
+    """
+
+    @staticmethod
+    def _dicom_bytes() -> bytes:
+        from io import BytesIO
+
+        import pydicom
+        from pydicom.dataset import Dataset
+
+        ds = Dataset()
+        ds.PatientID = "PAT001"
+        ds.PatientName = "TestPatient"
+        ds.StudyInstanceUID = "1.2.3.4.5"
+        ds.SeriesInstanceUID = "1.2.3.4.5.6"
+        ds.SOPInstanceUID = "1.2.3.4.5.6.7"
+        ds.Modality = "US"
+        ds.Rows = 4
+        ds.Columns = 4
+        ds.BitsAllocated = 8
+        ds.PixelData = b"\x00" * 16
+        ds.file_meta = pydicom.dataset.FileMetaDataset()
+        ds.file_meta.TransferSyntaxUID = pydicom.uid.ExplicitVRLittleEndian
+        ds.file_meta.MediaStorageSOPClassUID = "1.2.840.10008.5.1.4.1.1.2"
+        ds.file_meta.MediaStorageSOPInstanceUID = ds.SOPInstanceUID
+        buf = BytesIO()
+        ds.save_as(buf, write_like_original=False)
+        return buf.getvalue()
+
+    @staticmethod
+    def _overrides(image_row=None, storage_bytes=None):
+        """统一装配：仓储/审计/用户走 dependency_overrides，存储走 monkeypatch。
+
+        返回 (app, audit_service, storage)：storage 由各用例 setattr 进
+        ``app.api.v1.imaging`` 命名空间（imaging 模块级 import 的 get_dicom_storage）。
+        """
+        from unittest.mock import AsyncMock
+
+        from app.dependencies import get_audit_service, get_dicom_image_repo, get_session_repo
+        from app.main import app
+        from app.models.database import DiagnosisSession, DicomImage
+        from app.repositories.dicom_image_repository import DicomImageRepository
+        from app.repositories.session_repository import SessionRepository
+        from app.security.auth import get_current_active_user
+        from app.services.audit_service import AuditService
+        from app.services.dicom_storage import DicomStorageService
+
+        session_repo = AsyncMock(spec=SessionRepository)
+        session_repo.get_session = AsyncMock(
+            return_value=DiagnosisSession(
+                session_id="session_001",
+                patient_id="patient_001",
+                device_id="device_001",
+                status="active",
+                target_organs=["thyroid"],
+                organ_statuses={"thyroid": "in_progress"},
+                knowledge_base_version="kb_v1.0.0",
+                consent_status_at_creation="granted"))
+        audit_service = AsyncMock(spec=AuditService)
+
+        image_row = image_row if image_row is not None else DicomImage(
+            image_id="img_20261006_00000001",
+            session_id="session_001",
+            storage_path="/nonexistent/x.dcm",
+            modality="US",
+            width=4,
+            height=4,
+            frame_count=1,
+            size_bytes=16,
+            original_filename="test.dcm",
+        )
+        image_repo = AsyncMock(spec=DicomImageRepository)
+        image_repo.get = AsyncMock(return_value=image_row)
+        image_repo.list_by_session = AsyncMock(return_value=[image_row])
+
+        storage = AsyncMock(spec=DicomStorageService)
+        storage.retrieve = AsyncMock(return_value=storage_bytes)
+
+        app.dependency_overrides[get_session_repo] = lambda: session_repo
+        app.dependency_overrides[get_audit_service] = lambda: audit_service
+        app.dependency_overrides[get_dicom_image_repo] = lambda: image_repo
+        app.dependency_overrides[get_current_active_user] = lambda: {
+            "user_id": "test_user", "role": "doctor",
+        }
+        return app, audit_service, storage
+
+    def test_retrieve_returns_uploaded_bytes(self, test_client, monkeypatch):
+        payload = self._dicom_bytes()
+        app, audit_service, storage = self._overrides(storage_bytes=payload)
+        monkeypatch.setattr("app.api.v1.imaging.get_dicom_storage", lambda: storage)
+
+        try:
+            resp = test_client.get("/api/v1/imaging/dicom/img_20261006_00000001")
+
+            assert resp.status_code == 200
+            assert resp.headers["content-type"] == "application/dicom"
+            assert resp.content == payload
+            # PHI 读路径必须留痕——没有审计的 DICOM 出口等于无边界
+            audit_service.log_action.assert_awaited_once()
+            assert audit_service.log_action.await_args.kwargs["action"] == "dicom_retrieve"
+        finally:
+            app.dependency_overrides.clear()
+
+    def test_retrieve_404_when_bytes_missing(self, test_client, monkeypatch):
+        app, _, storage = self._overrides(storage_bytes=None)
+        monkeypatch.setattr("app.api.v1.imaging.get_dicom_storage", lambda: storage)
+
+        try:
+            resp = test_client.get("/api/v1/imaging/dicom/img_20261006_00000001")
+
+            # 索引在、字节没了：如实 404，不返回占位图或空字节
+            assert resp.status_code == 404
+            assert resp.json()["error_code"] == "E1002"
+        finally:
+            app.dependency_overrides.clear()
+
+    def test_retrieve_404_when_image_unknown(self, test_client, monkeypatch):
+        app, _, storage = self._overrides(image_row=None)
+        monkeypatch.setattr("app.api.v1.imaging.get_dicom_storage", lambda: storage)
+
+        try:
+            resp = test_client.get("/api/v1/imaging/dicom/img_missing")
+
+            assert resp.status_code == 404
+        finally:
+            app.dependency_overrides.clear()
+
+    def test_list_by_session_hides_storage_layout(self, test_client, monkeypatch):
+        app, _, storage = self._overrides()
+        monkeypatch.setattr("app.api.v1.imaging.get_dicom_storage", lambda: storage)
+
+        try:
+            resp = test_client.get("/api/v1/imaging/dicom?session_id=session_001")
+
+            assert resp.status_code == 200
+            data = resp.json()
+            assert data["count"] == 1
+            assert data["images"][0]["image_id"] == "img_20261006_00000001"
+            body = json.dumps(data)
+            # 内部存储布局与原始 PHI 绝不能出现在列表响应里
+            assert "storage_path" not in body
+            assert "/nonexistent" not in body
+            assert "patient_001" not in body
+        finally:
+            app.dependency_overrides.clear()
+
+
 class TestFeedbackEndpointsIntegration:
     """Integration tests for Feedback endpoints"""
 

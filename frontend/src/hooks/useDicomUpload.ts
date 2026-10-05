@@ -1,19 +1,19 @@
 import { useCallback, useState } from 'react';
-import { uploadDicom } from '@/services/imagingService';
+import { fetchDicomForDisplay, uploadDicom } from '@/services/imagingService';
 import { getApiErrorMessage } from '@/utils/apiError';
 
 /**
  * DICOM 装载 —— 影像进入系统的**唯一入口**（2026-10-05 补，此前全站 file input=0）。
  *
- * 一次选择同时做两件**互相独立**的事，缺一不可：
+ * 显示的取值优先级（2026-10-06 引入"服务端副本"）：
+ *   1. **服务端副本**：上传成功后按 `image_id` 取回字节（axios 带 Bearer →
+ *      `wadouri.fileManager.add`）。优先它，因为医生看到的与 AI 管线用的是
+ *      **同一份**（已 PHI 剥离），且它证明"上传的字节真的取得回来"。
+ *   2. **浏览器本地副本**：取回失败时回落 —— 显示是增强，绝不能因为回取失败
+ *      而把刚上传成功的影像弄没。
  *
- *  1. **本地成像**：把 File 注册进 Cornerstone 的 `wadouri.fileManager`，拿到本地
- *     imageId 立刻显示。走本地是因为后端**没有 WADO 取回端点**
- *     （`app/api/v1/imaging.py` 只有 upload/stream 两个 POST），
- *     所以生产环境目前只能显示"医生刚选的那一份"，刷新后需要重选。
- *     这条是**尽力而为**：注册失败不许阻断上传（判读不依赖浏览器显示）。
- *  2. **上行后端**：`POST /api/v1/imaging/dicom/upload`（multipart：file/session_id/priority），
- *     拿回 `image_id`。**判读管线只认这个 id** —— 后端按它从 `dicom_storage` 取字节。
+ * 上行后端：`POST /api/v1/imaging/dicom/upload`，拿回 `image_id`。
+ * **判读管线只认这个 id** —— 后端按它从 `dicom_storage` 取字节。
  *
  * ⚠️ 本地 fileManager 的 imageId 与后端 image_id 是**两套 id**，绝不能混用：
  *    把本地 id 当 `image_ids` 发给 `/diagnosis/request`，后端解析不到任何字节。
@@ -26,8 +26,10 @@ export type DicomUploadPhase = 'idle' | 'uploading' | 'uploaded' | 'error';
 
 export interface DicomUploadState {
   phase: DicomUploadPhase;
-  /** 本地 Cornerstone fileManager 的 imageId（仅用于显示）。 */
+  /** 浏览器本地副本的 Cornerstone imageId（上传瞬间立即可显示）。 */
   localImageId?: string;
+  /** 服务端副本的 Cornerstone imageId（上传成功后回取注册；显示优先用它）。 */
+  serverImageId?: string;
   /** 后端 image_id（判读用）。 */
   imageId?: string;
   fileName: string | null;
@@ -57,6 +59,18 @@ async function registerLocalImage(file: File): Promise<string | undefined> {
   try {
     const cornerstone = await import('@/components/dicom/cornerstone');
     return cornerstone.wadouri.fileManager.add(file) as string;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * 上传成功后，按后端 image_id 取回服务端副本并注册（见模块顶部的优先级说明）。
+ * 失败返回 undefined —— 回落本地副本，绝不因此把影像弄没。
+ */
+async function registerServerImage(imageId: string): Promise<string | undefined> {
+  try {
+    return await fetchDicomForDisplay(imageId);
   } catch {
     return undefined;
   }
@@ -96,9 +110,12 @@ export function useDicomUpload(
 
       try {
         const resp = await uploadDicom(file, sessionId, DEFAULT_PRIORITY);
+        // 升级为服务端副本（同管线同源）。失败回落本地副本 —— 显示是增强。
+        const serverImageId = await registerServerImage(resp.image_id);
         setState({
           phase: 'uploaded',
           localImageId,
+          serverImageId,
           imageId: resp.image_id,
           fileName: file.name,
           error: null,

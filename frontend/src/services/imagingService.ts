@@ -4,29 +4,62 @@ import type { ImagingUploadResponse } from '@/types/api';
 /**
  * 影像接口。
  *
- * ⚠️ 上下行不对称，接线前务必知道：
+ * 【上行】POST /api/v1/imaging/dicom/upload（下方 uploadDicom）
+ *         POST /api/v1/imaging/dicom/stream（收帧，不回传图像字节）
  *
- * 【上行 —— 后端有端点】
- *   POST /api/v1/imaging/dicom/upload  multipart（下方 uploadDicom）
- *   POST /api/v1/imaging/dicom/stream  JSON { session_id, frame_data(base64),
- *                                           frame_index, is_key_frame, priority }
- *     → { session_id, frame_id, navigation_hint?, status }
- *   注意 stream 是**收帧**用的：设备把帧推给后端，后端校验并落盘后返回
- *   frame_id；它**不回传图像字节**。
+ * 【下行 —— 2026-10-06 闭合了 A.28 时的缺口】
+ *   GET  /api/v1/imaging/dicom?session_id=…   → 影像索引列表（无字节）
+ *   GET  /api/v1/imaging/dicom/{image_id}     → application/dicom 字节
  *
- * 【下行 —— 后端没有端点 ⚠️ 这是个真实的 API 缺口】
- *   浏览器要显示 DICOM 必须按 URL 取回字节（WADO 语义），但
- *   `app/api/v1/imaging.py` 只有 upload / stream 两个 POST，没有任何 GET。
- *   `DicomStorageService.retrieve(storage_path)` 有读回能力，但只在服务内部
- *   使用，没有暴露成 HTTP 接口。WebSocket `/api/v1/realtime/dicom` 只发 JSON
- *   控制/通知消息，不是字节流。
- *
- *   → 需要后端补一个端点，建议（包一层 retrieve 即可）：
- *       GET /api/v1/imaging/dicom/{frame_id}  →  application/dicom
- *
- *   在它存在之前，dev 用 vite 中间件 `/dev-dicom/*` 读本地 `dicom_storage/`
- *   （仅 dev，不进构建产物）。生产环境不要依赖它。
+ * 显示路径**刻意不走 Cornerstone 的远程加载**（wadouri:http://… 需要给加载器
+ * 配鉴权头，而加载器内部的 XHR 拿不到 axios 的 Bearer 注入）。改用：
+ *   axios 取字节（自动带 Bearer）→ `wadouri.fileManager.add(blob)`
+ *   → 走已验证的本地显示路径（{@link fetchDicomForDisplay}）。
+ * 这样鉴权天然一致，也不依赖加载器内部实现；且医生看到的与 AI 管线用的
+ * 是**同一份**服务端字节（已 PHI 剥离）。
  */
+
+export interface SessionImageMeta {
+  image_id: string;
+  session_id: string;
+  modality?: string | null;
+  width?: number | null;
+  height?: number | null;
+  frame_count?: number | null;
+  size_bytes?: number | null;
+  original_filename?: string | null;
+  created_at?: string | null;
+}
+
+export interface SessionImageListResponse {
+  session_id: string;
+  count: number;
+  images: SessionImageMeta[];
+}
+
+/** 按 session 列出影像索引（最早优先；**不含**字节）。 */
+export async function listSessionImages(sessionId: string): Promise<SessionImageListResponse> {
+  const response = await apiClient.get<SessionImageListResponse>('/imaging/dicom', {
+    params: { session_id: sessionId },
+  });
+  return response.data;
+}
+
+/**
+ * 取回一份 DICOM 字节并注册进 Cornerstone 本地文件管理器，返回可显示的 imageId。
+ *
+ * 失败抛异常，由调用方决定回落策略（上传场景回落到浏览器本地副本）。
+ */
+export async function fetchDicomForDisplay(imageId: string): Promise<string> {
+  const response = await apiClient.get<Blob>(`/imaging/dicom/${encodeURIComponent(imageId)}`, {
+    responseType: 'blob',
+    timeout: 60_000,
+  });
+  const blob = response.data;
+  const file = new File([blob], `${imageId}.dcm`, { type: 'application/dicom' });
+  const { wadouri } = await import('@/components/dicom/cornerstone');
+  return wadouri.fileManager.add(file) as string;
+}
 
 export async function uploadDicom(
   file: File,
@@ -64,10 +97,15 @@ export async function streamDicomFrame(data: {
 }
 
 /**
- * 影像显示用的 URL —— **单一取值点**。
+ * 影像显示用的 URL —— **已废弃，勿用于生产**。
  *
- * 影像区只认这个函数产出的 URL，不关心字节从哪来；等后端补上 WADO 端点后，
- * 只需要改这里，界面侧零改动。
+ * 这是 A.28 之前的设计：让 Cornerstone 直接按 `wadouri:/api/v1/imaging/dicom/{id}`
+ * 远程取字节。没采用的原因见模块顶部 —— 加载器内部的 XHR 拿不到 axios 的
+ * Bearer 注入，鉴权过不去。实际实现改走 {@link fetchDicomForDisplay}
+ * （axios 取字节 → fileManager.add）。
+ *
+ * 保留这个函数只是为了让"显示 URL 单一取值点"的历史注释不误导后来者；
+ * 若有新代码要用它，先解决鉴权头问题，否则 401。
  */
 export function dicomImageIdFromFrame(frameId: string): string {
   return `wadouri:/api/v1/imaging/dicom/${encodeURIComponent(frameId)}`;

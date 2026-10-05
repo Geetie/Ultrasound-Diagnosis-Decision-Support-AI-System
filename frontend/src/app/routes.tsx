@@ -9,6 +9,7 @@ import type { ThemeName } from '@/components/shell/AppSidebar';
 import { useWorkspaceFlow } from '@/hooks/useWorkspaceFlow';
 import { useDicomUpload } from '@/hooks/useDicomUpload';
 import { getSession } from '@/services/sessionService';
+import { fetchDicomForDisplay, listSessionImages } from '@/services/imagingService';
 import { needsDoctorReview, toConclusionView } from '@/services/diagnosisAdapter';
 
 const WorkspacePage = lazy(() => import('@/pages/WorkspacePage'));
@@ -121,6 +122,31 @@ function WorkspaceRoute() {
   const organ = sessionMatched ? sessionInfo.organ : null;
   const sessionIssue = sessionMatched ? sessionInfo.issue : null;
 
+  /**
+   * 会话里已有的最近影像 —— 「继续检查」时恢复显示。
+   *
+   * 这就是「刷新后影像回占位」的修复：session_id 在 URL 上不会丢，
+   * 所以按会话列出影像 → 取最新一份 → 走服务端副本显示。取不到就保持
+   * 占位底色（默认沉默），**绝不**显示"上一位患者"的图。
+   */
+  const [sessionImageId, setSessionImageId] = useState<string | null>(null);
+  useEffect(() => {
+    setSessionImageId(null);
+    if (!sessionId) return;
+    let alive = true;
+    listSessionImages(sessionId)
+      .then(async (list) => {
+        const last = list.images.at(-1);
+        if (!alive || !last) return;
+        const id = await fetchDicomForDisplay(last.image_id).catch(() => null);
+        if (alive && id) setSessionImageId(id);
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [sessionId]);
+
   /** 影像字节入库 → 立刻发起判读。这就是设计稿里"冻结当前帧即自动发起"的那一步。 */
   const handleUploaded = useCallback(
     async (imageId: string) => {
@@ -146,10 +172,20 @@ function WorkspaceRoute() {
   // ?dicom=<相对路径> 仅 dev：把真实超声 DICOM 灌进影像区，替换渐变占位。
   // 用来验证 AGENT_TASKS §九 标注的「叠加标注与真实组织纹理的对比度从未验证」。
   const dicomRel = isDev ? params.get('dicom') : null;
-  // 真机路径优先用医生刚选的那份（本地 fileManager 影像 id）；
-  // 后端没有 WADO 取回端点，所以刷新后影像区会回到渐变占位 —— 已知限制，不是缺陷。
   const devDicomImageId = dicomRel ? `/dev-dicom/${dicomRel}` : undefined;
-  const dicomImageId = upload.state.localImageId ?? devDicomImageId;
+  /**
+   * 影像区显示源的优先级：
+   *   1. 刚上传的**服务端副本**（同管线同源，且证明 round trip）
+   *   2. 刚上传的浏览器本地副本（服务端回取失败时的回落）
+   *   3. 本会话最近一份已存影像（刷新 / 「继续检查」后恢复）
+   *   4. dev 后门（?dicom=）
+   * 都没有 → 渐变占位（默认沉默）。
+   */
+  const dicomImageId =
+    upload.state.serverImageId ??
+    upload.state.localImageId ??
+    sessionImageId ??
+    devDicomImageId;
 
   // ?request_id=… —— 语音控件发起判读后带着它跳过来（AppLayout 的 onExecuted）。
   // 那个请求已经发出并落库，所以走 resume() **只轮询取结果**，绝不重发判读。
