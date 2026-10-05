@@ -126,9 +126,10 @@ describe('WorkspacePage · 02 扫查态元素还原', () => {
 
   it('结论区空态双文案（2:8 / 2:9）', () => {
     render(<WorkspacePage />);
-    expect(screen.getByText('等待冻结取图')).toBeInTheDocument();
+    // 文案偏离画布一处：原文「等待冻结取图」预设设备端冻结键，浏览器部署里没有这个键
+    expect(screen.getByText('等待装载影像')).toBeInTheDocument();
     expect(
-      screen.getByText('冻结当前帧即自动发起判读，不需要点击任何按钮')
+      screen.getByText('装载当前帧即自动发起判读，不需要点击任何按钮')
     ).toBeInTheDocument();
   });
 

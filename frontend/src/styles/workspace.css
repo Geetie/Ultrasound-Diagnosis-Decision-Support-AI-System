@@ -195,6 +195,104 @@
   color: var(--color-text-secondary);
 }
 
+/* ---- 影像装载入口（02 扫查态新增，非画布元素）----
+   设计稿这一格原本是纯文案「等待冻结取图」。设备端冻结键在浏览器部署里不存在，
+   所以把"取图"落成真的 file input —— 语义仍是同一格：不占影像区，结论区够放。 */
+.ws-upload {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+}
+
+.ws-upload__pick {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 220px;
+  height: 40px;
+  padding: 0 var(--space-6);
+  border: 1px solid var(--color-attention);
+  border-radius: var(--radius-tag);
+  color: var(--color-attention);
+  font-size: var(--font-size-body);
+  cursor: pointer;
+}
+
+.ws-upload__pick:hover {
+  background: var(--color-surface-alt);
+}
+
+/* 键盘可达：Tab 进来时选择框要有可见焦点环，否则「看不见的 input」等于没有 */
+.ws-upload__pick:focus-within {
+  outline: 2px solid var(--color-attention);
+  outline-offset: 2px;
+}
+
+/* clip 隐藏而非 display:none —— 后者对键盘与读屏完全不可达 */
+.ws-upload__input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.ws-upload__hint {
+  font-size: var(--font-size-small);
+  color: var(--color-text-secondary);
+}
+
+/* 错误走 semantic-stop：语义色只有两级（stop / attention），装载失败必须能看见 */
+.ws-upload__error {
+  font-size: var(--font-size-small);
+  color: var(--color-semantic-stop);
+}
+
+.ws-upload__action {
+  height: 32px;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--color-text-secondary);
+  border-radius: var(--radius-tag);
+  background: transparent;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-small);
+  cursor: pointer;
+}
+
+/* ---- 工作区导航出口（常驻条 40 内的右对齐入口）
+   工作区是通栏、不套 AppLayout，所以它是全站唯一没有侧栏的页面 ——
+   登录后医生就困在这里。导航放进常驻条右侧，identity 的 flex-grow:1 天然把它推到右边，
+   条高 40 不变，900 骨架不受影响。 */
+.ws-bar__nav {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.ws-bar__nav-item {
+  height: 26px;
+  padding: 0 var(--space-3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-tag);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-small);
+  cursor: pointer;
+}
+
+.ws-bar__nav-item:hover {
+  border-color: var(--color-text-secondary);
+  color: var(--color-text-primary);
+}
+
 /* 一句话结论（2:19）—— 结论区一级只给三样：结论 + 恶性风险 + 建议动作 */
 .ws-conclusion__headline {
   font-size: var(--font-size-title);

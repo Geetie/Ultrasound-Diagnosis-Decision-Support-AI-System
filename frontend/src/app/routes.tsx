@@ -1,11 +1,14 @@
-import { lazy, Suspense, useEffect } from 'react';
-import { Routes, Route, Navigate, useSearchParams } from 'react-router-dom';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
+import { Routes, Route, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import AppLayout from '@/components/layout/AppLayout';
 import AuthGuard from '@/components/common/AuthGuard';
 import LoadingOverlay from '@/components/common/LoadingOverlay';
+import WorkspaceImageUpload from '@/components/workspace/WorkspaceImageUpload';
 import { WORKSPACE_STATES, type WorkspaceState } from '@/components/workspace/states';
 import type { ThemeName } from '@/components/shell/AppSidebar';
 import { useWorkspaceFlow } from '@/hooks/useWorkspaceFlow';
+import { useDicomUpload } from '@/hooks/useDicomUpload';
+import { getSession } from '@/services/sessionService';
 import { needsDoctorReview, toConclusionView } from '@/services/diagnosisAdapter';
 
 const WorkspacePage = lazy(() => import('@/pages/WorkspacePage'));
@@ -57,7 +60,9 @@ const PHASE_TO_STATE: Record<string, WorkspaceState> = {
 function WorkspaceRoute() {
   const isDev = import.meta.env.DEV;
   const [params] = useSearchParams();
+  const navigate = useNavigate();
   const flow = useWorkspaceFlow();
+  const startFlow = flow.start;
 
   // 真机结果 → 结论视图模型；null = 还没有可用结论（组件退回设计预览文案）
   const view = toConclusionView(flow.result);
@@ -67,6 +72,65 @@ function WorkspaceRoute() {
     isDev && raw && (WORKSPACE_STATES as readonly string[]).includes(raw)
       ? (raw as WorkspaceState)
       : null;
+
+  /**
+   * 检查会话 —— 由工作列表的「继续 / 查看」带 `?session_id=` 进来。
+   *
+   * 上传端点与判读端点都以 session_id 为外键，所以它是「装载影像」的前置条件。
+   * **取不到部位就不给上传入口**：判读必须带 target_organ，
+   * 凭空顶一个甲状腺上去等于让系统对不对的部位下结论。
+   */
+  const sessionId = params.get('session_id') || undefined;
+  // 刻意不在 effect 里同步清空 state：那会触发级联渲染（react-hooks/set-state-in-effect）。
+  // 改成「按 id 匹配」——渲染期拿 sessionInfo.session_id 和当前 URL 比，
+  // 对不上就当作没有部位，于是换会话时不会出现上一位患者的部位闪一下。
+  const [sessionInfo, setSessionInfo] = useState<{
+    id: string;
+    organ: string | null;
+    issue: string | null;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!sessionId) return;
+    let alive = true;
+    getSession(sessionId)
+      .then((s) => {
+        if (!alive) return;
+        const first = s.target_organs?.[0];
+        setSessionInfo({
+          id: sessionId,
+          organ: first ?? null,
+          issue: first ? null : '该检查会话未声明部位，无法发起判读',
+        });
+      })
+      .catch(() => {
+        if (alive) {
+          setSessionInfo({
+            id: sessionId,
+            organ: null,
+            issue: '检查会话读取失败，请回到工作列表重新选择',
+          });
+        }
+      });
+    return () => {
+      alive = false;
+    };
+  }, [sessionId]);
+
+  const sessionMatched = !!sessionId && sessionInfo?.id === sessionId;
+  const organ = sessionMatched ? sessionInfo.organ : null;
+  const sessionIssue = sessionMatched ? sessionInfo.issue : null;
+
+  /** 影像字节入库 → 立刻发起判读。这就是设计稿里"冻结当前帧即自动发起"的那一步。 */
+  const handleUploaded = useCallback(
+    async (imageId: string) => {
+      if (!sessionId || !organ) return;
+      await startFlow({ sessionId, imageIds: [imageId], targetOrgan: organ });
+    },
+    [sessionId, organ, startFlow]
+  );
+
+  const upload = useDicomUpload(sessionId, handleUploaded);
 
   // 需复核才出现确认动作区。**不能只看 requires_manual_review** ——
   // 真机实测存在 sg_result.allowed=false 而 requires_manual_review=false 的组合
@@ -82,7 +146,10 @@ function WorkspaceRoute() {
   // ?dicom=<相对路径> 仅 dev：把真实超声 DICOM 灌进影像区，替换渐变占位。
   // 用来验证 AGENT_TASKS §九 标注的「叠加标注与真实组织纹理的对比度从未验证」。
   const dicomRel = isDev ? params.get('dicom') : null;
-  const dicomImageId = dicomRel ? `/dev-dicom/${dicomRel}` : undefined;
+  // 真机路径优先用医生刚选的那份（本地 fileManager 影像 id）；
+  // 后端没有 WADO 取回端点，所以刷新后影像区会回到渐变占位 —— 已知限制，不是缺陷。
+  const devDicomImageId = dicomRel ? `/dev-dicom/${dicomRel}` : undefined;
+  const dicomImageId = upload.state.localImageId ?? devDicomImageId;
 
   // ?request_id=… —— 语音控件发起判读后带着它跳过来（AppLayout 的 onExecuted）。
   // 那个请求已经发出并落库，所以走 resume() **只轮询取结果**，绝不重发判读。
@@ -93,6 +160,14 @@ function WorkspaceRoute() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [requestId]);
 
+  // 工作区是全站唯一没有侧栏的页面（通栏 900 骨架）。不给出口，医生登录后就困在这里
+  // —— 2026-10-05 真浏览器走查实测 /ui/ 的 btn=[]，10 个导航项一个都点不到。
+  const navItems = [
+    { key: 'worklist', label: '工作列表', onClick: () => navigate('/worklist') },
+    { key: 'session-new', label: '新建会话', onClick: () => navigate('/session/new') },
+    { key: 'settings', label: '设置', onClick: () => navigate('/settings') },
+  ];
+
   return (
     <PageSuspense>
       <WorkspacePage
@@ -100,6 +175,19 @@ function WorkspaceRoute() {
         view={view}
         dicomImageId={dicomImageId}
         onConfirm={flow.confirm}
+        navItems={navItems}
+        uploadSlot={
+          <WorkspaceImageUpload
+            ready={!!sessionId && !!organ}
+            blockedReason={
+              sessionIssue ??
+              (sessionId ? '正在读取检查会话…' : '尚未选择检查会话 —— 请从工作列表选择一次检查')
+            }
+            state={upload.state}
+            onPick={upload.handleFile}
+            onGoWorklist={() => navigate('/worklist')}
+          />
+        }
       />
     </PageSuspense>
   );

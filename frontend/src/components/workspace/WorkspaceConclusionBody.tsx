@@ -1,6 +1,7 @@
 import WorkspaceStopAlert from './WorkspaceStopAlert';
 import type { WorkspaceState } from './states';
 import type { ConclusionView } from '@/services/diagnosisAdapter';
+import type { ReactNode } from 'react';
 
 /**
  * 结论区内容 —— 按视图状态切换
@@ -110,6 +111,7 @@ export default function WorkspaceConclusionBody({
   state,
   view,
   onSignNext,
+  uploadSlot,
 }: {
   state: WorkspaceState;
   /**
@@ -119,6 +121,8 @@ export default function WorkspaceConclusionBody({
   view?: ConclusionView | null;
   /** 12 的「下一个病人」：回 01_工作列表并清屏（上一位患者零残留）。 */
   onSignNext?: () => void;
+  /** 影像装载入口插槽（WorkspaceImageUpload）。仅 02 扫查态渲染 —— 见组件内说明。 */
+  uploadSlot?: ReactNode;
 }) {
   // 安全网关显式要求转人工时，无论当前是哪个判读态都要显示 —— 契约 §4「不可削减」
   const blocked = view?.safetyBlocked;
@@ -127,7 +131,7 @@ export default function WorkspaceConclusionBody({
       {blocked && (
         <WorkspaceStopAlert level="attention" message={blocked.message} code={blocked.errorCode} />
       )}
-      <ConclusionSwitch state={state} view={view} onSignNext={onSignNext} />
+      <ConclusionSwitch state={state} view={view} onSignNext={onSignNext} uploadSlot={uploadSlot} />
     </>
   );
 }
@@ -136,19 +140,24 @@ function ConclusionSwitch({
   state,
   view,
   onSignNext,
+  uploadSlot,
 }: {
   state: WorkspaceState;
   view?: ConclusionView | null;
   onSignNext?: () => void;
+  uploadSlot?: ReactNode;
 }) {
   switch (state) {
     case 'scanning':
       return (
         <>
-          <p className="ws-conclusion__title">等待冻结取图</p>
+          {/* 文案偏离设计稿一处：画布原文「等待冻结取图 / 冻结当前帧即自动发起判读」
+              预设了设备端冻结键，浏览器部署里没有这个键，照抄会让医生找不存在的东西。*/}
+          <p className="ws-conclusion__title">等待装载影像</p>
           <p className="ws-conclusion__subtitle">
-            冻结当前帧即自动发起判读，不需要点击任何按钮
+            装载当前帧即自动发起判读，不需要点击任何按钮
           </p>
+          {uploadSlot}
         </>
       );
 

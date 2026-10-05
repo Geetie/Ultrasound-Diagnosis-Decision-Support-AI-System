@@ -23,8 +23,10 @@ from __future__ import annotations
 
 import argparse
 import ast
+import contextlib
 import json
 import re
+import sys
 import urllib.request
 from collections import defaultdict
 from pathlib import Path
@@ -117,6 +119,13 @@ def fetch_backend_paths(api_base: str, openapi_file: str | None) -> set[str]:
 
 
 def main() -> int:
+    # Windows 控制台默认 GBK，打印 ✅ 会抛 UnicodeEncodeError —— 崩在最后一行，
+    # 于是"0 断链"这个**实质结论**永远看不到，只剩一个 traceback。
+    # 交付门禁要在本机跑，所以先把 stdout 切到 UTF-8（errors=replace 兜底）。
+    # 老Python / stdout 已重定向时没有 reconfigure，忽略即可
+    with contextlib.suppress(AttributeError, ValueError):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
     ap = argparse.ArgumentParser(description="前后端 API 契约对账")
     ap.add_argument("--api-base", default=DEFAULT_API_BASE,
                     help="后端地址（默认本机 18000，需在服务器上跑）")

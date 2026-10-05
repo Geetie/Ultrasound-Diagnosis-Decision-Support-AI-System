@@ -16,6 +16,7 @@ import WorkspaceReportPanel from '@/components/workspace/WorkspaceReportPanel';
 import WorkspaceConclusionMask from '@/components/workspace/WorkspaceConclusionMask';
 import WorkspaceOrganTagRow from '@/components/workspace/WorkspaceOrganTagRow';
 import type { ConclusionView } from '@/services/diagnosisAdapter';
+import type { ReactNode } from 'react';
 
 /**
  * 检查工作区 —— 路由 `/`
@@ -53,6 +54,8 @@ export default function WorkspacePage({
   onSignNext,
   onRevealConclusion,
   dicomImageId,
+  uploadSlot,
+  navItems,
 }: {
   state?: WorkspaceState;
   /**
@@ -69,6 +72,17 @@ export default function WorkspacePage({
   onRevealConclusion?: () => void;
   /** 真实 DICOM 的 URL。给了就替换影像区的渐变占位（2:4 impl_note）。 */
   dicomImageId?: string;
+  /** 影像装载入口插槽（仅 02 扫查态渲染，见 WorkspaceConclusionBody）。 */
+  uploadSlot?: ReactNode;
+  /**
+   * 常驻条右侧的导航出口。
+   *
+   * 工作区是全站唯一不套 AppLayout 的页面（通栏 900 骨架放不下侧栏），
+   * 2026-10-05 真浏览器走查实测 `btn=[]` —— 医生登录后就困在这里，一个页面都去不了。
+   * 放在常驻条内而不是加侧栏：条高 40 不变，900 骨架不受影响。
+   * 不传就不渲染（默认沉默）。
+   */
+  navItems?: { key: string; label: string; onClick: () => void }[];
 }) {
   const overlay = overlayOf(state);
 
@@ -76,6 +90,20 @@ export default function WorkspacePage({
     <div className="ws-root" data-screen={SCREEN_OF[state]}>
       <header className="ws-bar" data-region="bar">
         <span className="ws-bar__identity">张** · 女 · 52 岁 · 门诊</span>
+        {navItems && navItems.length > 0 && (
+          <nav className="ws-bar__nav" aria-label="页面导航">
+            {navItems.map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                className="ws-bar__nav-item"
+                onClick={item.onClick}
+              >
+                {item.label}
+              </button>
+            ))}
+          </nav>
+        )}
       </header>
 
       {/* 影像区在 11 个状态间是同一份拷贝（04 的 2:15、10 的 2:299 等都标注
@@ -90,7 +118,12 @@ export default function WorkspacePage({
         centered={isCenteredState(state)}
         compact={isCompactState(state)}
       >
-        <WorkspaceConclusionBody state={state} view={view} onSignNext={onSignNext} />
+        <WorkspaceConclusionBody
+          state={state}
+          view={view}
+          onSignNext={onSignNext}
+          uploadSlot={uploadSlot}
+        />
       </WorkspaceConclusion>
 
       {/* 仅存在待确认项时渲染；其余状态这个组件根本不出现在 DOM 里 */}

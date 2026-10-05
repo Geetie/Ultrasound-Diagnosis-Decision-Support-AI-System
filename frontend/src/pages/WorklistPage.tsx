@@ -26,6 +26,10 @@ import type { SessionListItem } from '@/types/api';
  * 「暂无数据」这种设计稿里没有的文案。
  *
  * 注意：本页不套旧 AppLayout，画布上它自带侧栏 200 且没有顶栏/状态栏。
+ *
+ * 【行内动作带 session_id】2026-10-05 补：原先「继续 / 查看」都只跳 `/`，
+ * 工作区拿不到是哪个检查会话，于是既装不了影像也发不了判读（判读要 target_organ，
+ * 部位在会话上）。所以两处跳转都带上 `?session_id=`。
  */
 
 /** 部位代码 → 中文。未知值原样显示，不兜底成「未知部位」—— 那会掩盖数据问题。 */
@@ -160,7 +164,7 @@ export default function WorklistPage({ theme = 'dark' }: { theme?: ThemeName }) 
                 <button
                   type="button"
                   className="ws-primary-button"
-                  onClick={() => navigate('/')}
+                  onClick={() => navigate(`/?session_id=${encodeURIComponent(item.session_id)}`)}
                 >
                   继续
                 </button>
@@ -194,7 +198,7 @@ export default function WorklistPage({ theme = 'dark' }: { theme?: ThemeName }) 
                   <button
                     type="button"
                     className="page-row__action"
-                    onClick={() => navigate('/')}
+                    onClick={() => navigate(`/?session_id=${encodeURIComponent(item.session_id)}`)}
                   >
                     查看
                   </button>
