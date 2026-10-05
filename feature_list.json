@@ -372,6 +372,15 @@
       "evidence": "静态层 17 passed；运行时层真机 20/20 PASS（含 --upload 真传 DICOM 后自动进入『分析中』）；两次假红（剥注释、SPA pushState 的 waitForURL）均已定位并修；16 号附录 A.28"
     },
     {
+      "id": "ui-no-wado-retrieve-endpoint",
+      "name": "P2 影像回取：后端无 GET 端点，刷新后影像区回占位",
+      "description": "imagingService.ts 顶部自 2026-10-05 起标注的缺口：app/api/v1/imaging.py 只有 upload/stream 两个 POST，没有任何 GET。后果：①浏览器显示影像只能用上传瞬间的浏览器本地副本（wadouri fileManager），刷新后回到占位底色；②「显示的字节」与「管线用的字节」（服务端那份，已 PHI 剥离）不是同一份",
+      "status": "done",
+      "dependencies": [],
+      "resolution": "后端补 GET /api/v1/imaging/dicom?session_id=…（索引列表，不含字节与内部布局）与 GET /api/v1/imaging/dicom/{image_id}（application/dicom 字节），均要求 Bearer、retrieve 写审计（dicom_retrieve）、限流 60/min；索引在字节没了时如实 404。前端**刻意不走 Cornerstone 远程加载**（wadouri:http://… 的加载器 XHR 拿不到 axios 的 Bearer 注入），改为 axios 取字节 → wadouri.fileManager.add(blob) → 本地显示路径；显示源优先级：刚上传的服务端副本 > 浏览器本地副本 > 会话最近一份（刷新/继续检查时恢复）。新增 scripts/sync_frontend_dist.py（镜像 dist→static/ui）",
+      "evidence": "后端集成 4 例（round trip/字节缺失 404/未知 id 404/列表不泄露 storage_layout）；前端 imagingService 3 例 + useDicomUpload 2 例；真机走查 27/27 PASS，服务端审计日志记录 action=dicom_retrieve actor=smoke-doctor（img_20261005_f2d3df7b 等 2 次）；16 号附录 A.31"
+    },
+    {
       "id": "ui-external-font-blocked-by-csp",
       "name": "P2 外部字体被 CSP 拦掉，临床界面一直在用回退字体",
       "description": "frontend/src/styles/global.css 顶部 @import 了 fonts.googleapis.com，而 app/security/security_headers.py 的 CSP 是 style-src 'self' 'unsafe-inline' / font-src 'self' data:，请求被拦。真机走查实测每次加载产生 12 条同款 CSP 违规。后果有二：①设计稿指定的 Inter / Noto Sans SC / JetBrains Mono / Orbitron 全部没生效，界面用回退字体渲染；②每次打开页面都尝试外联 Google——对医院内网部署既不生效也不该外联",
