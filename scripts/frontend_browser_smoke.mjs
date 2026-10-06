@@ -353,6 +353,33 @@ async function main() {
     await page.waitForLoadState('networkidle');
     record('登录成功并落在前端工作区', page.url().startsWith(`${BASE_URL}/ui`), `url=${page.url()}`);
 
+    // ---- 1b. 确保有一条可走的检查会话。
+    // 工作列表只显示**未过期**的会话，而 UI 的「新建会话」页因患者/设备选择器
+    // 未接线暂不能真建（SessionCreatePage 注释，A.32 时点）。所以走查用页面内
+    // fetch 以登录态建一条（patient 用演练患者，consent 由门禁演练准备且无 TTL）。
+    // 这不是绕过 UI：建会话本来就该有"系统代填默认患者"的路径，选择器接线后删除本段。
+    const sessionReady = await page.evaluate(async () => {
+      try {
+        const token = localStorage.getItem('access_token');
+        const resp = await fetch('/api/v1/sessions', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            patient_id: 'DRILL-PATIENT-001',
+            device_id: 'ui-walk-device-01',
+            target_organs: ['thyroid'],
+          }),
+        });
+        return resp.ok || resp.status === 409;
+      } catch {
+        return false;
+      }
+    });
+    record('检查会话可用（API 侧确保一条，详见脚本注释）', sessionReady);
+
     // ---- 3. 关键路由逐条可达且内容互不相同（basename 守卫）
     const lens = {};
     for (const [label, p] of ROUTES) {
@@ -520,44 +547,90 @@ async function main() {
 
           const signBtn = await waitForAny(page, [/签发报告|已签发/], 20_000, '签发按钮');
           if (signBtn) {
-            await clickByText(page, '签发报告');
+            // A.32：阻断段（超声所见/诊断意见）缺失 → 签发禁用 + 补录面板。
+            // 这里走完整的"缺段落 → 补录 → 签发"闭环 ——
+            // 这正是 A.29/A.30 之前断掉的那段：以前医生只能签一份缺内容的报告。
+            const panel = await waitForAny(page, [/补录缺失段落/], 10_000, '补录面板');
+            record('缺阻断段时出现补录面板（签发被禁是设计行为）', panel);
 
-            // A.30：完整性未过时，签发必须先过**知情确认**（列出缺失项）。
-            // 这里验证的是「决策点真的存在」，而不是直接签发 ——
-            // 上一版脚本没有这一步，结果签发静默完成，医生全程没见过缺失清单。
-            const confirmShown = await waitForAny(
-              page,
-              [/报告存在缺失段落，确认仍要签发/],
-              8_000,
-              '签发知情确认',
-            );
-            // 缺失清单要在弹窗里**列出来**，而不是一句"有缺失"
-            const listedMissing = /缺失：/.test(await page.innerText('body'));
-            record(
-              '签发前弹出知情确认并列明缺失项',
-              confirmShown && listedMissing,
-              `确认框=${confirmShown} 列明缺失=${listedMissing}`,
-            );
-            await page.screenshot({ path: `${outdirOf(page)}/flow-sign-confirm.png`, fullPage: true });
-
-            if (confirmShown) {
-              await clickByText(page, '我已知晓缺失，仍要签发');
+            if (panel) {
+              const findingsInput = await page.$("[data-testid='supplement-input-findings']");
+              if (findingsInput) {
+                await findingsInput.fill('甲状腺右叶中极低回声结节，边界不清，内见微钙化（走查补录）');
+              }
+              const measureInput = await page.$(
+                "[data-testid='supplement-input-measurement_summary']",
+              );
+              if (measureInput) {
+                await measureInput.fill('结节长径 12.4mm，短径 8.1mm（走查补录）');
+              }
+              const saveBtn = await page.$("[data-testid='supplement-save']");
+              if (saveBtn) {
+                await saveBtn.click();
+                // 补录后**阻断段清空**（findings/diagnosis 不再缺失）→ 签发解禁。
+                // ⚠️ 不能等「必需段落齐备」：非阻断段（处置建议）可以合法地继续缺，
+                // 走知情确认 —— 等齐备会永远超时（第一版就栽在这）。
+                const cleared = await waitForAny(
+                  page,
+                  [/缺失：处置建议/, /缺失：[^超]*$/],
+                  60_000,
+                  '阻断段清空',
+                );
+                const signEnabled = await (async () => {
+                  for (let i = 0; i < 20; i += 1) {
+                    const btn = page.locator("button:has-text('签发报告')");
+                    if ((await btn.count()) > 0 && (await btn.isEnabled())) return true;
+                    await page.waitForTimeout(500);
+                  }
+                  return false;
+                })();
+                record('补录保存后阻断段清空、签发解禁', cleared && signEnabled, `文案命中=${cleared} 按钮解禁=${signEnabled}`);
+                await page.screenshot({
+                  path: `${outdirOf(page)}/flow-supplemented.png`,
+                  fullPage: true,
+                });
+              }
             }
-            const signed = await waitForAny(
-              page,
-              [/已签发|签名完成|HSM|签发成功/],
-              120_000,
-              '签发结果',
-            );
-            // 不把"签发成功"写成 PASS 断言：被安全网关依法拒绝也是正确行为，
-            // 只把界面上的真实结果记下来（下面 dump 全文）。
-            record('走到签发这一步（结果原样记录，不预设必须成功）', signed);
-            await page.screenshot({ path: `${outdirOf(page)}/flow-signed.png`, fullPage: true });
-            console.log(
-              `# 签发后页面正文：${JSON.stringify(
-                (await page.innerText('body')).replace(/\s+/g, ' ').slice(0, 300),
-              )}`,
-            );
+
+            // 完整性齐备后签发按钮解禁；等它可点而不是立刻点
+            let signClickable = null;
+            for (let i = 0; i < 20 && signClickable === null; i += 1) {
+              const btn = page.locator("button:has-text('签发报告')");
+              if ((await btn.count()) > 0 && (await btn.isEnabled())) signClickable = btn;
+              else await page.waitForTimeout(500);
+            }
+            if (signClickable) {
+              await signClickable.click();
+
+              // 若仍有非阻断段缺失（本走查样本：处置建议），会弹知情确认 —— 点确认
+              const confirmShown = await waitForAny(
+                page,
+                [/报告存在缺失段落，确认仍要签发/],
+                8_000,
+                '非阻断段知情确认',
+              );
+              if (confirmShown) {
+                const listed = /缺失：/.test(await page.innerText('body'));
+                record('非阻断段缺失时弹出知情确认并列明缺失项', listed);
+                await clickByText(page, '我已知晓缺失，仍要签发');
+              }
+
+              // ⚠️ 正则只用「已签发」：页面样板文字里有「签发（HSM 数字签名）」，
+              // /HSM/ 会把未签发的草稿误判成已签发（第一版就栽在这）。
+              const signed = await waitForAny(page, [/已签发/], 120_000, '签发结果');
+              record('签发完成（HSM 签名、签发人落库）', signed);
+              await page.screenshot({
+                path: `${outdirOf(page)}/flow-signed.png`,
+                fullPage: true,
+              });
+              console.log(
+                `# 签发后页面正文：${JSON.stringify(
+                  (await page.innerText('body')).replace(/\s+/g, ' ').slice(0, 300),
+                )}`,
+              );
+            } else {
+              record('签发按钮未解禁（补录未生效）', false);
+            }
           } else {
             record('未出现签发按钮（草稿未达可签发态）', true, '如实记录，不判失败');
           }
