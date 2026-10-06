@@ -60,8 +60,14 @@
 改服务端副本，刷新 / 「继续检查」自动恢复最近影像（真机 27/27 PASS，审计
 `dicom_retrieve` 留痕）。已登记 `ui-no-wado-retrieve-endpoint` 转 done。
 
-**仍未做（全部已登记 feature_list，按急迫度）**：①**NMPA 验收材料**（距 10-17 交付最近）；
-②报告**补录入口**与服务端硬门禁（需口径：哪些段落缺失就禁止签、医生可编辑哪些字段）。
+**A.32（同夜）**：报告签发门禁 + 补录定稿并落地。口径（AI 拍板、依据记档于
+`report_service.SIGN_BLOCKING_SECTIONS`）：缺 **findings / diagnosis**（证据段/结论段）
+服务端拒签（400 E1030）；缺 **measurement_summary / clinical_actions** 走知情确认。
+补录 PATCH 重渲染 + 出处记录（doctor_supplemented）。真机全闭环 28/28 PASS：
+缺阻断段 → 签发被禁 → 补录 → 解禁 → 知情确认 → 已签发。
+
+**仍未做（全部已登记 feature_list，按急迫度）**：①**NMPA 验收材料**（距 10-17 交付最近，
+唯一大项）；②UI 新建会话页的患者/设备选择器接线（现走查用 API 代建会话）。
 
 录像：`C:\Users\ghf\Videos\US-DX-医生视角走查-20261005.webm`（2.71MB）。
 走查脚本用 Playwright + 复用 `~\.agent-browser\browsers\chrome-154\chrome.exe`，

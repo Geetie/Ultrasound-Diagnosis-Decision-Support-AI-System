@@ -411,12 +411,12 @@
     },
     {
       "id": "report-sign-with-missing-sections",
-      "name": "P2 报告缺段落：知情确认已上线，补录入口与硬门禁待口径",
+      "name": "P2 报告缺段落：签发门禁 + 补录（A.32 定稿口径，已落地）",
       "description": "真机实测签发成功的同时，报告页如实回报完整性缺失「超声所见、测量摘要、处置建议」。三个代码事实：①报告页**没有任何编辑能力**（只能生成草稿→签发）；②check_completeness 的 docstring 写明「医生可回到诊断页补录」，但该回路在 UI 上不存在；③sign_report 直接签 rendered，完整性只是展示字段。页面自己写着「缺失内容不应带病签发」，行为却没跟上——这是自相矛盾，不是没有政策",
-      "status": "planned",
+      "status": "done",
       "dependencies": [],
-      "resolution": "机制层已上线（2026-10-06）：完整性未过时点「签发报告」先弹出**知情确认**，逐项列明缺失段落（缺「超声所见」额外说明它是主体段落），医生确认后才能签——把决策点从「藏在页面别处的一行字」变成签发那一刻绕不过去的选择。**刻意不做硬禁用**：医生是最终责任方，禁签等于把医生推向纸质流程；「哪些段落缺失就禁止签发」是临床/合规口径，前端不越权。剩余两件事需项目组拍板：①**补录入口**（让医生能填缺失段落再重渲染草稿，Repository 需加 update 方法；measurement_summary 是结构化对象，医生可编辑的形态要产品定）；②**服务端硬门禁 + 审计留痕**（ReportSignRequest 增加 acknowledged_missing_sections，进审计链）",
-      "evidence": "真机复测：知情确认弹窗出现并列明缺失项，确认后签发成功（27/27 PASS）；16 号附录 A.30"
+      "resolution": "A.32 定稿口径（用户授权 AI 拍板，依据与反对意见记档于 report_service.SIGN_BLOCKING_SECTIONS 注释）并全部落地：①**硬门禁**——缺 findings（超声所见，证据段）/ diagnosis（诊断意见，结论段）时服务端拒绝签发（400 E1030，消息列中文段落名）；②**知情确认**——其余段落（测量摘要/处置建议）缺失走前端确认弹窗，服务端不禁（部分检查确实无可测量项/无额外处置）；③**补录**——PATCH /api/v1/report/{id}，只允许草稿、白名单键、重渲染、重算 digest，出处记 content[doctor_supplemented]。推翻 A.30 的『只知情确认』：当时顾虑是『没有补录入口，禁签=死路』，本轮补录入口同页上线后该顾虑不再成立",
+      "evidence": "后端 11 例（test_report_sign_gate.py）+ 前端 10 例；真机全闭环 28/28 PASS：缺阻断段 → 签发被禁 → 补录 → 阻断段清空签发解禁 → 知情确认（处置建议缺失）→ 已签发（HSM、签发人 smoke-doctor）；16 号附录 A.32"
     },
     {
       "id": "ui-build-artifact-stale-files",
