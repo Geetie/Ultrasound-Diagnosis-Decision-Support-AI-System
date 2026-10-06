@@ -16,6 +16,11 @@ export interface ReportCompleteness {
   required: string[];
   /** 其中缺失的字段 */
   missing: string[];
+  /**
+   * 缺失且**不允许知情确认豁免**的段落（后端 SIGN_BLOCKING_SECTIONS）。
+   * 缺这些段落时签发会被服务端 E1030 拒绝，必须先补录。
+   */
+  blocking?: string[];
   /** 是否全部齐备 */
   passed: boolean;
 }

@@ -71,6 +71,56 @@ REQUIRED_FIELDS_BY_ORGAN: dict[str, tuple] = {
     "cardiac": ("findings", "diagnosis", "clinical_actions"),
 }
 
+# ----------------------------------------------------------------------
+# 签发门禁（2026-10-06，A.32）
+#
+# 报告各段落的临床权重是**不对称**的，签发门禁必须体现这种不对称：
+#
+#   findings（超声所见）—— 证据段。所见是超声报告的主体：形态、回声、病灶的
+#       位置/数目/大小/边界。没有它，诊断意见是**无证据的断言**——而本系统
+#       融合层 / Self-RAG / 安全网关防的恰恰就是"无证据的断言"。缺它不允许签。
+#   diagnosis（诊断意见）—— 结论段。报告存在的意义就是给出它；缺了它，
+#       报告对临床决策零贡献，签发等于签署一份空结论文书。
+#
+#   measurement_summary（测量摘要）—— 量化证据。TI-RADS 分级依赖长径，
+#       病灶阳性时必须有；但正常扫查可以是"器官大小正常范围"一类的定性描述，
+#       且部分检查确实无可测量项 → 归入知情确认档，不硬禁。
+#   clinical_actions（处置建议）—— 建议段。部分检查确实无额外处置
+#       （随访即可），医生知情确认后签发是合理的 → 知情确认档。
+#
+# 这份清单是**临床口径**：改它等于改签发政策，须经项目组/合规评审，
+# 并同步更新 tests/unit/api/test_report_sign_gate.py 与 18 号手册。
+# ----------------------------------------------------------------------
+SIGN_BLOCKING_SECTIONS: tuple = ("findings", "diagnosis")
+
+# 段落中文名（签发门禁的错误消息用）。前端 FIELD_LABELS 与此同源——
+# 两边各自维护，测试互相钉住（test_report_sign_gate 断言中文名出现在错误里）。
+SECTION_LABELS: dict[str, str] = {
+    "findings": "超声所见",
+    "diagnosis": "诊断意见",
+    "measurement_summary": "测量摘要",
+    "clinical_actions": "处置建议",
+    "recommendation": "建议",
+    "request_id": "诊断请求 ID",
+    "organ": "检查器官",
+    "generated_at": "生成时间",
+    "template_version": "模板版本",
+}
+
+
+def section_label(field: str) -> str:
+    return SECTION_LABELS.get(field, field)
+
+# 允许医生补录的段落（全部是 build_report_content 产出的**已渲染字符串**，
+# 医生输入直接替换该段正文；见 A.31 的调研结论）。
+SUPPLEMENTABLE_SECTIONS: tuple = (
+    "findings",
+    "diagnosis",
+    "measurement_summary",
+    "clinical_actions",
+    "recommendation",
+)
+
 # 视为"未填写"的占位前缀（build_report_content 用它们标注缺内容的情况）
 _PLACEHOLDER_PREFIXES: tuple = ("（未提供", "（模型未产出", "（本次")
 
@@ -207,8 +257,20 @@ def check_completeness(content: Mapping[str, Any], organ: str | None = None) -> 
         "template": select_template_name(organ=organ_key),
         "required": required,
         "missing": missing,
+        "blocking": [f for f in missing if f in SIGN_BLOCKING_SECTIONS],
         "passed": not missing,
     }
+
+
+def missing_sign_blockers(completeness: Mapping[str, Any]) -> list[str]:
+    """签发硬门禁：缺失且**不允许知情确认豁免**的段落。
+
+    与 ``completeness["blocking"]`` 同源，这里单独给一个函数是因为
+    签发端点要的是"能不能签"，而不是完整校验报告 —— 语义分开，
+    测试也分开钉（改 ``SIGN_BLOCKING_SECTIONS`` 时两处一起炸）。
+    """
+    missing = completeness.get("missing") or []
+    return [f for f in missing if f in SIGN_BLOCKING_SECTIONS]
 
 
 def render_template(template: str, mapping: Mapping[str, Any]) -> str:
@@ -534,6 +596,69 @@ def verify_report_signature(report: DiagnosisReport) -> bool:
 # ----------------------------------------------------------------------
 # 编排：草稿 / 签发 / 推送
 # ----------------------------------------------------------------------
+
+
+async def update_report_sections(
+    *,
+    report: DiagnosisReport,
+    sections: Mapping[str, str],
+    report_repo: ReportRepository,
+) -> DiagnosisReport:
+    """医生补录段落（A.32）——合并进 content、重渲染、重算摘要。
+
+    设计要点：
+      * **只允许草稿**。已签名报告的正文由 HSM 签名锁定，改 content 等于
+        让签名失效（verify 会拦），必须在状态层就拒绝，而不是让医生撞
+        一次验签失败才明白。
+      * 只接受 ``SUPPLEMENTABLE_SECTIONS`` 里的键、且值为**非空字符串**：
+        补录是"医生写的正文"，不是清空或注入任意结构的通道。
+      * 补录的段落记录进 ``content["doctor_supplemented"]``——段落**出处**
+        是临床文书的一部分（AI 产出 vs 医生补录），NMPA 体系审核会问。
+      * 重渲染后重算 ``content_digest``：摘要必须始终与正文一致，否则
+        签名校验会误判"正文被改动"。
+    """
+    if report.status != "draft":
+        raise ValueError(f"only draft reports can be supplemented, got {report.status}")
+
+    content = dict(report.content) if isinstance(report.content, dict) else {}
+    applied: list[str] = []
+    for key in SUPPLEMENTABLE_SECTIONS:
+        value = sections.get(key)
+        if not isinstance(value, str):
+            continue
+        text = value.strip()
+        if not text:
+            continue
+        content[key] = text
+        applied.append(key)
+
+    if not applied:
+        raise ValueError("no supplementable sections provided")
+
+    supplemented = list(content.get("doctor_supplemented") or [])
+    for key in applied:
+        if key not in supplemented:
+            supplemented.append(key)
+    content["doctor_supplemented"] = supplemented
+
+    rendered = render_report(content)
+    payload = report_payload(rendered)
+    updated = await report_repo.update_sections(
+        report.report_id,
+        content=content,
+        rendered=rendered,
+        content_digest=compute_digest(payload),
+    )
+    if updated is None:
+        raise ValueError(f"report not found: {report.report_id}")
+
+    logger.info(
+        "report_sections_supplemented",
+        report_id=report.report_id,
+        sections=applied,
+        actor_actor="doctor",
+    )
+    return updated
 
 
 async def generate_report_draft(

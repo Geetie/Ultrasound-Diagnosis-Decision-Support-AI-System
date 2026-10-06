@@ -19,6 +19,18 @@ export async function getReportByRequest(requestId: string): Promise<ReportRespo
   return response.data;
 }
 
+/**
+ * 医生补录段落（A.32）：合并进草稿、重渲染、重算完整性。
+ * 只允许草稿；已签名报告会被服务端拒绝（正文由 HSM 锁定）。
+ */
+export async function updateReportSections(
+  reportId: string,
+  sections: Record<string, string>
+): Promise<ReportResponse> {
+  const response = await apiClient.patch<ReportResponse>(`/report/${reportId}`, { sections });
+  return response.data;
+}
+
 /** 按报告 ID 读取；`verify=true` 时附带数字签名校验结果。 */
 export async function getReport(reportId: string, verify = false): Promise<ReportResponse> {
   const response = await apiClient.get<ReportResponse>(

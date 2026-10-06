@@ -5,11 +5,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const getMock = vi.fn();
 const postMock = vi.fn();
+const patchMock = vi.fn();
 
 vi.mock('@/services/api', () => ({
   default: {
     get: (...args: unknown[]) => getMock(...args),
     post: (...args: unknown[]) => postMock(...args),
+    patch: (...args: unknown[]) => patchMock(...args),
   },
 }));
 
@@ -152,7 +154,7 @@ describe('ReportPage（M8 报告查看与签发）', () => {
     expect(screen.queryByTestId('sign-confirm-ok')).toBeNull();
   });
 
-  it('缺失项包含「超声所见」时，弹窗要说明它是主体段落（不是普通缺一段）', async () => {
+  it('缺「超声所见」（阻断段）→ 签发禁用并给补录面板，而不是弹确认', async () => {
     const user = userEvent.setup();
     getMock.mockResolvedValueOnce({
       data: {
@@ -162,6 +164,7 @@ describe('ReportPage（M8 报告查看与签发）', () => {
           template: 'thyroid_standard',
           required: ['findings', 'conclusion'],
           missing: ['findings'],
+          blocking: ['findings'],
           passed: false,
         },
       },
@@ -169,12 +172,58 @@ describe('ReportPage（M8 报告查看与签发）', () => {
     renderPage();
     await screen.findByTestId('report-status');
 
-    await user.click(screen.getByRole('button', { name: /签发报告/ }));
+    // 阻断段缺失：签发按钮禁用（服务端 E1030 也会拒），不能靠医生点一次才明白
+    expect(screen.getByRole('button', { name: /签发报告/ })).toBeDisabled();
+    // 出路就在同页：补录面板出现，并标注这一段是必需
+    expect(screen.getByTestId('supplement-panel')).toBeInTheDocument();
+    expect(screen.getByText(/（必需，补录后才能签发）/)).toBeInTheDocument();
+    expect(screen.getByTestId('supplement-input-findings')).toBeInTheDocument();
+  });
 
-    await screen.findByTestId('sign-confirm-ok');
-    expect(screen.getByText(/「超声所见」是超声报告的主体段落/)).toBeInTheDocument();
-    await user.click(screen.getByTestId('sign-confirm-cancel'));
-    expect(postMock).not.toHaveBeenCalled();
+  it('补录保存 → 调 PATCH → 完整性恢复 → 签发解锁', async () => {
+    const user = userEvent.setup();
+    // 第一次 GET：缺 findings + measurement_summary
+    getMock.mockResolvedValueOnce({
+      data: {
+        ...draftReport,
+        completeness: {
+          organ: 'thyroid',
+          template: 'thyroid_standard',
+          required: ['findings', 'measurement_summary'],
+          missing: ['findings', 'measurement_summary'],
+          blocking: ['findings'],
+          passed: false,
+        },
+      },
+    });
+    renderPage();
+    await screen.findByTestId('report-status');
+
+    await user.type(screen.getByTestId('supplement-input-findings'), '甲状腺右叶低回声结节');
+    await user.type(screen.getByTestId('supplement-input-measurement_summary'), '长径 12mm');
+    patchMock.mockResolvedValueOnce({
+      data: {
+        ...draftReport,
+        rendered: '超声所见：甲状腺右叶低回声结节',
+        completeness: {
+          organ: 'thyroid',
+          template: 'thyroid_standard',
+          required: ['findings', 'measurement_summary'],
+          missing: [],
+          blocking: [],
+          passed: true,
+        },
+      },
+    });
+    await user.click(screen.getByTestId('supplement-save'));
+
+    await waitFor(() =>
+      expect(patchMock).toHaveBeenCalledWith('/report/rep_1', {
+        sections: { findings: '甲状腺右叶低回声结节', measurement_summary: '长径 12mm' },
+      })
+    );
+    await waitFor(() => expect(screen.queryByTestId('supplement-panel')).toBeNull());
+    expect(screen.getByRole('button', { name: /签发报告/ })).toBeEnabled();
   });
 
   it('签名校验未通过时明确报出"正文可能已被改动"', async () => {

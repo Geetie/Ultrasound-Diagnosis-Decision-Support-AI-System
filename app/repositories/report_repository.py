@@ -89,6 +89,29 @@ class ReportRepository:
         )
         return list(result.scalars().all())
 
+    async def update_sections(
+        self,
+        report_id: str,
+        *,
+        content: dict[str, Any],
+        rendered: str,
+        content_digest: str,
+    ) -> DiagnosisReport | None:
+        """医生补录后更新草稿正文（A.32）。
+
+        只在仓储层做字段赋值与落库，**不校验**状态/键白名单——那些是
+        服务层的职责（谁能改、改哪些键）；仓储保持"给什么写什么"的窄语义。
+        """
+        report = await self.get_report(report_id)
+        if report is None:
+            return None
+        report.content = content
+        report.rendered = rendered
+        report.content_digest = content_digest
+        await self.db.flush()
+        logger.info("report_sections_updated", report_id=report_id)
+        return report
+
     async def mark_signed(
         self,
         report_id: str,

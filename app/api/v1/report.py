@@ -8,6 +8,8 @@
 """
 from __future__ import annotations
 
+import json
+
 import structlog
 from fastapi import APIRouter, Depends
 
@@ -26,6 +28,7 @@ from app.models.schemas import (
     ReportPushRequest,
     ReportResponse,
     ReportSignRequest,
+    ReportUpdateRequest,
 )
 from app.security.auth import get_current_active_user
 from app.services import report_service
@@ -192,6 +195,43 @@ async def get_report(
     return _to_response(report, verify=verify)
 
 
+@router.patch("/{report_id}", response_model=ReportResponse)
+async def update_report_sections(
+    report_id: str,
+    payload: ReportUpdateRequest,
+    report_repo=Depends(get_report_repo),
+    audit_service: AuditService = Depends(get_audit_service),
+    current_user: dict | None = Depends(get_current_active_user),
+):
+    """医生补录段落（A.32）：合并进 content、重渲染、重算完整性。
+
+    只允许草稿；已签名报告正文由 HSM 锁定，这里在状态层就拒绝。
+    """
+    report = await report_repo.get_report(report_id)
+    if not report:
+        raise NotFoundException(error_message=f"Report not found: {report_id}")
+    try:
+        report = await report_service.update_report_sections(
+            report=report, sections=payload.sections, report_repo=report_repo
+        )
+    except ValueError as e:
+        raise BadRequestException(error_message=str(e)) from e
+
+    actor_id = get_actor_id(current_user)
+    await audit_service.log_action(
+        action="report_supplement",
+        actor=actor_id,
+        session_id=report.session_id,
+        target_type="report",
+        target_id=report.report_id,
+        detail={
+            "sections": sorted(payload.sections.keys()),
+            "content_digest": report.content_digest,
+        },
+    )
+    return _to_response(report)
+
+
 @router.post("/{report_id}/sign", response_model=ReportResponse)
 async def sign_report(
     report_id: str,
@@ -200,13 +240,30 @@ async def sign_report(
     audit_service: AuditService = Depends(get_audit_service),
     current_user: dict | None = Depends(get_current_active_user),
 ):
-    """对报告正文做 HSM 数字签名。"""
+    """对报告正文做 HSM 数字签名。
+
+    A.32 签发门禁：缺 ``SIGN_BLOCKING_SECTIONS``（超声所见 / 诊断意见）时
+    **拒绝签发** —— 这两段是报告的证据与结论，缺了就是无证据断言/空结论。
+    补录入口在同页（PATCH 本路由组），所以这不是死路。
+    其余段落缺失仍走前端知情确认（不豁免服务端校验，只是不禁）。
+    """
     report = await report_repo.get_report(report_id)
     if not report:
         raise NotFoundException(error_message=f"Report not found: {report_id}")
     if report.signature:
         # 已签名的报告不重复签名（重复签名会让既有校验失效）
         raise BadRequestException(error_message=f"Report already signed: {report_id}")
+
+    content = report.content if isinstance(report.content, dict) else {}
+    completeness = report_service.check_completeness(content, organ=report.organ)
+    blockers = report_service.missing_sign_blockers(completeness)
+    if blockers:
+        labels = "、".join(report_service.section_label(f) for f in blockers)
+        raise BadRequestException(
+            error_code="E1030",
+            error_message=f"报告缺少必需段落，不能签发：{labels}。请在报告页补录后再签发。",
+            detail=json.dumps({"missing_blockers": blockers}, ensure_ascii=False),
+        )
 
     actor_id = payload.operator_id or get_actor_id(current_user)
     report = await report_service.sign_report(

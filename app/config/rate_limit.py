@@ -73,6 +73,9 @@ RATE_LIMITS = {
     # （渲染 + 落库）、HSM 签名（CPU 签名 + 审计）、PACS/HIS 推送（外部 IO）。
     # 带路径参数的用 `/*` 前缀匹配（见 resolve_rate_limit_config）。
     "/api/v1/report": {"capacity": 20, "refill_rate": 20 / 60},
+    # 报告补录（PATCH，A.32）：写路径 + 重渲染，与草稿生成同量级；
+    # 通配兜底 sign/push（它们有更具体的键优先）。
+    "/api/v1/report/*": {"capacity": 20, "refill_rate": 20 / 60},
     "/api/v1/report/*/sign": {"capacity": 10, "refill_rate": 10 / 60},
     "/api/v1/report/*/push": {"capacity": 10, "refill_rate": 10 / 60},
     "/fhir": {"capacity": 60, "refill_rate": 60 / 60},

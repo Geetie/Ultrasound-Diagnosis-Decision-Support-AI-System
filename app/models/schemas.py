@@ -410,6 +410,12 @@ class DiagnosisResult(BaseModel):
 
 
 # ============== DICOM 相关模型 ==============
+class ReportUpdateRequest(BaseModel):
+    """医生补录段落（A.32）。键白名单在服务层（SUPPLEMENTABLE_SECTIONS）。"""
+
+    sections: Dict[str, str]
+
+
 class DICOMUploadResponse(BaseModel):
     image_id: str
     session_id: str

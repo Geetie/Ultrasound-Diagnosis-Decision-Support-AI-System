@@ -15,10 +15,19 @@ import {
   getReportByRequest,
   pushReport,
   signReport,
+  updateReportSections,
   verifyReportSignature,
 } from '@/services/reportService';
 import type { ReportResponse } from '@/types/report';
 import { tokens } from '@/styles/tokens';
+
+/**
+ * 缺失段落的临床权重（A.32，与后端 SIGN_BLOCKING_SECTIONS 同源）：
+ *   findings / diagnosis 是报告的证据与结论 —— 缺了签发会被服务端 E1030 拒绝，
+ *   必须补录；其余段落走知情确认（医生确认"本次检查确实无可测量项/无额外处置"）。
+ * 硬门禁与服务端各维护一份是刻意的：前端负责"提前告诉你"，服务端负责"真的拦"。
+ */
+const BLOCKING_SECTIONS: ReadonlySet<string> = new Set(['findings', 'diagnosis']);
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -120,7 +129,41 @@ export default function ReportPage() {
   // 原本在组件尾部，被 useCallback 的依赖数组提前引用会踩 TDZ。
   const completeness = report?.completeness ?? null;
   const [signConfirmOpen, setSignConfirmOpen] = useState(false);
+  const [draftSections, setDraftSections] = useState<Record<string, string>>({});
+  const [savingSections, setSavingSections] = useState(false);
   const missingSections = completeness && !completeness.passed ? completeness.missing : [];
+  // 阻断段（超声所见 / 诊断意见）：缺了服务端会以 E1030 拒签，前端提前说明
+  const blockingSections = missingSections.filter((f) => BLOCKING_SECTIONS.has(f));
+
+  /**
+   * 补录：把医生写的段落合并进草稿并重渲染。
+   *
+   * 为什么必须有：报告页此前**没有任何编辑能力**（A.30 查实），缺段落的医生
+   * 只能"签一份缺内容的报告"或"不用系统"。补录与门禁是一对 ——
+   * 只上门禁会把医生堵死；只上补录，缺段落的报告照样能签出去。
+   */
+  const handleSaveSections = useCallback(async () => {
+    if (!report) return;
+    const filled = Object.fromEntries(
+      Object.entries(draftSections).filter(([, v]) => v.trim() !== '')
+    );
+    if (Object.keys(filled).length === 0) {
+      message.warning('请先填写要补录的段落');
+      return;
+    }
+    setSavingSections(true);
+    try {
+      const updated = await updateReportSections(report.report_id, filled);
+      setReport(updated);
+      setDraftSections({});
+      setVerifyNote(null);
+      message.success('补录已保存，报告正文已按模板重新渲染');
+    } catch (err: unknown) {
+      message.error(getApiErrorMessage(err, '补录保存失败'));
+    } finally {
+      setSavingSections(false);
+    }
+  }, [report, draftSections]);
 
   /** 真正执行签发（无任何前置确认）。完整性已过时由 handleSign 直接走这里。 */
   const doSign = useCallback(async () => {
@@ -140,19 +183,16 @@ export default function ReportPage() {
   }, [report]);
 
   /**
-   * 签发。完整性未过时先弹知情确认 —— 这是本页唯一一处「拦截」，且**不改变结果**：
-   * 医生确认后仍然可以签。
+   * 签发（A.32 定稿口径）：
+   *   · 缺**阻断段**（超声所见 / 诊断意见）→ 按钮禁用（见下方渲染），到不了这里；
+   *   · 缺其余段落（测量摘要 / 处置建议…）→ 知情确认，确认后可签；
+   *   · 全部齐备 → 直接签。
    *
-   * 为什么必须弹：本页完整性面板自己写着「缺失内容不应带病签发」，但那行字在页面
-   * 别处，医生点签发时根本看不到（A.29 真机实测：签发成功的同时完整性显示缺失三段，
-   * 全程无任何提示）。签名把「医生对内容负责」固化进审计链，所以这个决策点必须是
-   * **绕不过去的**，而不是一行可以略过的文字。
-   *
-   * 为什么不做硬禁用：医生是最终责任方。AI 信息不足不等于医生没做完检查 ——
-   * 禁掉签发等于把医生推向纸质流程。而「哪些段落缺失就禁止签发」是临床/合规口径
-   * （需要项目组定），不是前端能替他们决定的。所以这里只保证：**决定是知情的、
-   * 且对着缺失清单做出的**。服务端留痕与硬门禁见 feature_list 的
-   * report-sign-with-missing-sections。
+   * 为什么阻断段要硬禁用（推翻 A.30 的"知情确认"方案）：超声所见是报告的
+   * **证据段**，诊断意见是**结论段** —— 缺了它们，签出去的是"无证据的断言"，
+   * 这正是融合层 / Self-RAG 防的东西，签发环节不该成为漏点。而补录入口就在
+   * 同页（本页新增），禁用不是死路，是一步之遥。其余段落（测量/处置）在
+   * 部分检查中确实可以为空，知情确认即可。
    *
    * 为什么用受控 <Modal> 而不是 Modal.confirm 静态方法：
    *   ①静态方法渲染在 ConfigProvider **之外**，拿不到暗室主题与 token；
@@ -160,12 +200,19 @@ export default function ReportPage() {
    */
   const handleSign = useCallback(() => {
     if (!report) return;
+    if (blockingSections.length > 0) {
+      // 理论到不了（按钮已禁用）；防御一次，把原因说清楚
+      message.error(
+        `缺少必需段落：${blockingSections.map(labelOf).join('、')}，请先在下方补录`
+      );
+      return;
+    }
     if (missingSections.length === 0) {
       void doSign();
       return;
     }
     setSignConfirmOpen(true);
-  }, [report, missingSections, doSign]);
+  }, [report, missingSections, blockingSections, doSign]);
 
   const handlePush = useCallback(async () => {
     if (!report) return;
@@ -355,12 +402,71 @@ export default function ReportPage() {
               </pre>
             </div>
 
+            {/* A.32 补录面板：仅草稿且有缺失段落时渲染（默认沉默） */}
+            {!signed && completeness && !completeness.passed && (
+              <div
+                data-testid="supplement-panel"
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: tokens.spacing.sm,
+                  padding: tokens.spacing.sm,
+                  border: `1px solid ${tokens.color.border.default}`,
+                  borderRadius: tokens.radius.sm,
+                  background: tokens.color.bg.primary,
+                }}
+              >
+                <Text strong style={{ color: tokens.color.text.primary, fontSize: 13 }}>
+                  补录缺失段落
+                </Text>
+                {missingSections.map((field) => {
+                  const blocking = BLOCKING_SECTIONS.has(field);
+                  return (
+                    <div
+                      key={field}
+                      style={{ display: 'flex', flexDirection: 'column', gap: 4 }}
+                    >
+                      <Text style={{ color: tokens.color.text.secondary, fontSize: 12 }}>
+                        {labelOf(field)}
+                        {blocking && (
+                          <Text style={{ color: tokens.color.accent.danger, fontSize: 12 }}>
+                            {' '}（必需，补录后才能签发）
+                          </Text>
+                        )}
+                      </Text>
+                      <Input.TextArea
+                        value={draftSections[field] ?? ''}
+                        onChange={(e) =>
+                          setDraftSections((prev) => ({ ...prev, [field]: e.target.value }))
+                        }
+                        placeholder={`请输入${labelOf(field)}`}
+                        autoSize={{ minRows: 2, maxRows: 6 }}
+                        aria-label={`补录${labelOf(field)}`}
+                        data-testid={`supplement-input-${field}`}
+                      />
+                    </div>
+                  );
+                })}
+                <div>
+                  <Button
+                    type="primary"
+                    loading={savingSections}
+                    onClick={handleSaveSections}
+                    data-testid="supplement-save"
+                    style={{ minHeight: tokens.touch.hitTarget }}
+                  >
+                    保存补录并重新渲染
+                  </Button>
+                </div>
+              </div>
+            )}
+
             <Space wrap>
               <Button
                 type="primary"
                 icon={<SafetyCertificateOutlined />}
                 loading={loading}
-                disabled={signed}
+                disabled={signed || blockingSections.length > 0}
                 onClick={handleSign}
                 style={{ minHeight: tokens.touch.hitTarget }}
               >
