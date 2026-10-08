@@ -60,6 +60,13 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      /**
+       * xmlbuilder2 → stub：它是 @cornerstonejs/core → vtk.js 的传递依赖，
+       * 顶层循环依赖在任何生产打包器下都会让整个 cornerstone chunk 求值失败
+       * （A.35 P0，详见 src/stubs/xmlbuilder2-stub.ts 注释）。vtk 的 XML IO
+       * 路径在 DICOM 应用中不使用，stub 成显式失败即可摘雷。
+       */
+      xmlbuilder2: path.resolve(__dirname, './src/stubs/xmlbuilder2-stub.ts'),
     },
   },
   server: {
@@ -82,6 +89,15 @@ export default defineConfig({
         ws: true,
       },
     },
+  },
+  /**
+   * dicom-image-loader 用 web worker 解码；Vite 5/6（Rollup）下 worker 默认 iife
+   * 格式与 code-splitting 构建互斥（[commonjs--resolver] Invalid value "iife" for
+   * option "worker.format"）—— 必须 ES 格式。注意这是**顶层**配置，不是 build 子项
+   * （放错层级会被静默忽略，构建照样报 iife 错）。Vite 8/Rolldown 无此约束。
+   */
+  worker: {
+    format: 'es',
   },
   build: {
     target: 'es2020',

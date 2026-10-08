@@ -31,7 +31,9 @@ export default function WorkspaceDicomLayer({ imageId }: { imageId: string }) {
 
         // feature 分支把 core-only 初始化换成统一入口 initCornerstone()：
         // 内部按需ensureInit（core + WADO 加载器 + 工具栈），幂等。
-        cornerstone.initCornerstone();
+        // **必须 await**：init 是异步链（coreInit → loaderInit 注册 scheme → 工具），
+        // 不等它就在这里 loadAndCacheImage 会撞上「loader 未注册」的竞态（A.35）。
+        await cornerstone.initCornerstone();
 
         // displayImage 前必须先 enable，否则 cornerstone 抛 "element not enabled"。
         // 不静默吞异常 —— 吞掉之后的表现是 canvas 停在 300x150 默认尺寸，极难排查。

@@ -26,7 +26,7 @@ import cornerstone, {
   wadouri,
 } from '@cornerstonejs/dicom-image-loader';
 
-let initStarted = false;
+let initPromise: Promise<void> | null = null;
 const engineByElement = new WeakMap<HTMLElement, RenderingEngine>();
 const viewportIdByElement = new WeakMap<HTMLElement, string>();
 const toolGroupByElement = new WeakMap<HTMLElement, string>();
@@ -39,21 +39,33 @@ const TOOL_MAP: Record<string, string> = {
   PanTool: 'Pan',
 };
 
-function ensureInit(): void {
-  if (initStarted) return;
-  initStarted = true;
-  (async () => {
+/**
+ * 初始化**必须可等待**：coreInit → loaderInit（注册 wadouri/dicomfile scheme）
+ * → tools 注册。此前是 fire-and-forget，`loadAndCacheImage` 与之赛跑 ——
+ * 生产构建下 init 链没走完时加载先跑，报 "No image loader found for scheme
+ * 'dicomfile'"，工具也全部未注册（2026-10-08 走查实测）。
+ * 失败要响：console.error + 向上抛，绝不静默吞（吞掉的表现是影像区永远占位）。
+ */
+function ensureInit(): Promise<void> {
+  if (initPromise) return initPromise;
+  initPromise = (async () => {
     await coreInit();
     await loaderInit();
     toolsInit();
     addTool(WindowLevelTool);
     addTool(ZoomTool);
     addTool(PanTool);
-  })().catch((err: unknown) => console.error('[cornerstone3d] init failed', err));
+  })().catch((err: unknown) => {
+    // 允许重试：清掉缓存的 promise，下次调用重新初始化
+    initPromise = null;
+    console.error('[cornerstone3d] init failed', err);
+    throw err;
+  });
+  return initPromise;
 }
 
-export function initCornerstone(): void {
-  ensureInit();
+export function initCornerstone(): Promise<void> {
+  return ensureInit();
 }
 
 export function enable(element: HTMLElement): void {
