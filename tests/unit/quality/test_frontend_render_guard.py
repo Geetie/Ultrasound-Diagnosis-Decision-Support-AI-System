@@ -257,6 +257,29 @@ class TestDoctorCanLoadDicom:
         upload = _code(SRC / "components" / "workspace" / "WorkspaceImageUpload.tsx")
         assert "useDicomUpload" in upload, "上传控件没有接 useDicomUpload，只是个装饰"
 
+    def test_dicom_layer_dispatches_by_scheme(self):
+        """imageId 必须按 scheme 分派，不能无条件补 wadouri: 前缀。
+
+        2026-10-08 走查 P0：上传/回取注册进 fileManager 的 id 是 `dicomfile:<n>`
+        （Blob 路径），无条件补前缀变成 `wadouri:dicomfile:n` → 加载器把
+        "dicomfile:n" 当 URL 发 XHR → 404 → 影像区永远停在渐变占位。
+        dev 后门（/dev-dicom/*）走的是 wadouri 的 HTTP 路径，所以此前没暴露。"""
+        layer = _code(SRC / "components" / "workspace" / "WorkspaceDicomLayer.tsx")
+        assert "dicomfile:" in layer, (
+            "WorkspaceDicomLayer 没有 dicomfile: 分派 —— fileManager 注册的 Blob id"
+            "被加上 wadouri: 前缀后会按 URL 发 XHR（404），影像永远显示不出来"
+        )
+
+    def test_lesion_annotation_is_data_driven(self):
+        """病灶标注必须来自 nodule_segmentation（后端 2026-10-03 就挂了数据，
+        前端 2026-10-08 才接上 —— 之前影像区里的「结节A/B」是设计稿写死的示意框，
+        叠在真片子上等于伪造标注）。"""
+        region = _code(SRC / "components" / "workspace" / "WorkspaceImageRegion.tsx")
+        assert "segmentation-overlay" in region, "影像区没有数据驱动的病灶标注层"
+        assert "showMock" in region, (
+            "设计稿示意框没有按「有无真实影像」隐藏 —— 假框叠真片子等于伪造标注"
+        )
+
 
 class TestWorkspaceHasNavExit:
     """P1（2026-10-05 走查实测 /ui/ 的 btn=[]）：工作区必须有导航出口。"""

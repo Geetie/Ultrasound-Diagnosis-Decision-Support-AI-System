@@ -1,0 +1,83 @@
+import { render, screen } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
+
+import WorkspaceImageRegion from '../WorkspaceImageRegion';
+import type { SegmentationView } from '@/services/diagnosisAdapter';
+
+/**
+ * 影像区：分割旁路标注（bbox + 面积）与设计稿示意框的显示规则。
+ *
+ * 背景（2026-10-08 走查）：后端 2026-10-03 就在诊断结果里挂了 nodule_segmentation
+ * （bbox/面积/概率/降级原因），前端从未渲染 —— 影像区里那两个「结节A/B」是设计稿
+ * 写死的示意框，叠在真实影像上等于伪造标注。
+ */
+
+const SEG_OK: SegmentationView = {
+  available: true,
+  width: 640,
+  height: 480,
+  bbox: [100, 80, 300, 240],
+  area_mm2: 123.4,
+  area_px: 8200,
+  mean_prob: 0.87,
+};
+
+describe('WorkspaceImageRegion · 分割标注', () => {
+  it('available=true 时渲染 SVG bbox 与面积标签', () => {
+    render(<WorkspaceImageRegion dicomImageId="dicomfile:0" segmentation={SEG_OK} />);
+    const svg = screen.getByLabelText('病灶分割标注');
+    expect(svg).toBeInTheDocument();
+    expect(svg.getAttribute('viewBox')).toBe('0 0 640 480');
+    expect(screen.getByText(/病灶 123\.4 mm² · 87%/)).toBeInTheDocument();
+  });
+
+  it('无 PixelSpacing 时用像素面积，不猜 mm²（后端契约：宁缺不猜）', () => {
+    render(
+      <WorkspaceImageRegion
+        dicomImageId="dicomfile:0"
+        segmentation={{ ...SEG_OK, area_mm2: null }}
+      />,
+    );
+    expect(screen.getByText(/病灶 8200 px²/)).toBeInTheDocument();
+  });
+
+  it('available=false 时显示降级原因 —— 绝不显示成"未检出结节"（后端契约）', () => {
+    render(
+      <WorkspaceImageRegion
+        dicomImageId="dicomfile:0"
+        segmentation={{ available: false, reason: 'not_enabled' }}
+      />,
+    );
+    expect(screen.getByText(/未做分割：分割旁路未启用/)).toBeInTheDocument();
+    expect(screen.queryByLabelText('病灶分割标注')).toBeNull();
+  });
+
+  it('未知原因原文透传，不静默吞掉', () => {
+    render(
+      <WorkspaceImageRegion
+        dicomImageId="dicomfile:0"
+        segmentation={{ available: false, reason: 'weird_case' }}
+      />,
+    );
+    expect(screen.getByText(/未做分割：weird_case/)).toBeInTheDocument();
+  });
+
+  it('无真实影像时不渲染分割层（标注跟着影像走，不悬浮在占位上）', () => {
+    render(<WorkspaceImageRegion segmentation={SEG_OK} />);
+    expect(screen.queryByLabelText('病灶分割标注')).toBeNull();
+  });
+
+  it('真实影像显示时隐藏设计稿示意框（结节A/B 与 18.4×12.1mm 是写死的）', () => {
+    render(<WorkspaceImageRegion dicomImageId="dicomfile:0" />);
+    expect(screen.queryByText('结节 A · 未校验')).toBeNull();
+    expect(screen.queryByText('结节 B · 已校验')).toBeNull();
+    expect(screen.queryByText('18.4 × 12.1 mm')).toBeNull();
+  });
+
+  it('设计预览态（无真实影像）保留示意框 —— 设计契约仍按画布还原', () => {
+    render(<WorkspaceImageRegion />);
+    expect(screen.getByText('结节 A · 未校验')).toBeInTheDocument();
+    expect(screen.getByText('结节 B · 已校验')).toBeInTheDocument();
+    expect(screen.getByText('18.4 × 12.1 mm')).toBeInTheDocument();
+  });
+});

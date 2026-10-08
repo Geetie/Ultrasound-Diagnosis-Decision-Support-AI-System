@@ -35,6 +35,51 @@ export interface MalignancyRisk {
   level: string;
 }
 
+/** 分割旁路视图模型 —— 来自 result.nodule_segmentation（后端 2026-10-03 挂入）。 */
+export interface SegmentationView {
+  available: boolean;
+  /** available=false 时的降级原因（原文透传，渲染层映射成中文） */
+  reason?: string;
+  /** 分割帧的像素尺寸 —— bbox 坐标系，也是 SVG overlay 的 viewBox */
+  width?: number;
+  height?: number;
+  /** 病灶外接框 [x1, y1, x2, y2]（像素坐标）；无检出时为 null */
+  bbox?: [number, number, number, number] | null;
+  area_mm2?: number | null;
+  area_px?: number | null;
+  mean_prob?: number | null;
+}
+
+/** 校验并收敛后端的旁路 dict —— 脏数据宁可当「不可用」也不渲染错误框。 */
+function toSegmentationView(raw: unknown): SegmentationView | undefined {
+  if (typeof raw !== 'object' || raw === null) return undefined;
+  const d = raw as Record<string, unknown>;
+  const bboxRaw = d.bbox;
+  const bbox =
+    Array.isArray(bboxRaw) &&
+    bboxRaw.length === 4 &&
+    bboxRaw.every((n) => typeof n === 'number' && Number.isFinite(n))
+      ? ([bboxRaw[0], bboxRaw[1], bboxRaw[2], bboxRaw[3]] as [
+          number,
+          number,
+          number,
+          number,
+        ])
+      : null;
+  const width = typeof d.width === 'number' ? d.width : undefined;
+  const height = typeof d.height === 'number' ? d.height : undefined;
+  return {
+    available: d.available === true,
+    reason: typeof d.reason === 'string' ? d.reason : undefined,
+    width,
+    height,
+    bbox,
+    area_mm2: typeof d.area_mm2 === 'number' ? d.area_mm2 : null,
+    area_px: typeof d.area_px === 'number' ? d.area_px : null,
+    mean_prob: typeof d.mean_prob === 'number' ? d.mean_prob : null,
+  };
+}
+
 /** 结论区一级视图模型（对应 04_判读态结论） */
 export interface ConclusionView {
   /** 一句话结论 —— 直接来自 fusion_result.content，不二次改写 */
@@ -55,6 +100,8 @@ export interface ConclusionView {
   safetyBlocked?: { message: string; errorCode?: string };
   /** 终置信度 */
   finalConfidence?: number;
+  /** 分割旁路（病灶 bbox + 面积）—— available=false 时影像区显示降级原因 */
+  segmentation?: SegmentationView;
 }
 
 /** 融合层终置信度低于此值才触发「看一眼」。低于典型诊断阈值。 */
@@ -149,6 +196,7 @@ export function toConclusionView(result: DiagnosisResult | null): ConclusionView
     tier: extractTier(content),
     evidenceIds,
     attention,
+    segmentation: toSegmentationView(result.nodule_segmentation),
     // ⚠️ 恶性风险**故意留空**：真机响应没有任何恶性概率字段。
     // 设计稿 04 的"低 · 约 2%–5%"是画布上的示意文案，不是后端产物。
     // 按 P1 省略而不是硬编码 —— 等后端真的给出区间口径再接。

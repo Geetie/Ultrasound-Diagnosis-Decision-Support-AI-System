@@ -138,6 +138,13 @@ export interface DiagnosisResult {
   research_metrics?: ResearchMetrics | null;
   cross_modality_hints?: CrossModalityHint[];
   posterior_acoustic?: PosteriorAcoustic | null;
+  /**
+   * 分割旁路结果（2026-10-03 后端挂入，形态见 app/models/schemas.py 注释）：
+   * available=true 带 bbox/面积/概率；available=false 带 reason —— 前端必须显示
+   * 「未做分割：<原因>」，**不能**显示成「未检出结节」（后端契约原文）。
+   * 前端直到 2026-10-08 才第一次消费它（此前病灶标注全是设计稿写死的示意框）。
+   */
+  nodule_segmentation?: Record<string, unknown> | null;
 }
 
 /** 工作列表单行（后端 SessionListItem）。字段名与真机响应一致。 */

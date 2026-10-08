@@ -288,6 +288,17 @@
   cursor: pointer;
 }
 
+/* ---- 分割旁路标注（2026-10-08 接真实 nodule_segmentation）----
+   SVG 与 Cornerstone viewport 同尺寸铺满影像区；viewBox=分割帧像素尺寸 +
+   preserveAspectRatio meet，与 Cornerstone 的 letterbox 数学一致，
+   bbox 坐标因此与显示的影像对齐。 */
+.ws-image__seg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
 .ws-bar__nav-item:hover {
   border-color: var(--color-text-secondary);
   color: var(--color-text-primary);

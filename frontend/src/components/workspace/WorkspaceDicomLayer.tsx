@@ -37,7 +37,16 @@ export default function WorkspaceDicomLayer({ imageId }: { imageId: string }) {
         // 不静默吞异常 —— 吞掉之后的表现是 canvas 停在 300x150 默认尺寸，极难排查。
         cornerstone.enable(element);
 
-        const id = imageId.startsWith('wadouri:') ? imageId : `wadouri:${imageId}`;
+        // imageId 按 scheme 分派，**不能**无脑补 wadouri: 前缀（2026-10-08 真机走查 P0）：
+        //   · `wadouri:x`      —— 加载器走 xhrRequest（HTTP 取流），dev 后门 /dev-dicom/* 用这条
+        //   · `dicomfile:n`    —— fileManager 的 Blob 路径（上传/回取注册产出的就是它），
+        //     加前缀会变成 `wadouri:dicomfile:n`，加载器把 "dicomfile:n" 当 **URL** 向页面
+        //     origin 发 XHR → 404 → 渲染层 catch 后只剩角落一行 11px 错误文本，
+        //     影像区永远停留在渐变占位 —— 医生看到的就是"图像一直不出来"
+        const id =
+          imageId.startsWith('wadouri:') || imageId.startsWith('dicomfile:')
+            ? imageId
+            : `wadouri:${imageId}`;
         const image = await cornerstone.loadAndCacheImage(id);
         if (cancelled) return;
 

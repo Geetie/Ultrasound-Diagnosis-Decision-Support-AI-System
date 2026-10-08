@@ -27,10 +27,20 @@
  */
 import type { ReactNode } from 'react';
 import WorkspaceDicomLayer from './WorkspaceDicomLayer';
+import type { SegmentationView } from '@/services/diagnosisAdapter';
+
+/** available=false 的降级原因 → 医生能看懂的一句话（未知原因原文透传）。 */
+const SEG_REASON_LABEL: Record<string, string> = {
+  not_enabled: '分割旁路未启用（管理员可在启动配置开启）',
+  no_image_ids: '本次判读未关联影像',
+  image_not_indexed: '影像索引缺失',
+  image_bytes_unavailable: '影像字节不可读',
+};
 
 export default function WorkspaceImageRegion({
   organBar,
   dicomImageId,
+  segmentation,
 }: {
   /** 部位指示条插槽：仅部位数 ≥ 2 时传入（05 / 14）。它落在影像区内部底缘，
    *  不改变影像区高度 —— 影像区恒定 600。 */
@@ -38,39 +48,108 @@ export default function WorkspaceImageRegion({
   /** 真实 DICOM 的 URL。给了就铺在渐变占位之上（渐变作为底色兜底），
    *  对应 2:4 的 impl_note：真实实现放 DICOM 容器。 */
   dicomImageId?: string;
+  /** 分割旁路视图（来自诊断结果的 nodule_segmentation）。 */
+  segmentation?: SegmentationView;
 }) {
+  // 设计稿 2:5/2:6/2:101 的「结节A/B、18.4×12.1mm」是**写死的示意数据**。
+  // 真实影像显示时必须隐藏 —— 假框叠在真片子上等于伪造标注（2026-10-08 走查发现）。
+  const showMock = !dicomImageId;
+  const seg = dicomImageId ? segmentation : undefined;
+  const bbox = seg?.available ? seg.bbox : null;
+  const areaLabel = seg?.available
+    ? seg.area_mm2 != null
+      ? `${seg.area_mm2.toFixed(1)} mm²`
+      : seg.area_px != null
+        ? `${seg.area_px} px²`
+        : null
+    : null;
+
   return (
     <section className="ws-image" data-region="image" aria-label="实时影像">
       {/* 真实 DICOM 层（在叠加标注之下）。渐变仍留在 CSS 里当底色与加载兜底。*/}
       {dicomImageId && <WorkspaceDicomLayer imageId={dicomImageId} />}
 
-      {/* 2:5 未校验标注：虚线＝未经人工校验（用线型而非颜色表达） */}
-      <div
-        className="ws-anno ws-anno--unverified"
-        style={{ left: 360, top: 170, width: 220, height: 170 }}
-        data-node="2:5"
-      />
-      <span
-        className="ws-image__text"
-        style={{ left: 360, top: 146, width: 81 }}
-        data-node="2:103"
-      >
-        结节 A · 未校验
-      </span>
+      {/* 分割旁路标注：bbox 画在 SVG 上，viewBox = 分割帧像素尺寸。
+          Cornerstone fit 与 SVG meet 的 letterbox 数学一致，坐标因此对齐显示的影像。 */}
+      {seg?.available && seg.width != null && seg.height != null && (
+        <svg
+          className="ws-image__seg"
+          viewBox={`0 0 ${seg.width} ${seg.height}`}
+          preserveAspectRatio="xMidYMid meet"
+          data-region="segmentation-overlay"
+          aria-label="病灶分割标注"
+        >
+          {bbox && (
+            <rect
+              x={bbox[0]}
+              y={bbox[1]}
+              width={bbox[2] - bbox[0]}
+              height={bbox[3] - bbox[1]}
+              fill="none"
+              stroke="var(--color-attention)"
+              strokeWidth={2}
+              strokeDasharray="8 5"
+              vectorEffect="non-scaling-stroke"
+            />
+          )}
+          {areaLabel && bbox && (
+            <text
+              x={bbox[0]}
+              y={Math.max(18, bbox[1] - 8)}
+              fill="var(--color-attention)"
+              fontSize={16}
+              vectorEffect="non-scaling-stroke"
+            >
+              {`病灶 ${areaLabel}${seg.mean_prob != null ? ` · ${Math.round(seg.mean_prob * 100)}%` : ''}`}
+            </text>
+          )}
+        </svg>
+      )}
 
-      {/* 2:6 已校验标注：实线＝已人工校验 */}
-      <div
-        className="ws-anno ws-anno--verified"
-        style={{ left: 830, top: 300, width: 160, height: 130 }}
-        data-node="2:6"
-      />
-      <span
-        className="ws-image__text"
-        style={{ left: 830, top: 276, width: 81 }}
-        data-node="2:104"
-      >
-        结节 B · 已校验
-      </span>
+      {/* 后端契约：available=false 必须显示「未做分割：<原因>」，不能显示成
+          「未检出结节」—— 缺权重/未启用与"没病"是两回事（schemas.py 原文）。 */}
+      {seg && !seg.available && dicomImageId && (
+        <span
+          className="ws-image__text"
+          style={{ left: 24, bottom: 12, width: 400 }}
+          data-region="segmentation-unavailable"
+        >
+          未做分割：{SEG_REASON_LABEL[seg.reason ?? ''] ?? seg.reason ?? '原因未提供'}
+        </span>
+      )}
+
+      {/* 2:5 未校验标注：虚线＝未经人工校验（用线型而非颜色表达）。
+          仅设计预览态（无真实影像）渲染 —— 数据驱动标注见上方 SVG。 */}
+      {showMock && (
+        <>
+          <div
+            className="ws-anno ws-anno--unverified"
+            style={{ left: 360, top: 170, width: 220, height: 170 }}
+            data-node="2:5"
+          />
+          <span
+            className="ws-image__text"
+            style={{ left: 360, top: 146, width: 81 }}
+            data-node="2:103"
+          >
+            结节 A · 未校验
+          </span>
+
+          {/* 2:6 已校验标注：实线＝已人工校验 */}
+          <div
+            className="ws-anno ws-anno--verified"
+            style={{ left: 830, top: 300, width: 160, height: 130 }}
+            data-node="2:6"
+          />
+          <span
+            className="ws-image__text"
+            style={{ left: 830, top: 276, width: 81 }}
+            data-node="2:104"
+          >
+            结节 B · 已校验
+          </span>
+        </>
+      )}
 
       {/* 2:97 影像叠加层-成像视口 */}
       <div className="ws-image__overlay" data-node="2:97">
@@ -99,19 +178,23 @@ export default function WorkspaceImageRegion({
           {'0 cm\n2 cm\n4 cm\n6 cm\n8 cm\n10 cm'}
         </span>
 
-        {/* 2:101 测量框-冻结态＝测量态 */}
-        <div
-          className="ws-measure"
-          style={{ left: 540, top: 250, width: 160, height: 150 }}
-          data-node="2:101"
-        />
-        <span
-          className="ws-measure__value"
-          style={{ left: 540, top: 408 }}
-          data-node="2:102"
-        >
-          18.4 × 12.1 mm
-        </span>
+        {/* 2:101 测量框-冻结态＝测量态（设计稿示意，真实测量待数据驱动） */}
+        {showMock && (
+          <>
+            <div
+              className="ws-measure"
+              style={{ left: 540, top: 250, width: 160, height: 150 }}
+              data-node="2:101"
+            />
+            <span
+              className="ws-measure__value"
+              style={{ left: 540, top: 408 }}
+              data-node="2:102"
+            >
+              18.4 × 12.1 mm
+            </span>
+          </>
+        )}
       </div>
 
       {/* 部位指示条：仅部位数 ≥ 2 时出现，锚在影像区内部底缘 */}

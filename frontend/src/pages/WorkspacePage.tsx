@@ -112,6 +112,7 @@ export default function WorkspacePage({
       <WorkspaceImageRegion
         organBar={hasOrganBar(state) ? <WorkspaceOrganBar onReviewClick={onReviewDetail} /> : undefined}
         dicomImageId={dicomImageId}
+        segmentation={view?.segmentation}
       />
 
       <WorkspaceConclusion
