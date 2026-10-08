@@ -419,6 +419,17 @@
       "evidence": "后端 11 例（test_report_sign_gate.py）+ 前端 10 例；真机全闭环 28/28 PASS：缺阻断段 → 签发被禁 → 补录 → 阻断段清空签发解禁 → 知情确认（处置建议缺失）→ 已签发（HSM、签发人 smoke-doctor）；16 号附录 A.32"
     },
     {
+      "id": "ui-session-create-not-wired",
+      "name": "P0 新建会话页未接线：医生在 UI 上开不了新检查",
+      "description": "/ui/session/new 只渲染画布给的两个写死值（患者/设备展示文案），没有选择器也没有 patient_id/device_id，「开始检查」永久禁用 —— 医生在界面上开不了新检查，会话只能由脚本用 API 代建（A.32 记录的妥协）。勘察结论：POST /api/v1/sessions 通且医生可调；患者列表/设备列表端点不存在；consent 查询/签署端点医生 403；GET /fhir/Patient/{id} 医生可调且一次校验存在性+同意",
+      "status": "done",
+      "dependencies": [
+            "ui-no-dicom-upload-entry"
+      ],
+      "resolution": "接线而非加接口：患者编号 → GET /fhir/Patient/{id}（200=已确认同意有效 / 403 E1008,E1010=未签署或已撤回，引导找质控/科室负责人——如实引导，不假装医生可签 / 404 E1002=同意有效但 patients 表无行，医生可就地建档 POST /fhir/Patient，建档后要求重新校验——建档不等于同意）；设备编号手工录入+localStorage 记住上次（后端无设备列表端点，device_id 不校验只作记录）；开始检查 → POST /sessions → 带 ?session_id= 跳工作区（旧实现 navigate('/') 把新会话 id 丢了）。新增 services/fhirService.ts：FHIR 挂在 /fhir 不带 /api/v1，每个请求必须 baseURL:'' 覆盖全局前缀；apiError 补 getApiErrorCode。顺带修掉：契约对账脚本识别 per-request baseURL 覆盖（不再把 /fhir/* 判成断链）",
+      "evidence": "真机 Playwright 端到端 6/6 PASS：登录→校验 DRILL-PATIENT-001 出现同意状态→开始检查带 session_id=sess_20261008_d50f56d0 进工作区→装载入口出现→装载 DICOM 自动进入分析中→0 非豁免 console error；本机 vitest 339/tsc/lint/build/契约对账 22-22/pytest quality 67 全绿；16 号附录 A.33"
+},
+    {
       "id": "ui-build-artifact-stale-files",
       "name": "P2 前端产物陈旧文件堆积（本轮已根治）",
       "description": "app/static/ui 入库，构建产物带内容哈希。历史累积原因：git archive 解包只覆盖不删除，本机从 33 涨到 50，服务器从 82 涨到 100。index.html 只引用当前哈希，故不影响运行，但仓库体积与审计都在被拖慢",
