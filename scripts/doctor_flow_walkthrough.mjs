@@ -74,7 +74,12 @@ const sleep = (page, ms) => page.waitForTimeout(ms);
 const b = await chromium.launch({ executablePath: chrome, headless: true });
 const page = await b.newPage({ viewport: { width: 1512, height: 950 } });
 const errs = [];
-page.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
+// 资源加载失败的 console 文本不含 URL —— 把来源 URL 一起带上，豁免才能写得精确
+page.on('console', (m) => {
+  if (m.type() !== 'error') return;
+  const url = (m.location() && m.location().url) || '';
+  errs.push(m.text() + ' @ ' + url);
+});
 const shot = (name) => page.screenshot({ path: `${OUT}/${name}.png`, fullPage: true }).catch(() => {});
 
 try {
@@ -155,6 +160,31 @@ try {
   record('7. 进入报告页', onReport, page.url());
   if (!onReport) { await shot('07-report-nav-fail'); throw new Error('report nav failed'); }
 
+  // 报告草稿不是自动生成的（A.29 设计流程）：医生在报告页点「生成草稿」。
+  // 没有草稿时页面会提示 Report not found —— 那是正常态，不是缺陷。
+  // AppLayout 与页面状态是异步挂载的，按钮要轮询等（A.28.9 钉子 3）。
+  let draftBtn = null;
+  let statusEl = null;
+  for (let i = 0; i < 40 && !draftBtn && !statusEl; i += 1) {
+    draftBtn = await page.$("button:has-text('生成草稿')");
+    statusEl = (await page.$$('[data-testid=report-status]').then((els) => els.length)) > 0;
+    if (!draftBtn && !statusEl) await sleep(page, 500);
+  }
+  if (statusEl) {
+    record('7b. 草稿已存在（无需生成）');
+  } else if (draftBtn) {
+    await draftBtn.click();
+    let drafted = false;
+    for (let i = 0; i < 60 && !drafted; i += 1) {
+      drafted = (await page.$$('[data-testid=report-status]').then((els) => els.length)) > 0;
+      if (!drafted) await sleep(page, 1000);
+    }
+    record('7b. 生成报告草稿', drafted);
+    if (!drafted) { await shot('07b-draft-fail'); throw new Error('draft generation failed'); }
+  } else {
+    const btns = await page.$$eval('button', (els) => els.map((e) => e.textContent.trim()).filter(Boolean));
+    throw new Error(`报告页既无草稿也无「生成草稿」按钮；现有按钮：${JSON.stringify(btns.slice(0, 10))}`);
+  }
   await page.waitForSelector('[data-testid=report-status]', { timeout: 30000 });
 
   // ---- 5) 补录（若缺段落）→ 签发（可能知情确认）→ 已签发
@@ -192,10 +222,10 @@ try {
   // 部分段落缺失 → 知情确认弹窗（A.32：缺测量/处置等非阻断段时出现）
   const confirm = await page.$('[data-testid=sign-confirm-ok]');
   if (confirm) {
-    record('10. 知情确认弹窗出现（存在非阻断缺失）');
+    record('10. 知情确认弹窗出现（存在非阻断缺失）', true);
     await confirm.click();
   } else {
-    record('10. 无需知情确认（完整性已过）');
+    record('10. 无需知情确认（完整性已过）', true);
   }
 
   let signed = false;
@@ -209,7 +239,14 @@ try {
   if (!signed) { fs.writeFileSync(`${OUT}/11-no-signed.html`, await page.content()); throw new Error('not signed'); }
 
   // ---- 6) 全程 console 健康（豁免 Google Fonts CSP —— 若仍配置了外联）
-  const blocking = errs.filter((t) => !/fonts\.googleapis\.com/.test(t));
+// 豁免两类已知良性行为（照打印不吞掉）：
+  // 1. Google Fonts CSP 拦截（若仍配置了外联）
+  // 2. 草稿未生成时 GET /api/v1/report 的 404 —— 界面正是围绕它引导「生成草稿」的
+  const blocking = errs.filter((t) => {
+    if (/fonts\.googleapis\.com/.test(t)) return false;
+    if (/status of 404/.test(t) && /\/api\/v1\/report/.test(t)) return false;
+    return true;
+  });
   record('12. 全程 0 个非豁免 console error', blocking.length === 0,
     JSON.stringify(blocking.slice(0, 3)));
 } catch (e) {

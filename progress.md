@@ -1,7 +1,7 @@
 # progress.md — 当前状态（唯一「现在在哪」来源）
 
-**Last Updated**: 2026-10-08
-**HEAD**: 分支 `main` @ `5a05794`（本轮：接线新建检查会话 —— 患者校验/建档 + 设备录入 + 带 session_id 进工作区，详见 16 号附录 A.33）
+**Last Updated**: 2026-10-08（晚）
+**HEAD**: 分支 `main` @ `54f1234`（本轮：refresh 旋转宽限期 + 剩余项收口 + 医生全流程最终摸排 13/13，详见 16 号附录 A.34）
 **Owner of truth**: 本文件只记「当前状态/下一步/阻塞」；**功能与门控状态在 `feature_list.json`**，长期证据在 `16-开发进展汇报-20260928.md` 附录 A。
 
 ## Current Objective
