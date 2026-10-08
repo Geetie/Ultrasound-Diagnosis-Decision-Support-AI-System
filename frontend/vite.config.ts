@@ -89,32 +89,28 @@ export default defineConfig({
     rollupOptions: {
       output: {
         /**
-         * **不要**把 cornerstone 单独拆成 chunk。
+         * **不要配 manualChunks** —— 两种配法都在真实浏览器里坏过，这是全 history：
          *
-         * 2026-10-05 真实浏览器走查抓到白屏：`TypeError: Class extends value
-         * undefined is not a constructor or null`，堆栈全部落在
-         * `vendor-cornerstone-*.js`。根因是 @cornerstonejs/* 5.11.3 内部存在
-         * 循环依赖，Vite 8（Rolldown 打包器）按 `manualChunks` 强行把它切成一个
-         * 独立 chunk 后，跨 chunk 的循环引用在 ESM 严格求值顺序下**基类尚未
-         * 初始化就执行 `extends`**，整个 vendor chunk 抛错 → React 从未挂载，
-         * `#root` 子节点为 0，白屏。
+         * ① 2026-10-05（A.27 P0-1）：把 cornerstone 拆成 vendor-cornerstone →
+         *    `Class extends value undefined`，白屏。根因是 @cornerstonejs/* 内部
+         *    循环依赖 + Rolldown 按 manualChunks 切 chunk 后跨 chunk 循环引用
+         *    在 ESM 严格求值顺序下基类未初始化。当时修法：去掉 cornerstone 规则
+         *    「交给 Rolldown 自动分割」——主 bundle 渲染恢复了，**但只修了一半**。
+         * ② 2026-10-08（A.35 P0）：保留的 vendor-react/antd 规则把 cornerstone
+         *    依赖图里的共享模块摊进 vendor chunk，动态导入的 cornerstone chunk
+         *    求值时**同一个 TypeError** 复发 —— 但这次不白屏：影像层的三个调用方
+         *    全部 catch 静默吞掉，表现为「影像区永远停在渐变占位」，且零 console
+         *    错误（degradation 全链路静默，零静默守卫抓不到浏览器侧）。
+         *    直到医生全流程走查录像才暴露。
          *
-         * 交给 Rolldown 自动分割即可（它会把相互依赖的模块放进同一 chunk）。
-         * 代价是主 chunk 变大（约 +3.5MB），但正确性优先于体积。
+         * 结论：在 Rolldown（Vite 8）下，任何 manualChunks 都可能把 @cornerstonejs
+         * 的强连通模块图切碎。唯一端到端验证过的配置是**完全不干预** ——
+         * Rolldown 按入口/动态边界自动分组，cornerstone 动态导入图自成一个 chunk。
+         * 代价：主 chunk 偏大（vendor 分离收益没了）。正确性优先于体积。
+         *
+         * 守卫：tests/unit/quality/test_frontend_render_guard.py 钉住本文件
+         * 不得再出现 manualChunks（两种配法都坏过，别再试第三种）。
          */
-        manualChunks(id) {
-          if (id.includes('node_modules')) {
-            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
-              return 'vendor-react';
-            }
-            if (id.includes('antd') || id.includes('@ant-design')) {
-              return 'vendor-antd';
-            }
-            if (id.includes('echarts')) {
-              return 'vendor-echarts';
-            }
-          }
-        },
       },
     },
   },

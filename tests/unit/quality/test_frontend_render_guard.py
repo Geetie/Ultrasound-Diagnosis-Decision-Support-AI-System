@@ -36,6 +36,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+import pytest
+
 REPO_ROOT = Path(__file__).resolve().parents[3]
 FRONTEND = REPO_ROOT / "frontend"
 SRC = FRONTEND / "src"
@@ -123,38 +125,43 @@ class TestGuardItself:
         assert "/\\/ui\\/assets/g" in out
         assert "`base${x}`" in out
 
-    def test_cornerstone_in_manual_chunks_is_detected(self):
-        fake = (
-            "export default { build: { rollupOptions: { output: { manualChunks(id) { "
-            "if (id.includes('@cornerstonejs/core')) return 'vendor-cornerstone'; "
-            "} } } } }"
-        )
-        body = fake[fake.index("manualChunks(") :]
-        offenders = [t for t in ("cornerstone", "dcmjs", "wado") if t in body.lower()]
-        assert offenders == ["cornerstone"]
+    def test_no_blank_screen_check_raises_on_regression(self):
+        """自测：manualChunks 禁令的判定函数对「复现配置」真的会响。
 
-    def test_clean_manual_chunks_is_not_flagged(self):
-        vite = _code(FRONTEND / "vite.config.ts")
-        body = vite[vite.index("manualChunks(") :]
-        assert not [t for t in ("cornerstone", "dcmjs", "wado") if t in body.lower()]
+        2026-10-08 起判据从「manualChunks 里不得含 cornerstone」升级为
+        「vite.config 不得出现 manualChunks」—— 两种配法都在真机坏过
+        （A.27 白屏、A.35 影像静默失败），不存在安全的第三种手工分割。"""
+        with pytest.raises(AssertionError):
+            assert_no_manual_chunks(
+                "export default { build: { rollupOptions: { output: { "
+                "manualChunks(id) { return 'vendor'; } } } } }"
+            )
+        assert_no_manual_chunks("export default { build: { target: 'es2020' } }")
+
+
+def assert_no_manual_chunks(vite_text: str) -> None:
+    """vite.config 里**不得出现 manualChunks**（判定函数，守卫与自测共用）。
+
+    两种配法都在真实浏览器里坏过：
+      ①拆 vendor-cornerstone → 白屏（A.27 P0-1，2026-10-05）；
+      ②保留 vendor-react/antd 规则 → cornerstone 依赖图的共享模块被 Rolldown
+        摊进 vendor chunk，动态导入的 cornerstone chunk 求值抛同一个
+        `Class extends value undefined`，影像层三处 catch 静默吞掉
+        → 影像永远停在渐变占位（A.35 P0，2026-10-08）。
+    唯一端到端验证过的配置是**完全不干预** chunk 分割。
+    """
+    assert "manualChunks" not in vite_text, (
+        "vite.config.ts 出现了 manualChunks —— 两种配法都已在真机坏过"
+        "（A.27 白屏 / A.35 影像静默失败），Rolldown 下唯一验证过的配置是"
+        "完全不干预 chunk 分割。详见 vite.config.ts 注释与 16 号附录 A.35。"
+    )
 
 
 class TestNoBlankScreen:
-    """P0-1：白屏。 cornerstone 不得被 manualChunks 切成独立 chunk。"""
+    """P0-1：白屏（A.27）—— cornerstone 的 chunk 分割禁令。"""
 
-    def test_manual_chunks_does_not_split_cornerstone(self):
-        vite = _code(FRONTEND / "vite.config.ts")
-        assert "manualChunks(" in vite, (
-            "vite.config.ts 里找不到 manualChunks —— 若确实已移除，请连同本守卫项一起显式删除"
-        )
-        body = vite[vite.index("manualChunks(") :]
-        offenders = [t for t in ("cornerstone", "dcmjs", "wado") if t in body.lower()]
-        assert not offenders, (
-            f"manualChunks 里出现了 {offenders} —— @cornerstonejs/* 存在内部循环依赖，"
-            "Vite 8（Rolldown）按 manualChunks 强行切独立 chunk 后，跨 chunk 循环引用"
-            "在 ESM 严格求值顺序下基类尚未初始化就 extends，整个 vendor chunk 抛错、"
-            "React 从未挂载，#root 子节点为 0（2026-10-05 实测白屏）。交给 Rolldown 自动分割。"
-        )
+    def test_vite_config_has_no_manual_chunks(self):
+        assert_no_manual_chunks(_code(FRONTEND / "vite.config.ts"))
 
 
 class TestLoginReachable:
