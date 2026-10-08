@@ -36,8 +36,6 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-import pytest
-
 REPO_ROOT = Path(__file__).resolve().parents[3]
 FRONTEND = REPO_ROOT / "frontend"
 SRC = FRONTEND / "src"
@@ -130,12 +128,18 @@ class TestGuardItself:
 
         2026-10-08 起判据从「manualChunks 里不得含 cornerstone」升级为
         「vite.config 不得出现 manualChunks」—— 两种配法都在真机坏过
-        （A.27 白屏、A.35 影像静默失败），不存在安全的第三种手工分割。"""
-        with pytest.raises(AssertionError):
+        （A.27 白屏、A.35 影像静默失败），不存在安全的第三种手工分割。
+        本文件必须保持 **stdlib-only**（服务器 venv 无 pytest，
+        scripts/run_frontend_render_guard.py 直接按路径 import 本文件）。"""
+        raised = False
+        try:
             assert_no_manual_chunks(
                 "export default { build: { rollupOptions: { output: { "
                 "manualChunks(id) { return 'vendor'; } } } } }"
             )
+        except AssertionError:
+            raised = True
+        assert raised, "manualChunks 禁令对复现配置没有判红 —— 守卫形同虚设"
         assert_no_manual_chunks("export default { build: { target: 'es2020' } }")
 
 
