@@ -83,6 +83,14 @@ class Settings(BaseSettings):
     jwt_expire_minutes: int = 480
     jwt_refresh_expire_days: int = 7
 
+    # 旋转宽限期（秒）：旧 refresh token 在被轮换后 N 秒内再次出示，视为**合法并发
+    # 刷新**（多标签页/双击），返回后继 token 而不是按窃取撤销整个 family
+    # （feature_list: refresh-token-grace-period；真机 6 进程验证实测合法并发被判
+    # family revoked 全设备踢下线）。默认 30s：足以覆盖同一次人工操作触发的并发
+    # 刷新，又把被盗旧 token 的可用窗口压到最短。**调大是产品决策** —— 等于放宽
+    # reuse 检测；0 = 关闭宽限，回到严格语义。登出/显式吊销（无后继）不吃宽限。
+    refresh_token_grace_period_s: int = 30
+
     log_level: str = 'INFO'
 
     allowed_origins: str = 'http://localhost:3000,http://localhost:8080,http://127.0.0.1:3000'

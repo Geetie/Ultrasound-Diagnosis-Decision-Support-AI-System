@@ -2072,7 +2072,9 @@ class TestSECPerformanceBenchmarksSupplementary:
 
 class TestTokenFamilyFullChain:
 
-    def test_full_token_lifecycle(self):
+    def test_full_token_lifecycle(self, monkeypatch):
+        # 钉 reuse 窃取检测语义 —— 显式关掉旋转宽限（见 test_refresh_token_grace_period.py）
+        monkeypatch.setattr(settings, "refresh_token_grace_period_s", 0)
         store = refresh_token_store
 
         token1_id = store.create_refresh_token(user_id="lifecycle_user", user_info={"role": "doctor"})
@@ -2107,7 +2109,8 @@ class TestTokenFamilyFullChain:
         assert t4_data is not None
         assert t4_data["family_id"] == family_id
 
-    def test_replay_detection_revokes_entire_family(self):
+    def test_replay_detection_revokes_entire_family(self, monkeypatch):
+        monkeypatch.setattr(settings, "refresh_token_grace_period_s", 0)
         store = refresh_token_store
 
         t1 = store.create_refresh_token(user_id="replay_family_user", user_info={"role": "doctor"})

@@ -266,14 +266,18 @@ class TestTokenFamilyDeep:
         t2 = store.rotate_refresh_token(t1)
         assert store.verify_refresh_token(t2) is not None
 
-    def test_replay_detection_on_rotate(self):
+    def test_replay_detection_on_rotate(self, monkeypatch):
+        # 钉的是「reuse 窃取检测」语义 —— 显式关掉旋转宽限（合法并发返回后继的
+        # 语义由 test_refresh_token_grace_period.py 覆盖）
+        monkeypatch.setattr(settings, "refresh_token_grace_period_s", 0)
         store = refresh_token_store
         t1 = store.create_refresh_token(user_id="tf_deep_3", user_info={"role": "doctor"})
         t2 = store.rotate_refresh_token(t1)
         with pytest.raises(ValueError, match="already been used"):
             store.rotate_refresh_token(t1)
 
-    def test_family_revocation_on_replay(self):
+    def test_family_revocation_on_replay(self, monkeypatch):
+        monkeypatch.setattr(settings, "refresh_token_grace_period_s", 0)
         store = refresh_token_store
         t1 = store.create_refresh_token(user_id="tf_deep_4", user_info={"role": "doctor"})
         t2 = store.rotate_refresh_token(t1)

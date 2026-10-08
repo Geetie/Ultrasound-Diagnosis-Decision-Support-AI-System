@@ -280,9 +280,10 @@
       "id": "dicom-fail-open",
       "name": "DICOM 去标识化失败开放行为 (P2)",
       "description": "解析失败时原始(含 PHI)字节仍入库，需产品决策「失败即拒存」",
-      "status": "planned",
+      "status": "done",
       "dependencies": [],
-      "evidence": "16 号 §六 P2；app/services/dicom_storage.py:71-73"
+      "evidence": "app/services/dicom_storage.py fail-closed 实现 + 15 号计划 P0-5；16 号附录 A.34",
+      "resolution": "登记项已过时：strip_dicom_phi 的 fail-open（解析失败原始字节仍入库）已于 2026-09-30 按产品决策（15 号计划 P0-5）改为 fail-closed——解析/脱敏失败 raise ValueError 拒绝存储（app/services/dicom_storage.py:51-83 docstring 记载决策沿革）。测试钉住：test_parse_failure_is_fail_closed；边界澄清：force=True 下垃圾字节/空字节走正常重序列化路径入库而非拒收（test_garbage_bytes_are_force_parsed_not_rejected），真正触发 fail-closed 的输入极窄。纯登记簿维护，无代码改动"
     },
     {
       "id": "delivery-manual-18",
@@ -296,9 +297,10 @@
       "id": "refresh-token-grace-period",
       "name": "refresh token 旋转宽限期（合法并发刷新被误判为窃取）",
       "description": "真机 6 进程并发验证（2026-10-05，真实 Redis 16379）证明跨进程互斥已闭合：恰好 1 个成功、其余 5 个被拒、旧 token 重放被拒。但同时实测到失败原因为 'Refresh token has already been used, family XXX revoked' —— 任何 reuse 都撤销整个会话族（OAuth2 BCP 的标准取舍，非 bug）。后果：医生在同一账号开多个标签页/双击刷新等**合法**并发会被判为窃取，全设备被踢下线。正确解法是加旋转宽限期（旧 token 在短窗口内可再换一次并返回同一新 token），**不可**放松 reuse 检测（等于把 7 天令牌变成无限续期）。需产品决策宽限期时长后再实现",
-      "status": "planned",
+      "status": "done",
       "dependencies": [],
-      "evidence": "真机探针 /tmp/probe_rotate_real.py（6 进程并发 PASS，family revoked 现象已实测）"
+      "evidence": "tests/unit/sec 1365 passed（含新增 10 例）；宽限期默认 30s 为 AI 拍板记录（覆盖同一次人工操作触发的并发刷新，被盗旧 token 可用窗口压到最短），调整走 settings 配置；16 号附录 A.34",
+      "resolution": "实现旋转宽限期：settings.refresh_token_grace_period_s（默认 30s，0=关闭，调大是产品决策——等于放宽 reuse 检测）。语义：旧 token 被轮换后 N 秒内再次出示（rotate/verify 两路）+ 后继链可达（最多 5 跳，覆盖窗口内链式并发）+ 族未撤销 → 返回后继（rotate 返回后继 id，不新建旋转——新建会让 family 分叉等于绕过 reuse 检测）；窗口外/无后继（登出、显式吊销）/族已撤销 → reuse 原语义撤族，绝不放松。落点：Memory 与 Redis 双 store（rotate 记 successor_token_id + _grace_successor链追踪，宽限判定在 _rotate_guard 的锁内做无新竞态）。5 个钉旧严格语义的用例显式关闭宽限（它们测的是窃取检测），新增 tests/unit/sec/test_refresh_token_grace_period.py 10 例（Memory 6 + Redis 4，含跨进程：worker1 轮换、worker2 携旧 token 刷新拿到同一后继）"
     },
     {
       "id": "merge-feature-branch-into-main",
@@ -424,11 +426,11 @@
       "description": "/ui/session/new 只渲染画布给的两个写死值（患者/设备展示文案），没有选择器也没有 patient_id/device_id，「开始检查」永久禁用 —— 医生在界面上开不了新检查，会话只能由脚本用 API 代建（A.32 记录的妥协）。勘察结论：POST /api/v1/sessions 通且医生可调；患者列表/设备列表端点不存在；consent 查询/签署端点医生 403；GET /fhir/Patient/{id} 医生可调且一次校验存在性+同意",
       "status": "done",
       "dependencies": [
-            "ui-no-dicom-upload-entry"
+        "ui-no-dicom-upload-entry"
       ],
       "resolution": "接线而非加接口：患者编号 → GET /fhir/Patient/{id}（200=已确认同意有效 / 403 E1008,E1010=未签署或已撤回，引导找质控/科室负责人——如实引导，不假装医生可签 / 404 E1002=同意有效但 patients 表无行，医生可就地建档 POST /fhir/Patient，建档后要求重新校验——建档不等于同意）；设备编号手工录入+localStorage 记住上次（后端无设备列表端点，device_id 不校验只作记录）；开始检查 → POST /sessions → 带 ?session_id= 跳工作区（旧实现 navigate('/') 把新会话 id 丢了）。新增 services/fhirService.ts：FHIR 挂在 /fhir 不带 /api/v1，每个请求必须 baseURL:'' 覆盖全局前缀；apiError 补 getApiErrorCode。顺带修掉：契约对账脚本识别 per-request baseURL 覆盖（不再把 /fhir/* 判成断链）",
       "evidence": "真机 Playwright 端到端 6/6 PASS：登录→校验 DRILL-PATIENT-001 出现同意状态→开始检查带 session_id=sess_20261008_d50f56d0 进工作区→装载入口出现→装载 DICOM 自动进入分析中→0 非豁免 console error；本机 vitest 339/tsc/lint/build/契约对账 22-22/pytest quality 67 全绿；16 号附录 A.33"
-},
+    },
     {
       "id": "ui-build-artifact-stale-files",
       "name": "P2 前端产物陈旧文件堆积（本轮已根治）",

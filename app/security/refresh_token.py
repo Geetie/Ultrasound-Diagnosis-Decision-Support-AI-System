@@ -27,6 +27,26 @@ _ROTATE_LOCK_PREFIX = "refresh:rotate:"
 _REDIS_LOCK_TTL_S = 5
 _REDIS_LOCK_WAIT_S = 2.0
 
+# 后继链最多追几跳：宽限窗口（默认 30s）内理论上可发生的连续并发轮换深度很小，
+# 5 跳封顶防止恶意构造的链在宽限判定里绕圈。
+_MAX_GRACE_HOPS = 5
+
+
+def _grace_window_active(revoked_at: str | None) -> bool:
+    """旋转宽限期是否仍覆盖 ``revoked_at`` 这个时刻。
+
+    宽限期语义见 ``settings.refresh_token_grace_period_s``：旧 token 被**轮换**撤销后
+    N 秒内再次出示 = 合法并发刷新（多标签页/双击），返回后继而不是按窃取撤族。
+    """
+    grace_s = settings.refresh_token_grace_period_s
+    if grace_s <= 0 or not revoked_at:
+        return False
+    try:
+        revoked_at_dt = datetime.fromisoformat(revoked_at)
+    except (TypeError, ValueError):
+        return False
+    return (datetime.now(timezone.utc) - revoked_at_dt).total_seconds() <= grace_s
+
 class RefreshTokenStore:
     def create_refresh_token(
         self,
@@ -150,6 +170,20 @@ class MemoryRefreshTokenStore(RefreshTokenStore):
 
             if token_data["revoked"]:
                 family_id = token_data.get("family_id")
+                # 旋转宽限期：窗口内再次出示已轮换的旧 token = 合法并发刷新，
+                # 返回后继 token 的数据而不是撤族。窗口外/无后继（登出、显式吊销、
+                # 族撤销）→ 维持 reuse 检测原语义，绝不放松。
+                successor_id = self._grace_successor(token_data)
+                if successor_id:
+                    successor = self._store.get(successor_id)
+                    if successor is not None:
+                        logger.info(
+                            "refresh_token_grace_reuse_allowed",
+                            token_id=token_id[:8] + "...",
+                            successor_token_id=successor_id[:8] + "...",
+                            family_id=family_id,
+                        )
+                        return successor.copy()
                 if family_id:
                     logger.warning(
                         "refresh_token_reuse_detected",
@@ -170,6 +204,28 @@ class MemoryRefreshTokenStore(RefreshTokenStore):
 
             return token_data.copy()
 
+    def _grace_successor(self, old_data: dict[str, Any], max_hops: int = _MAX_GRACE_HOPS) -> str | None:
+        """宽限期内合法并发刷新的判定：沿后继链找最新的活 token。
+
+        链式并发（T1→T2 后 T2 又立刻被另一标签页轮换成 T3）时后继本身也可能是
+        已轮换的 —— 逐跳追到最新的活 token；任何一跳断了（后继不存在/无后继/
+        链太深）都返回 None，落回 reuse 原语义。
+        """
+        if not _grace_window_active(old_data.get("revoked_at")):
+            return None
+        current = old_data
+        for _ in range(max_hops):
+            successor_id = current.get("successor_token_id") if current else None
+            if not successor_id:
+                return None
+            successor = self._store.get(successor_id)
+            if successor is None:
+                return None
+            if not successor.get("revoked"):
+                return successor_id
+            current = successor
+        return None
+
     def rotate_refresh_token(self, old_token_id: str) -> str:
         with self._lock:
             old_data = self._store.get(old_token_id)
@@ -189,6 +245,17 @@ class MemoryRefreshTokenStore(RefreshTokenStore):
 
             if old_data["revoked"]:
                 family_id = old_data.get("family_id")
+                # 旋转宽限期：窗口内旧 token 再次请求轮换 = 合法并发刷新，
+                # 直接把后继交给它（不新建旋转 —— 那会让 family 分叉）。
+                successor_id = self._grace_successor(old_data)
+                if successor_id:
+                    logger.info(
+                        "refresh_token_grace_reuse_allowed_on_rotate",
+                        token_id=old_token_id[:8] + "...",
+                        successor_token_id=successor_id[:8] + "...",
+                        family_id=family_id,
+                    )
+                    return successor_id
                 if family_id:
                     self.revoke_token_family(family_id)
                     raise ValueError(f"Refresh token has already been used, family {family_id} revoked")
@@ -220,6 +287,8 @@ class MemoryRefreshTokenStore(RefreshTokenStore):
 
             self._store[new_token_id] = new_data
             self._family_store[new_token_id] = family_id
+            # 记录后继：宽限期判定（合法并发刷新返回同一个新 token）全靠它
+            old_data["successor_token_id"] = new_token_id
 
             if user_id not in self._user_tokens:
                 self._user_tokens[user_id] = []
@@ -604,6 +673,17 @@ class RedisRefreshTokenStore(RefreshTokenStore):
 
         if token_data.get("revoked", False):
             if family_id:
+                # 旋转宽限期：窗口内已轮换旧 token 再次出示 = 合法并发刷新，
+                # 返回后继的数据。族已撤销 / 窗口外 / 无后继 → reuse 原语义。
+                successor_data = await self._grace_successor_redis(redis_client, token_data)
+                if successor_data is not None:
+                    logger.info(
+                        "refresh_token_grace_reuse_allowed_redis",
+                        token_id=token_id[:8] + "...",
+                        successor_token_id=successor_data.get("token_id", "")[:8] + "...",
+                        family_id=family_id,
+                    )
+                    return successor_data
                 logger.warning(
                     "refresh_token_reuse_detected_redis",
                     token_id=token_id[:8] + "...",
@@ -652,6 +732,37 @@ return 0
         async with self._rotate_guard(old_token_id):
             return await self._rotate_refresh_token_locked(old_token_id)
 
+    async def _grace_successor_redis(
+        self, redis_client, old_data: dict[str, Any], max_hops: int = _MAX_GRACE_HOPS
+    ) -> dict[str, Any] | None:
+        """Redis 版宽限判定：族未撤销 + 窗口内 + 沿后继链追到最新的活 token。
+
+        统一返回后继的**数据 dict**（rotate 侧取 ``["token_id"]``，verify 侧直接用）。
+        链断 / 族已撤销 / 窗口外 → None（落回 reuse 原语义）。
+        """
+        if not _grace_window_active(old_data.get("revoked_at")):
+            return None
+        family_id = old_data.get("family_id")
+        if family_id and await redis_client.exists(RedisKey.auth_family_revoked(family_id)):
+            return None
+
+        current = old_data
+        for _ in range(max_hops):
+            successor_id = current.get("successor_token_id") if current else None
+            if not successor_id:
+                return None
+            successor_str = await redis_client.get(RedisKey.auth_token(successor_id))
+            if not successor_str:
+                return None
+            try:
+                successor = json.loads(successor_str)
+            except json.JSONDecodeError:
+                return None
+            if not successor.get("revoked", False):
+                return successor
+            current = successor
+        return None
+
     async def _rotate_refresh_token_locked(self, old_token_id: str) -> str:
         redis_client = await self._get_redis_client()
 
@@ -678,6 +789,18 @@ return 0
 
         if old_data.get("revoked", False):
             family_id = old_data.get("family_id")
+            # 旋转宽限期：窗口内旧 token 再次请求轮换 = 合法并发刷新，
+            # 直接把后继交给它（不新建旋转 —— 那会让 family 分叉）。
+            successor = await self._grace_successor_redis(redis_client, old_data)
+            if successor is not None:
+                successor_id = successor["token_id"]
+                logger.info(
+                    "refresh_token_grace_reuse_allowed_on_rotate_redis",
+                    token_id=old_token_id[:8] + "...",
+                    successor_token_id=successor_id[:8] + "...",
+                    family_id=family_id,
+                )
+                return successor_id
             if family_id:
                 logger.warning(
                     "refresh_token_reuse_on_rotate_redis",
@@ -701,7 +824,10 @@ return 0
         family_id = old_data["family_id"]
         user_info = old_data.get("user_info", {})
 
+        # 记录后继（随旧 token 一起写回下方的 pipeline）：宽限期判定全靠它
         new_token_id = secrets.token_urlsafe(32)
+        old_data["successor_token_id"] = new_token_id
+
         new_data = {
             "token_id": new_token_id,
             "user_id": user_id,

@@ -102,8 +102,12 @@ class TestCrossProcessRotateLock:
             await store.rotate_refresh_token("t-down")
 
     @pytest.mark.anyio
-    async def test_reuse_detection_intact(self, fake_redis):
-        """闭合互斥后 reuse 语义不变：旧 token 第二次用仍被拒。"""
+    async def test_reuse_detection_intact(self, fake_redis, monkeypatch):
+        """闭合互斥后 reuse 语义不变：旧 token 第二次用仍被拒。
+
+        宽限期（合法并发返回后继）关闭后本用例钉的是窗口外/关闭态的窃取检测；
+        窗口内的跨进程宽限行为由 test_refresh_token_grace_period.py 覆盖。"""
+        monkeypatch.setattr(rt.settings, "refresh_token_grace_period_s", 0)
         store = _make_store(fake_redis)
         await _seed_token(fake_redis, token_id="t-reuse")
         await store.rotate_refresh_token("t-reuse")
