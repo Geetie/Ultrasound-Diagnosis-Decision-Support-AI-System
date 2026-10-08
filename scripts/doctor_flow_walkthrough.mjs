@@ -72,7 +72,27 @@ const record = (name, ok, detail = '') => {
 const sleep = (page, ms) => page.waitForTimeout(ms);
 
 const b = await chromium.launch({ executablePath: chrome, headless: true });
-const page = await b.newPage({ viewport: { width: 1512, height: 950 } });
+// 全程录像（Playwright screencast，headless 可用）：视频在页面关闭时落盘，
+// 结束后从 OUT/video 挪到 --video 指定的最终路径（默认本机 Videos 目录）。
+const videoDir = path.join(OUT, 'video');
+fs.mkdirSync(videoDir, { recursive: true });
+const page = await b.newPage({
+  viewport: { width: 1512, height: 950 },
+  recordVideo: { dir: videoDir, size: { width: 1512, height: 950 } },
+});
+const video = page.video();
+
+// 视频打点器：screencast 只在**重绘**时出帧 —— 判读等待的几十秒静态画面会被整段
+// 压缩掉（首录实测视频只有 17s）。body 透明度在 0.999↔1 间微幅切换强制合成器出帧，
+// 肉眼不可见，视频时长因此 = 真实墙钟时间。
+// 必须用 addInitScript：**每次文档加载都重新注入** —— 用 page.evaluate 注入的
+// 版本在第一次 goto 全量导航时就随旧文档一起消失了（踩过）。
+await page.addInitScript(() => {
+  setInterval(() => {
+    const b = document.body;
+    if (b) b.style.opacity = b.style.opacity === '0.999' ? '1' : '0.999';
+  }, 400);
+});
 const errs = [];
 // 资源加载失败的 console 文本不含 URL —— 把来源 URL 一起带上，豁免才能写得精确
 page.on('console', (m) => {
@@ -257,6 +277,31 @@ try {
   const failed = checks.filter((c) => !c.ok).length;
   console.log(`\nDOCTOR FLOW: PASS=${checks.length - failed} FAIL=${failed}`);
   console.log(`截图与现场：${OUT}`);
+  // 视频落盘时序（踩过坑）：b.close() 返回后 screencast 可能仍在写最后一段，
+  // 立即 rename 会 EBUSY、立即 exit 会截断文件。正确姿势：
+  // 等 video.path() → 轮询文件大小连续两次不变 → 复制（不 rename）→ 再退出。
   await b.close();
+  try {
+    const raw = await video.path();
+    let lastSize = -1;
+    for (let i = 0; i < 20; i += 1) {
+      const size = fs.existsSync(raw) ? fs.statSync(raw).size : -1;
+      if (size > 0 && size === lastSize) break;
+      lastSize = size;
+      await new Promise((r) => setTimeout(r, 1000));
+    }
+    const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const videoArg = args.indexOf('--video');
+    const target =
+      videoArg >= 0 && args[videoArg + 1]
+        ? args[videoArg + 1]
+        : path.join(os.homedir(), 'Videos', `US-DX-医生全流程走查-${stamp}.webm`);
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.copyFileSync(raw, target);
+    const mb = (fs.statSync(target).size / 1024 / 1024).toFixed(2);
+    console.log(`视频已保存：${target}（${mb} MB）`);
+  } catch (e) {
+    console.log(`视频保存失败：${String(e).slice(0, 120)}（原始文件在 ${videoDir}）`);
+  }
   process.exit(failed ? 1 : 0);
 }
