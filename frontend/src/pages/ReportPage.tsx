@@ -131,7 +131,12 @@ export default function ReportPage() {
   const [signConfirmOpen, setSignConfirmOpen] = useState(false);
   const [draftSections, setDraftSections] = useState<Record<string, string>>({});
   const [savingSections, setSavingSections] = useState(false);
-  const missingSections = completeness && !completeness.passed ? completeness.missing : [];
+  // useMemo 稳定身份：handleSign 的 useCallback 依赖它，每次渲染新建数组会让
+  // 回调身份跟着抖（react-hooks/exhaustive-deps warning，超出 --max-warnings 预算）
+  const missingSections = useMemo(
+    () => (completeness && !completeness.passed ? completeness.missing : []),
+    [completeness],
+  );
   // 阻断段（超声所见 / 诊断意见）：缺了服务端会以 E1030 拒签，前端提前说明
   const blockingSections = missingSections.filter((f) => BLOCKING_SECTIONS.has(f));
 

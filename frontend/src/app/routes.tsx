@@ -129,9 +129,11 @@ function WorkspaceRoute() {
    * 所以按会话列出影像 → 取最新一份 → 走服务端副本显示。取不到就保持
    * 占位底色（默认沉默），**绝不**显示"上一位患者"的图。
    */
-  const [sessionImageId, setSessionImageId] = useState<string | null>(null);
+  // 刻意不在 effect 里同步 setState(null)：那会触发级联渲染（react-hooks 报 error）。
+  // 与上面 sessionInfo 同一范式 ——「按 id 匹配」：会话对不上时渲染期天然回落成
+  // null（占位底色），换会话不会闪出上一位患者的图。
+  const [sessionImage, setSessionImage] = useState<{ id: string; imageId: string } | null>(null);
   useEffect(() => {
-    setSessionImageId(null);
     if (!sessionId) return;
     let alive = true;
     listSessionImages(sessionId)
@@ -139,13 +141,16 @@ function WorkspaceRoute() {
         const last = list.images.at(-1);
         if (!alive || !last) return;
         const id = await fetchDicomForDisplay(last.image_id).catch(() => null);
-        if (alive && id) setSessionImageId(id);
+        // 只存「成功取回」的；取不到就不写 state，保持占位（默认沉默）
+        if (alive && id) setSessionImage({ id: sessionId, imageId: id });
       })
       .catch(() => undefined);
     return () => {
       alive = false;
     };
   }, [sessionId]);
+  const sessionImageResolved =
+    sessionImage && sessionImage.id === sessionId ? sessionImage.imageId : null;
 
   /** 影像字节入库 → 立刻发起判读。这就是设计稿里"冻结当前帧即自动发起"的那一步。 */
   const handleUploaded = useCallback(
@@ -184,7 +189,7 @@ function WorkspaceRoute() {
   const dicomImageId =
     upload.state.serverImageId ??
     upload.state.localImageId ??
-    sessionImageId ??
+    sessionImageResolved ??
     devDicomImageId;
 
   // ?request_id=… —— 语音控件发起判读后带着它跳过来（AppLayout 的 onExecuted）。

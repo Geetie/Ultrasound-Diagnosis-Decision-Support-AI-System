@@ -302,3 +302,29 @@ class TestNavigationPaths:
             assert f"'{expected}" in routes or f"`{expected}" in routes, (
                 f"工作区导航缺少指向 {expected} 的入口"
             )
+
+
+class TestSessionCreateIsWired:
+    """新建会话页必须真的接线（2026-10-08 前它是「开始检查」永久禁用的展示页）。
+
+    该页原先只渲染画布给的两个写死值（患者/设备），没有选择器也没有
+    patient_id / device_id —— 医生在界面上开不了新检查。接线后：
+    患者经 /fhir/Patient 校验（存在性+同意）、设备手工录入+记忆、
+    创建成功必须**带着 session_id** 跳工作区（上传与判读都以它为外键）。
+    """
+
+    def test_page_creates_session_and_carries_session_id(self):
+        page = _code(SRC / "pages" / "SessionCreatePage.tsx")
+        assert "createSession(" in page, "新建会话页没有调 createSession —— 「开始检查」只是装饰"
+        assert "session_id=" in page and "encodeURIComponent" in page, (
+            "创建成功后的跳转必须带 ?session_id= —— 工作区的上传与判读都以 session_id 为外键，"
+            "navigate('/') 会把新会话 id 丢掉，医生又得回工作列表绕一圈"
+        )
+
+    def test_patient_check_goes_through_fhir_service(self):
+        fhir = _code(SRC / "services" / "fhirService.ts")
+        assert "/fhir/Patient" in fhir, "患者校验必须走 GET /fhir/Patient/{id}（存在性+同意一次调用两件事）"
+        assert re.search(r"baseURL:\s*''", fhir), (
+            "FHIR 挂在 /fhir（不带 /api/v1），每个请求必须用 baseURL: '' 覆盖 apiClient 的"
+            "全局 /api/v1 —— 否则打到 /api/v1/fhir/*（404），校验永远失败"
+        )

@@ -155,7 +155,6 @@ describe('ReportPage（M8 报告查看与签发）', () => {
   });
 
   it('缺「超声所见」（阻断段）→ 签发禁用并给补录面板，而不是弹确认', async () => {
-    const user = userEvent.setup();
     getMock.mockResolvedValueOnce({
       data: {
         ...draftReport,

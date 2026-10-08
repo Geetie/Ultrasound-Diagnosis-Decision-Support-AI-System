@@ -4,74 +4,157 @@ import AppShell from '@/components/shell/AppShell';
 import type { ThemeName } from '@/components/shell/AppSidebar';
 import { ORGAN_LABEL, ORGAN_PRESETS, type OrganType } from '@/types/session';
 import { createSession } from '@/services/sessionService';
-import { getApiErrorMessage } from '@/utils/apiError';
+import { createFhirPatient, getFhirPatient } from '@/services/fhirService';
+import { getApiErrorCode, getApiErrorMessage } from '@/utils/apiError';
 
 /**
  * 新建检查会话 —— 09_新建检查会话（进入检查前必经）
  *
- * 侧栏高亮**停在「工作列表」**，这是有意为之：本屏是工作列表流程的子页，
- * 导航反映的是「所在板块」而不是「当前子页」（画布 `_nav_highlight_decision`）。
- * 对照 08_设置 —— 设置是一级项，所以高亮在设置。别把这个「不一致」当缺陷修掉。
+ * 侧栏高亮停在「工作列表」是有意为之：本屏是工作列表流程的子页，
+ * 导航反映的是「所在板块」而不是「当前子页」（画布 _nav_highlight_decision）。
+ * 别把这个「不一致」当缺陷修掉。
  *
  * 设计取舍：
- *   · **不要求医生事前声明全部部位** —— 超声是操作者驱动、边扫边定；
- *     这里是「默认预选 + 自动补全」，所以甲状腺默认选中，医生通常一键即可
- *   · 自动补全是**补全而不是替代**，保持显式声明为主，避免纯推断带来的不安全
- *   · 患者行的同意状态在此**显式带出一次** —— 建会话阶段是同意校验的必经点
- *     （这是契约 §1「同意状态仅非常驻」在流程入口的一次性例外，画布明确要求）
+ *   · 不要求医生事前声明全部部位 —— 超声是操作者驱动、边扫边定；
+ *     这里是「默认预选 + 自动补全」，甲状腺默认选中，医生通常一键即可
+ *   · 自动补全是补全而不是替代，保持显式声明为主，避免纯推断带来的不安全
+ *
+ * 【接线 2026-10-08】原先本页只显示画布给的两个写死值（李** / 诊室 3），
+ * 没有选择器也没有 patient_id / device_id，「开始检查」永久禁用 —— 医生在
+ * 界面上开不了新检查。接线后的真实数据链：
+ *
+ *   患者编号 → GET /fhir/Patient/{id} 校验（存在性 + 知情同意，一次调用两件事）
+ *     ├─ 200            → 已确认（同意有效），可开始检查
+ *     ├─ 403 E1008/E1010 → 未签署/已撤回同意 → 引导找质控/科室负责人
+ *     │   （consent 端点医生 403，本来就不可能由医生补签 —— 如实引导）
+ *     └─ 404 E1002      → 库中无此患者行 → 医生可就地建档（POST /fhir/Patient
+ *                         只要求登录，医生有权限），建档后重新校验
+ *   设备编号 → 手工录入 + 记住上次使用（后端没有设备列表端点，device_id 也不校验
+ *              存在性 —— 只作记录；有列表端点后这里换下拉，见 feature_list）
+ *   开始检查 → POST /sessions → 带 ?session_id= 跳工作区。
+ *              原先 navigate('/') 把新会话 id 丢了 —— 工作区的上传与判读都以
+ *              session_id 为外键，丢掉它医生又得回工作列表绕一圈。
  *
  * 部位显示名与 ID 走 types/session 的 ORGAN_LABEL / ORGAN_PRESETS，
  * 与 14_多部位标签排共用同一份，不会再走散。
- *
- * ⚠️ 未接线部分：患者 / 设备的选择器。画布只给了两个已填好的值，没有选择器 UI，
- * 也没有 patient_id / device_id。所以本组件把这两个值作为 props 接收，
- * 由上层（患者登记 / 设备注册流程）传入；未传时只做展示，「开始检查」不会调后端。
  */
-export default function SessionCreatePage({
-  theme = 'dark',
-  patientLabel = '李** · 女 · 41 岁 · 门诊号 A2301 · 已签署 AI 辅助知情同意',
-  deviceLabel = '诊室 3 · 便携超声 02 号机（已注册 · 在线）',
-  patientId,
-  deviceId,
-  onStart,
-}: {
-  theme?: ThemeName;
-  patientLabel?: string;
-  deviceLabel?: string;
-  /** 真实患者 ID：有值时「开始检查」才调后端（画布未给选择器，由上层传入）。 */
-  patientId?: string;
-  deviceId?: string;
-  /** 点击「开始检查」时回调选中的部位（画布 2:294 → 创建会话 → 02_扫查态）。 */
-  onStart?: (organ: OrganType) => void;
-}) {
+
+/** 上次成功建会话用的设备号。key 前缀与 access_token 等既有键一致。 */
+const LAST_DEVICE_KEY = 'uai_last_device_id';
+
+/**
+ * 知情同意未签署 / 已撤回的指引。同意由质控/科室负责人签署（医生角色 403），如实引导。
+ */
+const CONSENT_GUIDANCE =
+  '该患者尚未签署 AI 辅助知情同意 —— 知情同意由质控 / 科室负责人在「知情同意」页签署，' +
+  '签署后回到本页重新「校验患者」即可。';
+const WITHDRAWN_GUIDANCE = '该患者的知情同意已被撤回 —— 需重新签署后才能开始 AI 辅助检查。';
+
+type PatientState =
+  | { kind: 'unverified' }
+  | { kind: 'verifying' }
+  | { kind: 'verified'; patientId: string; displayName: string }
+  | { kind: 'needs-consent'; patientId: string; message: string }
+  | { kind: 'not-found'; patientId: string }
+  | { kind: 'creating' }
+  | { kind: 'created'; patientId: string }
+  | { kind: 'error'; message: string };
+
+/** 把建会话/校验阶段的 consent 类错误（可能是校验后、创建前的竞态）收敛成同一指引。 */
+function consentMessageFor(code: string | null): string | null {
+  if (code === 'E1008') return CONSENT_GUIDANCE;
+  if (code === 'E1010') return WITHDRAWN_GUIDANCE;
+  return null;
+}
+
+export default function SessionCreatePage({ theme = 'dark' }: { theme?: ThemeName }) {
   const navigate = useNavigate();
   // 默认预选上次使用的部位 —— 医生通常一键即可
   const [organ, setOrgan] = useState<OrganType>('thyroid');
+  const [patientInput, setPatientInput] = useState('');
+  const [patientState, setPatientState] = useState<PatientState>({ kind: 'unverified' });
+  // 上次成功建会话用过的设备号直接回填 —— 重复检查时设备往往就是这一台
+  const [deviceId, setDeviceId] = useState(() => localStorage.getItem(LAST_DEVICE_KEY) ?? '');
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
-  /**
-   * 「开始检查」：真的建会话。
-   *
-   * 画布 09 只给了两个已填好的值、没有选择器 UI，所以 patient_id / device_id
-   * 由 props 传入。**两者齐备才调后端** —— 缺任一个都不该凭空编一个 id 提交，
-   * 那会在库里留下一条指向不存在患者的会话。
-   */
-  const handleStart = async () => {
-    onStart?.(organ);
-    if (!patientId || !deviceId) return;
-    setSubmitting(true);
-    setError(null);
+  const handleVerify = async () => {
+    const pid = patientInput.trim();
+    if (!pid) return;
+    setPatientState({ kind: 'verifying' });
     try {
-      await createSession({ patient_id: patientId, device_id: deviceId, target_organs: [organ] });
-      navigate('/');
+      const patient = await getFhirPatient(pid);
+      setPatientState({
+        kind: 'verified',
+        patientId: pid,
+        displayName: patient.name?.[0]?.text || pid,
+      });
     } catch (err: unknown) {
-      setError(getApiErrorMessage(err, '创建会话失败'));
+      const code = getApiErrorCode(err);
+      const consentMsg = consentMessageFor(code);
+      if (consentMsg) {
+        setPatientState({ kind: 'needs-consent', patientId: pid, message: consentMsg });
+      } else if (code === 'E1002') {
+        // 这条 404 只在「同意有效但 patients 表无行」时出现（后端先查同意再查行）
+        setPatientState({ kind: 'not-found', patientId: pid });
+      } else {
+        setPatientState({ kind: 'error', message: getApiErrorMessage(err, '患者校验失败') });
+      }
+    }
+  };
+
+  /** 就地建档（404 分支）。建档不等于同意 —— 成功后仍要求重新校验。 */
+  const handleCreatePatient = async () => {
+    const pid = patientState.kind === 'not-found' ? patientState.patientId : patientInput.trim();
+    if (!pid) return;
+    setPatientState({ kind: 'creating' });
+    try {
+      await createFhirPatient({ patient_id: pid });
+      setPatientState({ kind: 'created', patientId: pid });
+    } catch (err: unknown) {
+      const code = getApiErrorCode(err);
+      if (code === 'E1001') {
+        // 已存在（可能是并发建档/竞态）→ 回到建档前状态并说明，不吞事实
+        setPatientState({ kind: 'not-found', patientId: pid });
+        setSubmitError('该患者已存在 —— 请直接点「校验患者」确认同意状态');
+      } else {
+        setPatientState({ kind: 'error', message: getApiErrorMessage(err, '建档失败') });
+      }
+    }
+  };
+
+  const handleStart = async () => {
+    if (patientState.kind !== 'verified') return;
+    const trimmedDevice = deviceId.trim();
+    if (!trimmedDevice) return;
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      const session = await createSession({
+        patient_id: patientState.patientId,
+        device_id: trimmedDevice,
+        target_organs: [organ],
+      });
+      localStorage.setItem(LAST_DEVICE_KEY, trimmedDevice);
+      navigate(`/?session_id=${encodeURIComponent(session.session_id)}`);
+    } catch (err: unknown) {
+      // 校验通过后才发生同意失效（撤回/管理员改判）—— 把状态如实退回去
+      const consentMsg = consentMessageFor(getApiErrorCode(err));
+      if (consentMsg) {
+        setPatientState({
+          kind: 'needs-consent',
+          patientId: patientState.patientId,
+          message: consentMsg,
+        });
+      } else {
+        setSubmitError(getApiErrorMessage(err, '创建会话失败'));
+      }
     } finally {
       setSubmitting(false);
     }
   };
 
+  const canSubmit = patientState.kind === 'verified' && deviceId.trim() !== '' && !submitting;
   return (
     <AppShell
       // 本屏属工作列表流程子页 → 高亮工作列表，不高亮自己
@@ -83,11 +166,82 @@ export default function SessionCreatePage({
       <h1 className="page-title">新建检查会话</h1>
 
       <div className="page-form-card">
-        <span className="page-field-label">患者</span>
-        <span className="page-field-value">{patientLabel}</span>
+        <span className="page-field-label">患者编号 · 校验存在性与 AI 辅助知情同意</span>
+        <div className="page-verify-row">
+          <input
+            className="page-field-input"
+            value={patientInput}
+            onChange={(e) => setPatientInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') void handleVerify();
+            }}
+            placeholder="建档编号 / 门诊号"
+            aria-label="患者编号"
+            disabled={patientState.kind === 'verifying' || patientState.kind === 'creating'}
+          />
+          <button
+            type="button"
+            className="page-secondary-action"
+            onClick={() => void handleVerify()}
+            disabled={
+              !patientInput.trim() ||
+              patientState.kind === 'verifying' ||
+              patientState.kind === 'creating'
+            }
+          >
+            {patientState.kind === 'verifying' ? '校验中…' : '校验患者'}
+          </button>
+        </div>
 
-        <span className="page-field-label">设备</span>
-        <span className="page-field-value">{deviceLabel}</span>
+        {patientState.kind === 'verified' && (
+          <span className="page-field-value">
+            已确认：{patientState.displayName}（{patientState.patientId}） · AI 辅助知情同意有效
+          </span>
+        )}
+
+        {patientState.kind === 'needs-consent' && (
+          <span className="page-field-note page-field-note--stop" role="alert">
+            {patientState.message}
+          </span>
+        )}
+
+        {patientState.kind === 'not-found' && (
+          <>
+            <span className="page-field-note">
+              系统里没有这个患者。可以直接建档（医生有权限），建档后点「校验患者」重新确认；
+              若该患者此前未签署知情同意，建档后仍需质控 / 科室负责人先签署。
+            </span>
+            <button
+              type="button"
+              className="page-secondary-action"
+              onClick={() => void handleCreatePatient()}
+            >
+              为 {patientState.patientId} 建档
+            </button>
+          </>
+        )}
+
+        {patientState.kind === 'created' && (
+          <span className="page-field-note">
+            建档完成。请点「校验患者」重新确认 —— 若该患者未签署知情同意，还需质控 /
+            科室负责人先签署。
+          </span>
+        )}
+
+        {patientState.kind === 'error' && (
+          <span className="page-field-note page-field-note--stop" role="alert">
+            {patientState.message}
+          </span>
+        )}
+
+        <span className="page-field-label">设备编号 · 由管理员登记；会记住上一次使用的编号</span>
+        <input
+          className="page-field-input"
+          value={deviceId}
+          onChange={(e) => setDeviceId(e.target.value)}
+          placeholder="设备编号"
+          aria-label="设备编号"
+        />
 
         <span className="page-field-label">
           检查部位 · 默认已预选上次使用的部位，通常一键即可，不必手工挑
@@ -111,10 +265,10 @@ export default function SessionCreatePage({
         系统会把实际扫到的部位自动补入，作为补全而不是替代 —— 保持显式声明为主，避免纯推断带来的不安全。
       </p>
 
-      {/* 错误提示：仅在提交失败时出现（契约 §0 P1：不满足条件不渲染） */}
-      {error && (
+      {/* 提交失败提示：仅在失败时出现（契约 §0 P1：不满足条件不渲染） */}
+      {submitError && (
         <p className="page-error-note" role="alert">
-          {error}
+          {submitError}
         </p>
       )}
 
@@ -122,13 +276,9 @@ export default function SessionCreatePage({
         <button
           type="button"
           className="page-primary-action"
-          disabled={!patientId || !deviceId || submitting}
-          onClick={handleStart}
-          title={
-            patientId && deviceId
-              ? undefined
-              : '未接入患者/设备选择器（画布未提供该UI），无法创建会话'
-          }
+          disabled={!canSubmit}
+          onClick={() => void handleStart()}
+          title={canSubmit ? undefined : '先「校验患者」并填写设备编号'}
         >
           {submitting ? '创建中…' : '开始检查'}
         </button>

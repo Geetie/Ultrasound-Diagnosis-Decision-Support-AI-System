@@ -46,6 +46,24 @@ def _literal(node: ast.AST) -> str | None:
     return None
 
 
+def _has_empty_baseurl(text: str, arg_start: int) -> bool:
+    """调用是否带 per-request 的 ``baseURL: ''`` 覆盖。
+
+    apiClient 全局 baseURL 是 /api/v1，但 FHIR 挂在 /fhir（不带 /api/v1），
+    所以 fhirService 的每个请求都带 ``{ baseURL: '' }`` 覆盖 —— axios 合并配置时
+    请求级的非 undefined 值优先。这种调用**不能再拼 /api/v1 前缀**，否则会把
+    真实可达的路径判成"断链"（假红）。
+
+    只检查本调用的参数区：从 URL 实参之后到本调用的收括号 ``)`` 为止，
+    避免把下一个调用的参数误算进来。截断启发式对「参数里先出现内层右括号」
+    的写法会漏判（宁可漏报成需人工确认，也不误报断链）。
+    """
+    seg = text[arg_start : arg_start + 300]
+    end = re.search(r"\)\s*[;,)]", seg)
+    body = seg[: end.start()] if end else seg[:120]
+    return re.search(r"baseURL\s*:\s*''", body) is not None
+
+
 def collect_frontend_paths() -> tuple[set[str], list[tuple[str, int]]]:
     """返回 (静态可判定的 API 路径集合, 动态拼接的调用点列表)。
 
@@ -86,7 +104,7 @@ def collect_frontend_paths() -> tuple[set[str], list[tuple[str, int]]]:
             if not path.startswith("/"):
                 dynamic.append((rel, text[:m.start()].count("\n") + 1))
                 continue
-            if not path.startswith("/api/"):
+            if not path.startswith("/api/") and not _has_empty_baseurl(text, m.end()):
                 path = "/api/v1" + path
             found.add(path.rstrip("/") or "/")
         for m in dynamic_re.finditer(text):

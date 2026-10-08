@@ -249,6 +249,50 @@
   color: var(--color-text-primary);
 }
 
+/* ---- 09 接线后的患者/设备输入（2026-10-08）----
+   设计稿只画了两个已填好的值，没有输入控件；接线后这里必须有真的 input。
+   样式全部沿用现有 token —— 色彩语义只有 stop/attention 两级（契约 §2），
+   「成功」就用普通正文色，不再加第三种语义色。 */
+.page-field-input {
+  height: 38px;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-tag);
+  background: transparent;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-body);
+}
+
+.page-field-input:focus-visible {
+  outline: 2px solid var(--color-attention);
+  outline-offset: 1px;
+}
+
+.page-field-input::placeholder {
+  color: var(--color-text-secondary);
+}
+
+.page-verify-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.page-field-note {
+  font-size: var(--font-size-small);
+  line-height: 1.6;
+  color: var(--color-text-secondary);
+}
+
+/* 校验/建会话被同意状态挡下时：这是「停」，用语义停色让医生一眼分清
+   「提示」与「过不去」—— 否则指引文案会被当成普通说明略过 */
+.page-field-note--stop {
+  color: var(--color-semantic-stop);
+}
+
 .page-organ-row {
   display: flex;
   align-items: center;

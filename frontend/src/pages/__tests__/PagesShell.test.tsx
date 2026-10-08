@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -7,6 +7,8 @@ import { MemoryRouter } from 'react-router-dom';
 import WorklistPage from '../WorklistPage';
 import SettingsPage from '../SettingsPage';
 import SessionCreatePage from '../SessionCreatePage';
+import { createSession } from '@/services/sessionService';
+import { getFhirPatient } from '@/services/fhirService';
 
 /**
  * 工作列表改成数据驱动后，测试必须喂数据，不能再靠组件里的硬编码文案。
@@ -76,6 +78,13 @@ vi.mock('@/services/sessionService', () => ({
     // 把进行中计入会让医生以为还有 4 份要看。
     total_pending: 3,
   }),
+  // 09 接线（2026-10-08）后「开始检查」真的建会话
+  createSession: vi.fn(),
+}));
+
+vi.mock('@/services/fhirService', () => ({
+  getFhirPatient: vi.fn(),
+  createFhirPatient: vi.fn(),
 }));
 
 const css = (rel: string) => readFileSync(path.resolve(process.cwd(), rel), 'utf8');
@@ -290,9 +299,20 @@ describe('09_新建检查会话', () => {
     expect(organs[1].getAttribute('aria-pressed')).toBe('true');
   });
 
-  it('患者行显式带出一次同意状态（建会话是同意校验必经点）', () => {
+  it('患者校验通过后显式带出同意状态（建会话是同意校验必经点）', async () => {
+    // 接线后：GET /fhir/Patient 一次调用同时校验存在性与同意（未同意后端直接 403）
+    vi.mocked(getFhirPatient).mockResolvedValue({
+      resourceType: 'Patient',
+      id: 'P1',
+      name: [{ text: 'P1' }],
+      active: true,
+    });
     wrap(<SessionCreatePage />);
-    expect(screen.getByText(/已签署 AI 辅助知情同意/)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('患者编号'), { target: { value: 'P1' } });
+    fireEvent.click(screen.getByRole('button', { name: '校验患者' }));
+    await waitFor(() => {
+      expect(screen.getByText(/AI 辅助知情同意有效/)).toBeInTheDocument();
+    });
   });
 
   it('不要求事前声明全部部位：说明自动补全是补全不是替代', () => {
@@ -301,24 +321,50 @@ describe('09_新建检查会话', () => {
     expect(screen.getByText(/默认已预选上次使用的部位/)).toBeInTheDocument();
   });
 
-  it('主操作「开始检查」44px，回调带上选中部位', () => {
-    const onStart = vi.fn();
-    const { container } = wrap(
-      <SessionCreatePage onStart={onStart} patientId="P1" deviceId="D1" />
-    );
-    const btn = screen.getByRole('button', { name: '开始检查' });
+  it('主操作「开始检查」44px，真的建会话并带上选中部位', async () => {
+    vi.mocked(getFhirPatient).mockResolvedValue({
+      resourceType: 'Patient',
+      id: 'P1',
+      name: [{ text: 'P1' }],
+      active: true,
+    });
+    vi.mocked(createSession).mockResolvedValue({
+      session_id: 'sess-x',
+      patient_id: 'P1',
+      device_id: 'D1',
+      status: 'pending',
+      target_organs: ['liver'],
+      organ_statuses: {},
+      knowledge_base_version: 'kb_v1.0.0',
+      created_at: '2026-10-08T10:00:00Z',
+      updated_at: '2026-10-08T10:00:00Z',
+      expired_at: null,
+      consent_status_at_creation: 'granted',
+    });
+    const { container } = wrap(<SessionCreatePage />);
     expect(ruleBody(pagesCss, '.page-primary-action')).toMatch(/height:\s*44px/);
-    expect(btn).toBeEnabled();
-    fireEvent.click(btn);
-    expect(onStart).toHaveBeenCalledWith('thyroid');
+
+    const btn = screen.getByRole('button', { name: '开始检查' });
+    expect(btn).toBeDisabled(); // 未校验患者、未填设备 —— 不打无效请求
+    fireEvent.change(screen.getByLabelText('患者编号'), { target: { value: 'P1' } });
+    fireEvent.click(screen.getByRole('button', { name: '校验患者' }));
+    await waitFor(() => expect(screen.getByText(/AI 辅助知情同意有效/)).toBeInTheDocument());
+    expect(btn).toBeDisabled(); // 患者确认了但设备还没填 —— 仍然不允许提交
+    fireEvent.change(screen.getByLabelText('设备编号'), { target: { value: 'D1' } });
+    // 换到第 3 个部位再提交 —— 请求体必须带医生实际选中的部位
     fireEvent.click(container.querySelectorAll('.page-organ')[2]);
+    await waitFor(() => expect(btn).toBeEnabled());
     fireEvent.click(screen.getByRole('button', { name: '开始检查' }));
-    expect(onStart).toHaveBeenLastCalledWith('liver');
+    await waitFor(() => {
+      expect(vi.mocked(createSession)).toHaveBeenCalledWith(
+        expect.objectContaining({ patient_id: 'P1', device_id: 'D1', target_organs: ['liver'] }),
+      );
+    });
   });
 
-  it('未接入患者/设备选择器时「开始检查」禁用，不打无效请求', () => {
-    // 画布只给了已填好的显示值，没有 patient_id / device_id，
-    // 缺 ID 时建会话必然失败，所以直接禁用而不是发一个注定 422 的请求。
+  it('未校验患者时「开始检查」禁用，不打无效请求', () => {
+    // 接线后前置是「校验患者」（后端以 consent 为准）；没校验就提交，
+    // 等于赌库里一定有同意记录 —— 直接禁用。
     render(
       <MemoryRouter>
         <SessionCreatePage />
@@ -328,7 +374,7 @@ describe('09_新建检查会话', () => {
   });
 
   it('部位显示名与 ID 走同一份映射（含设计要求的颈部淋巴结）', () => {
-    wrap(<SessionCreatePage patientId="P1" deviceId="D1" />);
+    wrap(<SessionCreatePage />);
     // OrganType 原本只有 thyroid/liver/cardiac，缺cervical_ln
     expect(screen.getByText('颈部淋巴结')).toBeInTheDocument();
   });
