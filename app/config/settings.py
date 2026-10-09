@@ -360,7 +360,9 @@ class Settings(BaseSettings):
     # 验证过取图链路（dicom_images 索引 + storage_id 命名落盘）。
     # 开启后结果挂 findings["segmentation"]，缺权重/缺影像一律 available=False
     # 带原因，不影响诊断状态与置信度。
-    nodule_contour_in_pipeline_enabled: bool = False
+    # A.37 ③：默认开启 —— 分割量化特征必须在 dispatch 前产出才能经 imaging_metadata
+    # 注入 LLM 上下文；关闭 = LLM 永远看不到影像信息（结论反向索要影像特征）
+    nodule_contour_in_pipeline_enabled: bool = True
     # AI 依赖的**硬离线**闸门（2026-10-04 真机事故驱动）：
     # open_clip / huggingface_hub 在装载模型时会向 huggingface.co 发 HEAD 探测
     # 权重；网络不可达时每次 5 次重试 ~14s，且这段是**同步**代码——跑在请求

@@ -298,12 +298,23 @@ async def run_diagnosis_pipeline(request_id: str) -> bool:
         # （放在读段之后、调度之前：Redis 读取很快，不占 DB 连接。）
         skip_self_rag = await _read_retry_skip_self_rag(request_id)
 
-        # 1) 调度 (dispatcher.invoke)
+        # 1) 分割旁路**提前**（A.37 ③）：分割量化特征（bbox/面积/概率）必须在
+        #    dispatch 之前产出，才能经 imaging_metadata 注入 LLM 上下文 ——
+        #    原顺序 dispatch 在前、分割在后且默认关闭，影像信息永远赶不上
+        #    prompt 拼装，LLM 只能反向索要影像特征（真机走查实测）。
+        t = time.monotonic()
+        segmentation = await _safe_nodule_contour(request)
+        timings["segmentation.bypass_ms"] = (time.monotonic() - t) * 1000.0
+
+        # 2) 调度 (dispatcher.invoke)
         # T-GB-AGT-02：把路由判定的检索档位一并注入，使"标准/全量"
         # 真正作用于专科智能体的检索强度（此前判定结果只落库不生效）。
         t = time.monotonic()
         specialist_responses = await _safe_dispatch(
-            request, request_id, routing=routing_decision
+            request,
+            request_id,
+            routing=routing_decision,
+            imaging_metadata=segmentation if isinstance(segmentation, dict) else None,
         )
         timings["dispatcher.invoke_ms"] = (time.monotonic() - t) * 1000.0
 
@@ -326,11 +337,6 @@ async def run_diagnosis_pipeline(request_id: str) -> bool:
             patient_id=patient_id,
         )
         timings["sg.check_output_ms"] = (time.monotonic() - t) * 1000.0
-
-        # 3.5) 分割旁路（辅助信息，失败不影响诊断结论；默认配置关闭）
-        t = time.monotonic()
-        segmentation = await _safe_nodule_contour(request)
-        timings["segmentation.bypass_ms"] = (time.monotonic() - t) * 1000.0
 
         # 4) 组装 DiagnosisResult 并写 DB（独立短会话，见 _write_result_to_db）
         t = time.monotonic()
@@ -454,7 +460,10 @@ async def run_diagnosis_pipeline(request_id: str) -> bool:
 
 
 async def _safe_dispatch(
-    request, request_id: str, routing: RoutingDecision | None = None
+    request,
+    request_id: str,
+    routing: RoutingDecision | None = None,
+    imaging_metadata: dict | None = None,
 ):
     """调用 dispatcher.invoke；失败时返回 [AgentResponse(confidence=0.0)]。
 
@@ -488,6 +497,19 @@ async def _safe_dispatch(
             ),
             session_id=getattr(request, "session_id", None),
         )
+        # A.36 ⑤：PatientContext 的 age/gender/relevant_history 此前只在安全网关
+        # 消费（且仅 conditions 被转发），从不进入 LLM —— 结论恒为「信息不足」。
+        pc = getattr(request, "patient_context", None)
+        if pc is not None:
+            parts = []
+            if getattr(pc, "age", None):
+                parts.append(f"{pc.age} 岁")
+            if getattr(pc, "gender", None):
+                parts.append(str(pc.gender))
+            if getattr(pc, "relevant_history", None):
+                parts.append(f"病史：{pc.relevant_history}")
+            if parts:
+                user_query = user_query + "\n患者信息：" + "；".join(parts)
         context = AgentContext(
             request_id=request_id,
             session_id=request.session_id,
@@ -498,7 +520,9 @@ async def _safe_dispatch(
                 if routing is not None
                 else None
             ),
-            imaging_metadata=None,
+            # A.37 ③：分割量化特征注入 LLM 上下文（base.py「影像元数据」段
+            # 早已实现，此前恒传 None —— 影像从未进入判读）。
+            imaging_metadata=imaging_metadata or None,
             prior_messages=[],
         )
         response = await dispatcher.invoke(context)
