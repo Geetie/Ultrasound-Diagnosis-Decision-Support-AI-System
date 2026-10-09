@@ -1,7 +1,7 @@
 # progress.md — 当前状态（唯一「现在在哪」来源）
 
 **Last Updated**: 2026-10-09（A.39）
-**HEAD**: 分支 `main`（本轮：33.5s 判读等待真因修复（processing 缓存 TTL 30s→1s）+ 真实数据制度 + 远期路线图 21 号文档，详见 16 号附录 A.39）
+**HEAD**: 分支 `main`（本轮：多帧分期② + 标注持久化 + 测量交互真机排障（overlay 挡事件），走查 20/20，详见 16 号附录 A.40~A.41）
 **Owner of truth**: 本文件只记「当前状态/下一步/阻塞」；**功能与门控状态在 `feature_list.json`**，长期证据在 `16-开发进展汇报-20260928.md` 附录 A。
 
 ## Current Objective

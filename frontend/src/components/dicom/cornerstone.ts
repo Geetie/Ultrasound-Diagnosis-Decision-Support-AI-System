@@ -380,22 +380,38 @@ export interface MeasureResult {
  */
 export function onMeasureCompleted(handler: (m: MeasureResult) => void): () => void {
   const listener = ((evt: CustomEvent) => {
-    const ann = (evt.detail as { annotation?: Record<string, unknown> & { toolName?: string; data?: Record<string, unknown> } })
-      ?.annotation;
-    if (!ann?.toolName) return;
+    // CS3D 5.11 真机形态（探针实测）：toolName 在 annotation.metadata.toolName
+    // （顶层没有）；数值在 data.cachedStats[targetId].length/area。
+    const ann = (evt.detail as {
+      annotation?: {
+        metadata?: { toolName?: string };
+        data?: Record<string, unknown>;
+      };
+    })?.annotation;
+    if (!ann) return;
+    const toolName = ann.metadata?.toolName;
     const data = (ann.data ?? {}) as {
       length?: number;
       area?: number;
-      cachedStats?: Record<string, { length?: number; area?: number }>;
+      cachedStats?: Record<string, { length?: number; area?: number; unit?: string }>;
     };
-    // CS3D 5.x：Length 在 data.cachedStats[targetId].length，旧路径 data.length 兜底
     const first = data.cachedStats?.[Object.keys(data.cachedStats ?? {})[0] ?? ''];
     const length = first?.length ?? data.length;
     const area = first?.area ?? data.area;
-    if (ann.toolName === LengthTool.toolName && typeof length === 'number') {
-      handler({ tool: ann.toolName, value: length, unit: 'mm', annotation: ann });
-    } else if (ann.toolName === EllipticalROITool.toolName && typeof area === 'number') {
-      handler({ tool: ann.toolName, value: area, unit: 'mm²', annotation: ann });
+    if (toolName === LengthTool.toolName && typeof length === 'number') {
+      handler({
+        tool: toolName,
+        value: length,
+        unit: 'mm',
+        annotation: ann as Record<string, unknown>,
+      });
+    } else if (toolName === EllipticalROITool.toolName && typeof area === 'number') {
+      handler({
+        tool: toolName,
+        value: area,
+        unit: 'mm²',
+        annotation: ann as Record<string, unknown>,
+      });
     }
   }) as EventListener;
   eventTarget.addEventListener(ToolsEnums.Events.ANNOTATION_COMPLETED, listener);
@@ -437,5 +453,18 @@ export function restoreAnnotations(
 }
 
 export { cornerstone, wadouri };
+
+/** 受控调试钩子（走查探针用）：当前主键激活工具与组内工具清单。 */
+export function debugToolState(): { active: string | null; tools: string[]; group: string | null } {
+  const tg = currentToolGroup();
+  return {
+    active: tg?.getActivePrimaryMouseButtonTool() ?? null,
+    tools: tg ? Object.keys(tg.getToolInstances()) : [],
+    group: currentToolGroupId,
+  };
+}
+if (typeof window !== 'undefined') {
+  (window as unknown as Record<string, unknown>).__uaiCs = { debugToolState };
+}
 
 export type { Types };

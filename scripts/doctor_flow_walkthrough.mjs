@@ -203,6 +203,50 @@ try {
     record('4d. 键盘 → 翻帧到 2/2', flipped);
     await shot('04e-frame2');
   }
+
+  // 测量画线 + 标注存档（A.40）：长度工具 + canvas 拖拽 → 读数出现 + PUT 200
+  let annPutOk = false;
+  let annGetCount = -1;
+  page.on('response', (res) => {
+    const u = res.url();
+    if (/\/images\/[^/]+\/annotations/.test(u)) {
+      if (res.request().method() === 'PUT' && res.status() === 200) annPutOk = true;
+      if (res.request().method() === 'GET' && res.status() === 200) {
+        res.text().then((t) => {
+          try { annGetCount = JSON.parse(t).annotations.length; } catch {}
+        }).catch(() => {});
+      }
+    }
+  });
+  const lenBtn = await page.$("button[title='长度']");
+  if (lenBtn) {
+    await lenBtn.click();
+    const layer = await page.$('[data-region=dicom-layer]');
+    if (layer) {
+      const box = await layer.boundingBox();
+      if (box) {
+        const cx = box.x + box.width / 2;
+        const cy = box.y + box.height / 2;
+        await page.mouse.move(cx - 60, cy - 40);
+        await page.mouse.down();
+        // cornerstone 有 400ms 双击容忍窗口：up 在窗口内会被当 click，
+        // 不触发拖拽画线（A.40 探针实测）—— down 后停 600ms 再拖
+        await sleep(page, 600);
+        await page.mouse.move(cx + 70, cy + 50, { steps: 12 });
+        await page.mouse.up();
+      }
+    }
+    let readout = false;
+    for (let i = 0; i < 20 && !readout; i += 1) {
+      readout = (await page.locator('[data-region=measure-readout]').count()) > 0;
+      if (!readout) await sleep(page, 500);
+    }
+    record('4f. 测量画线出 mm 读数', readout);
+    for (let i = 0; i < 16 && !annPutOk; i += 1) await sleep(page, 250);
+    record('4g. 标注存档 PUT 200', annPutOk);
+  } else {
+    record('4f. 测量画线出 mm 读数', false, '没有「长度」按钮');
+  }
   // 等判读出结论：管线 33~300s（A.29 修过前端轮询上限），这里给足 7 分钟
   let concluded = false;
   let lastText = '';

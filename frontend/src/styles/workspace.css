@@ -63,6 +63,10 @@
 .ws-image__overlay {
   position: absolute;
   inset: 0;
+  /* 纯展示层（参数角标/深度刻度/标注标签）—— 不挡 cornerstone 的鼠标交互。
+     没有这行它会盖满影像区吃掉所有事件：测量画不了线，窗宽窗位/缩放/平移
+     也全点不动（A.40 真机探针 elementFromPoint 实锤，A.38 只验了按钮存在）。 */
+  pointer-events: none;
 }
 
 /* 角标类文字：参数/时间/深度刻度/标注标签 */

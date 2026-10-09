@@ -509,10 +509,10 @@
       "id": "annotation-persistence",
       "name": "远期：医生自定义标注/测量持久化（随影像存档）",
       "description": "医生在影像上的手工标注与测量值目前不保存，刷新即失。需标注随 image_id 存档 + 报告引用。cornerstone annotation API 已具备基础",
-      "status": "planned",
+      "status": "done",
       "dependencies": [],
-      "resolution": "",
-      "evidence": "A.38 阅片生命周期盘点（浏览/阅片阶段缺口：测量工具 P2 未做，标注持久化依赖其先行）"
+      "resolution": "最小闭环（A.41）：后端 /api/v1/images/{image_id}/annotations（GET/PUT），JSON 文件存档于 {dicom_storage_path}/annotations/（与影像同根随档迁移，确定性路径无表无迁移，tmp+rename 原子写，256KB 上限 E1035）；前端 onMeasureCompleted 带注释原对象序列化累积 → PUT 全量；装载后 GET → restoreAnnotations（CS3D addAnnotation + 工具组 Passive 只渲染不响应绘制）→ 医生刷新/换设备回来测量还在。archiveKey 三层透传，会话恢复链路 sessionImage 补 backendImageId",
+      "evidence": "A.41：走查 4f/4g（测量画线出 mm 读数 + PUT 200）真机 PASS；vitest WorkspaceDicomLayer 9 例（含存档往返/防穿越由 test_annotations 5 例覆盖）；quality 75 passed（+守卫）。多帧标注归属（帧级 key）留分期③"
     },
     {
       "id": "study-compare-historical",
