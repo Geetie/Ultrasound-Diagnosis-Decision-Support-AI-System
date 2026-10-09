@@ -176,9 +176,11 @@ export function displayImage(
   if (!vp) return;
   const stack = vp as Types.IStackViewport;
   void (async () => {
-    const img = await loadAndCacheImage(ids[0]!);
-    const min = img.minPixelValue ?? 0;
-    const max = img.maxPixelValue ?? 255;
+    // 整栈预缓存（A.38 真机探针教训）：只缓存首帧时，scroll 到未加载帧会
+    // 静默不动（无报错、无渲染事件）。多帧帧体积小，全部 loadAndCacheImage。
+    const imgs = await Promise.all(ids.map((id) => loadAndCacheImage(id)));
+    const min = imgs[0]!.minPixelValue ?? 0;
+    const max = imgs[0]!.maxPixelValue ?? 255;
     await stack.setStack(ids);
     stack.setProperties({
       voiRange: { lower: min, upper: max },
@@ -188,15 +190,19 @@ export function displayImage(
 
 /**
  * 多帧滚动（A.38）：沿栈前进/后退 distance 帧，越界由 cornerstone 截断。
+ * 返回滚动后的帧下标（0 起）；拿不到返回 null —— 调用方可直读更新指示器，
+ * 不必等渲染事件（真机探针实测：渲染事件在个别路径上不可靠）。
  * 仅对 StackViewport 生效；单帧栈滚不动（无害）。
  */
-export function scrollStack(element: HTMLElement, distance: number): void {
+export function scrollStack(element: HTMLElement, distance: number): number | null {
   try {
     const enabled = getEnabledElement(element as HTMLDivElement);
-    if (!enabled) return;
+    if (!enabled) return null;
     (enabled.viewport as Types.IStackViewport).scroll(distance);
+    const idx = (enabled.viewport as Types.IStackViewport).getCurrentImageIdIndex?.();
+    return typeof idx === 'number' ? idx : null;
   } catch {
-    // 未启用/已分离
+    return null;
   }
 }
 

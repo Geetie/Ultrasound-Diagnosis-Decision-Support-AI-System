@@ -155,7 +155,12 @@ export default function WorkspaceDicomLayer({ imageIds }: { imageIds: string[] }
       const element = ref.current;
       if (!element || !multiFrame) return;
       import('@/components/dicom/cornerstone')
-        .then((cs) => cs.scrollStack(element, delta))
+        .then((cs) => {
+          const idx = cs.scrollStack(element, delta);
+          // 渲染事件同步是后备，这里直读返回值先更新指示器（真机探针：
+          // 个别路径上渲染事件不可靠，指示器会停在旧帧号）
+          if (typeof idx === 'number') setFrameIndex(idx);
+        })
         .catch(() => undefined);
     },
     [multiFrame],
