@@ -499,6 +499,19 @@ async def _safe_dispatch(
         )
         # A.36 ⑤：PatientContext 的 age/gender/relevant_history 此前只在安全网关
         # 消费（且仅 conditions 被转发），从不进入 LLM —— 结论恒为「信息不足」。
+        # A.37 ③补充：显式告知模型"影像已被系统测量"，否则 thyroid.md 把
+        # 成分/回声/形态列为预期输入、模型收不到就反向索要（真机走查实测）。
+        if imaging_metadata and imaging_metadata.get("available"):
+            im = imaging_metadata
+            bbox = im.get("bbox")
+            user_query = user_query + (
+                "\n【系统自动影像分析（已由分割模型测得，直接引用，不要向医生索要）】"
+                f"病灶 bbox(像素)={bbox}，面积={im.get('area_mm2')}mm²，"
+                f"分割置信度 max={im.get('max_prob')}/mean={im.get('mean_prob')}，"
+                f"像素间距={im.get('pixel_spacing_mm')}mm/px。"
+                "结论中请引用这些量化数据；成分/回声等定性描述如无法从量化数据得出，"
+                "请在结论中标注『需医生镜下确认』而不是要求医生提供。"
+            )
         pc = getattr(request, "patient_context", None)
         if pc is not None:
             parts = []
