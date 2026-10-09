@@ -175,9 +175,11 @@ export default function WorkspaceDicomLayer({
             key,
             text: `${m.tool === 'Length' ? '长度' : '面积'} ${m.value.toFixed(1)} ${m.unit}`,
           });
-          // 标注持久化（A.40）：注释原对象序列化进存档列表（PUT 由独立 effect 发）
+          // 标注持久化（A.40）+ 帧级归属（A.45 分期③）：注释原对象序列化进存档
+          // 列表并带上当前帧号 —— 多帧栈里翻帧只恢复当前帧的注释
           if (m.annotation) {
             const serialized = JSON.parse(JSON.stringify(m.annotation)) as StoredAnnotation;
+            serialized.frame_index = frameIndex;
             setSavedAnnotations((prev) => [...prev, serialized]);
           }
         });
@@ -187,7 +189,8 @@ export default function WorkspaceDicomLayer({
       cancelled = true;
       off?.();
     };
-  }, [activeTool, loaded, stackKey]);
+    // frameIndex 进依赖：闭包里的帧号必须跟手 —— 否则画的注释全记成旧帧
+  }, [activeTool, loaded, stackKey, frameIndex]);
 
   // 存档写入：有 archiveKey 且有未保存注释时 PUT 全量（服务端原子覆盖）。
   // 失败静默 —— 标注是增强，不该因网络抖动打断阅片；重画一次即重试。
@@ -198,8 +201,10 @@ export default function WorkspaceDicomLayer({
       .catch(() => undefined);
   }, [archiveKey, savedAnnotations]);
 
-  // 存档恢复：装载完成且有 archiveKey 时 GET 并渲染历史标注（Passive 态）。
-  // 换影像（stackKey 变化）重新走一遍 —— 注释按 image_id 归属。
+  // 存档恢复：装载完成且有 archiveKey 时 GET 并渲染**当前帧**的历史标注
+  // （Passive 态）。帧级归属（A.45 分期③）：翻帧（frameIndex 变化）重新走一遍
+  // —— 先清场再恢复该帧的注释（CS3D 注释按同一 FrameOfReference 累积，
+  // 不清场会叠在错误帧上）；旧存档无 frame_index 视为第 0 帧。
   useEffect(() => {
     const element = ref.current;
     if (!element || !loaded || !archiveKey) return;
@@ -207,11 +212,22 @@ export default function WorkspaceDicomLayer({
     import('@/services/annotationsService')
       .then((svc) => svc.fetchAnnotations(archiveKey))
       .then((anns) => {
+        // 空存档：不恢复也不清场（旧行为 —— restoreAnnotations 空调用没有意义）
         if (cancelled || anns.length === 0) return;
         import('@/components/dicom/cornerstone')
           .then((cs) => {
             if (cancelled) return;
-            cs.restoreAnnotations(element, anns);
+            cs.clearAnnotations();
+            // 帧级过滤（A.45 分期③）：旧存档无 frame_index 视为第 0 帧；
+            // 过滤后为空也跳过 restore（清场已把其他帧的注释拿掉）
+            const frameAnns = anns.filter(
+              (a) => ((a.frame_index as number | undefined) ?? 0) === frameIndex,
+            );
+            if (frameAnns.length === 0) {
+              setSavedAnnotations(anns);
+              return;
+            }
+            cs.restoreAnnotations(element, frameAnns);
             // 恢复的注释进存档缓存：医生再画一条时 PUT 会把整批写回（全量覆盖）
             setSavedAnnotations(anns);
           })
@@ -221,7 +237,7 @@ export default function WorkspaceDicomLayer({
     return () => {
       cancelled = true;
     };
-  }, [archiveKey, loaded, stackKey]);
+  }, [archiveKey, loaded, stackKey, frameIndex]);
 
   const scrollBy = useCallback(
     (delta: number) => {

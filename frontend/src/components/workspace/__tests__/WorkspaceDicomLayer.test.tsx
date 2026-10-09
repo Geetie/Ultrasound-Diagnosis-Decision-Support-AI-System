@@ -20,6 +20,7 @@ const cs = vi.hoisted(() => ({
   deactivateTool: vi.fn(),
   onMeasureCompleted: vi.fn(() => () => {}),
   restoreAnnotations: vi.fn(() => 0),
+  clearAnnotations: vi.fn(),
 }));
 
 vi.mock('@/components/dicom/cornerstone', () => cs);
@@ -192,5 +193,45 @@ describe('WorkspaceDicomLayer · 多帧分期①', () => {
     render(<WorkspaceDicomLayer imageIds={[]} />);
     expect(cs.enable).not.toHaveBeenCalled();
     expect(screen.queryByText('影像加载中…')).toBeNull();
+  });
+
+  it('帧级标注归属（A.45 分期③）：翻帧清场重恢复当前帧的注释', async () => {
+    // 存档含帧 0 与帧 1 各一条注释（旧存档无 frame_index 视为 0）
+    annSvc.fetchAnnotations.mockResolvedValue([
+      { toolName: 'Length', data: {}, uuid: 'a-frame0' },
+      { toolName: 'Length', data: {}, uuid: 'a-noframe' },
+      { toolName: 'Length', data: {}, uuid: 'a-frame1', frame_index: 1 },
+    ]);
+    const { rerender } = render(
+      <WorkspaceDicomLayer
+        imageIds={['dicomfile:0', 'dicomfile:1']}
+        archiveKey="img_20261009_ab12cd34"
+      />,
+    );
+    // 初始帧 0：恢复 frame0 + 无帧号两条，翻帧前不恢复 frame1
+    await waitFor(() => expect(cs.restoreAnnotations).toHaveBeenCalled());
+    const restoreCalls = (cs.restoreAnnotations as unknown as {
+      mock: { calls: Array<[HTMLElement, Array<{ uuid?: string }>]> };
+    }).mock.calls;
+    const firstCall = restoreCalls[0][1];
+    expect(firstCall.map((a) => a.uuid).sort()).toEqual(['a-frame0', 'a-noframe']);
+    expect(cs.clearAnnotations).toHaveBeenCalled();
+
+    // 翻到帧 1：清场后只恢复 frame1
+    rerender(
+      <WorkspaceDicomLayer
+        imageIds={['dicomfile:0', 'dicomfile:1']}
+        archiveKey="img_20261009_ab12cd34"
+      />,
+    );
+    cs.scrollStack.mockImplementation(() => 1);
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    await waitFor(() => {
+      const calls = (cs.restoreAnnotations as unknown as {
+        mock: { calls: Array<[HTMLElement, Array<{ uuid?: string }>]> };
+      }).mock.calls;
+      const last = calls[calls.length - 1][1];
+      expect(last.map((a) => a.uuid)).toEqual(['a-frame1']);
+    });
   });
 });

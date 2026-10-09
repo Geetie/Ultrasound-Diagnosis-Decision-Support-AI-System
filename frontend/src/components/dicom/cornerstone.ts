@@ -419,6 +419,22 @@ export function onMeasureCompleted(handler: (m: MeasureResult) => void): () => v
 }
 
 /** 恢复到当前 viewport 的注释（标注持久化的载入侧）。失败逐条容忍。 */
+/**
+ * 清空已注册的全部注释（A.45 分期③：翻帧重恢复前必须清场，
+ * 否则 CS3D 按同一 FrameOfReference 累积 —— 多帧栈里注释会叠在错误帧上）。
+ * 工作区单 viewport，全量清安全；多 viewport 时需按 FoS 过滤。
+ */
+export function clearAnnotations(): void {
+  try {
+    const anns = annotation.state.getAllAnnotations() ?? [];
+    for (const a of anns) {
+      if (a.annotationUID) annotation.state.removeAnnotation(a.annotationUID);
+    }
+  } catch {
+    // 无注释/已分离
+  }
+}
+
 export function restoreAnnotations(
   element: HTMLElement,
   annotations: Array<Record<string, unknown> & { toolName?: string }>,
