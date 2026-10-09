@@ -22,6 +22,7 @@ from starlette.responses import FileResponse
 
 from app.api.v1.alert_admin import router as alert_admin_router
 from app.api.v1.alerts import router as internal_alerts_router
+from app.api.v1.annotations import router as annotations_router
 from app.api.v1.attributes import router as attributes_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.consent import router as consent_router
@@ -767,6 +768,7 @@ app.include_router(consent_router, prefix="/api/v1/consent")
 app.include_router(device_router, prefix="/api/v1/admin/device")
 app.include_router(feedback_router, prefix="/api/v1/feedback")
 app.include_router(imaging_router, prefix="/api/v1/imaging")
+app.include_router(annotations_router, prefix="/api/v1/images")
 # 结节分割（app/inference/nodule_segmentation.py；权重缺失时端点 503 + 原因）
 # router 自带 prefix="/segmentation"，此处不再叠加，否则路径会变成
 # /api/v1/segmentation/segmentation/*

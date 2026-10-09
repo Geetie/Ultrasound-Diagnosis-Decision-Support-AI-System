@@ -156,7 +156,11 @@ function WorkspaceRoute() {
   // 刻意不在 effect 里同步 setState(null)：那会触发级联渲染（react-hooks 报 error）。
   // 与上面 sessionInfo 同一范式 ——「按 id 匹配」：会话对不上时渲染期天然回落成
   // null（占位底色），换会话不会闪出上一位患者的图。
-  const [sessionImage, setSessionImage] = useState<{ id: string; imageId: string } | null>(null);
+  const [sessionImage, setSessionImage] = useState<{
+    id: string;
+    imageId: string;
+    backendImageId: string;
+  } | null>(null);
   useEffect(() => {
     if (!sessionId) return;
     let alive = true;
@@ -166,7 +170,9 @@ function WorkspaceRoute() {
         if (!alive || !last) return;
         const id = await fetchDicomForDisplay(last.image_id).catch(() => null);
         // 只存「成功取回」的；取不到就不写 state，保持占位（默认沉默）
-        if (alive && id) setSessionImage({ id: sessionId, imageId: id });
+        // backendImageId：标注存档 key（A.40），id 字段是 sessionId（按会话匹配）
+        if (alive && id)
+          setSessionImage({ id: sessionId, imageId: id, backendImageId: last.image_id });
       })
       .catch(() => undefined);
     return () => {
@@ -231,6 +237,10 @@ function WorkspaceRoute() {
    */
   const uploadedServerStack = upload.state.serverImageIds ?? [];
   const uploadedLocalStack = upload.state.localImageIds ?? [];
+  // 测量注释存档 key（A.40）：后端 image_id（img_/frame_ 前缀）。会话恢复链路
+  // 的后端 id 在 sessionImage（id 字段），上传链路取判读用的第一张 image_id。
+  const annotationArchiveKey =
+    upload.state.imageIds?.[0] ?? sessionImage?.backendImageId;
   const dicomImageIds: string[] =
     uploadedServerStack.length > 0
       ? uploadedServerStack
@@ -293,6 +303,7 @@ function WorkspaceRoute() {
         view={view}
         dicomImageId={dicomImageId}
         dicomImageIds={dicomImageIds.length > 1 ? dicomImageIds : undefined}
+        annotationArchiveKey={annotationArchiveKey}
         onConfirm={flow.confirm}
         identity={sessionMatched ? sessionInfo.identity ?? undefined : undefined}
         clinicalSlot={

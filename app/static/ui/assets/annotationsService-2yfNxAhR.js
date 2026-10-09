@@ -1,0 +1,1 @@
+import{a as o}from"./index-DB_KCO2y.js";async function s(n){return(await o.get(`/images/${encodeURIComponent(n)}/annotations`)).data.annotations??[]}async function i(n,t){return(await o.put(`/images/${encodeURIComponent(n)}/annotations`,{image_id:n,annotations:t})).data.saved??0}export{s as fetchAnnotations,i as saveAnnotations};

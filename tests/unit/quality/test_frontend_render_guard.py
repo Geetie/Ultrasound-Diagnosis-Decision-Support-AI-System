@@ -428,6 +428,26 @@ class TestReadingLifecycle:
             "没有它测量读数是像素不是 mm，等于给医生假数据"
         )
 
+    def test_multiframe_and_annotations_wired(self):
+        """分期②（单文件多帧帧寻址）+ 标注持久化（A.40）。"""
+        cs = _code(SRC / "components" / "dicom" / "cornerstone.ts")
+        assert "getNumberOfFrames" in cs and "expandStackId" in cs, (
+            "多帧 DICOM（NumberOfFrames>1）没有帧寻址 —— 单文件 cine 只能看首帧"
+        )
+        # wadouri 帧寻址是 1-based（parseImageId 里 frame-1）—— 写成 0 起会静默错帧
+        assert re.search(r"frame=\$\{i \+ 1\}", cs), (
+            "帧扩展必须 1-based（?frame=1..N）—— wadouri parseImageId 会做 frame-1"
+        )
+        assert "restoreAnnotations" in cs, (
+            "cornerstone 适配器必须暴露注释恢复 —— 标注持久化的载入侧"
+        )
+        anns = _code(SRC / "services" / "annotationsService.ts")
+        assert "/annotations" in anns, "标注存档服务缺失"
+        layer = _code(SRC / "components" / "workspace" / "WorkspaceDicomLayer.tsx")
+        assert "archiveKey" in layer, (
+            "DicomLayer 没接标注存档 key —— 测量画完刷新即失（生命周期第 3 阶段缺口）"
+        )
+
     def test_frame_indicator_defaults_to_silent(self):
         layer = _code(SRC / "components" / "workspace" / "WorkspaceDicomLayer.tsx")
         # 指示器只在多帧时渲染（默认沉默：单帧没有可翻的东西）

@@ -42,6 +42,7 @@ export default function WorkspaceImageRegion({
   dicomImageId,
   dicomImageIds,
   segmentation,
+  annotationArchiveKey,
 }: {
   /** 部位指示条插槽：仅部位数 ≥ 2 时传入（05 / 14）。它落在影像区内部底缘，
    *  不改变影像区高度 —— 影像区恒定 600。 */
@@ -54,6 +55,9 @@ export default function WorkspaceImageRegion({
   dicomImageIds?: string[];
   /** 分割旁路视图（来自诊断结果的 nodule_segmentation）。 */
   segmentation?: SegmentationView;
+  /** 测量注释存档 key（A.40：后端 image_id，img_/frame_ 前缀）。
+   *  undefined = 不持久化（预览/无后端 id 场景）。 */
+  annotationArchiveKey?: string;
 }) {
   const stack = dicomImageIds && dicomImageIds.length > 0
     ? dicomImageIds
@@ -77,7 +81,9 @@ export default function WorkspaceImageRegion({
     <section className="ws-image" data-region="image" aria-label="实时影像">
       {/* 真实 DICOM 层（在叠加标注之下）。渐变仍留在 CSS 里当底色与加载兜底。
           多帧时 DicomLayer 内部出帧指示器与浏览工具（默认沉默口径在层内）。 */}
-      {stack.length > 0 && <WorkspaceDicomLayer imageIds={stack} />}
+      {stack.length > 0 && (
+        <WorkspaceDicomLayer imageIds={stack} archiveKey={annotationArchiveKey} />
+      )}
 
       {/* 分割旁路标注：bbox 画在 SVG 上，viewBox = 分割帧像素尺寸。
           Cornerstone fit 与 SVG meet 的 letterbox 数学一致，坐标因此对齐显示的影像。 */}

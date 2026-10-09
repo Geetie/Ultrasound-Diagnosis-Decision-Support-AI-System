@@ -264,6 +264,22 @@ class InvalidIdempotencyKeyException(AppBaseException):
         )
 
 
+class PayloadTooLargeException(AppBaseException):
+    """413 —— 标注存档等用户上传载荷超上限（A.40）。"""
+
+    _error_code = "E1035"
+    _error_message = "Payload too large"
+    _status_code = 413
+
+    def __init__(self, error_message: str | None = None, **kwargs):
+        super().__init__(
+            error_code=self._error_code,
+            error_message=error_message or self._error_message,
+            status_code=413,
+            **kwargs
+        )
+
+
 class ServerErrorException(AppBaseException):
     _error_code = "E2000"
     _error_message = "Internal server error"

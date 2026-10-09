@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 // 仅类型：编译期擦除，不会把 cornerstone 拉进 jsdom 测试（运行时仍是动态 import）
 import type { MeasureResult } from '@/components/dicom/cornerstone';
+import type { StoredAnnotation } from '@/services/annotationsService';
 
 /**
  * 影像区里的真实 DICOM 层（铺在影像区底部的 DICOM 容器）。
@@ -42,7 +43,14 @@ const TOOL_LABEL: Record<BrowseTool, string> = {
   ellipse: '椭圆',
 };
 
-export default function WorkspaceDicomLayer({ imageIds }: { imageIds: string[] }) {
+export default function WorkspaceDicomLayer({
+  imageIds,
+  archiveKey,
+}: {
+  imageIds: string[];
+  /** 测量注释存档 key（后端 image_id）。undefined = 不持久化（预览场景）。 */
+  archiveKey?: string;
+}) {
   const ref = useRef<HTMLDivElement | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -54,6 +62,9 @@ export default function WorkspaceDicomLayer({ imageIds }: { imageIds: string[] }
   // 渲染期对不上就当 null（旧读数不属于新影像），不搞 effect 里同步 setState。
   // 只显示最近一条 —— 历史测量是标注持久化的事（feature_list 远期项）。
   const [measure, setMeasure] = useState<{ key: string; text: string } | null>(null);
+  // 测量注释存档（A.40）：画完一条立即 PUT（含此前画的所有 —— 全量覆盖语义，
+  // 服务端原子写）。恢复的注释不计入（再次 PUT 会把恢复的原样写回，无害）。
+  const [savedAnnotations, setSavedAnnotations] = useState<StoredAnnotation[]>([]);
   // 数组身份每次渲染都可能变，effect 只关心内容 —— 用 join 做依赖。
   // 不能在渲染期写 imageIdsRef.current = imageIds（react-hooks error：
   // 渲染期访问 ref 会触发级联渲染），内容统一从 stackKey 派生。
@@ -164,6 +175,11 @@ export default function WorkspaceDicomLayer({ imageIds }: { imageIds: string[] }
             key,
             text: `${m.tool === 'Length' ? '长度' : '面积'} ${m.value.toFixed(1)} ${m.unit}`,
           });
+          // 标注持久化（A.40）：注释原对象序列化进存档列表（PUT 由独立 effect 发）
+          if (m.annotation) {
+            const serialized = JSON.parse(JSON.stringify(m.annotation)) as StoredAnnotation;
+            setSavedAnnotations((prev) => [...prev, serialized]);
+          }
         });
       })
       .catch(() => undefined);
@@ -172,6 +188,40 @@ export default function WorkspaceDicomLayer({ imageIds }: { imageIds: string[] }
       off?.();
     };
   }, [activeTool, loaded, stackKey]);
+
+  // 存档写入：有 archiveKey 且有未保存注释时 PUT 全量（服务端原子覆盖）。
+  // 失败静默 —— 标注是增强，不该因网络抖动打断阅片；重画一次即重试。
+  useEffect(() => {
+    if (!archiveKey || savedAnnotations.length === 0) return;
+    import('@/services/annotationsService')
+      .then((svc) => svc.saveAnnotations(archiveKey, savedAnnotations))
+      .catch(() => undefined);
+  }, [archiveKey, savedAnnotations]);
+
+  // 存档恢复：装载完成且有 archiveKey 时 GET 并渲染历史标注（Passive 态）。
+  // 换影像（stackKey 变化）重新走一遍 —— 注释按 image_id 归属。
+  useEffect(() => {
+    const element = ref.current;
+    if (!element || !loaded || !archiveKey) return;
+    let cancelled = false;
+    import('@/services/annotationsService')
+      .then((svc) => svc.fetchAnnotations(archiveKey))
+      .then((anns) => {
+        if (cancelled || anns.length === 0) return;
+        import('@/components/dicom/cornerstone')
+          .then((cs) => {
+            if (cancelled) return;
+            cs.restoreAnnotations(element, anns);
+            // 恢复的注释进存档缓存：医生再画一条时 PUT 会把整批写回（全量覆盖）
+            setSavedAnnotations(anns);
+          })
+          .catch(() => undefined);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [archiveKey, loaded, stackKey]);
 
   const scrollBy = useCallback(
     (delta: number) => {

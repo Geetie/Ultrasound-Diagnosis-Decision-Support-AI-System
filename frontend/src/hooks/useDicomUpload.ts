@@ -73,6 +73,19 @@ async function registerLocalImage(file: File): Promise<string | undefined> {
 }
 
 /**
+ * 一个注册 imageId → 显示栈条目（A.40 分期②）：多帧 DICOM（NumberOfFrames>1）
+ * 展开为 `?frame=1..N`（wadouri 帧寻址 1-based），单帧原样。
+ */
+async function expandStackId(imageId: string): Promise<string[]> {
+  try {
+    const cornerstone = await import('@/components/dicom/cornerstone');
+    return await cornerstone.expandStackId(imageId);
+  } catch {
+    return [imageId];
+  }
+}
+
+/**
  * 上传成功后，按后端 image_id 取回服务端副本并注册（见模块顶部的优先级说明）。
  * 失败返回 undefined —— 回落本地副本，绝不因此把影像弄没。
  */
@@ -141,7 +154,8 @@ export function useDicomUpload(
         const localImageId = await registerLocalImage(file).catch(() => undefined);
 
         lastLocal = localImageId;
-        if (localImageId) localIds.push(localImageId);
+        // 分期②：多帧 DICOM（单文件 NumberOfFrames>1）展开为帧栈
+        if (localImageId) localIds.push(...(await expandStackId(localImageId)));
 
         try {
           const resp = await uploadDicom(file, sessionId, DEFAULT_PRIORITY);
@@ -151,7 +165,7 @@ export function useDicomUpload(
             () => undefined,
           );
           lastServer = serverImageId;
-          if (serverImageId) serverIds.push(serverImageId);
+          if (serverImageId) serverIds.push(...(await expandStackId(serverImageId)));
           setState({
             phase: 'uploading',
             localImageId,

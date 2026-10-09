@@ -55,6 +55,8 @@ export default function WorkspacePage({
   onRevealConclusion,
   dicomImageId,
   dicomImageIds,
+  /** 测量注释存档 key（A.40：后端 image_id）。undefined = 不持久化。 */
+  annotationArchiveKey,
   uploadSlot,
   navItems,
   /** 脱敏身份行（张** · 女 · 52 岁）。undefined = 数据不可用 → 显示『患者信息不可用』。 */
@@ -79,6 +81,8 @@ export default function WorkspacePage({
   dicomImageId?: string;
   /** 多帧栈（A.38 分期①）：本会话已装载的 imageIds（顺序=上传顺序）。 */
   dicomImageIds?: string[];
+  /** 测量注释存档 key（A.40：后端 image_id）。undefined = 不持久化。 */
+  annotationArchiveKey?: string;
   /** 影像装载入口插槽（仅 02 扫查态渲染，见 WorkspaceConclusionBody）。 */
   uploadSlot?: ReactNode;
   /**
@@ -125,6 +129,7 @@ export default function WorkspacePage({
         organBar={hasOrganBar(state) ? <WorkspaceOrganBar onReviewClick={onReviewDetail} /> : undefined}
         dicomImageId={dicomImageId}
         dicomImageIds={dicomImageIds}
+        annotationArchiveKey={annotationArchiveKey}
         segmentation={view?.segmentation}
       />
 

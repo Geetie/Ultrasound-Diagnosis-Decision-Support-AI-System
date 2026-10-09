@@ -13,6 +13,7 @@ import {
   type Types,
 } from '@cornerstonejs/core';
 import {
+  annotation,
   Enums as ToolsEnums,
   EllipticalROITool,
   LengthTool,
@@ -323,6 +324,47 @@ export function deactivateTool(toolName: string): void {
   currentToolGroup()?.setToolDisabled(TOOL_MAP[toolName] ?? toolName);
 }
 
+/**
+ * 读 DICOM NumberOfFrames（A.40 分期②）。
+ *
+ * 一次装载 = 一份完整多帧 DICOM（CAMUS cine 导出、机器 cine 存档），
+ * 此前只显示首帧。失败/缺标签返回 1（单帧）——多帧是增强，不挡主链。
+ */
+export async function getNumberOfFrames(imageId: string): Promise<number> {
+  try {
+    const bare = imageId.split('?')[0]!;
+    const dataSet = (await wadouri.dataSetCacheManager.load(
+      bare,
+      wadouri.loadFileRequest,
+      bare,
+    )) as { string?: (tag: string) => string | undefined };
+    const n = parseInt(dataSet.string?.('x00280008') ?? '', 10);
+    return Number.isFinite(n) && n > 1 ? n : 1;
+  } catch {
+    return 1;
+  }
+}
+
+/**
+ * 单个 imageId → 显示栈条目。多帧文件扩展为 `id?frame=1..N`
+ * （wadouri 帧寻址是 **1-based**：parseImageId 里 `frame - 1`），
+ * 单帧原样返回。扩展后的帧复用同一份缓存 dataset，加载代价低。
+ */
+export async function expandStackId(imageId: string): Promise<string[]> {
+  const n = await getNumberOfFrames(imageId);
+  return n > 1 ? Array.from({ length: n }, (_, i) => `${imageId}?frame=${i + 1}`) : [imageId];
+}
+
+/** 医生画完一次测量（长度/椭圆）后回调的载荷。 */
+export interface MeasureResult {
+  tool: string;
+  /** 长度 mm 或面积 mm²（cornerstone 按 DICOM PixelSpacing 换算）。 */
+  value: number;
+  unit: 'mm' | 'mm²';
+  /** 注释原对象（标注持久化时序列化存档用）。 */
+  annotation?: Record<string, unknown>;
+}
+
 /** 医生画完一次测量（长度/椭圆）后回调的载荷。 */
 export interface MeasureResult {
   tool: string;
@@ -338,7 +380,7 @@ export interface MeasureResult {
  */
 export function onMeasureCompleted(handler: (m: MeasureResult) => void): () => void {
   const listener = ((evt: CustomEvent) => {
-    const ann = (evt.detail as { annotation?: { toolName?: string; data?: Record<string, unknown> } })
+    const ann = (evt.detail as { annotation?: Record<string, unknown> & { toolName?: string; data?: Record<string, unknown> } })
       ?.annotation;
     if (!ann?.toolName) return;
     const data = (ann.data ?? {}) as {
@@ -351,13 +393,47 @@ export function onMeasureCompleted(handler: (m: MeasureResult) => void): () => v
     const length = first?.length ?? data.length;
     const area = first?.area ?? data.area;
     if (ann.toolName === LengthTool.toolName && typeof length === 'number') {
-      handler({ tool: ann.toolName, value: length, unit: 'mm' });
+      handler({ tool: ann.toolName, value: length, unit: 'mm', annotation: ann });
     } else if (ann.toolName === EllipticalROITool.toolName && typeof area === 'number') {
-      handler({ tool: ann.toolName, value: area, unit: 'mm²' });
+      handler({ tool: ann.toolName, value: area, unit: 'mm²', annotation: ann });
     }
   }) as EventListener;
   eventTarget.addEventListener(ToolsEnums.Events.ANNOTATION_COMPLETED, listener);
   return () => eventTarget.removeEventListener(ToolsEnums.Events.ANNOTATION_COMPLETED, listener);
+}
+
+/** 恢复到当前 viewport 的注释（标注持久化的载入侧）。失败逐条容忍。 */
+export function restoreAnnotations(
+  element: HTMLElement,
+  annotations: Array<Record<string, unknown> & { toolName?: string }>,
+): number {
+  let restored = 0;
+  const enabled = (() => {
+    try {
+      return getEnabledElement(element as HTMLDivElement);
+    } catch {
+      return null;
+    }
+  })();
+  if (!enabled) return 0;
+  const tgId = toolGroupByElement.get(element);
+  const tg = tgId ? ToolGroupManager.getToolGroup(tgId) : null;
+  for (const ann of annotations) {
+    if (!ann.toolName) continue;
+    try {
+      // CS3D 5.x：addAnnotation(annotation, groupSelector) 两参
+      annotation.state.addAnnotation(ann as never, element as never);
+      // 已存注释只渲染不响应绘制 —— 工具组 Passive（在组内渲染，但不吃鼠标）
+      tg?.setToolPassive(ann.toolName);
+      restored += 1;
+    } catch {
+      // 单条坏了不拖累整批
+    }
+  }
+  if (restored) {
+    enabled.viewport.render();
+  }
+  return restored;
 }
 
 export { cornerstone, wadouri };

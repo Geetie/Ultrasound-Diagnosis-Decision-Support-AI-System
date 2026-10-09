@@ -19,15 +19,25 @@ const cs = vi.hoisted(() => ({
   activateTool: vi.fn(),
   deactivateTool: vi.fn(),
   onMeasureCompleted: vi.fn(() => () => {}),
+  restoreAnnotations: vi.fn(() => 0),
 }));
 
 vi.mock('@/components/dicom/cornerstone', () => cs);
+
+const annSvc = vi.hoisted(() => ({
+  fetchAnnotations: vi.fn(async (): Promise<Record<string, unknown>[]> => []),
+  saveAnnotations: vi.fn(async (): Promise<number> => 0),
+}));
+
+vi.mock('@/services/annotationsService', () => annSvc);
 
 import WorkspaceDicomLayer from '../WorkspaceDicomLayer';
 
 describe('WorkspaceDicomLayer · 多帧分期①', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    annSvc.fetchAnnotations.mockResolvedValue([]);
+    annSvc.saveAnnotations.mockResolvedValue(0);
   });
 
   it('多帧：setStack 收整栈 imageIds，渲染帧指示器「1/3」与翻帧按钮', async () => {
@@ -117,6 +127,65 @@ describe('WorkspaceDicomLayer · 多帧分期①', () => {
     // 换影像：旧读数不属于新影像，立即清空
     rerender(<WorkspaceDicomLayer imageIds={['dicomfile:9']} />);
     await waitFor(() => expect(screen.queryByText(/长度 12\.3/)).toBeNull());
+  });
+
+  it('标注存档（A.40）：有 archiveKey 时测量完成即 PUT，挂载时 GET 恢复渲染', async () => {
+    type MeasureHandler = (m: {
+      tool: string;
+      value: number;
+      unit: string;
+      annotation?: Record<string, unknown>;
+    }) => void;
+    const handlers: MeasureHandler[] = [];
+    (
+      cs.onMeasureCompleted as unknown as {
+        mockImplementation: (fn: (h: MeasureHandler) => () => undefined) => void;
+      }
+    ).mockImplementation((h) => {
+      handlers.push(h);
+      return () => undefined;
+    });
+    const { rerender } = render(
+      <WorkspaceDicomLayer imageIds={['dicomfile:0']} archiveKey="img_20261009_ab12cd34" />,
+    );
+    await waitFor(() => expect(handlers.length).toBeGreaterThan(0));
+    // 无存档 → GET 返回空，不恢复
+    await waitFor(() => expect(annSvc.fetchAnnotations).toHaveBeenCalledWith('img_20261009_ab12cd34'));
+    expect(cs.restoreAnnotations).not.toHaveBeenCalled();
+
+    handlers[handlers.length - 1]({
+      tool: 'Length',
+      value: 9.9,
+      unit: 'mm',
+      annotation: { toolName: 'Length', data: {} },
+    });
+    await waitFor(() =>
+      expect(annSvc.saveAnnotations).toHaveBeenCalledWith('img_20261009_ab12cd34', [
+        expect.objectContaining({ toolName: 'Length' }),
+      ]),
+    );
+
+    // 换到带存档注释的影像：GET 返回注释 → 恢复渲染
+    annSvc.fetchAnnotations.mockResolvedValue([
+      { toolName: 'Length', data: { length: 5 }, uuid: 'a1' },
+    ]);
+    rerender(
+      <WorkspaceDicomLayer imageIds={['dicomfile:1']} archiveKey="img_20261009_ab12cd34" />,
+    );
+    await waitFor(() =>
+      expect(cs.restoreAnnotations).toHaveBeenCalledWith(
+        expect.anything(),
+        [expect.objectContaining({ toolName: 'Length' })],
+      ),
+    );
+  });
+
+  it('无 archiveKey（预览场景）不做任何标注网络请求', async () => {
+    render(<WorkspaceDicomLayer imageIds={['dicomfile:0']} />);
+    await waitFor(() => expect(cs.displayImage).toHaveBeenCalled());
+    await new Promise((r) => setTimeout(r, 50));
+    expect(annSvc.fetchAnnotations).not.toHaveBeenCalled();
+    expect(annSvc.saveAnnotations).not.toHaveBeenCalled();
   });
 
   it('空栈：什么都不渲染（默认沉默），不 enable 元素', () => {
