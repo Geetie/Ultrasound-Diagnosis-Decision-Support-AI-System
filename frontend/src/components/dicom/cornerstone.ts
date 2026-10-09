@@ -92,13 +92,29 @@ export function enable(element: HTMLElement): void {
       bindings: [{ mouseButton: ToolsEnums.MouseBindings.Primary }],
     });
     currentToolGroupId = `tg_${engineSeq}`;
+    // 修复：WeakMap 此前只声明从未写入（disable 读它恒 undefined）。
+    // 工作区同时只有一个 viewport，模块级 currentToolGroupId 兜得住，
+    // 但按 element 定位才是正确语义 —— 多 viewport 时 activateTool 会作用错组。
+    toolGroupByElement.set(element, `tg_${engineSeq}`);
   }
   eventTarget.addEventListener(
     CoreEnums.Events.IMAGE_RENDERED,
     ((evt: CustomEvent) => {
       const vpId = (evt.detail as { viewportId?: string })?.viewportId;
       if (vpId && vpId === viewportIdByElement.get(element)) {
-        element.dispatchEvent(new CustomEvent('cornerstoneimagerendered'));
+        // 帧指示器（A.38）：滚动/键盘翻帧后渲染层要知道当前帧号。
+        // 当前帧号从 viewport 读，经自定义事件 detail 传出。
+        let imageIndex: number | undefined;
+        try {
+          const vp = engine.getViewports().find((v) => v.id === vpId);
+          const stack = vp as Types.IStackViewport | undefined;
+          imageIndex = stack?.getCurrentImageIdIndex?.();
+        } catch {
+          // 元素可能已分离
+        }
+        element.dispatchEvent(
+          new CustomEvent('cornerstoneimagerendered', { detail: { imageIndex } }),
+        );
       }
     }) as EventListener,
   );
@@ -138,24 +154,62 @@ export function loadAndCacheImage(
   >;
 }
 
-export function displayImage(element: HTMLElement, image: { imageId?: string }): void {
+/**
+ * 显示单张或多张影像（A.38 多帧分期①）。
+ *
+ * 多张时走 StackViewport 原生多帧栈：setStack(全部 imageIds)，
+ * 医生可用鼠标滚轮/本适配器 scrollStack 翻帧。VOI 全窗按**第一张**
+ * 取值域设置 —— 16-bit US 无 VOI 窗位时 cornerstone 会把像素裁成全白
+ * （A.35 验收发现）；同一次采集的帧值域一致，首帧窗位对全栈成立。
+ * 兼容旧单张签名。
+ */
+export function displayImage(
+  element: HTMLElement,
+  image: { imageId?: string } | Array<{ imageId?: string }>,
+): void {
   const engine = engineByElement.get(element);
   const viewportId = viewportIdByElement.get(element);
-  if (!engine || !viewportId || !image?.imageId) return;
+  const images = Array.isArray(image) ? image : [image];
+  const ids = images.map((i) => i?.imageId).filter((id): id is string => Boolean(id));
+  if (!engine || !viewportId || ids.length === 0) return;
   const vp = engine.getViewports().find((v) => v.id === viewportId);
   if (!vp) return;
   const stack = vp as Types.IStackViewport;
   void (async () => {
-    // 16-bit US 无 VOI 窗位时，cornerstone 的渲染窗几乎把全部像素裁成白
-    // —— 表现为「图像一片空白」（A.35 验收发现）。按像素值域显式设全窗。
-    const img = await loadAndCacheImage(image.imageId!);
+    const img = await loadAndCacheImage(ids[0]!);
     const min = img.minPixelValue ?? 0;
     const max = img.maxPixelValue ?? 255;
-    await stack.setStack([image.imageId!]);
+    await stack.setStack(ids);
     stack.setProperties({
       voiRange: { lower: min, upper: max },
     });
   })().catch((err: unknown) => console.error('[cornerstone3d] display failed', err));
+}
+
+/**
+ * 多帧滚动（A.38）：沿栈前进/后退 distance 帧，越界由 cornerstone 截断。
+ * 仅对 StackViewport 生效；单帧栈滚不动（无害）。
+ */
+export function scrollStack(element: HTMLElement, distance: number): void {
+  try {
+    const enabled = getEnabledElement(element as HTMLDivElement);
+    if (!enabled) return;
+    (enabled.viewport as Types.IStackViewport).scroll(distance);
+  } catch {
+    // 未启用/已分离
+  }
+}
+
+/** 当前帧下标（0 起）；拿不到返回 null（调用方自行兜底）。 */
+export function getStackIndex(element: HTMLElement): number | null {
+  try {
+    const enabled = getEnabledElement(element as HTMLDivElement);
+    if (!enabled) return null;
+    const idx = (enabled.viewport as Types.IStackViewport).getCurrentImageIdIndex?.();
+    return typeof idx === 'number' ? idx : null;
+  } catch {
+    return null;
+  }
 }
 
 export function getViewport(element: HTMLElement) {

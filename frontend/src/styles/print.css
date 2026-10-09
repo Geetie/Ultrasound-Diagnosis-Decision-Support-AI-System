@@ -1,0 +1,50 @@
+/**
+ * 打印样式（A.38，阅片生命周期「分发」环节最小闭环）。
+ *
+ * 背景：医生要把已签发的报告交给患者或病历系统，此前唯一手段是截图。
+ * 浏览器打印对话框自选「另存为 PDF」即覆盖导出需求 —— 不引 PDF 依赖、
+ * 零后端改动。完整结构化推送（PACS/HIS）仍走报告页的推送按钮。
+ *
+ * 原则：**只留报告正文**。侧栏/顶栏/按钮/浮层全部退场；报告卡片
+ * （antd Card）转白底黑字，避免暗室主题打印成整页墨黑。
+ * 暗色底色是屏幕交付的产物，纸面不属于它。
+ */
+@media print {
+  /* 壳层与交互件退场（page-sidebar 是全站唯一一级导航，
+     antd 按钮组/浮层是操作件 —— 纸面上没有意义） */
+  .page-sidebar,
+  .ant-btn,
+  .ant-message,
+  .ant-modal-wrap,
+  .ant-modal-mask {
+    display: none !important;
+  }
+
+  /* 暗室主题 → 纸面：白底黑字（打印经济性与可读性） */
+  html,
+  body {
+    background: #fff !important;
+    color: #111 !important;
+  }
+
+  /* 报告卡片：去阴影、细边框分节、卡片内不跨页断开 */
+  .ant-card {
+    box-shadow: none !important;
+    border: 1px solid #ccc !important;
+    break-inside: avoid;
+    background: #fff !important;
+  }
+
+  /* 正文文字统一压黑（antd 的 muted/次级色在纸面上过浅） */
+  .ant-card *,
+  .ant-typography {
+    color: #111 !important;
+  }
+
+  /* 签名/哈希等长串不折行截断：允许断词换行，保证可核验 */
+  .ant-card code,
+  .ant-card pre {
+    white-space: pre-wrap !important;
+    word-break: break-all !important;
+  }
+}

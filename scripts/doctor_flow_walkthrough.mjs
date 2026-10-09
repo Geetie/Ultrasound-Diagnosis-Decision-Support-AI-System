@@ -139,6 +139,16 @@ try {
   record('3. 新会话创建并直达工作区', jumped, sessionId);
   if (!jumped) { await shot('03-create-fail'); throw new Error('no session jump'); }
 
+  // 身份必须数据驱动（A.36 P0）：不允许再出现写死的「张**」
+  let identityOk = false;
+  let identityText = '';
+  for (let i = 0; i < 20 && !identityOk; i += 1) {
+    identityText = await page.locator('.ws-bar__identity').innerText().catch(() => '');
+    identityOk = identityText.trim().length > 0 && !identityText.includes('张**');
+    if (!identityOk) await sleep(page, 500);
+  }
+  record('3b. 常驻条身份数据驱动（非写死「张**」）', identityOk, identityText.trim().slice(0, 30));
+
   // ---- 3) 装载 DICOM → 自动判读
   let fileInput = null;
   for (let i = 0; i < 30 && fileInput === null; i += 1) {
@@ -147,7 +157,36 @@ try {
   }
   record('4. 装载入口出现', fileInput !== null);
   if (!fileInput) { await shot('04-no-input'); throw new Error('no file input'); }
-  await fileInput.setInputFiles(DICOM);
+
+  // 多帧（A.38 分期①）：同一会话装两帧 —— 指示器/翻帧才有真实数据源，
+  // 视频里也才有翻帧动作可看。管线本就收 image_ids 数组。
+  await fileInput.setInputFiles([DICOM, DICOM]);
+
+  // 浏览工具胶囊组（窗宽窗位/缩放/平移）—— 工具注册早已在，激活入口是本轮补的
+  let toolsOk = false;
+  for (let i = 0; i < 20 && !toolsOk; i += 1) {
+    toolsOk = (await page.locator('[data-region=browse-tools]').count()) > 0;
+    if (!toolsOk) await sleep(page, 500);
+  }
+  record('4b. 影像浏览工具胶囊组出现（窗宽窗位/缩放/平移）', toolsOk);
+
+  // 帧指示器：两帧 → 「1/2」，键盘 → 翻到「2/2」（视频里的翻帧动作）
+  let indicatorOk = false;
+  for (let i = 0; i < 30 && !indicatorOk; i += 1) {
+    indicatorOk = (await page.locator('[data-region=frame-indicator]').innerText().catch(() => '')).includes('1/2');
+    if (!indicatorOk) await sleep(page, 500);
+  }
+  record('4c. 帧指示器出现（1/2）', indicatorOk);
+  if (indicatorOk) {
+    await page.keyboard.press('ArrowRight');
+    let flipped = false;
+    for (let i = 0; i < 20 && !flipped; i += 1) {
+      flipped = (await page.locator('[data-region=frame-indicator]').innerText().catch(() => '')).includes('2/2');
+      if (!flipped) await sleep(page, 300);
+    }
+    record('4d. 键盘 → 翻帧到 2/2', flipped);
+    await shot('04e-frame2');
+  }
   // 等判读出结论：管线 33~300s（A.29 修过前端轮询上限），这里给足 7 分钟
   let concluded = false;
   let lastText = '';
@@ -206,6 +245,10 @@ try {
     throw new Error(`报告页既无草稿也无「生成草稿」按钮；现有按钮：${JSON.stringify(btns.slice(0, 10))}`);
   }
   await page.waitForSelector('[data-testid=report-status]', { timeout: 30000 });
+
+  // 打印/导出 PDF（A.38，生命周期「分发」环节）：按钮在，纸面样式由 print.css 保证
+  const printBtn = await page.$("button:has-text('打印 / 导出 PDF')");
+  record('7c. 报告页有「打印 / 导出 PDF」入口', printBtn !== null);
 
   // ---- 5) 补录（若缺段落）→ 签发（可能知情确认）→ 已签发
   const supplementInputs = await page.$$('[data-testid^=supplement-input-]');

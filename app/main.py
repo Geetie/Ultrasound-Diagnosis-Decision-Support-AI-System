@@ -1,3 +1,4 @@
+import asyncio
 import os
 
 # ⚠️ 必须在任何 huggingface_hub / open_clip / transformers import 之前设离线
@@ -121,6 +122,37 @@ async def lifespan(app: FastAPI):
 
     await safety_gateway_client.warmup()
     await safety_gateway_client.start_health_probe()
+
+    # 判读性能：分割权重启动预热（后台，不阻塞 /health 就绪判定）。
+    # 首次判读的分割冷启动实测 5.7s（权重加载 + CUDA kernel 首次编译/显存池
+    # 分配），热身后 50ms —— 用户等 AI 分析的 33s 里这是最大单一收益点。
+    # best-effort：预热失败不阻塞主服务（与上方 safety warmup 同惯例）；
+    # 逐器官 try/except，thyroid/cardiac 有权重，liver 无权重如实跳过。
+    async def _warmup_segmenters() -> None:
+        import asyncio as _asyncio
+
+        from app.inference.nodule_segmentation import NoduleSegmenter
+
+        for organ in ("thyroid", "cardiac"):
+            try:
+                seg = NoduleSegmenter.get(organ)
+                result = await _asyncio.to_thread(seg.warmup)
+                if result.get("available"):
+                    logger.info(
+                        "segmenter_warmup_done",
+                        organ=organ,
+                        warmup_ms=result.get("warmup_ms"),
+                    )
+                else:
+                    logger.warning(
+                        "segmenter_warmup_skipped",
+                        organ=organ,
+                        reason=result.get("reason"),
+                    )
+            except Exception as e:
+                logger.warning("segmenter_warmup_failed", organ=organ, error=str(e))
+
+    app.state.segmenter_warmup_task = asyncio.create_task(_warmup_segmenters())
 
     from app.observability.alert_escalation import get_alert_escalation_manager
     from app.observability.cusum import AISafetyCircuitBreaker, HallucinationCUSUMBridge
@@ -623,6 +655,11 @@ async def lifespan(app: FastAPI):
         logger.warning(
             "obs_export_stop_failed", error=str(e)
         )
+    # 分割预热任务若仍在跑（权重加载很慢时），取消后再退出，避免悬挂警告
+    warmup_task = getattr(app.state, "segmenter_warmup_task", None)
+    if warmup_task is not None and not warmup_task.done():
+        warmup_task.cancel()
+
     # OBS: 追踪关闭（flush BatchSpanProcessor 后再退出，避免尾部 span 丢失）
     try:
         from app.observability.tracing import shutdown_tracing

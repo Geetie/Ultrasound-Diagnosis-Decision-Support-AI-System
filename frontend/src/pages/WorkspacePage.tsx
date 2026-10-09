@@ -54,6 +54,7 @@ export default function WorkspacePage({
   onSignNext,
   onRevealConclusion,
   dicomImageId,
+  dicomImageIds,
   uploadSlot,
   navItems,
   /** 脱敏身份行（张** · 女 · 52 岁）。undefined = 数据不可用 → 显示『患者信息不可用』。 */
@@ -76,6 +77,8 @@ export default function WorkspacePage({
   onRevealConclusion?: () => void;
   /** 真实 DICOM 的 URL。给了就替换影像区的渐变占位（2:4 impl_note）。 */
   dicomImageId?: string;
+  /** 多帧栈（A.38 分期①）：本会话已装载的 imageIds（顺序=上传顺序）。 */
+  dicomImageIds?: string[];
   /** 影像装载入口插槽（仅 02 扫查态渲染，见 WorkspaceConclusionBody）。 */
   uploadSlot?: ReactNode;
   /**
@@ -121,6 +124,7 @@ export default function WorkspacePage({
       <WorkspaceImageRegion
         organBar={hasOrganBar(state) ? <WorkspaceOrganBar onReviewClick={onReviewDetail} /> : undefined}
         dicomImageId={dicomImageId}
+        dicomImageIds={dicomImageIds}
         segmentation={view?.segmentation}
       />
 

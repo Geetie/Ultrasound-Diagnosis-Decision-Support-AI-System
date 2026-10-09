@@ -11,7 +11,13 @@ import type { DicomUploadState } from '@/hooks/useDicomUpload';
  * 所以这里最要紧的不是样式，是**那个 input 必须真的在 DOM 里、真的能被触发**。
  */
 
-const idle: DicomUploadState = { phase: 'idle', fileName: null, error: null };
+const idle: DicomUploadState = {
+  phase: 'idle',
+  fileName: null,
+  error: null,
+  localImageIds: [],
+  serverImageIds: [],
+};
 
 function dicomFile() {
   return new File([new Uint8Array([0, 1, 2, 3])], 'thyroid.dcm', {
@@ -37,7 +43,22 @@ describe('WorkspaceImageUpload · 可用态', () => {
     const f = dicomFile();
     fireEvent.change(input, { target: { files: [f] } });
 
-    await waitFor(() => expect(onPick).toHaveBeenCalledWith(f));
+    await waitFor(() => expect(onPick).toHaveBeenCalledWith([f]));
+  });
+
+  it('多帧（A.38）：一次选多张整批交给 onPick —— input 必须 multiple，否则界面上选不出多帧', async () => {
+    const onPick = vi.fn();
+    render(<WorkspaceImageUpload state={idle} ready onPick={onPick} />);
+
+    const input = screen.getByLabelText('选择 DICOM 影像文件');
+    expect(input.hasAttribute('multiple')).toBe(true);
+    const f1 = dicomFile();
+    const f2 = new File([new Uint8Array([4, 5, 6])], 'thyroid-2.dcm', {
+      type: 'application/dicom',
+    });
+    fireEvent.change(input, { target: { files: [f1, f2] } });
+
+    await waitFor(() => expect(onPick).toHaveBeenCalledWith([f1, f2]));
   });
 
   it('选完后清空 input.value —— 否则重选同一个文件不再触发 change', () => {
@@ -54,6 +75,8 @@ describe('WorkspaceImageUpload · 可用态', () => {
       phase: 'uploading',
       fileName: 'thyroid.dcm',
       error: null,
+      localImageIds: [],
+      serverImageIds: [],
     };
     render(<WorkspaceImageUpload state={uploading} ready onPick={vi.fn()} />);
 
@@ -68,6 +91,8 @@ describe('WorkspaceImageUpload · 可用态', () => {
       phase: 'error',
       fileName: 'thyroid.dcm',
       error: 'DICOM 缺少必需标签',
+      localImageIds: [],
+      serverImageIds: [],
     };
     render(<WorkspaceImageUpload state={failed} ready onPick={vi.fn()} />);
 
@@ -80,6 +105,8 @@ describe('WorkspaceImageUpload · 可用态', () => {
       fileName: 'thyroid.dcm',
       error: null,
       imageId: 'img_x',
+      localImageIds: [],
+      serverImageIds: [],
     };
     render(<WorkspaceImageUpload state={done} ready onPick={vi.fn()} />);
     expect(screen.getByText('重新装载影像')).toBeInTheDocument();

@@ -385,3 +385,48 @@ class TestClinicalAssumptions:
         )
         hook = _code(SRC / "hooks" / "useWorkspaceFlow.ts")
         assert "clinical_text" in hook, "判读请求必须透传 clinical_text"
+
+
+class TestReadingLifecycle:
+    """阅片生命周期守卫（A.38，2026-10-09）。
+
+    生命周期八阶段里「浏览阅片」是缺口集中区：窗宽窗位/缩放/平移工具在
+    cornerstone.ts 注册了但长期没有激活入口（医生点不了任何浏览操作）；
+    多帧上传在界面上选不出来（input 无 multiple）；签发后的报告没有
+    分发手段（医生只能截图）。三类断言钉住这三个入口的存在与形态。
+    """
+
+    def test_browse_tools_have_activation_ui(self):
+        layer = _code(SRC / "components" / "workspace" / "WorkspaceDicomLayer.tsx")
+        assert "browse-tools" in layer, (
+            "影像区没有浏览工具激活入口 —— 窗宽窗位/缩放/平移在 cornerstone "
+            "注册了但医生点不了（阅片生命周期第 3 阶段缺口）"
+        )
+        cs = _code(SRC / "components" / "dicom" / "cornerstone.ts")
+        assert "activateTool" in cs and "scrollStack" in cs, (
+            "cornerstone 适配器必须暴露 activateTool 与 scrollStack —— "
+            "浏览操作与翻帧的底层能力"
+        )
+
+    def test_frame_indicator_defaults_to_silent(self):
+        layer = _code(SRC / "components" / "workspace" / "WorkspaceDicomLayer.tsx")
+        # 指示器只在多帧时渲染（默认沉默：单帧没有可翻的东西）
+        assert "frame-indicator" in layer, "多帧帧指示器缺失（n/N ‹ ›）"
+        assert "multiFrame && loaded && !error" in layer, (
+            "帧指示器必须挂默认沉默条件（multiFrame && loaded && !error）—— "
+            "单帧/未加载/出错时不渲染"
+        )
+        upload = _code(SRC / "components" / "workspace" / "WorkspaceImageUpload.tsx")
+        assert "multiple" in upload, (
+            "装载 input 没有 multiple —— 多帧在界面上根本选不出来（分期①走查实测）"
+        )
+
+    def test_report_has_print_export(self):
+        page = _code(SRC / "pages" / "ReportPage.tsx")
+        assert "打印 / 导出 PDF" in page and "window.print()" in page, (
+            "报告页没有打印/导出入口 —— 签发后医生只能截图（生命周期第 6 阶段缺口）"
+        )
+        print_css = SRC / "styles" / "print.css"
+        assert print_css.exists() and "@media print" in print_css.read_text(encoding="utf-8"), (
+            "print.css 缺失或没有 @media print —— 暗室主题打印会整页墨黑"
+        )

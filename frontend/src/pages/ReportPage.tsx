@@ -6,6 +6,7 @@ import {
   CloseCircleOutlined,
   CloudUploadOutlined,
   FileTextOutlined,
+  PrinterOutlined,
   SafetyCertificateOutlined,
   ReloadOutlined,
 } from '@ant-design/icons';
@@ -485,6 +486,18 @@ export default function ReportPage() {
                 style={{ minHeight: tokens.touch.hitTarget }}
               >
                 推送 PACS/HIS
+              </Button>
+              {/* 打印/导出 PDF（A.38，阅片生命周期「分发」环节的最小闭环）：
+                  医生要把报告交给患者或病历系统，此前只能截图。浏览器打印
+                  对话框自选「另存为 PDF」即覆盖导出 —— 完整 PACS/HIS 结构化
+                  推送仍走上方按钮（已签名的正文才可推送）。 */}
+              <Button
+                icon={<PrinterOutlined />}
+                disabled={!report}
+                onClick={() => window.print()}
+                style={{ minHeight: tokens.touch.hitTarget }}
+              >
+                打印 / 导出 PDF
               </Button>
               {!signed && (
                 <Text style={{ color: tokens.color.text.muted, fontSize: 12 }}>

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import WorkspaceStopAlert from './WorkspaceStopAlert';
 import type { WorkspaceState } from './states';
 import type { ConclusionView } from '@/services/diagnosisAdapter';
@@ -136,6 +137,30 @@ export default function WorkspaceConclusionBody({
   );
 }
 
+/**
+ * 「分析中」态（A.38）：加已用时实时秒数。
+ *
+ * 为什么偏离画布「进度只用两个词」：判读实测 4~33s，医生盯着静止的
+ * 「分析中」分不清系统在算还是死了 —— 秒数走动本身就是"活着"的信号，
+ * 这是实测事实而不是编造的预估（百分比/预计剩余时间是编造，仍然不给，
+ * 该口径保留）。计时器随本组件挂载（=判读发起）起走，出结论即卸载。
+ */
+function AnalyzingBody() {
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => setElapsed((s) => s + 1), 1000);
+    return () => clearInterval(timer);
+  }, []);
+  return (
+    <>
+      <p className="ws-conclusion__title ws-conclusion__title--progress">分析中</p>
+      <p className="ws-conclusion__subtitle">
+        已用时 {elapsed} 秒 · 不用等它跑完，可继续扫查或先写报告
+      </p>
+    </>
+  );
+}
+
 function ConclusionSwitch({
   state,
   view,
@@ -162,15 +187,7 @@ function ConclusionSwitch({
       );
 
     case 'progress':
-      return (
-        <>
-          {/* 「分析中」16/SemiBold —— 进度只用两个词，不给百分比与预计剩余时间 */}
-          <p className="ws-conclusion__title ws-conclusion__title--progress">分析中</p>
-          <p className="ws-conclusion__subtitle">
-            已完成 2 个阶段 · 不用等它跑完，可继续扫查或先写报告
-          </p>
-        </>
-      );
+      return <AnalyzingBody />;
 
     case 'multi-organ':
       return (

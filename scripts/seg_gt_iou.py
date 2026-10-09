@@ -50,7 +50,7 @@ def main() -> int:
         t = time.monotonic()
         try:
             seg = segmenter.infer(tmp.read_bytes())
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             per_frame.append({"frame": idx, "error": str(exc)[:120]})
             continue
         elapsed = time.monotonic() - t

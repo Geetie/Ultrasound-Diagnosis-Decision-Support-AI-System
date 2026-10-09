@@ -327,6 +327,11 @@ async def run_diagnosis_pipeline(request_id: str) -> bool:
             skip_self_rag=skip_self_rag,
         )
         timings["fusion.fuse_ms"] = (time.monotonic() - t) * 1000.0
+        # A.38 计时拆分：fuse 内部含 LLM 校验（validate/Self-RAG 与 CRAG），
+        # 14s 波动此前不可归因 —— 从 FusionResult 抄出子计时一起落库。
+        # 注意 validate_ms/crag_ms 是 fuse 内部掐的表，不含编排开销。
+        timings["fusion.validate_ms"] = float(getattr(fusion_result, "validate_ms", 0.0))
+        timings["fusion.crag_ms"] = float(getattr(fusion_result, "crag_ms", 0.0))
 
         # 3) 安全网关 (sg.check_output)
         t = time.monotonic()

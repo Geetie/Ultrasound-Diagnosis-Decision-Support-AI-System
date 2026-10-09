@@ -8,6 +8,8 @@ import '@/styles/design-tokens.css';
 import '@/styles/workspace.css';
 import '@/styles/pages.css';
 import '@/styles/animations.css';
+// 打印样式（A.38）：@media print 只在打印/导出 PDF 时生效，屏幕渲染零影响
+import '@/styles/print.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

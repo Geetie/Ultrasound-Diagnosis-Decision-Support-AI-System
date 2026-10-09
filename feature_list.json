@@ -444,11 +444,12 @@
       "id": "ui-workspace-identity-hardcoded",
       "name": "P0 工作区常驻条患者身份写死",
       "description": "WorkspacePage 常驻条身份固定渲染「张** · 女 · 52 岁 · 门诊」，不随 ?session_id= 变化 —— 换任何患者都显示同一人。患者身份错显是最高级别临床风险（张冠李戴），且 A.28~A.35 全部走查都因断言不含身份而漏检",
-      "status": "planned",
+      "status": "done",
       "dependencies": [
         "ui-no-dicom-upload-entry"
       ],
-      "evidence": "A.36 核实清单第 5 条（用户 2026-10-09 要求逐项核实医生信息需求时查出）"
+      "evidence": "A.36 P0-① / A.37 真机走查 13/13 + 身份区断言入走查脚本（3b）；渲染守卫 test_workspace_identity_is_not_hardcoded",
+      "resolution": "GET /sessions/{id} 响应补脱敏人口学（复用列表端 _mask_name/_age_from），WorkspaceRoute 作 identity prop 传入；缺失如实显示「患者信息不可用」"
     },
     {
       "id": "seg-accuracy-unverified-gt",
@@ -464,31 +465,34 @@
       "id": "multi-frame-diagnosis-gap",
       "name": "P1 多帧/序列诊断缺口（心脏 cine 硬伤）",
       "description": "全链路单帧：UI 单文件上传、显示 setStack 单张、分割单帧推理。心脏 cine 场景临床不成立（EF/室壁运动必须看序列）；甲状腺多张静态图场景缺口较小。后端判读请求 imageIds 本为数组（API 有口子，前端未接）。分期：①多图批量上传+帧滚动 ②多帧 DICOM NumberOfFrames 解析 ③cine+关键帧选择",
-      "status": "planned",
+      "status": "done",
       "dependencies": [
         "ui-no-dicom-upload-entry"
       ],
-      "evidence": "A.36.4 ③（用户 2026-10-09 指出）"
+      "evidence": "A.38：vitest WorkspaceDicomLayer 5 例（多帧 setStack 整栈/单帧默认沉默/翻帧调用/工具互斥/空栈沉默）+ WorkspaceImageUpload multiple 用例；渲染守卫 TestReadingLifecycle +3；真机走查 4b/4c/4d（双帧装载→指示器 1/2→键盘翻 2/2）。二期（多帧 DICOM NumberOfFrames/cine 关键帧）三期（帧级标注归属）另行登记",
+      "resolution": "分期①全链路补齐（A.38）：input multiple 多选 → useDicomUpload 聚合本地/服务端副本显示栈 → StackViewport setStack 多帧 + 帧指示器「n/N ‹ ›」+ 键盘←→翻帧 + 浏览工具胶囊组（窗宽窗位/缩放/平移互斥单选）。此前「上传侧已通」仅指管线收数组，UI 单文件多帧根本选不出来（走查实测）"
     },
     {
       "id": "diagnosis-multimodal-input",
       "name": "P1 判读未真正摄入影像（多模态输入缺失）",
       "description": "真机走查 LLM 结论出现『请提供具体的影像特征（成分、回声、形态、边缘、钙化），病灶大小』——结论按文本上下文生成，影像内容未进入判读模型/上下文；与临床信息缺失叠加，导致结论永远『信息不足』",
-      "status": "planned",
+      "status": "done",
       "dependencies": [
         "ui-no-dicom-upload-entry"
       ],
-      "evidence": "真实 CAMUS 帧走查结论文本（A.36.4 ④）"
+      "evidence": "A.37：同一真实 CAMUS 帧修复前后对照，结论从「请提供影像特征」（TR1 总分 0）变为实性+低回声+分叶状=7 分 TR5 置信 0.78；走查 13/13",
+      "resolution": "分割量化特征（bbox/面积/概率）经 imaging_metadata 注入专科 LLM 上下文；分割旁路提前到 dispatch 之前（原顺序影像信息永远赶不上 prompt 拼装）"
     },
     {
       "id": "clinical-info-input",
       "name": "P1 医生临床信息录入入口缺失",
       "description": "诊断请求无临床指征字段入口（年龄/症状/病史/化验），LLM 结论因此恒为『信息不足』。需 UI 录入 + 判读入参 + 结论引用闭环",
-      "status": "planned",
+      "status": "done",
       "dependencies": [
         "ui-session-create-not-wired"
       ],
-      "evidence": "A.36.4 ⑤"
+      "evidence": "A.36 ⑤ / A.37 真机走查含临床信息引用断言；渲染守卫 test_clinical_info_panel_is_wired",
+      "resolution": "ClinicalInfoPanel（三 textarea + SG 条件勾选）→ 判读请求透传 clinical_text + patient_context（入参层零改动，DiagnosisRequest 原生支持）"
     },
     {
       "id": "measurement-tools",
@@ -499,6 +503,26 @@
         "ui-no-dicom-upload-entry"
       ],
       "evidence": "A.36.4 ⑥"
+    },
+    {
+      "id": "annotation-persistence",
+      "name": "远期：医生自定义标注/测量持久化（随影像存档）",
+      "description": "医生在影像上的手工标注与测量值目前不保存，刷新即失。需标注随 image_id 存档 + 报告引用。cornerstone annotation API 已具备基础",
+      "status": "planned",
+      "dependencies": [
+        "measurement-tools"
+      ],
+      "resolution": "",
+      "evidence": "A.38 阅片生命周期盘点（浏览/阅片阶段缺口：测量工具 P2 未做，标注持久化依赖其先行）"
+    },
+    {
+      "id": "study-compare-historical",
+      "name": "远期：历史检查对比阅片（同患者前后对照）",
+      "description": "放射科标准工作流的随访环节：同患者历史影像并排/瀑布对比。依赖会话级影像归档与检索，当前无 UI 亦无后端端点",
+      "status": "planned",
+      "dependencies": [],
+      "resolution": "",
+      "evidence": "A.38 阅片生命周期盘点（第 7 阶段：历史对比缺失，登记远期；性能提升阶段后评估）"
     }
   ]
 }

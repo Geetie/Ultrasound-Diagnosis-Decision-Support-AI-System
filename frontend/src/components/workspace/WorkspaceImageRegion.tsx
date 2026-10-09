@@ -40,21 +40,30 @@ const SEG_REASON_LABEL: Record<string, string> = {
 export default function WorkspaceImageRegion({
   organBar,
   dicomImageId,
+  dicomImageIds,
   segmentation,
 }: {
   /** 部位指示条插槽：仅部位数 ≥ 2 时传入（05 / 14）。它落在影像区内部底缘，
    *  不改变影像区高度 —— 影像区恒定 600。 */
   organBar?: ReactNode;
-  /** 真实 DICOM 的 URL。给了就铺在渐变占位之上（渐变作为底色兜底），
+  /** 真实 DICOM 的 URL（单张，兼容旧签名）。给了就铺在渐变占位之上（渐变作为底色兜底），
    *  对应 2:4 的 impl_note：真实实现放 DICOM 容器。 */
   dicomImageId?: string;
+  /** 多帧（A.38 分期①）：本会话已装载的 imageIds 栈（顺序=上传顺序）。
+   *  传入时优先于 dicomImageId；空/省略回落单张语义。 */
+  dicomImageIds?: string[];
   /** 分割旁路视图（来自诊断结果的 nodule_segmentation）。 */
   segmentation?: SegmentationView;
 }) {
+  const stack = dicomImageIds && dicomImageIds.length > 0
+    ? dicomImageIds
+    : dicomImageId
+      ? [dicomImageId]
+      : [];
   // 设计稿 2:5/2:6/2:101 的「结节A/B、18.4×12.1mm」是**写死的示意数据**。
   // 真实影像显示时必须隐藏 —— 假框叠在真片子上等于伪造标注（2026-10-08 走查发现）。
-  const showMock = !dicomImageId;
-  const seg = dicomImageId ? segmentation : undefined;
+  const showMock = stack.length === 0;
+  const seg = stack.length > 0 ? segmentation : undefined;
   const bbox = seg?.available ? seg.bbox : null;
   const areaLabel = seg?.available
     ? seg.area_mm2 != null
@@ -66,8 +75,9 @@ export default function WorkspaceImageRegion({
 
   return (
     <section className="ws-image" data-region="image" aria-label="实时影像">
-      {/* 真实 DICOM 层（在叠加标注之下）。渐变仍留在 CSS 里当底色与加载兜底。*/}
-      {dicomImageId && <WorkspaceDicomLayer imageId={dicomImageId} />}
+      {/* 真实 DICOM 层（在叠加标注之下）。渐变仍留在 CSS 里当底色与加载兜底。
+          多帧时 DicomLayer 内部出帧指示器与浏览工具（默认沉默口径在层内）。 */}
+      {stack.length > 0 && <WorkspaceDicomLayer imageIds={stack} />}
 
       {/* 分割旁路标注：bbox 画在 SVG 上，viewBox = 分割帧像素尺寸。
           Cornerstone fit 与 SVG meet 的 letterbox 数学一致，坐标因此对齐显示的影像。 */}
@@ -108,7 +118,7 @@ export default function WorkspaceImageRegion({
 
       {/* 后端契约：available=false 必须显示「未做分割：<原因>」，不能显示成
           「未检出结节」—— 缺权重/未启用与"没病"是两回事（schemas.py 原文）。 */}
-      {seg && !seg.available && dicomImageId && (
+      {seg && !seg.available && stack.length > 0 && (
         <span
           className="ws-image__text"
           style={{ left: 24, bottom: 12, width: 400 }}

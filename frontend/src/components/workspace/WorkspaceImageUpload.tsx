@@ -36,17 +36,19 @@ export default function WorkspaceImageUpload({
   ready: boolean;
   /** ready=false 时说明具体原因，比一句"请先选择会话"更可用。 */
   blockedReason?: string | null;
-  onPick: (file: File) => void | Promise<void>;
+  onPick: (files: File[]) => void | Promise<void>;
   onGoWorklist?: () => void;
 }) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const busy = state.phase === 'uploading';
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const files = Array.from(e.target.files ?? []);
     // 先清空 value：否则医生重选同一个文件不会再触发 change，表现为"点了没反应"
     e.target.value = '';
-    if (file) void onPick(file);
+    // 多帧（A.38 分期①）：一次可选多帧，管线本就收 image_ids 数组 ——
+    // 此前 input 没有 multiple，"多帧"在界面上根本选不出来（走查实测）。
+    if (files.length > 0) void onPick(files);
   };
 
   if (!ready) {
@@ -71,6 +73,7 @@ export default function WorkspaceImageUpload({
           ref={inputRef}
           type="file"
           accept=".dcm,.dicom"
+          multiple
           className="ws-upload__input"
           onChange={handleChange}
           disabled={busy}

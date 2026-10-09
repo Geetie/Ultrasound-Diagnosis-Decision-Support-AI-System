@@ -3,11 +3,12 @@ import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
-import ClinicalInfoPanel, {
+import ClinicalInfoPanel from '../ClinicalInfoPanel';
+import {
   EMPTY_CLINICAL_INFO,
   isClinicalInfoFilled,
   toClinicalText,
-} from '../ClinicalInfoPanel';
+} from '../clinicalInfo';
 
 /** A.36 ⑤：临床信息录入闭环的前端半环。 */
 function Stateful(props: { locked?: boolean }) {

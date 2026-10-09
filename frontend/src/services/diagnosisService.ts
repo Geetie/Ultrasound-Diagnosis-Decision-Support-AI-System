@@ -173,7 +173,10 @@ export function pollDiagnosisResult(
   const {
     signal,
     firstPollDelay = 1000,
-    pollInterval = 2000,
+    // A.38：2000→1000。热身后判读 4.4s，2s 粒度会让医生感知多等 0~2s；
+    // 轮询本身是轻查询（读 DB 一行），1s 无压力。退避（maxBackoffMs）仍在，
+    // 长时间等待时不会打爆接口。
+    pollInterval = 1000,
     maxWaitMs = RESULT_WAIT_MS,
     maxBackoffMs = 8000,
     tier = 'standard',

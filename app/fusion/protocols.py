@@ -201,7 +201,11 @@ class FusionResult(BaseModel):
         needs_review: 是否需要人工复核。
         review_reason: 复核原因（``conflict_detected`` / ``consistency_failed``
             / ``self_rag_failed`` / ``no_specialist_responded`` / ``specialist_flagged`` 等）。
-        total_latency_ms: 融合层总耗时（不含 Self-RAG LLM 调用）。
+        total_latency_ms: 融合层总耗时。**注意**：实测包含 Self-RAG/CRAG 的
+            LLM 校验调用（fusion.fuse 14s 波动的真实来源），"融合层 < 500ms"
+            预算只对排除 LLM 的编排开销成立。
+        validate_ms: 三层校验（含 Self-RAG LLM 调用，Layer2/3 并行）耗时。
+        crag_ms: CRAG 兜底（含检索与 LLM 重生成）耗时；未触发时为 0。
     """
 
     # Pydantic 允许任意类型（SelfRAGEvalResult 是 dataclass）
@@ -219,6 +223,8 @@ class FusionResult(BaseModel):
     needs_review: bool = False
     review_reason: str | None = None
     total_latency_ms: float = 0.0
+    validate_ms: float = 0.0
+    crag_ms: float = 0.0
 
     @field_validator("self_rag_score")
     @classmethod

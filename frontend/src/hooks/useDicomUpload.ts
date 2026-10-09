@@ -34,6 +34,10 @@ export interface DicomUploadState {
   localImageId?: string;
   /** 服务端副本的 Cornerstone imageId（上传成功后回取注册；显示优先用它）。 */
   serverImageId?: string;
+  /** 多帧显示栈·本地副本（A.38 分期①：与 imageIds 同序，逐张注册）。 */
+  localImageIds: string[];
+  /** 多帧显示栈·服务端副本（同序；某张回取失败时该位缺省）。 */
+  serverImageIds: string[];
   /** 后端 image_id（判读用）。 */
   imageId?: string;
   fileName: string | null;
@@ -42,8 +46,8 @@ export interface DicomUploadState {
 
 export interface UseDicomUpload {
   state: DicomUploadState;
-  /** 拿到 File 就绪处理（由 <input type=file> 的 onChange 调用）。 */
-  handleFile: (file: File) => Promise<void>;
+  /** 拿到 File 就绪处理（由 <input type=file multiple> 的 onChange 调用）。 */
+  handleFile: (files: File[]) => Promise<void>;
   reset: () => void;
 }
 
@@ -95,6 +99,8 @@ export function useDicomUpload(
     fileName: null,
     error: null,
     imageIds: [],
+    localImageIds: [],
+    serverImageIds: [],
   });
 
   const handleFiles = useCallback(
@@ -104,11 +110,17 @@ export function useDicomUpload(
           phase: 'error',
           fileName: null,
           error: '尚未选择检查会话，无法装载影像',
+          localImageIds: [],
+          serverImageIds: [],
         });
         return;
       }
 
       const ids: string[] = [];
+      // A.38 多帧分期①：显示栈逐张累计（旧实现只留最后一张，前几张被丢弃
+      // —— 上传了 3 张却只能看 1 张，帧指示器没有数据源）。
+      const localIds: string[] = [];
+      const serverIds: string[] = [];
 
       let lastLocal: string | undefined;
 
@@ -116,12 +128,20 @@ export function useDicomUpload(
       // 多图顺序上传：每张上传成功即推进 imageIds；最后一张作为显示源。
       // 单张失败不中断整批（错误信息显示在面板，医生可看到第几张失败）。
       for (const file of Array.from(files)) {
-        setState({ phase: 'uploading', fileName: file.name, error: null, imageIds: ids });
+        setState({
+          phase: 'uploading',
+          fileName: file.name,
+          error: null,
+          imageIds: ids,
+          localImageIds: localIds,
+          serverImageIds: serverIds,
+        });
 
         // 先显示：不等网络。注册失败也不影响后续上传。
         const localImageId = await registerLocalImage(file).catch(() => undefined);
 
         lastLocal = localImageId;
+        if (localImageId) localIds.push(localImageId);
 
         try {
           const resp = await uploadDicom(file, sessionId, DEFAULT_PRIORITY);
@@ -130,11 +150,15 @@ export function useDicomUpload(
           const serverImageId = await registerServerImage(resp.image_id).catch(
             () => undefined,
           );
+          lastServer = serverImageId;
+          if (serverImageId) serverIds.push(serverImageId);
           setState({
             phase: 'uploading',
             localImageId,
             serverImageId,
             imageIds: ids,
+            localImageIds: localIds,
+            serverImageIds: serverIds,
             fileName: file.name,
             error: null,
           });
@@ -145,6 +169,8 @@ export function useDicomUpload(
             fileName: file.name,
             error: getApiErrorMessage(e, '影像上传失败'),
             imageIds: ids,
+            localImageIds: localIds,
+            serverImageIds: serverIds,
           });
           return;
         }
@@ -156,6 +182,8 @@ export function useDicomUpload(
         imageId: ids[ids.length - 1],
         localImageId: lastLocal,
         serverImageId: lastServer,
+        localImageIds: localIds,
+        serverImageIds: serverIds,
         fileName: null,
         error: null,
       });
@@ -164,10 +192,10 @@ export function useDicomUpload(
     [sessionId, onUploaded]
   );
 
-  const handleFile = useCallback((file: File) => handleFiles([file]), [handleFiles]);
+  const handleFile = useCallback((files: File[]) => handleFiles(files), [handleFiles]);
 
   const reset = useCallback(() => {
-    setState({ phase: 'idle', fileName: null, error: null });
+    setState({ phase: 'idle', fileName: null, error: null, localImageIds: [], serverImageIds: [] });
   }, []);
 
   return { state, handleFile, reset };

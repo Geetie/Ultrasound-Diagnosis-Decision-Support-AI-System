@@ -131,7 +131,13 @@ class FusionEngineImpl(FusionEngine):
             )
             return result
 
-        # 2) 三层校验（冲突 / 一致性 / Self-RAG）
+        # 2) 三层校验（冲突 / 一致性 / Self-RAG）。
+        # 计时拆分（A.38）：fuse 的 0.7~14.1s 波动此前只有 total 一个数，
+        # 14s 到底是编排开销还是 Self-RAG 的 LLM 调用不可归因 —— 拆出
+        # validate（含 LLM）与 crag（含 LLM）两个子计时，pipeline 落库
+        # timings_ms 后可对照。Layer2/3 在 validate 内 asyncio.gather 并行，
+        # 所以不叫 self_rag_llm_ms —— 这是"含 LLM 的校验总时长"。
+        t_validate = time.monotonic()
         try:
             result = await self._layered_validator.validate(request)
         except Exception as exc:
@@ -144,6 +150,7 @@ class FusionEngineImpl(FusionEngine):
                 needs_review=True,
                 review_reason=f"validation_failed: {type(exc).__name__}",
             )
+        result.validate_ms = (time.monotonic() - t_validate) * 1000.0
 
         # P0-2 修复：缓存 LayeredValidator 评估后的真实 Self-RAG 结果
         self._last_self_rag_result = result.self_rag_result
@@ -161,11 +168,13 @@ class FusionEngineImpl(FusionEngine):
             and not result.crag_triggered  # 避免重复触发
         ):
             try:
+                t_crag = time.monotonic()
                 crag_result = await self._crag_handler.handle(
                     response=final,
                     self_rag_result=self._get_self_rag_result(final),
                     request=request,
                 )
+                result.crag_ms = (time.monotonic() - t_crag) * 1000.0
                 result.crag_triggered = True
                 result.crag_recovered = crag_result.recovered
                 if crag_result.recovered and crag_result.new_response is not None:
@@ -217,6 +226,8 @@ class FusionEngineImpl(FusionEngine):
             crag_triggered=result.crag_triggered,
             crag_recovered=result.crag_recovered,
             total_latency_ms=round(result.total_latency_ms, 2),
+            validate_ms=round(result.validate_ms, 2),
+            crag_ms=round(result.crag_ms, 2),
         )
         return result
 

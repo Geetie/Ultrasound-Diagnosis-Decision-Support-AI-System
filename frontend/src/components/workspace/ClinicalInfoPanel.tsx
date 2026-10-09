@@ -1,4 +1,9 @@
 import { useState } from 'react';
+// 值模型与工具函数在 ./clinicalInfo（react-refresh：组件文件只导出组件）
+import {
+  isClinicalInfoFilled,
+  type ClinicalInfoValue,
+} from './clinicalInfo';
 
 /**
  * 临床信息录入面板（A.36 ⑤：医生临床信息录入闭环的前端半环）。
@@ -14,42 +19,7 @@ import { useState } from 'react';
  * - 不阻塞自动判读：装载即判读是既有口径，空信息由徽标提示而非弹窗拦截。
  */
 
-export interface ClinicalInfoValue {
-  symptoms: string;
-  history: string;
-  labs: string;
-  /** 安全网关 patient_conditions 的前端勾选形态。 */
-  conditions: string[];
-}
-
-export const EMPTY_CLINICAL_INFO: ClinicalInfoValue = {
-  symptoms: '',
-  history: '',
-  labs: '',
-  conditions: [],
-};
-
 const CONDITION_OPTIONS = ['妊娠', '造影剂过敏', '抗凝治疗'] as const;
-
-export function isClinicalInfoFilled(v: ClinicalInfoValue): boolean {
-  return (
-    v.symptoms.trim() !== '' ||
-    v.history.trim() !== '' ||
-    v.labs.trim() !== '' ||
-    v.conditions.length > 0
-  );
-}
-
-/** 拼判读请求的 clinical_text（症状/病史/化验逐行拼接）。 */
-export function toClinicalText(v: ClinicalInfoValue): string {
-  return [
-    v.symptoms.trim() && `症状：${v.symptoms.trim()}`,
-    v.history.trim() && `病史：${v.history.trim()}`,
-    v.labs.trim() && `化验：${v.labs.trim()}`,
-  ]
-    .filter(Boolean)
-    .join('\n');
-}
 
 export default function ClinicalInfoPanel({
   value,

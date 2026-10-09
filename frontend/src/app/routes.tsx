@@ -12,11 +12,13 @@ import { getSession } from '@/services/sessionService';
 import type { SessionInfo } from '@/types/api';
 import { fetchDicomForDisplay, listSessionImages } from '@/services/imagingService';
 import { needsDoctorReview, toConclusionView } from '@/services/diagnosisAdapter';
-import ClinicalInfoPanel, {
+import ClinicalInfoPanel from '@/components/workspace/ClinicalInfoPanel';
+// 值模型/工具在独立文件（react-refresh：组件文件只导出组件，A.38）
+import {
   EMPTY_CLINICAL_INFO,
   toClinicalText,
   type ClinicalInfoValue,
-} from '@/components/workspace/ClinicalInfoPanel';
+} from '@/components/workspace/clinicalInfo';
 
 const WorkspacePage = lazy(() => import('@/pages/WorkspacePage'));
 const WorklistPage = lazy(() => import('@/pages/WorklistPage'));
@@ -218,17 +220,28 @@ function WorkspaceRoute() {
   const devDicomImageId = dicomRel ? `/dev-dicom/${dicomRel}` : undefined;
   /**
    * 影像区显示源的优先级：
-   *   1. 刚上传的**服务端副本**（同管线同源，且证明 round trip）
-   *   2. 刚上传的浏览器本地副本（服务端回取失败时的回落）
-   *   3. 本会话最近一份已存影像（刷新 / 「继续检查」后恢复）
+   *   1. 刚上传的**服务端副本**（同管线同源，且证明 round trip）——多帧时整栈
+   *   2. 刚上传的浏览器本地副本（服务端回取失败时的回落）——多帧时整栈
+   *   3. 本会话最近一份已存影像（刷新 / 「继续检查」后恢复，单张）
    *   4. dev 后门（?dicom=）
    * 都没有 → 渐变占位（默认沉默）。
+   *
+   * A.38 多帧分期①：显示栈 = 同优先级下的整批副本（顺序=上传顺序）。
+   * dicomImageId 保留栈首（旧签名兼容 + 判读发起处使用）。
    */
-  const dicomImageId =
-    upload.state.serverImageId ??
-    upload.state.localImageId ??
-    sessionImageResolved ??
-    devDicomImageId;
+  const uploadedServerStack = upload.state.serverImageIds ?? [];
+  const uploadedLocalStack = upload.state.localImageIds ?? [];
+  const dicomImageIds: string[] =
+    uploadedServerStack.length > 0
+      ? uploadedServerStack
+      : uploadedLocalStack.length > 0
+        ? uploadedLocalStack
+        : sessionImageResolved
+          ? [sessionImageResolved]
+          : devDicomImageId
+            ? [devDicomImageId]
+            : [];
+  const dicomImageId = dicomImageIds[0];
 
   // ?request_id=… —— 语音控件发起判读后带着它跳过来（AppLayout 的 onExecuted）。
   // 那个请求已经发出并落库，所以走 resume() **只轮询取结果**，绝不重发判读。
@@ -279,6 +292,7 @@ function WorkspaceRoute() {
         state={state}
         view={view}
         dicomImageId={dicomImageId}
+        dicomImageIds={dicomImageIds.length > 1 ? dicomImageIds : undefined}
         onConfirm={flow.confirm}
         identity={sessionMatched ? sessionInfo.identity ?? undefined : undefined}
         clinicalSlot={
