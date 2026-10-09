@@ -470,7 +470,7 @@
       "dependencies": [
         "ui-no-dicom-upload-entry"
       ],
-      "evidence": "A.38：vitest WorkspaceDicomLayer 5 例（多帧 setStack 整栈/单帧默认沉默/翻帧调用/工具互斥/空栈沉默）+ WorkspaceImageUpload multiple 用例；渲染守卫 TestReadingLifecycle +3；真机走查 4b/4c/4d（双帧装载→指示器 1/2→键盘翻 2/2）。二期（多帧 DICOM NumberOfFrames/cine 关键帧）三期（帧级标注归属）另行登记",
+      "evidence": "A.38：vitest WorkspaceDicomLayer 5 例（多帧 setStack 整栈/单帧默认沉默/翻帧调用/工具互斥/空栈沉默）+ WorkspaceImageUpload multiple 用例；渲染守卫 TestReadingLifecycle +3；真机走查 4b/4c/4d（双帧装载→指示器 1/2→键盘翻 2/2）。二期（多帧 DICOM NumberOfFrames/cine 关键帧）三期（帧级标注归属）另行登记；分期③帧级归属（A.45）：保存带 frame_index、恢复按帧过滤、翻帧清场重恢复——vitest 10 例 + 走查 21/21",
       "resolution": "分期①全链路补齐（A.38）：input multiple 多选 → useDicomUpload 聚合本地/服务端副本显示栈 → StackViewport setStack 多帧 + 帧指示器「n/N ‹ ›」+ 键盘←→翻帧 + 浏览工具胶囊组（窗宽窗位/缩放/平移互斥单选）。此前「上传侧已通」仅指管线收数组，UI 单文件多帧根本选不出来（走查实测）"
     },
     {
