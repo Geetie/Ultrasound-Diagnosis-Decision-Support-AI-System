@@ -14,6 +14,8 @@ import {
 } from '@cornerstonejs/core';
 import {
   Enums as ToolsEnums,
+  EllipticalROITool,
+  LengthTool,
   PanTool,
   ToolGroupManager,
   WindowLevelTool,
@@ -37,6 +39,10 @@ const TOOL_MAP: Record<string, string> = {
   WwwcTool: 'WindowLevel',
   ZoomTool: 'Zoom',
   PanTool: 'Pan',
+  // 测量工具（A.40）：cornerstoneTools 现成，PixelSpacing 在 DICOM 里就绪，
+  // 长度/面积换算 mm 由 cornerstone 注释管线承担，UI 只读结果
+  Length: 'Length',
+  EllipticalROI: 'EllipticalROI',
 };
 
 /**
@@ -55,6 +61,8 @@ function ensureInit(): Promise<void> {
     addTool(WindowLevelTool);
     addTool(ZoomTool);
     addTool(PanTool);
+    addTool(LengthTool);
+    addTool(EllipticalROITool);
   })().catch((err: unknown) => {
     // 允许重试：清掉缓存的 promise，下次调用重新初始化
     initPromise = null;
@@ -87,6 +95,8 @@ export function enable(element: HTMLElement): void {
     tg.addTool(WindowLevelTool.toolName);
     tg.addTool(ZoomTool.toolName);
     tg.addTool(PanTool.toolName);
+    tg.addTool(LengthTool.toolName);
+    tg.addTool(EllipticalROITool.toolName);
     tg.addViewport(viewportId, engineId);
     tg.setToolActive('WindowLevel', {
       bindings: [{ mouseButton: ToolsEnums.MouseBindings.Primary }],
@@ -311,6 +321,43 @@ export function activateTool(toolName: string): void {
 
 export function deactivateTool(toolName: string): void {
   currentToolGroup()?.setToolDisabled(TOOL_MAP[toolName] ?? toolName);
+}
+
+/** 医生画完一次测量（长度/椭圆）后回调的载荷。 */
+export interface MeasureResult {
+  tool: string;
+  /** 长度 mm 或面积 mm²（cornerstone 按 DICOM PixelSpacing 换算）。 */
+  value: number;
+  unit: 'mm' | 'mm²';
+}
+
+/**
+ * 监听测量完成（A.40）。cornerstone 注释管线在 ANNOTATION_COMPLETED 时
+ * 已用 PixelSpacing 把像素换算成 mm —— UI 只读结果，不自己算。
+ * 返回取消函数（组件卸载时必须调，eventTarget 是模块级单例）。
+ */
+export function onMeasureCompleted(handler: (m: MeasureResult) => void): () => void {
+  const listener = ((evt: CustomEvent) => {
+    const ann = (evt.detail as { annotation?: { toolName?: string; data?: Record<string, unknown> } })
+      ?.annotation;
+    if (!ann?.toolName) return;
+    const data = (ann.data ?? {}) as {
+      length?: number;
+      area?: number;
+      cachedStats?: Record<string, { length?: number; area?: number }>;
+    };
+    // CS3D 5.x：Length 在 data.cachedStats[targetId].length，旧路径 data.length 兜底
+    const first = data.cachedStats?.[Object.keys(data.cachedStats ?? {})[0] ?? ''];
+    const length = first?.length ?? data.length;
+    const area = first?.area ?? data.area;
+    if (ann.toolName === LengthTool.toolName && typeof length === 'number') {
+      handler({ tool: ann.toolName, value: length, unit: 'mm' });
+    } else if (ann.toolName === EllipticalROITool.toolName && typeof area === 'number') {
+      handler({ tool: ann.toolName, value: area, unit: 'mm²' });
+    }
+  }) as EventListener;
+  eventTarget.addEventListener(ToolsEnums.Events.ANNOTATION_COMPLETED, listener);
+  return () => eventTarget.removeEventListener(ToolsEnums.Events.ANNOTATION_COMPLETED, listener);
 }
 
 export { cornerstone, wadouri };

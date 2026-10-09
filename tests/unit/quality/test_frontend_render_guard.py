@@ -408,6 +408,26 @@ class TestReadingLifecycle:
             "浏览操作与翻帧的底层能力"
         )
 
+    def test_measurement_tools_wired(self):
+        """测量工具（A.40，measurement-tools）：长度/椭圆注册 + mm 读数直显。"""
+        cs = _code(SRC / "components" / "dicom" / "cornerstone.ts")
+        assert "addTool(LengthTool)" in cs and "addTool(EllipticalROITool)" in cs, (
+            "测量工具未在 cornerstone 注册 —— 医生量不了病灶（生命周期第 3 阶段 P2）"
+        )
+        assert "onMeasureCompleted" in cs, (
+            "cornerstone 适配器必须暴露 onMeasureCompleted —— mm 读数由 "
+            "cornerstone 按 PixelSpacing 换算，UI 只读结果不自己算"
+        )
+        layer = _code(SRC / "components" / "workspace" / "WorkspaceDicomLayer.tsx")
+        assert "measure-readout" in layer, (
+            "测量读数没有显示位 —— 医生画完测量看不到数值等于没量"
+        )
+        camus = (REPO_ROOT / "scripts" / "camus_frame_to_dicom.py").read_text(encoding="utf-8")
+        assert "PixelSpacing" in camus, (
+            "走查样本转换脚本必须写真实 PixelSpacing（CAMUS header zooms）—— "
+            "没有它测量读数是像素不是 mm，等于给医生假数据"
+        )
+
     def test_frame_indicator_defaults_to_silent(self):
         layer = _code(SRC / "components" / "workspace" / "WorkspaceDicomLayer.tsx")
         # 指示器只在多帧时渲染（默认沉默：单帧没有可翻的东西）

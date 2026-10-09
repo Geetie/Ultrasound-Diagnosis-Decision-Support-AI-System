@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
+// 仅类型：编译期擦除，不会把 cornerstone 拉进 jsdom 测试（运行时仍是动态 import）
+import type { MeasureResult } from '@/components/dicom/cornerstone';
 
 /**
  * 影像区里的真实 DICOM 层（铺在影像区底部的 DICOM 容器）。
@@ -16,23 +18,28 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties } from 're
  * 【多帧分期①（A.38）】本层从单张改为接收 imageIds 数组：
  *   · 数组 > 1 → StackViewport 原生多帧栈，右下角帧指示器「n/N ‹ ›」+
  *     键盘 ←→ 翻帧（默认沉默：单帧不渲染指示器 —— 单帧超声没有可翻的东西）；
- *   · 左上角浏览工具胶囊组（窗宽窗位/缩放/平移互斥单选）—— 工具早在
- *     cornerstone.ts 注册了（WindowLevel/Zoom/Pan），缺的只是激活入口，
- *     医生此前点不了任何浏览操作（阅片生命周期缺口，A.38 盘点）。
+ *   · 左上角浏览工具胶囊组（窗宽窗位/缩放/平移/长度/椭圆互斥单选）—— 浏览
+ *     工具在 cornerstone.ts 注册已久（A.38 补激活入口）；测量工具 A.40 补齐，
+ *     读数（mm/mm²）由 cornerstone 按 DICOM PixelSpacing 换算，UI 只显示。
  */
-type BrowseTool = 'windowLevel' | 'zoom' | 'pan';
+type BrowseTool = 'windowLevel' | 'zoom' | 'pan' | 'length' | 'ellipse';
 
 /** cornerstone 工具名映射（与 useDicomViewer/DicomToolbar 同一套口径）。 */
 const TOOL_ACTIVATION: Record<BrowseTool, string> = {
   windowLevel: 'WwwcTool',
   zoom: 'ZoomTool',
   pan: 'PanTool',
+  // 测量（A.40）：画完自动出 mm 读数（cornerstone 按 PixelSpacing 换算）
+  length: 'Length',
+  ellipse: 'EllipticalROI',
 };
 
 const TOOL_LABEL: Record<BrowseTool, string> = {
   windowLevel: '窗宽窗位',
   zoom: '缩放',
   pan: '平移',
+  length: '长度',
+  ellipse: '椭圆',
 };
 
 export default function WorkspaceDicomLayer({ imageIds }: { imageIds: string[] }) {
@@ -43,6 +50,10 @@ export default function WorkspaceDicomLayer({ imageIds }: { imageIds: string[] }
   // 指示器按钮/键盘则主动 scrollStack —— 单一事实源是 viewport 本身。
   const [frameIndex, setFrameIndex] = useState(0);
   const [activeTool, setActiveTool] = useState<BrowseTool>('windowLevel');
+  // 最近一次测量读数（长度 mm / 面积 mm²）。带 stackKey 标识：换会话/换影像后
+  // 渲染期对不上就当 null（旧读数不属于新影像），不搞 effect 里同步 setState。
+  // 只显示最近一条 —— 历史测量是标注持久化的事（feature_list 远期项）。
+  const [measure, setMeasure] = useState<{ key: string; text: string } | null>(null);
   // 数组身份每次渲染都可能变，effect 只关心内容 —— 用 join 做依赖。
   // 不能在渲染期写 imageIdsRef.current = imageIds（react-hooks error：
   // 渲染期访问 ref 会触发级联渲染），内容统一从 stackKey 派生。
@@ -130,12 +141,14 @@ export default function WorkspaceDicomLayer({ imageIds }: { imageIds: string[] }
     };
   }, [stackKey]);
 
-  // 浏览工具激活：工具已在 ensureInit 注册，这里只切激活态。
-  // 互斥单选 —— 激活一个、禁掉另外两个（与 useDicomViewer 同语义）。
+  // 浏览工具激活 + 测量读数注册（A.40）：工具已在 ensureInit 注册，这里只切激活态。
+  // 互斥单选 —— 激活一个、禁掉其余（与 useDicomViewer 同语义）。
+  // 测量监听挂同一个模块实例上（eventTarget 是单例，取消函数必须调）。
   useEffect(() => {
     const element = ref.current;
     if (!element || !loaded) return;
     let cancelled = false;
+    let off: (() => void) | null = null;
     import('@/components/dicom/cornerstone')
       .then((cs) => {
         if (cancelled) return;
@@ -143,12 +156,22 @@ export default function WorkspaceDicomLayer({ imageIds }: { imageIds: string[] }
           if (key === activeTool) cs.activateTool(name);
           else cs.deactivateTool(name);
         }
+        // cornerstone 已按 PixelSpacing 把测量换算成 mm —— UI 只显示数值。
+        // stackKey 进闭包：读数带归属标识，换影像后派生为不显示。
+        const key = stackKey;
+        off = cs.onMeasureCompleted((m: MeasureResult) => {
+          setMeasure({
+            key,
+            text: `${m.tool === 'Length' ? '长度' : '面积'} ${m.value.toFixed(1)} ${m.unit}`,
+          });
+        });
       })
       .catch(() => undefined);
     return () => {
       cancelled = true;
+      off?.();
     };
-  }, [activeTool, loaded]);
+  }, [activeTool, loaded, stackKey]);
 
   const scrollBy = useCallback(
     (delta: number) => {
@@ -258,6 +281,24 @@ export default function WorkspaceDicomLayer({ imageIds }: { imageIds: string[] }
               </button>
             );
           })}
+          {/* 最近一次测量读数：医生画完一条线/一个椭圆立刻看得见数值。
+              默认沉默 —— 没画过不占位；读数带 stackKey 归属，换影像派生为不显示。 */}
+          {measure && measure.key === stackKey && (
+            <span
+              data-region="measure-readout"
+              style={{
+                height: 26,
+                padding: '0 10px',
+                fontSize: 11,
+                lineHeight: '26px',
+                borderRadius: 13,
+                background: 'rgba(10, 14, 22, 0.72)',
+                color: 'var(--color-text-primary)',
+              }}
+            >
+              {measure.text}
+            </span>
+          )}
         </div>
       )}
 

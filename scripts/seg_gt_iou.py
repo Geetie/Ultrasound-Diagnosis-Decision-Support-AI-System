@@ -49,7 +49,9 @@ def main() -> int:
 
         t = time.monotonic()
         try:
-            seg = segmenter.infer(tmp.read_bytes())
+            # infer 的字节入参是 **keyword-only**（image_bytes=）；位置传参会把
+            # PNG 字节串当 image_path 打开（[Errno 36] File name too long）
+            seg = segmenter.infer(image_bytes=tmp.read_bytes())
         except Exception as exc:
             per_frame.append({"frame": idx, "error": str(exc)[:120]})
             continue
@@ -57,9 +59,14 @@ def main() -> int:
 
         # GT：CAMUS 标注含多结构（LV腔/心肌/心房），取全部 GT>0 为对照目标
         gt = gt_vol[..., idx] > 0
-        pred_mask = np.asarray(seg.get("mask"), dtype=bool) if "mask" in seg else None
-        if pred_mask is None or pred_mask.shape != gt.shape:
-            per_frame.append({"frame": idx, "error": "mask shape mismatch or missing"})
+        # SegmentationResult 的 mask 是 PNG 字节（mask_png），解码回数组；
+        # out_size 默认与输入图一致 → 形状应与 GT 帧一致
+        pred_mask = np.asarray(Image.open(__import__("io").BytesIO(seg.mask_png))) > 127
+        if pred_mask.shape != gt.shape:
+            per_frame.append({
+                "frame": idx,
+                "error": f"mask shape mismatch: pred={pred_mask.shape} gt={gt.shape}",
+            })
             continue
 
         inter = int((pred_mask & gt).sum())
@@ -70,8 +77,9 @@ def main() -> int:
             "iou": iou,
             "pred_px": int(pred_mask.sum()),
             "gt_px": int(gt.sum()),
-            "area_mm2": seg.get("area_mm2"),
-            "mean_prob": seg.get("mean_prob"),
+            "bbox": seg.bbox,
+            "mean_prob": seg.mean_prob,
+            "latency_ms": seg.latency_ms,
             "elapsed_s": round(elapsed, 2),
         })
 

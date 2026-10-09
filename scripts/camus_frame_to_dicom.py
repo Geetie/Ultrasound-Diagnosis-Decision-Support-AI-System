@@ -37,7 +37,19 @@ def pick_study(root: Path, keyword: str = "4CH_half") -> Path:
 
 
 def convert(nii_path: Path, out: Path, count: int, patient_id: str) -> None:
-    vol = np.asarray(nib.load(nii_path).dataobj, dtype=np.float32)  # (H, W, T)
+    img = nib.load(nii_path)
+    vol = np.asarray(img.dataobj, dtype=np.float32)  # (H, W, T)
+    # 真实像素间距（mm）：CAMUS header 带 zooms（patient0001 4CH = 0.308mm，
+    # xyzt_units=mm）。测量工具的 mm 读数全靠它 —— 不写 PixelSpacing，cornerstone
+    # 只能给出像素单位，医生量出来的是无单位数（违反真实数据制度的变体）。
+    zx, zy, _ = img.header.get_zooms()[:3]
+    units = int(img.header["xyzt_units"]) & 0x03
+    if units != 2 or zx <= 0 or zy <= 0:
+        raise SystemExit(
+            f"{nii_path.name} header 无 mm 像素间距（zooms={img.header.get_zooms()}, "
+            f"units={units}）—— 拒绝写假 PixelSpacing"
+        )
+    pixel_spacing = [float(zy), float(zx)]  # DICOM 行距/列距 = nii 的 y/x zoom
     frames = [
         np.clip(vol[..., t], 0, 255).astype(np.uint8)
         for t in range(min(count, vol.shape[2]))
@@ -67,6 +79,8 @@ def convert(nii_path: Path, out: Path, count: int, patient_id: str) -> None:
         ds.HighBit = 7
         ds.PixelRepresentation = 0
         ds.InstanceNumber = idx + 1
+        ds.PixelSpacing = pixel_spacing
+        ds.Units = "mm"
         # 真实帧写入 PixelData —— 与合成样本（纯图形+假纹理）的本质区别
         ds.PixelData = frame.tobytes()
         pydicom.dcmwrite(out.with_name(f"{out.stem}_{idx}.dcm"), ds, enforce_file_format=True)

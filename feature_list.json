@@ -454,12 +454,12 @@
     {
       "id": "seg-accuracy-unverified-gt",
       "name": "P1 分割准确性未做 GT 对照验证",
-      "description": "bbox 标注链路已通，但准确性从未验证：cardiac 会话 + CAMUS 自带 GT mask 叠加对照（IoU 数字化）未做；且 organ 错派（心脏图按甲状腺分派）时后端照常输出『病灶』而非拒绝/告警——错误器官语义的输出比不输出更危险",
+      "description": "bbox 标注链路已通，但准确性从未验证：cardiac 会话 + CAMUS 自带 GT mask 叠加对照（IoU 数字化）未做；且 organ 错派（心脏图按甲状腺分派）时后端照常输出『病灶』而非拒绝/告警——错误器官语义的输出比不输出更危险。2026-10-09 已实测（A.40）：patient0001 4CH 5 帧 GT 对照 IoU 均值 0.3107、全部帧 <0.6 —— 官方 Dice 0.8395 与全结构 GT 并集口径差距大，准确性缺口量化成立",
       "status": "planned",
       "dependencies": [
         "ui-no-dicom-upload-entry"
       ],
-      "evidence": "真实 CAMUS 帧走查实测（A.36.4 ②）"
+      "evidence": "A.40：seg_gt_iou.py 修复两处接口错配（infer 字节入参 image_bytes= keyword-only；SegmentationResult.mask_png 解码）后服务器实测产出报告 ~/uai/reports/seg_gt_iou_cardiac_20261009_*.json。下一步：口径调研（GT 单结构 LV vs 多结构并集、预处理对齐）后立项准确性优化"
     },
     {
       "id": "multi-frame-diagnosis-gap",
@@ -498,20 +498,19 @@
       "id": "measurement-tools",
       "name": "P2 医生自测工具缺失（Length/Ellipse）",
       "description": "工具栈只注册 WindowLevel/Zoom/Pan，无测量工具——医生无法在影像上自行量长度/面积（像素间距 PixelSpacing 已具备，几何换算现成）",
-      "status": "planned",
+      "status": "done",
       "dependencies": [
         "ui-no-dicom-upload-entry"
       ],
-      "evidence": "A.36.4 ⑥"
+      "evidence": "A.40：vitest WorkspaceDicomLayer 7 例（+长度激活互斥/+读数默认沉默与换栈清空）；渲染守卫 test_measurement_tools_wired（注册+读数位+样本 PixelSpacing 三断言）；本机 vitest 361/quality 74 全绿。真实 CAMUS 帧上的 mm 读数待下次走查视频验证",
+      "resolution": "cornerstoneTools 现成工具接线而非造轮子：Length/EllipticalROITool 注册进 ensureInit+工具组，工具胶囊组扩为 5 键互斥单选；mm 读数由 cornerstone 注释管线按 DICOM PixelSpacing 换算（onMeasureCompleted 直读），UI 只显示最近一条（带 stackKey 归属，换影像派生清空）。走查样本脚本补真实 PixelSpacing（CAMUS header zooms=0.308mm，拒绝写假间距）"
     },
     {
       "id": "annotation-persistence",
       "name": "远期：医生自定义标注/测量持久化（随影像存档）",
       "description": "医生在影像上的手工标注与测量值目前不保存，刷新即失。需标注随 image_id 存档 + 报告引用。cornerstone annotation API 已具备基础",
       "status": "planned",
-      "dependencies": [
-        "measurement-tools"
-      ],
+      "dependencies": [],
       "resolution": "",
       "evidence": "A.38 阅片生命周期盘点（浏览/阅片阶段缺口：测量工具 P2 未做，标注持久化依赖其先行）"
     },
