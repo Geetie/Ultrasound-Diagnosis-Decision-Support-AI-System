@@ -69,7 +69,12 @@ async def _write_generation_progress(request_id: str, chars: int) -> None:
 
 
 async def read_generation_progress(request_id: str) -> int | None:
-    """读已生成字符数（result 端点 processing 分支用；读失败返回 None）。"""
+    """读已生成字符数（result 端点 processing 分支用；读失败返回 None）。
+
+    RedisPool.get_with_error 的 value 是 **bytes**（不是带 decode_value 的
+    包装 —— A.43 真机排障：照抄别处的 decode_value 模式在这里 AttributeError，
+    被 best-effort 吞成 None，轮询永远 chars=null）。
+    """
     try:
         from app.config.redis import RedisPool
         from app.config.redis_keys import RedisKey
@@ -77,7 +82,7 @@ async def read_generation_progress(request_id: str) -> int | None:
         r = await RedisPool.get_with_error(
             RedisKey.custom_idempotency("diag_progress", request_id)
         )
-        return int(r.value.decode_value()) if r.value else None
+        return int(r.value) if r.value else None
     except Exception:
         return None
 
