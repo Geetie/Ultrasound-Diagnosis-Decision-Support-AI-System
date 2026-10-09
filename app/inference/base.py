@@ -44,6 +44,43 @@ from app.inference.protocols import (
 
 _MODEL_INFO_TTL_SECONDS = 300.0
 
+# 生成进度可见（A.43）：默认关（Self-RAG/CRAG 等短输出无收益），主服务环境置 1 开启。
+# 只为长生成的专科判读服务；进度键 TTL 120s —— 判读完成后自然过期。
+_STREAM_PROGRESS_ENABLED = False
+try:
+    import os as _os
+
+    _STREAM_PROGRESS_ENABLED = _os.environ.get("UAI_LLM_STREAM_PROGRESS", "") == "1"
+except Exception:  # pragma: no cover
+    pass
+
+
+async def _write_generation_progress(request_id: str, chars: int) -> None:
+    """把已生成字符数写 Redis（best-effort；写失败只影响进度显示，不影响判读）。"""
+    try:
+        from app.config.redis import RedisPool
+        from app.config.redis_keys import RedisKey
+
+        await RedisPool.setex(
+            RedisKey.custom_idempotency("diag_progress", request_id), 120, str(chars)
+        )
+    except Exception:  # best-effort：进度写失败不影响判读
+        pass
+
+
+async def read_generation_progress(request_id: str) -> int | None:
+    """读已生成字符数（result 端点 processing 分支用；读失败返回 None）。"""
+    try:
+        from app.config.redis import RedisPool
+        from app.config.redis_keys import RedisKey
+
+        r = await RedisPool.get_with_error(
+            RedisKey.custom_idempotency("diag_progress", request_id)
+        )
+        return int(r.value.decode_value()) if r.value else None
+    except Exception:
+        return None
+
 
 class CircuitBreakerState(Enum):
     """断路器状态枚举。"""
@@ -369,6 +406,76 @@ class BaseHttpInferenceEngine(BaseHttpClient, InferenceEngine, ABC):
                 retry_strategy="retry_after_30s",
             )
 
+    async def _execute_stream_request(
+        self,
+        payload: dict,
+        request: InferenceRequest,
+        start_time: float,
+        attempt: int,
+    ) -> InferenceResponse:
+        """SSE 流式生成：逐 chunk 累积文本，周期写 Redis 进度，结束复用 _parse_response。"""
+        client = await self._get_client()
+        stream_payload = {**payload, "stream": True}
+        full_text_parts: list[str] = []
+        finish_reason: str | None = None
+        usage: dict[str, Any] | None = None
+        last_flush = time.monotonic()
+
+        async with client.stream(
+            "POST", self._generate_endpoint, json=stream_payload
+        ) as response:
+            if response.status_code != 200:
+                await response.aread()
+                self._handle_http_error(response, request, attempt)
+            async for line in response.aiter_lines():
+                if not line.startswith("data: "):
+                    continue
+                chunk = line[6:].strip()
+                if chunk == "[DONE]":
+                    break
+                try:
+                    obj = json.loads(chunk)
+                except json.JSONDecodeError:
+                    continue
+                choices = obj.get("choices") or [{}]
+                delta = (choices[0] or {}).get("delta") or {}
+                piece = delta.get("content")
+                if piece:
+                    full_text_parts.append(piece)
+                if choices[0].get("finish_reason"):
+                    finish_reason = choices[0]["finish_reason"]
+                if obj.get("usage"):
+                    usage = obj["usage"]
+                now = time.monotonic()
+                if now - last_flush > 0.5 and request.request_id:
+                    last_flush = now
+                    await _write_generation_progress(
+                        request.request_id, len("".join(full_text_parts))
+                    )
+
+        text = "".join(full_text_parts)
+        if request.request_id:
+            await _write_generation_progress(request.request_id, len(text))
+        latency_ms = (time.monotonic() - start_time) * 1000
+        # 组装成与非流式一致的结构，复用既有解析（模型名占位无影响——解析只取 message/usage）
+        data = {
+            "choices": [
+                {
+                    "message": {"role": "assistant", "content": text},
+                    "finish_reason": finish_reason or "stop",
+                }
+            ],
+            **({"usage": usage} if usage else {}),
+        }
+        self._log.info(
+            "generation_completed_streamed",
+            engine=self._logger_name,
+            request_id=request.request_id,
+            latency_ms=round(latency_ms, 1),
+            chars=len(text),
+        )
+        return self._parse_response(data, request)
+
     async def _execute_single_request(
         self,
         payload: dict,
@@ -377,6 +484,19 @@ class BaseHttpInferenceEngine(BaseHttpClient, InferenceEngine, ABC):
         attempt: int,
     ) -> InferenceResponse:
         client = await self._get_client()
+        # 生成进度可见（A.43）：环境开关开 + 有 request_id 时走 SSE 流式，
+        # 逐 chunk 累积文本并周期写 Redis —— 前端轮询据此显示「已生成 N 字」。
+        # 失败回退非流式（流式解析任何异常都不挡判读，进度只是增强）。
+        if _STREAM_PROGRESS_ENABLED and request.request_id:
+            try:
+                return await self._execute_stream_request(payload, request, start_time, attempt)
+            except Exception as exc:  # 流式失败降级重走非流式
+                self._log.warning(
+                    "stream_progress_fallback_to_non_stream",
+                    engine=self._logger_name,
+                    request_id=request.request_id,
+                    error=str(exc)[:120],
+                )
         response = await client.post(self._generate_endpoint, json=payload)
         latency_ms = (time.monotonic() - start_time) * 1000
 

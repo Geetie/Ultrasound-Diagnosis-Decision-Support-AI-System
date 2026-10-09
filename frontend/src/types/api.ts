@@ -119,6 +119,8 @@ export interface DiagnosisResult {
   requires_manual_review: boolean;
   review_reason?: string | null;
   ai_diagnosis_failed: boolean;
+  /** 生成进度（A.43，processing 中间态才带）：已生成字符数 */
+  generation_progress_chars?: number;
   hallucination_severity: 'severe' | 'moderate' | 'mild' | null;
   /**
    * 以下四项在真机实测响应里**不出现**（2026-10-02 req_20261002_da4fa542），

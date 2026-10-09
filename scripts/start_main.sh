@@ -32,6 +32,8 @@ export PYTHONPATH="$SRC${PYTHONPATH:+:$PYTHONPATH}"
 # 段落轮廓进报告 + 属性提示（2026-10-05 交付形态）
 export NODULE_CONTOUR_IN_PIPELINE_ENABLED="${NODULE_CONTOUR_IN_PIPELINE_ENABLED:-1}"
 export ATTRIBUTE_HINTS_ENABLED="${ATTRIBUTE_HINTS_ENABLED:-1}"
+# 生成进度可见（A.43）：dispatcher SSE 流式 + Redis 进度键，前端「分析中」显示已生成字数
+export UAI_LLM_STREAM_PROGRESS="${UAI_LLM_STREAM_PROGRESS:-1}"
 
 PY="$UAI/venv/bin/python"
 LOG="$UAI/logs/api.log"

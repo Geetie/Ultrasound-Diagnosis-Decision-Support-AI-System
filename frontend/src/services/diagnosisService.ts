@@ -162,6 +162,8 @@ export interface PollOptions {
   tier?: 'realtime' | 'standard' | 'full';
   /** 阶段变化回调（仅在阶段切换时触发，避免高频重渲染） */
   onStage?: (stage: DiagnosisStageEvent) => void;
+  /** processing 中间态带后端已生成字符数（A.43 流式进度）；没有则不调 */
+  onProgress?: (chars: number) => void;
 }
 
 export function pollDiagnosisResult(
@@ -178,6 +180,7 @@ export function pollDiagnosisResult(
     // 长时间等待时不会打爆接口。
     pollInterval = 1000,
     maxWaitMs = RESULT_WAIT_MS,
+    onProgress,
     maxBackoffMs = 8000,
     tier = 'standard',
     onStage,
@@ -243,6 +246,10 @@ export function pollDiagnosisResult(
           });
           onResult(result);
           return;
+        }
+        // processing 中间态：后端流式生成进度（已生成字符数）——有的话透传
+        if (onProgress && typeof result.generation_progress_chars === 'number') {
+          onProgress(result.generation_progress_chars);
         }
         currentDelay = pollInterval;
       } catch {

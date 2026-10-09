@@ -679,5 +679,12 @@ async def get_diagnosis_result(
 
     if diagnosis_result.status == "processing":
         response.headers["Retry-After"] = "2"
+        # 生成进度（A.43）：processing 中间态带上已生成字符数（best-effort）
+        if request_id:
+            from app.inference.base import read_generation_progress
+
+            progress = await read_generation_progress(request_id)
+            if progress is not None:
+                diagnosis_result.generation_progress_chars = progress
 
     return diagnosis_result

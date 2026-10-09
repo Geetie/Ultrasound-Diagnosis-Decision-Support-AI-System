@@ -35,6 +35,8 @@ export interface WorkspaceFlow {
    * 不把它交出去，医生在界面上就只能手敲 URL 才能写报告 —— 实测确实如此。
    */
   requestId: string | null;
+  /** 生成进度（A.43）：processing 期间已生成字符数；completed 后归零。 */
+  progressChars: number;
   /** 发起判读（冻结后自动触发，不需要医生点按钮）。 */
   start: (input: {
     sessionId: string;
@@ -69,6 +71,9 @@ export function useWorkspaceFlow(): WorkspaceFlow {
   const [error, setError] = useState<string | null>(null);
   const [requestId, setRequestId] = useState<string | null>(null);
   const [acknowledged, setAcknowledged] = useState(false);
+  // 生成进度（A.43）：后端流式写 Redis → 轮询带回 →「分析中」显示已生成字数。
+  // 结论出后归零（下一轮判读重新累积）。
+  const [progressChars, setProgressChars] = useState<number>(0);
 
   const startedAt = useRef<number>(0);
   const cancelPoll = useRef<{ cancel: () => void } | null>(null);
@@ -81,6 +86,7 @@ export function useWorkspaceFlow(): WorkspaceFlow {
     setResult(null);
     setAcknowledged(false);
     setOvertimeNote(null);
+    setProgressChars(0);
     startedAt.current = Date.now();
 
     let newRequestId: string;
@@ -126,6 +132,8 @@ export function useWorkspaceFlow(): WorkspaceFlow {
         tier: input.tier ?? 'standard',
         // 阶段事件只用于埋点/超基线判断，不进界面（⛔ 不许把 6 个阶段名渲染给医生）
         onStage: () => undefined,
+        // 生成进度（A.43）：processing 中间态透传已生成字符数 → 「分析中」显示
+        onProgress: setProgressChars,
       }
     );
   }, []);
@@ -144,6 +152,7 @@ export function useWorkspaceFlow(): WorkspaceFlow {
     setResult(null);
     setAcknowledged(false);
     setOvertimeNote(null);
+    setProgressChars(0);
     startedAt.current = Date.now();
 
     cancelPoll.current?.cancel();
@@ -152,13 +161,18 @@ export function useWorkspaceFlow(): WorkspaceFlow {
       (r) => {
         setResult(r);
         setPhase('concluded');
+        setProgressChars(0);
         const spent = (Date.now() - startedAt.current) / 1000;
         if (spent * 1000 > P99_MS) {
           setOvertimeNote(`本次耗时 ${spent.toFixed(1)}s，已超基线 4.8s`);
         }
       },
       () => setPhase('timeout'),
-      { tier: tier ?? 'standard', onStage: () => undefined }
+      {
+        tier: tier ?? 'standard',
+        onStage: () => undefined,
+        onProgress: setProgressChars,
+      }
     );
   }, []);
 
@@ -168,6 +182,7 @@ export function useWorkspaceFlow(): WorkspaceFlow {
     result,
     error,
     requestId,
+    progressChars,
     start,
     resume,
     confirm,

@@ -384,6 +384,9 @@ class DiagnosisResult(BaseModel):
     requires_manual_review: bool = False
     review_reason: Optional[str] = None
     ai_diagnosis_failed: bool = False
+    # 生成进度（A.43，processing 中间态才带）：已生成字符数 —— 前端「分析中」
+    # 显示「已生成 N 字」，秒数走动 + 字数增长 = 生成确实在推进
+    generation_progress_chars: Optional[int] = None
     hallucination_severity: Optional[HallucinationSeverity] = None
     version_compatibility: str = "compatible"
     processing_time_ms: int
