@@ -10,9 +10,14 @@
  *
  * 运行（密码只能从环境变量注入，不得写进脚本或命令行）：
  *   UAI_DOCTOR_USER / UAI_DOCTOR_PASSWORD / UAI_BASE_URL
- *   node scripts/doctor_flow_walkthrough.mjs --dicom <样本路径>
+ *   node scripts/doctor_flow_walkthrough.mjs --dicom <样本路径[,样本路径2]>
  *
- * 样本 DICOM 用 scripts/make_test_dicom.py 现造 —— 不能取自 dicom_storage/：
+ * 样本制度（2026-10-09 用户明令）：**走查/演示/评测一律真实数据**。
+ * 影像样本用 scripts/camus_frame_to_dicom.py 在服务器上从 CAMUS 心超序列现转
+ * （多帧走查给 2 帧不同帧号），scp 回本机后传给 --dicom。
+ * 合成样本 make_test_dicom.py 只允许用于 DICOM 协议/PHI 剥离冒烟，
+ * 不得再出现在医生流程走查与视频里（A.38 教训：视频里的图是假纹理）。
+ *
  * 落盘副本已被 PHI 剥离，回传会被必需 tag 校验拒绝（16 号附录 A.28.5）。
  *
  * 判据全部用医生看得见的界面文案/控件状态，不扒网络请求。
@@ -43,7 +48,12 @@ function loadPlaywright() {
 
 const args = process.argv.slice(2);
 const dicomIdx = args.indexOf('--dicom');
-const DICOM = dicomIdx >= 0 ? args[dicomIdx + 1] : process.env.UAI_SMOKE_DICOM;
+// --dicom 接受逗号分隔的多帧真实样本（多帧走查需要多张）；制度（2026-10-09 用户明令）：
+// 走查/演示/评测一律真实数据（CAMUS），合成样本（make_test_dicom.py）仅限 DICOM 协议冒烟
+const DICOMS = (dicomIdx >= 0 ? args[dicomIdx + 1] : process.env.UAI_SMOKE_DICOM)
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
 const BASE = process.env.UAI_BASE_URL || 'http://127.0.0.1:8000';
 const USER = process.env.UAI_DOCTOR_USER;
 const PASSWORD = process.env.UAI_DOCTOR_PASSWORD;
@@ -53,8 +63,11 @@ if (!USER || !PASSWORD) {
   console.error('需要 UAI_DOCTOR_USER / UAI_DOCTOR_PASSWORD 环境变量（密码不落盘）');
   process.exit(2);
 }
-if (!DICOM || !fs.existsSync(DICOM)) {
-  console.error('需要 --dicom <路径>（样本用 scripts/make_test_dicom.py 现造）');
+if (DICOMS.length === 0 || DICOMS.some((p) => !fs.existsSync(p))) {
+  console.error(
+    '需要 --dicom <路径[,路径2,...]> —— 一律真实数据（制度 2026-10-09）：' +
+      '服务器上用 scripts/camus_frame_to_dicom.py 从 CAMUS 现转，scp 回本机使用',
+  );
   process.exit(2);
 }
 fs.mkdirSync(OUT, { recursive: true });
@@ -65,9 +78,12 @@ const chrome = path.join(
 );
 
 const checks = [];
+const T0 = Date.now();
+const elapsed = () => `${((Date.now() - T0) / 1000).toFixed(1)}s`;
 const record = (name, ok, detail = '') => {
   checks.push({ name, ok });
-  console.log(`[${ok ? 'PASS' : 'FAIL'}] ${name}${detail ? ' — ' + detail : ''}`);
+  // 每步带全程耗时戳 —— 用户看视频说"等了 33 秒"时，插桩数据是唯一裁判
+  console.log(`[${ok ? 'PASS' : 'FAIL'}] +${elapsed()} ${name}${detail ? ' — ' + detail : ''}`);
 };
 const sleep = (page, ms) => page.waitForTimeout(ms);
 
@@ -160,7 +176,7 @@ try {
 
   // 多帧（A.38 分期①）：同一会话装两帧 —— 指示器/翻帧才有真实数据源，
   // 视频里也才有翻帧动作可看。管线本就收 image_ids 数组。
-  await fileInput.setInputFiles([DICOM, DICOM]);
+  await fileInput.setInputFiles(DICOMS.length > 1 ? DICOMS : [DICOMS[0], DICOMS[0]]);
 
   // 浏览工具胶囊组（窗宽窗位/缩放/平移）—— 工具注册早已在，激活入口是本轮补的
   let toolsOk = false;

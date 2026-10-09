@@ -665,9 +665,13 @@ async def get_diagnosis_result(
                 json.dumps(diagnosis_result.model_dump()),
             )
         else:
+            # processing 占位只缓存 1 秒（A.38 真机探针实测）：曾为 30s ——
+            # 管线 5.8s 完成、DB 已更新，但轮询 26 秒内全部命中这份过期快照，
+            # TTL 到期才回落 DB，医生感知 = 管线 6s + 缓存 27s ≈ 33s 等待。
+            # processing 响应没有缓存价值，每次轮询都该看最新状态。
             await RedisPool.setex(
                 cache_key,
-                30,
+                1,
                 json.dumps(diagnosis_result.model_dump()),
             )
     except Exception as e:
