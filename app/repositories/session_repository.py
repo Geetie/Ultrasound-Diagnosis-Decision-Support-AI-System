@@ -103,6 +103,23 @@ class SessionRepository:
 
         return session
 
+    async def get_patient_demographics(self, patient_id: str) -> dict | None:
+        """取患者脱敏源数据（原始姓名/性别/出生日期）——脱敏在 API 层做。
+
+        A.36 P0：工作区身份必须数据驱动。patients 表无行时返回 None
+        （演练患者常只有 consent 行），前端显示『患者信息不可用』，不猜不占位。
+        """
+        stmt = select(Patient).where(Patient.patient_id == patient_id)
+        result = await self.db.execute(stmt)
+        patient = result.scalar_one_or_none()
+        if not patient:
+            return None
+        return {
+            "name": patient.name,
+            "gender": patient.gender,
+            "birth_date": patient.birth_date,
+        }
+
     async def get_sessions_by_patient(
         self,
         patient_id: str,

@@ -661,6 +661,11 @@ class SessionResponse(BaseModel):
     updated_at: datetime
     consent_status_at_creation: ConsentStatus
     ttl_remaining_seconds: Optional[int] = None
+    # 详情端点补充的脱敏人口学（A.36 P0：工作区身份必须数据驱动）。
+    # 脱敏在服务端完成（姓+**），前端不得猜姓名；缺数据 = None。
+    patient_name_masked: Optional[str] = None
+    gender: Optional[str] = None
+    age: Optional[int] = None
 
 
 class SessionListItem(BaseModel):

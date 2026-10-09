@@ -153,7 +153,7 @@ export function displayImage(element: HTMLElement, image: { imageId?: string }):
     const max = img.maxPixelValue ?? 255;
     await stack.setStack([image.imageId!]);
     stack.setProperties({
-      voi: { windowWidth: Math.max(1, max - min), windowCenter: (max + min) / 2 },
+      voiRange: { lower: min, upper: max },
     });
   })().catch((err: unknown) => console.error('[cornerstone3d] display failed', err));
 }

@@ -56,6 +56,10 @@ export default function WorkspacePage({
   dicomImageId,
   uploadSlot,
   navItems,
+  /** 脱敏身份行（张** · 女 · 52 岁）。undefined = 数据不可用 → 显示『患者信息不可用』。 */
+  identity,
+  /** 临床信息面板插槽（常驻条正下方；判读发起后锁定，A.36 ⑤）。 */
+  clinicalSlot,
 }: {
   state?: WorkspaceState;
   /**
@@ -83,13 +87,17 @@ export default function WorkspacePage({
    * 不传就不渲染（默认沉默）。
    */
   navItems?: { key: string; label: string; onClick: () => void }[];
+  identity?: string;
+  clinicalSlot?: ReactNode;
 }) {
   const overlay = overlayOf(state);
 
   return (
     <div className="ws-root" data-screen={SCREEN_OF[state]}>
       <header className="ws-bar" data-region="bar">
-        <span className="ws-bar__identity">张** · 女 · 52 岁 · 门诊</span>
+        {/* A.36 P0：身份必须数据驱动（写死「张**」= 患者身份错显）。由路由按
+            session 传入脱敏人口学；缺失时如实显示不可用，不猜、不占位假人。 */}
+        <span className="ws-bar__identity">{identity ?? '患者信息不可用'}</span>
         {navItems && navItems.length > 0 && (
           <nav className="ws-bar__nav" aria-label="页面导航">
             {navItems.map((item) => (
@@ -105,6 +113,7 @@ export default function WorkspacePage({
           </nav>
         )}
       </header>
+      {clinicalSlot}
 
       {/* 影像区在 11 个状态间是同一份拷贝（04 的 2:15、10 的 2:299 等都标注
           shared_copy_of: 02_扫查态/2:4），逐像素相同，故直接复用，不重复实现。

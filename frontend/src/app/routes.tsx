@@ -9,8 +9,14 @@ import type { ThemeName } from '@/components/shell/AppSidebar';
 import { useWorkspaceFlow } from '@/hooks/useWorkspaceFlow';
 import { useDicomUpload } from '@/hooks/useDicomUpload';
 import { getSession } from '@/services/sessionService';
+import type { SessionInfo } from '@/types/api';
 import { fetchDicomForDisplay, listSessionImages } from '@/services/imagingService';
 import { needsDoctorReview, toConclusionView } from '@/services/diagnosisAdapter';
+import ClinicalInfoPanel, {
+  EMPTY_CLINICAL_INFO,
+  toClinicalText,
+  type ClinicalInfoValue,
+} from '@/components/workspace/ClinicalInfoPanel';
 
 const WorkspacePage = lazy(() => import('@/pages/WorkspacePage'));
 const WorklistPage = lazy(() => import('@/pages/WorklistPage'));
@@ -58,6 +64,14 @@ const PHASE_TO_STATE: Record<string, WorkspaceState> = {
   error: 'ai-unavailable',
 };
 
+/** 脱敏人口学 → 身份行；全缺 = null（界面显示『患者信息不可用』）。 */
+function identityOf(s: SessionInfo): string | null {
+  const gender = s.gender === 'female' ? '女' : s.gender === 'male' ? '男' : null;
+  const age = s.age != null ? s.age + ' 岁' : null;
+  const parts = [s.patient_name_masked ?? null, gender, age].filter(Boolean) as string[];
+  return parts.length > 0 ? parts.join(' · ') : null;
+}
+
 function WorkspaceRoute() {
   const isDev = import.meta.env.DEV;
   const [params] = useSearchParams();
@@ -89,7 +103,10 @@ function WorkspaceRoute() {
     id: string;
     organ: string | null;
     issue: string | null;
+    identity: string | null;
+    demo: { age: number | null; gender: string | null };
   } | null>(null);
+  const [clinical, setClinical] = useState<ClinicalInfoValue>(EMPTY_CLINICAL_INFO);
 
   useEffect(() => {
     if (!sessionId) return;
@@ -102,6 +119,9 @@ function WorkspaceRoute() {
           id: sessionId,
           organ: first ?? null,
           issue: first ? null : '该检查会话未声明部位，无法发起判读',
+          // A.36 P0：身份随会话数据驱动（服务端已脱敏），写死人名 = 患者身份错显
+          identity: identityOf(s),
+          demo: { age: s.age ?? null, gender: s.gender ?? null },
         });
       })
       .catch(() => {
@@ -110,6 +130,8 @@ function WorkspaceRoute() {
             id: sessionId,
             organ: null,
             issue: '检查会话读取失败，请回到工作列表重新选择',
+            identity: null,
+            demo: { age: null, gender: null },
           });
         }
       });
@@ -156,9 +178,25 @@ function WorkspaceRoute() {
   const handleUploaded = useCallback(
     async (imageId: string) => {
       if (!sessionId || !organ) return;
-      await startFlow({ sessionId, imageIds: [imageId], targetOrgan: organ });
+      // A.36 ⑤：临床信息随判读入参上行（symptom/history/labs → clinical_text，
+      // 人口学 + SG 条件 → patient_context）。判读发起后面板锁定（见下方 slot）。
+      await startFlow({
+        sessionId,
+        imageIds: [imageId],
+        targetOrgan: organ,
+        clinicalText: toClinicalText(clinical),
+        patientContext: {
+          age: sessionInfo?.demo.age ?? undefined,
+          gender:
+            sessionInfo?.demo.gender === 'female'
+              ? 'F'
+              : sessionInfo?.demo.gender === 'male'
+                ? 'M'
+                : undefined,
+        },
+      });
     },
-    [sessionId, organ, startFlow]
+    [sessionId, organ, startFlow, clinical, sessionInfo]
   );
 
   const upload = useDicomUpload(sessionId, handleUploaded);
@@ -242,6 +280,14 @@ function WorkspaceRoute() {
         view={view}
         dicomImageId={dicomImageId}
         onConfirm={flow.confirm}
+        identity={sessionMatched ? sessionInfo.identity ?? undefined : undefined}
+        clinicalSlot={
+          <ClinicalInfoPanel
+            value={clinical}
+            onChange={setClinical}
+            locked={flow.phase !== 'idle' && flow.phase !== 'scanning'}
+          />
+        }
         navItems={navItems}
         uploadSlot={
           <WorkspaceImageUpload

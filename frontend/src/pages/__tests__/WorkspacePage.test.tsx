@@ -119,9 +119,9 @@ describe('WorkspacePage · 契约§1「按规则不渲染」= DOM 里不存在',
 });
 
 describe('WorkspacePage · 02 扫查态元素还原', () => {
-  it('常驻条只有患者身份（2:3）', () => {
-    render(<WorkspacePage />);
-    expect(screen.getByText('张** · 女 · 52 岁 · 门诊')).toBeInTheDocument();
+  it('常驻条身份由数据驱动（2:3；写死人名 = 患者身份错显，A.36 P0）', () => {
+    render(<WorkspacePage identity="张** · 女 · 52 岁" />);
+    expect(screen.getByText('张** · 女 · 52 岁')).toBeInTheDocument();
   });
 
   it('结论区空态双文案（2:8 / 2:9）', () => {

@@ -36,7 +36,15 @@ export interface WorkspaceFlow {
    */
   requestId: string | null;
   /** 发起判读（冻结后自动触发，不需要医生点按钮）。 */
-  start: (input: { sessionId: string; imageIds: string[]; targetOrgan: string; tier?: 'realtime' | 'standard' | 'full' }) => Promise<void>;
+  start: (input: {
+    sessionId: string;
+    imageIds: string[];
+    targetOrgan: string;
+    tier?: 'realtime' | 'standard' | 'full';
+    /** A.36 ⑤：临床信息进判读上下文（后端 DiagnosisRequest 现成字段）。 */
+    clinicalText?: string;
+    patientContext?: { age?: number; gender?: 'M' | 'F' };
+  }) => Promise<void>;
   /** 「确认结论」三选一等效里的点按钮那条（说「确认」/ 脚踏走各自的通道）。 */
   confirm: () => void;
   /** 「已人工核验」勾选，对应 reviewAcknowledged。 */
@@ -82,6 +90,8 @@ export function useWorkspaceFlow(): WorkspaceFlow {
         image_ids: input.imageIds,
         target_organ: input.targetOrgan,
         response_tier: input.tier ?? 'standard',
+        clinical_text: input.clinicalText || undefined,
+        patient_context: input.patientContext,
         // 幂等键：留空由后端按会话去重，避免前端每次生成随机 key 造成永不命中
       } as never);
       newRequestId = (resp as { request_id?: string }).request_id ?? '';

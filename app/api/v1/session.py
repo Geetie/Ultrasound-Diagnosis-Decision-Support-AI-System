@@ -31,7 +31,8 @@ def _calc_ttl_remaining(updated_at: datetime | None) -> int | None:
     return max(0, int(SESSION_TTL_SECONDS - elapsed))
 
 
-def _build_session_response(session) -> SessionResponse:
+def _build_session_response(session, demographics: dict | None = None) -> SessionResponse:
+    d = demographics or {}
     return SessionResponse(
         session_id=session.session_id,
         patient_id=session.patient_id,
@@ -44,6 +45,9 @@ def _build_session_response(session) -> SessionResponse:
         updated_at=session.updated_at,
         consent_status_at_creation=ConsentStatus(session.consent_status_at_creation),
         ttl_remaining_seconds=_calc_ttl_remaining(session.updated_at),
+        patient_name_masked=_mask_name(d.get("name")),
+        gender=d.get("gender"),
+        age=_age_from(d.get("birth_date")),
     )
 
 
@@ -170,7 +174,9 @@ async def get_session(
     if not session:
         raise NotFoundException(error_message=f"Session not found: {session_id}")
 
-    return _build_session_response(session)
+    # A.36 P0：详情响应带脱敏人口学 —— 工作区身份数据驱动，不再写死
+    demographics = await session_repo.get_patient_demographics(session.patient_id)
+    return _build_session_response(session, demographics)
 
 
 @router.patch("/{session_id}", response_model=SessionResponse)

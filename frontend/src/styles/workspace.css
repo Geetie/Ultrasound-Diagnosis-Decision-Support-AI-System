@@ -685,3 +685,87 @@
   color: var(--color-text-secondary);
   cursor: not-allowed;
 }
+
+/* ---- 临床信息面板（A.36 ⑤）----
+   常驻条正下方的可折叠条；折叠态只占一行（徽标提示已填/未填），
+   展开内部 textarea，宽不破 900 骨架。判读发起后 locked（head 禁用）。 */
+.ws-clinical {
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.ws-clinical__head {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-3);
+  height: 32px;
+  padding: 0 var(--space-6);
+  border: none;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-small);
+  cursor: pointer;
+  text-align: left;
+}
+
+.ws-clinical__head:disabled {
+  cursor: default;
+}
+
+.ws-clinical__badge {
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-tag);
+  font-size: var(--font-size-tiny);
+}
+
+.ws-clinical__badge--ok {
+  color: var(--color-text-primary);
+}
+
+.ws-clinical__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-6) var(--space-4);
+}
+
+.ws-clinical__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ws-clinical__field > span {
+  font-size: var(--font-size-tiny);
+  color: var(--color-text-secondary);
+}
+
+.ws-clinical__field textarea {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-tag);
+  background: transparent;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-small);
+  resize: vertical;
+}
+
+.ws-clinical__conditions {
+  display: flex;
+  flex-direction: row;
+  gap: var(--space-4);
+}
+
+.ws-clinical__check {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--font-size-small);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}

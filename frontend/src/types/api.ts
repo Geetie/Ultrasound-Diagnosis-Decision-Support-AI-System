@@ -322,6 +322,10 @@ export interface SessionInfo {
   updated_at: string;
   expired_at: string | null;
   consent_status_at_creation: string;
+  /** 详情端点补充的脱敏人口学（A.36 P0：身份数据驱动）。缺数据 = undefined。 */
+  patient_name_masked?: string | null;
+  gender?: string | null;
+  age?: number | null;
 }
 
 export interface ImagingUploadResponse {
