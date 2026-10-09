@@ -63,6 +63,8 @@ export default function WorkspacePage({
   identity,
   /** 临床信息面板插槽（常驻条正下方；判读发起后锁定，A.36 ⑤）。 */
   clinicalSlot,
+  /** 生成进度（A.43）：processing 期间已生成字符数，0 = 无进度数据。 */
+  progressChars,
 }: {
   state?: WorkspaceState;
   /**
@@ -96,6 +98,7 @@ export default function WorkspacePage({
   navItems?: { key: string; label: string; onClick: () => void }[];
   identity?: string;
   clinicalSlot?: ReactNode;
+  progressChars?: number;
 }) {
   const overlay = overlayOf(state);
 
@@ -142,6 +145,7 @@ export default function WorkspacePage({
           view={view}
           onSignNext={onSignNext}
           uploadSlot={uploadSlot}
+          progressChars={progressChars}
         />
       </WorkspaceConclusion>
 

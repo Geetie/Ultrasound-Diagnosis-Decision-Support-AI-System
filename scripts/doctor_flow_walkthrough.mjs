@@ -202,7 +202,23 @@ try {
     }
     record('4d. 键盘 → 翻帧到 2/2', flipped);
     await shot('04e-frame2');
-  }
+    }
+
+    // 生成进度显示（A.43）：「分析中」副行出现「已生成 N 字」（后端 SSE→Redis→轮询）。
+    // 注意 locator.innerText() 有 30s auto-wait（元素不存在时挂起）—— 判读未开始时
+    // 副行根本不在 DOM，必须 count() 先判存在再读（A.43 走查 +620s 卡死的根因）。
+    let progressShown = false;
+    for (let i = 0; i < 160 && !progressShown; i += 1) {
+      if ((await page.locator('.ws-conclusion__subtitle').count()) > 0) {
+        const sub = await page
+          .locator('.ws-conclusion__subtitle')
+          .innerText({ timeout: 500 })
+          .catch(() => '');
+        if (/已生成 \d+ 字/.test(sub)) progressShown = true;
+      }
+      if (!progressShown) await sleep(page, 500);
+    }
+    record('4h. 「分析中」显示已生成字数（流式进度）', progressShown);
 
   // 测量画线 + 标注存档（A.40）：长度工具 + canvas 拖拽 → 读数出现 + PUT 200
   let annPutOk = false;

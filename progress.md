@@ -1,7 +1,7 @@
 # progress.md — 当前状态（唯一「现在在哪」来源）
 
 **Last Updated**: 2026-10-09（A.39）
-**HEAD**: 分支 `main`（本轮：GT 多病例稳定度达标（MYO 0.67，4/5 达标）+ LLM 生成进度可见（SSE 流式→Redis→轮询 chars 递增实证），详见 16 号附录 A.40~A.43）
+**HEAD**: 分支 `main`（本轮：生成进度显示收口（「分析中」显示已生成 N 字，走查 21/21），详见 16 号附录 A.40~A.44）
 **Owner of truth**: 本文件只记「当前状态/下一步/阻塞」；**功能与门控状态在 `feature_list.json`**，长期证据在 `16-开发进展汇报-20260928.md` 附录 A。
 
 ## Current Objective

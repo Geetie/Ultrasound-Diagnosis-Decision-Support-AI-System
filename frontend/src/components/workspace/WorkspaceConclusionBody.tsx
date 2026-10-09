@@ -113,6 +113,7 @@ export default function WorkspaceConclusionBody({
   view,
   onSignNext,
   uploadSlot,
+  progressChars = 0,
 }: {
   state: WorkspaceState;
   /**
@@ -124,6 +125,8 @@ export default function WorkspaceConclusionBody({
   onSignNext?: () => void;
   /** 影像装载入口插槽（WorkspaceImageUpload）。仅 02 扫查态渲染 —— 见组件内说明。 */
   uploadSlot?: ReactNode;
+  /** 生成进度（A.43）：processing 期间已生成字符数，0 = 无进度数据。 */
+  progressChars?: number;
 }) {
   // 安全网关显式要求转人工时，无论当前是哪个判读态都要显示 —— 契约 §4「不可削减」
   const blocked = view?.safetyBlocked;
@@ -132,7 +135,7 @@ export default function WorkspaceConclusionBody({
       {blocked && (
         <WorkspaceStopAlert level="attention" message={blocked.message} code={blocked.errorCode} />
       )}
-      <ConclusionSwitch state={state} view={view} onSignNext={onSignNext} uploadSlot={uploadSlot} />
+      <ConclusionSwitch state={state} view={view} onSignNext={onSignNext} uploadSlot={uploadSlot} progressChars={progressChars} />
     </>
   );
 }
@@ -145,7 +148,7 @@ export default function WorkspaceConclusionBody({
  * 这是实测事实而不是编造的预估（百分比/预计剩余时间是编造，仍然不给，
  * 该口径保留）。计时器随本组件挂载（=判读发起）起走，出结论即卸载。
  */
-function AnalyzingBody() {
+function AnalyzingBody({ progressChars }: { progressChars: number }) {
   const [elapsed, setElapsed] = useState(0);
   useEffect(() => {
     const timer = setInterval(() => setElapsed((s) => s + 1), 1000);
@@ -155,7 +158,10 @@ function AnalyzingBody() {
     <>
       <p className="ws-conclusion__title ws-conclusion__title--progress">分析中</p>
       <p className="ws-conclusion__subtitle">
-        已用时 {elapsed} 秒 · 不用等它跑完，可继续扫查或先写报告
+        已用时 {elapsed} 秒
+        {/* 已生成字数（A.43 流式进度）：后端 SSE 写 Redis → 轮询带回。
+            字数增长 = 生成确实在推进；0 = 该判读没有流式数据（只有秒数）。 */}
+        {progressChars > 0 ? ` · 已生成 ${progressChars} 字` : ''} · 不用等它跑完，可继续扫查或先写报告
       </p>
     </>
   );
@@ -166,11 +172,13 @@ function ConclusionSwitch({
   view,
   onSignNext,
   uploadSlot,
+  progressChars,
 }: {
   state: WorkspaceState;
   view?: ConclusionView | null;
   onSignNext?: () => void;
   uploadSlot?: ReactNode;
+  progressChars?: number;
 }) {
   switch (state) {
     case 'scanning':
@@ -187,7 +195,7 @@ function ConclusionSwitch({
       );
 
     case 'progress':
-      return <AnalyzingBody />;
+      return <AnalyzingBody progressChars={progressChars ?? 0} />;
 
     case 'multi-organ':
       return (

@@ -299,11 +299,12 @@ function WorkspaceRoute() {
   return (
     <PageSuspense>
       <WorkspacePage
-        state={state}
-        view={view}
-        dicomImageId={dicomImageId}
-        dicomImageIds={dicomImageIds.length > 1 ? dicomImageIds : undefined}
-        annotationArchiveKey={annotationArchiveKey}
+      state={state}
+      view={view}
+      dicomImageId={dicomImageId}
+      dicomImageIds={dicomImageIds.length > 1 ? dicomImageIds : undefined}
+      annotationArchiveKey={annotationArchiveKey}
+      progressChars={flow.progressChars}
         onConfirm={flow.confirm}
         identity={sessionMatched ? sessionInfo.identity ?? undefined : undefined}
         clinicalSlot={
