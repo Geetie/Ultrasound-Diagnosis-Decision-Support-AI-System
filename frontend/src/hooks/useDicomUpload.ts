@@ -25,6 +25,10 @@ import { getApiErrorMessage } from '@/utils/apiError';
 export type DicomUploadPhase = 'idle' | 'uploading' | 'uploaded' | 'error';
 
 export interface DicomUploadState {
+
+  /** 本批已上传的后端 image_id（多图顺序上传，A.37 多图分期①）。 */
+
+  imageIds?: string[];
   phase: DicomUploadPhase;
   /** 浏览器本地副本的 Cornerstone imageId（上传瞬间立即可显示）。 */
   localImageId?: string;
@@ -84,54 +88,83 @@ async function registerServerImage(imageId: string): Promise<string | undefined>
  */
 export function useDicomUpload(
   sessionId: string | undefined,
-  onUploaded?: (imageId: string) => void | Promise<void>
+  onUploaded?: (imageIds: string[]) => void | Promise<void>
 ): UseDicomUpload {
   const [state, setState] = useState<DicomUploadState>({
     phase: 'idle',
     fileName: null,
     error: null,
+    imageIds: [],
   });
 
-  const handleFile = useCallback(
-    async (file: File) => {
+  const handleFiles = useCallback(
+    async (files: File[]) => {
       if (!sessionId) {
         setState({
           phase: 'error',
-          fileName: file.name,
+          fileName: null,
           error: '尚未选择检查会话，无法装载影像',
         });
         return;
       }
 
-      setState({ phase: 'uploading', fileName: file.name, error: null });
+      const ids: string[] = [];
 
-      // 先显示：不等网络。注册失败也不影响后续上传。
-      const localImageId = await registerLocalImage(file);
+      let lastLocal: string | undefined;
 
-      try {
-        const resp = await uploadDicom(file, sessionId, DEFAULT_PRIORITY);
-        // 升级为服务端副本（同管线同源）。失败回落本地副本 —— 显示是增强。
-        const serverImageId = await registerServerImage(resp.image_id);
-        setState({
-          phase: 'uploaded',
-          localImageId,
-          serverImageId,
-          imageId: resp.image_id,
-          fileName: file.name,
-          error: null,
-        });
-        await onUploaded?.(resp.image_id);
-      } catch (e: unknown) {
-        setState({
-          phase: 'error',
-          localImageId,
-          fileName: file.name,
-          error: getApiErrorMessage(e, '影像上传失败'),
-        });
+      let lastServer: string | undefined;
+      // 多图顺序上传：每张上传成功即推进 imageIds；最后一张作为显示源。
+      // 单张失败不中断整批（错误信息显示在面板，医生可看到第几张失败）。
+      for (const file of Array.from(files)) {
+        setState({ phase: 'uploading', fileName: file.name, error: null, imageIds: ids });
+
+        // 先显示：不等网络。注册失败也不影响后续上传。
+        const localImageId = await registerLocalImage(file).catch(() => undefined);
+
+        lastLocal = localImageId;
+
+        try {
+          const resp = await uploadDicom(file, sessionId, DEFAULT_PRIORITY);
+          ids.push(resp.image_id);
+          // 升级为服务端副本（同管线同源）。失败回落本地副本 —— 显示是增强。
+          const serverImageId = await registerServerImage(resp.image_id).catch(
+            () => undefined,
+          );
+          setState({
+            phase: 'uploading',
+            localImageId,
+            serverImageId,
+            imageIds: ids,
+            fileName: file.name,
+            error: null,
+          });
+        } catch (e: unknown) {
+          setState({
+            phase: 'error',
+            localImageId,
+            fileName: file.name,
+            error: getApiErrorMessage(e, '影像上传失败'),
+            imageIds: ids,
+          });
+          return;
+        }
       }
+
+      setState({
+        phase: 'uploaded',
+        imageIds: ids,
+        imageId: ids[ids.length - 1],
+        localImageId: lastLocal,
+        serverImageId: lastServer,
+        fileName: null,
+        error: null,
+      });
+      await onUploaded?.(ids);
     },
     [sessionId, onUploaded]
   );
+
+  const handleFile = useCallback((file: File) => handleFiles([file]), [handleFiles]);
 
   const reset = useCallback(() => {
     setState({ phase: 'idle', fileName: null, error: null });

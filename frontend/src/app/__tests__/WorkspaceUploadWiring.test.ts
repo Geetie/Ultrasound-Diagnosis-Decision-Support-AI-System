@@ -52,7 +52,8 @@ describe('影像 → 判读 链路接线', () => {
     expect(source).toContain('useDicomUpload');
     expect(source).toMatch(/startFlow\(\{\s*sessionId/);
     // image_ids 必须是上传回调给的 image_id，不是本地 fileManager 的 id
-    expect(source).toMatch(/imageIds:\s*\[imageId\]/);
+    // 多图分期①：imageIds 数组直传（多文件顺序上传聚合）
+    expect(source).toMatch(/imageIds,/);
   });
 
   it('判读用的 image_id 来自 upload 端点的返回，不是浏览器本地 id', () => {
@@ -62,7 +63,8 @@ describe('影像 → 判读 链路接线', () => {
     // 上行端点与字段名对得上后端（app/api/v1/imaging.py 的 upload_dicom）
     expect(imaging).toContain("'/imaging/dicom/upload'");
     // 回调必须吃 upload 端点返回的 image_id，而不是本地 fileManager 的那个
-    expect(hook).toMatch(/onUploaded\?\.\(resp\.image_id\)/);
+    // 多图：回调聚合整批 ids
+    expect(hook).toMatch(/onUploaded\?\.\(ids\)/);
   });
 
   it('工作区页面把上传插槽与导航出口渲染出来', () => {

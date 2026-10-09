@@ -362,3 +362,26 @@ class TestSessionCreateIsWired:
             "FHIR 挂在 /fhir（不带 /api/v1），每个请求必须用 baseURL: '' 覆盖 apiClient 的"
             "全局 /api/v1 —— 否则打到 /api/v1/fhir/*（404），校验永远失败"
         )
+
+class TestClinicalAssumptions:
+    """A.36 临床假设登记的静态守卫（2026-10-09）。
+
+    ①工作区身份不得写死人名 —— 写死「张**」= 换任何患者都显示同一人，
+      患者身份错显是最高级别临床风险；
+    ②临床信息面板必须接线（A.36 ⑤：无入口则结论恒为「信息不足」）。
+    """
+
+    def test_workspace_identity_is_not_hardcoded(self):
+        page = _code(SRC / "pages" / "WorkspacePage.tsx")
+        assert "张**" not in page, (
+            "工作区常驻条写死了患者身份 —— 换任何患者都显示同一人（患者身份错显）。"
+            "身份必须由路由按 session 传入（GET /sessions/{id} 的脱敏人口学）。"
+        )
+
+    def test_clinical_info_panel_is_wired(self):
+        routes = _code(SRC / "app" / "routes.tsx")
+        assert "ClinicalInfoPanel" in routes, (
+            "临床信息面板未接线 —— 判读请求没有临床信息来源，结论恒为『信息不足』"
+        )
+        hook = _code(SRC / "hooks" / "useWorkspaceFlow.ts")
+        assert "clinical_text" in hook, "判读请求必须透传 clinical_text"

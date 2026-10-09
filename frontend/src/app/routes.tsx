@@ -176,13 +176,13 @@ function WorkspaceRoute() {
 
   /** 影像字节入库 → 立刻发起判读。这就是设计稿里"冻结当前帧即自动发起"的那一步。 */
   const handleUploaded = useCallback(
-    async (imageId: string) => {
-      if (!sessionId || !organ) return;
+    async (imageIds: string[]) => {
+      if (!sessionId || !organ || imageIds.length === 0) return;
       // A.36 ⑤：临床信息随判读入参上行（symptom/history/labs → clinical_text，
       // 人口学 + SG 条件 → patient_context）。判读发起后面板锁定（见下方 slot）。
       await startFlow({
         sessionId,
-        imageIds: [imageId],
+        imageIds,
         targetOrgan: organ,
         clinicalText: toClinicalText(clinical),
         patientContext: {

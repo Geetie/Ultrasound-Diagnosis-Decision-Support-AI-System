@@ -58,8 +58,8 @@ describe('useDicomUpload', () => {
 
     await waitFor(() => expect(result.current.state.phase).toBe('uploaded'));
     expect(uploadDicom).toHaveBeenCalledWith(expect.any(File), 'sess-1', 1);
-    expect(result.current.state.imageId).toBe('img_20261005_abcdef12');
-    expect(onUploaded).toHaveBeenCalledWith('img_20261005_abcdef12');
+    expect(result.current.state.imageId).toBe('img_20261005_abcdef12');\r\n    expect(result.current.state.imageIds).toEqual(['img_20261005_abcdef12']);
+    // 多图分期①：回调聚合整批 imageIds\r\n    expect(onUploaded).toHaveBeenCalledWith(['img_20261005_abcdef12']);
   });
 
   it('没有会话时根本不发请求，并说明原因', async () => {
