@@ -65,6 +65,8 @@ export default function WorkspacePage({
   clinicalSlot,
   /** 生成进度（A.43）：processing 期间已生成字符数，0 = 无进度数据。 */
   progressChars,
+  /** 安全预览（A.46）：已过段落级 SG 的文本尾部；null = 无预览或 SG 拒绝。 */
+  generationPreview,
 }: {
   state?: WorkspaceState;
   /**
@@ -99,6 +101,7 @@ export default function WorkspacePage({
   identity?: string;
   clinicalSlot?: ReactNode;
   progressChars?: number;
+  generationPreview?: string | null;
 }) {
   const overlay = overlayOf(state);
 
@@ -146,6 +149,7 @@ export default function WorkspacePage({
           onSignNext={onSignNext}
           uploadSlot={uploadSlot}
           progressChars={progressChars}
+          generationPreview={generationPreview}
         />
       </WorkspaceConclusion>
 

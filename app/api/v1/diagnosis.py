@@ -679,12 +679,25 @@ async def get_diagnosis_result(
 
     if diagnosis_result.status == "processing":
         response.headers["Retry-After"] = "2"
-        # 生成进度（A.43）：processing 中间态带上已生成字符数（best-effort）
+        # 生成进度（A.43）+ 安全预览（A.46）：processing 中间态带上
+        # 已生成字符数 + 已通过段落级 SG 的预览文本（best-effort）
         if request_id:
-            from app.inference.base import read_generation_progress
+            from app.inference.base import (
+                read_generation_preview_refused,
+                read_generation_progress,
+                read_generation_safe_preview,
+            )
 
             progress = await read_generation_progress(request_id)
             if progress is not None:
                 diagnosis_result.generation_progress_chars = progress
+            refused = await read_generation_preview_refused(request_id)
+            if refused:
+                # 空串 = 明确的「已拒绝」信号（区别于 null=无预览）——前端隐藏预览
+                diagnosis_result.generation_preview = ""
+            else:
+                preview = await read_generation_safe_preview(request_id)
+                if preview:
+                    diagnosis_result.generation_preview = preview[-400:]
 
     return diagnosis_result

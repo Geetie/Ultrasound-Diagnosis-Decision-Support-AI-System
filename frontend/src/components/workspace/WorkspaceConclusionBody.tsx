@@ -114,6 +114,7 @@ export default function WorkspaceConclusionBody({
   onSignNext,
   uploadSlot,
   progressChars = 0,
+  generationPreview = null,
 }: {
   state: WorkspaceState;
   /**
@@ -127,6 +128,8 @@ export default function WorkspaceConclusionBody({
   uploadSlot?: ReactNode;
   /** 生成进度（A.43）：processing 期间已生成字符数，0 = 无进度数据。 */
   progressChars?: number;
+  /** 安全预览（A.46）：已过段落级 SG 的文本尾部；null = 无预览或 SG 拒绝。 */
+  generationPreview?: string | null;
 }) {
   // 安全网关显式要求转人工时，无论当前是哪个判读态都要显示 —— 契约 §4「不可削减」
   const blocked = view?.safetyBlocked;
@@ -135,7 +138,7 @@ export default function WorkspaceConclusionBody({
       {blocked && (
         <WorkspaceStopAlert level="attention" message={blocked.message} code={blocked.errorCode} />
       )}
-      <ConclusionSwitch state={state} view={view} onSignNext={onSignNext} uploadSlot={uploadSlot} progressChars={progressChars} />
+      <ConclusionSwitch state={state} view={view} onSignNext={onSignNext} uploadSlot={uploadSlot} progressChars={progressChars} generationPreview={generationPreview} />
     </>
   );
 }
@@ -148,7 +151,13 @@ export default function WorkspaceConclusionBody({
  * 这是实测事实而不是编造的预估（百分比/预计剩余时间是编造，仍然不给，
  * 该口径保留）。计时器随本组件挂载（=判读发起）起走，出结论即卸载。
  */
-function AnalyzingBody({ progressChars }: { progressChars: number }) {
+function AnalyzingBody({
+  progressChars,
+  generationPreview,
+}: {
+  progressChars: number;
+  generationPreview?: string | null;
+}) {
   const [elapsed, setElapsed] = useState(0);
   useEffect(() => {
     const timer = setInterval(() => setElapsed((s) => s + 1), 1000);
@@ -163,6 +172,28 @@ function AnalyzingBody({ progressChars }: { progressChars: number }) {
             字数增长 = 生成确实在推进；0 = 该判读没有流式数据（只有秒数）。 */}
         {progressChars > 0 ? ` · 已生成 ${progressChars} 字` : ''} · 不用等它跑完，可继续扫查或先写报告
       </p>
+      {/* 安全预览（A.46）：**已通过段落级 SG** 的生成文本（AWS 同步护栏模式：
+          段落缓冲→检查→通过才显示；SG 拒绝 → null 不渲染，终态由全文 SG 兜底）。
+          滚动区展示尾部，医生边等边看判读方向 —— 临床红线：未过 SG 的原始
+          输出永远不上屏（NeMo/AWS 双标杆调研结论，A.46.1）。 */}
+      {generationPreview && (
+        <pre
+          className="ws-conclusion__preview"
+          style={{
+            margin: '8px 0 0',
+            maxHeight: 72,
+            overflowY: 'auto',
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-word',
+            fontSize: 11,
+            lineHeight: 1.5,
+            color: 'var(--color-text-secondary)',
+            textAlign: 'left',
+          }}
+        >
+          {generationPreview}
+        </pre>
+      )}
     </>
   );
 }
@@ -173,12 +204,14 @@ function ConclusionSwitch({
   onSignNext,
   uploadSlot,
   progressChars,
+  generationPreview,
 }: {
   state: WorkspaceState;
   view?: ConclusionView | null;
   onSignNext?: () => void;
   uploadSlot?: ReactNode;
   progressChars?: number;
+  generationPreview?: string | null;
 }) {
   switch (state) {
     case 'scanning':
@@ -195,7 +228,9 @@ function ConclusionSwitch({
       );
 
     case 'progress':
-      return <AnalyzingBody progressChars={progressChars ?? 0} />;
+      return (
+        <AnalyzingBody progressChars={progressChars ?? 0} generationPreview={generationPreview} />
+      );
 
     case 'multi-organ':
       return (

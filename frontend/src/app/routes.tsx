@@ -305,6 +305,7 @@ function WorkspaceRoute() {
       dicomImageIds={dicomImageIds.length > 1 ? dicomImageIds : undefined}
       annotationArchiveKey={annotationArchiveKey}
       progressChars={flow.progressChars}
+      generationPreview={flow.previewText}
         onConfirm={flow.confirm}
         identity={sessionMatched ? sessionInfo.identity ?? undefined : undefined}
         clinicalSlot={

@@ -121,6 +121,11 @@ export interface DiagnosisResult {
   ai_diagnosis_failed: boolean;
   /** 生成进度（A.43，processing 中间态才带）：已生成字符数 */
   generation_progress_chars?: number;
+  /**
+   * 安全预览（A.46，processing 中间态才带）：**已通过段落级 SG** 的生成文本尾部
+   * —— SG 拒绝时前端停止显示（Never 显示未过 SG 的原始输出 —— 临床红线）。
+   */
+  generation_preview?: string;
   hallucination_severity: 'severe' | 'moderate' | 'mild' | null;
   /**
    * 以下四项在真机实测响应里**不出现**（2026-10-02 req_20261002_da4fa542），

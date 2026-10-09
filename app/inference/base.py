@@ -55,8 +55,13 @@ except Exception:  # pragma: no cover
     pass
 
 
-async def _write_generation_progress(request_id: str, chars: int) -> None:
-    """把已生成字符数写 Redis（best-effort；写失败只影响进度显示，不影响判读）。"""
+async def _write_generation_progress(request_id: str, chars: int, raw_tail: str | None = None) -> None:
+    """把已生成字符数写 Redis（best-effort；写失败只影响进度显示，不影响判读）。
+
+    raw_tail：累积生成文本的**尾部 600 字**（A.46 流式渐进渲染）——
+    写入独立键 ``diag_preview_raw``，由管线 watcher 做段落级 SG 检查后
+    才成为「安全预览」。inference 层只负责搬运字节，不做任何安全判断。
+    """
     try:
         from app.config.redis import RedisPool
         from app.config.redis_keys import RedisKey
@@ -64,8 +69,79 @@ async def _write_generation_progress(request_id: str, chars: int) -> None:
         await RedisPool.setex(
             RedisKey.custom_idempotency("diag_progress", request_id), 120, str(chars)
         )
+        if raw_tail is not None:
+            await RedisPool.setex(
+                RedisKey.custom_idempotency("diag_preview_raw", request_id), 120, raw_tail
+            )
     except Exception:  # best-effort：进度写失败不影响判读
         pass
+
+
+async def read_generation_raw_preview(request_id: str) -> str | None:
+    """读原始生成文本尾部（管线段落级 SG watcher 用）。"""
+    try:
+        from app.config.redis import RedisPool
+        from app.config.redis_keys import RedisKey
+
+        r = await RedisPool.get_with_error(
+            RedisKey.custom_idempotency("diag_preview_raw", request_id)
+        )
+        return r.value.decode("utf-8", errors="replace") if r.value else None
+    except Exception:
+        return None
+
+
+async def write_generation_safe_preview(request_id: str, text: str) -> None:
+    """写「已通过段落级 SG」的安全预览（管线 watcher 专用；best-effort）。"""
+    try:
+        from app.config.redis import RedisPool
+        from app.config.redis_keys import RedisKey
+
+        await RedisPool.setex(
+            RedisKey.custom_idempotency("diag_preview_safe", request_id), 300, text
+        )
+    except Exception:  # best-effort
+        pass
+
+
+async def read_generation_safe_preview(request_id: str) -> str | None:
+    """读安全预览（result 端点 processing 分支用）。"""
+    try:
+        from app.config.redis import RedisPool
+        from app.config.redis_keys import RedisKey
+
+        r = await RedisPool.get_with_error(
+            RedisKey.custom_idempotency("diag_preview_safe", request_id)
+        )
+        return r.value.decode("utf-8", errors="replace") if r.value else None
+    except Exception:
+        return None
+
+
+async def write_generation_preview_refused(request_id: str) -> None:
+    """写「段落级 SG 拒绝」标志 —— 前端停止显示预览，终态由全文 SG 兜底。"""
+    try:
+        from app.config.redis import RedisPool
+        from app.config.redis_keys import RedisKey
+
+        await RedisPool.setex(
+            RedisKey.custom_idempotency("diag_preview_refused", request_id), 300, "1"
+        )
+    except Exception:  # best-effort
+        pass
+
+
+async def read_generation_preview_refused(request_id: str) -> bool:
+    try:
+        from app.config.redis import RedisPool
+        from app.config.redis_keys import RedisKey
+
+        r = await RedisPool.get_with_error(
+            RedisKey.custom_idempotency("diag_preview_refused", request_id)
+        )
+        return bool(r.value)
+    except Exception:
+        return False
 
 
 async def read_generation_progress(request_id: str) -> int | None:
@@ -454,13 +530,14 @@ class BaseHttpInferenceEngine(BaseHttpClient, InferenceEngine, ABC):
                 now = time.monotonic()
                 if now - last_flush > 0.5 and request.request_id:
                     last_flush = now
+                    so_far = "".join(full_text_parts)
                     await _write_generation_progress(
-                        request.request_id, len("".join(full_text_parts))
+                        request.request_id, len(so_far), raw_tail=so_far[-600:]
                     )
 
         text = "".join(full_text_parts)
         if request.request_id:
-            await _write_generation_progress(request.request_id, len(text))
+            await _write_generation_progress(request.request_id, len(text), raw_tail=text[-600:])
         latency_ms = (time.monotonic() - start_time) * 1000
         # 组装成与非流式一致的结构，复用既有解析（模型名占位无影响——解析只取 message/usage）
         data = {

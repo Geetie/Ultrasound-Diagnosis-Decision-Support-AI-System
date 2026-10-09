@@ -164,6 +164,13 @@ export interface PollOptions {
   onStage?: (stage: DiagnosisStageEvent) => void;
   /** processing 中间态带后端已生成字符数（A.43 流式进度）；没有则不调 */
   onProgress?: (chars: number) => void;
+  /**
+   * processing 中间态带**已通过段落级 SG** 的预览文本（A.46）；
+   * SG 拒绝后不再回调（前端隐藏预览，终态由全文 SG 兜底）
+   */
+  onPreview?: (preview: string) => void;
+  /** SG 拒绝段落级预览 —— 前端停止显示（临床红线：SG 前文本不上屏） */
+  onPreviewRefused?: () => void;
 }
 
 export function pollDiagnosisResult(
@@ -181,6 +188,8 @@ export function pollDiagnosisResult(
     pollInterval = 1000,
     maxWaitMs = RESULT_WAIT_MS,
     onProgress,
+    onPreview,
+    onPreviewRefused,
     maxBackoffMs = 8000,
     tier = 'standard',
     onStage,
@@ -250,6 +259,15 @@ export function pollDiagnosisResult(
         // processing 中间态：后端流式生成进度（已生成字符数）——有的话透传
         if (onProgress && typeof result.generation_progress_chars === 'number') {
           onProgress(result.generation_progress_chars);
+        }
+        // 安全预览（A.46）：只透传**已过段落级 SG** 的文本。空串 = SG 拒绝的
+        // 明确信号（onPreviewRefused）—— 临床红线：未过 SG 的原始输出不上屏
+        if (typeof result.generation_preview === 'string') {
+          if (result.generation_preview === '') {
+            onPreviewRefused?.();
+          } else if (onPreview) {
+            onPreview(result.generation_preview);
+          }
         }
         currentDelay = pollInterval;
       } catch {

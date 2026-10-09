@@ -37,6 +37,8 @@ export interface WorkspaceFlow {
   requestId: string | null;
   /** 生成进度（A.43）：processing 期间已生成字符数；completed 后归零。 */
   progressChars: number;
+  /** 安全预览（A.46）：已过段落级 SG 的文本尾部；SG 拒绝/无数据 = null。 */
+  previewText: string | null;
   /** 发起判读（冻结后自动触发，不需要医生点按钮）。 */
   start: (input: {
     sessionId: string;
@@ -74,6 +76,9 @@ export function useWorkspaceFlow(): WorkspaceFlow {
   // 生成进度（A.43）：后端流式写 Redis → 轮询带回 →「分析中」显示已生成字数。
   // 结论出后归零（下一轮判读重新累积）。
   const [progressChars, setProgressChars] = useState<number>(0);
+  // 安全预览（A.46）：已过段落级 SG 的生成文本尾部；SG 拒绝 → null（临床红线：
+  // 未过 SG 的原始输出不上屏）。结论出后归零。
+  const [previewText, setPreviewText] = useState<string | null>(null);
 
   const startedAt = useRef<number>(0);
   const cancelPoll = useRef<{ cancel: () => void } | null>(null);
@@ -87,6 +92,7 @@ export function useWorkspaceFlow(): WorkspaceFlow {
     setAcknowledged(false);
     setOvertimeNote(null);
     setProgressChars(0);
+    setPreviewText(null);
     startedAt.current = Date.now();
 
     let newRequestId: string;
@@ -134,6 +140,9 @@ export function useWorkspaceFlow(): WorkspaceFlow {
         onStage: () => undefined,
         // 生成进度（A.43）：processing 中间态透传已生成字符数 → 「分析中」显示
         onProgress: setProgressChars,
+        // 安全预览（A.46）：已过段落级 SG 的文本；拒绝 → 置空（临床红线）
+        onPreview: setPreviewText,
+        onPreviewRefused: () => setPreviewText(null),
       }
     );
   }, []);
@@ -153,6 +162,7 @@ export function useWorkspaceFlow(): WorkspaceFlow {
     setAcknowledged(false);
     setOvertimeNote(null);
     setProgressChars(0);
+    setPreviewText(null);
     startedAt.current = Date.now();
 
     cancelPoll.current?.cancel();
@@ -172,6 +182,8 @@ export function useWorkspaceFlow(): WorkspaceFlow {
         tier: tier ?? 'standard',
         onStage: () => undefined,
         onProgress: setProgressChars,
+        onPreview: setPreviewText,
+        onPreviewRefused: () => setPreviewText(null),
       }
     );
   }, []);
@@ -183,6 +195,7 @@ export function useWorkspaceFlow(): WorkspaceFlow {
     error,
     requestId,
     progressChars,
+    previewText,
     start,
     resume,
     confirm,

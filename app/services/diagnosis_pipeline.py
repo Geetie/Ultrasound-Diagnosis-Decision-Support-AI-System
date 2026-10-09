@@ -24,6 +24,7 @@ from __future__ import annotations
 import asyncio
 import inspect
 import json
+import os
 import time
 from dataclasses import replace
 from datetime import datetime, timezone
@@ -309,6 +310,23 @@ async def run_diagnosis_pipeline(request_id: str) -> bool:
         # 2) 调度 (dispatcher.invoke)
         # T-GB-AGT-02：把路由判定的检索档位一并注入，使"标准/全量"
         # 真正作用于专科智能体的检索强度（此前判定结果只落库不生效）。
+        #
+        # A.46 流式渐进渲染（AWS Bedrock 同步护栏模式的管线级映射）：
+        # dispatcher 流式期间由 watcher 做段落级 SG —— LLM 累积文本按段落切分，
+        # 新完成段落过 check_output 才进「安全预览」键（前端「分析中」显示）；
+        # 段落被 SG 拒绝 → 写 refused 标志（前端停止显示），终态结论仍由
+        # 步骤 3 的全文 SG 兜底 —— 双重保障，预览永远不越过安全网关。
+        watcher_task: asyncio.Task | None = None
+        if _STREAM_PREVIEW_ENABLED and patient_id is not None:
+            watcher_task = asyncio.create_task(
+                _stream_preview_watcher(
+                    request_id=request_id,
+                    session_id=getattr(request, "session_id", "") or "",
+                    patient_id=patient_id,
+                    organ=request.organ,
+                    patient_context=getattr(request, "patient_context", None),
+                )
+            )
         t = time.monotonic()
         specialist_responses = await _safe_dispatch(
             request,
@@ -317,6 +335,8 @@ async def run_diagnosis_pipeline(request_id: str) -> bool:
             imaging_metadata=segmentation if isinstance(segmentation, dict) else None,
         )
         timings["dispatcher.invoke_ms"] = (time.monotonic() - t) * 1000.0
+        if watcher_task is not None:
+            watcher_task.cancel()
 
         # 2) 融合 (fusion.fuse)
         t = time.monotonic()
@@ -623,6 +643,96 @@ async def _resolve_patient_id(db: Any, session_id: str | None) -> str | None:
             error_type=type(exc).__name__,
         )
         return None
+
+
+# ── A.46 流式渐进渲染：段落级 SG watcher ────────────────────────────────
+# 业界调研（2026-10-10）：AWS Bedrock Guardrails 同步模式（chunk 缓冲→逐段
+# 扫描→通过才发，**支持脱敏**）vs 异步模式（立即发，**不支持遮蔽**，官方
+# WARNING）；本项目 SG 含 PHI 脱敏 → 必须同步模式。NeMo Guardrails 同构：
+# chunk_size（累积送检）+ context_size（滑窗防边界误判）。
+
+_STREAM_PREVIEW_POLL_S = 1.0
+_STREAM_PREVIEW_REFUSED_KEY = "diag_preview_refused"
+
+
+async def _stream_preview_watcher(
+    request_id: str,
+    session_id: str,
+    patient_id: str,
+    organ: str,
+    patient_context: object | None,
+) -> None:
+    """dispatcher 流式期间的段落级 SG 检查循环（AWS 同步护栏模式的管线级实现）。
+
+    每 1s 读 inference 层写的原始预览键 → 按 ``\\n\\n`` 切段落 → 新完成段落
+    过 ``check_output``（带管线上下文）→ 通过则追加进「安全预览」键；
+    段落被拒 → 写 refused 标志并结束（预览停止，终态由全文 SG 兜底）。
+    全程 best-effort：任何异常只影响预览，不影响判读本体。
+    """
+    from app.inference.base import (
+        read_generation_raw_preview,
+        read_generation_safe_preview,
+        write_generation_preview_refused,
+        write_generation_safe_preview,
+    )
+
+    seen = 0  # 已处理完成的段落数
+    while True:
+        await asyncio.sleep(_STREAM_PREVIEW_POLL_S)
+        try:
+            raw = await read_generation_raw_preview(request_id)
+            if not raw:
+                continue
+            paras = raw.split("\n\n")
+            complete = paras[:-1]  # 最后一段可能仍在生成，不算完成
+            if len(complete) <= seen:
+                continue
+            for para in complete[seen:]:
+                text = para.strip()
+                if not text:
+                    continue
+                output_data = build_sg_output_data(
+                    organ=organ,
+                    findings=text,
+                    patient_context=patient_context,
+                )
+                consent_status = await safety_gateway_client.get_consent_status(patient_id)
+                if consent_status is None:
+                    # 查不到同意记录 → 与全文 SG 同口径 fail-closed：拒绝该段
+                    await write_generation_preview_refused(request_id)
+                    logger.warning(
+                        "stream_preview_refused_consent_unavailable",
+                        request_id=request_id,
+                    )
+                    return
+                sg = await safety_gateway_client.check_output(
+                    session_id=session_id,
+                    patient_id=patient_id,
+                    output_data=output_data,
+                    consent_status_at_input=consent_status,
+                )
+                if not sg.get("passed", sg.get("allowed", False)):
+                    await write_generation_preview_refused(request_id)
+                    logger.warning(
+                        "stream_preview_refused",
+                        request_id=request_id,
+                        reason=str(sg.get("message", ""))[:80],
+                    )
+                    return
+                # 通过：追加进安全预览键（Tail 800 字防爆体）
+                safe_now = await read_generation_safe_preview(request_id)
+                merged = (safe_now + "\n\n" + text).strip() if safe_now else text
+                await write_generation_safe_preview(request_id, merged[-800:])
+            seen = len(complete)
+        except asyncio.CancelledError:
+            return
+        except Exception as exc:
+            logger.warning(
+                "stream_preview_watcher_error", request_id=request_id, error=str(exc)[:120]
+            )
+
+
+_STREAM_PREVIEW_ENABLED = os.environ.get("UAI_LLM_STREAM_PROGRESS", "") == "1"
 
 
 async def _safe_safety_check(

@@ -23,4 +23,20 @@ describe('WorkspaceConclusionBody · 分析中进度', () => {
     render(<WorkspaceConclusionBody state="progress" />);
     expect(screen.queryByText(/已生成/)).toBeNull();
   });
+
+  it('安全预览（A.46）：已过段落级 SG 的文本显示在滚动区', () => {
+    render(
+      <WorkspaceConclusionBody
+        state="progress"
+        progressChars={528}
+        generationPreview="甲状腺右叶见低回声结节，边界清。"
+      />,
+    );
+    expect(screen.getByText(/甲状腺右叶见低回声结节/)).toBeInTheDocument();
+  });
+
+  it('SG 拒绝（generationPreview=null）预览不渲染 —— 临床红线：SG 前文本不上屏', () => {
+    render(<WorkspaceConclusionBody state="progress" progressChars={528} />);
+    expect(screen.queryByText(/甲状腺右叶/)).toBeNull();
+  });
 });

@@ -387,6 +387,10 @@ class DiagnosisResult(BaseModel):
     # 生成进度（A.43，processing 中间态才带）：已生成字符数 —— 前端「分析中」
     # 显示「已生成 N 字」，秒数走动 + 字数增长 = 生成确实在推进
     generation_progress_chars: Optional[int] = None
+    # 安全预览（A.46，processing 中间态才带）：**已通过段落级 SG** 的生成文本尾部
+    # —— AWS 同步护栏模式：段落过 check_output 才进预览键，全文 SG 终态兜底；
+    # refused 时前端停止显示预览（Never 显示未过 SG 的原始输出 —— 临床红线）
+    generation_preview: Optional[str] = None
     hallucination_severity: Optional[HallucinationSeverity] = None
     version_compatibility: str = "compatible"
     processing_time_ms: int
