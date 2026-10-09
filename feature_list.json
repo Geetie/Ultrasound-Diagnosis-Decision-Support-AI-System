@@ -272,9 +272,10 @@
       "id": "consent-withdrawal-consumer",
       "name": "consent_withdrawal_consumer 的 SchedulingAgentHandler (P2)",
       "description": "未实现；默认配置不实例化，不影响当前路径",
-      "status": "planned",
+      "status": "done",
       "dependencies": [],
-      "evidence": "16 号 §六 P2"
+      "evidence": "A.42：三套测试 42 passed——tests/integration/int/test_consent_withdrawal_e2e.py （端到端）+ tests/unit/services/test_inflight_diagnosis.py（在途取消）+ tests/unit/sec/test_consent_consumer_branches.py（消费分支）",
+      "resolution": "登记滞后——实现与测试早已存在（A.42 勘察确认）：SG 输入检查 fail-closed（查不到同意记录→pipeline_consent_status_unavailable→诊断 failed）+ 在途取消（app/services/inflight_diagnosis.py，撤回触发 asyncio cancel，shield 保护终态写库 pipeline_cancelled_by_consent_withdrawal，DB 行不停 in_progress）+ SG 输出 consent_status=withdrawn 强阻断 + 读路径 check_consent_status"
     },
     {
       "id": "dicom-fail-open",
@@ -459,7 +460,7 @@
       "dependencies": [
         "ui-no-dicom-upload-entry"
       ],
-      "evidence": "A.40：seg_gt_iou.py 修复两处接口错配（infer 字节入参 image_bytes= keyword-only；SegmentationResult.mask_png 解码）后服务器实测产出报告 ~/uai/reports/seg_gt_iou_cardiac_20261009_*.json。下一步：口径调研（GT 单结构 LV vs 多结构并集、预处理对齐）后立项准确性优化"
+      "evidence": "A.42 口径调研定案：unet_camus.pt 分割目标是**心肌 MYO**（GT 标签 2），MYO 口径 IoU 0.58（0.53~0.62，3 帧）≈官方 Dice 0.8395；LV 0.12、ATR 0.0（模型不判心房）、全并集 0.31 均为口径错配。seg_gt_iou.py 默认口径改 --label 2（MYO）。剩余优化=CPU→GPU 推理与多病例稳定度，验收线 MYO IoU ≥0.6"
     },
     {
       "id": "multi-frame-diagnosis-gap",

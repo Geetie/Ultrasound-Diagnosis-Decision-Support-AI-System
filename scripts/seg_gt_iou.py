@@ -27,6 +27,13 @@ def main() -> int:
     ap.add_argument("--mask", required=True)
     ap.add_argument("--organ", default="cardiac")
     ap.add_argument("--max-frames", type=int, default=5)
+    ap.add_argument(
+        "--label",
+        default="2",
+        help="GT 对照口径（CAMUS 标签）：默认 2=MYO心肌 —— A.40 口径调研实测"
+             " unet_camus.pt 的分割目标就是心肌（MYO IoU 0.58≈官方 Dice 0.84；"
+             "LV 0.12、ATR 0.0、全并集 0.31 都是口径错配）",
+    )
     ap.add_argument("--out-dir", default=str(Path.home() / "uai" / "reports"))
     args = ap.parse_args()
 
@@ -57,8 +64,13 @@ def main() -> int:
             continue
         elapsed = time.monotonic() - t
 
-        # GT：CAMUS 标注含多结构（LV腔/心肌/心房），取全部 GT>0 为对照目标
-        gt = gt_vol[..., idx] > 0
+        # GT：CAMUS 标注含多结构（1=LV腔 2=MYO心肌 3=ATR心房）。
+        # --label 选对照口径：all=并集（最严），单标签=模型真实分割目标（默认 MYO）。
+        gt = (
+            gt_vol[..., idx] > 0
+            if args.label == "all"
+            else gt_vol[..., idx] == float(args.label)
+        )
         # SegmentationResult 的 mask 是 PNG 字节（mask_png），解码回数组；
         # out_size 默认与输入图一致 → 形状应与 GT 帧一致
         pred_mask = np.asarray(Image.open(__import__("io").BytesIO(seg.mask_png))) > 127
