@@ -439,6 +439,66 @@
       "dependencies": [],
       "resolution": "根治：同步脚本改为解包前先清空 app/static/ui，且**先校验 tar 里确实带着 app/static/ui/index.html 才清**（顺序反了会把线上站点清空）。服务器 100 → 31 个文件，与本机仓库一致，本轮不再随构建增长",
       "evidence": "真机实测服务器 ui 文件数 100 → 31；16 号附录 A.29.6"
+    },
+    {
+      "id": "ui-workspace-identity-hardcoded",
+      "name": "P0 工作区常驻条患者身份写死",
+      "description": "WorkspacePage 常驻条身份固定渲染「张** · 女 · 52 岁 · 门诊」，不随 ?session_id= 变化 —— 换任何患者都显示同一人。患者身份错显是最高级别临床风险（张冠李戴），且 A.28~A.35 全部走查都因断言不含身份而漏检",
+      "status": "planned",
+      "dependencies": [
+        "ui-no-dicom-upload-entry"
+      ],
+      "evidence": "A.36 核实清单第 5 条（用户 2026-10-09 要求逐项核实医生信息需求时查出）"
+    },
+    {
+      "id": "seg-accuracy-unverified-gt",
+      "name": "P1 分割准确性未做 GT 对照验证",
+      "description": "bbox 标注链路已通，但准确性从未验证：cardiac 会话 + CAMUS 自带 GT mask 叠加对照（IoU 数字化）未做；且 organ 错派（心脏图按甲状腺分派）时后端照常输出『病灶』而非拒绝/告警——错误器官语义的输出比不输出更危险",
+      "status": "planned",
+      "dependencies": [
+        "ui-no-dicom-upload-entry"
+      ],
+      "evidence": "真实 CAMUS 帧走查实测（A.36.4 ②）"
+    },
+    {
+      "id": "multi-frame-diagnosis-gap",
+      "name": "P1 多帧/序列诊断缺口（心脏 cine 硬伤）",
+      "description": "全链路单帧：UI 单文件上传、显示 setStack 单张、分割单帧推理。心脏 cine 场景临床不成立（EF/室壁运动必须看序列）；甲状腺多张静态图场景缺口较小。后端判读请求 imageIds 本为数组（API 有口子，前端未接）。分期：①多图批量上传+帧滚动 ②多帧 DICOM NumberOfFrames 解析 ③cine+关键帧选择",
+      "status": "planned",
+      "dependencies": [
+        "ui-no-dicom-upload-entry"
+      ],
+      "evidence": "A.36.4 ③（用户 2026-10-09 指出）"
+    },
+    {
+      "id": "diagnosis-multimodal-input",
+      "name": "P1 判读未真正摄入影像（多模态输入缺失）",
+      "description": "真机走查 LLM 结论出现『请提供具体的影像特征（成分、回声、形态、边缘、钙化），病灶大小』——结论按文本上下文生成，影像内容未进入判读模型/上下文；与临床信息缺失叠加，导致结论永远『信息不足』",
+      "status": "planned",
+      "dependencies": [
+        "ui-no-dicom-upload-entry"
+      ],
+      "evidence": "真实 CAMUS 帧走查结论文本（A.36.4 ④）"
+    },
+    {
+      "id": "clinical-info-input",
+      "name": "P1 医生临床信息录入入口缺失",
+      "description": "诊断请求无临床指征字段入口（年龄/症状/病史/化验），LLM 结论因此恒为『信息不足』。需 UI 录入 + 判读入参 + 结论引用闭环",
+      "status": "planned",
+      "dependencies": [
+        "ui-session-create-not-wired"
+      ],
+      "evidence": "A.36.4 ⑤"
+    },
+    {
+      "id": "measurement-tools",
+      "name": "P2 医生自测工具缺失（Length/Ellipse）",
+      "description": "工具栈只注册 WindowLevel/Zoom/Pan，无测量工具——医生无法在影像上自行量长度/面积（像素间距 PixelSpacing 已具备，几何换算现成）",
+      "status": "planned",
+      "dependencies": [
+        "ui-no-dicom-upload-entry"
+      ],
+      "evidence": "A.36.4 ⑥"
     }
   ]
 }

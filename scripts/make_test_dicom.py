@@ -75,7 +75,9 @@ def build() -> Dataset:
     nodule = ((yy - rows * 0.58) ** 2 / (rows * 0.075) ** 2
               + (xx - columns * 0.60) ** 2 / (columns * 0.085) ** 2) <= 1.0
     img = np.where(nodule, 0.92, img)
-    ds.PixelData = np.clip(img, 0, 1).astype(np.uint16).tobytes()
+    # ⚠️ 必须乘满量程再取整：astype(uint16) 对 [0,1] 浮点是**截断**不是缩放，
+    # 直接转会把整幅图像截成全 0（一片黑）—— A.35 走查"影像空白"的第四层根因
+    ds.PixelData = (np.clip(img, 0, 1) * 65535).astype(np.uint16).tobytes()
     return ds
 
 

@@ -144,7 +144,18 @@ export function displayImage(element: HTMLElement, image: { imageId?: string }):
   if (!engine || !viewportId || !image?.imageId) return;
   const vp = engine.getViewports().find((v) => v.id === viewportId);
   if (!vp) return;
-  (vp as Types.IStackViewport).setStack([image.imageId]).catch(() => undefined);
+  const stack = vp as Types.IStackViewport;
+  void (async () => {
+    // 16-bit US 无 VOI 窗位时，cornerstone 的渲染窗几乎把全部像素裁成白
+    // —— 表现为「图像一片空白」（A.35 验收发现）。按像素值域显式设全窗。
+    const img = await loadAndCacheImage(image.imageId!);
+    const min = img.minPixelValue ?? 0;
+    const max = img.maxPixelValue ?? 255;
+    await stack.setStack([image.imageId!]);
+    stack.setProperties({
+      voi: { windowWidth: Math.max(1, max - min), windowCenter: (max + min) / 2 },
+    });
+  })().catch((err: unknown) => console.error('[cornerstone3d] display failed', err));
 }
 
 export function getViewport(element: HTMLElement) {
