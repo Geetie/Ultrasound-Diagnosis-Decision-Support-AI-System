@@ -5,9 +5,9 @@
 
 ## Last Updated
 
-2026-10-10（分支 `main`；端到端管线全量摸排 —— 10 条管线真机探针 71 PASS/1 观察，
-修复 3 真缺陷（cancelled 读路径 / voice 500 / 设备同名 500）并全部复验，走查 21/21
-+ 录屏 A49，详见 16 号附录 A.49）
+2026-10-11（分支 `main`；远期第一梯队 —— 告警联系人语义定案（p7 7/7）+
+make fe-smoke（本机 20/20）+ 语音引擎部署（paraformer 特征管线补齐，
+真机 3/3 真实语音连贯中文转写，p9 14/14），详见 16 号附录 A.50）
 
 ## Current Objective
 
@@ -109,6 +109,17 @@ LLM 模型侧提速）。
 - 服务器 /tmp 历史探针剩 25 个（清理命令需审批窗口未执行，见硬规则 #11）。
 - smoke-admin（SYSTEM_ADMIN）账号已建（密码 ~/uai/.smoke_admin_pw，600），
   管理面探针靠它；p0_admin_bootstrap.py 可重建。
+
+## A.50 远期第一梯队（2026-10-11）
+
+- **语音引擎**：~/uai/models/funasr（fp32+int8 ONNX + tokens.txt 逐行 token 格式
+  + test_wavs 真实语音），~/uai/src/models/funasr 是符号链接；适配器
+  app/speech/features.py（numpy 特征管线）+ funasr.py（paraformer 路径）；
+  功能验证 `scripts/audit/validate_asr.py`。**勿动共享 venv**（torch 被 vLLM 钉死）。
+- **钉子**：多文件改动按文件 scp 容易漏（manager.py 漏发 → 修了还 400，探针抓到）；
+  `awk f > f` 自截断；pydantic v2 bytes 字段吃 str 按 utf-8 编码非 base64 解码；
+  CTC 连续重复折叠是正确语义。
+- /tmp 历史 25 个 _ 探针仍未清（需审批窗口）。
 
 ## 凭据泄漏：已决定不轮换（A.28.10 更正 A.27.7 的建议）
 

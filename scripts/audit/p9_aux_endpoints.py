@@ -52,19 +52,18 @@ def main() -> int:
     code, body = http("POST", "/api/v1/attributes/hints", body={"text": "甲状腺右叶低回声结节"})
     check("POST attributes/hints 中文 -> 503（语言护栏设计）", code == 503, f"http={code}")
 
-    # 4) 语音：health → recognize（静音）。引擎未就绪属**已知部署缺口**（P2 登记）：
-    #    health 如实报 engine_ready=false；recognize 此时按 SpeechError 语义 400。
+    # 4) 语音：health → recognize（静音）。A.50 起引擎已部署（paraformer CTC
+    #    ONNX + 启动预热），engine_ready 必须 True；功能级转写验证见
+    #    scripts/audit/validate_asr.py（模型自带真实语音，真机执行）。
     code, body = http("GET", "/api/v1/speech/health")
     ready = isinstance(body, dict) and body.get("engine_ready") is True
-    check("GET speech/health 200", code == 200, f"http={code} engine_ready={body.get('engine_ready') if isinstance(body, dict) else body}")
+    check("GET speech/health 200 + engine_ready=true", code == 200 and ready,
+          f"http={code} engine_ready={body.get('engine_ready') if isinstance(body, dict) else body}")
     code, body = http("POST", "/api/v1/speech/recognize",
                       body={"audio_data": silence_pcm_b64(), "sample_rate": 16000, "language": "zh", "request_id": "audit-p9-speech"})
-    if ready:
-        ok = code == 200 and isinstance(body, dict) and "text" in body
-        check("POST speech/recognize 200（静音 PCM）", ok, f"http={code}")
-    else:
-        check("speech/recognize 引擎未就绪 -> 400（P2 部署缺口，如实记录）", code == 400,
-              f"http={code} {str(body)[:60]}")
+    ok = code == 200 and isinstance(body, dict) and "text" in body
+    check("POST speech/recognize 200（静音 PCM → 空文本）", ok,
+          f"http={code} text={body.get('text', '')!r:.40} latency={body.get('latency_ms') if isinstance(body, dict) else '?'}")
 
     # 5) 语音确认（diagnosis_trigger 必带 organ）
     code, body = http(

@@ -305,6 +305,23 @@ class AlertEscalationManager:
         if new_contacts is None:
             return False
 
+        # 语义定案（A.50，此前 PUT /admin/alert/contacts 在两类环境下恒 400）：
+        # ①清空（[]）= 管理员显式动作，无联系人可验证，直接生效
+        #   （告警升级退化为日志记录，属可接受降级）；
+        # ②未配置 webhook_url：可达性验证无从执行，跳过并放行——
+        #   旧 fail-closed 让联系人表永远无法配置，却无任何安全收益；
+        # ③已配 webhook 且非空表：保持可达性验证，失败回滚。
+        if not new_contacts:
+            self._contacts = new_contacts
+            _logger.info("alert_contacts_cleared")
+            return True
+
+        if not self._webhook_url:
+            _logger.warning("update_contacts_skip_reachability_no_webhook")
+            self._contacts = new_contacts
+            _logger.info("alert_contacts_hot_updated", count=len(new_contacts))
+            return True
+
         if not await verify_contact_reachability(self._webhook_url, new_contacts):
             _logger.warning("update_contacts_reachability_failed_rollback")
             self.emit_alert(

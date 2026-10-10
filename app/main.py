@@ -76,6 +76,15 @@ def _detect_worker_count() -> int:
         return 1
 
 
+async def _warm_up_speech_engine(engine) -> None:
+    """预热语音引擎（后台任务，失败只告警——懒加载语义保留）。"""
+    try:
+        await engine.initialize()
+        logger.info("speech_engine_warmup_ok")
+    except Exception as exc:
+        logger.warning("speech_engine_warmup_failed", error=str(exc))
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     from app.inference.factory import create_inference_engine_from_settings
@@ -108,6 +117,13 @@ async def lifespan(app: FastAPI):
         num_threads=settings.funasr_num_threads,
     )
     app.state.speech_engine = speech_engine
+    # A.50：语音引擎启动预热。懒加载（只在首次 recognize 时 initialize）会让
+    # /speech/health 在首次识别前恒报 engine_ready=false——p9 探针曾据此把
+    # 语音链路整体记为部署缺口。模型缺失时只告警不阻断启动（首次 recognize
+    # 仍会重试 initialize，保持既有懒加载语义）。引用存 app.state 防 GC（RUF006）。
+    app.state.speech_warmup_task = asyncio.create_task(
+        _warm_up_speech_engine(speech_engine)
+    )
 
     # wiring-audit P1-5：删除死赋值 app.state.gpu_schedule（GPUScheduleStrategy
     # 实例全库无读取方）与 app.state.consent_consumer（shutdown 用局部变量，

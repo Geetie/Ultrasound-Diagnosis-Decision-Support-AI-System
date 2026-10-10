@@ -8,7 +8,7 @@ TRACKS_UNIT := tests/unit
 TRACKS_INT := tests/integration/int
 PYTEST_FLAGS := -q -p no:cacheprovider -n 8 --dist=loadfile --timeout=300
 
-.PHONY: help install lint lint-fix test test-unit test-int test-all test-perf cov bench bench-all frontend fe-test fe-lint fe-build edge compose-up
+.PHONY: help install lint lint-fix test test-unit test-int test-all test-perf cov bench bench-all frontend fe-test fe-lint fe-build fe-smoke edge compose-up
 
 help:
 	@echo "make install     - 安装后端依赖（含开发依赖）"
@@ -16,6 +16,7 @@ help:
 	@echo "make test        - 后端单元 + INT 集成测试"
 	@echo "make cov         - 覆盖率（整体 80 / 核心 90 门禁）"
 	@echo "make frontend    - 前端 lint + 类型检查 + 测试 + 构建"
+	@echo "make fe-smoke    - 真浏览器渲染冒烟（需本机 Chrome + 可达后端 + 凭据环境变量）"
 	@echo "make edge        - 本地以开发机模式启动边缘端"
 
 install:
@@ -68,6 +69,16 @@ fe-lint:
 
 fe-build:
 	cd frontend && npm run build
+
+# 真浏览器渲染冒烟（运行时层守卫；静态层在 tests/unit/quality/test_frontend_render_guard.py）。
+# 为什么需要：门禁 curl 全绿≠浏览器渲染得出来——2026-10-05 首次真浏览器渲染
+# 一次抓到 4 个 P0 阻断（白屏/登录 422/二级页全打不开），详见脚本头注释。
+# 前置：本机 Playwright + Chrome；UAI_BASE_URL（默认 http://127.0.0.1:8000，可用
+# SSH 隧道指向服务器 18000）；凭据只走环境变量（铁律 #10）：
+#   UAI_DOCTOR_USER / UAI_DOCTOR_PASSWORD（服务器 ~/uai/.smoke_pw）
+# 环境不具备时脚本默认 SKIP（加 --require 强制判失败）。
+fe-smoke:
+	node scripts/frontend_browser_smoke.mjs
 
 # 开发机（无 TensorRT）启动边缘端：自动退回空导航后端，链路仍可跑通
 edge:

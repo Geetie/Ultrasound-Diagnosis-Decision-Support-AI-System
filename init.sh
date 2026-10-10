@@ -65,6 +65,9 @@ echo ""
 if [ "$MODE" = "full" ]; then
   echo "=== [3/4] 全量测试 make test ==="
   make test
+  echo ""
+  echo "提示: 运行时守卫 make fe-smoke（真浏览器渲染冒烟）需本机 Chrome + 可达后端 +"
+  echo "      凭据环境变量（UAI_DOCTOR_USER/UAI_DOCTOR_PASSWORD），环境具备时按需执行。"
 else
   echo "=== [3/4] 快检（harness/文档质量守卫 + RAG 契约） ==="
   "$PY" -m pytest tests/unit/quality -q -p no:cacheprovider --no-header --tb=short

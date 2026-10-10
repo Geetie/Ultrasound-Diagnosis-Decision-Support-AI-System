@@ -148,13 +148,16 @@ class FunASROnnxEngine(SpeechEngine):
         self._language = language
         self._model = None
         self._tokenizer = None
+        self._frontend = None  # Paraformer 前端（A.50）；None = 旧直喂波形路径
         self._initialized = False
         self._log = structlog.get_logger("app.speech.funasr")
 
     async def initialize(self) -> None:
         """初始化FunASR引擎。
 
-        加载ONNX模型和词表文件，配置推理会话。
+        加载ONNX模型和词表文件，配置推理会话。模型目录同时存在
+        ``model.int8.onnx`` 与 ``model.onnx`` 时优先 int8（CPU 推理快 ~3x，
+        paraformer int8 精度损失可忽略，sherpa-onnx 同款缺省）。
 
         Raises:
             SpeechError: 如果模型文件不存在或初始化失败
@@ -174,11 +177,13 @@ class FunASROnnxEngine(SpeechEngine):
                 providers.insert(0, "CUDAExecutionProvider")
 
             import os
-            model_path = os.path.join(self._model_dir, "model.onnx")
+            int8_path = os.path.join(self._model_dir, "model.int8.onnx")
+            fp32_path = os.path.join(self._model_dir, "model.onnx")
+            model_path = int8_path if os.path.exists(int8_path) else fp32_path
             if not os.path.exists(model_path):
                 raise SpeechError(
                     error_code=SpeechErrorCode.E3001_MODEL_LOAD_FAILED,
-                    message=f"FunASR model not found: {model_path}",
+                    message=f"FunASR model not found: {fp32_path}",
                     detail="Run model download script first",
                     retryable=False,
                 )
@@ -193,11 +198,33 @@ class FunASROnnxEngine(SpeechEngine):
             if os.path.exists(tokenizer_path):
                 self._tokenizer = self._load_tokenizer(tokenizer_path)
 
+            # Paraformer 前端探测：CMVN/LFR 参数内嵌于 ONNX metadata
+            # （键名与 sherpa-onnx offline-paraformer-model.cc 同源）。
+            meta = getattr(self._model, "get_modelmeta", lambda: None)()
+            meta_map = dict(getattr(meta, "custom_metadata_map", {}) or {})
+            try:
+                from app.speech.features import ParaformerFrontend
+
+                self._frontend = ParaformerFrontend.from_metadata(meta_map)
+                self._log.info(
+                    "paraformer_frontend_ready",
+                    lfr_window_size=self._frontend.lfr_window_size,
+                    lfr_window_shift=self._frontend.lfr_window_shift,
+                    feat_dim=int(self._frontend.neg_mean.shape[0]),
+                )
+            except (ValueError, KeyError):
+                self._frontend = None
+                self._log.warning(
+                    "paraformer_frontend_absent_fallback_raw_audio",
+                    detail="metadata 缺 LFR/CMVN 键，退回旧原始波形路径（非 paraformer 导出）",
+                )
+
             self._initialized = True
             self._log.info(
                 "funasr_initialized",
                 device=self._device,
                 threads=self._num_threads,
+                model=os.path.basename(model_path),
                 providers=providers,
             )
 
@@ -240,8 +267,7 @@ class FunASROnnxEngine(SpeechEngine):
         try:
             import numpy as np
 
-            audio_array = np.frombuffer(request.audio_data, dtype=np.int16).astype(np.float32)
-            audio_array = audio_array / 32768.0
+            audio_int16 = np.frombuffer(request.audio_data, dtype=np.int16)
 
             if request.sample_rate != 16000:
                 self._log.warning(
@@ -250,7 +276,13 @@ class FunASROnnxEngine(SpeechEngine):
                     model_rate=16000,
                 )
 
-            result_text = await self._run_inference(audio_array)
+            if self._frontend is not None:
+                # Paraformer 路径：波形保持 int16 量纲（normalize_samples=false）
+                result_text = await self._run_inference_paraformer(audio_int16.astype(np.float32))
+            else:
+                # 旧路径：直喂归一化波形（非 paraformer 导出）
+                result_text = await self._run_inference(audio_int16.astype(np.float32) / 32768.0)
+
             latency_ms = (time.monotonic() - start_time) * 1000
 
             term_matches = find_terminology(result_text)
@@ -335,6 +367,73 @@ class FunASROnnxEngine(SpeechEngine):
             return "".join(str(t) for t in outputs[0].flatten())
 
         return ""
+
+    async def _run_inference_paraformer(self, audio_int16_scale: Any) -> str:
+        """Paraformer 路径：特征管线 → ONNX → CTC 贪心解码 → 文本。
+
+        前置：``self._frontend`` 已就绪（initialize 时由模型 metadata 探测）。
+        输入名按 sherpa-onnx 导出惯例匹配（``speech`` / ``speech_lengths``），
+        其余输入（如姿量分支）一律报错而非静默喂错数据。
+        """
+        if self._model is None or self._frontend is None:
+            raise SpeechError(
+                error_code=SpeechErrorCode.E3001_MODEL_LOAD_FAILED,
+                message="paraformer model/frontend not initialized",
+                retryable=False,
+            )
+
+        import numpy as np
+
+        # Paraformer 内部 Loop/ConstantOfShape 对超短输入会产生负 shape
+        # （真机实测：0.1s 静音 → onnxruntime FAIL）。统一零填充到 ≥1s。
+        _MIN_SAMPLES = 16000
+        if audio_int16_scale.shape[0] < _MIN_SAMPLES:
+            audio_int16_scale = np.pad(
+                audio_int16_scale, (0, _MIN_SAMPLES - audio_int16_scale.shape[0])
+            )
+
+        feats = self._frontend(audio_int16_scale)  # [T, 560] float32
+        if feats.shape[0] == 0:
+            return ""
+
+        input_names = [inp.name for inp in self._model.get_inputs()]
+        feeds: dict[str, Any] = {}
+        for name in input_names:
+            if name in ("speech", "x", "feats"):
+                feeds[name] = feats[None, :, :]  # [1, T, 560]
+            elif "length" in name.lower():
+                feeds[name] = np.array([feats.shape[0]], dtype=np.int32)
+            else:
+                raise SpeechError(
+                    error_code=SpeechErrorCode.E3001_RECOGNITION_FAILED,
+                    message=f"unexpected model input: {name}",
+                    detail="paraformer 导出出现未知输入，请核对模型版本",
+                    retryable=False,
+                )
+
+        import asyncio as _asyncio
+
+        outputs = await _asyncio.to_thread(self._model.run, None, feeds)
+
+        logits = outputs[0]
+        if not isinstance(logits, np.ndarray) or logits.ndim != 3:
+            raise SpeechError(
+                error_code=SpeechErrorCode.E3001_RECOGNITION_FAILED,
+                message="unexpected paraformer output shape",
+                detail=f"shape={getattr(logits, 'shape', None)}",
+                retryable=False,
+            )
+
+        from app.speech.features import ctc_greedy_decode
+
+        token_ids = ctc_greedy_decode(logits[0], blank_id=0)
+        if self._tokenizer is None:
+            return ""
+        # 剥掉句子边界符（vocab 含 <s>/</s>，CTC 解码不区分）
+        special = {"<s>", "</s>"}
+        return "".join(
+            tok for tid in token_ids if (tok := self._tokenizer.get(tid, "")) not in special
+        )
 
     def _decode_tokens(self, tokens: Any) -> str:
         """解码Token数组为文本。

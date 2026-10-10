@@ -547,20 +547,20 @@
     {
       "id": "speech-engine-deployment",
       "name": "语音识别引擎部署（P2）",
-      "description": "服务器上 /api/v1/speech/health 报 engine_ready=false（模型/依赖未部署），recognize 按 SpeechError 语义 400。属部署缺口非代码缺陷；引擎就绪后复跑 scripts/audit/p9_aux_endpoints.py 复验",
-      "status": "planned",
+      "description": "服务器部署 FunASR paraformer-large CTC ONNX（sherpa-onnx 词表 8404，fp32 864MB + int8 223MB 自适配）+ 补齐适配器特征管线（Kaldi fbank→LFR(7,6)→CMVN 内嵌 metadata→CTC 贪心解码，纯 numpy 不动共享 venv）+ 启动预热（懒加载曾使 engine_ready 恒 false）+ 超短输入 1s 零填充（真机 Loop 负 shape）+ <s>/</s> 剥离",
+      "status": "done",
       "dependencies": [],
-      "resolution": "",
-      "evidence": "16 号 A.49（P9 探针：health 200 + engine_ready=false 如实上报）"
+      "resolution": "真机：validate_asr.py 3/3 条模型自带真实语音产出连贯中文（97~176ms/条，int8）；health engine_ready=true；p9 探针 14/14",
+      "evidence": "16 号 A.50；scripts/audit/validate_asr.py；tests/unit/edg/test_speech_paraformer.py 16 例"
     },
     {
       "id": "alert-contacts-empty-put",
-      "name": "告警联系人空表语义（P2）",
-      "description": "PUT /api/v1/admin/alert/contacts 对空列表做可达性验证失败 400 回滚——原值为空时无法通过 API 清空联系人（只能整组替换为可达配置）。语义怪点，需产品决策：支持显式空配置或保留必须≥1 可达联系人",
-      "status": "planned",
+      "name": "告警联系人 PUT 语义定案（P2）",
+      "description": "PUT /api/v1/admin/alert/contacts 语义定案：①空表=显式清空免验证直接生效；②未配 webhook_url=跳过可达性验证放行（旧 fail-closed 使联系人表永远无法配置且无安全收益）；③已配 webhook 且非空表保持验证+回滚",
+      "status": "done",
       "dependencies": [],
-      "resolution": "",
-      "evidence": "16 号 A.49（P7 探针：GET 200 n=0、PUT [] 400 E1001）"
+      "resolution": "真机 p7 探针 7/7（原值回写 200）；tests/unit/obs/test_alert_contacts_update.py 5 例",
+      "evidence": "16 号 A.50；scripts/audit/p7_alerts.py"
     }
   ]
 }
