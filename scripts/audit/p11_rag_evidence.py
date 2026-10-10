@@ -18,7 +18,7 @@ import sys
 import time
 
 sys.path.insert(0, os.path.dirname(__file__))
-from _audit_common import BASE, check, http, load_ctx, login, pw, save_ctx, summary
+from _audit_common import BASE, check, http, login, pw, save_ctx, summary
 
 
 def make_camus_dicoms(count: int = 2) -> list[str]:
