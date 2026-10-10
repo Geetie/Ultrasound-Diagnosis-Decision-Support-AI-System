@@ -119,7 +119,8 @@ LLM 模型侧提速）。
 - **钉子**：多文件改动按文件 scp 容易漏（manager.py 漏发 → 修了还 400，探针抓到）；
   `awk f > f` 自截断；pydantic v2 bytes 字段吃 str 按 utf-8 编码非 base64 解码；
   CTC 连续重复折叠是正确语义。
-- /tmp 历史 25 个 _ 探针仍未清（需审批窗口）。
+- /tmp 自己的历史 _ 探针已清零（A.50.5）；root 所属 1 个不动（铁律 #3）。
+  fish 对无匹配通配符整行中止——含通配符远端命令必须包 bash -c。
 - **qdrant 未启动**（RAG 跑 pgvector 降级链路，4526 行正常返回）——设计内降级，
   feature_list `qdrant-deployment` 登记：上线后复测检索质量口径。
 - **本机无 make**（WSL 有）——make 系列目标本机用 WSL 或 CI 跑。
