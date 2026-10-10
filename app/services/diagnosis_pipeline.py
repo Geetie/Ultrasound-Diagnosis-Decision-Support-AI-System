@@ -52,6 +52,12 @@ from app.models.schemas import (
     Organ,
     ResponseTier,
 )
+from app.observability.tracing import (
+    SPAN_DIAGNOSIS_DISPATCH,
+    SPAN_DIAGNOSIS_FUSION,
+    SPAN_DIAGNOSIS_OUTPUT,
+    DiagnosisSpan,
+)
 from app.repositories import (
     DiagnosisRepository,
 )
@@ -328,24 +334,39 @@ async def run_diagnosis_pipeline(request_id: str) -> bool:
                 )
             )
         t = time.monotonic()
-        specialist_responses = await _safe_dispatch(
-            request,
-            request_id,
-            routing=routing_decision,
-            imaging_metadata=segmentation if isinstance(segmentation, dict) else None,
-        )
+        # A.47 业务 span（Langfuse trace 树）：attributes 全部经 PhiMaskingExporter
+        # 导出前脱敏 —— 正文文本进 trace 的唯一入口在这里与 output span。
+        async with DiagnosisSpan(
+            SPAN_DIAGNOSIS_DISPATCH,
+            attributes={
+                "organ": request.organ,
+                "tier": getattr(routing_decision, "effective_tier", None)
+                and routing_decision.effective_tier.value,
+                "image_count": len(getattr(request, "image_ids", []) or []),
+            },
+        ):
+            specialist_responses = await _safe_dispatch(
+                request,
+                request_id,
+                routing=routing_decision,
+                imaging_metadata=segmentation if isinstance(segmentation, dict) else None,
+            )
         timings["dispatcher.invoke_ms"] = (time.monotonic() - t) * 1000.0
         if watcher_task is not None:
             watcher_task.cancel()
 
         # 2) 融合 (fusion.fuse)
         t = time.monotonic()
-        fusion_result = await _safe_fuse(
-            request=request,
-            specialist_responses=specialist_responses,
-            request_id=request_id,
-            skip_self_rag=skip_self_rag,
-        )
+        async with DiagnosisSpan(
+            SPAN_DIAGNOSIS_FUSION,
+            attributes={"skip_self_rag": skip_self_rag},
+        ):
+            fusion_result = await _safe_fuse(
+                request=request,
+                specialist_responses=specialist_responses,
+                request_id=request_id,
+                skip_self_rag=skip_self_rag,
+            )
         timings["fusion.fuse_ms"] = (time.monotonic() - t) * 1000.0
         # A.38 计时拆分：fuse 内部含 LLM 校验（validate/Self-RAG 与 CRAG），
         # 14s 波动此前不可归因 —— 从 FusionResult 抄出子计时一起落库。
@@ -353,14 +374,23 @@ async def run_diagnosis_pipeline(request_id: str) -> bool:
         timings["fusion.validate_ms"] = float(getattr(fusion_result, "validate_ms", 0.0))
         timings["fusion.crag_ms"] = float(getattr(fusion_result, "crag_ms", 0.0))
 
-        # 3) 安全网关 (sg.check_output)
+        # 3) 安全网关 (sg.check_output) —— output span 带 gen_ai.* 语义属性，
+        # Langfuse 按 OTel GenAI 约定渲染为 LLM Generation（A.47）
         t = time.monotonic()
-        sg_result, sg_ok = await _safe_safety_check(
-            request=request,
-            fusion_result=fusion_result,
-            request_id=request_id,
-            patient_id=patient_id,
-        )
+        async with DiagnosisSpan(
+            SPAN_DIAGNOSIS_OUTPUT,
+            attributes={
+                "gen_ai.system": "vllm",
+                "gen_ai.request.model": "Qwen3-8B",
+                "gen_ai.completion": extract_findings_text(fusion_result)[:800],
+            },
+        ):
+            sg_result, sg_ok = await _safe_safety_check(
+                request=request,
+                fusion_result=fusion_result,
+                request_id=request_id,
+                patient_id=patient_id,
+            )
         timings["sg.check_output_ms"] = (time.monotonic() - t) * 1000.0
 
         # 4) 组装 DiagnosisResult 并写 DB（独立短会话，见 _write_result_to_db）

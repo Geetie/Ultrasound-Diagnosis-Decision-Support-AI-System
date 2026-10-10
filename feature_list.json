@@ -523,6 +523,17 @@
       "dependencies": [],
       "resolution": "",
       "evidence": "A.38 阅片生命周期盘点（第 7 阶段：历史对比缺失，登记远期；性能提升阶段后评估）"
+    },
+    {
+      "id": "langfuse-trace-ingestion",
+      "name": "Langfuse 评测集采集（19 号 P1，Dataset 形态）",
+      "description": "判读结果自动沉淀进 Langfuse 评测集（自托管 v3.225）。OTLP trace ingest 队列 500（已知问题，升级 v4 解决）不阻塞——P1 落地形态修正为 PG 事实源（diagnosis_results）→ Dataset API 导入；PHI 脱敏在 OTLP 导出层（PhiMaskingExporter，SG 同源正则）与评测集字段裁剪双层保障",
+      "status": "done",
+      "dependencies": [
+        "faithfulness-gate"
+      ],
+      "resolution": "阶段 0 打通（.env OBS_TRACING + INIT 固定 key，CH langfuse 库手动建+37 迁移 SQL 应用，MinIO bucket 手动建）→ 阶段 1 PhiMaskingExporter（SG 同源人名/手机号/证件号/邮箱四类正则，失败占位不泄）+ 管线 dispatch/fusion/output 业务 span（gen_ai.* 语义属性）→ A.48 评测集采集（scripts/eval/langfuse_import.py，PG → /api/public/dataset-items）",
+      "evidence": "A.47/A.48：Langfuse API 实证（dataset 创建/items 10 条导入/固定 key 鉴权全通）；quality 75（+phi mask 10 例）；OTLP ingest 500 与 CH init 缺失、MinIO bucket 缺失、UI 自动化四连坑全部记录在 16 号附录 A.47"
     }
   ]
 }

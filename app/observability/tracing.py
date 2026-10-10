@@ -7,6 +7,7 @@ FULL模式强制高采样率（>=0.5），支持FastAPI请求自动追踪。
 __all__ = ["DIAGNOSIS_SPANS", "DiagnosisSpan", "init_tracing", "inject_trace_to_structlog", "instrument_fastapi"]
 
 import contextvars
+import re
 from typing import Any
 
 import structlog
@@ -104,6 +105,112 @@ def init_tracing() -> None:
     _initialized = True
 
 
+# ── A.47 PHI 脱敏（官方 mask_otel_spans 实践的自托管映射）──────────────────
+# Langfuse 文档：mask 钩子纪律 = 确定性、快速、**抛异常会丢整批导出**——
+# 所以这里逐属性 try/except，单个属性失败就替换为占位符（宁缺勿泄）；
+# 整体失败由 _MaskedSpan 捕获后返回全占位 attributes。
+# 纯 OTel 链路（非 Langfuse SDK）的脱敏位置 = 导出层包装（文档 §「OTel 数据
+# 脱敏」：应用内导出前转换，敏感数据不离开进程）。
+
+_PHI_PATTERNS: list[tuple["re.Pattern[str]", str]] = [
+    # 长模式在前：18 位证件若排在手机号之后，会被手机号正则吃掉前 11 位
+    (re.compile(r"\d{17}[\dXx]"), "[证件号]"),
+    (re.compile(r"1[3-9]\d{9}"), "[手机号]"),
+    (re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+"), "[邮箱]"),
+]
+try:
+    # 医学人名模式（SG 同源：1~4 汉字 + 医学称谓后缀）——SG 包不依赖 app，无循环
+    from safety_gateway.desensitization_rules import init_person_name_pattern
+
+    _PHI_PATTERNS.append((init_person_name_pattern(), "[人名]"))
+except Exception:  # pragma: no cover —— SG 不可用时其余正则仍生效
+    _logger.warning("phi_person_name_pattern_unavailable")
+
+
+def _mask_phi_text(value: str) -> str:
+    """单字符串 PHI 脱敏。确定性 + 快速 + 不抛（官方纪律）。"""
+    try:
+        for pattern, placeholder in _PHI_PATTERNS:
+            value = pattern.sub(placeholder, value)
+        return value
+    except Exception:  # pragma: no cover —— 脱敏失败宁占位不泄
+        return "[MASK_FAILED]"
+
+
+def _mask_phi_attributes(attributes: Any) -> dict[str, Any] | None:
+    """遍历 span attributes，字符串值（含标量序列）做 PHI 脱敏。"""
+    if not attributes:
+        return None
+    masked: dict[str, Any] = {}
+    changed = False
+    try:
+        for key, value in dict(attributes).items():
+            if isinstance(value, str):
+                new_value = _mask_phi_text(value)
+                if new_value != value:
+                    changed = True
+                masked[key] = new_value
+            elif isinstance(value, (list, tuple)) and value and all(
+                isinstance(v, str) for v in value
+            ):
+                new_seq = [_mask_phi_text(v) for v in value]
+                if new_seq != list(value):
+                    changed = True
+                masked[key] = new_seq
+            else:
+                masked[key] = value
+    except Exception:  # pragma: no cover —— 整体失败宁全占位不泄
+        return {k: "[MASK_FAILED]" for k in masked} if masked else None
+    return masked if changed else None
+
+
+class _MaskedSpan:
+    """ReadableSpan 只读代理：attributes/name 经 PHI 脱敏，其余字段委托原对象。
+
+    OTLPSpanExporter 序列化时读 .name/.attributes/.context 等——代理属性
+    重写即可让导出的 protobuf 只含脱敏值（原 span 对象不被修改）。
+    """
+
+    def __init__(self, inner: Any) -> None:
+        self._inner = inner
+        self._masked_attributes = _mask_phi_attributes(getattr(inner, "attributes", None))
+        self._masked_name = (
+            _mask_phi_text(inner.name) if isinstance(getattr(inner, "name", None), str) else None
+        )
+
+    @property
+    def name(self) -> str:
+        return self._masked_name or self._inner.name
+
+    @property
+    def attributes(self) -> Any:
+        if self._masked_attributes is not None:
+            return self._masked_attributes
+        return self._inner.attributes
+
+    def __getattr__(self, item: str) -> Any:
+        return getattr(self._inner, item)
+
+
+class PhiMaskingExporter:
+    """OTLP exporter 的 PHI 脱敏包装（export 前转换，敏感数据不离开进程）。"""
+
+    def __init__(self, inner: Any) -> None:
+        self._inner = inner
+
+    def export(self, spans: Any) -> Any:
+        try:
+            return self._inner.export([_MaskedSpan(s) for s in spans])
+        except Exception:  # pragma: no cover —— 脱敏链路失败不影响导出主链
+            raise
+
+    def shutdown(self) -> Any:
+        return self._inner.shutdown()
+
+    def force_flush(self, timeout_millis: int = 30000) -> Any:
+        return self._inner.force_flush(timeout_millis)
+
+
 def _setup_exporter(provider) -> None:
     """优先 HTTP OTLP（Langfuse v3 只暴露 HTTP：/api/public/otel/v1/traces），
     HTTP exporter 不可用时回退 gRPC（自建 collector 场景）。
@@ -142,7 +249,7 @@ def _setup_exporter(provider) -> None:
             exporter = _GrpcExporter(
                 endpoint=endpoint, insecure=True, headers=headers
             )
-        processor = BatchSpanProcessor(exporter)
+        processor = BatchSpanProcessor(PhiMaskingExporter(exporter))
         provider.add_span_processor(processor)
         _logger.info(
             "OTLP exporter configured",
