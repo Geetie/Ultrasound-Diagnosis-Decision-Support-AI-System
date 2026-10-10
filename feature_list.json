@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "project": "超声诊疗决策支持 AI 系统",
   "updated_at": "2026-10-10",
-  "head_commit": "2d8e4b3",
+  "head_commit": "218fccb",
   "branch": "main",
   "status_legend": {
     "done": "已交付且有证据（命令/报告/测试）",
@@ -561,6 +561,15 @@
       "dependencies": [],
       "resolution": "真机 p7 探针 7/7（原值回写 200）；tests/unit/obs/test_alert_contacts_update.py 5 例",
       "evidence": "16 号 A.50；scripts/audit/p7_alerts.py"
+    },
+    {
+      "id": "qdrant-deployment",
+      "name": "Qdrant 向量库部署（P2 观察，A.50 定性）",
+      "description": "服务器 qdrant 未启动（health_check 失败），vector_index_auto_fallback=True 使 RAG 检索跑 pgvector 降级链路（vector_index_knowledge_chunks 4526 行/62MB，当日报判读检索正常返回）。属设计内降级，非缺陷；qdrant 上线后需复测检索质量口径（Gate 2 的 98.53% 是 eval 脚本直算口径，与服务 pgvector 路径等价性未验）",
+      "status": "planned",
+      "dependencies": [],
+      "resolution": "",
+      "evidence": "16 号 A.50.5（api.log：qdrant_health_check_failed + pgvector_search_completed returned=20）"
     }
   ]
 }

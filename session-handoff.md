@@ -120,6 +120,9 @@ LLM 模型侧提速）。
   `awk f > f` 自截断；pydantic v2 bytes 字段吃 str 按 utf-8 编码非 base64 解码；
   CTC 连续重复折叠是正确语义。
 - /tmp 历史 25 个 _ 探针仍未清（需审批窗口）。
+- **qdrant 未启动**（RAG 跑 pgvector 降级链路，4526 行正常返回）——设计内降级，
+  feature_list `qdrant-deployment` 登记：上线后复测检索质量口径。
+- **本机无 make**（WSL 有）——make 系列目标本机用 WSL 或 CI 跑。
 
 ## 凭据泄漏：已决定不轮换（A.28.10 更正 A.27.7 的建议）
 
