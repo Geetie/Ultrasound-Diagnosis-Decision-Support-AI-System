@@ -134,7 +134,6 @@ def main() -> int:
         check("诊断载荷含 fusion/检索信号", isinstance(fusion, dict) and len(json.dumps(fusion)) > 50,
               f"payload_len={len(json.dumps(result.get('diagnosis') or {}))}")
 
-    ctx = load_ctx() or {}
     save_ctx(
         e2rag_probe_session=sid or "",
         e2rag_probe_request=rid or "",
