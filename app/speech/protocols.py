@@ -30,6 +30,7 @@ class SpeechErrorCode(str, Enum):
     - E3001_CONNECTION_FAILED: 连接失败
     - E3001_RECOGNITION_FAILED: 识别失败
     - E3001_MODEL_LOAD_FAILED: 模型加载失败
+    - E3002_UNSUPPORTED_SAMPLE_RATE: 采样率不支持（仅 16k；非 16k 一律拒绝）
 
     成员名与取值保持一致（带 E3001_ 前缀）：app/speech/funasr.py 的
     错误处理路径按带前缀形式引用，此前成员名漏了前缀，导致模型加载/识别
@@ -39,6 +40,7 @@ class SpeechErrorCode(str, Enum):
     E3001_CONNECTION_FAILED = "E3001_CONNECTION_FAILED"
     E3001_RECOGNITION_FAILED = "E3001_RECOGNITION_FAILED"
     E3001_MODEL_LOAD_FAILED = "E3001_MODEL_LOAD_FAILED"
+    E3002_UNSUPPORTED_SAMPLE_RATE = "E3002_UNSUPPORTED_SAMPLE_RATE"
 
 
 class SpeechError(Exception):

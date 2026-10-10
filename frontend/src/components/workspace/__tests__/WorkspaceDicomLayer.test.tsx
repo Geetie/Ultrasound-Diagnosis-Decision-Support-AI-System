@@ -21,6 +21,7 @@ const cs = vi.hoisted(() => ({
   onMeasureCompleted: vi.fn(() => () => {}),
   restoreAnnotations: vi.fn(() => 0),
   clearAnnotations: vi.fn(),
+  getCurrentImageId: vi.fn(() => 'dicomfile:0'),
 }));
 
 vi.mock('@/components/dicom/cornerstone', () => cs);
@@ -195,12 +196,13 @@ describe('WorkspaceDicomLayer · 多帧分期①', () => {
     expect(screen.queryByText('影像加载中…')).toBeNull();
   });
 
-  it('帧级标注归属（A.45 分期③）：翻帧清场重恢复当前帧的注释', async () => {
-    // 存档含帧 0 与帧 1 各一条注释（旧存档无 frame_index 视为 0）
+  it('帧级标注归属（A.45 分期③，E1 修正锚点）：按 referencedImageId 匹配当前 imageId', async () => {
+    // 存档：img0 有一条（带 referencedImageId）、img1 一条、旧格式一条（无
+    // referencedImageId，frame_index=1 兜底）
     annSvc.fetchAnnotations.mockResolvedValue([
-      { toolName: 'Length', data: {}, uuid: 'a-frame0' },
-      { toolName: 'Length', data: {}, uuid: 'a-noframe' },
-      { toolName: 'Length', data: {}, uuid: 'a-frame1', frame_index: 1 },
+      { toolName: 'Length', data: {}, uuid: 'a-img0', metadata: { referencedImageId: 'dicomfile:0' } },
+      { toolName: 'Length', data: {}, uuid: 'a-img1', metadata: { referencedImageId: 'dicomfile:1' } },
+      { toolName: 'Length', data: {}, uuid: 'a-legacy', frame_index: 1 },
     ]);
     const { rerender } = render(
       <WorkspaceDicomLayer
@@ -208,16 +210,16 @@ describe('WorkspaceDicomLayer · 多帧分期①', () => {
         archiveKey="img_20261009_ab12cd34"
       />,
     );
-    // 初始帧 0：恢复 frame0 + 无帧号两条，翻帧前不恢复 frame1
+    // 当前 imageId=dicomfile:0：只恢复 img0 的注释（img1 与 legacy 兜底帧1 不恢复）
     await waitFor(() => expect(cs.restoreAnnotations).toHaveBeenCalled());
     const restoreCalls = (cs.restoreAnnotations as unknown as {
       mock: { calls: Array<[HTMLElement, Array<{ uuid?: string }>]> };
     }).mock.calls;
     const firstCall = restoreCalls[0][1];
-    expect(firstCall.map((a) => a.uuid).sort()).toEqual(['a-frame0', 'a-noframe']);
+    expect(firstCall.map((a) => a.uuid)).toEqual(['a-img0']);
     expect(cs.clearAnnotations).toHaveBeenCalled();
 
-    // 翻到帧 1：清场后只恢复 frame1
+    // 翻到帧 1（currentImageId 变为 dicomfile:1）：清场后恢复 img1 + legacy 兜底
     rerender(
       <WorkspaceDicomLayer
         imageIds={['dicomfile:0', 'dicomfile:1']}
@@ -225,13 +227,15 @@ describe('WorkspaceDicomLayer · 多帧分期①', () => {
       />,
     );
     cs.scrollStack.mockImplementation(() => 1);
+    (cs.getCurrentImageId as unknown as { mockImplementation: (f: () => string) => void })
+      .mockImplementation(() => 'dicomfile:1');
     fireEvent.keyDown(window, { key: 'ArrowRight' });
     await waitFor(() => {
       const calls = (cs.restoreAnnotations as unknown as {
         mock: { calls: Array<[HTMLElement, Array<{ uuid?: string }>]> };
       }).mock.calls;
       const last = calls[calls.length - 1][1];
-      expect(last.map((a) => a.uuid)).toEqual(['a-frame1']);
+      expect(last.map((a) => a.uuid).sort()).toEqual(['a-img1', 'a-legacy']);
     });
   });
 });

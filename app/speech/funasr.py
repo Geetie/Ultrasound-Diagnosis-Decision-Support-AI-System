@@ -270,10 +270,14 @@ class FunASROnnxEngine(SpeechEngine):
             audio_int16 = np.frombuffer(request.audio_data, dtype=np.int16)
 
             if request.sample_rate != 16000:
-                self._log.warning(
-                    "resampling_not_implemented",
-                    requested_rate=request.sample_rate,
-                    model_rate=16000,
+                # A.50.6（E4 核实定性）：重采样未实现，8k 等非 16k 音频按 16k
+                # 解码会产出**错误转写**（医疗口述安全隐患）——明确拒绝而非
+                # 静默出垃圾文本（原实现只打 warning 照跑，探针核实时定性）。
+                raise SpeechError(
+                    error_code=SpeechErrorCode.E3002_UNSUPPORTED_SAMPLE_RATE,
+                    message=f"unsupported sample rate: {request.sample_rate} (engine requires 16000)",
+                    detail="resampling not implemented; non-16k audio would be mis-decoded",
+                    retryable=False,
                 )
 
             if self._frontend is not None:

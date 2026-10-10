@@ -64,6 +64,11 @@ def main() -> int:
     ok = code == 200 and isinstance(body, dict) and "text" in body
     check("POST speech/recognize 200（静音 PCM → 空文本）", ok,
           f"http={code} text={body.get('text', '')!r:.40} latency={body.get('latency_ms') if isinstance(body, dict) else '?'}")
+    # E4（21 号核实清单）：非 16k 音频必须明确拒绝（原实现按 16k 错误解码出垃圾文本）
+    code, body = http("POST", "/api/v1/speech/recognize",
+                      body={"audio_data": silence_pcm_b64(8000), "sample_rate": 8000, "language": "zh", "request_id": "audit-p9-speech-8k"})
+    check("speech/recognize 8kHz -> 400（明确拒绝，不静默错转）", code == 400,
+          f"http={code} {str(body)[:80]}")
 
     # 5) 语音确认（diagnosis_trigger 必带 organ）
     code, body = http(

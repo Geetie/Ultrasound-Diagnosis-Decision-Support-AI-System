@@ -202,9 +202,11 @@ export default function WorkspaceDicomLayer({
   }, [archiveKey, savedAnnotations]);
 
   // 存档恢复：装载完成且有 archiveKey 时 GET 并渲染**当前帧**的历史标注
-  // （Passive 态）。帧级归属（A.45 分期③）：翻帧（frameIndex 变化）重新走一遍
-  // —— 先清场再恢复该帧的注释（CS3D 注释按同一 FrameOfReference 累积，
-  // 不清场会叠在错误帧上）；旧存档无 frame_index 视为第 0 帧。
+  // （Passive 态）。帧级归属（A.45 分期③；E1 真机探针修正锚点）：过滤锚用
+  // **CS3D referencedImageId === 当前 imageId**，不是 UI frameIndex ——
+  // wadouri 的 dicomfile:N 编号与帧序有偏移，frameIndex 锚会导致翻回原帧
+  // 不恢复（CS3D 显示过滤器只认 referencedImageId）。旧存档无
+  // referencedImageId 时退回 frame_index（无则第 0 帧）兜底。
   useEffect(() => {
     const element = ref.current;
     if (!element || !loaded || !archiveKey) return;
@@ -218,11 +220,13 @@ export default function WorkspaceDicomLayer({
           .then((cs) => {
             if (cancelled) return;
             cs.clearAnnotations();
-            // 帧级过滤（A.45 分期③）：旧存档无 frame_index 视为第 0 帧；
-            // 过滤后为空也跳过 restore（清场已把其他帧的注释拿掉）
-            const frameAnns = anns.filter(
-              (a) => ((a.frame_index as number | undefined) ?? 0) === frameIndex,
-            );
+            const curImgId = cs.getCurrentImageId(element);
+            const frameAnns = anns.filter((a) => {
+              const refId = (a.metadata as { referencedImageId?: string } | undefined)
+                ?.referencedImageId;
+              if (refId) return refId === curImgId;
+              return ((a.frame_index as number | undefined) ?? 0) === frameIndex;
+            });
             if (frameAnns.length === 0) {
               setSavedAnnotations(anns);
               return;

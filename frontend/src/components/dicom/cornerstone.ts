@@ -229,6 +229,23 @@ export function getStackIndex(element: HTMLElement): number | null {
   }
 }
 
+/** 当前帧的 imageId（A.50.6 E1）：帧级标注归属的锚。
+ *
+ * 帧级过滤必须用 imageId 而不是 UI frameIndex —— E1 真机探针实测：wadouri
+ * fileManager 的 dicomfile:N 编号与 UI 帧序**存在偏移**（画在第 1 帧的注释
+ * referencedImageId=dicomfile:1），CS3D 显示过滤器按 referencedImageId 匹配
+ * currentImageId，frameIndex 锚定会导致「翻回原帧不恢复」。
+ */
+export function getCurrentImageId(element: HTMLElement): string | null {
+  try {
+    const enabled = getEnabledElement(element as HTMLDivElement);
+    const id = (enabled.viewport as Types.IStackViewport).getCurrentImageId?.();
+    return typeof id === 'string' ? id : null;
+  } catch {
+    return null;
+  }
+}
+
 export function getViewport(element: HTMLElement) {
   try {
     const enabled = getEnabledElement(element as HTMLDivElement);
@@ -443,12 +460,15 @@ export function restoreAnnotations(
   const tgId = toolGroupByElement.get(element);
   const tg = tgId ? ToolGroupManager.getToolGroup(tgId) : null;
   for (const ann of annotations) {
-    if (!ann.toolName) continue;
+    // toolName 实际在 metadata.toolName（CS3D 序列化结构）——E1 真机探针实测：
+    // 顶层检查导致恢复全部被跳过（restored=0），翻回原帧永远画不出来。
+    const toolName = ann.toolName ?? (ann.metadata as { toolName?: string } | undefined)?.toolName;
+    if (!toolName) continue;
     try {
       // CS3D 5.x：addAnnotation(annotation, groupSelector) 两参
       annotation.state.addAnnotation(ann as never, element as never);
       // 已存注释只渲染不响应绘制 —— 工具组 Passive（在组内渲染，但不吃鼠标）
-      tg?.setToolPassive(ann.toolName);
+      tg?.setToolPassive(toolName);
       restored += 1;
     } catch {
       // 单条坏了不拖累整批
