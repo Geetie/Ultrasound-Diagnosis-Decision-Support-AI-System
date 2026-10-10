@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "project": "超声诊疗决策支持 AI 系统",
-  "updated_at": "2026-10-05",
+  "updated_at": "2026-10-10",
   "head_commit": "2d8e4b3",
   "branch": "main",
   "status_legend": {
@@ -534,6 +534,33 @@
       ],
       "resolution": "阶段 0 打通（.env OBS_TRACING + INIT 固定 key，CH langfuse 库手动建+37 迁移 SQL 应用，MinIO bucket 手动建）→ 阶段 1 PhiMaskingExporter（SG 同源人名/手机号/证件号/邮箱四类正则，失败占位不泄）+ 管线 dispatch/fusion/output 业务 span（gen_ai.* 语义属性）→ A.48 评测集采集（scripts/eval/langfuse_import.py，PG → /api/public/dataset-items）",
       "evidence": "A.47/A.48：Langfuse API 实证（dataset 创建/items 10 条导入/固定 key 鉴权全通）；quality 75（+phi mask 10 例）；OTLP ingest 500 与 CH init 缺失、MinIO bucket 缺失、UI 自动化四连坑全部记录在 16 号附录 A.47"
+    },
+    {
+      "id": "audit-e2e-pipelines",
+      "name": "端到端管线全量摸排（10 条管线 × 真机探针）",
+      "description": "P1 医生主流程走查 / P2 影像交互拖拽 / P3 测量标注 / P4 认证生命周期 / P5 同意撤回消费 / P6 设备生命周期 / P7 告警升级 / P8 报告分发验证 / P9 辅助管线 / P10 FHIR 互操作；探针套件入库 scripts/audit/ 可复跑",
+      "status": "done",
+      "result": "探针 71 PASS / 1 P2 观察（P7 contacts PUT 空表）；走查 21/21；修复 3 缺陷全部真机复验（cancelled 读路径、voice 500、设备同名 500）",
+      "dependencies": [],
+      "evidence": "16 号 A.49；scripts/audit/p0-p10；走查录屏 US-DX-医生全流程走查-A49管线摸排.webm"
+    },
+    {
+      "id": "speech-engine-deployment",
+      "name": "语音识别引擎部署（P2）",
+      "description": "服务器上 /api/v1/speech/health 报 engine_ready=false（模型/依赖未部署），recognize 按 SpeechError 语义 400。属部署缺口非代码缺陷；引擎就绪后复跑 scripts/audit/p9_aux_endpoints.py 复验",
+      "status": "planned",
+      "dependencies": [],
+      "resolution": "",
+      "evidence": "16 号 A.49（P9 探针：health 200 + engine_ready=false 如实上报）"
+    },
+    {
+      "id": "alert-contacts-empty-put",
+      "name": "告警联系人空表语义（P2）",
+      "description": "PUT /api/v1/admin/alert/contacts 对空列表做可达性验证失败 400 回滚——原值为空时无法通过 API 清空联系人（只能整组替换为可达配置）。语义怪点，需产品决策：支持显式空配置或保留必须≥1 可达联系人",
+      "status": "planned",
+      "dependencies": [],
+      "resolution": "",
+      "evidence": "16 号 A.49（P7 探针：GET 200 n=0、PUT [] 400 E1001）"
     }
   ]
 }

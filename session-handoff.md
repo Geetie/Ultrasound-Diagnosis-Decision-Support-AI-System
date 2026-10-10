@@ -5,8 +5,9 @@
 
 ## Last Updated
 
-2026-10-09（分支 `main` @ `2988f4d`；阅片全生命周期补齐 —— 多帧滚动收尾 +
-浏览工具激活 + 判读性能预热 + 报告打印，走查 18/18 PASS + 视频，详见 16 号附录 A.38）
+2026-10-10（分支 `main`；端到端管线全量摸排 —— 10 条管线真机探针 71 PASS/1 观察，
+修复 3 真缺陷（cancelled 读路径 / voice 500 / 设备同名 500）并全部复验，走查 21/21
++ 录屏 A49，详见 16 号附录 A.49）
 
 ## Current Objective
 
@@ -89,6 +90,25 @@ LLM 模型侧提速）。
 录像：`C:\Users\ghf\Videos\US-DX-医生视角走查-20261005.webm`（2.71MB）。
 走查脚本用 Playwright + 复用 `~\.agent-browser\browsers\chrome-154\chrome.exe`，
 录屏需 `npx playwright install ffmpeg`。**下一位做真浏览器验证时直接复用这套**。
+
+## A.49 端到端管线摸排（2026-10-10，下一位先读这段）
+
+**用户指令**：「走端到端摸排，列出要摸排的管线，一一排查过去！」10 条管线
+（走查/影像交互/测量标注/认证/同意撤回/设备/告警/报告分发/辅助/FHIR）逐一
+真机实测，探针套件**入库 `scripts/audit/`（p0_admin_bootstrap + p4~p10，
+可复跑）**：探针 71 PASS / 1 P2 观察。修复 3 真缺陷（详见 16 号 A.49.2），
+甄别 4 个探针误判（别再重查：refresh 宽限窗 30s / attributes 中文 503 是
+语言护栏 / FHIR 读端点要 consent 前置 / 设备同名注册已被拒绝）。
+
+**本轮踩坑（都会再犯的那种）**：
+- **build 丢 `VITE_BASE=/ui/` → 全站白屏**：每条命令都是新 shell，`$env:VITE_BASE`
+  必须与 build 同一条命令；build 后先查 `dist/index.html` 资源前缀再部署。
+- **登录限流**：探针登录几十次/天必撞 E1007 429——`scripts/audit/_audit_common.py`
+  login 已带退避重试；写新探针直接复用它（别再裸 curl login）。
+- **探针断言先对齐设计再跑**：8 个 FAIL 里 4 个是误判，先查代码定性。
+- 服务器 /tmp 历史探针剩 25 个（清理命令需审批窗口未执行，见硬规则 #11）。
+- smoke-admin（SYSTEM_ADMIN）账号已建（密码 ~/uai/.smoke_admin_pw，600），
+  管理面探针靠它；p0_admin_bootstrap.py 可重建。
 
 ## 凭据泄漏：已决定不轮换（A.28.10 更正 A.27.7 的建议）
 

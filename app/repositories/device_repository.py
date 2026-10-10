@@ -47,10 +47,16 @@ class DeviceRepository:
         return result.scalar_one_or_none()
 
     async def get_device_by_name(self, device_name: str) -> Device | None:
+        # 按名取**最新一条**：device_name 无 DB 唯一约束（database.py Devices 表），
+        # 历史脏数据/并发窗口可能留下同名多行 —— scalar_one_or_none() 会
+        # MultipleResultsFound → 注册/恢复端点 500（A.49 真机探针实测）。
         result = await self.db.execute(
-            select(Device).where(Device.device_name == device_name)
+            select(Device)
+            .where(Device.device_name == device_name)
+            .order_by(Device.id.desc())
+            .limit(1)
         )
-        return result.scalar_one_or_none()
+        return result.scalars().first()
 
     async def authenticate_device(
         self,

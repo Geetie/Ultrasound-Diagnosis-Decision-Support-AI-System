@@ -517,6 +517,45 @@ async def get_diagnosis_result(
     if not result:
         raise NotFoundException(error_message=f"Diagnosis result not found: {request_id}")
 
+    # 撤回消费链的 cancelled 终态必须**可读**：管线（diagnosis_pipeline.py 的
+    # CancelledError 处理）特意 asyncio.shield 写回 status=cancelled，供医生/审计
+    # 观测"请求因撤回被取消"。若让它先过下面的同意门，撤回患者的每个结果查询
+    # 都抛 E1010 —— 终态反而不可观测（A.49 真机探针实测：API observed=None，
+    # DB status=cancelled）。提前返回，且**不携带任何临床内容**（findings 占位）。
+    if result.status == "cancelled":
+        return DiagnosisResult(
+            request_id=request_id,
+            status="cancelled",
+            consistency_flag=ConsistencyFlag.CONSISTENT,
+            desensitization_status=DesensitizationStatus.FULL,
+            consent_status_at_output=ConsentStatus.WITHDRAWN,
+            fusion_status=FusionStatus.NORMAL,
+            diagnosis={
+                "organ": result.organ,
+                "findings": "Diagnosis cancelled: patient consent withdrawn",
+                "classification": "N/A",
+                "recommendation": "N/A",
+                "pending": True,
+            },
+            nodule_segmentation={"available": False, "reason": "cancelled"},
+            evidence=DiagnosisEvidence(knowledge_ids=None, content=None),
+            quality_control=DiagnosisQualityControl(
+                confidence_score=None,
+                self_rag_passed=False,
+                consistency_check_passed=False,
+            ),
+            requires_manual_review=True,
+            review_reason="consent_withdrawn_cancelled",
+            ai_diagnosis_failed=False,
+            hallucination_severity=None,
+            version_compatibility=check_version_compatibility(
+                settings.phase0a_mock_model_version, settings.phase0a_mock_kb_version
+            ),
+            processing_time_ms=0,
+            model_version=settings.phase0a_mock_model_version,
+            knowledge_base_version=settings.phase0a_mock_kb_version,
+        )
+
     session = await session_repo.get_session(result.session_id)
     patient_id = session.patient_id if session else "unknown"
     consent_record = await consent_repo.get_latest_consent(patient_id)

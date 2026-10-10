@@ -365,14 +365,6 @@ export interface MeasureResult {
   annotation?: Record<string, unknown>;
 }
 
-/** 医生画完一次测量（长度/椭圆）后回调的载荷。 */
-export interface MeasureResult {
-  tool: string;
-  /** 长度 mm 或面积 mm²（cornerstone 按 DICOM PixelSpacing 换算）。 */
-  value: number;
-  unit: 'mm' | 'mm²';
-}
-
 /**
  * 监听测量完成（A.40）。cornerstone 注释管线在 ANNOTATION_COMPLETED 时
  * 已用 PixelSpacing 把像素换算成 mm —— UI 只读结果，不自己算。
@@ -469,18 +461,5 @@ export function restoreAnnotations(
 }
 
 export { cornerstone, wadouri };
-
-/** 受控调试钩子（走查探针用）：当前主键激活工具与组内工具清单。 */
-export function debugToolState(): { active: string | null; tools: string[]; group: string | null } {
-  const tg = currentToolGroup();
-  return {
-    active: tg?.getActivePrimaryMouseButtonTool() ?? null,
-    tools: tg ? Object.keys(tg.getToolInstances()) : [],
-    group: currentToolGroupId,
-  };
-}
-if (typeof window !== 'undefined') {
-  (window as unknown as Record<string, unknown>).__uaiCs = { debugToolState };
-}
 
 export type { Types };

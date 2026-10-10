@@ -62,10 +62,18 @@ async def register_device(
     current_user: dict | None = Depends(admin_only),
 ):
     existing = await device_repo.get_device_by_name(request.device_name)
-    if existing and existing.status == "deregistered":
+    if existing:
+        # device_name 是设备身份（checkin/heartbeat 按名查询），必须全局唯一：
+        # deregistered 名复用违反安全策略；active 名复用则会造成同名多行，
+        # 让 get_device_by_name 的 scalar_one_or_none 炸成 500（A.49 探针实测）。
+        if existing.status == "deregistered":
+            raise BadRequestException(
+                error_code="E1001",
+                error_message=f"Device name '{request.device_name}' was previously deregistered and cannot be reused per security policy",
+            )
         raise BadRequestException(
             error_code="E1001",
-            error_message=f"Device name '{request.device_name}' was previously deregistered and cannot be reused per security policy",
+            error_message=f"Device name '{request.device_name}' is already in use by device {existing.device_id}",
         )
 
     device, raw_api_key = await device_repo.register_device(

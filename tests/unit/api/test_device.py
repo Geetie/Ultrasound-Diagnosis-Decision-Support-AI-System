@@ -77,6 +77,36 @@ class TestDeviceRegister:
         data = response.json()
         assert data["error_code"] == "E1001"
 
+    def test_register_active_same_name_returns_400(self, test_client, mock_deps):
+        """A.49 摸排修复：active 同名注册必须拒绝。
+
+        原实现只拦 deregistered 名，active 同名注册会写出**同名多行**——
+        device_name 无 DB 唯一约束，随后 get_device_by_name 的
+        scalar_one_or_none() 直接 MultipleResultsFound → 注册/恢复端点 500
+        （真机探针实测）。device_name 是设备身份（checkin/heartbeat 按名
+        查询），必须应用层保证唯一。
+        """
+        mock_existing = MagicMock()
+        mock_existing.status = "active"
+        mock_existing.device_id = "dev_20260516_exist01"
+
+        mock_deps["device_repo"].get_device_by_name = AsyncMock(return_value=mock_existing)
+
+        response = test_client.post(
+            "/api/v1/admin/device/register",
+            json={
+                "device_name": "ultrasound-probe-01",
+                "device_type": "portable",
+                "location": "room-301",
+                "jetpack_version": "1.0.0",
+            },
+        )
+
+        assert response.status_code == 400
+        data = response.json()
+        assert data["error_code"] == "E1001"
+        mock_deps["device_repo"].register_device.assert_not_awaited()
+
     def test_register_requires_system_admin(self, test_client, mock_deps):
         from app.main import app
         from app.security.auth import get_current_active_user

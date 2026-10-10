@@ -99,9 +99,23 @@ class TestNoHardcodedPlaceholdersRemain:
     def pipeline_source(self) -> str:
         return PIPELINE.read_text(encoding="utf-8")
 
-    def test_quality_control_is_not_hardcoded(self, api_source):
-        assert "self_rag_passed=False,\n" not in api_source
-        assert "consistency_check_passed=True,\n" not in api_source
+    @pytest.fixture(scope="class")
+    def main_read_path_source(self, api_source) -> str:
+        """主读路径源码（cancelled 提前返回之后的段落）。
+
+        A.49 起结果读路径有两条构造分支：cancelled 提前返回（占位 payload，
+        「未评估→不得声称通过」的保守 False 是**批准的语义**）与主路径。
+        本批守卫的对象是主路径 —— 锚定同意门之后的源码，既防守卫误伤
+        cancelled 分支、也防有人把硬编码塞回主路径。
+        """
+        anchor = "consent_status = check_consent_status(consent_record, patient_id)"
+        idx = api_source.find(anchor)
+        assert idx != -1, "主读路径锚点丢失（同意门被移走？）"
+        return api_source[idx:]
+
+    def test_quality_control_is_not_hardcoded(self, main_read_path_source):
+        assert "self_rag_passed=False,\n" not in main_read_path_source
+        assert "consistency_check_passed=True,\n" not in main_read_path_source
 
     def test_quality_control_derives_from_real_signals(self, api_source):
         # Self-RAG 取管线写回的真实值
@@ -109,8 +123,8 @@ class TestNoHardcodedPlaceholdersRemain:
         # 一致性以融合层的 review_reason 为真实信号
         assert '"consistency_failed"' in api_source
 
-    def test_ai_diagnosis_failed_follows_status(self, api_source):
-        assert "ai_diagnosis_failed=False,\n" not in api_source
+    def test_ai_diagnosis_failed_follows_status(self, api_source, main_read_path_source):
+        assert "ai_diagnosis_failed=False,\n" not in main_read_path_source
         assert 'ai_diagnosis_failed = result_status in ("failed", "timeout")' in api_source
 
     def test_pipeline_no_longer_hardcodes_consent(self, pipeline_source):
