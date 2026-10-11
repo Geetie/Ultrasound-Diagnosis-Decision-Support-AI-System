@@ -5,10 +5,9 @@
 
 ## Last Updated
 
-2026-10-11（分支 `main`；A.50.8 假外部依赖清理：E6 qdrant 上线（gh-proxy 二进制
-+ 3269 点迁移 + uuid5 id 修复，p11 9/9 走 qdrant）+ E7 OTA 真分发（p6 14/14）；
-真外部仅剩 E5/E10/E11/E13；**新钉子：git archive 同步覆盖未提交文件，先 commit
-再同步**，详见 16 号附录 A.50.8）
+2026-10-11（分支 `main`；A.50.9 E13 DICOM 真对端闭环销号（pynetdicom SCP +
+C-STORE 7/7）+ E11 HAPI cli 三版本排障（run-server 已废，等官方 docker 镜像
+窗口）；清单 12/15 销号，真外部剩 E5/E10/E11，详见 16 号附录 A.50.9）
 
 ## Current Objective
 

@@ -13,6 +13,12 @@
 
 ### What 已完成（有证据，详见 `feature_list.json` 与 16 号附录 A）
 
+- **E13/E11 攻坚（2026-10-11，A.50.9）**：**E13 DICOM 侧真实闭环销号**——
+  pynetdicom C-STORE SCP（UAI_PACS@127.0.0.1:11112）+ CAMUS 真实帧推送→
+  归档→读回一致 7/7；fhir_bridge 产出标准 R4 资源。E11：HAPI cli 三版本
+  run-server 全坏（batch2 缺 bean/AIOOBE，官方已弃）——等官方 docker 镜像
+  窗口（p13_fhir_hapi.py 已备好）。
+
 - **假外部依赖清理（2026-10-11，A.50.8）**：E6 **qdrant 上线**（gh-proxy 拉
   二进制、pgvector→qdrant 迁移 3269 点、qdrant_client uuid5 id 修复、p11 走
   qdrant 9/9）+ E7 **OTA 真分发落地**（ota_package_dir 配置 + 1MiB 包 +
