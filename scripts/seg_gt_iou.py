@@ -15,10 +15,14 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 import time
 from pathlib import Path
 
 import numpy as np
+
+# 允许从任意 cwd 直接运行：把仓库根（scripts/ 的上一级）加入 sys.path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 
 def main() -> int:

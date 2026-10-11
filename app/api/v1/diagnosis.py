@@ -213,6 +213,31 @@ async def submit_diagnosis_request(
 
     request_id = _generate_request_id()
 
+    # 幂等键并发占位（A.50.7 E12 探针实测：check-then-set 在并发窗口下两个
+    # 请求都 miss → 生成两个 request_id，幂等失效）。先在自己名下生成 id，
+    # 用 **SET NX 原子占位**；占位失败说明并发对手已占 —— 读对手的
+    # request_id 返回（复用其结果路径），自己不再落库/入队。
+    if request.idempotency_key:
+        idem_key = RedisKey.diagnosis_idempotency(request.idempotency_key)
+        placeholder = json.dumps({"request_id": request_id, "session_id": request.session_id})
+        won = await RedisPool.set_nx(idem_key, IDEMPOTENCY_TTL_SECONDS, placeholder)
+        if not won:
+            winner = await RedisPool.get_with_error(idem_key)
+            winner_id = ""
+            if not winner.error and winner.value:
+                winner_id = json.loads(winner.decode_value()).get("request_id", "")
+            if winner_id:
+                logger.info("idempotency_concurrent_reuse", key=request.idempotency_key,
+                            winner=winner_id, loser=request_id)
+                return DiagnosisRequestResponse(
+                    request_id=winner_id,
+                    session_id=request.session_id,
+                    status="processing",
+                    estimated_time_ms=3000 if request.response_tier == ResponseTier.FULL else 2000,
+                    response_tier=request.response_tier,
+                )
+            # NX 失败但读不到值（极端：对手刚过期）——继续走正常生成路径
+
     # request_id 必须由端点生成并**贯穿全链**（落库 / 入队 / 响应 / 结果查询）。
     # 若让 `create_request` 自己再生成一个，库里存的与队列里传的就是两个不同 id
     # → worker 永远 `pipeline_request_not_found`、请求永久停在 processing（真机实测）。

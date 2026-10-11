@@ -249,3 +249,21 @@ class RedisPool:
         except Exception as e:
             logger.error("redis_unexpected_error", operation="setex", key=key, error=str(e))
             return False
+
+    @classmethod
+    async def set_nx(cls, key: str, ttl: int, value: Any) -> bool:
+        """原子 SET NX EX：仅当 key 不存在时写入并返回 True。
+
+        幂等键防并发竞态用（A.50.7 E12 探针实测：check-then-set 双请求
+        竞态窗口下产生两个 request_id）——占位必须是原子的。
+        """
+        try:
+            client = await cls.get_client()
+            result = await client.set(key, value, nx=True, ex=ttl)
+            return bool(result)
+        except RedisError as e:
+            logger.warning("redis_set_nx_failed", key=key, ttl=ttl, error=str(e))
+            return False
+        except Exception as e:
+            logger.error("redis_unexpected_error", operation="set_nx", key=key, error=str(e))
+            return False
