@@ -216,11 +216,16 @@ class QdrantVectorIndex(VectorIndexClient):
         client = self._ensure_client()
         collection_name = self._collection_name(collection)
         try:
+            # qdrant point id 只接受 UUID/无符号整数——chunk_id 是任意字符串，
+            # 用 uuid5 确定性映射（同 id 幂等），原始 id 存 payload 供检索还原
+            # （A.50.8 E6 首次真用即暴露：400 Bad Request）
+            import uuid as _uuid
+
             points = [
                 qmodels.PointStruct(
-                    id=record.id,
+                    id=str(_uuid.uuid5(_uuid.NAMESPACE_URL, record.id)),
                     vector=record.vector,
-                    payload=dict(record.metadata),
+                    payload={**dict(record.metadata), "chunk_id": record.id},
                 )
                 for record in vectors
             ]
@@ -266,7 +271,8 @@ class QdrantVectorIndex(VectorIndexClient):
             )
             results = [
                 SearchResult(
-                    id=str(hit.id),
+                    # 还原原始 chunk_id（upsert 时存 payload；uuid5 点id 仅内部）
+                    id=str((hit.payload or {}).get("chunk_id") or hit.id),
                     score=float(hit.score),
                     metadata=dict(hit.payload or {}),
                 )

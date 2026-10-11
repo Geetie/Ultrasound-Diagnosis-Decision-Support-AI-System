@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException
 
 from app.api.v1.errors import BadRequestException, NotFoundException
 from app.api.v1.utils import get_actor_id
+from app.config.settings import settings
 from app.dependencies import get_audit_service, get_device_repo
 from app.models.database import Device
 from app.models.schemas import (
@@ -169,15 +170,33 @@ async def download_ota_package(
     version: str,
     device: Device = Depends(_authenticate_device),
 ):
-    """OTA 包下载（edge/ota_client.py 契约位）。
+    """OTA 包下载（edge/ota_client.py 契约位，A.50.8 E7 落地）。
 
-    本环境未部署 OTA 包分发基础设施：显式返回 501 使契约可见，
-    而非 404 令 edge 侧故障难归因。按需调用（无后台轮询），不影响
-    设备假隔离问题。
+    - ``settings.ota_package_dir`` 未配置 → 501（保持契约位可见）；
+    - 配置后从 ``{dir}/{package}/{version}/{package}-{version}.bin`` 分发，
+      FileResponse 原生支持 Range（edge 断点续传 200/206）；
+    - 已过设备认证（X-Device 头），包不存在 → 404 供 edge 归因。
     """
-    raise HTTPException(
-        status_code=501,
-        detail=f"OTA distribution is not deployed (package={package}, version={version})",
+    from pathlib import Path
+
+    from fastapi.responses import FileResponse
+
+    raw_dir = (settings.ota_package_dir or "").strip()
+    if not raw_dir:
+        raise HTTPException(
+            status_code=501,
+            detail=f"OTA distribution is not deployed (package={package}, version={version})",
+        )
+    base = Path(raw_dir).expanduser()
+    pkg_file = base / package / version / f"{package}-{version}.bin"
+    if not pkg_file.is_file():
+        raise NotFoundException(
+            error_message=f"OTA package not found: {package}@{version}"
+        )
+    return FileResponse(
+        pkg_file,
+        media_type="application/octet-stream",
+        filename=pkg_file.name,
     )
 
 

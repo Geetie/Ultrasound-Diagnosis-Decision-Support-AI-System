@@ -402,6 +402,9 @@ class Settings(BaseSettings):
 
     speech_engine: str = 'funasr'
     funasr_model_dir: str = 'models/funasr'
+    # OTA 包分发根目录（A.50.8 E7）：空=未部署（OTA 端点保持 501 契约位）；
+    # 配置后端点从 {dir}/{package}/{version}/{package}-{version}.bin 分发。
+    ota_package_dir: str = ''
     funasr_device: str = 'cpu'
     funasr_num_threads: int = 4
     speech_timeout_seconds: float = 10.0

@@ -2,7 +2,7 @@
 
 认证模型：register/deregister/recovery/remote-recovery = 管理员 Bearer；
 checkin/heartbeat/health/ota = X-Device-Id + X-Device-Token（原始 api_key）。
-OTA 恒 501（未部署，device.py:158-173，属已知设计态）。
+OTA：A.50.8 E7 落地真分发（settings.ota_package_dir 配置后 200/404）。
 状态机负断言：active 设备不可 recovery/remote-recovery（quarantined 前置）；
 deregistered 后设备头认证必须失效。
 """
@@ -60,9 +60,13 @@ def main() -> int:
     code, _ = http("POST", "/api/v1/admin/device/health", body={"device_id": did}, headers=dev_hdr)
     check("health 200", code == 200, f"http={code}")
 
-    # 7) OTA 恒 501（未部署，设计态）
-    code, _ = http("GET", "/api/v1/admin/device/ota/model/1.0.0", headers=dev_hdr)
-    check("OTA 501（未部署设计态）", code == 501, f"http={code}")
+    # 7) OTA：A.50.8 E7 落地后真分发（200 二进制；不存在的版本 404；
+    #    未配置分发目录的服务器仍 501 契约位）
+    code, body = http("GET", "/api/v1/admin/device/ota/edge-model/1.0.1", headers=dev_hdr)
+    size = len(body) if isinstance(body, (bytes, str)) else 0
+    check("OTA 下载 200（真分发）", code == 200 and size > 0, f"http={code} bytes={size}")
+    code, _ = http("GET", "/api/v1/admin/device/ota/edge-model/9.9.9", headers=dev_hdr)
+    check("OTA 不存在版本 -> 404", code == 404, f"http={code}")
 
     # 8) 状态机负断言：active 不可 recovery / remote-recovery
     code, _ = http("POST", f"/api/v1/admin/device/{did}/recovery", token=atok)
