@@ -12,7 +12,6 @@ E11：我们 fhir.py 产出的 Patient 资源 POST 进 HAPI —— 行业实现�
 """
 from __future__ import annotations
 
-import json
 import os
 import sys
 
@@ -20,7 +19,7 @@ import httpx
 
 sys.path.insert(0, os.path.dirname(__file__))
 
-from _audit_common import BASE, check, load_ctx, login, pw, summary  # noqa: E402
+from _audit_common import BASE, check, load_ctx, login, pw, summary
 
 HAPI = "http://127.0.0.1:8080/fhir"
 BRIDGE = "http://127.0.0.1:8091"
@@ -44,9 +43,12 @@ def main() -> int:
                 headers={"Authorization": f"Bearer {tok}"},
             )
             body = r.json()
-            ok = r.status_code == 200 and body.get("pacs_adapter") == "http" and body.get("pacs_status") == "pushed"
+            # 响应契约：{adapter, status:"success"/"pushed", message}
+            pushed = body.get("pacs_status") or body.get("status")
+            ok = r.status_code == 200 and body.get("adapter", body.get("pacs_adapter")) == "http" \
+                and pushed in ("success", "pushed")
             check("E13 push 走 http adapter 成功", ok,
-                  f"http={r.status_code} adapter={body.get('pacs_adapter')} status={body.get('pacs_status')}")
+                  f"http={r.status_code} adapter={body.get('adapter') or body.get('pacs_adapter')} status={pushed}")
 
             rb = await c.get(f"{BRIDGE}/reports/{rep}")
             readback = rb.json()

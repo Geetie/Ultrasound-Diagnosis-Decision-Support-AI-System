@@ -13,6 +13,12 @@
 
 ### What 已完成（有证据，详见 `feature_list.json` 与 16 号附录 A）
 
+- **E11/E13 真 HAPI 闭环（2026-10-12，A.50.10）**：本机 maven 构建
+  jpaserver-starter 8.12（370MB war）→ 服务器 java21 起**真 HAPI**（8080/fhir）
+  → E13 报告 push 真进 HAPI（LOINC/presentedForm 读回 7/7）+ E11 我方 Patient
+  被 HAPI 裁决 201（7/7）+ fhir.resources 合规 5/5。**清单 14/15 销号**，
+  真外部仅剩 E5/E10。
+
 - **E13/E11 攻坚（2026-10-11，A.50.9）**：**E13 DICOM 侧真实闭环销号**——
   pynetdicom C-STORE SCP（UAI_PACS@127.0.0.1:11112）+ CAMUS 真实帧推送→
   归档→读回一致 7/7；fhir_bridge 产出标准 R4 资源。E11：HAPI cli 三版本

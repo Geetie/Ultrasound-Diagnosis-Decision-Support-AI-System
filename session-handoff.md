@@ -5,9 +5,16 @@
 
 ## Last Updated
 
-2026-10-11（分支 `main`；A.50.9 E13 DICOM 真对端闭环销号（pynetdicom SCP +
-C-STORE 7/7）+ E11 HAPI cli 三版本排障（run-server 已废，等官方 docker 镜像
-窗口）；清单 12/15 销号，真外部剩 E5/E10/E11，详见 16 号附录 A.50.9）
+2026-10-12（分支 `main`；A.50.10 **E11/E13 真 HAPI 闭环销号**——本机 maven
+构建 starter 8.12 war → 服务器 java21 起真 FHIR server；报告 push 真进 HAPI
+（报 7/7）+ 我方 Patient 被 HAPI 裁决（7/7）+ fhir.resources 5/5。清单 14/15
+销号，真外部仅剩 E5（医生语音样本，待拍板近似方案）/E10（HSM 采购））
+
+### 常驻服务新增（复跑 p13 前确认在跑）
+- HAPI：`cd ~/uai/hapi && nohup java -jar ROOT.war --server.address=127.0.0.1 --server.port=8080 > ~/uai/logs/hapi_war.log 2>&1 &`（30s 就绪，`/fhir/metadata`）
+- bridge：`cd ~/uai/src && FHIR_BRIDGE_HAPI_URL=http://127.0.0.1:8080/fhir nohup ~/uai/venv/bin/python scripts/fhir_bridge.py > ~/uai/logs/fhir_bridge.log 2>&1 &`（8091）
+- PACS SCP：`cd ~/uai/src && nohup ~/uai/venv/bin/python scripts/pacs_scp.py > ~/uai/logs/pacs_scp.log 2>&1 &`（11112）
+- **~/uai/.env 已设 PACS_ADAPTER=http / PACS_ENDPOINT=http://127.0.0.1:8091/reports**（报告 push 真出进程）
 
 ## Current Objective
 
