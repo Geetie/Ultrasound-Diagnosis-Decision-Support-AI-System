@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "project": "超声诊疗决策支持 AI 系统",
-  "updated_at": "2026-10-10",
+  "updated_at": "2026-10-12",
   "head_commit": "218fccb",
   "branch": "main",
   "status_legend": {
@@ -456,11 +456,12 @@
       "id": "seg-accuracy-unverified-gt",
       "name": "P1 分割准确性未做 GT 对照验证",
       "description": "bbox 标注链路已通，但准确性从未验证：cardiac 会话 + CAMUS 自带 GT mask 叠加对照（IoU 数字化）未做；且 organ 错派（心脏图按甲状腺分派）时后端照常输出『病灶』而非拒绝/告警——错误器官语义的输出比不输出更危险。2026-10-09 已实测（A.40）：patient0001 4CH 5 帧 GT 对照 IoU 均值 0.3107、全部帧 <0.6 —— 官方 Dice 0.8395 与全结构 GT 并集口径差距大，准确性缺口量化成立",
-      "status": "planned",
+      "status": "done",
       "dependencies": [
         "ui-no-dicom-upload-entry"
       ],
-      "evidence": "A.42 口径调研定案：unet_camus.pt 分割目标是**心肌 MYO**（GT 标签 2），MYO 口径 IoU 0.58（0.53~0.62，3 帧）≈官方 Dice 0.8395；LV 0.12、ATR 0.0（模型不判心房）、全并集 0.31 均为口径错配。seg_gt_iou.py 默认口径改 --label 2（MYO）。剩余优化=CPU→GPU 推理与多病例稳定度，验收线 MYO IoU ≥0.6"
+      "evidence": "reports/seg_gt_iou_multi_cardiac_20261011_*.json（CPU/GPU 双份）",
+      "resolution": "A.50.7 全量销号：500 例×5 帧 MYO mean 0.7388 / 95.2% 病例 ≥0.6（CPU 与 GPU 逐帧一致）；长尾 24 例 <0.6（最差 0.3636）登记观察项"
     },
     {
       "id": "multi-frame-diagnosis-gap",
@@ -566,10 +567,19 @@
       "id": "qdrant-deployment",
       "name": "Qdrant 向量库部署（P2 观察，A.50 定性）",
       "description": "服务器 qdrant 未启动（health_check 失败），vector_index_auto_fallback=True 使 RAG 检索跑 pgvector 降级链路（vector_index_knowledge_chunks 4526 行/62MB，当日报判读检索正常返回）。属设计内降级，非缺陷；qdrant 上线后需复测检索质量口径（Gate 2 的 98.53% 是 eval 脚本直算口径，与服务 pgvector 路径等价性未验）",
-      "status": "planned",
+      "status": "done",
+      "dependencies": [],
+      "resolution": "A.50.8 上线：qdrant v1.12.4 二进制（gh-proxy 通道）+ pgvector→qdrant 迁移 3269 点 + qdrant_client uuid5 id 修复；主服务无降级、p11 走 qdrant 9/9",
+      "evidence": "16 号 A.50.8；scripts/qdrant_migrate_from_pgvector.py；检索日志 qdrant_search_completed"
+    },
+    {
+      "id": "e5-speech-medical-verify",
+      "name": "语音医疗术语实效验证（原摸排清单 E5）",
+      "description": "ASR 链路已通（模型自带真实语音 3/3），但「医生口述+医疗术语实测」缺真实样本。公开「医生口述超声报告」中文数据集不存在；用户 2026-10-12 决策：真实医生样本暂不可得——本项挂起",
+      "status": "blocked",
       "dependencies": [],
       "resolution": "",
-      "evidence": "16 号 A.50.5（api.log：qdrant_health_check_failed + pgvector_search_completed returned=20）"
+      "evidence": "16 号 A.50.3/A.50.10（转写链路证据已有；质量验收缺口如实登记）"
     }
   ]
 }
