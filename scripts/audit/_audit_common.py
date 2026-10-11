@@ -35,6 +35,7 @@ def http(
     form: dict | None = None,
     headers: dict | None = None,
     timeout: float = 30.0,
+    raw_response: bool = False,
 ):
     data = None
     hdrs = dict(headers or {})
@@ -49,7 +50,10 @@ def http(
         req.add_header("Authorization", f"Bearer {token}")
     try:
         with urllib.request.urlopen(req, timeout=timeout) as r:
-            raw = r.read().decode("utf-8", "replace")
+            payload = r.read()
+            if raw_response:
+                return r.status, payload  # 二进制（OTA 等非 JSON 端点）
+            raw = payload.decode("utf-8", "replace")
             if raw.strip().startswith(("{", "[")):
                 return r.status, json.loads(raw)
             return r.status, {"raw": raw[:200]}

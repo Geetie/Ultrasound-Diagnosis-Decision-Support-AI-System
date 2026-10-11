@@ -60,11 +60,12 @@ def main() -> int:
     code, _ = http("POST", "/api/v1/admin/device/health", body={"device_id": did}, headers=dev_hdr)
     check("health 200", code == 200, f"http={code}")
 
-    # 7) OTA：A.50.8 E7 落地后真分发（200 二进制；不存在的版本 404；
+    # 7) OTA：A.50.8 E7 落地后真分发（200 二进制 1MiB；不存在的版本 404；
     #    未配置分发目录的服务器仍 501 契约位）
-    code, body = http("GET", "/api/v1/admin/device/ota/edge-model/1.0.1", headers=dev_hdr)
-    size = len(body) if isinstance(body, (bytes, str)) else 0
-    check("OTA 下载 200（真分发）", code == 200 and size > 0, f"http={code} bytes={size}")
+    code, blob = http("GET", "/api/v1/admin/device/ota/edge-model/1.0.1",
+                      headers=dev_hdr, raw_response=True)
+    check("OTA 下载 200（真分发 1MiB）", code == 200 and len(blob) == 1048576,
+          f"http={code} bytes={len(blob)}")
     code, _ = http("GET", "/api/v1/admin/device/ota/edge-model/9.9.9", headers=dev_hdr)
     check("OTA 不存在版本 -> 404", code == 404, f"http={code}")
 
