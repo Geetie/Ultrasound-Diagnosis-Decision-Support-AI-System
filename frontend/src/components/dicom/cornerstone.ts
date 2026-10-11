@@ -239,7 +239,10 @@ export function getStackIndex(element: HTMLElement): number | null {
 export function getCurrentImageId(element: HTMLElement): string | null {
   try {
     const enabled = getEnabledElement(element as HTMLDivElement);
-    const id = (enabled.viewport as Types.IStackViewport).getCurrentImageId?.();
+    // CS3D 的类型签名允许 undefined（元素未 enable）——此前靠 tsc 增量缓存
+    // 侥幸没报，清缓存重建即 TS18048。这里显式守卫，行为不变（无 viewport 时
+    // 返回 null，正是 catch 分支的老语义）。
+    const id = (enabled?.viewport as Types.IStackViewport | undefined)?.getCurrentImageId?.();
     return typeof id === 'string' ? id : null;
   } catch {
     return null;

@@ -471,7 +471,7 @@
       "dependencies": [
         "ui-no-dicom-upload-entry"
       ],
-      "evidence": "A.38：vitest WorkspaceDicomLayer 5 例（多帧 setStack 整栈/单帧默认沉默/翻帧调用/工具互斥/空栈沉默）+ WorkspaceImageUpload multiple 用例；渲染守卫 TestReadingLifecycle +3；真机走查 4b/4c/4d（双帧装载→指示器 1/2→键盘翻 2/2）。二期（多帧 DICOM NumberOfFrames/cine 关键帧）三期（帧级标注归属）另行登记；分期③帧级归属（A.45）：保存带 frame_index、恢复按帧过滤、翻帧清场重恢复——vitest 10 例 + 走查 21/21",
+      "evidence": "A.38：vitest WorkspaceDicomLayer 5 例（多帧 setStack 整栈/单帧默认沉默/翻帧调用/工具互斥/空栈沉默）+ WorkspaceImageUpload multiple 用例；渲染守卫 TestReadingLifecycle +3；真机走查 4b/4c/4d（双帧装载→指示器 1/2→键盘翻 2/2）。二期（多帧 DICOM NumberOfFrames/cine 关键帧）三期（帧级标注归属）另行登记；分期③帧级归属（A.45）：保存带 frame_index、恢复按帧过滤、翻帧清场重恢复——vitest 10 例 + 走查 21/21；16 号 A.51②（择优帧 + 帧级归属）",
       "resolution": "分期①全链路补齐（A.38）：input multiple 多选 → useDicomUpload 聚合本地/服务端副本显示栈 → StackViewport setStack 多帧 + 帧指示器「n/N ‹ ›」+ 键盘←→翻帧 + 浏览工具胶囊组（窗宽窗位/缩放/平移互斥单选）。此前「上传侧已通」仅指管线收数组，UI 单文件多帧根本选不出来（走查实测）"
     },
     {
@@ -580,6 +580,53 @@
       "dependencies": [],
       "resolution": "",
       "evidence": "16 号 A.50.3/A.50.10（转写链路证据已有；质量验收缺口如实登记）"
+    },
+    {
+      "id": "retrieval-parity-service-path",
+      "name": "检索服务路径口径闭合（服务腿 vs Gate 2 eval）",
+      "description": "Gate 2 的 98.53% 一直来自 eval 脚本直连 PG 语料的进程内口径，生产服务路径（Retriever→qdrant）从未验证等价。p15 同进程双跑对比。",
+      "status": "done",
+      "gate": "服务腿与 eval 腿 Top10 差 ≤2pp",
+      "result": "eval 0.9853 / 服务腿 0.9853，diff +0.00pp；过程中修复两个真缺陷（qdrant-client ≥1.14 移除 search() 致 dense 腿静默全空；kb_v1.3.0 向量从未灌 qdrant）",
+      "dependencies": [
+        "qdrant-deployment",
+        "kb-v13"
+      ],
+      "evidence": "16 号 A.51①；scripts/audit/p15_retrieval_parity.py；app/embedding/qdrant_client.py（query_points）"
+    },
+    {
+      "id": "multiframe-best-frame-selection",
+      "name": "多帧分期③：择优帧 + 帧级归属（报告/前端）",
+      "description": "分割旁路原固定取 rows[0] + 中间帧，无择优语义、报告与前端无帧归属。改为候选帧集（多影像前 2 张代表帧 / 单文件多帧 mid±2）按 mean_prob 择优，报告写帧号，前端只在该帧渲染分割。",
+      "status": "done",
+      "result": "p17（多影像）15/15 PASS；p18（单文件 7 帧）12/12 PASS——采样 [3,1,5]、chosen=5==argmax、报告含「第 6/7 帧（多帧候选择优）」",
+      "dependencies": [
+        "multi-frame-diagnosis-gap",
+        "ui-dicom-real-images"
+      ],
+      "evidence": "16 号 A.51②；scripts/audit/p17_multiframe_segmentation.py、p18_multiframe_singlefile.py；tests/unit/services/test_multiframe_frame_selection.py；frontend WorkspaceImageRegion.test.tsx"
+    },
+    {
+      "id": "admin-list-endpoints",
+      "name": "设备台账 + 患者列表端点（管理面/建会话）",
+      "description": "device.py 无 list 端点、系统无 patients 路由，走查只能「校验 + 手工录入」补位。新增 GET /api/v1/admin/device（分页/过滤/零 api_key）与 GET /api/v1/patients（模糊检索 + 同意状态 + 最近会话），前端建会话页接患者候选下拉。",
+      "status": "done",
+      "result": "p16 14/14 PASS（401/403、分页翻页、无 api_key、模糊命中、total=0 不虚构）",
+      "dependencies": [],
+      "evidence": "16 号 A.51③；scripts/audit/p16_list_endpoints.py；tests/unit/api/test_list_endpoint_contracts.py"
+    },
+    {
+      "id": "fusion-validate-budget-degrade",
+      "name": "fusion-validate 复测与降载（P99 < 1.5s）",
+      "description": "validate 级（含 Self-RAG LLM）从未复测；pipeline_fusion_budget_s 是孤儿配置。本轮先量后改：消 Self-RAG 评估重试重叠 + 接线 validate 预算（超时优雅降级）+ 非 FULL 档跳过 Self-RAG LLM + 降级不触发 CRAG。",
+      "status": "done",
+      "gate": "validate P99 < 1500ms",
+      "result": "基线 P50 1853.8/P99 2295.7ms（NOT_MET，双峰）→ 复测 P50 717.5/P99 884.6ms PASS；降级路径实测 validate_degraded=1 且结果正常返回（非 5xx）",
+      "dependencies": [
+        "fusion-parallel-degrade",
+        "diagnosis-dispatcher-latency"
+      ],
+      "evidence": "16 号 A.51④；scripts/audit/p14b_validate_bench.py；tests/unit/fus/test_validate_budget_degrade.py"
     }
   ]
 }

@@ -40,6 +40,7 @@ from app.api.v1.fhir import router as fhir_router
 from app.api.v1.health import router as health_router
 from app.api.v1.imaging import router as imaging_router
 from app.api.v1.obs_dashboard import router as obs_dashboard_router
+from app.api.v1.patients import router as patients_router
 from app.api.v1.report import router as report_router
 from app.api.v1.security import router as security_router
 from app.api.v1.segmentation import router as segmentation_router
@@ -572,7 +573,13 @@ async def lifespan(app: FastAPI):
         conflict_detector = ConflictDetector()
         consistency_checker = ConsistencyChecker(rag_service=rag_service)
         self_rag_evaluator = (
-            SelfRAGEvaluator(inference_engine=inference_engine)
+            SelfRAGEvaluator(
+                inference_engine=inference_engine,
+                # A.51 降载：评估重试与 CRAG 兜底功能重叠，默认 0（单次评估）。
+                # 失败仍走 CRAG 重生成 + needs_review，临床语义不变。
+                max_retries=int(getattr(settings, "self_rag_max_retries", 0)),
+                retry_delay=float(getattr(settings, "self_rag_retry_delay_s", 0.0)),
+            )
             if inference_engine is not None
             else None
         )
@@ -608,6 +615,8 @@ async def lifespan(app: FastAPI):
             self_rag_evaluator=self_rag_evaluator,
             crag_handler=crag_handler,
             rag_service=rag_service,
+            # A.51：validate 级预算（超时 → needs_review 优雅降级）
+            validate_budget_s=float(getattr(settings, "pipeline_validate_budget_s", 0.0)),
         )
         app.state.fusion_engine = fusion_engine
         _logger.info(
@@ -801,6 +810,8 @@ app.include_router(internal_alerts_router, prefix="/api/v1/internal/alerts")
 app.include_router(ws_nav_router)
 app.include_router(ws_dicom_router)
 app.include_router(fhir_router, prefix="/fhir")
+# A.51：患者列表/检索（走查实证缺失的端点；路由自带 /patients 路径）
+app.include_router(patients_router, prefix="/api/v1")
 app.include_router(report_router, prefix="/api/v1/report")
 
 app.add_exception_handler(AppBaseException, app_exception_handler)

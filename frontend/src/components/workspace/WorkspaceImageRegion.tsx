@@ -25,6 +25,7 @@
  *   2:101测量框数据 y250..400 → 实测绝对 290..440
  *   深度刻度6 行行距 数据 lineHeight 96 → 实测 96.0，间隔精确一致
  */
+import { useState } from 'react';
 import type { ReactNode } from 'react';
 import WorkspaceDicomLayer from './WorkspaceDicomLayer';
 import type { SegmentationView } from '@/services/diagnosisAdapter';
@@ -36,6 +37,28 @@ const SEG_REASON_LABEL: Record<string, string> = {
   image_not_indexed: '影像索引缺失',
   image_bytes_unavailable: '影像字节不可读',
 };
+
+/**
+ * A.51 帧级归属判定：分割结果是否属于"正在看的这一帧"。
+ *
+ * 规则（与后端 selection_policy 对应）：
+ *  - 未收到渲染事件（liveFrame=null）→ 视为首帧，允许渲染（避免首帧前闪烁空白）；
+ *  - 分割自带 image_id 且与当前帧的 image_id 不同 → 不属于（多影像栈）；
+ *  - 单张多帧（totalFrames>1）→ 必须 frameIndex 相等（择优帧只在那一帧呈现）；
+ *  - 其余（单帧影像）→ 属于。
+ */
+export function segBelongsToLiveFrame(
+  seg: SegmentationView | undefined,
+  liveFrame: { index: number; imageId: string } | null,
+): boolean {
+  if (!seg?.available) return false;
+  if (liveFrame === null) return true;
+  if (seg.imageId && liveFrame.imageId && seg.imageId !== liveFrame.imageId) return false;
+  if (seg.totalFrames != null && seg.totalFrames > 1) {
+    return seg.frameIndex === liveFrame.index;
+  }
+  return true;
+}
 
 export default function WorkspaceImageRegion({
   organBar,
@@ -68,6 +91,11 @@ export default function WorkspaceImageRegion({
   // 真实影像显示时必须隐藏 —— 假框叠在真片子上等于伪造标注（2026-10-08 走查发现）。
   const showMock = stack.length === 0;
   const seg = stack.length > 0 ? segmentation : undefined;
+  // A.51 帧级归属：当前正在看的（帧号, image_id）由 DICOM 层上抛。
+  // 分割覆盖层只在"它所属的那个影像/帧"上渲染，翻到别的帧自动隐藏——
+  // 否则多帧栈里会出现"这一帧根本没跑分割，却叠了上一帧的框"的错标。
+  const [liveFrame, setLiveFrame] = useState<{ index: number; imageId: string } | null>(null);
+  const segFrameMatches = segBelongsToLiveFrame(seg, liveFrame);
   const bbox = seg?.available ? seg.bbox : null;
   const areaLabel = seg?.available
     ? seg.area_mm2 != null
@@ -82,12 +110,17 @@ export default function WorkspaceImageRegion({
       {/* 真实 DICOM 层（在叠加标注之下）。渐变仍留在 CSS 里当底色与加载兜底。
           多帧时 DicomLayer 内部出帧指示器与浏览工具（默认沉默口径在层内）。 */}
       {stack.length > 0 && (
-        <WorkspaceDicomLayer imageIds={stack} archiveKey={annotationArchiveKey} />
+        <WorkspaceDicomLayer
+          imageIds={stack}
+          archiveKey={annotationArchiveKey}
+          onFrameChange={(index, imageId) => setLiveFrame({ index, imageId })}
+        />
       )}
 
       {/* 分割旁路标注：bbox 画在 SVG 上，viewBox = 分割帧像素尺寸。
-          Cornerstone fit 与 SVG meet 的 letterbox 数学一致，坐标因此对齐显示的影像。 */}
-      {seg?.available && seg.width != null && seg.height != null && (
+          Cornerstone fit 与 SVG meet 的 letterbox 数学一致，坐标因此对齐显示的影像。
+          A.51：仅当当前帧/影像 == 分割所属帧/影像时渲染（segFrameMatches）。 */}
+      {seg?.available && segFrameMatches && seg.width != null && seg.height != null && (
         <svg
           className="ws-image__seg"
           viewBox={`0 0 ${seg.width} ${seg.height}`}
@@ -120,6 +153,20 @@ export default function WorkspaceImageRegion({
             </text>
           )}
         </svg>
+      )}
+
+      {/* A.51 帧级归属提示：分割存在但不在当前帧 → 告诉医生去哪里看，
+          避免误以为"这一帧没有分割结果"。 */}
+      {seg?.available && !segFrameMatches && stack.length > 0 && (
+        <span
+          className="ws-image__text"
+          style={{ left: 24, bottom: 12, width: 460 }}
+          data-region="segmentation-off-frame"
+        >
+          {`分割结果在第 ${(seg.frameIndex ?? 0) + 1}/${seg.totalFrames ?? 1} 帧（${
+            seg.selectionPolicy === 'best_mean_prob' ? '多候选择优' : '单帧'
+          }）· 翻页查看`}
+        </span>
       )}
 
       {/* 后端契约：available=false 必须显示「未做分割：<原因>」，不能显示成

@@ -1,7 +1,7 @@
 # progress.md — 当前状态（唯一「现在在哪」来源）
 
-**Last Updated**: 2026-10-11（A.50 远期第一梯队）
-**HEAD**: 分支 `main`（本轮：告警联系人语义定案 + make fe-smoke + 语音引擎部署（paraformer 特征管线补齐），全部真机复验，详见 16 号附录 A.50）
+**Last Updated**: 2026-10-12（A.51 远期第一梯队四项收口）
+**HEAD**: 分支 `main`（本轮：检索口径闭合（服务腿 vs eval diff +0.00pp）+ 多帧分期③择优帧 + 设备/患者列表端点 + fusion-validate 降载（P99 2296→885ms），四项均真机探针复验，详见 16 号附录 A.51）
 **Owner of truth**: 本文件只记「当前状态/下一步/阻塞」；**功能与门控状态在 `feature_list.json`**，长期证据在 `16-开发进展汇报-20260928.md` 附录 A。
 
 ## Current Objective
@@ -12,6 +12,24 @@
 ## Current State
 
 ### What 已完成（有证据，详见 `feature_list.json` 与 16 号附录 A）
+
+- **远期第一梯队四项收口（2026-10-12，A.51）**：
+  ①**检索口径闭合**——p15 同进程双跑（服务器真机）：eval 腿 hit@10 **0.9853**（完美
+  复现 Gate 2）、服务腿（Retriever→qdrant）**0.9853，diff +0.00pp**；过程中抓到
+  **两个真缺陷**（qdrant-client ≥1.14 移除 `search()` 致 dense 腿静默全空 + kb_v1.3.0
+  向量从未灌 qdrant），已修并重灌（qdrant 现纯 kb_v1.3.0/1257 点）。
+  ②**多帧分期③帧级归属**——分割旁路由「rows[0]+中间帧」升级为**候选择优帧**
+  （多影像取前 2 张代表帧 / 单文件多帧取 mid±2，按 mean_prob 择优），报告写「第 X/Y 帧
+  （多帧候选择优）」，前端按帧门控渲染；真机 p17 **15/15**（多影像）、p18 **12/12**
+  （单文件 7 帧 → 采样 [3,1,5]、chosen=5==argmax、报告含「第 6/7 帧」）。
+  ③**设备/患者列表端点**——`GET /api/v1/admin/device`（分页/过滤、**零 api_key**）+
+  `GET /api/v1/patients`（模糊检索 + 同意状态 + 最近会话），前端建会话页接患者候选
+  下拉（手工录入路径不变）；真机 p16 **14/14**。**踩坑**：新增 schema 时插入边界吃掉
+  相邻 `expires_at` → 运行期 ValidationError（静态检查发现不了），已加字段集守卫测试。
+  ④**fusion-validate 降载**——基线 P50 1854/P99 2296ms（NOT_MET，双峰）→ 消 Self-RAG
+  评估重试重叠 + 接线 validate 预算（超时优雅降级 needs_review）+ 非 FULL 档跳过
+  Self-RAG LLM → 复测 **P50 717.5 / P99 884.6ms PASS**；降级路径真机实测
+  `validate_degraded=1` 且结果正常返回（非 5xx）。
 
 - **E11/E13 真 HAPI 闭环（2026-10-12，A.50.10）**：本机 maven 构建
   jpaserver-starter 8.12（370MB war）→ 服务器 java21 起**真 HAPI**（8080/fhir）
@@ -144,11 +162,12 @@
 
 ## Recommended Next Step
 
-1. **交付收口（2026-10-11 A.50 更新，距 10-17 交付）**：P2 登记两项已销号
-   （speech 引擎已部署、告警联系人语义已定案）。**剩余**：①NMPA 验收材料
-   （用户拍板：留到性能数据提升、远期目标攻克之后）；②设备/患者列表端点
-   （校验+录入补位可用）；③远期第二梯队候选：多帧分期③帧级归属、
-   fusion-validate 降载、分割 MYO GPU 全量稳定度（见 21 号路线图）。
+1. **交付收口（2026-10-12 A.51 更新，距 10-17 交付）**：P2 登记两项已销号
+   （speech 引擎已部署、告警联系人语义已定案）；本轮第一梯队四项（检索口径、多帧③、
+   设备/患者列表端点、validate 降载）**全部闭环**。**剩余**：①NMPA 验收材料
+   （用户拍板：留到性能数据提升、远期目标攻克之后）；②远期第二梯队候选：
+   分割 MYO GPU 全量稳定度、ULC graph-fusion 拼装、EchoCare 分割评测
+   （见 21 号路线图）。
 2. **语音功能验收待真实医生语音样本**：转写链路已通（模型自带语音 3/3），
    医疗术语标注的实效需医生真实口述样本验证（A.50.3 如实登记）。
 3. **把真浏览器守卫接进门禁的第二层**：`make fe-smoke` 已就绪（本机 20/20），
@@ -183,6 +202,11 @@
 | `reports/concurrency_perf_report.json` | 阶梯并发压测（1/5/10/20/50，P50/P95/P99/429/队列积压） |
 | `tests/reports/t2c_e2e_report_final2.json` | T2c 端到端 |
 | `tests/reports/phase0a_retest_v2.json` | Gate 0A-T-P0 重测（口径 A） |
+| `scripts/audit/p15_retrieval_parity.py` | A.51 检索口径（服务腿 vs eval，真机可复跑） |
+| `scripts/audit/p16_list_endpoints.py` | A.51 设备/患者列表端点（14 项判定） |
+| `scripts/audit/p17_multiframe_segmentation.py` | A.51 多影像择优帧（15 项判定） |
+| `scripts/audit/p18_multiframe_singlefile.py` | A.51 单文件多帧择优帧 + 报告帧号（12 项判定） |
+| `scripts/audit/p14b_validate_bench.py` / `p14c` | A.51 validate 时延基准（改前/改后 N=8 热态） |
 | `tests/reports/t1_faithfulness_v11.json` | faithfulness 基线 |
 | `tests/reports/phase0a_report.json` | 早期 6 例口径（已作废，仅存档） |
 

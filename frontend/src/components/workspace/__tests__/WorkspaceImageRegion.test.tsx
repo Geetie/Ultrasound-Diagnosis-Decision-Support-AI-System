@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import WorkspaceImageRegion from '../WorkspaceImageRegion';
+import WorkspaceImageRegion, { segBelongsToLiveFrame } from '../WorkspaceImageRegion';
 import type { SegmentationView } from '@/services/diagnosisAdapter';
 
 /**
@@ -21,6 +21,39 @@ const SEG_OK: SegmentationView = {
   area_px: 8200,
   mean_prob: 0.87,
 };
+
+describe('WorkspaceImageRegion · A.51 帧级归属门控', () => {
+  const MULTI: SegmentationView = {
+    ...SEG_OK,
+    imageId: 'img_multi',
+    frameIndex: 4,
+    totalFrames: 9,
+    selectionPolicy: 'best_mean_prob',
+  };
+
+  it('多帧影像：只有择优帧号匹配时才归属', () => {
+    expect(segBelongsToLiveFrame(MULTI, { index: 4, imageId: 'img_multi' })).toBe(true);
+    expect(segBelongsToLiveFrame(MULTI, { index: 3, imageId: 'img_multi' })).toBe(false);
+  });
+
+  it('多影像栈：image_id 不匹配即不归属（哪怕帧号相同）', () => {
+    expect(segBelongsToLiveFrame({ ...MULTI, totalFrames: 1 }, { index: 0, imageId: 'img_other' })).toBe(false);
+  });
+
+  it('单帧影像：帧号一致即归属', () => {
+    expect(
+      segBelongsToLiveFrame(
+        { ...SEG_OK, imageId: 'img_single', frameIndex: 0, totalFrames: 1 },
+        { index: 0, imageId: 'img_single' },
+      ),
+    ).toBe(true);
+  });
+
+  it('available=false 与首帧前（liveFrame=null）语义', () => {
+    expect(segBelongsToLiveFrame({ available: false }, { index: 0, imageId: 'x' })).toBe(false);
+    expect(segBelongsToLiveFrame(MULTI, null)).toBe(true);
+  });
+});
 
 describe('WorkspaceImageRegion · 分割标注', () => {
   it('available=true 时渲染 SVG bbox 与面积标签', () => {

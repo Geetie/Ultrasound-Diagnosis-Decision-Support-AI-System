@@ -46,3 +46,37 @@ export async function createFhirPatient(data: CreateFhirPatientInput): Promise<F
   });
   return response.data;
 }
+
+/** 患者检索条目（A.51 新增端点 `GET /api/v1/patients`）。 */
+export interface PatientListItem {
+  patient_id: string;
+  name?: string | null;
+  gender?: string | null;
+  consent_status?: string | null;
+  last_session_at?: string | null;
+}
+
+export interface PatientListResult {
+  items: PatientListItem[];
+  total: number;
+  offset: number;
+  limit: number;
+}
+
+/**
+ * 患者检索 —— 「新建检查会话」页的患者编号输入框据此给出候选。
+ *
+ * 走查实证：此前患者只能**手工录入编号再校验**（后端无列表端点）。本函数是
+ * 纯增强：搜索失败一律不阻断录入（调用方 try/catch 静默兜底），手工路径不变。
+ * 注意路径在 `/api/v1/patients`（不是 `/fhir/*`），因此**不要**覆盖 baseURL。
+ */
+export async function listPatients(params: {
+  q?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<PatientListResult> {
+  const response = await apiClient.get<PatientListResult>('/patients', {
+    params: { ...params },
+  });
+  return response.data;
+}

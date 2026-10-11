@@ -5,10 +5,30 @@
 
 ## Last Updated
 
-2026-10-12（分支 `main`；A.50.10 **E11/E13 真 HAPI 闭环销号**——本机 maven
-构建 starter 8.12 war → 服务器 java21 起真 FHIR server；报告 push 真进 HAPI
-（报 7/7）+ 我方 Patient 被 HAPI 裁决（7/7）+ fhir.resources 5/5。清单 14/15
-销号，真外部仅剩 E5（医生语音样本，待拍板近似方案）/E10（HSM 采购））
+2026-10-12（分支 `main`；**A.51 远期第一梯队四项收口**——①检索口径闭合（服务腿
+hit@10 0.9853 = eval 腿，diff +0.00pp；顺带修 qdrant-client `search()` 移除 + kb 向量
+未灌 两个真缺陷）；②多帧分期③择优帧 + 帧级归属（p17 15/15、p18 12/12，报告含「第
+X/Y 帧」）；③设备/患者列表端点（p16 14/14，零 api_key）；④fusion-validate 降载
+（P99 2296→885ms PASS，降级路径实测 `validate_degraded=1` 且结果正常返回）。
+详见 16 号附录 A.51。上一轮 A.50.10 E11/E13 真 HAPI 闭环仍成立）
+
+### A.51 复跑入口（下一位直接用）
+
+- 探针（服务器）：`cd ~/uai/src/scripts/audit && ~/uai/venv/bin/python p15_retrieval_parity.py`
+  （`p16_list_endpoints.py` / `p17_multiframe_segmentation.py` / `p18_multiframe_singlefile.py`
+  / `p14b_validate_bench.py` 同目录，全部可复跑）
+- 单测：`tests/unit/services/test_multiframe_frame_selection.py`、
+  `tests/unit/api/test_list_endpoint_contracts.py`、`tests/unit/fus/test_validate_budget_degrade.py`
+- 真多帧样本：`python scripts/camus_frame_to_dicom.py --out /tmp/x.dcm --count 7 --multiframe`
+  （A.51 新增 `--multiframe`：N 帧写进**一个** DICOM，供择优帧复验）
+- **踩坑（会再犯）**：用 `replace_in_file` 在类定义处插入新类时，**插入边界会吃掉相邻类的
+  尾部字段**（本轮把 `DeviceRemoteRecoveryResponse.expires_at` 吞进了新类 → 运行期
+  pydantic ValidationError，静态检查与 `import app.main` 都发现不了）。改 schema 后
+  **必须**跑 `tests/unit/api/test_list_endpoint_contracts.py` 这类字段集守卫。
+- **踩坑**：`tsc -b` 的增量缓存会掩盖 HEAD 既有类型错误；清缓存（改前端文件即失效）
+  才会暴露。前端改动后务必真跑 `tsc -b + vite build`，不要只看 vitest。
+- 前端产物部署：`cd frontend && VITE_BASE=/ui/ npm run build` → 拷贝 `dist/*` 到
+  **`app/static/ui/`**（该目录入库，随之提交）。
 
 ### 常驻服务新增（复跑 p13 前确认在跑）
 - HAPI：`cd ~/uai/hapi && nohup java -jar ROOT.war --server.address=127.0.0.1 --server.port=8080 > ~/uai/logs/hapi_war.log 2>&1 &`（30s 就绪，`/fhir/metadata`）

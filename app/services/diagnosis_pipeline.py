@@ -305,6 +305,18 @@ async def run_diagnosis_pipeline(request_id: str) -> bool:
         # （放在读段之后、调度之前：Redis 读取很快，不占 DB 连接。）
         skip_self_rag = await _read_retry_skip_self_rag(request_id)
 
+        # A.51 降载：Self-RAG LLM 质检只在 FULL 档执行——FAST/COMPACT 档
+        # 本就是「省 LLM 调用」的语义（T-GB-AGT-02），此前却统一跑全量校验
+        # （实测 validate 含 LLM 1.85s P50）。降级后档位差异真正生效，
+        # 且 FULL 档行为不变。
+        from app.models.schemas import ResponseTier as _ResponseTier
+
+        try:
+            _effective_tier = routing_decision.effective_tier
+        except AttributeError:
+            _effective_tier = _ResponseTier.FULL
+        use_self_rag = (not skip_self_rag) and (_effective_tier == _ResponseTier.FULL)
+
         # 1) 分割旁路**提前**（A.37 ③）：分割量化特征（bbox/面积/概率）必须在
         #    dispatch 之前产出，才能经 imaging_metadata 注入 LLM 上下文 ——
         #    原顺序 dispatch 在前、分割在后且默认关闭，影像信息永远赶不上
@@ -359,13 +371,14 @@ async def run_diagnosis_pipeline(request_id: str) -> bool:
         t = time.monotonic()
         async with DiagnosisSpan(
             SPAN_DIAGNOSIS_FUSION,
-            attributes={"skip_self_rag": skip_self_rag},
+            attributes={"skip_self_rag": skip_self_rag, "self_rag_enabled": use_self_rag},
         ):
             fusion_result = await _safe_fuse(
                 request=request,
                 specialist_responses=specialist_responses,
                 request_id=request_id,
                 skip_self_rag=skip_self_rag,
+                use_self_rag=use_self_rag,
             )
         timings["fusion.fuse_ms"] = (time.monotonic() - t) * 1000.0
         # A.38 计时拆分：fuse 内部含 LLM 校验（validate/Self-RAG 与 CRAG），
@@ -373,6 +386,11 @@ async def run_diagnosis_pipeline(request_id: str) -> bool:
         # 注意 validate_ms/crag_ms 是 fuse 内部掐的表，不含编排开销。
         timings["fusion.validate_ms"] = float(getattr(fusion_result, "validate_ms", 0.0))
         timings["fusion.crag_ms"] = float(getattr(fusion_result, "crag_ms", 0.0))
+        # A.51 降载可观测性：非 FULL 档跳过 Self-RAG / validate 超预算降级
+        timings["fusion.self_rag_skipped"] = not use_self_rag
+        timings["fusion.validate_degraded"] = bool(
+            getattr(fusion_result, "validate_degraded", False)
+        )
 
         # 3) 安全网关 (sg.check_output) —— output span 带 gen_ai.* 语义属性，
         # Langfuse 按 OTel GenAI 约定渲染为 LLM Generation（A.47）
@@ -559,11 +577,21 @@ async def _safe_dispatch(
         if imaging_metadata and imaging_metadata.get("available"):
             im = imaging_metadata
             bbox = im.get("bbox")
+            # A.51 多帧分期③：把帧归属一并交给模型，结论可写「第 X/Y 帧」
+            # （多帧栈的分割来自择优帧，医生需要据此回看核对）。
+            _tf = im.get("total_frames")
+            _fi = im.get("frame_index")
+            frame_note = (
+                f"分割取自第 {_fi + 1}/{_tf} 帧"
+                f"（{'多帧候选择优' if im.get('selection_policy') == 'best_mean_prob' else '中间帧'}），"
+                if isinstance(_tf, int) and _tf > 1 and isinstance(_fi, int)
+                else ""
+            )
             user_query = user_query + (
                 "\n【系统自动影像分析（已由分割模型测得，直接引用，不要向医生索要）】"
                 f"病灶 bbox(像素)={bbox}，面积={im.get('area_mm2')}mm²，"
                 f"分割置信度 max={im.get('max_prob')}/mean={im.get('mean_prob')}，"
-                f"像素间距={im.get('pixel_spacing_mm')}mm/px。"
+                f"像素间距={im.get('pixel_spacing_mm')}mm/px。{frame_note}"
                 "结论中请引用这些量化数据；成分/回声等定性描述如无法从量化数据得出，"
                 "请在结论中标注『需医生镜下确认』而不是要求医生提供。"
             )
@@ -606,7 +634,7 @@ async def _safe_dispatch(
 
 
 async def _safe_fuse(request, specialist_responses, request_id: str,
-                     skip_self_rag: bool = False):
+                     skip_self_rag: bool = False, use_self_rag: bool | None = None):
     """调用 fusion.fuse；失败时返回带 needs_review 的占位 FusionResult。"""
     try:
         from app.main import app as _app_instance
@@ -626,8 +654,9 @@ async def _safe_fuse(request, specialist_responses, request_id: str,
             organ=Organ(request.organ) if request.organ else Organ.THYROID,
             agent_responses=specialist_responses,
             use_crag=True,
-            # P1-6：重试请求（retry_skip_self_rag 标志）跳过 Self-RAG 质检
-            use_self_rag=not skip_self_rag,
+            # A.51：use_self_rag 由调用方按档位/重试标志算好（非 FULL 档跳过
+            # Self-RAG LLM）；未传时回退到 P1-6 的旧语义（重试即跳过）。
+            use_self_rag=(not skip_self_rag) if use_self_rag is None else use_self_rag,
         )
         return await fusion_engine.fuse(fusion_req)
     except Exception as exc:
@@ -1285,8 +1314,30 @@ async def _safe_nodule_contour(request_row: Any) -> dict[str, Any]:
                     "reason": "image_not_indexed",
                     "requested_image_ids": image_ids[:5],
                 }
-            row = rows[0]
-            storage_path = row.storage_path
+            # A.51 多帧分期③：候选帧集（≤3 帧，控制推理成本）。
+            # 旧实现固定取 rows[0] 且 extract_frame_from_bytes(None) 恒取中间帧——
+            # 多帧栈/多影像时无"择优帧"语义，报告与前端也没有帧归属。
+            # 新策略：
+            #   ①多张影像：每张取代表帧（中间帧），至多前 2 张；
+            #   ②单张多帧：中间帧 ±2 采样，至多 3 帧；
+            #   ③单帧影像：None（解码默认帧）。
+            candidates: list[tuple[Any, int | None]] = []
+            if len(rows) > 1:
+                for r in rows[:2]:
+                    fc = int(getattr(r, "frame_count", 1) or 1)
+                    candidates.append((r, fc // 2 if fc > 1 else None))
+            else:
+                r = rows[0]
+                fc = int(getattr(r, "frame_count", 1) or 1)
+                if fc > 1:
+                    mid = fc // 2
+                    for off in (0, -2, 2):
+                        idx = max(0, min(fc - 1, mid + off))
+                        if idx not in [c[1] for c in candidates]:
+                            candidates.append((r, idx))
+                else:
+                    candidates.append((r, None))
+            candidates = candidates[:3]
 
         from app.imaging.dicom_pixels import (
             DicomPixelExtractionError,
@@ -1294,20 +1345,52 @@ async def _safe_nodule_contour(request_row: Any) -> dict[str, Any]:
         )
         from app.services.dicom_storage import get_dicom_storage
 
-        content = await get_dicom_storage().retrieve(storage_path)
-        if not content:
+        storage = get_dicom_storage()
+        evaluations: list[dict[str, Any]] = []
+        best: dict[str, Any] | None = None
+        content_cache: dict[str, bytes | None] = {}
+        for cand_row, cand_frame_index in candidates:
+            content = content_cache.get(cand_row.image_id)
+            if content is None:
+                content = await storage.retrieve(cand_row.storage_path)
+                if not content:
+                    continue
+                content_cache[cand_row.image_id] = content
+            frame = extract_frame_from_bytes(content, frame_index=cand_frame_index)
+            result = await asyncio.to_thread(
+                NoduleSegmenter.get(organ_raw).infer,
+                image_bytes=frame.png_bytes,
+            )
+            area_px = round(result.lesion_area_ratio * result.width * result.height)
+            evaluations.append({
+                "image_id": cand_row.image_id,
+                "frame_index": frame.frame_index,
+                "total_frames": frame.total_frames,
+                "mean_prob": round(result.mean_prob, 6),
+                "area_px": area_px,
+                "infer_latency_ms": result.latency_ms,
+            })
+            if best is None or result.mean_prob > best["result"].mean_prob:
+                best = {
+                    "row": cand_row,
+                    "content": content,
+                    "frame": frame,
+                    "result": result,
+                    "area_px": area_px,
+                }
+
+        if best is None:
             return {
                 "available": False,
                 "reason": "image_bytes_unavailable",
-                "image_id": row.image_id,
+                "image_id": rows[0].image_id,
             }
 
-        frame = extract_frame_from_bytes(content)
-        result = await asyncio.to_thread(
-            NoduleSegmenter.get(organ_raw).infer,
-            image_bytes=frame.png_bytes,
-        )
-        area_px = round(result.lesion_area_ratio * result.width * result.height)
+        row = best["row"]
+        content = best["content"]
+        frame = best["frame"]
+        result = best["result"]
+        area_px = best["area_px"]
         # mm² 换算：**必须**有 PixelSpacing，否则宁可不换算也不猜。
         # 超声 DICOM 普遍带 PixelSpacing（行距/列距 mm）；缺失时只报像素面积，
         # 由报告层写明"未提供像素间距，无法换算 mm²"。
@@ -1332,6 +1415,10 @@ async def _safe_nodule_contour(request_row: Any) -> dict[str, Any]:
             "device": result.device,
             "infer_latency_ms": result.latency_ms,
             "bypass_latency_ms": round((time.monotonic() - t0) * 1000, 1),
+            # A.51 多帧分期③：择优帧语义（报告/前端据此呈现"第 X/Y 帧"）
+            "selection_policy": "best_mean_prob" if len(evaluations) > 1 else "single_frame",
+            "candidates_evaluated": len(evaluations),
+            "frames_evaluated": evaluations,
         }
     except SegmentationUnavailableError as exc:
         # 器官未训练 / 无公开数据 / 权重缺失 —— 明确原因，不是静默无结果

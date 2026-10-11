@@ -1,10 +1,15 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppShell from '@/components/shell/AppShell';
 import type { ThemeName } from '@/components/shell/AppSidebar';
 import { ORGAN_LABEL, ORGAN_PRESETS, type OrganType } from '@/types/session';
 import { createSession } from '@/services/sessionService';
-import { createFhirPatient, getFhirPatient } from '@/services/fhirService';
+import {
+  createFhirPatient,
+  getFhirPatient,
+  listPatients,
+  type PatientListItem,
+} from '@/services/fhirService';
 import { getApiErrorCode, getApiErrorMessage } from '@/utils/apiError';
 
 /**
@@ -29,8 +34,11 @@ import { getApiErrorCode, getApiErrorMessage } from '@/utils/apiError';
  *     │   （consent 端点医生 403，本来就不可能由医生补签 —— 如实引导）
  *     └─ 404 E1002      → 库中无此患者行 → 医生可就地建档（POST /fhir/Patient
  *                         只要求登录，医生有权限），建档后重新校验
- *   设备编号 → 手工录入 + 记住上次使用（后端没有设备列表端点，device_id 也不校验
- *              存在性 —— 只作记录；有列表端点后这里换下拉，见 feature_list）
+ *   患者候选 → GET /api/v1/patients?q=（A.51 新增端点）给编号/姓名模糊候选，
+ *              点候选即走同一条校验路径。**纯增强**：搜索失败静默兜底，
+ *              手工录入 + 校验的老路径一字未改（走查路径不被推翻）。
+ *   设备编号 → 手工录入 + 记住上次使用（A.51 已补 GET /api/v1/admin/device
+ *              台账端点；本页仍以输入为主，device_id 后端不校验存在性）
  *   开始检查 → POST /sessions → 带 ?session_id= 跳工作区。
  *              原先 navigate('/') 把新会话 id 丢了 —— 工作区的上传与判读都以
  *              session_id 为外键，丢掉它医生又得回工作列表绕一圈。
@@ -77,9 +85,35 @@ export default function SessionCreatePage({ theme = 'dark' }: { theme?: ThemeNam
   const [deviceId, setDeviceId] = useState(() => localStorage.getItem(LAST_DEVICE_KEY) ?? '');
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  // A.51 患者候选（搜索是增强：失败一律静默兜底，不影响手工录入链路）
+  const [suggestions, setSuggestions] = useState<PatientListItem[]>([]);
 
-  const handleVerify = async () => {
-    const pid = patientInput.trim();
+  // 输入 ≥2 字符后防抖检索；点候选直接复用同一个校验入口。
+  useEffect(() => {
+    const q = patientInput.trim();
+    if (q.length < 2) {
+      setSuggestions([]);
+      return;
+    }
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      listPatients({ q, limit: 6 })
+        .then((res) => {
+          if (!cancelled) setSuggestions(res.items ?? []);
+        })
+        .catch(() => {
+          // 检索失败不打扰医生（端点不可用/限流都在这里被吞）——手工录入仍可用
+          if (!cancelled) setSuggestions([]);
+        });
+    }, 300);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [patientInput]);
+
+  const handleVerify = async (explicitPid?: string) => {
+    const pid = (explicitPid ?? patientInput).trim();
     if (!pid) return;
     setPatientState({ kind: 'verifying' });
     try {
@@ -121,6 +155,13 @@ export default function SessionCreatePage({ theme = 'dark' }: { theme?: ThemeNam
         setPatientState({ kind: 'error', message: getApiErrorMessage(err, '建档失败') });
       }
     }
+  };
+
+  /** 点候选 = 填入编号并立即校验（少一次点击；校验路径与手工完全同一条）。 */
+  const handlePickSuggestion = (pid: string) => {
+    setPatientInput(pid);
+    setSuggestions([]);
+    void handleVerify(pid);
   };
 
   const handleStart = async () => {
@@ -192,6 +233,36 @@ export default function SessionCreatePage({ theme = 'dark' }: { theme?: ThemeNam
             {patientState.kind === 'verifying' ? '校验中…' : '校验患者'}
           </button>
         </div>
+
+        {/* A.51 患者候选：仅在尚未确认患者时给建议，点选即校验。
+            搜索为空/失败都不渲染任何东西（手工录入路径不受影响）。 */}
+        {suggestions.length > 0 &&
+          patientState.kind !== 'verified' &&
+          patientState.kind !== 'verifying' && (
+            <ul
+              className="page-suggest-list"
+              data-region="patient-suggest"
+              aria-label="患者候选"
+            >
+              {suggestions.map((s) => (
+                <li key={s.patient_id}>
+                  <button
+                    type="button"
+                    className="page-suggest-item"
+                    onClick={() => handlePickSuggestion(s.patient_id)}
+                  >
+                    <span className="page-suggest-name">
+                      {s.name || s.patient_id}
+                    </span>
+                    <span className="page-suggest-meta">
+                      {s.patient_id}
+                      {s.consent_status === 'granted' ? ' · 同意有效' : ''}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
 
         {patientState.kind === 'verified' && (
           <span className="page-field-value">

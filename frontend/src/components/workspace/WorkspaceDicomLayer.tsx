@@ -46,10 +46,14 @@ const TOOL_LABEL: Record<BrowseTool, string> = {
 export default function WorkspaceDicomLayer({
   imageIds,
   archiveKey,
+  onFrameChange,
 }: {
   imageIds: string[];
   /** 测量注释存档 key（后端 image_id）。undefined = 不持久化（预览场景）。 */
   archiveKey?: string;
+  /** 当前帧回调（A.51 帧级归属）：把帧下标与该帧对应的 image_id 交给父层，
+   *  供分割覆盖层判断"这条分割属于不属于正在看的这一帧"。 */
+  onFrameChange?: (frameIndex: number, imageId: string) => void;
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -71,6 +75,14 @@ export default function WorkspaceDicomLayer({
   const stackKey = imageIds.join('\u0000');
   const frames = imageIds.length;
   const multiFrame = frames > 1;
+
+  // A.51 帧级归属：把（帧下标, 该帧的 image_id）上抛。栈里每个元素就是一张
+  // 已上传影像的后端 id（stack[frameIndex]），父层据此把分割覆盖层限定在
+  // "分割所属影像/帧"上——翻到别的帧自动隐藏，避免跨帧错标。
+  useEffect(() => {
+    const stackIds = stackKey.split('\u0000').filter(Boolean);
+    onFrameChange?.(frameIndex, stackIds[frameIndex] ?? stackIds[0] ?? '');
+  }, [frameIndex, stackKey, onFrameChange]);
 
   useEffect(() => {
     const element = ref.current;

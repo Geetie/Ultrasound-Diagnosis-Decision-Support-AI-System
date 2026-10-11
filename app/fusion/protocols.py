@@ -225,6 +225,10 @@ class FusionResult(BaseModel):
     total_latency_ms: float = 0.0
     validate_ms: float = 0.0
     crag_ms: float = 0.0
+    # A.51 降载标记：validate 超出预算被强制降级（needs_review=True，
+    # review_reason="fusion_validate_budget_exceeded"）时为 True。
+    # 语义：**超时降级**而非失败——结果仍返回，只是转为人工复核。
+    validate_degraded: bool = False
 
     @field_validator("self_rag_score")
     @classmethod

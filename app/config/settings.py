@@ -254,6 +254,18 @@ class Settings(BaseSettings):
     # 计数/DLQ 路径），不动上面两个 6.0s：实测 dispatch/fusion 常态已达 ~4.7s，
     # 直接把 6.0s 强制生效会造成大面积超时降级（比不设更糟）。
     pipeline_total_budget_s: float = 180.0
+    # === A.51 fusion-validate 降载（口径闭合后按实测取证）===
+    # 实测（p14b，N=8 热态）：validate P50 1.85s / P99 2.30s，双峰分布
+    # 750ms（Self-RAG 一次通过）vs 1850ms+（失败后评估重试）。
+    # ①评估重试只是"再问一次评估 LLM"，而失败后的兜底是 CRAG（另一次
+    #   真实重生成）——功能重叠；置 0 后失败仍走 CRAG + needs_review，
+    #   临床语义不变，省下整段重试开销（含 retry_delay）。
+    self_rag_max_retries: int = 0
+    self_rag_retry_delay_s: float = 0.0
+    # ②validate 级预算：只封顶病态尾（此前实测最坏 14s），不设到小于常态
+    #   （P99 2.3s）——超时即优雅降级为 needs_review（不失败、不挂死），
+    #   并落 timings_ms["fusion.validate_degraded"]=True。
+    pipeline_validate_budget_s: float = 3.0
     # 并发审查 P2-3：诊断 DLQ 是无 TTL 的 list，下游长时间故障时单调增长
     # （同意撤回 DLQ 早已用 maxlen=1000，此处补齐同口径）。
     int_dlq_max_length: int = 1000

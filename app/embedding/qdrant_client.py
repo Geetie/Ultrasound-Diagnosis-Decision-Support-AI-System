@@ -262,13 +262,28 @@ class QdrantVectorIndex(VectorIndexClient):
         collection_name = self._collection_name(collection)
         qdrant_filter = self._build_filter(filter)
         try:
-            hits = await client.search(
-                collection_name=collection_name,
-                query_vector=query_vector,
-                limit=top_k,
-                query_filter=qdrant_filter,
-                with_payload=True,
-            )
+            # qdrant-client ≥1.14 移除了 `search()`（改 `query_points`）——A.51
+            # 真机探针实测：1.19.1 下 `client.search` 直接 AttributeError →
+            # VectorIndexError → `_safe_dense` 静默吞掉 → **dense 向量腿全空**
+            # （知识命中实际只来自 BM25 稀疏腿，检索口径评测全被掩盖）。
+            # 老版本（≤1.13）保留 `search`，这里按能力探测双兼容。
+            if hasattr(client, "query_points"):
+                resp = await client.query_points(
+                    collection_name=collection_name,
+                    query=query_vector,
+                    limit=top_k,
+                    query_filter=qdrant_filter,
+                    with_payload=True,
+                )
+                hits = getattr(resp, "points", resp)
+            else:  # pragma: no cover - 旧版客户端兼容分支
+                hits = await client.search(
+                    collection_name=collection_name,
+                    query_vector=query_vector,
+                    limit=top_k,
+                    query_filter=qdrant_filter,
+                    with_payload=True,
+                )
             results = [
                 SearchResult(
                     # 还原原始 chunk_id（upsert 时存 payload；uuid5 点id 仅内部）

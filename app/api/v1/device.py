@@ -17,6 +17,8 @@ from app.models.schemas import (
     DeviceHealthProbeResponse,
     DeviceHeartbeatRequest,
     DeviceHeartbeatResponse,
+    DeviceListItem,
+    DeviceListResponse,
     DeviceRecoveryResponse,
     DeviceRegisterRequest,
     DeviceRegisterResponse,
@@ -53,6 +55,43 @@ async def _authenticate_device(
     if device is None:
         raise HTTPException(status_code=401, detail="Invalid device credentials")
     return device
+
+
+@router.get("", response_model=DeviceListResponse)
+async def list_devices(
+    status: str | None = None,
+    device_type: str | None = None,
+    offset: int = 0,
+    limit: int = 20,
+    device_repo: DeviceRepository = Depends(get_device_repo),
+    current_user: dict | None = Depends(admin_only),
+):
+    """设备台账（A.51）：管理面分页列表。
+
+    背景：走查实证「列表端点不存在」——管理面无法看到已注册设备全貌。
+    只读、仅 SYSTEM_ADMIN；**响应绝不包含 api_key**（schema 上就无该字段）。
+    """
+    rows, total = await device_repo.list_devices(
+        status=status, device_type=device_type, offset=offset, limit=limit
+    )
+    return DeviceListResponse(
+        items=[
+            DeviceListItem(
+                device_id=d.device_id,
+                device_name=d.device_name,
+                device_type=d.device_type,
+                location=d.location,
+                status=d.status,
+                jetpack_version=d.jetpack_version,
+                created_at=d.created_at,
+                updated_at=d.updated_at,
+            )
+            for d in rows
+        ],
+        total=total,
+        offset=max(0, offset),
+        limit=min(200, max(1, limit)),
+    )
 
 
 @router.post("/register", response_model=DeviceRegisterResponse)

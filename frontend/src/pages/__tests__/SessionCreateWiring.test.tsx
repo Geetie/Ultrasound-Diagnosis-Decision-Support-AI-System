@@ -5,18 +5,20 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import SessionCreatePage from '../SessionCreatePage';
 import { createSession } from '@/services/sessionService';
-import { createFhirPatient, getFhirPatient } from '@/services/fhirService';
+import { createFhirPatient, getFhirPatient, listPatients } from '@/services/fhirService';
 import type { SessionInfo } from '@/types/api';
 
 vi.mock('@/services/sessionService', () => ({ createSession: vi.fn() }));
 vi.mock('@/services/fhirService', () => ({
   getFhirPatient: vi.fn(),
   createFhirPatient: vi.fn(),
+  listPatients: vi.fn(),
 }));
 
 const mockCreate = vi.mocked(createSession);
 const mockGetPatient = vi.mocked(getFhirPatient);
 const mockCreatePatient = vi.mocked(createFhirPatient);
+const mockListPatients = vi.mocked(listPatients);
 
 /** axios 形状的错误 —— getApiErrorCode / getApiErrorMessage 只认 response.data */
 function httpError(status: number, body: Record<string, unknown>) {
@@ -69,6 +71,9 @@ const PATIENT_OK = {
 beforeEach(() => {
   localStorage.clear();
   vi.clearAllMocks();
+  // A.51 患者候选：默认空结果（多数用例不关心候选）。**必须给默认值** ——
+  // 页面在输入 ≥2 字符后会防抖检索，mock 返回 undefined 会在 .then 处炸。
+  mockListPatients.mockResolvedValue({ items: [], total: 0, offset: 0, limit: 6 });
 });
 
 describe('SessionCreatePage · 接线（2026-10-08）', () => {
@@ -153,5 +158,56 @@ describe('SessionCreatePage · 接线（2026-10-08）', () => {
     localStorage.setItem('uai_last_device_id', 'dev-last');
     renderPage();
     expect(screen.getByLabelText('设备编号')).toHaveValue('dev-last');
+  });
+});
+
+describe('SessionCreatePage · 患者候选（A.51 新增检索端点）', () => {
+  it('输入 ≥2 字符 → 展示候选；点候选即校验（手工路径不受影响）', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    mockListPatients.mockResolvedValue({
+      items: [
+        {
+          patient_id: 'P-1001',
+          name: '张**',
+          gender: 'female',
+          consent_status: 'granted',
+          last_session_at: '2026-10-10T08:00:00Z',
+        },
+      ],
+      total: 1,
+      offset: 0,
+      limit: 6,
+    });
+    mockGetPatient.mockResolvedValue({
+      resourceType: 'Patient',
+      id: 'P-1001',
+      name: [{ text: '张**' }],
+      active: true,
+    });
+
+    await user.type(screen.getByLabelText('患者编号'), 'P-1');
+    const suggestion = await screen.findByRole('button', { name: /张\*\*/ });
+    expect(suggestion).toBeInTheDocument();
+
+    await user.click(suggestion);
+
+    expect(await screen.findByText(/已确认：张\*\*/)).toBeInTheDocument();
+    expect(mockGetPatient).toHaveBeenCalledWith('P-1001');
+    // 点选后候选收起（避免遮住确认信息）
+    expect(screen.queryByRole('button', { name: /张\*\*/ })).toBeNull();
+  });
+
+  it('检索失败静默兜底：不弹错误，手工录入 + 校验仍可用', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    mockListPatients.mockRejectedValue(new Error('boom'));
+    mockGetPatient.mockResolvedValue(PATIENT_OK);
+
+    await user.type(screen.getByLabelText('患者编号'), 'P9');
+    await user.click(screen.getByRole('button', { name: '校验患者' }));
+
+    expect(await screen.findByText(/已确认：P1/)).toBeInTheDocument();
+    expect(screen.queryByText(/boom/)).toBeNull();
   });
 });

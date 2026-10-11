@@ -31,6 +31,7 @@ fuse(request)
 """
 from __future__ import annotations
 
+import asyncio
 import time
 from typing import Any
 
@@ -77,6 +78,7 @@ class FusionEngineImpl(FusionEngine):
         crag_handler: CRAGHandler | None = None,
         rag_service: RAGService | None = None,
         name: str = "fusion_engine",
+        validate_budget_s: float | None = None,
     ) -> None:
         if conflict_detector is None:
             raise ValueError("conflict_detector must not be None")
@@ -88,6 +90,15 @@ class FusionEngineImpl(FusionEngine):
         self._crag_handler = crag_handler
         self._rag_service = rag_service
         self._name = name
+        # A.51：validate 级预算（秒）。None → 读 settings（可在构造时覆盖，
+        # 便于单测注入短预算实测降级路径）。<=0 视为不设预算。
+        if validate_budget_s is None:
+            from app.config.settings import settings as _settings
+
+            validate_budget_s = float(
+                getattr(_settings, "pipeline_validate_budget_s", 0.0) or 0.0
+            )
+        self._validate_budget_s = float(validate_budget_s or 0.0)
         # 预构造 LayeredValidator（self_rag 注入；CRAG 由本类在 validate 之后处理）
         self._layered_validator = LayeredValidator(
             conflict_detector=conflict_detector,
@@ -139,7 +150,27 @@ class FusionEngineImpl(FusionEngine):
         # 所以不叫 self_rag_llm_ms —— 这是"含 LLM 的校验总时长"。
         t_validate = time.monotonic()
         try:
-            result = await self._layered_validator.validate(request)
+            if self._validate_budget_s > 0:
+                # A.51 降载：超预算 → 优雅降级（needs_review），不失败不挂死。
+                # 预算默认 3.0s（> 实测 P99 2.3s）——只封顶病态尾（历史最坏 14s），
+                # 不造成常态降级。
+                result = await asyncio.wait_for(
+                    self._layered_validator.validate(request),
+                    timeout=self._validate_budget_s,
+                )
+            else:
+                result = await self._layered_validator.validate(request)
+        except TimeoutError:
+            logger.warning(
+                "fusion_validate_budget_exceeded",
+                request_id=request.request_id,
+                budget_s=self._validate_budget_s,
+            )
+            result = FusionResult(
+                needs_review=True,
+                review_reason="fusion_validate_budget_exceeded",
+                validate_degraded=True,
+            )
         except Exception as exc:
             logger.warning(
                 "fusion_validate_failed",
@@ -163,6 +194,7 @@ class FusionEngineImpl(FusionEngine):
         if (
             request.use_crag
             and result.self_rag_passed is False
+            and not result.validate_degraded  # A.51：预算是"超时降载"，不是"质检失败"
             and self._crag_handler is not None
             and self._rag_service is not None
             and not result.crag_triggered  # 避免重复触发

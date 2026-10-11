@@ -36,7 +36,35 @@ def pick_study(root: Path, keyword: str = "4CH_half") -> Path:
     raise SystemExit(f"没找到含 {keyword} 的序列（root={root}）")
 
 
-def convert(nii_path: Path, out: Path, count: int, patient_id: str) -> None:
+def _base_dataset(frame, pixel_spacing, patient_id, name: str, sop_uid: str,
+                  study_uid: str, series_uid: str) -> Dataset:
+    """单帧基础数据集（A.51：抽出来给"单帧多文件"与"单文件多帧"共用）。"""
+    ds = Dataset()
+    ds.file_meta = pydicom.dataset.FileMetaDataset()
+    ds.file_meta.MediaStorageSOPClassUID = "1.2.840.10008.5.1.4.1.1.3.1"  # US Multi-frame
+    ds.file_meta.MediaStorageSOPInstanceUID = sop_uid
+    ds.file_meta.TransferSyntaxUID = ExplicitVRLittleEndian
+    ds.SOPClassUID = ds.file_meta.MediaStorageSOPClassUID
+    ds.SOPInstanceUID = sop_uid
+    ds.StudyInstanceUID = study_uid
+    ds.SeriesInstanceUID = series_uid
+    ds.PatientID = patient_id
+    ds.PatientName = name
+    ds.Modality = "US"
+    ds.ImageType = ["DERIVED", "PRIMARY"]
+    ds.SamplesPerPixel = 1
+    ds.PhotometricInterpretation = "MONOCHROME2"
+    ds.Rows, ds.Columns = frame.shape
+    ds.BitsAllocated = ds.BitsStored = 8
+    ds.HighBit = 7
+    ds.PixelRepresentation = 0
+    ds.PixelSpacing = pixel_spacing
+    ds.Units = "mm"
+    return ds
+
+
+def convert(nii_path: Path, out: Path, count: int, patient_id: str,
+            multiframe: bool = False) -> None:
     img = nib.load(nii_path)
     vol = np.asarray(img.dataobj, dtype=np.float32)  # (H, W, T)
     # 真实像素间距（mm）：CAMUS header 带 zooms（patient0001 4CH = 0.308mm，
@@ -57,30 +85,30 @@ def convert(nii_path: Path, out: Path, count: int, patient_id: str) -> None:
     out.parent.mkdir(parents=True, exist_ok=True)
     study_uid = generate_uid()
     series_uid = generate_uid()
+
+    if multiframe:
+        # A.51 单文件多帧：把 N 帧写进**一个** DICOM（NumberOfFrames=N），
+        # 用于验证"单张多帧影像 → 中间帧 ±2 择优"这条真实路径。
+        # 上传侧读 NumberOfFrames 落 dicom_images.frame_count，旁路据此采样。
+        ds = _base_dataset(
+            frames[0], pixel_spacing, patient_id, "CAMUS^REALMULTIFRAME",
+            generate_uid(), study_uid, series_uid,
+        )
+        ds.NumberOfFrames = len(frames)
+        ds.InstanceNumber = 1
+        # 真实帧顺序拼接写入 PixelData（与合成样本的本质区别）
+        ds.PixelData = b"".join(f.tobytes() for f in frames)
+        pydicom.dcmwrite(out, ds, enforce_file_format=True)
+        print(f"OK: {len(frames)} 帧 ← {nii_path.name} → {out}（单文件多帧）")
+        return
+
     sop_uids = [generate_uid() for _ in frames]
     for idx, frame in enumerate(frames):
-        ds = Dataset()
-        ds.file_meta = pydicom.dataset.FileMetaDataset()
-        ds.file_meta.MediaStorageSOPClassUID = "1.2.840.10008.5.1.4.1.1.3.1"  # US Multi-frame
-        ds.file_meta.MediaStorageSOPInstanceUID = sop_uids[idx]
-        ds.file_meta.TransferSyntaxUID = ExplicitVRLittleEndian
-        ds.SOPClassUID = ds.file_meta.MediaStorageSOPClassUID
-        ds.SOPInstanceUID = sop_uids[idx]
-        ds.StudyInstanceUID = study_uid
-        ds.SeriesInstanceUID = series_uid
-        ds.PatientID = patient_id
-        ds.PatientName = f"CAMUS^REALFRAME{idx + 1}"
-        ds.Modality = "US"
-        ds.ImageType = ["DERIVED", "PRIMARY"]
-        ds.SamplesPerPixel = 1
-        ds.PhotometricInterpretation = "MONOCHROME2"
-        ds.Rows, ds.Columns = frame.shape
-        ds.BitsAllocated = ds.BitsStored = 8
-        ds.HighBit = 7
-        ds.PixelRepresentation = 0
+        ds = _base_dataset(
+            frame, pixel_spacing, patient_id, f"CAMUS^REALFRAME{idx + 1}",
+            sop_uids[idx], study_uid, series_uid,
+        )
         ds.InstanceNumber = idx + 1
-        ds.PixelSpacing = pixel_spacing
-        ds.Units = "mm"
         # 真实帧写入 PixelData —— 与合成样本（纯图形+假纹理）的本质区别
         ds.PixelData = frame.tobytes()
         pydicom.dcmwrite(out.with_name(f"{out.stem}_{idx}.dcm"), ds, enforce_file_format=True)
@@ -93,9 +121,14 @@ def main() -> None:
     ap.add_argument("--count", type=int, default=2, help="取前 N 帧（默认 2，供多帧走查）")
     ap.add_argument("--patient", default="CAMUS-REAL-001", help="患者占位编号")
     ap.add_argument("--keyword", default="4CH_half", help="序列关键字")
+    ap.add_argument(
+        "--multiframe",
+        action="store_true",
+        help="把 N 帧写进**一个** DICOM（NumberOfFrames=N）——供多帧择优帧探针使用",
+    )
     args = ap.parse_args()
     nii_path = pick_study(CAMUS_ROOT, args.keyword)
-    convert(nii_path, Path(args.out), args.count, args.patient)
+    convert(nii_path, Path(args.out), args.count, args.patient, args.multiframe)
 
 
 if __name__ == "__main__":

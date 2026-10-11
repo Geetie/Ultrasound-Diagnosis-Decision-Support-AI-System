@@ -1,7 +1,8 @@
-from pydantic import BaseModel, Field, field_validator
-from typing import Optional, List, Dict, Any
 from datetime import datetime
 from enum import Enum
+from typing import Any
+
+from pydantic import BaseModel, Field
 
 
 # ============== 枚举定义 ==============
@@ -153,9 +154,9 @@ class ImageQualityImpact(str, Enum):
 
 # ============== 基础模型 ==============
 class PatientContext(BaseModel):
-    age: Optional[int] = Field(None, ge=0, le=150)
-    gender: Optional[str] = None
-    relevant_history: Optional[str] = None
+    age: int | None = Field(None, ge=0, le=150)
+    gender: str | None = None
+    relevant_history: str | None = None
     # 结构化患者条件，供安全网关的**禁忌判定**使用（例如 ["pregnancy"]、
     # ["contrast_allergy"]、["anticoagulant_therapy"]）。
     #
@@ -169,21 +170,21 @@ class PatientContext(BaseModel):
     #   * `None`（未提供）  → 不转发该键，SG 维持**保守**行为（缺数据即视为命中）；
     #   * `[]`（确认无条件）→ 如实转发空列表，SG 正常评估 → 不命中；
     #   * `["pregnancy"]`  → 如实转发，按别名匹配。
-    conditions: Optional[list[str]] = None
+    conditions: list[str] | None = None
 
 
 class BaseResponse(BaseModel):
     success: bool = True
-    message: Optional[str] = None
+    message: str | None = None
 
 
 # ============== 错误响应 ==============
 class ErrorResponse(BaseModel):
     error_code: str = Field(..., description="错误码，如 E1001、E2001 等")
     error_message: str = Field(..., description="错误描述")
-    detail: Optional[str] = None
-    request_id: Optional[str] = None
-    suggestion: Optional[str] = None
+    detail: str | None = None
+    request_id: str | None = None
+    suggestion: str | None = None
     retryable: bool = False
     retry_strategy: RetryStrategyType = RetryStrategyType.NO_RETRY
 
@@ -191,15 +192,15 @@ class ErrorResponse(BaseModel):
 # ============== 诊断相关模型 ==============
 class DiagnosisRequest(BaseModel):
     session_id: str
-    image_ids: List[str]
-    clinical_text: Optional[str] = None
-    voice_text: Optional[str] = None
+    image_ids: list[str]
+    clinical_text: str | None = None
+    voice_text: str | None = None
     target_organ: Organ
     response_tier: ResponseTier = ResponseTier.FULL
-    patient_context: Optional[PatientContext] = None
+    patient_context: PatientContext | None = None
     retry: bool = False
-    retry_strategy: Optional[RetryStrategy] = None
-    idempotency_key: Optional[str] = None
+    retry_strategy: RetryStrategy | None = None
+    idempotency_key: str | None = None
 
 
 class DiagnosisRequestResponse(BaseModel):
@@ -211,12 +212,12 @@ class DiagnosisRequestResponse(BaseModel):
 
 
 class DiagnosisEvidence(BaseModel):
-    knowledge_ids: Optional[List[str]] = None
-    content: Optional[Dict[str, Any]] = None
+    knowledge_ids: list[str] | None = None
+    content: dict[str, Any] | None = None
 
 
 class DiagnosisQualityControl(BaseModel):
-    confidence_score: Optional[float] = None
+    confidence_score: float | None = None
     self_rag_passed: bool = False
     consistency_check_passed: bool = False
 
@@ -232,20 +233,20 @@ class PlaneAssessment(BaseModel):
     plane_type: PlaneType
     is_standard: bool
     plane_score: float = Field(ge=0.0, le=1.0, description="切面标准化程度，0.0-1.0")
-    organ_code: Optional[str] = None
-    issues: List[str] = Field(default_factory=list)
-    required_structures_visible: List[str] = Field(default_factory=list)
+    organ_code: str | None = None
+    issues: list[str] = Field(default_factory=list)
+    required_structures_visible: list[str] = Field(default_factory=list)
 
 
 class ImageQuality(BaseModel):
     """图像质量评估（M6）。各分项 0.0-1.0，越高越好。"""
 
     overall_score: float = Field(ge=0.0, le=1.0)
-    blur_score: Optional[float] = Field(default=None, ge=0.0, le=1.0)
-    artifact_score: Optional[float] = Field(default=None, ge=0.0, le=1.0)
-    gain_score: Optional[float] = Field(default=None, ge=0.0, le=1.0)
-    issues: List[str] = Field(default_factory=list)
-    diagnostic_impact: Optional[ImageQualityImpact] = None
+    blur_score: float | None = Field(default=None, ge=0.0, le=1.0)
+    artifact_score: float | None = Field(default=None, ge=0.0, le=1.0)
+    gain_score: float | None = Field(default=None, ge=0.0, le=1.0)
+    issues: list[str] = Field(default_factory=list)
+    diagnostic_impact: ImageQualityImpact | None = None
 
 
 class Measurement(BaseModel):
@@ -256,15 +257,15 @@ class Measurement(BaseModel):
     回退到 ``DEFAULT_PIXEL_SPACING_MM``（此时测量值为估算，前端需标注）。
     """
 
-    long_mm: Optional[float] = None
-    short_mm: Optional[float] = None
-    anteroposterior_mm: Optional[float] = None
-    aspect_ratio: Optional[float] = None
-    volume_mm3: Optional[float] = None
-    distance_to_capsule_mm: Optional[float] = None
-    distance_to_organ_edge_mm: Optional[float] = None
-    distance_to_skin_mm: Optional[float] = None
-    measurement_type: Optional[str] = None
+    long_mm: float | None = None
+    short_mm: float | None = None
+    anteroposterior_mm: float | None = None
+    aspect_ratio: float | None = None
+    volume_mm3: float | None = None
+    distance_to_capsule_mm: float | None = None
+    distance_to_organ_edge_mm: float | None = None
+    distance_to_skin_mm: float | None = None
+    measurement_type: str | None = None
     unit: str = "mm"
     pixel_spacing_source: str = "default"
 
@@ -278,10 +279,10 @@ class DifferentialDiagnosis(BaseModel):
 
     rank: int = Field(ge=1)
     disease_name: str
-    confidence: Optional[float] = Field(default=None, ge=0.0, le=1.0)
-    disease_code: Optional[str] = None
-    supporting_evidence: List[str] = Field(default_factory=list)
-    excluding_evidence: List[str] = Field(default_factory=list)
+    confidence: float | None = Field(default=None, ge=0.0, le=1.0)
+    disease_code: str | None = None
+    supporting_evidence: list[str] = Field(default_factory=list)
+    excluding_evidence: list[str] = Field(default_factory=list)
 
 
 class MalignancyRiskBasis(BaseModel):
@@ -301,65 +302,65 @@ class MalignancyRisk(BaseModel):
 
     probability: float = Field(ge=0.0, le=1.0)
     level: MalignancyRiskLevel
-    basis: List[MalignancyRiskBasis] = Field(default_factory=list)
-    source_reference: Optional[str] = None
+    basis: list[MalignancyRiskBasis] = Field(default_factory=list)
+    source_reference: str | None = None
 
 
 class ClinicalAction(BaseModel):
     """转诊/处置建议（M7）。"""
 
     action_type: str
-    target_department: Optional[str] = None
+    target_department: str | None = None
     urgency: ClinicalActionUrgency = ClinicalActionUrgency.ROUTINE
-    trigger_condition: Optional[str] = None
-    description: Optional[str] = None
+    trigger_condition: str | None = None
+    description: str | None = None
     # 适用机构层级：基层 | 三甲 | 通用（前端按机构差异化展示）
-    applicable_level: Optional[str] = None
-    source_reference: Optional[str] = None
+    applicable_level: str | None = None
+    source_reference: str | None = None
 
 
 class PatientExplanation(BaseModel):
     """患者解释话术（M10）。默认不进入正式报告，由医生选择展示/打印。"""
 
     explanation: str
-    reassurance: Optional[str] = None
-    next_step: Optional[str] = None
-    source_reference: Optional[str] = None
+    reassurance: str | None = None
+    next_step: str | None = None
+    source_reference: str | None = None
 
 
 class BloodFlowParameters(BaseModel):
     """血流参数（M11 科研量化指标）。"""
 
-    psv: Optional[float] = None
-    edv: Optional[float] = None
-    ri: Optional[float] = None
+    psv: float | None = None
+    edv: float | None = None
+    ri: float | None = None
     unit: str = "cm/s"
 
 
 class AIExtractedFeatures(BaseModel):
     """AI 抽取的量化特征（M11）。"""
 
-    texture_homogeneity: Optional[float] = None
-    edge_sharpness: Optional[float] = None
-    feature_vector_hash: Optional[str] = None
+    texture_homogeneity: float | None = None
+    edge_sharpness: float | None = None
+    feature_vector_hash: str | None = None
 
 
 class ModelConfidenceDistribution(BaseModel):
     """模型置信度分布（M11）。"""
 
-    benign: Optional[float] = None
-    malignant: Optional[float] = None
-    indeterminate: Optional[float] = None
+    benign: float | None = None
+    malignant: float | None = None
+    indeterminate: float | None = None
 
 
 class ResearchMetrics(BaseModel):
     """科研量化指标（M11），前端默认折叠展示。"""
 
-    elasticity_score: Optional[float] = None
-    elasticity_unit: Optional[str] = None
-    blood_flow: Optional[BloodFlowParameters] = None
-    ai_features: Optional[AIExtractedFeatures] = None
-    confidence_distribution: Optional[ModelConfidenceDistribution] = None
+    elasticity_score: float | None = None
+    elasticity_unit: str | None = None
+    blood_flow: BloodFlowParameters | None = None
+    ai_features: AIExtractedFeatures | None = None
+    confidence_distribution: ModelConfidenceDistribution | None = None
 
 
 class CrossModalityHint(BaseModel):
@@ -367,66 +368,66 @@ class CrossModalityHint(BaseModel):
 
     modality: str  # CT | MRI | pathology
     finding: str
-    clinical_value: Optional[str] = None
-    source_reference: Optional[str] = None
+    clinical_value: str | None = None
+    source_reference: str | None = None
 
 
 class DiagnosisResult(BaseModel):
     request_id: str
     status: str
-    consistency_flag: Optional[ConsistencyFlag] = None
+    consistency_flag: ConsistencyFlag | None = None
     desensitization_status: DesensitizationStatus
     consent_status_at_output: ConsentStatus
     fusion_status: FusionStatus
-    diagnosis: Dict[str, Any]
-    evidence: Optional[DiagnosisEvidence] = None
-    quality_control: Optional[DiagnosisQualityControl] = None
+    diagnosis: dict[str, Any]
+    evidence: DiagnosisEvidence | None = None
+    quality_control: DiagnosisQualityControl | None = None
     requires_manual_review: bool = False
-    review_reason: Optional[str] = None
+    review_reason: str | None = None
     ai_diagnosis_failed: bool = False
     # 生成进度（A.43，processing 中间态才带）：已生成字符数 —— 前端「分析中」
     # 显示「已生成 N 字」，秒数走动 + 字数增长 = 生成确实在推进
-    generation_progress_chars: Optional[int] = None
+    generation_progress_chars: int | None = None
     # 安全预览（A.46，processing 中间态才带）：**已通过段落级 SG** 的生成文本尾部
     # —— AWS 同步护栏模式：段落过 check_output 才进预览键，全文 SG 终态兜底；
     # refused 时前端停止显示预览（Never 显示未过 SG 的原始输出 —— 临床红线）
-    generation_preview: Optional[str] = None
-    hallucination_severity: Optional[HallucinationSeverity] = None
+    generation_preview: str | None = None
+    hallucination_severity: HallucinationSeverity | None = None
     version_compatibility: str = "compatible"
     processing_time_ms: int
-    model_version: Optional[str] = None
-    knowledge_base_version: Optional[str] = None
+    model_version: str | None = None
+    knowledge_base_version: str | None = None
     # === 医生直接信息需求（M1~M12）===
     # 全部为可选展示型字段：新字段先承载于此契约（并由
     # ``diagnosis_results.findings`` JSONB 落库），避免为展示型数据
     # 引入不必要的表结构迁移。
-    measurement: Optional[Measurement] = None
-    differential_diagnoses: List[DifferentialDiagnosis] = Field(default_factory=list)
-    malignancy_risk: Optional[MalignancyRisk] = None
-    clinical_actions: List[ClinicalAction] = Field(default_factory=list)
-    patient_explanation: Optional[PatientExplanation] = None
-    research_metrics: Optional[ResearchMetrics] = None
-    cross_modality_hints: List[CrossModalityHint] = Field(default_factory=list)
-    posterior_acoustic: Optional[PosteriorAcoustic] = None
+    measurement: Measurement | None = None
+    differential_diagnoses: list[DifferentialDiagnosis] = Field(default_factory=list)
+    malignancy_risk: MalignancyRisk | None = None
+    clinical_actions: list[ClinicalAction] = Field(default_factory=list)
+    patient_explanation: PatientExplanation | None = None
+    research_metrics: ResearchMetrics | None = None
+    cross_modality_hints: list[CrossModalityHint] = Field(default_factory=list)
+    posterior_acoustic: PosteriorAcoustic | None = None
     # 分割旁路结果（2026-10-03）：轮廓/面积/概率/降级原因。
     # 用 Optional[Dict] 而非新 schema —— 它是**旁路辅助信息**，形态还会随
     # 器官与模型演进（甲状腺结节 vs 左心室），过早固化 schema 只会带来
     # 无谓的契约迁移。``available=False`` 时带 ``reason``，前端应显示
     # "未做分割：<原因>"，**不能**显示成"未检出结节"。
-    nodule_segmentation: Optional[Dict[str, Any]] = None
+    nodule_segmentation: dict[str, Any] | None = None
 
 
 # ============== DICOM 相关模型 ==============
 class ReportUpdateRequest(BaseModel):
     """医生补录段落（A.32）。键白名单在服务层（SUPPLEMENTABLE_SECTIONS）。"""
 
-    sections: Dict[str, str]
+    sections: dict[str, str]
 
 
 class DICOMUploadResponse(BaseModel):
     image_id: str
     session_id: str
-    metadata: Dict[str, Any]
+    metadata: dict[str, Any]
     status: str = "accepted"
 
 
@@ -441,19 +442,19 @@ class DICOMImageMeta(BaseModel):
 
     image_id: str
     session_id: str
-    modality: Optional[str] = None
-    width: Optional[int] = None
-    height: Optional[int] = None
-    frame_count: Optional[int] = None
-    size_bytes: Optional[int] = None
-    original_filename: Optional[str] = None
-    created_at: Optional[datetime] = None
+    modality: str | None = None
+    width: int | None = None
+    height: int | None = None
+    frame_count: int | None = None
+    size_bytes: int | None = None
+    original_filename: str | None = None
+    created_at: datetime | None = None
 
 
 class DICOMImageListResponse(BaseModel):
     session_id: str
     count: int
-    images: List[DICOMImageMeta]
+    images: list[DICOMImageMeta]
 
 
 class DICOMStreamRequest(BaseModel):
@@ -467,7 +468,7 @@ class DICOMStreamRequest(BaseModel):
 class DICOMStreamResponse(BaseModel):
     session_id: str
     frame_id: str
-    navigation_hint: Optional[Dict[str, Any]] = None
+    navigation_hint: dict[str, Any] | None = None
     status: str = "accepted"
 
 
@@ -488,7 +489,7 @@ class WebSocketMessageType(str, Enum):
 
 class BaseWebSocketMessage(BaseModel):
     type: WebSocketMessageType
-    timestamp: Optional[int] = None
+    timestamp: int | None = None
 
 
 class FrameMessage(BaseWebSocketMessage):
@@ -500,27 +501,27 @@ class FrameMessage(BaseWebSocketMessage):
 class NavigationAnnotation(BaseModel):
     label: str
     confidence: float
-    threshold: Optional[float] = None
+    threshold: float | None = None
     # 兼容两种坐标口径：后端推理路径沿用接口规范示例的像素整数，
     # 边缘端路径使用 0.0-1.0 归一化坐标（edge/safety 校验与前端
     # NavigationOverlay 的口径）。前端类型为 [number, number, number, number]。
-    bbox: Optional[List[float]] = None
+    bbox: list[float] | None = None
     # === M2 快速路径高危标记（B+ 级，标注级属性）===
     # 仅标记"需关注"并建议启动标准评估，不含分级词汇/病种编码。
-    risk_flag: Optional[RiskFlag] = None
-    suggested_action: Optional[SuggestedAction] = None
+    risk_flag: RiskFlag | None = None
+    suggested_action: SuggestedAction | None = None
 
 
 class NavigationMessage(BaseWebSocketMessage):
     type: WebSocketMessageType = WebSocketMessageType.NAVIGATION
     frame_id: str
-    annotations: List[NavigationAnnotation] = []
+    annotations: list[NavigationAnnotation] = []
     desensitization_status: DesensitizationStatus = DesensitizationStatus.FULL
     # === M1/M6 帧级属性 ===
     # 切面标准性与图像质量是"这一帧采集"的属性，不属于单个病灶标注，
     # 因此挂在帧级消息上，避免在每个标注里重复。
-    plane_assessment: Optional[PlaneAssessment] = None
-    image_quality: Optional[ImageQuality] = None
+    plane_assessment: PlaneAssessment | None = None
+    image_quality: ImageQuality | None = None
 
 
 class EdgeNavLabel(BaseModel):
@@ -533,8 +534,8 @@ class EdgeNavLabel(BaseModel):
     height: float
     confidence: float
     # === M2（B+ 级高危标记），可选以兼容未升级的边缘端 ===
-    risk_flag: Optional[str] = None
-    suggested_action: Optional[str] = None
+    risk_flag: str | None = None
+    suggested_action: str | None = None
 
 
 class EdgeNavResultMessage(BaseModel):
@@ -546,15 +547,15 @@ class EdgeNavResultMessage(BaseModel):
 
     type: str = "nav_result"
     frame_id: str
-    session_id: Optional[str] = None
-    latency_ms: Optional[float] = None
-    backend: Optional[str] = None
-    labels: List[EdgeNavLabel] = []
+    session_id: str | None = None
+    latency_ms: float | None = None
+    backend: str | None = None
+    labels: list[EdgeNavLabel] = []
     # === M1/M6 帧级属性（可选以兼容未升级的边缘端）===
-    plane_assessment: Optional[PlaneAssessment] = None
-    image_quality: Optional[ImageQuality] = None
+    plane_assessment: PlaneAssessment | None = None
+    image_quality: ImageQuality | None = None
     # 毫秒级 epoch（边缘端 push_nav_result/push_frame 的口径）
-    timestamp_ms: Optional[int] = None
+    timestamp_ms: int | None = None
 
 
 class PingMessage(BaseWebSocketMessage):
@@ -567,16 +568,16 @@ class PongMessage(BaseWebSocketMessage):
 
 class AuthMessage(BaseWebSocketMessage):
     type: WebSocketMessageType = WebSocketMessageType.AUTH
-    device_id: Optional[str] = None
-    api_key: Optional[str] = None
-    session_id: Optional[str] = None
-    token: Optional[str] = None
+    device_id: str | None = None
+    api_key: str | None = None
+    session_id: str | None = None
+    token: str | None = None
 
 
 class AuthOKMessage(BaseWebSocketMessage):
     type: WebSocketMessageType = WebSocketMessageType.AUTH_OK
-    session_id: Optional[str] = None
-    token: Optional[str] = None
+    session_id: str | None = None
+    token: str | None = None
 
 
 class DiagnosisResultMessage(BaseWebSocketMessage):
@@ -587,8 +588,8 @@ class DiagnosisResultMessage(BaseWebSocketMessage):
 class SessionTerminatedMessage(BaseWebSocketMessage):
     type: WebSocketMessageType = WebSocketMessageType.SESSION_TERMINATED
     reason: str
-    affected_organs: Optional[List[str]] = None
-    kb_version: Optional[str] = None
+    affected_organs: list[str] | None = None
+    kb_version: str | None = None
 
 
 class NavigationRevocationMessage(BaseWebSocketMessage):
@@ -600,7 +601,7 @@ class NavigationRevocationMessage(BaseWebSocketMessage):
 class ReconnectAckMessage(BaseWebSocketMessage):
     type: WebSocketMessageType = WebSocketMessageType.RECONNECT_ACK
     session_id: str
-    session_ttl_remaining_ms: Optional[int] = None
+    session_ttl_remaining_ms: int | None = None
 
 
 # ============== 反馈相关模型 ==============
@@ -617,18 +618,18 @@ class FeedbackSubmission(BaseModel):
     feedback_type: FeedbackType
     feedback_level: FeedbackLevel
     content: FeedbackContent
-    reviewer_id: Optional[str] = None
-    idempotency_key: Optional[str] = None
+    reviewer_id: str | None = None
+    idempotency_key: str | None = None
 
 
 # ============== 知情同意相关模型 ==============
 class ConsentQueryResponse(BaseModel):
     patient_id: str
     consent_status: ConsentStatus
-    consented_at: Optional[datetime] = None
-    withdrawn_at: Optional[datetime] = None
+    consented_at: datetime | None = None
+    withdrawn_at: datetime | None = None
     # 无知情同意记录时接口返回 None（表示"版本未知"），不能回填成假的默认版本号
-    consent_version: Optional[str] = None
+    consent_version: str | None = None
 
 
 class ConsentAction(str, Enum):
@@ -653,7 +654,7 @@ class ConsentUpdateResponse(BaseModel):
 class SessionCreateRequest(BaseModel):
     patient_id: str
     device_id: str
-    target_organs: List[str]
+    target_organs: list[str]
 
 
 class SessionResponse(BaseModel):
@@ -661,18 +662,18 @@ class SessionResponse(BaseModel):
     patient_id: str
     device_id: str
     status: SessionStatus
-    target_organs: List[str]
-    organ_statuses: Dict[str, str]
+    target_organs: list[str]
+    organ_statuses: dict[str, str]
     knowledge_base_version: str
     created_at: datetime
     updated_at: datetime
     consent_status_at_creation: ConsentStatus
-    ttl_remaining_seconds: Optional[int] = None
+    ttl_remaining_seconds: int | None = None
     # 详情端点补充的脱敏人口学（A.36 P0：工作区身份必须数据驱动）。
     # 脱敏在服务端完成（姓+**），前端不得猜姓名；缺数据 = None。
-    patient_name_masked: Optional[str] = None
-    gender: Optional[str] = None
-    age: Optional[int] = None
+    patient_name_masked: str | None = None
+    gender: str | None = None
+    age: int | None = None
 
 
 class SessionListItem(BaseModel):
@@ -684,14 +685,14 @@ class SessionListItem(BaseModel):
     """
     session_id: str
     patient_id: str
-    patient_name_masked: Optional[str] = None
-    gender: Optional[str] = None
-    age: Optional[int] = None
+    patient_name_masked: str | None = None
+    gender: str | None = None
+    age: int | None = None
     status: SessionStatus
-    target_organs: List[str] = []
+    target_organs: list[str] = []
     created_at: datetime
     updated_at: datetime
-    ttl_remaining_seconds: Optional[int] = None
+    ttl_remaining_seconds: int | None = None
 
 
 class SessionListResponse(BaseModel):
@@ -700,18 +701,18 @@ class SessionListResponse(BaseModel):
     契约 §0 P2「一次决策」：列表页医生此刻只需要挑一个病人开始，
     所以只给两组 —— 进行中 / 今日待处理，不按七种状态切页。
     """
-    in_progress: List[SessionListItem] = []
-    pending_today: List[SessionListItem] = []
+    in_progress: list[SessionListItem] = []
+    pending_today: list[SessionListItem] = []
     total_pending: int = 0
 
     @property
-    def items(self) -> List[SessionListItem]:
+    def items(self) -> list[SessionListItem]:
         return self.in_progress + self.pending_today
 
 
 class SessionUpdateRequest(BaseModel):
-    status: Optional[SessionStatus] = None
-    organ_statuses: Optional[Dict[str, str]] = None
+    status: SessionStatus | None = None
+    organ_statuses: dict[str, str] | None = None
 
 
 # ============== T-GB-AGT-01 多器官联合诊断 ==============
@@ -720,10 +721,10 @@ class OrganDiagnosisStatus(BaseModel):
 
     organ: str
     status: OrganStatus
-    request_id: Optional[str] = None
+    request_id: str | None = None
     confidence: float = 0.0
     elapsed_ms: float = 0.0
-    reason: Optional[str] = None
+    reason: str | None = None
 
 
 class MultiOrganDiagnosisRequest(BaseModel):
@@ -734,10 +735,10 @@ class MultiOrganDiagnosisRequest(BaseModel):
     """
 
     session_id: str
-    organs: Optional[List[str]] = None
-    response_tier: Optional[ResponseTier] = None
-    per_organ_timeout_seconds: Optional[float] = None
-    total_timeout_seconds: Optional[float] = None
+    organs: list[str] | None = None
+    response_tier: ResponseTier | None = None
+    per_organ_timeout_seconds: float | None = None
+    total_timeout_seconds: float | None = None
 
 
 class MultiOrganDiagnosisResponse(BaseModel):
@@ -745,13 +746,13 @@ class MultiOrganDiagnosisResponse(BaseModel):
 
     session_id: str
     session_status: SessionStatus
-    organs: List[str]
-    organ_statuses: Dict[str, OrganStatus]
-    organ_results: List[OrganDiagnosisStatus]
-    completed_organs: List[str]
-    failed_organs: List[str]
-    skipped_organs: List[str]
-    needs_review_organs: List[str]
+    organs: list[str]
+    organ_statuses: dict[str, OrganStatus]
+    organ_results: list[OrganDiagnosisStatus]
+    completed_organs: list[str]
+    failed_organs: list[str]
+    skipped_organs: list[str]
+    needs_review_organs: list[str]
     partial: bool
     total_ms: float
 
@@ -765,7 +766,7 @@ class RoutingConfirmationRequest(BaseModel):
     """
 
     confirmed: bool
-    reason: Optional[str] = None
+    reason: str | None = None
 
 
 class RoutingConfirmationResponse(BaseModel):
@@ -776,7 +777,7 @@ class RoutingConfirmationResponse(BaseModel):
     effective_tier: ResponseTier
     requires_confirmation: bool
     rerun_enqueued: bool
-    routing: Dict[str, Any]
+    routing: dict[str, Any]
 
 
 # ============== T-GB-API-02 报告生成与签发 ==============
@@ -786,7 +787,7 @@ class ReportDraftRequest(BaseModel):
     request_id: str
     sign: bool = False
     push: bool = False
-    operator_id: Optional[str] = None
+    operator_id: str | None = None
 
 
 class ReportResponse(BaseModel):
@@ -794,39 +795,39 @@ class ReportResponse(BaseModel):
 
     report_id: str
     request_id: str
-    session_id: Optional[str] = None
-    patient_id: Optional[str] = None
-    organ: Optional[str] = None
+    session_id: str | None = None
+    patient_id: str | None = None
+    organ: str | None = None
     status: str
-    template_version: Optional[str] = None
-    content_digest: Optional[str] = None
+    template_version: str | None = None
+    content_digest: str | None = None
     signature_present: bool = False
     signature_verified: bool = False
-    signing_key_name: Optional[str] = None
-    signed_at: Optional[datetime] = None
-    signed_by: Optional[str] = None
-    pacs_adapter: Optional[str] = None
-    pacs_status: Optional[str] = None
-    pacs_message: Optional[str] = None
-    pacs_attempts: Optional[int] = None
-    pushed_at: Optional[datetime] = None
-    created_at: Optional[datetime] = None
-    content: Optional[Dict[str, Any]] = None
-    rendered: Optional[str] = None
+    signing_key_name: str | None = None
+    signed_at: datetime | None = None
+    signed_by: str | None = None
+    pacs_adapter: str | None = None
+    pacs_status: str | None = None
+    pacs_message: str | None = None
+    pacs_attempts: int | None = None
+    pushed_at: datetime | None = None
+    created_at: datetime | None = None
+    content: dict[str, Any] | None = None
+    rendered: str | None = None
     # M8 完整性校验：{organ, template, required, missing, passed}
-    completeness: Optional[Dict[str, Any]] = None
+    completeness: dict[str, Any] | None = None
 
 
 class ReportSignRequest(BaseModel):
     """签发报告（可选覆盖操作者标识）。"""
 
-    operator_id: Optional[str] = None
+    operator_id: str | None = None
 
 
 class ReportPushRequest(BaseModel):
     """推送报告到 PACS/HIS（可指定适配器名，缺省用配置值）。"""
 
-    adapter: Optional[str] = None
+    adapter: str | None = None
 
 
 # ============== 安全事件相关模型 ==============
@@ -846,10 +847,10 @@ class SafetySeverity(str, Enum):
 class SafetyEventCreate(BaseModel):
     event_type: SafetyEventType
     severity: SafetySeverity
-    kb_version: Optional[str] = None
-    device_id: Optional[str] = None
-    patient_id: Optional[str] = None
-    payload: Optional[Dict[str, Any]] = None
+    kb_version: str | None = None
+    device_id: str | None = None
+    patient_id: str | None = None
+    payload: dict[str, Any] | None = None
 
 
 # ============== 设备管理相关模型 ==============
@@ -912,6 +913,48 @@ class DeviceRemoteRecoveryResponse(BaseModel):
     expires_at: str
 
 
+# ============== A.51 管理面列表（设备台账 / 患者检索） ==============
+class DeviceListItem(BaseModel):
+    """设备台账条目——**绝不回 api_key**（哈希只在校验路径用）。
+
+    字段名与 `DeviceListItem` 契约固定：注册响应里的 api_key 只在注册/恢复
+    时刻一次性下发；列表是管理面只读视图，泄漏面必须为零。
+    """
+
+    device_id: str
+    device_name: str
+    device_type: str
+    location: str
+    status: str
+    jetpack_version: str | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+
+
+class DeviceListResponse(BaseModel):
+    items: list[DeviceListItem]
+    total: int
+    offset: int
+    limit: int
+
+
+class PatientListItem(BaseModel):
+    """患者检索条目：FHIR Patient 表 + 最近同意状态 + 最近会话时间。"""
+
+    patient_id: str
+    name: str | None = None
+    gender: str | None = None
+    consent_status: str | None = None
+    last_session_at: datetime | None = None
+
+
+class PatientListResponse(BaseModel):
+    items: list[PatientListItem]
+    total: int
+    offset: int
+    limit: int
+
+
 class DeviceDeregisterResponse(BaseModel):
     device_id: str
     status: str
@@ -937,13 +980,13 @@ class VoiceConfirmRequest(BaseModel):
     command_type: VoiceCommandType
     confirmed: bool
     timestamp: int
-    organ: Optional[str] = None
-    grade_target: Optional[str] = None
-    nav_action: Optional[str] = None
+    organ: str | None = None
+    grade_target: str | None = None
+    nav_action: str | None = None
 
 
 class VoiceConfirmResponse(BaseModel):
     session_id: str
     executed: bool
-    action_taken: Optional[str] = None
-    request_id: Optional[str] = None
+    action_taken: str | None = None
+    request_id: str | None = None

@@ -48,6 +48,15 @@ export interface SegmentationView {
   area_mm2?: number | null;
   area_px?: number | null;
   mean_prob?: number | null;
+  /** 分割所属影像的 image_id（A.51 帧级归属：多影像栈据此只在对应影像上叠加）。 */
+  imageId?: string;
+  /** 择优帧号（0 起）与所在影像总帧数（A.51）。 */
+  frameIndex?: number;
+  totalFrames?: number;
+  /** 择优策略：best_mean_prob（多候选择优）/ single_frame。 */
+  selectionPolicy?: string;
+  /** 实际评估的候选帧数（≤3）。 */
+  candidatesEvaluated?: number;
 }
 
 /** 校验并收敛后端的旁路 dict —— 脏数据宁可当「不可用」也不渲染错误框。 */
@@ -77,6 +86,12 @@ function toSegmentationView(raw: unknown): SegmentationView | undefined {
     area_mm2: typeof d.area_mm2 === 'number' ? d.area_mm2 : null,
     area_px: typeof d.area_px === 'number' ? d.area_px : null,
     mean_prob: typeof d.mean_prob === 'number' ? d.mean_prob : null,
+    imageId: typeof d.image_id === 'string' ? d.image_id : undefined,
+    frameIndex: typeof d.frame_index === 'number' ? d.frame_index : undefined,
+    totalFrames: typeof d.total_frames === 'number' ? d.total_frames : undefined,
+    selectionPolicy: typeof d.selection_policy === 'string' ? d.selection_policy : undefined,
+    candidatesEvaluated:
+      typeof d.candidates_evaluated === 'number' ? d.candidates_evaluated : undefined,
   };
 }
 

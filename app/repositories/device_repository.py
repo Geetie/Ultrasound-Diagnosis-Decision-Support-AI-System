@@ -46,6 +46,42 @@ class DeviceRepository:
         )
         return result.scalar_one_or_none()
 
+    async def list_devices(
+        self,
+        *,
+        status: str | None = None,
+        device_type: str | None = None,
+        offset: int = 0,
+        limit: int = 20,
+    ) -> tuple[list[Device], int]:
+        """设备台账分页查询（A.51 设备列表端点）。
+
+        为什么此前没有：走查实证「设备/患者列表端点不存在，前端用校验+录入补位」——
+        管理面无法看到已注册设备全貌。返回 (rows, total) 供分页响应。
+        limit 上限 200（防大页拖库）；排序按 id desc（最新注册在前）。
+        """
+        from sqlalchemy import func
+
+        conds = []
+        if status:
+            conds.append(Device.status == status)
+        if device_type:
+            conds.append(Device.device_type == device_type)
+        base = select(Device)
+        count_stmt = select(func.count()).select_from(Device)
+        if conds:
+            base = base.where(*conds)
+            count_stmt = count_stmt.where(*conds)
+        total = int((await self.db.execute(count_stmt)).scalar_one())
+        rows = (
+            await self.db.execute(
+                base.order_by(Device.id.desc())
+                .offset(max(0, int(offset)))
+                .limit(min(200, max(1, int(limit))))
+            )
+        ).scalars().all()
+        return list(rows), total
+
     async def get_device_by_name(self, device_name: str) -> Device | None:
         # 按名取**最新一条**：device_name 无 DB 唯一约束（database.py Devices 表），
         # 历史脏数据/并发窗口可能留下同名多行 —— scalar_one_or_none() 会

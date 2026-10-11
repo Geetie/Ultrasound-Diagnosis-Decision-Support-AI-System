@@ -362,6 +362,14 @@ def _format_nodule_segmentation(segmentation: Any) -> str:
         )
     if not parts:
         return "（分割未检出目标区域）"
+    # A.51 多帧分期③：帧归属必须进报告——多帧栈的分割结果来自"择优帧"，
+    # 不写明帧号医生无法回看核对（此前只落 JSON 元数据，报告层不可见）。
+    total_frames = segmentation.get("total_frames")
+    frame_index = segmentation.get("frame_index")
+    if isinstance(total_frames, int) and total_frames > 1 and isinstance(frame_index, int):
+        policy = segmentation.get("selection_policy")
+        tag = "多帧候选择优" if policy == "best_mean_prob" else "中间帧"
+        parts.append(f"取自第 {frame_index + 1}/{total_frames} 帧（{tag}）")
     organ = segmentation.get("organ") or "目标"
     return f"模型辅助分割（{organ}）：" + "；".join(parts)
 
