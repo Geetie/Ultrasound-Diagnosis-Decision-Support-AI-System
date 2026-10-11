@@ -13,6 +13,13 @@
 
 ### What 已完成（有证据，详见 `feature_list.json` 与 16 号附录 A）
 
+- **GPU 误判更正 + 清单收官（2026-10-11，A.50.7.1）**：用户指出 GPU 可用——
+  实测证实是**我方环境污染**（CUDA_VISIBLE_DEVICES=2 + LD_LIBRARY_PATH 旧
+  toolkit），`env -u LD_LIBRARY_PATH CVD=0` 即恢复（nvidia-smi 的 NVML 版本号
+  瑕疵不影响 CUDA，误判教训入 SKILL）；E8 GPU 复跑与 CPU 逐帧一致；**E14
+  dispatcher P50=1.34s < 2.5s 达标销号**（端到端 wall P50 5.25s）。清单
+  E1~E4/E8/E9/E12/E14/E15 全销号，剩余 E5/E6/E7/E10/E11/E13 均外部依赖。
+
 - **清单第二批：E8/E9/E12（2026-10-11，A.50.7）**：①GPU 实情=NVML 驱动
   mismatch（新进程 CUDA 不可用，登记 E15 待管理员），E8 改 CPU 全量闭环：
   **500 例 MYO mean 0.7388 / 95.2% ≥0.6 达标销号**（A.42 的 0.58 是 3 帧抽样

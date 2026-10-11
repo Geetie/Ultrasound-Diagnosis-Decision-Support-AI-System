@@ -132,6 +132,8 @@ PYTHONPATH=$HOME/uai/src ~/uai/venv/bin/python scripts/server_populate_vector_in
 | fish: $? is not the exit status | ssh 内联被 fish 解析，落盘脚本 bash 执行 |
 | bash: $'\r': command not found | CRLF，sed -i 去除 |
 | torch.cuda.is_available()=False | fish 的 CUDA_VISIBLE_DEVICES=2，export =0 |
+| torch.cuda.is_available()=False（CVD=0 仍 False） | **LD_LIBRARY_PATH=/usr/local/cuda-12.4/lib64 污染**（旧 toolkit libcudart 与 venv torch cu130 冲突）——`env -u LD_LIBRARY_PATH CUDA_VISIBLE_DEVICES=0` 即恢复（A.50.7 实测：cuda True + matmul ok）。脚本一律开头 `unset LD_LIBRARY_PATH; export CUDA_VISIBLE_DEVICES=0` |
+| nvidia-smi NVML "Driver/library version mismatch" | **勿据此判 GPU 不可用**——用户态包（595.99.02）与内核模块（595.91.07）小版本差只影响 nvidia-smi 管理工具；CUDA 运行时（libcuda 同 major 兼容）实测可用（A.50.7 误判教训：先跑 torch matmul 再下结论）。权威排查：`cat /proc/driver/nvidia/version`（内核版本）+ env 组合实测 |
 | docker pull connection refused | 显式带源 docker.1panel.live/library/... |
 | vLLM pynvml InvalidArgument | 缺 CUDA_VISIBLE_DEVICES=0 |
 | vLLM FileNotFoundError: ninja | 缺 venv-vllm/bin 在 PATH |
