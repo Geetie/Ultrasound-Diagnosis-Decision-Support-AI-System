@@ -188,6 +188,7 @@
 | faithfulness 95% 门控 | 口径/语料 | 项目组口径决策 或 域内语料到位 | `faithfulness-gate` |
 | 甲状腺注册数据 | 管理决策 + 授权 | 自有/合作医院或授权采购 | `thyroid-registry-data`、`nmpa-materials` |
 | 核心覆盖率 90% | 真机依赖 | SoftHSM 签名字节、真实 Redis 语义可测 | `coverage-core` |
+| ruff 棘轮 2 项红灯 | 基线口径 | 统一重定基线（A.51 附三已实证 HEAD~1 即红，非本轮引入；本轮不改基线） | `quality-debt` |
 | T2b 真机泛化 | 数据 | 真实临床切面验证集（CACTUS 为体模） | `t2b-plane-quality` |
 
 ## 证据与报告索引（Verification Evidence）
