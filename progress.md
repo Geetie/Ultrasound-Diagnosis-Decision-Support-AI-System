@@ -13,6 +13,13 @@
 
 ### What 已完成（有证据，详见 `feature_list.json` 与 16 号附录 A）
 
+- **假外部依赖清理（2026-10-11，A.50.8）**：E6 **qdrant 上线**（gh-proxy 拉
+  二进制、pgvector→qdrant 迁移 3269 点、qdrant_client uuid5 id 修复、p11 走
+  qdrant 9/9）+ E7 **OTA 真分发落地**（ota_package_dir 配置 + 1MiB 包 +
+  p6 14/14）。真外部依赖仅剩 E5/E10/E11/E13（理由见 21 号甄别结论）。
+  **新铁律**：git archive 同步=HEAD 镜像，会覆盖服务器上未提交文件——
+  先 commit 再同步。
+
 - **GPU 误判更正 + 清单收官（2026-10-11，A.50.7.1）**：用户指出 GPU 可用——
   实测证实是**我方环境污染**（CUDA_VISIBLE_DEVICES=2 + LD_LIBRARY_PATH 旧
   toolkit），`env -u LD_LIBRARY_PATH CVD=0` 即恢复（nvidia-smi 的 NVML 版本号

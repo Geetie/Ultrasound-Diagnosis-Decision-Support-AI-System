@@ -5,9 +5,10 @@
 
 ## Last Updated
 
-2026-10-11（分支 `main`；A.50.7.1 GPU 误判更正（环境变量污染非硬件，
-SKILL 落钉子）+ E8 GPU 复跑双确认 + E14 dispatcher P50=1.34s 达标销号；
-清单 E1~E4/E8/E9/E12/E14/E15 全销号，详见 16 号附录 A.50.7）
+2026-10-11（分支 `main`；A.50.8 假外部依赖清理：E6 qdrant 上线（gh-proxy 二进制
++ 3269 点迁移 + uuid5 id 修复，p11 9/9 走 qdrant）+ E7 OTA 真分发（p6 14/14）；
+真外部仅剩 E5/E10/E11/E13；**新钉子：git archive 同步覆盖未提交文件，先 commit
+再同步**，详见 16 号附录 A.50.8）
 
 ## Current Objective
 
