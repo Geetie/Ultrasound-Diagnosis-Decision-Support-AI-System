@@ -32,7 +32,7 @@ async def voice_confirm(
 ):
     session = await session_repo.get_session(request.session_id)
     if not session:
-        raise NotFoundException(error_message=f"Session not found: {request.session_id}")
+        raise NotFoundException(error_message=f"检查会话不存在：{request.session_id}")
 
     if not request.confirmed:
         actor_id = get_actor_id(current_user)
@@ -62,7 +62,7 @@ async def voice_confirm(
         if not request.organ:
             raise BadRequestException(
                 error_code="E1001",
-                error_message="organ is required for diagnosis_trigger command",
+                error_message="语音指令「发起判读」必须指定检查部位（organ）",
             )
         # 语音触发与 POST /diagnosis/request 同一不变量（A.49 摸排发现两处断裂）：
         # ①患者同意门必须先过（原实现完全绕开 consent 校验）；
@@ -95,7 +95,7 @@ async def voice_confirm(
         if not request.grade_target:
             raise BadRequestException(
                 error_code="E1001",
-                error_message="grade_target is required for grade_change command",
+                error_message="语音指令「修改分级」必须指定分级目标（grade_target）",
             )
         action_taken = f"grade_changed_to_{request.grade_target}"
 
@@ -103,7 +103,7 @@ async def voice_confirm(
         if not request.nav_action:
             raise BadRequestException(
                 error_code="E1001",
-                error_message="nav_action is required for navigation_control command",
+                error_message="语音指令「导航控制」必须指定动作（nav_action）",
             )
         try:
             await nav_manager.send_personal_message(
@@ -121,7 +121,7 @@ async def voice_confirm(
     else:
         raise BadRequestException(
             error_code="E1001",
-            error_message=f"Unsupported command type: {request.command_type}",
+            error_message=f"不支持的语音指令类型：{request.command_type}",
         )
 
     actor_id = get_actor_id(current_user)

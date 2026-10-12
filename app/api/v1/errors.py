@@ -115,7 +115,7 @@ class AppBaseException(HTTPException):
 
 class BadRequestException(AppBaseException):
     _error_code = "E1001"
-    _error_message = "Bad request"
+    _error_message = "请求参数不合法"
     _status_code = 400
 
     def __init__(self, error_code: str | None = None, error_message: str | None = None, **kwargs):
@@ -127,7 +127,7 @@ class BadRequestException(AppBaseException):
 
 class NotFoundException(AppBaseException):
     _error_code = "E1002"
-    _error_message = "Resource not found"
+    _error_message = "资源不存在"
     _status_code = 404
 
     def __init__(self, error_code: str | None = None, error_message: str | None = None, **kwargs):
@@ -136,7 +136,7 @@ class NotFoundException(AppBaseException):
 
 class PatientNotConsentedException(AppBaseException):
     _error_code = "E1008"
-    _error_message = "Patient has not consented"
+    _error_message = "患者尚未签署 AI 辅助知情同意"
     _status_code = 403
     _suggestion = "Please obtain patient informed consent first"
 
@@ -152,7 +152,7 @@ class PatientNotConsentedException(AppBaseException):
 
 class PatientConsentWithdrawnException(AppBaseException):
     _error_code = "E1010"
-    _error_message = "Patient consent withdrawn"
+    _error_message = "患者的知情同意已撤回"
     _status_code = 403
     _suggestion = "Please re-obtain patient informed consent"
 
@@ -168,7 +168,7 @@ class PatientConsentWithdrawnException(AppBaseException):
 
 class RateLimitExceededException(AppBaseException):
     _error_code = "E1007"
-    _error_message = "Rate limit exceeded"
+    _error_message = "请求过于频繁，请稍后重试"
     _status_code = 429
     _suggestion = "Please retry later"
     _retryable = True
@@ -189,7 +189,7 @@ class RateLimitExceededException(AppBaseException):
 
 class MissingDICOMTagException(AppBaseException):
     _error_code = "E1012"
-    _error_message = "Missing required DICOM tags"
+    _error_message = "缺少 DICOM 必填字段"
     _status_code = 400
     _suggestion = "Please upload a DICOM file with all required tags"
 
@@ -205,7 +205,7 @@ class MissingDICOMTagException(AppBaseException):
 
 class AdversarialInputException(AppBaseException):
     _error_code = "E1006"
-    _error_message = "Adversarial input detected"
+    _error_message = "检测到对抗性输入（已拦截）"
     _status_code = 400
 
     def __init__(self, error_message: str = None, **kwargs):
@@ -219,7 +219,7 @@ class AdversarialInputException(AppBaseException):
 
 class RetryLimitExceededException(AppBaseException):
     _error_code = "E1009"
-    _error_message = "Retry limit exceeded"
+    _error_message = "重试次数已达上限"
     _status_code = 429
     _retryable = True
     _retry_strategy = "retry_after_30s"
@@ -238,7 +238,7 @@ class RetryLimitExceededException(AppBaseException):
 
 class UnsupportedExamTypeException(AppBaseException):
     _error_code = "E1011"
-    _error_message = "Unsupported exam type"
+    _error_message = "不支持的检查类型"
     _status_code = 400
 
     def __init__(self, error_message: str = None, **kwargs):
@@ -252,7 +252,7 @@ class UnsupportedExamTypeException(AppBaseException):
 
 class InvalidIdempotencyKeyException(AppBaseException):
     _error_code = "E1013"
-    _error_message = "Invalid idempotency key"
+    _error_message = "幂等键无效"
     _status_code = 400
 
     def __init__(self, error_message: str = None, **kwargs):
@@ -268,7 +268,7 @@ class PayloadTooLargeException(AppBaseException):
     """413 —— 标注存档等用户上传载荷超上限（A.40）。"""
 
     _error_code = "E1035"
-    _error_message = "Payload too large"
+    _error_message = "请求体过大"
     _status_code = 413
 
     def __init__(self, error_message: str | None = None, **kwargs):
@@ -282,7 +282,7 @@ class PayloadTooLargeException(AppBaseException):
 
 class ServerErrorException(AppBaseException):
     _error_code = "E2000"
-    _error_message = "Internal server error"
+    _error_message = "服务器内部错误"
     _status_code = 500
 
     def __init__(self, error_code: str | None = None, error_message: str | None = None, status_code: int = 500, **kwargs):
@@ -294,7 +294,7 @@ class ServerErrorException(AppBaseException):
 
 class KnowledgeRetrievalTimeoutException(AppBaseException):
     _error_code = "E2001"
-    _error_message = "Knowledge retrieval timeout"
+    _error_message = "知识检索超时"
     _status_code = 200
     _retryable = True
     _retry_strategy = "retry_after_5s"
@@ -312,7 +312,7 @@ class KnowledgeRetrievalTimeoutException(AppBaseException):
 
 class ModelInferenceFailedException(AppBaseException):
     _error_code = "E2002"
-    _error_message = "Model inference failed"
+    _error_message = "模型推理失败"
     _status_code = 500
     _retryable = True
     _retry_strategy = "retry_after_5s"
@@ -330,7 +330,7 @@ class ModelInferenceFailedException(AppBaseException):
 
 class DiagnosisQueueFullException(AppBaseException):
     _error_code = "E2004"
-    _error_message = "Diagnosis queue full"
+    _error_message = "诊断队列已满"
     _status_code = 503
     _retryable = True
     _retry_strategy = "retry_after_5s"
@@ -348,7 +348,7 @@ class DiagnosisQueueFullException(AppBaseException):
 
 class FusionLayerUnavailableException(AppBaseException):
     _error_code = "E2003"
-    _error_message = "Fusion layer unavailable"
+    _error_message = "融合层不可用"
     _status_code = 503
     _retryable = True
     _retry_strategy = "retry_after_5s"
@@ -366,7 +366,7 @@ class FusionLayerUnavailableException(AppBaseException):
 
 class SystemQueueFullException(AppBaseException):
     _error_code = "E2004A"
-    _error_message = "System queue full"
+    _error_message = "系统队列已满"
     _status_code = 503
     _retryable = True
     _retry_strategy = "retry_after_30s"
@@ -384,7 +384,7 @@ class SystemQueueFullException(AppBaseException):
 
 class UserQueueQuotaExceededException(AppBaseException):
     _error_code = "E2004B"
-    _error_message = "User queue quota exceeded"
+    _error_message = "你的并发额度已用尽，请稍后重试"
     _status_code = 503
     _retryable = True
     _retry_strategy = "retry_after_30s"
@@ -402,7 +402,7 @@ class UserQueueQuotaExceededException(AppBaseException):
 
 class RetrievalNoResultException(AppBaseException):
     _error_code = "E2006"
-    _error_message = "Retrieval no result or insufficient evidence"
+    _error_message = "检索无结果或证据不足"
     _status_code = 200
     _suggestion = "Please adjust retrieval parameters or perform manual review"
 
@@ -418,7 +418,7 @@ class RetrievalNoResultException(AppBaseException):
 
 class ModelHotReloadException(AppBaseException):
     _error_code = "E2007"
-    _error_message = "Model hot reload in progress"
+    _error_message = "模型正在热加载，请稍后重试"
     _status_code = 503
     _retryable = True
     _retry_strategy = "retry_after_30s"
@@ -441,7 +441,7 @@ class SafetyException(AppBaseException):
 
 class ConfidenceBelowThresholdException(SafetyException):
     _error_code = "E3001"
-    _error_message = "Confidence below threshold"
+    _error_message = "置信度低于阈值"
     _status_code = 200
     _suggestion = "Manual review required"
 
@@ -456,7 +456,7 @@ class ConfidenceBelowThresholdException(SafetyException):
 
 class TripleValidationFailedException(SafetyException):
     _error_code = "E3002"
-    _error_message = "Triple validation failed"
+    _error_message = "三重校验未通过"
     _status_code = 200
     _suggestion = "Manual review required"
 
@@ -471,7 +471,7 @@ class TripleValidationFailedException(SafetyException):
 
 class SelfRAGQualityCheckFailedException(SafetyException):
     _error_code = "E3003"
-    _error_message = "Self-RAG quality check failed"
+    _error_message = "Self-RAG 质量检查未通过"
     _status_code = 200
     _suggestion = "Manual review or retry with fallback"
     _retryable = True
@@ -490,7 +490,7 @@ class SelfRAGQualityCheckFailedException(SafetyException):
 
 class SpecialityConclusionContradictException(SafetyException):
     _error_code = "E3004"
-    _error_message = "Specialty conclusion contradicts evidence"
+    _error_message = "专科结论与证据矛盾"
     _status_code = 200
     _suggestion = "Manual review required"
 
@@ -505,7 +505,7 @@ class SpecialityConclusionContradictException(SafetyException):
 
 class SpecialityConclusionPartialException(SafetyException):
     _error_code = "E3005"
-    _error_message = "Specialty conclusion partially consistent"
+    _error_message = "专科结论与证据仅部分一致"
     _status_code = 200
     _suggestion = "Manual review required"
 
@@ -520,7 +520,7 @@ class SpecialityConclusionPartialException(SafetyException):
 
 class SafetyOutputBlockedException(SafetyException):
     _error_code = "E3006"
-    _error_message = "Safety check failed, output blocked"
+    _error_message = "安全检查未通过，输出已阻断"
     _status_code = 200
     _suggestion = "Manual review required"
 
@@ -535,7 +535,7 @@ class SafetyOutputBlockedException(SafetyException):
 
 class DICOMFormatException(AppBaseException):
     _error_code = "E1004"
-    _error_message = "DICOM file format error"
+    _error_message = "DICOM 文件格式错误"
     _status_code = 400
     _suggestion = "Please upload a valid DICOM file"
 
@@ -556,7 +556,7 @@ class InfrastructureException(AppBaseException):
 
 class SafetyGatewayUnavailableException(InfrastructureException):
     _error_code = "E4005"
-    _error_message = "Safety gateway unavailable"
+    _error_message = "安全网关不可用"
     _status_code = 503
     _retryable = True
     _retry_strategy = "retry_after_5s"
@@ -574,7 +574,7 @@ class SafetyGatewayUnavailableException(InfrastructureException):
 
 class DeviceIsolatedException(InfrastructureException):
     _error_code = "E4010"
-    _error_message = "Device isolated"
+    _error_message = "设备已被隔离"
     _status_code = 403
 
     def __init__(self, error_message: str = None, **kwargs):
@@ -588,7 +588,7 @@ class DeviceIsolatedException(InfrastructureException):
 
 class KnowledgeVersionIncompatibleException(InfrastructureException):
     _error_code = "E4004"
-    _error_message = "Knowledge base version incompatible"
+    _error_message = "知识库版本不兼容"
     _status_code = 503
 
     def __init__(self, error_message: str = None, **kwargs):
@@ -602,7 +602,7 @@ class KnowledgeVersionIncompatibleException(InfrastructureException):
 
 class KnowledgeBaseSafetyUpdateException(InfrastructureException):
     _error_code = "E4006"
-    _error_message = "Knowledge base safety update, in-progress diagnoses cancelled"
+    _error_message = "知识库安全更新，进行中的判读已取消"
     _status_code = 503
     _suggestion = "Please create a new session with the latest knowledge base"
 
@@ -618,7 +618,7 @@ class KnowledgeBaseSafetyUpdateException(InfrastructureException):
 
 class SafetyGatewayDownException(InfrastructureException):
     _error_code = "E4005A"
-    _error_message = "Safety gateway down"
+    _error_message = "安全网关已下线"
     _status_code = 503
     _retryable = True
     _retry_strategy = "retry_after_5s"
@@ -636,7 +636,7 @@ class SafetyGatewayDownException(InfrastructureException):
 
 class PostgreSQLUnavailableException(InfrastructureException):
     _error_code = "E4005B"
-    _error_message = "PostgreSQL unavailable"
+    _error_message = "数据库（PostgreSQL）不可用"
     _status_code = 503
     _retryable = True
     _retry_strategy = "retry_after_5s"
@@ -654,7 +654,7 @@ class PostgreSQLUnavailableException(InfrastructureException):
 
 class DualServiceUnavailableException(InfrastructureException):
     _error_code = "E4005C"
-    _error_message = "Safety gateway and fusion layer both unavailable"
+    _error_message = "安全网关与融合层均不可用"
     _status_code = 503
     _retryable = True
     _retry_strategy = "retry_after_30s"
@@ -672,7 +672,7 @@ class DualServiceUnavailableException(InfrastructureException):
 
 class HSMUnavailableException(InfrastructureException):
     _error_code = "E4013"
-    _error_message = "HSM unavailable"
+    _error_message = "硬件加密模块（HSM）不可用"
     _status_code = 503
     _retryable = True
     _retry_strategy = "retry_after_5s"
@@ -690,7 +690,7 @@ class HSMUnavailableException(InfrastructureException):
 
 class RedisUnavailableNewSessionDelayException(InfrastructureException):
     _error_code = "E4008"
-    _error_message = "Redis unavailable causing new session creation delay (PostgreSQL fallback)"
+    _error_message = "Redis 不可用，新建会话将变慢（已降级到 PostgreSQL）"
     _status_code = 503
     _suggestion = "New sessions will fall back to PostgreSQL"
     _retryable = True
@@ -710,7 +710,7 @@ class RedisUnavailableNewSessionDelayException(InfrastructureException):
 
 class EdgeSchedulerUnreachableException(InfrastructureException):
     _error_code = "E4001"
-    _error_message = "Edge scheduler unreachable"
+    _error_message = "边缘调度服务不可达"
     _status_code = 503
     _retryable = True
     _retry_strategy = "retry_after_5s"
@@ -728,7 +728,7 @@ class EdgeSchedulerUnreachableException(InfrastructureException):
 
 class EdgeNavModelLoadFailedException(InfrastructureException):
     _error_code = "E4002"
-    _error_message = "Edge navigation model load failed"
+    _error_message = "边缘导航模型加载失败"
     _status_code = 503
 
     def __init__(self, error_message: str = None, **kwargs):
@@ -742,7 +742,7 @@ class EdgeNavModelLoadFailedException(InfrastructureException):
 
 class DesensitizationCheckTimeoutException(InfrastructureException):
     _error_code = "E4003"
-    _error_message = "Desensitization check timeout"
+    _error_message = "脱敏检查超时"
     _status_code = 503
     _retryable = True
     _retry_strategy = "retry_after_5s"
@@ -760,7 +760,7 @@ class DesensitizationCheckTimeoutException(InfrastructureException):
 
 class RedisUnavailableException(InfrastructureException):
     _error_code = "E4007"
-    _error_message = "Redis unavailable"
+    _error_message = "Redis 不可用"
     _status_code = 503
     _retryable = True
     _retry_strategy = "retry_after_5s"
@@ -778,7 +778,7 @@ class RedisUnavailableException(InfrastructureException):
 
 class PostgreSQLWriteTimeoutException(InfrastructureException):
     _error_code = "E4009"
-    _error_message = "PostgreSQL write timeout"
+    _error_message = "数据库写入超时"
     _status_code = 503
     _retryable = True
     _retry_strategy = "retry_after_5s"
@@ -796,7 +796,7 @@ class PostgreSQLWriteTimeoutException(InfrastructureException):
 
 class GPUOverheatException(InfrastructureException):
     _error_code = "E4011"
-    _error_message = "GPU overheat protection"
+    _error_message = "GPU 过热保护已触发"
     _status_code = 503
 
     def __init__(self, error_message: str = None, **kwargs):
@@ -810,7 +810,7 @@ class GPUOverheatException(InfrastructureException):
 
 class RetrievalServiceDegradedException(InfrastructureException):
     _error_code = "E4012"
-    _error_message = "Retrieval service degraded for over 4 hours"
+    _error_message = "检索服务已降级超过 4 小时"
     _status_code = 503
 
     def __init__(self, error_message: str = None, **kwargs):
@@ -876,7 +876,7 @@ async def general_exception_handler(request: Request, exc: Exception):
     logger.error("unhandled_exception", error=str(exc), path=request.url.path)
     error_response = ErrorResponse(
         error_code="E2000",
-        error_message="Internal server error",
+        error_message="服务器内部错误",
         detail=None,
         suggestion="Please contact administrator",
         request_id=get_current_request_id(),
@@ -943,7 +943,7 @@ def register_error(code: str, message: str, status_code: int, **kwargs) -> Error
 def raise_error(code: str, message_override: str | None = None, **kwargs):
     spec = _SPEC_REGISTRY.get(code)
     if not spec:
-        raise ServerErrorException(error_code="E2999", error_message=f"Unknown error code: {code}")
+        raise ServerErrorException(error_code="E2999", error_message=f"未知错误码：{code}")
     raise AppBaseException(
         error_code=code,
         error_message=message_override or spec.message,
@@ -957,4 +957,4 @@ def raise_error(code: str, message_override: str | None = None, **kwargs):
 
 register_error("E1003", "Authentication failed", 401)
 register_error("E1005", "Method not allowed", 405)
-register_error("E2000", "Internal server error", 500)
+register_error("E2000", "服务器内部错误", 500)

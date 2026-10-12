@@ -31,7 +31,7 @@ async def reload_desensitization_rules(current_user: dict[str, Any] = _admin_onl
         result = desensitization_engine.reload_rules()
         return result
     except Exception as e:
-        raise BadRequestException(error_message=f"Failed to reload rules: {e!s}")
+        raise BadRequestException(error_message=f"规则重载失败：{e!s}")
 
 
 @router.post("/desensitization/rules/check")
@@ -93,7 +93,7 @@ async def get_log_level(current_user: dict[str, Any] = _any_authenticated):
 async def update_log_level(level: str, current_user: dict[str, Any] = _admin_only):
     if level.upper() not in LOG_LEVELS:
         raise BadRequestException(
-            error_message=f"Invalid log level: {level}. Must be one of {LOG_LEVELS}"
+            error_message=f"日志级别非法：{level}，必须是 {LOG_LEVELS} 之一"
         )
 
     try:

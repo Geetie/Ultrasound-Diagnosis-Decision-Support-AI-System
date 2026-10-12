@@ -12,13 +12,14 @@ from app.api.v1.errors import (
 
 class TestErrorCodeMapConsistency:
     def test_e4008_maps_to_redis_session_delay(self):
-        assert ERROR_CODE_MAP.get("E4008").message == "Redis unavailable causing new session creation delay (PostgreSQL fallback)"
+        # 文案已中文化（A.52）→ 不再钉字面量，改钉「注册表与异常类默认文案一致」
+        assert ERROR_CODE_MAP.get("E4008").message == RedisUnavailableNewSessionDelayException().error_message
 
     def test_e4013_maps_to_hsm_unavailable(self):
-        assert ERROR_CODE_MAP.get("E4013").message == "HSM unavailable"
+        assert ERROR_CODE_MAP.get("E4013").message == HSMUnavailableException().error_message
 
     def test_e3006_maps_to_safety_output_blocked(self):
-        assert ERROR_CODE_MAP.get("E3006").message == "Safety check failed, output blocked"
+        assert ERROR_CODE_MAP.get("E3006").message == SafetyOutputBlockedException().error_message
 
     def test_e2001_exists(self):
         assert "E2001" in ERROR_CODE_MAP
@@ -34,7 +35,7 @@ class TestHSMUnavailableException:
 
     def test_default_message(self):
         exc = HSMUnavailableException()
-        assert exc.error_message == "HSM unavailable"
+        assert exc.error_message == "硬件加密模块（HSM）不可用"
 
     def test_status_code_503(self):
         exc = HSMUnavailableException()
@@ -52,7 +53,7 @@ class TestRedisUnavailableNewSessionDelayException:
 
     def test_default_message(self):
         exc = RedisUnavailableNewSessionDelayException()
-        assert "Redis unavailable" in exc.error_message
+        assert "Redis 不可用" in exc.error_message
 
     def test_status_code_503(self):
         exc = RedisUnavailableNewSessionDelayException()
@@ -71,7 +72,7 @@ class TestSafetyOutputBlockedException:
 
     def test_default_message(self):
         exc = SafetyOutputBlockedException()
-        assert "Safety check" in exc.error_message
+        assert "安全检查未通过" in exc.error_message
 
     def test_is_safety_exception(self):
         exc = SafetyOutputBlockedException()

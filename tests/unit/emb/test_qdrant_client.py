@@ -243,10 +243,14 @@ class TestUpsert:
         kwargs = idx._client.upsert.await_args.kwargs
         assert kwargs["collection_name"] == "ultrasound_kb_v1"
         assert len(kwargs["points"]) == 3
+        import uuid as _uuid
+
         for i, point in enumerate(kwargs["points"]):
-            assert point.id == f"id_{i}"
+            # qdrant point id 只接受 UUID/无符号整数 → 实现用 uuid5 确定性映射
+            # chunk_id（同 id 幂等），原始 id 存 payload["chunk_id"] 供检索还原。
+            assert point.id == str(_uuid.uuid5(_uuid.NAMESPACE_URL, f"id_{i}"))
             assert point.vector == [0.1, 0.2, 0.3]
-            assert point.payload == {"k": i}
+            assert point.payload == {"k": i, "chunk_id": f"id_{i}"}
 
     async def test_unexpected_response_mapped(self) -> None:
         idx = _make_index()
@@ -263,13 +267,28 @@ class TestUpsert:
 
 
 class TestSearch:
+    """A.51 起实现走 `query_points`（qdrant-client ≥1.14 移除 `search()`）。
+
+    mock 必须返回带 `.points` 的响应对象（实现用 `getattr(resp, "points", resp)`
+    兼容老版本），否则 hits 为空 —— 这正是 A.51 真机抓到的「dense 腿静默全空」。
+    """
+
+    @staticmethod
+    def _patch_query_points(idx, hits=None, side_effect=None):
+        resp = MagicMock()
+        resp.points = hits if hits is not None else []
+        if side_effect is not None:
+            idx._client.query_points.side_effect = side_effect
+        else:
+            idx._client.query_points.return_value = resp
+
     async def test_returns_search_results(self) -> None:
         idx = _make_index()
         hits = [
             _make_hit("a", 0.95, {"organ": "thyroid"}),
             _make_hit("b", 0.85, {"organ": "liver"}),
         ]
-        idx._client.search.return_value = hits
+        self._patch_query_points(idx, hits)
         results = await idx.search("kb_v1", query_vector=[0.1, 0.2], top_k=5)
         assert len(results) == 2
         assert isinstance(results[0], SearchResult)
@@ -279,14 +298,14 @@ class TestSearch:
 
     async def test_filter_passed_through(self) -> None:
         idx = _make_index()
-        idx._client.search.return_value = []
+        self._patch_query_points(idx, [])
         await idx.search(
             "kb_v1",
             query_vector=[0.1, 0.2],
             top_k=10,
             filter={"organ": "thyroid"},
         )
-        kwargs = idx._client.search.await_args.kwargs
+        kwargs = idx._client.query_points.await_args.kwargs
         assert kwargs["collection_name"] == "ultrasound_kb_v1"
         assert kwargs["query_filter"] is not None
         assert kwargs["limit"] == 10
@@ -294,7 +313,7 @@ class TestSearch:
 
     async def test_unexpected_response_mapped(self) -> None:
         idx = _make_index()
-        idx._client.search.side_effect = _unexpected_response("not found", 404)
+        self._patch_query_points(idx, side_effect=_unexpected_response("not found", 404))
         with pytest.raises(VectorIndexError) as exc_info:
             await idx.search("kb_v1", query_vector=[0.1])
         assert exc_info.value.error_code == VectorIndexErrorCode.SEARCH_FAILED
@@ -303,7 +322,7 @@ class TestSearch:
 
     async def test_generic_exception_mapped(self) -> None:
         idx = _make_index()
-        idx._client.search.side_effect = RuntimeError("connection lost")
+        self._patch_query_points(idx, side_effect=RuntimeError("connection lost"))
         with pytest.raises(VectorIndexError) as exc_info:
             await idx.search("kb_v1", query_vector=[0.1])
         assert exc_info.value.error_code == VectorIndexErrorCode.SEARCH_FAILED

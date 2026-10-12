@@ -26,7 +26,7 @@ class TestE4006Exception:
         exc = KnowledgeBaseSafetyUpdateException()
         assert exc.error_code == "E4006"
         assert exc.status_code == 503
-        assert "safety update" in exc.error_message
+        assert "知识库安全更新" in exc.error_message
 
     def test_kb_safety_update_exception_custom_message(self):
         exc = KnowledgeBaseSafetyUpdateException(error_message="自定义消息")

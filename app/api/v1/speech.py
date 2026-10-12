@@ -128,18 +128,18 @@ async def recognize_speech(
     except base64.binascii.Error:
         raise HTTPException(
             status_code=400,
-            detail="Invalid base64-encoded audio data"
+            detail="音频数据 base64 编码无效"
         )
     except SpeechError as e:
         raise HTTPException(
             status_code=500 if e.retryable else 400,
-            detail=f"Speech recognition failed: {e.message}"
+            detail=f"语音识别失败：{e.message}"
         )
     except Exception as e:
         logger.error("speech_recognition_unexpected_error", error=str(e))
         raise HTTPException(
             status_code=500,
-            detail="Speech recognition failed due to an internal error"
+            detail="语音识别因内部错误失败"
         )
 
 
@@ -188,5 +188,5 @@ async def get_engine_info(
     except Exception as e:
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to get engine info: {e!s}"
+            detail=f"获取语音引擎信息失败：{e!s}"
         )

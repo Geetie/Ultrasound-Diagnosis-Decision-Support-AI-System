@@ -98,7 +98,20 @@ class FHIRPatientUpdate(BaseModel):
 
 
 async def _load_patient_with_consent(db: AsyncSession, patient_id: str) -> Patient:
-    """读取患者并做同意校验（撤回/未签署直接拒绝）。"""
+    """读取患者并做同意校验（撤回/未签署直接拒绝）。
+
+    **顺序：先存在性（404）→ 再同意（403）**（A.52 端到端摸排修正）。
+    此前先查同意：不存在的患者必然「无同意记录」→ 抛 403「未签署知情同意」，
+    医生被误导去质控补签（实际该患者根本不存在，应走建档）。前端 A.33 的
+    「404 → 就地建档」分支因此**永远走不到**。对已登录医生而言，患者是否存在
+    本就可通过 `GET /api/v1/patients` 检索得知，先查存在性不新增信息暴露。
+    """
+    stmt = select(Patient).where(Patient.patient_id == patient_id)
+    result = await db.execute(stmt)
+    patient = result.scalar_one_or_none()
+    if not patient:
+        raise NotFoundException(error_message=f"患者不存在：{patient_id}")
+
     consent_repo = ConsentRepository(db)
     consent_record = await consent_repo.get_latest_consent(patient_id)
     consent_status = ConsentStatus(consent_record.status) if consent_record else ConsentStatus.DENIED
@@ -106,12 +119,6 @@ async def _load_patient_with_consent(db: AsyncSession, patient_id: str) -> Patie
         raise PatientConsentWithdrawnException()
     if consent_status != ConsentStatus.GRANTED:
         raise PatientNotConsentedException()
-
-    stmt = select(Patient).where(Patient.patient_id == patient_id)
-    result = await db.execute(stmt)
-    patient = result.scalar_one_or_none()
-    if not patient:
-        raise NotFoundException(error_message=f"Patient not found: {patient_id}")
     return patient
 
 
@@ -129,6 +136,15 @@ async def get_patient(
     db: AsyncSession = Depends(get_db_session),
     current_user: dict | None = Depends(get_current_active_user),
 ):
+    # A.52：先存在性（404 → 前端「就地建档」引导），再同意（403 → 引导质控）。
+    # 顺序不能反 —— 反了则不存在患者恒被判为「未签署同意」（医生被误导）。
+    stmt = select(Patient).where(Patient.patient_id == id)
+    result = await db.execute(stmt)
+    patient = result.scalar_one_or_none()
+
+    if not patient:
+        raise NotFoundException(error_message=f"患者不存在：{id}")
+
     consent_repo = ConsentRepository(db)
     consent_record = await consent_repo.get_latest_consent(id)
     consent_status = ConsentStatus(consent_record.status) if consent_record else ConsentStatus.DENIED
@@ -136,13 +152,6 @@ async def get_patient(
         raise PatientConsentWithdrawnException()
     if consent_status != ConsentStatus.GRANTED:
         raise PatientNotConsentedException()
-
-    stmt = select(Patient).where(Patient.patient_id == id)
-    result = await db.execute(stmt)
-    patient = result.scalar_one_or_none()
-
-    if not patient:
-        raise NotFoundException(error_message=f"Patient not found: {id}")
 
     resource = FHIRPatient(
         id=patient.patient_id,
@@ -162,7 +171,7 @@ async def create_patient(
     existing = (await db.execute(stmt)).scalar_one_or_none()
     if existing:
         raise BadRequestException(
-            error_message=f"Patient already exists: {request.patient_id}"
+            error_message=f"患者已存在：{request.patient_id}"
         )
 
     patient = Patient(
@@ -243,7 +252,7 @@ async def create_imaging_study(
     session = await db.get(DiagnosisSession, request.session_id)
     if not session:
         raise NotFoundException(
-            error_message=f"Session not found: {request.session_id}",
+            error_message=f"检查会话不存在：{request.session_id}",
         )
 
     resource = FHIRImagingStudy(
@@ -265,7 +274,7 @@ async def get_imaging_study(
     """读取 ImagingStudy（由会话派生：id = session_id）。"""
     session = await db.get(DiagnosisSession, id)
     if not session:
-        raise NotFoundException(error_message=f"ImagingStudy not found: {id}")
+        raise NotFoundException(error_message=f"影像检查不存在：{id}")
     return FHIRImagingStudy(
         id=session.session_id,
         status="available",
@@ -318,7 +327,7 @@ async def get_diagnostic_report(
     diagnosis = result.scalar_one_or_none()
 
     if not diagnosis:
-        raise NotFoundException(error_message=f"DiagnosticReport not found: {id}")
+        raise NotFoundException(error_message=f"诊断报告不存在：{id}")
 
     session = await db.get(DiagnosisSession, diagnosis.session_id)
     patient_id = session.patient_id if session else "unknown"
@@ -399,7 +408,7 @@ async def get_observation(
     stmt = select(DiagnosisResult).where(DiagnosisResult.request_id == request_id)
     diagnosis = (await db.execute(stmt)).scalar_one_or_none()
     if not diagnosis:
-        raise NotFoundException(error_message=f"Observation not found: {id}")
+        raise NotFoundException(error_message=f"观察项不存在：{id}")
 
     session = await db.get(DiagnosisSession, diagnosis.session_id)
     patient_id = session.patient_id if session else "unknown"

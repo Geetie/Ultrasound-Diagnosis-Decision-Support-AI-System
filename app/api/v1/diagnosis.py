@@ -206,7 +206,7 @@ async def submit_diagnosis_request(
 
     session = await session_repo.get_session(request.session_id)
     if not session:
-        raise NotFoundException(error_message=f"Session not found: {request.session_id}")
+        raise NotFoundException(error_message=f"检查会话不存在：{request.session_id}")
 
     consent_record = await consent_repo.get_latest_consent(session.patient_id)
     check_consent_status(consent_record, session.patient_id)
@@ -357,7 +357,7 @@ async def confirm_routing_upgrade(
     """
     result = await diagnosis_repo.get_result(request_id)
     if not result:
-        raise NotFoundException(error_message=f"Diagnosis result not found: {request_id}")
+        raise NotFoundException(error_message=f"判读结果不存在：{request_id}")
 
     findings = dict(result.findings) if isinstance(result.findings, dict) else {}
     decision = RoutingDecision.from_dict(findings.get("routing"))
@@ -471,7 +471,7 @@ async def submit_multi_organ_diagnosis(
     """
     session = await session_repo.get_session(request.session_id)
     if not session:
-        raise NotFoundException(error_message=f"Session not found: {request.session_id}")
+        raise NotFoundException(error_message=f"检查会话不存在：{request.session_id}")
 
     consent_record = await consent_repo.get_latest_consent(session.patient_id)
     check_consent_status(consent_record, session.patient_id)
@@ -540,7 +540,7 @@ async def get_diagnosis_result(
 
     result = await diagnosis_repo.get_result(request_id)
     if not result:
-        raise NotFoundException(error_message=f"Diagnosis result not found: {request_id}")
+        raise NotFoundException(error_message=f"判读结果不存在：{request_id}")
 
     # 撤回消费链的 cancelled 终态必须**可读**：管线（diagnosis_pipeline.py 的
     # CancelledError 处理）特意 asyncio.shield 写回 status=cancelled，供医生/审计

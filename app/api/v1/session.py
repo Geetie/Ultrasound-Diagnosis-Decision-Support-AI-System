@@ -176,7 +176,7 @@ async def get_session(
 ):
     session = await session_repo.get_session(session_id)
     if not session:
-        raise NotFoundException(error_message=f"Session not found: {session_id}")
+        raise NotFoundException(error_message=f"检查会话不存在：{session_id}")
 
     # A.36 P0：详情响应带脱敏人口学 —— 工作区身份数据驱动，不再写死
     demographics = await session_repo.get_patient_demographics(session.patient_id)
@@ -198,7 +198,7 @@ async def update_session(
     )
 
     if not session:
-        raise NotFoundException(error_message=f"Session not found: {session_id}")
+        raise NotFoundException(error_message=f"检查会话不存在：{session_id}")
 
     actor_id = get_actor_id(current_user)
     await audit_service.log_action(

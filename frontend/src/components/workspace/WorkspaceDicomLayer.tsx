@@ -183,8 +183,14 @@ export default function WorkspaceDicomLayer({
   // try/catch，医生只会看到一块空白影像区 + console 里一行英文。这里兜住这类异步错误，
   // 翻成医生看得懂的提示（判读结论照常出，但医生必须知道影像是没渲染出来而不是"没病灶"）。
   useEffect(() => {
+    // 覆盖 Cornerstone 常见的三类「文件本身不可渲染」报文（A.52 实机抓到后两类）：
+    //   ① Invalid frame length —— 多帧每帧字节数为奇
+    //   ② no pixel data in NATURALIZED —— 头 132 字节合法但无可用像素数据
+    //   ③ Finding view is past end of input —— 像素数据长度与元数据自相矛盾
     const isImageLoadFailure = (msg: string) =>
-      /Invalid frame length|dicom-image-loader|imageLoader|cornerstone/i.test(msg);
+      /Invalid frame length|dicom-image-loader|imageLoader|cornerstone|no pixel data|past end of input/i.test(
+        msg,
+      );
     const onRejection = (evt: PromiseRejectionEvent) => {
       const reason = evt.reason as { message?: string } | string | undefined;
       const msg = String((reason && (reason as { message?: string }).message) || reason || '');

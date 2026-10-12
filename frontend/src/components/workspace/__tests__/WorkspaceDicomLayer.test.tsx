@@ -260,6 +260,17 @@ describe('WorkspaceDicomLayer · 多帧分期①', () => {
     await waitFor(() => expect(screen.queryByText(/影像无法渲染/)).toBeNull());
   });
 
+  it('A.52：坏 DICOM 的「no pixel data」错误也要出横幅（医生不能只看到黑屏）', async () => {
+    render(<WorkspaceDicomLayer imageIds={['dicomfile:0']} />);
+    await waitFor(() => expect(cs.displayImage).toHaveBeenCalled());
+    const evt = new Event('error') as ErrorEvent;
+    Object.defineProperty(evt, 'message', {
+      value: 'loadImageFromNaturalizedMetadata: no pixel data in NATURALIZED for imageId dicomfile:0',
+    });
+    window.dispatchEvent(evt);
+    expect(await screen.findByText(/影像无法渲染/)).toBeInTheDocument();
+  });
+
   it('A.52：帧归属上报的是**后端** image_id（不是 cornerstone 句柄）', async () => {
     const onFrameChange = vi.fn();
     render(

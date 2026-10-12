@@ -60,7 +60,7 @@ async def get_annotations(
 ) -> dict[str, Any]:
     path = _annotation_path(image_id)
     if path is None:
-        raise NotFoundException(error_message=f"invalid image id: {image_id[:24]}")
+        raise NotFoundException(error_message=f"影像 id 无效：{image_id[:24]}")
     if not path.exists():
         return {"image_id": image_id, "annotations": []}
     try:
@@ -83,7 +83,7 @@ async def put_annotations(
         raise BadRequestException(error_message="image_id 与路径不一致")
     path = _annotation_path(image_id)
     if path is None:
-        raise NotFoundException(error_message=f"invalid image id: {image_id[:24]}")
+        raise NotFoundException(error_message=f"影像 id 无效：{image_id[:24]}")
     username = (current_user or {}).get("username", "unknown")
     payload = json.dumps(
         {

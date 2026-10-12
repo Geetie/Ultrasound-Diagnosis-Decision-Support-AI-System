@@ -46,7 +46,7 @@ async def submit_feedback(
 
     diagnosis = await diagnosis_repo.get_result(request.request_id)
     if not diagnosis:
-        raise NotFoundException(error_message=f"Diagnosis request not found: {request.request_id}")
+        raise NotFoundException(error_message=f"判读请求不存在：{request.request_id}")
 
     if request.feedback_type == FeedbackType.RULE_CHANGE and request.feedback_level != FeedbackLevel.L3:
         raise BadRequestException(

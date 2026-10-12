@@ -101,10 +101,10 @@ async def publish_sg_threshold_update(
     ):
         raise HTTPException(
             status_code=422,
-            detail="action=update requires organ and threshold",
+            detail="action=update 需要同时提供 organ 与 threshold",
         )
     if request.action == "delete" and not request.organ:
-        raise HTTPException(status_code=422, detail="action=delete requires organ")
+        raise HTTPException(status_code=422, detail="action=delete 需要提供 organ")
 
     message: dict[str, Any] = {"action": request.action}
     if request.organ:
@@ -123,6 +123,6 @@ async def publish_sg_threshold_update(
             {"payload": json.dumps(message)},
         )
     except Exception as exc:
-        raise HTTPException(status_code=503, detail=f"Redis unavailable: {exc}") from exc
+        raise HTTPException(status_code=503, detail=f"Redis 不可用：{exc}") from exc
 
     return {"status": "published", "stream": RedisKey.SG_THRESHOLD_STREAM, "message": message}

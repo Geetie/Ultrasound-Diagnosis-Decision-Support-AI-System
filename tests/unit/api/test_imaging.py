@@ -25,13 +25,14 @@ class TestValidateDICOMFormat:
         content = b"\x00" * 50
         is_valid, error = validate_dicom_format(content)
         assert is_valid is False
-        assert "too small" in error.lower()
+        # A.52：文案中文化（原文 File too small 会原样显示给医生）
+        assert "文件过小" in error
 
     def test_invalid_magic_word(self):
         content = b"\x00" * 128 + b"XXXX" + b"\x00" * 100
         is_valid, error = validate_dicom_format(content)
         assert is_valid is False
-        assert "Invalid" in error
+        assert "不是 DICOM 文件" in error
 
     def test_exactly_132_bytes_valid(self):
         content = b"\x00" * 128 + b"DICM"

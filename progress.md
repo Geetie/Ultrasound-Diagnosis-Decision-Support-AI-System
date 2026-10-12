@@ -13,6 +13,20 @@
 
 ### What 已完成（有证据，详见 `feature_list.json` 与 16 号附录 A）
 
+- **A.52 前端深度摸排 + 文档矛盾原地修复（2026-10-12 续）**：
+  ①**浏览器边界探针** `scripts/audit/p20_frontend_boundary.mjs` **PASS=31 FAIL=0**（7 组：
+  认证守卫 / 建会话输入边界（阈值·通配·注入·超长·不存在·空值·必填）/ 装载坏文件三类 /
+  报告页异常入参 / 帧越界与归属唯一性（非空洞判据）/ XSS 与视口 / 前端→后端请求面 0 个 5xx）。
+  ②**又挖出 3 个真缺陷并修复**：**FHIR 患者读端点判定顺序错**（先同意后存在性 → 不存在的
+  患者被判「未签署同意」403，医生被误导找质控，前端「404→就地建档」永不可达；改为先 404
+  再 403，4 例守卫）；**医生可见错误文案是英文原文**（`File too small` 等 → 45 条异常默认
+  文案 + 13 个文件字面量全部中文化，「机器对机器面」显式豁免，含棘轮守卫）；**qdrant 客户端
+  单测被 A.51 改动甩下**（5 例红，mock 旧 `search()` → 对齐 `query_points`+uuid5，30 例全绿）。
+  ③**文档矛盾原地修复**（用户要求：不许「文档 A 错、附录 B 纠正」）：`session-handoff` 的
+  「分割旁路默认关闭」改「默认开启」（附 `settings.py:377` 依据）、16 号 A.51④ 的
+  「FAST/COMPACT」改真实枚举 `REALTIME/STANDARD/FULL`、A.51① 的能力探测位置改「客户端
+  `QdrantVectorIndex.search`」，A.52.4 表改为「已原地修复索引」。
+
 - **A.51 批次端到端摸排与验证（2026-10-12，A.52）**：
   ①**后端 6 断面真机探针**（`scripts/audit/p19_a51_e2e_audit.py`）**PASS=49 FAIL=0**：
   运行期配置实测（validate 预算 3.0 / Self-RAG 重试 0 / 后端 qdrant / kb_v1.3.0）、
@@ -229,6 +243,7 @@
 | `tests/reports/phase0a_retest_v2.json` | Gate 0A-T-P0 重测（口径 A） |
 | `scripts/audit/p19_a51_e2e_audit.py` | A.52 批次端到端摸排（6 断面，真机 49/49，服务器可复跑） |
 | `scripts/a51_ui_walkthrough.mjs` | A.52 浏览器层走查（本机 Playwright + 隧道，11/11，含截图/视频） |
+| `scripts/audit/p20_frontend_boundary.mjs` | A.52 前端深度边界摸排（31/31：认证/输入/装载/报告/帧/渲染/请求面，退出码可进 CI） |
 | `scripts/deploy_frontend.sh` | A.52 前端产物清空式部署（防陈旧 chunk 堆积） |
 | `scripts/audit/p15_retrieval_parity.py` | A.51 检索口径（服务腿 vs eval，真机可复跑） |
 | `scripts/audit/p16_list_endpoints.py` | A.51 设备/患者列表端点（14 项判定） |

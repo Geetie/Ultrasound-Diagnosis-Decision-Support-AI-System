@@ -666,6 +666,35 @@
       "status": "planned",
       "dependencies": [],
       "evidence": "16 号 A.52.4-5 / A.52.5"
+    },
+    {
+      "id": "fhir-patient-order-404-before-403",
+      "name": "FHIR 患者读取：先存在性（404）再同意（403）",
+      "description": "A.52 前端边界摸排 G2.5 抓到：GET /fhir/Patient/{id} 先查同意 → 不存在的患者必然「无同意记录」→ 抛 403「尚未签署知情同意」，医生被误导去质控补签；前端 A.33 的「404 → 就地建档」分支永远走不到（真机实录 403）。",
+      "status": "done",
+      "result": "读端点与写路径 _load_patient_with_consent 均改为先存在性→再同意；真机 G2.5 转 PASS（明示「系统里没有这个患者」+ 建档引导）",
+      "dependencies": [],
+      "evidence": "16 号 A.52.3-5；tests/unit/api/test_fhir_patient_order.py（4 例）；scripts/audit/p20 判据 G2.5"
+    },
+    {
+      "id": "doctor-facing-error-i18n",
+      "name": "医生可见面的错误文案中文化（含棘轮守卫）",
+      "description": "A.52 前端边界摸排 G3 抓到：装载非 DICOM 文件时医生看到后端英文原文（File too small / Missing required DICOM tags: …）。",
+      "status": "done",
+      "result": "errors.py 45 条异常默认文案 + 13 个 api 文件字面量中文化（「文件过小：不足 DICOM 文件头 132 字节」「缺少 DICOM 必填字段：…」等）；device/alerts/utils 按机器对机器面显式豁免",
+      "dependencies": [],
+      "evidence": "16 号 A.52.3-6；tests/unit/quality/test_error_messages_are_chinese.py；p20 判据 G3.1~G3.3（cn=true rawEn=false）"
+    },
+    {
+      "id": "qdrant-client-unit-tests-aligned",
+      "name": "qdrant 客户端单测对齐 query_points（A.51 甩下的测试债）",
+      "description": "A.51 把实现从 client.search() 改成 query_points() + uuid5 点 id，但单测仍 mock 旧 API（AsyncMock 下 hasattr 恒真 → 走新分支，旧 mock 失效）。改了实现没跑该包测试的典型。",
+      "status": "done",
+      "result": "tests/unit/emb/test_qdrant_client.py 对齐实现：mock query_points 返回带 .points 的响应、upsert 断言 uuid5+chunk_id；30 例全绿（修前 25 passed / 5 failed）",
+      "dependencies": [
+        "retrieval-parity-service-path"
+      ],
+      "evidence": "16 号 A.52.3-7；tests/unit/emb/test_qdrant_client.py"
     }
   ]
 }

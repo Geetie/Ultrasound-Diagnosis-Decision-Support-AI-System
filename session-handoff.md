@@ -22,6 +22,11 @@
   `node scripts/a51_ui_walkthrough.mjs --dicom <CAMUS 单文件多帧样本>`；
   样本在服务器现转：`scripts/camus_frame_to_dicom.py --out x.dcm --count 7 --multiframe`
   （**必须带 `--multiframe`** 才是单文件多帧路径）→ scp 回本机。
+- **前端边界摸排（31 项，退出码可进 CI）**：
+  `node scripts/audit/p20_frontend_boundary.mjs --dicom <同上>` —— 覆盖认证守卫 / 建会话
+  输入边界（阈值·通配·注入·超长·不存在·空值·必填）/ 装载坏文件三类 / 报告页异常入参 /
+  帧越界与**归属唯一性** / XSS 与视口 / 前端→后端请求面 0 个 5xx。报告落在
+  `C:/Windows/TEMP/uai_p20/p20_report.json`（含请求清单）。
 - **踩坑（会再犯）**：
   ①**显示栈里的 imageId 是 Cornerstone 句柄**（`dicomfile:N?frame=k`），不是后端
   `img_…`；凡是要与后端 image_id 比的地方，必须走 `frameOwners` 对齐数组（A.52.3-2）。
@@ -31,6 +36,15 @@
   ③**前端产物必须清空式部署**（覆盖式拷贝会把历次 hash 文件留在仓库里；
   用 `scripts/deploy_frontend.sh`）。
   ④多层 props 透传改签名后 `tsc -b` 才是唯一裁判（测试夹具也要同步补字段）。
+  ⑤**新建会话页「设备编号」是必填**（空则「开始检查」禁用，title 提示要填设备编号）——
+  别按「后端不校验设备存在性」推断成「可以不填」。
+  ⑥**FHIR 读患者必须「先存在性（404）→ 再同意（403）」**：先查同意会让不存在的患者
+  变成 403「未签署同意」，把医生引去质控，且前端「404→就地建档」永不可达（A.52.3-5）。
+  ⑦**医生可见的错误文案必须是中文**（后端英文原文会原样显示）；有棘轮守卫
+  `tests/unit/quality/test_error_messages_are_chinese.py`，机器对机器面（device/alerts/utils）
+  在允许清单里显式豁免。
+  ⑧**改了某个包的实现，必须跑那个包的测试**：A.51 改 `qdrant_client` 用 `query_points`
+  时没跑 `tests/unit/emb`，5 例红被瞒了整整一轮（AsyncMock 下 `hasattr` 恒真，旧 mock 静默失效）。
 - 本轮修复后的门禁：`deploy_acceptance_gate.sh` **PASS=24 FAIL=0**（服务器已部署到
   `429049a` + 后续文档提交）。
 
@@ -233,8 +247,10 @@ LLM 模型侧提速）。
   （前后端契约对账——**不能用 ast.parse**，TSX 必炸且静默 continue 会产出假通过）。
 - **验收门禁**：`scripts/deploy_acceptance_gate.sh` 8 组 23 项，当前 PASS=23 FAIL=0；
   助手脚本已正式入库（drill_token/drill_pick_report/drill_tamper_check），/tmp 探针已清零。
-- 分割旁路默认**关闭**（`nodule_contour_in_pipeline_enabled=False`），演练时用
-  `NODULE_CONTOUR_IN_PIPELINE_ENABLED=1` 环境变量开启；**必须在重启主服务前 export**。
+- 分割旁路**默认开启**（`nodule_contour_in_pipeline_enabled` 代码默认 `True`，`settings.py:377`；
+  A.52 服务器**运行期实测**：`GET /api/v1/health` 的旁路开关与判读结果里的
+  `nodule_segmentation.available=True` 一致）。开关按**启动时**读取环境变量
+  `NODULE_CONTOUR_IN_PIPELINE_ENABLED`，**改完必须重启主服务**才生效（事后改 `.env` 无效）。
 - 多器官分割矩阵：thyroid 0.7961 / cardiac 0.8395（CAMUS，按患者划分）/ liver 无公开数据。
 - 未跟踪文件待处置：`scripts/_verify_services.sh`、`scripts/server_restart_api.sh`、`scripts/_smoke_graph.py`。
 

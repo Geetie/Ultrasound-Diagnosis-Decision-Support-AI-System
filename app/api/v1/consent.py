@@ -68,7 +68,7 @@ async def update_consent(
     if not operator_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Cannot identify operator for consent operation",
+            detail="无法识别同意操作的操作人（内部错误，请联系运维）",
         )
 
     consent_status = (

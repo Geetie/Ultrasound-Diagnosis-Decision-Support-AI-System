@@ -59,7 +59,7 @@ class TestErrorCodeRegistry:
 
     def test_e1001_registered(self):
         assert "E1001" in ERROR_CODE_MAP
-        assert ERROR_CODE_MAP["E1001"].message == "Bad request"
+        assert ERROR_CODE_MAP["E1001"].message == "请求参数不合法"
 
     def test_e1002_registered(self):
         assert "E1002" in ERROR_CODE_MAP
@@ -86,7 +86,7 @@ class TestErrorCodeRegistry:
 class TestGetErrorMessage:
     def test_known_error_code(self):
         msg = get_error_message("E1001")
-        assert msg == "Bad request"
+        assert msg == "请求参数不合法"
 
     def test_unknown_error_code(self):
         msg = get_error_message("E9999")

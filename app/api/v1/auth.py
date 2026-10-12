@@ -134,7 +134,7 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
         logger.warning("auth_login_failed", username=form_data.username, endpoint="token")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
+            detail="用户名或密码不正确",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
@@ -169,7 +169,7 @@ async def login(login_request: LoginRequest):
         logger.warning("auth_login_failed", username=login_request.username, endpoint="login")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
+            detail="用户名或密码不正确",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
@@ -214,7 +214,7 @@ async def refresh_token(refresh_request: RefreshTokenRequest):
         logger.warning("refresh_token_rotation_failed", error=str(e))
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired refresh token",
+            detail="刷新令牌无效或已过期",
             headers={"WWW-Authenticate": "Bearer"},
         ) from e
 
@@ -222,7 +222,7 @@ async def refresh_token(refresh_request: RefreshTokenRequest):
     if not token_data:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Failed to verify rotated token",
+            detail="刷新令牌轮换校验失败",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
@@ -251,7 +251,7 @@ async def revoke_token(
         if token_owner != current_user_id and "SYSTEM_ADMIN" not in (current_user.get("role"),):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Cannot revoke other user's token"
+                detail="不能吊销他人的令牌"
             )
 
     success = await revoke_refresh_token(refresh_request.refresh_token)
@@ -259,7 +259,7 @@ async def revoke_token(
     if not success:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Failed to revoke token"
+            detail="吊销令牌失败"
         )
 
     return {
@@ -355,7 +355,7 @@ async def exchange_nav_token(
     if not request.session_id or not request.session_id.strip():
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="session_id is required",
+            detail="缺少 session_id",
         )
     # 函数内导入：nav.py 依赖较重，且避免任何潜在导入环
     from app.api.websocket.nav import manager as nav_manager
@@ -370,7 +370,7 @@ async def exchange_nav_token(
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to issue navigation token",
+            detail="导航令牌签发失败",
         ) from exc
 
     logger.info(

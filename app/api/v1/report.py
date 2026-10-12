@@ -101,7 +101,7 @@ async def create_report_draft(
     result = await diagnosis_repo.get_result(payload.request_id)
     if not result:
         raise NotFoundException(
-            error_message=f"Diagnosis result not found: {payload.request_id}"
+            error_message=f"判读结果不存在：{payload.request_id}"
         )
 
     session = await session_repo.get_session(result.session_id) if result.session_id else None
@@ -177,7 +177,7 @@ async def get_report_by_request(
     """取某次诊断请求的最新报告。"""
     report = await report_repo.get_latest_by_request(request_id)
     if not report:
-        raise NotFoundException(error_message=f"Report not found for request: {request_id}")
+        raise NotFoundException(error_message=f"该请求尚无报告：{request_id}")
     return _to_response(report, verify=bool(report.signature))
 
 
@@ -191,7 +191,7 @@ async def get_report(
     """读取报告；``verify=true`` 时附带数字签名校验结果。"""
     report = await report_repo.get_report(report_id)
     if not report:
-        raise NotFoundException(error_message=f"Report not found: {report_id}")
+        raise NotFoundException(error_message=f"报告不存在：{report_id}")
     return _to_response(report, verify=verify)
 
 
@@ -209,7 +209,7 @@ async def update_report_sections(
     """
     report = await report_repo.get_report(report_id)
     if not report:
-        raise NotFoundException(error_message=f"Report not found: {report_id}")
+        raise NotFoundException(error_message=f"报告不存在：{report_id}")
     try:
         report = await report_service.update_report_sections(
             report=report, sections=payload.sections, report_repo=report_repo
@@ -249,10 +249,10 @@ async def sign_report(
     """
     report = await report_repo.get_report(report_id)
     if not report:
-        raise NotFoundException(error_message=f"Report not found: {report_id}")
+        raise NotFoundException(error_message=f"报告不存在：{report_id}")
     if report.signature:
         # 已签名的报告不重复签名（重复签名会让既有校验失效）
-        raise BadRequestException(error_message=f"Report already signed: {report_id}")
+        raise BadRequestException(error_message=f"报告已签发：{report_id}")
 
     content = report.content if isinstance(report.content, dict) else {}
     completeness = report_service.check_completeness(content, organ=report.organ)
@@ -296,7 +296,7 @@ async def push_report(
     """把已签名报告推送到 PACS/HIS（推送失败不改变签名状态，可重推）。"""
     report = await report_repo.get_report(report_id)
     if not report:
-        raise NotFoundException(error_message=f"Report not found: {report_id}")
+        raise NotFoundException(error_message=f"报告不存在：{report_id}")
     if not report.signature:
         raise BadRequestException(
             error_message="报告尚未签名，无法推送（请先调用 /sign）"
@@ -336,7 +336,7 @@ async def verify_signature(
     """校验报告签名与正文是否匹配（正文被改动即失败）。"""
     report = await report_repo.get_report(report_id)
     if not report:
-        raise NotFoundException(error_message=f"Report not found: {report_id}")
+        raise NotFoundException(error_message=f"报告不存在：{report_id}")
     return {
         "report_id": report.report_id,
         "signature_present": bool(report.signature),

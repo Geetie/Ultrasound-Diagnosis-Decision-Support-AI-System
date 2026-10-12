@@ -65,11 +65,15 @@ REQUIRED_DICOM_TAGS = [
 
 
 def validate_dicom_format(content: bytes) -> tuple[bool, str | None]:
-    """DICOM format basic validation (magic word)"""
+    """DICOM 头部（魔数）基础校验。
+
+    A.52 端到端摸排：这些 message 会**原样展示给医生**（`File too small` /
+    `Missing required DICOM tags` 实测出现在装载区）——一律写成可读中文。
+    """
     if len(content) < 132:
-        return False, "File too small"
+        return False, "文件过小：不足 DICOM 文件头 132 字节（疑似非影像文件或已损坏）"
     if content[128:132] != b"DICM":
-        return False, "Invalid DICOM format"
+        return False, "不是 DICOM 文件：缺少 DICM 魔数（请确认导出的确实是 DICOM）"
     return True, None
 
 
@@ -83,7 +87,7 @@ def parse_and_validate_dicom(content: bytes) -> tuple[pydicom.Dataset | None, st
     try:
         ds = pydicom.dcmread(BytesIO(content), force=True)
     except Exception as e:
-        return None, f"Failed to parse DICOM: {e!s}", []
+        return None, f"DICOM 解析失败：{e!s}", []
 
     missing_tags = []
     for group, elem, name in REQUIRED_DICOM_TAGS:
@@ -91,11 +95,11 @@ def parse_and_validate_dicom(content: bytes) -> tuple[pydicom.Dataset | None, st
             missing_tags.append(name)
 
     if missing_tags:
-        return None, f"Missing required DICOM tags: {', '.join(missing_tags)}", missing_tags
+        return None, f"缺少 DICOM 必填字段：{', '.join(missing_tags)}", missing_tags
 
     modality = str(ds[0x0008, 0x0060].value).strip()
     if modality != "US":
-        return None, f"Modality must be US, got {modality}", [f"Modality={modality}"]
+        return None, f"影像模态必须是超声（US），实际为 {modality}", [f"Modality={modality}"]
 
     bits_allocated = int(ds[0x0028, 0x0100].value)
     if bits_allocated <= 0 or bits_allocated > 16:
@@ -167,19 +171,22 @@ async def upload_dicom(
     if priority not in (0, 1, 2):
         raise BadRequestException(
             error_code="E1001",
-            error_message=f"priority must be 0 (emergency), 1 (routine), or 2 (teaching), got {priority}",
+            error_message=f"优先级取值非法（须为 0 急诊 / 1 常规 / 2 教学），实际 {priority}",
         )
 
     session = await session_repo.get_session(session_id)
     if not session:
-        raise NotFoundException(error_message=f"Session not found: {session_id}")
+        raise NotFoundException(error_message=f"检查会话不存在：{session_id}")
 
     content = await file.read()
 
     if len(content) > settings.dicom_storage_max_file_size:
         raise BadRequestException(
             error_code="E1004",
-            error_message=f"DICOM file size {len(content)} exceeds maximum {settings.dicom_storage_max_file_size}",
+            error_message=(
+                f"影像文件过大：{len(content)} 字节，超过上限 "
+                f"{settings.dicom_storage_max_file_size} 字节"
+            ),
         )
 
     is_valid, error_msg = validate_dicom_format(content)
@@ -192,7 +199,9 @@ async def upload_dicom(
         parse_and_validate_dicom, content
     )
     if dataset is None:
-        raise MissingDICOMTagException(error_message=tags_error or "Missing required DICOM tags", detail=",".join(missing_tags))
+        raise MissingDICOMTagException(
+            error_message=tags_error or "缺少 DICOM 必填字段", detail=",".join(missing_tags)
+        )
 
     response_metadata, internal_metadata, raw_patient_id = extract_metadata_from_dataset(dataset, content)
     internal_metadata = dict(internal_metadata)
@@ -219,7 +228,7 @@ async def upload_dicom(
         logger.error("dicom_storage_save_failed", error=str(e), image_id=image_id)
         raise ServerErrorException(
             error_code="E2000",
-            error_message="DICOM file storage failed",
+            error_message="影像文件存储失败",
             detail=str(e),
         ) from e
 
@@ -307,7 +316,7 @@ async def list_session_dicom(
     """按会话列出影像索引（最早优先）——工作区「继续检查」时恢复影像用。"""
     session = await session_repo.get_session(session_id)
     if not session:
-        raise NotFoundException(error_message=f"Session not found: {session_id}")
+        raise NotFoundException(error_message=f"检查会话不存在：{session_id}")
 
     rows = await image_repo.list_by_session(session_id, limit=limit)
     return DICOMImageListResponse(
@@ -344,7 +353,7 @@ async def retrieve_dicom(
     """
     row = await image_repo.get(image_id)
     if not row:
-        raise NotFoundException(error_message=f"DICOM image not found: {image_id}")
+        raise NotFoundException(error_message=f"影像不存在：{image_id}")
 
     storage = get_dicom_storage()
     content = await storage.retrieve(row.storage_path)
@@ -354,8 +363,8 @@ async def retrieve_dicom(
             "dicom_retrieve_bytes_missing", image_id=image_id, storage_path=row.storage_path
         )
         raise NotFoundException(
-            error_message=f"DICOM bytes unavailable for {image_id}",
-            detail="indexed but bytes missing — check dicom_storage backend",
+            error_message=f"影像字节不可用：{image_id}",
+            detail="索引存在但影像字节缺失 —— 请检查 dicom_storage 后端",
         )
 
     actor_id = get_actor_id(current_user)
@@ -391,19 +400,19 @@ async def stream_dicom_frame(
     if request.frame_index < 0:
         raise BadRequestException(
             error_code="E1001",
-            error_message=f"frame_index must be non-negative, got {request.frame_index}",
+            error_message=f"frame_index 不能为负，实际 {request.frame_index}",
         )
 
     session = await session_repo.get_session(request.session_id)
     if not session:
-        raise NotFoundException(error_message=f"Session not found: {request.session_id}")
+        raise NotFoundException(error_message=f"检查会话不存在：{request.session_id}")
 
     try:
         # 并发审查 P1-9：关键帧 base64 常 1~30MB，b64decode 是纯 CPU（每秒几十 MB
         # 量级），放事件循环里会拖慢所有并发请求。offload。
         frame_data = await asyncio.to_thread(base64.b64decode, request.frame_data)
     except Exception as e:
-        raise BadRequestException(error_message="Invalid base64 data") from e
+        raise BadRequestException(error_message="base64 数据无效") from e
 
     if len(frame_data) >= 132 and frame_data[128:132] == b"DICM":
         if request.is_key_frame:
