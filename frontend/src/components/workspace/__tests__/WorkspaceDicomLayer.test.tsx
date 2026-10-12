@@ -238,4 +238,25 @@ describe('WorkspaceDicomLayer · 多帧分期①', () => {
       expect(last.map((a) => a.uuid).sort()).toEqual(['a-img1', 'a-legacy']);
     });
   });
+
+  it('A.52：cornerstone 异步加载失败 → 医生可见「影像无法渲染」（不再静默黑屏）', async () => {
+    render(<WorkspaceDicomLayer imageIds={['dicomfile:0']} />);
+    await waitFor(() => expect(cs.displayImage).toHaveBeenCalled());
+    // 真机实测报文：多帧每帧字节数为奇 → 总长/帧数 不整除
+    const evt = new Event('unhandledrejection') as Event & { reason?: unknown };
+    evt.reason = new Error('Invalid frame length: 1494928 for 7 frames');
+    window.dispatchEvent(evt);
+    const banner = await screen.findByText(/影像无法渲染/);
+    expect(banner).toBeInTheDocument();
+    expect(banner.getAttribute('data-region')).toBe('dicom-load-error');
+  });
+
+  it('A.52：与本组件无关的异步错误不误报', async () => {
+    render(<WorkspaceDicomLayer imageIds={['dicomfile:0']} />);
+    await waitFor(() => expect(cs.displayImage).toHaveBeenCalled());
+    const evt = new Event('unhandledrejection') as Event & { reason?: unknown };
+    evt.reason = new Error('some unrelated network glitch');
+    window.dispatchEvent(evt);
+    await waitFor(() => expect(screen.queryByText(/影像无法渲染/)).toBeNull());
+  });
 });

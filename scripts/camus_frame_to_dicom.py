@@ -63,6 +63,24 @@ def _base_dataset(frame, pixel_spacing, patient_id, name: str, sop_uid: str,
     return ds
 
 
+def _pad_frames_to_even(frames: list[np.ndarray]) -> tuple[list[np.ndarray], bool]:
+    """多帧 DICOM 的每帧字节数必须为**偶数**。
+
+    实测（A.52 浏览器走查）：CAMUS 帧 549×389×1B = 213561 字节（奇数），
+    7 帧共 1494927 字节；DICOM 值长度必须为偶数，pydicom 自动补 1 字节 →
+    1494928，于是 `1494928 / 7` 不是整数，Cornerstone 的 dicom-image-loader
+    直接抛 `Invalid frame length: 1494928 for 7 frames` → 前端影像区空白。
+    pydicom 自己能读（按 7×213561 截取），所以这是**前端兼容性 + 样本合规**
+    双重问题。这里在生成侧补齐：列数为奇时补一列 0（Rows 不变，Columns+1）。
+    """
+    if not frames:
+        return frames, False
+    if frames[0].nbytes % 2 == 0:
+        return frames, False
+    padded = [np.pad(f, ((0, 0), (0, 1)), mode="constant") for f in frames]
+    return padded, True
+
+
 def convert(nii_path: Path, out: Path, count: int, patient_id: str,
             multiframe: bool = False) -> None:
     img = nib.load(nii_path)
@@ -90,6 +108,10 @@ def convert(nii_path: Path, out: Path, count: int, patient_id: str,
         # A.51 单文件多帧：把 N 帧写进**一个** DICOM（NumberOfFrames=N），
         # 用于验证"单张多帧影像 → 中间帧 ±2 择优"这条真实路径。
         # 上传侧读 NumberOfFrames 落 dicom_images.frame_count，旁路据此采样。
+        frames, padded = _pad_frames_to_even(frames)
+        if padded:
+            print("  [note] 列数为奇 → 补 1 列 0：保证每帧字节数为偶数"
+                  "（否则多帧 loader 报 Invalid frame length）")
         ds = _base_dataset(
             frames[0], pixel_spacing, patient_id, "CAMUS^REALMULTIFRAME",
             generate_uid(), study_uid, series_uid,

@@ -164,6 +164,30 @@ export default function WorkspaceDicomLayer({
     };
   }, [stackKey]);
 
+  // A.52 实测（浏览器走查）：文件不合规（如多帧每帧字节数为奇 → `总长/帧数` 不整除）时，
+  // cornerstone 的 dicom-image-loader 在**异步渲染链**里抛错 —— 它不经过上面那个
+  // try/catch，医生只会看到一块空白影像区 + console 里一行英文。这里兜住这类异步错误，
+  // 翻成医生看得懂的提示（判读结论照常出，但医生必须知道影像是没渲染出来而不是"没病灶"）。
+  useEffect(() => {
+    const isImageLoadFailure = (msg: string) =>
+      /Invalid frame length|dicom-image-loader|imageLoader|cornerstone/i.test(msg);
+    const onRejection = (evt: PromiseRejectionEvent) => {
+      const reason = evt.reason as { message?: string } | string | undefined;
+      const msg = String((reason && (reason as { message?: string }).message) || reason || '');
+      if (isImageLoadFailure(msg)) setError(`影像无法渲染（文件不规范或不受支持）：${msg.slice(0, 120)}`);
+    };
+    const onError = (evt: ErrorEvent) => {
+      const msg = String(evt.message || '');
+      if (isImageLoadFailure(msg)) setError(`影像无法渲染（文件不规范或不受支持）：${msg.slice(0, 120)}`);
+    };
+    window.addEventListener('unhandledrejection', onRejection);
+    window.addEventListener('error', onError);
+    return () => {
+      window.removeEventListener('unhandledrejection', onRejection);
+      window.removeEventListener('error', onError);
+    };
+  }, []);
+
   // 浏览工具激活 + 测量读数注册（A.40）：工具已在 ensureInit 注册，这里只切激活态。
   // 互斥单选 —— 激活一个、禁掉其余（与 useDicomViewer 同语义）。
   // 测量监听挂同一个模块实例上（eventTarget 是单例，取消函数必须调）。
@@ -298,6 +322,8 @@ export default function WorkspaceDicomLayer({
     >
       {error && (
         <span
+          data-region="dicom-load-error"
+          role="alert"
           style={{
             position: 'absolute',
             left: 24,
@@ -306,7 +332,7 @@ export default function WorkspaceDicomLayer({
             color: 'var(--color-semantic-stop)',
           }}
         >
-          DICOM: {error}
+          影像无法渲染：{error}
         </span>
       )}
       {!loaded && !error && frames > 0 && (
