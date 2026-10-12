@@ -30,16 +30,21 @@ X/Y 帧」）；③设备/患者列表端点（p16 14/14，零 api_key）；④f
 - 前端产物部署：`cd frontend && VITE_BASE=/ui/ npm run build` → 拷贝 `dist/*` 到
   **`app/static/ui/`**（该目录入库，随之提交）。
 
-### ⏳ 遗留同步项（服务器失联，下一位先补）
+### ✅ 服务器同步状态（2026-10-12 已补齐）
 
-- **服务器层已是应用代码 `4fefdb5`**（A.51 四项功能全在，门禁 PASS=24 在该版本通过）；
-  `1e3a00f` 之后只有**文档层**（16 号 A.51 附二/附三/附四、`feature_list.json`、
-  `progress.md`、本文件）与 1 处探针注释（p15 去掉多余 noqa）**未同步**。
-- 原因：2026-10-12 03:0x 起 `10.20.28.21` **ping 与 TCP 22 均不通**（3 次重试 + 60s 等待），
-  ssh `Connection timed out`；与本机网络/隧道无关（隧道日志无新条目）。
-- 恢复后一条命令补齐（先确认 HEAD）：`cd <repo> && git archive --format=tar.gz -o /tmp/uai_head2.tar.gz HEAD && scp /tmp/uai_head2.tar.gz student03@10.20.28.21:/tmp/ && ssh student03@10.20.28.21 "cd ~/uai/src && tar -xzf /tmp/uai_head2.tar.gz --overwrite && rm -f /tmp/uai_head2.tar.gz"`
-  随后核验：`grep -c '附四' <16 号>` 与 `curl -s -o /dev/null -w '%{http_code}' 127.0.0.1:18000/api/v1/health`。
-  **应用代码未变，无需重启主服务**。
+- **服务器 `~/uai/src` 已是 HEAD 镜像**：`git archive HEAD` 铺开 + **12 个关键文件
+  sha256 对照 MATCH=12 / DIFF=0**（app 代码 5 个 + 仓储 1 个 + feature_list/progress/
+  session-handoff + p15 探针 + 16 号/21 号文档）。
+- 端点核验：`health=200`、`/api/v1/patients` 未授权 `401`、`/ui/` `200`。
+  **应用代码与门禁通过版本 `4fefdb5` 逐字节相同，故未重启主服务**（门禁 PASS=24 依旧有效）。
+- 过程插曲（备查）：同步第一次尝试因 `10.20.28.21` **ping 与 TCP 22 均不通**失败
+  （3 次重试 + 60s 等待，ssh `Connection timed out`）——**服务器侧短暂不可达，非本机网络**；
+  约 5 分钟后自愈，重试即成功。若再遇到：先 `Test-NetConnection 10.20.28.21 -Port 22`，
+  通了再跑同步，不必改代码。
+- **踩坑复现（硬规则 #1 又一次）**：把 `while read` + `sha256sum` 内联进 `ssh "..."`
+  被 fish 拒绝（`Missing end to balance this while loop`）→ 一律本地落盘 `.sh` → `scp` → `bash x.sh`。
+  另：**PowerShell 重定向 `>` 写清单是 UTF-16LE**，服务器 `read` 会全读成乱码（表现为全
+  `MISSING`）——跨机传清单用 Python `Path.write_text(..., newline="\n")` 落 UTF-8/LF。
 
 ### 常驻服务新增（复跑 p13 前确认在跑）
 - HAPI：`cd ~/uai/hapi && nohup java -jar ROOT.war --server.address=127.0.0.1 --server.port=8080 > ~/uai/logs/hapi_war.log 2>&1 &`（30s 就绪，`/fhir/metadata`）
