@@ -121,7 +121,10 @@ try {
     record('G1.1 未登录访问 /ui/ → 落登录页（不白屏）',
       hasLoginForm > 0 && bodyLen > 20, `loginForm=${hasLoginForm} textLen=${bodyLen}`);
 
-    await page.goto(`${BASE}/ui/workspace?session_id=sess_fake_2026`, { waitUntil: 'domcontentloaded' });
+    // 工作区是 basename 后的根路径（`/ui/`）。写 `/ui/workspace` 不是注册路由，
+    // 会被 `path="*"` 回落成 `/ui` 且**丢掉 query**（A.55 实测）——那就测不到
+    // 「带 session_id 直连」这一形态了。
+    await page.goto(`${BASE}/ui/?session_id=sess_fake_2026`, { waitUntil: 'domcontentloaded' });
     await sleep(page, 1500);
     const guarded = await page.getByPlaceholder('输入密码').count();
     record('G1.2 未登录直连工作区 → 被守卫拦回登录', guarded > 0, `loginForm=${guarded}`);

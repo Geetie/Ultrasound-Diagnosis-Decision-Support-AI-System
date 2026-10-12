@@ -115,7 +115,7 @@ def contrast_ratio(fg: tuple[int, int, int, float], bg: tuple[int, int, int, flo
             round(fg[i] * af + bg[i] * ab * (1 - af)) for i in range(3)
         )
         fg = (comp[0], comp[1], comp[2], 1.0)
-        bg = tuple(round(bg[i] * ab) for i in range(3)) + (1.0,)
+        bg = (round(bg[0] * ab), round(bg[1] * ab), round(bg[2] * ab), 1.0)
     lf, lb = rel_luminance(fg[:3]), rel_luminance(bg[:3])
     hi, lo = max(lf, lb), min(lf, lb)
     return (hi + 0.05) / (lo + 0.05)
@@ -199,7 +199,8 @@ def pick_css(explicit: str | None, root: str) -> str:
 def load_sidecar(path: str) -> list[dict[str, Any]]:
     if not os.path.isfile(path):
         raise InputError(f"--sidecar 指定的文件不存在: {path}")
-    data = json.loads(open(path, encoding="utf-8").read())
+    with open(path, encoding="utf-8") as fh:
+        data = json.loads(fh.read())
     elements = data.get("elements")
     if not isinstance(elements, list) or not elements:
         raise InputError("sidecar 里没有 elements（探针应当输出真实 DOM 叠加元素；空列表不算通过）")
@@ -256,7 +257,8 @@ def main(argv: list[str] | None = None) -> int:
     try:
         css_path = pick_css(args.css, args.root)
         result["css"] = css_path
-        scopes = parse_color_scopes(open(css_path, encoding="utf-8").read())
+        with open(css_path, encoding="utf-8") as fh:
+            scopes = parse_color_scopes(fh.read())
         themes = resolve_themes(scopes)
         print(f"CSS（单一事实源）: {css_path}")
         print(f"主题: {', '.join(sorted(themes))}")
@@ -282,7 +284,7 @@ def main(argv: list[str] | None = None) -> int:
                 rows.append({"token": var, "value": colors[var], "ratio": round(r, 2), "verdict": "结构性(不计入门禁)", "need": None})
                 print(f"{var:34s} {colors[var]:10s} {r:8.2f}  {'结构性(不计门禁)':12s} (非文字)")
             if args.include_ui_tokens:
-                print(f"  -- 对照：UI 色板 token 压在同一底板（仅供解释为什么必须用叠加 token）--")
+                print("  -- 对照：UI 色板 token 压在同一底板（仅供解释为什么必须用叠加 token）--")
                 for var in UI_TOKENS:
                     if var in colors:
                         r = contrast_ratio(parse_color(colors[var]), plate)
@@ -318,7 +320,8 @@ def main(argv: list[str] | None = None) -> int:
         if args.shot:
             if not args.sidecar:
                 raise InputError("--shot 必须与 --sidecar 同时使用（没有 DOM 矩形就会退回硬编码坐标，禁止）")
-            dpr = float(json.loads(open(args.sidecar, encoding="utf-8").read()).get("dpr", 1.0))
+            with open(args.sidecar, encoding="utf-8") as fh:
+                dpr = float(json.loads(fh.read()).get("dpr", 1.0))
             print(f"\n===== 像素级最坏情况（截图 {args.shot}，dpr={dpr}）=====")
             for el in load_sidecar(args.sidecar):
                 shot = args.shot

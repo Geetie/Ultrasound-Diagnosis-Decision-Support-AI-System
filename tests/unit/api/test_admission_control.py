@@ -30,9 +30,11 @@ class TestAdmissionGate:
     @pytest.mark.asyncio
     async def test_at_limit_rejects_with_retry_after(self):
         limit = settings.diagnosis_admission_queue_depth_limit
-        with patch.object(ac, "current_pending_depth", AsyncMock(return_value=limit)):
-            with pytest.raises(SystemQueueFullException) as exc:
-                await ac.check_diagnosis_admission()
+        with (
+            patch.object(ac, "current_pending_depth", AsyncMock(return_value=limit)),
+            pytest.raises(SystemQueueFullException) as exc,
+        ):
+            await ac.check_diagnosis_admission()
         err = exc.value
         assert err.status_code == 503
         # Retry-After 必须存在（前端据此排程重试，而不是立刻再撞一次）
@@ -103,17 +105,17 @@ class TestEnqueueFailureIsExplicit:
             patch.object(diag_mod, "try_renew_session", AsyncMock()),
             patch.object(diag_mod, "enqueue_diagnosis", AsyncMock(return_value=False)),
             patch.object(diag_mod, "_mark_request_failed", AsyncMock()) as mark,
+            pytest.raises(DiagnosisQueueFullException) as exc,
         ):
-            with pytest.raises(DiagnosisQueueFullException) as exc:
-                await diag_mod.submit_diagnosis_request(
-                    request=request,
-                    fastapi_request=fastapi_request,
-                    diagnosis_repo=repo,
-                    consent_repo=consent_repo,
-                    session_repo=session_repo,
-                    audit_service=MagicMock(),
-                    current_user={"username": "t"},
-                )
+            await diag_mod.submit_diagnosis_request(
+                request=request,
+                fastapi_request=fastapi_request,
+                diagnosis_repo=repo,
+                consent_repo=consent_repo,
+                session_repo=session_repo,
+                audit_service=MagicMock(),
+                current_user={"username": "t"},
+            )
 
         assert exc.value.status_code == 503
         assert exc.value.headers.get("Retry-After")

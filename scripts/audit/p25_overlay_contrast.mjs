@@ -106,8 +106,19 @@ const COLLECT = `(themeName) => {
   return { plate: plate || tokenPlate, elements: out };
 }`;
 
-const browser = await chromium.launch({ executablePath: CHROME, headless: true });
-const page = await browser.newPage({ viewport: { width: 1600, height: 1000 }, deviceScaleFactor: 1 });
+// 用持久化 context 才能指定 profile 目录（`launch` 的 `--user-data-dir` 参数会被 Playwright 拒绝）。
+// 目的：盘位不够时（本机 C: 曾满盘）Chromium 起不来 → profile 落到有空间的盘（UAI_CHROME_PROFILE）。
+const context = await chromium.launchPersistentContext(
+  process.env.UAI_CHROME_PROFILE || path.join(OUT, 'chrome-profile'),
+  {
+    executablePath: CHROME,
+    headless: true,
+    viewport: { width: 1600, height: 1000 },
+    deviceScaleFactor: 1,
+    args: ['--no-sandbox', '--disable-dev-shm-usage'],
+  },
+);
+const page = context.pages()[0] || (await context.newPage());
 const errs = [];
 page.on('pageerror', (e) => errs.push(String(e && e.message).slice(0, 200)));
 page.on('crash', () => errs.push('PAGE_CRASH'));
@@ -137,14 +148,29 @@ try {
   await page.waitForURL(/\/ui\//, { timeout: 30000 });
   await sleep(page, 1200);
 
-  await page.goto(`${BASE}/ui/workspace?session_id=${encodeURIComponent(sessionId)}`, { waitUntil: 'domcontentloaded' });
-  // 等影像区出现（叠加标注挂在影像区里）
-  for (let i = 0; i < 40; i += 1) {
-    const ok = await page.locator('[data-region="image"]').count();
-    if (ok) break;
+  // 工作区就是 basename 后的根路径（`/ui/`）；`/ui/workspace` 不是注册路由，
+  // 会被 `path="*"` 回落成 `/ui` 且 **query 被丢掉** → 拿不到 session_id → 影像区退回
+  // 设计预览态（mock 示意框），取到的就不是真实阅片场景。
+  await page.goto(`${BASE}/ui/?session_id=${encodeURIComponent(sessionId)}`, { waitUntil: 'domcontentloaded' });
+  // 等**真实影像**上屏（轮询 canvas，慢链路/1.5MB 也能容纳）。取不到就报错退出 ——
+  // 「设计预览态」的示意框（结节 A/B）也压在同一个固定底板上，对比度会假性通过，
+  // 但它不是医生实际看到的阅片场景（用户纪律：不许把占位当真实验收）。
+  let canvasCount = 0;
+  for (let i = 0; i < 60; i += 1) {
+    if (await page.locator('[data-region="image"]').count()) {
+      canvasCount = await page.locator('[data-region="image"] canvas').count();
+      if (canvasCount > 0) break;
+    }
     await sleep(page, 500);
   }
-  await sleep(page, 4000); // 等 DICOM 与判读结果渲染完（叠加层依赖结果）
+  await sleep(page, 2500); // 等叠加层/判读结果渲染
+  const mockCount = await page.getByText('结节 A · 未校验').count();
+  if (canvasCount === 0 || mockCount > 0) {
+    throw new Error(
+      `影像区没有真实影像（canvas=${canvasCount} mock=${mockCount}）——` +
+        '采到的会是设计预览态，不能当真实阅片场景验收',
+    );
+  }
 
   const dpr = await page.evaluate(() => window.devicePixelRatio);
   const sidecar = { dpr, url: page.url(), generated_at: new Date().toISOString(), elements: [], screenshots: [] };
@@ -205,7 +231,7 @@ try {
   console.error(`[FAIL] 探针异常终止: ${String(e).slice(0, 300)}`);
   exitCode = 2;
 } finally {
-  await browser.close();
+  await context.close();
 }
 
 process.exit(exitCode);
