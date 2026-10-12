@@ -1,7 +1,7 @@
 # progress.md — 当前状态（唯一「现在在哪」来源）
 
-**Last Updated**: 2026-10-12（A.54 第二梯队③ 历史对比阅片）
-**HEAD**: 分支 `main`（本轮：患者历史检查端点 + 前端历史对比页（时间线配对/并排影像/面积变化），真机 p23 **18/18** + p24 **11/11**；途中修掉 2 个真缺陷——①历史对比影像并排因容器无高度导致 DICOM 层塌成 0×0（canvas 不渲染）②跨器官仍给『面积变化 -23.2%』的伪病情变化；另修报告页入口依赖『已生成报告』、探针选样/等待 3 处。详见 16 号附录 A.54）
+**Last Updated**: 2026-10-13（A.55 影像叠加色主题无关化 + 对比度审计鲁棒化；收尾轮修掉 1 个 P0）
+**HEAD**: 分支 `main`（本轮：叠加色 token 主题无关化（浅色主题下 `--color-text-primary` 对影像底板只有 1.22、叠加标注几乎不可见；旧审计脚本是硬编码色板+坐标的穷举法，静默通过）；**收尾轮修掉 P0——A.55 上轮提交的前端产物丢了 `VITE_BASE=/ui/`，引用 `/assets/…` 全 404（MIME=json）→ React 永不挂载=全站白屏**，已重建产物+新增产物前缀守卫；并修掉 p25 取证探针两处缺陷（`--user-data-dir` 被 Playwright 拒绝、工作区 URL 写错 `/ui/workspace` 致 query 丢失落到设计预览态）。真机 p25 **PASS**（两主题各 8 个真实 DOM 叠加元素全部 AA 达标、像素级最坏 6.79~9.39、dark/light 截图完全一致、0 JS 错误），截图对应 HEAD `da58f3d`。详见 16 号附录 A.55）
 **Owner of truth**: 本文件只记「当前状态/下一步/阻塞」；**功能与门控状态在 `feature_list.json`**，长期证据在 `16-开发进展汇报-20260928.md` 附录 A。
 
 ## Current Objective
@@ -12,6 +12,22 @@
 ## Current State
 
 ### What 已完成（有证据，详见 `feature_list.json` 与 16 号附录 A）
+
+- **影像叠加色主题无关化 + 对比度审计鲁棒化（2026-10-13，A.55）**：
+  ①**问题**：叠加标注压在**主题无关**的固定深底 `--color-image-bg=#15171B` 上，但取色跟 UI
+  主题漂移——浅色主题下 `--color-text-primary=#1F2937` 对底板只有 **1.22**、
+  `--color-attention` 只有 **3.06**（11~13px 小字远低于 AA 4.5），叠加标注几乎不可见；
+  旧 `scripts/contrast.py` 是**穷举法**（硬编码色板+硬编码像素坐标），永远只量同一个色值 → 静默"通过"。
+  ②**修法**：新增 `--color-overlay-*` 五件套（**两主题显式同值**），影像区样式与两个组件全部改引；
+  审计工具重写为「色值从生产 CSS 逐主题解析 + 几何/字号从真实 DOM 旁证 + 缺输入即退出码 2 + WCAG 分档」；
+  20 例**计算式**守卫（含跨主题同值、浅色 UI 色板确实不达标的反证、**产物过期守卫**）。
+  ③**收尾轮修掉 P0**：A.55 上轮提交的产物丢了 `VITE_BASE=/ui/` → 引用 `/assets/…` 全 404
+  → **全站白屏**（真机实测登录页 `inputs=0`），而当时本机 pytest 全绿（守卫只看源码、没看入库产物）；
+  已重建产物并新增 `test_shipped_index_html_uses_ui_base_and_refs_exist`（含反证：改坏前缀即红）。
+  ④**真机**：p25 **PASS**（两主题各 8 个真实 DOM 元素全部 AA 达标、像素级最坏 6.79~9.39、
+  **dark/light 截图完全一致**、退出码 0、0 JS 错误），截图 `C:\Windows\TEMP\uai_p25\overlay-{dark,light}.png`。
+  ⑤**顺带收敛**：A.53/A.55 两次提交带进来的 ruff 增量（contrast.py 5 处、test_admission_control.py 2 处）
+  就地修复 + UP031 基线下调至 24；`tests/unit/quality` **100 passed**。
 
 - **第二梯队③ 历史对比阅片（2026-10-12，A.54）**：
   ①**后端** `GET /api/v1/patients/{id}/sessions`——每次检查带结论（报告「诊断意见」优先）、
@@ -248,6 +264,9 @@
    （用户拍板：留到性能数据提升、远期目标攻克之后）；②远期第二梯队候选：
    分割 MYO GPU 全量稳定度、ULC graph-fusion 拼装、EchoCare 分割评测
    （见 21 号路线图）。
+   **待复核**：`scripts/audit/p20_frontend_boundary.mjs` 的 G1.2 已就地修正同一
+   「`/ui/workspace` 丢 query」陷阱，但**未重跑**（需 `--dicom` 真样本）——
+   下一次跑 p20 时确认仍 31/31。
 2. **语音功能验收待真实医生语音样本**：转写链路已通（模型自带语音 3/3），
    医疗术语标注的实效需医生真实口述样本验证（A.50.3 如实登记）。
 3. **把真浏览器守卫接进门禁的第二层**：`make fe-smoke` 已就绪（本机 20/20），
@@ -286,6 +305,7 @@
 | `scripts/audit/p19_a51_e2e_audit.py` | A.52 批次端到端摸排（6 断面，真机 49/49，服务器可复跑） |
 | `scripts/a51_ui_walkthrough.mjs` | A.52 浏览器层走查（本机 Playwright + 隧道，11/11，含截图/视频） |
 | `scripts/audit/p20_frontend_boundary.mjs` | A.52 前端深度边界摸排（31/31：认证/输入/装载/报告/帧/渲染/请求面，退出码可进 CI） |
+| `scripts/audit/p25_overlay_contrast.mjs` + `scripts/contrast.py` | A.55 影像叠加对比度真机取证（两主题截图 + 真实 DOM 旁证 + WCAG 计算式判定，退出码可门禁） |
 | `scripts/deploy_frontend.sh` | A.52 前端产物清空式部署（防陈旧 chunk 堆积） |
 | `scripts/audit/p15_retrieval_parity.py` | A.51 检索口径（服务腿 vs eval，真机可复跑） |
 | `scripts/audit/p16_list_endpoints.py` | A.51 设备/患者列表端点（14 项判定） |

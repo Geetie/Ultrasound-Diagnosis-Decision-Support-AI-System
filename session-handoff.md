@@ -5,6 +5,39 @@
 
 ## Last Updated
 
+2026-10-13（分支 `main`，HEAD `da58f3d`；**A.55 影像叠加色主题无关化 + 对比度审计鲁棒化
+已交付**——新增 `--color-overlay-*` 五件套（两主题显式同值），影像区样式与
+`WorkspaceImageRegion/WorkspaceDicomLayer` 全改引；`scripts/contrast.py` 从「硬编码色板 +
+硬编码坐标的穷举法」重写为「生产 CSS 逐主题解析 + 真实 DOM 旁证 + WCAG 计算式 +
+缺输入退出码 2」。**收尾轮修掉 1 个 P0**：A.55 上轮提交的前端产物丢了 `VITE_BASE=/ui/`
+→ 引用 `/assets/…` 全 404（MIME=json）→ **全站白屏**（真机实测登录页 inputs=0），
+已重建产物 + 新增产物前缀守卫；并修 p25 探针两处缺陷（`--user-data-dir` 被 Playwright
+拒绝、工作区 URL 写错致 query 丢失落到设计预览态）。真机 p25 **PASS**（两主题各 8 个
+真实 DOM 元素全 AA、像素级最坏 6.79~9.39、dark/light 截图完全一致、0 JS 错误），
+截图 `C:\Windows\TEMP\uai_p25\overlay-{dark,light}.png`。详见 16 号附录 A.55）
+
+### A.55 复跑入口与踩坑（下一位直接用）
+
+- 对比度真机取证（**本机** Playwright + 隧道；被测系统是服务器）：
+  `node scripts/audit/p25_overlay_contrast.mjs`
+  （需 `UAI_DOCTOR_USER/PASSWORD`；产出两主题截图 + `overlay_elements.json` DOM 旁证 +
+  `contrast_result.json`；退出码 0=通过 / 1=不达标 / 2=输入不合格，可进 CI）
+- 纯数学复算（不需要浏览器）：
+  `python scripts/contrast.py --sidecar <json> --shot <png> --json-out <out>`
+- 守卫：`pytest tests/unit/quality/test_contrast_tokens.py tests/unit/quality/test_frontend_render_guard.py`
+- **踩坑（都会再犯）**：
+  ① **前端产物必须走 `scripts/deploy_frontend.sh`**（它设了 `VITE_BASE=/ui/`）；直接
+  `npm run build` 会用默认 base `/`，产物引用 `/assets/…` → **全站白屏**（A.55 事故）。
+  构建后先看 `dist/index.html` 的引用前缀再部署。
+  ② **本机 `npm run build` / `vite build` 会被工具当成 watch 命令、10s 后中断**
+  （实测 dist 被清空却没写出产物）→ 用批处理 / `Start-Process` 分离进程，输出重定向到文件再读。
+  ③ **工作区 URL 是 `/ui/`，不是 `/ui/workspace`**（后者被 `path="*"` 静默回落且**丢 query**）。
+  ④ **`chromium.launch` 不接受 `--user-data-dir`**，要指定 profile 用 `launchPersistentContext`。
+  ⑤ 改了工具/包要跑它的棘轮：A.53/A.55 的 ruff 增量已在本轮就地收敛（UP031 基线 33→24）。
+  ⑥ p20 的 G1.2 同一 URL 陷阱已就地修正但**未重跑**（需 `--dicom` 真样本）——下轮跑 p20 时确认 31/31。
+
+### 上一轮（A.54）Last Updated 原文
+
 2026-10-12（分支 `main`；**A.54 第二梯队③ 历史对比阅片已交付**——后端
 `GET /api/v1/patients/{id}/sessions` + 前端 `/ui/history`（时间线配对 / 并排影像 /
 面积变化 Δ% / 跨器官不给数字）；真机 p23 **18/18**、p24 **11/11**、同批次回归
