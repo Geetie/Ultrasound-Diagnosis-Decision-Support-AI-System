@@ -519,12 +519,14 @@
     },
     {
       "id": "study-compare-historical",
-      "name": "远期：历史检查对比阅片（同患者前后对照）",
-      "description": "放射科标准工作流的随访环节：同患者历史影像并排/瀑布对比。依赖会话级影像归档与检索，当前无 UI 亦无后端端点",
-      "status": "planned",
-      "dependencies": [],
-      "resolution": "",
-      "evidence": "A.38 阅片生命周期盘点（第 7 阶段：历史对比缺失，登记远期；性能提升阶段后评估）"
+      "name": "历史对比阅片：同患者历史检查并排对比（后端历史端点 + 前端对比视图）",
+      "description": "医生对同一位患者的多次检查做前后对比。后端新增 `GET /api/v1/patients/{id}/sessions`（返回每次检查的结论/置信度/分割摘要/报告状态/影像计数 + organs/comparable_organs + patient_exists，结论优先取报告「诊断意见」，无报告回退管线结论），前端新增 `/ui/history` 对比页（时间线选两次、默认自动配对最近两次同器官、并排影像、面积变化 Δ%、跨器官不给测值变化），报告页提供入口。",
+      "status": "done",
+      "dependencies": [
+        "admin-list-endpoints"
+      ],
+      "resolution": "①后端 `app/api/v1/patients.py::list_patient_sessions` + 纯函数 `build_history_items`（可测）；②前端 `pages/PatientHistoryPage.tsx` + `services/patientHistoryService.ts` + 路由 `/history`；③报告页顶部入口（报告 patient_id → 会话 patient_id 两级解析）；④真机：p23 18/18（含患者隔离 H9、报告关联 H10c『结论采用报告诊断意见』）、p24 11/11（缺参引导/不存在患者/同器官对比/跨器官提示/报告页入口/无 JS 错误）。",
+      "evidence": "A.54；scripts/audit/p23_patient_history.py、scripts/audit/p24_history_compare_ui.mjs；tests/unit/api/test_patient_history.py（15 例）、frontend/src/pages/__tests__/PatientHistoryPage.test.tsx（12 例）、ReportPage.test.tsx 新增 3 例"
     },
     {
       "id": "langfuse-trace-ingestion",
