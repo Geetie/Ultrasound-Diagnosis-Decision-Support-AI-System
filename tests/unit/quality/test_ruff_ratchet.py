@@ -59,7 +59,7 @@ DEBT_FILE = REPO_ROOT / ".ruff-debt.txt"
 #   相对 2026-10-03 旧基线，E402 +2 / F841 +3 / F401 +1 / RUF059 +1 / RUF100 +1 系中间若干轮
 #   已提交代码累计（非本轮引入，本轮文件已用 `ruff check --select …` 自查清零）。
 RUFF_BASELINE = {
-    "E402": 262,
+    "E402": 261,
     "F841": 63,
     "F401": 48,
     "RUF013": 48,

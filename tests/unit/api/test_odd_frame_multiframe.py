@@ -77,6 +77,7 @@ def test_even_frame_length_is_left_untouched():
     assert how is None
     assert content == raw
     assert out_ds is ds
+    assert out_ds is ds
 
     raw16, ds16 = _make_multiframe(frames=3, rows=3, cols=3, bits=16)  # 18 字节/帧（偶）
     content16, out16, how16 = _normalize_odd_frame_multiframe(raw16, ds16)
@@ -91,3 +92,4 @@ def test_single_frame_is_left_untouched():
     content, out_ds, how = _normalize_odd_frame_multiframe(raw, ds)
     assert how is None
     assert content == raw
+    assert out_ds is ds

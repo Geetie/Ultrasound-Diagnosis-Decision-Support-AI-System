@@ -34,7 +34,7 @@ sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE.parent))
 
 from _audit_common import BASE, UAI, check, http, login, pw, save_ctx, summary  # noqa: E402
-from p11_rag_evidence import make_camus_dicoms, upload_dicom  # noqa: E402
+from p11_rag_evidence import make_camus_dicoms, upload_dicom
 
 BGE_URL = "http://127.0.0.1:8004"
 QDRANT_URL = "http://127.0.0.1:6333"

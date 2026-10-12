@@ -25,7 +25,7 @@ import numpy as np
 import pydicom
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-from _audit_common import BASE, check, login, pw, summary  # noqa: E402
+from _audit_common import BASE, check, login, pw, summary
 
 
 def _frame_bytes(ds: pydicom.Dataset) -> int:

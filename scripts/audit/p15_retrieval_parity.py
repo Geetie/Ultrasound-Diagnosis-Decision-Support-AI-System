@@ -34,8 +34,8 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "scripts"))
 sys.path.insert(0, str(ROOT / "scripts" / "audit"))
 
-from _audit_common import check, summary
-from t1_eval_retrieval import cosine_topk, embed_texts
+from _audit_common import check, summary  # noqa: E402
+from t1_eval_retrieval import cosine_topk, embed_texts  # noqa: E402
 
 GOLDEN = pathlib.Path.home() / "uai" / "data" / "golden" / "kb_qa_golden_v1.json"
 BGE_URL = "http://127.0.0.1:8004"
