@@ -5,7 +5,38 @@
 
 ## Last Updated
 
-2026-10-12（分支 `main`；**A.51 远期第一梯队四项收口**——①检索口径闭合（服务腿
+2026-10-12（分支 `main`；**A.52 A.51 批次端到端摸排与验证**——后端 6 断面真机探针
+`scripts/audit/p19_a51_e2e_audit.py` **49/49 PASS**、浏览器层走查
+`scripts/a51_ui_walkthrough.mjs` **11/11 PASS**（本机 Playwright + 隧道，真实 CAMUS
+单文件 7 帧）；摸出并修复 **3 个真缺陷**：①知识库版本口径 kb_v1.0.0（会话/报告/结果，
+与报告证据行的 kb_v1.3.0 自相矛盾）②前端帧级分割门控拿 Cornerstone 句柄比后端 id
+→ **掩膜任何帧都不显示** ③影像加载失败静默黑屏（结论照出，更易误读）；另修多帧样本
+奇数字节与产物堆积。详见 16 号附录 A.52）
+
+### A.52 复跑入口与踩坑（下一位直接用）
+
+- 后端摸排：`cd ~/uai/src/scripts/audit && ~/uai/venv/bin/python p19_a51_e2e_audit.py`
+  （6 断面：运行期配置 / qdrant+dense 腿 / 设备列表 / 患者列表 / 端到端判读 / 部署产物）
+- 浏览器走查（**本机**跑，被测系统是服务器）：先起隧道
+  `ssh -N -L 8000:127.0.0.1:18000 student03@10.20.28.21`，再
+  `node scripts/a51_ui_walkthrough.mjs --dicom <CAMUS 单文件多帧样本>`；
+  样本在服务器现转：`scripts/camus_frame_to_dicom.py --out x.dcm --count 7 --multiframe`
+  （**必须带 `--multiframe`** 才是单文件多帧路径）→ scp 回本机。
+- **踩坑（会再犯）**：
+  ①**显示栈里的 imageId 是 Cornerstone 句柄**（`dicomfile:N?frame=k`），不是后端
+  `img_…`；凡是要与后端 image_id 比的地方，必须走 `frameOwners` 对齐数组（A.52.3-2）。
+  ②**多帧 DICOM 每帧字节数必须为偶**（Rows×Cols 为奇 → `总长/帧数` 不整除 →
+  Cornerstone 报 `Invalid frame length`；pydicom 自己却能读，所以"后端能跑通"不代表
+  前端能渲染）。
+  ③**前端产物必须清空式部署**（覆盖式拷贝会把历次 hash 文件留在仓库里；
+  用 `scripts/deploy_frontend.sh`）。
+  ④多层 props 透传改签名后 `tsc -b` 才是唯一裁判（测试夹具也要同步补字段）。
+- 本轮修复后的门禁：`deploy_acceptance_gate.sh` **PASS=24 FAIL=0**（服务器已部署到
+  `429049a` + 后续文档提交）。
+
+## 上一轮（A.51）Last Updated 原文
+
+2026-10-12（**A.51 远期第一梯队四项收口**——①检索口径闭合（服务腿
 hit@10 0.9853 = eval 腿，diff +0.00pp；顺带修 qdrant-client `search()` 移除 + kb 向量
 未灌 两个真缺陷）；②多帧分期③择优帧 + 帧级归属（p17 15/15、p18 12/12，报告含「第
 X/Y 帧」）；③设备/患者列表端点（p16 14/14，零 api_key）；④fusion-validate 降载

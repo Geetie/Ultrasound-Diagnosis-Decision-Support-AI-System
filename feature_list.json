@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "project": "超声诊疗决策支持 AI 系统",
   "updated_at": "2026-10-12",
-  "head_commit": "4fefdb5",
+  "head_commit": "429049a",
   "branch": "main",
   "status_legend": {
     "done": "已交付且有证据（命令/报告/测试）",
@@ -439,7 +439,7 @@
       "status": "done",
       "dependencies": [],
       "resolution": "根治：同步脚本改为解包前先清空 app/static/ui，且**先校验 tar 里确实带着 app/static/ui/index.html 才清**（顺序反了会把线上站点清空）。服务器 100 → 31 个文件，与本机仓库一致，本轮不再随构建增长",
-      "evidence": "真机实测服务器 ui 文件数 100 → 31；16 号附录 A.29.6"
+      "evidence": "真机实测服务器 ui 文件数 100 → 31；16 号附录 A.29.6；16 号 A.52.3（实测累积 65→25 个 js，入库 scripts/deploy_frontend.sh）"
     },
     {
       "id": "ui-workspace-identity-hardcoded",
@@ -471,7 +471,7 @@
       "dependencies": [
         "ui-no-dicom-upload-entry"
       ],
-      "evidence": "A.38：vitest WorkspaceDicomLayer 5 例（多帧 setStack 整栈/单帧默认沉默/翻帧调用/工具互斥/空栈沉默）+ WorkspaceImageUpload multiple 用例；渲染守卫 TestReadingLifecycle +3；真机走查 4b/4c/4d（双帧装载→指示器 1/2→键盘翻 2/2）。二期（多帧 DICOM NumberOfFrames/cine 关键帧）三期（帧级标注归属）另行登记；分期③帧级归属（A.45）：保存带 frame_index、恢复按帧过滤、翻帧清场重恢复——vitest 10 例 + 走查 21/21；16 号 A.51②（择优帧 + 帧级归属）",
+      "evidence": "A.38：vitest WorkspaceDicomLayer 5 例（多帧 setStack 整栈/单帧默认沉默/翻帧调用/工具互斥/空栈沉默）+ WorkspaceImageUpload multiple 用例；渲染守卫 TestReadingLifecycle +3；真机走查 4b/4c/4d（双帧装载→指示器 1/2→键盘翻 2/2）。二期（多帧 DICOM NumberOfFrames/cine 关键帧）三期（帧级标注归属）另行登记；分期③帧级归属（A.45）：保存带 frame_index、恢复按帧过滤、翻帧清场重恢复——vitest 10 例 + 走查 21/21；16 号 A.51②（择优帧 + 帧级归属）；16 号 A.52.2（浏览器实测单文件 7 帧 1/7 + 帧级掩膜）",
       "resolution": "分期①全链路补齐（A.38）：input multiple 多选 → useDicomUpload 聚合本地/服务端副本显示栈 → StackViewport setStack 多帧 + 帧指示器「n/N ‹ ›」+ 键盘←→翻帧 + 浏览工具胶囊组（窗宽窗位/缩放/平移互斥单选）。此前「上传侧已通」仅指管线收数组，UI 单文件多帧根本选不出来（走查实测）"
     },
     {
@@ -627,6 +627,45 @@
         "diagnosis-dispatcher-latency"
       ],
       "evidence": "16 号 A.51④；scripts/audit/p14b_validate_bench.py；tests/unit/fus/test_validate_budget_degrade.py"
+    },
+    {
+      "id": "kb-version-reporting",
+      "name": "知识库版本口径修复（会话/报告/判读结果）",
+      "description": "A.52 端到端摸排实测：生产 KB 已切 kb_v1.3.0，但会话记录、报告「知识库版本」、判读结果 knowledge_base_version 全是 Phase 0A 占位 kb_v1.0.0 —— 同一份报告证据行写 kb_v1.3.0:… 而版本标注 kb_v1.0.0（自相矛盾、溯源不可信）。根因：建会话未传版本→仓储硬编码缺省；管线 findings 不写该键→结果 API 退回 mock；占位/取消路径直接用 mock。",
+      "status": "done",
+      "result": "三处均改为单一事实源 settings.rag_kb_version；真机复验 result/session/report 全为 kb_v1.3.0，报告不再出现 kb_v1.0.0",
+      "dependencies": [
+        "kb-v13"
+      ],
+      "evidence": "16 号 A.52.3-1；tests/unit/api/test_kb_version_reporting.py（7 例）；scripts/audit/p19 断面 S5"
+    },
+    {
+      "id": "multiframe-frame-gating-ui",
+      "name": "帧级分割门控：改比后端 image_id（掩膜此前任何帧都不显示）",
+      "description": "A.52 浏览器走查实测：显示栈是 Cornerstone 句柄（dicomfile:N?frame=k），而 nodule_segmentation.image_id 是后端 img_… → segBelongsToLiveFrame 的 imageId 比较恒不相等 → 掩膜任何帧都不渲染（提示一直挂着）。单测未抓到是因为单测直接传后端 id。",
+      "status": "done",
+      "result": "显示栈旁并行携带逐位对齐的后端 id（useDicomUpload→routes→页面→影像区→DICOM 层）；真机翻到第 2/7 帧掩膜出现（bbox + 病灶 mm² 标签），其余帧仍只提示",
+      "dependencies": [
+        "multiframe-best-frame-selection"
+      ],
+      "evidence": "16 号 A.52.3-2；scripts/a51_ui_walkthrough.mjs 判据 N3；WorkspaceDicomLayer.test.tsx（帧归属上报后端 id）"
+    },
+    {
+      "id": "dicom-load-failure-visibility",
+      "name": "影像加载失败必须给医生可见提示（不再静默黑屏）",
+      "description": "A.52 实测：多帧文件不合规（每帧字节数为奇 → 总长/帧数不整除）时 Cornerstone dicom-image-loader 在异步渲染链抛 Invalid frame length，绕过本层 try/catch → 影像区空白且无提示，而判读结论照常输出（更易误读为影像正常无病灶）。",
+      "status": "done",
+      "result": "兜住 unhandledrejection/error 中的影像加载类报文 → data-region=dicom-load-error + role=alert「影像无法渲染（文件不规范或不受支持）」；2 例 vitest 守卫",
+      "dependencies": [],
+      "evidence": "16 号 A.52.3-3；WorkspaceDicomLayer.test.tsx；a51_ui_walkthrough 7 号判据（0 JS error）"
+    },
+    {
+      "id": "model-version-reporting",
+      "name": "报告「模型版本」占位语义（待项目方拍板）",
+      "description": "A.52 摸排：report_service 仍写 phase0a_mock_model_version='thyroid_v1.0.0'。知识库版本已修真；模型版本语义未定义（生成模型 Qwen2.5-7B-Instruct？还是 T2a 任务分类头？）——需拍板后一次改对，不擅自选一种解释。",
+      "status": "planned",
+      "dependencies": [],
+      "evidence": "16 号 A.52.4-5 / A.52.5"
     }
   ]
 }

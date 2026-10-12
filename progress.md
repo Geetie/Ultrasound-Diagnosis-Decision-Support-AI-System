@@ -1,7 +1,7 @@
 # progress.md — 当前状态（唯一「现在在哪」来源）
 
-**Last Updated**: 2026-10-12（A.51 远期第一梯队四项收口）
-**HEAD**: 分支 `main`（本轮：检索口径闭合（服务腿 vs eval diff +0.00pp）+ 多帧分期③择优帧 + 设备/患者列表端点 + fusion-validate 降载（P99 2296→885ms），四项均真机探针复验，详见 16 号附录 A.51）
+**Last Updated**: 2026-10-12（A.52 A.51 批次端到端摸排与验证）
+**HEAD**: 分支 `main`（本轮：A.51 批次端到端摸排（后端探针 p19 **49/49** + 浏览器走查 **11/11**）挖出并修复 **3 个真缺陷**——知识库版本口径 kb_v1.0.0（合规）、前端帧级分割门控拿 Cornerstone 句柄比后端 id（掩膜永不显示）、影像加载失败静默黑屏；另修样本生成器奇数字节 + 产物堆积卫生。详见 16 号附录 A.52）
 **Owner of truth**: 本文件只记「当前状态/下一步/阻塞」；**功能与门控状态在 `feature_list.json`**，长期证据在 `16-开发进展汇报-20260928.md` 附录 A。
 
 ## Current Objective
@@ -12,6 +12,25 @@
 ## Current State
 
 ### What 已完成（有证据，详见 `feature_list.json` 与 16 号附录 A）
+
+- **A.51 批次端到端摸排与验证（2026-10-12，A.52）**：
+  ①**后端 6 断面真机探针**（`scripts/audit/p19_a51_e2e_audit.py`）**PASS=49 FAIL=0**：
+  运行期配置实测（validate 预算 3.0 / Self-RAG 重试 0 / 后端 qdrant / kb_v1.3.0）、
+  qdrant 1257 点且 **dense 腿直连真返回 5 条**、设备列表（401/403/分页/过滤/**零 api_key**）、
+  患者列表（检索命中/total=0 不虚构/limit>100→422）、**端到端判读**（真实 CAMUS 3 帧：
+  validate 978.67ms、degraded=0、择优帧==argmax、knowledge_ids=9、报告含帧号）、
+  部署产物含 A.51 新特性字符串。
+  ②**浏览器层真机走查**（`scripts/a51_ui_walkthrough.mjs`，本机 Playwright + 隧道）
+  **PASS=11 FAIL=0**：患者候选下拉点选即校验、单文件多帧 `1/7` 原生解析、
+  **帧级归属**（非所属帧只提示 → 翻到第 2/7 帧掩膜出现，截图留证）、主流程出结论、0 JS 错误。
+  ③**挖出并修复 3 个真缺陷**：**知识库版本口径**（会话/报告/结果全写 Phase 0A 占位
+  `kb_v1.0.0`，而报告证据行是 `kb_v1.3.0:…` —— 自相矛盾、溯源不可信；改单一事实源
+  `settings.rag_kb_version` + 7 例守卫）；**帧级分割门控**（显示栈是 `dicomfile:N?frame=k`
+  句柄、分割自带后端 `img_…`，比较恒不相等 → **掩膜任何帧都不显示**；改为逐位对齐的
+  帧归属数组后真机掩膜正确渲染）；**影像加载失败静默黑屏**（Cornerstone 异步链抛错不进
+  本层 try/catch，医生只见空白而结论照出；兜住异步错误 → `role=alert` 可读提示 + 2 例守卫）。
+  ④顺带修：样本生成器多帧奇数字节（loader `Invalid frame length`）、前端产物陈旧堆积
+  （65→25 个 js，入库 `scripts/deploy_frontend.sh`）。
 
 - **远期第一梯队四项收口（2026-10-12，A.51）**：
   ①**检索口径闭合**——p15 同进程双跑（服务器真机）：eval 腿 hit@10 **0.9853**（完美
@@ -128,6 +147,11 @@
 ### What 未完成 / 挂起
 
 - `faithfulness` 官方 RAGAS 口径 68.96%（门控 95%）——判官侧已无空间，卡在**语料覆盖**（Top-5 缺依据）。
+- **报告「模型版本」仍是 Phase 0A 占位**（A.52.5）：`report_service.py` 写死
+  `phase0a_mock_model_version="thyroid_v1.0.0"`。知识库版本已修真（kb_v1.3.0），
+  模型版本语义未定义（生成模型 vs T2a 任务头）——需项目方拍板后一次改对，**不擅自选一种解释**。
+- **奇数帧长多帧 DICOM 的前端兼容**（A.52.3-4）：本轮在**生成侧**补齐（自家样本已合规）；
+  真实设备若产出该形态，前端仍加载失败（现已有可读提示，不再静默黑屏）。待遇真实设备再评估 loader 侧容错。
 - 核心覆盖率 86.30%（门禁 90%，差 3.70pt），缺口集中在已登记的 🔬 真机项（SoftHSM 签名字节、真实 Redis 语义）。
 - UDT Phase 1 词汇表 ≈1650/2000，**待医生审定草案**（AI 侧覆盖度审计与草案已交付）。
 - 甲状腺注册数据方案（管理决策 + 数据授权）；NMPA 注册材料/部署手册/验收报告未交付。
@@ -203,6 +227,9 @@
 | `reports/concurrency_perf_report.json` | 阶梯并发压测（1/5/10/20/50，P50/P95/P99/429/队列积压） |
 | `tests/reports/t2c_e2e_report_final2.json` | T2c 端到端 |
 | `tests/reports/phase0a_retest_v2.json` | Gate 0A-T-P0 重测（口径 A） |
+| `scripts/audit/p19_a51_e2e_audit.py` | A.52 批次端到端摸排（6 断面，真机 49/49，服务器可复跑） |
+| `scripts/a51_ui_walkthrough.mjs` | A.52 浏览器层走查（本机 Playwright + 隧道，11/11，含截图/视频） |
+| `scripts/deploy_frontend.sh` | A.52 前端产物清空式部署（防陈旧 chunk 堆积） |
 | `scripts/audit/p15_retrieval_parity.py` | A.51 检索口径（服务腿 vs eval，真机可复跑） |
 | `scripts/audit/p16_list_endpoints.py` | A.51 设备/患者列表端点（14 项判定） |
 | `scripts/audit/p17_multiframe_segmentation.py` | A.51 多影像择优帧（15 项判定） |
