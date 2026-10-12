@@ -16,7 +16,7 @@ const idle: DicomUploadState = {
   fileName: null,
   error: null,
   localImageIds: [],
-  serverImageIds: [],
+  serverImageIds: [], localFrameOwners: [], serverFrameOwners: [],
 };
 
 function dicomFile() {
@@ -76,7 +76,7 @@ describe('WorkspaceImageUpload · 可用态', () => {
       fileName: 'thyroid.dcm',
       error: null,
       localImageIds: [],
-      serverImageIds: [],
+      serverImageIds: [], localFrameOwners: [], serverFrameOwners: [],
     };
     render(<WorkspaceImageUpload state={uploading} ready onPick={vi.fn()} />);
 
@@ -92,7 +92,7 @@ describe('WorkspaceImageUpload · 可用态', () => {
       fileName: 'thyroid.dcm',
       error: 'DICOM 缺少必需标签',
       localImageIds: [],
-      serverImageIds: [],
+      serverImageIds: [], localFrameOwners: [], serverFrameOwners: [],
     };
     render(<WorkspaceImageUpload state={failed} ready onPick={vi.fn()} />);
 
@@ -106,7 +106,7 @@ describe('WorkspaceImageUpload · 可用态', () => {
       error: null,
       imageId: 'img_x',
       localImageIds: [],
-      serverImageIds: [],
+      serverImageIds: [], localFrameOwners: [], serverFrameOwners: [],
     };
     render(<WorkspaceImageUpload state={done} ready onPick={vi.fn()} />);
     expect(screen.getByText('重新装载影像')).toBeInTheDocument();

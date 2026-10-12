@@ -252,6 +252,22 @@ function WorkspaceRoute() {
             ? [devDicomImageId]
             : [];
   const dicomImageId = dicomImageIds[0];
+  /**
+   * A.52 帧归属：与 dicomImageIds **逐位对齐**的后端 image_id。
+   *
+   * 显示栈里是 Cornerstone 句柄（`dicomfile:N?frame=k`），分割结果自带的是后端
+   * `img_...`；门控必须比后端 id，否则永不相等 → 掩膜任何帧都不显示（A.52 走查实测）。
+   * 会话恢复 / dev 后门这两条单张路径，归属就是那张影像的后端 id（取不到则空串，
+   * 门控退化为「只比帧号」，与 A.51 原语义一致）。
+   */
+  const dicomFrameOwners: string[] =
+    uploadedServerStack.length > 0
+      ? (upload.state.serverFrameOwners ?? [])
+      : uploadedLocalStack.length > 0
+        ? (upload.state.localFrameOwners ?? [])
+        : dicomImageIds.length > 0
+          ? [annotationArchiveKey ?? '']
+          : [];
 
   // ?request_id=… —— 语音控件发起判读后带着它跳过来（AppLayout 的 onExecuted）。
   // 那个请求已经发出并落库，所以走 resume() **只轮询取结果**，绝不重发判读。
@@ -302,7 +318,8 @@ function WorkspaceRoute() {
       state={state}
       view={view}
       dicomImageId={dicomImageId}
-      dicomImageIds={dicomImageIds.length > 1 ? dicomImageIds : undefined}
+      dicomImageIds={dicomImageIds.length > 0 ? dicomImageIds : undefined}
+      dicomFrameOwners={dicomFrameOwners}
       annotationArchiveKey={annotationArchiveKey}
       progressChars={flow.progressChars}
       generationPreview={flow.previewText}

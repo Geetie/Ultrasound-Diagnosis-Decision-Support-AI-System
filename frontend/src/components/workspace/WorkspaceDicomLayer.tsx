@@ -45,6 +45,7 @@ const TOOL_LABEL: Record<BrowseTool, string> = {
 
 export default function WorkspaceDicomLayer({
   imageIds,
+  frameOwners,
   archiveKey,
   onFrameChange,
 }: {
@@ -54,6 +55,14 @@ export default function WorkspaceDicomLayer({
   /** 当前帧回调（A.51 帧级归属）：把帧下标与该帧对应的 image_id 交给父层，
    *  供分割覆盖层判断"这条分割属于不属于正在看的这一帧"。 */
   onFrameChange?: (frameIndex: number, imageId: string) => void;
+  /**
+   * A.52 帧归属：与 imageIds 逐位对齐的**后端** image_id。
+   *
+   * imageIds 里是 Cornerstone 句柄（`dicomfile:N?frame=k`），而分割结果自带后端
+   * `img_...` —— 拿句柄去比永不相等，掩膜会任何帧都不显示（A.52 走查实测）。
+   * 给了本数组就上抛这里的后端 id；没给则回落旧的「栈位即后端 id」假设。
+   */
+  frameOwners?: string[];
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -81,8 +90,13 @@ export default function WorkspaceDicomLayer({
   // "分割所属影像/帧"上——翻到别的帧自动隐藏，避免跨帧错标。
   useEffect(() => {
     const stackIds = stackKey.split('\u0000').filter(Boolean);
-    onFrameChange?.(frameIndex, stackIds[frameIndex] ?? stackIds[0] ?? '');
-  }, [frameIndex, stackKey, onFrameChange]);
+    // A.52：优先上报**后端** image_id（frameOwners 与显示栈逐位对齐）；没有时回落
+    // 「栈位即后端 id」的旧假设（保持兼容，但那条假设在 Cornerstone 句柄下是错的）。
+    const ownerKey = (frameOwners ?? []).join('\u0000');
+    const owners = ownerKey.split('\u0000').filter(Boolean);
+    const owned = owners[frameIndex] ?? owners[0];
+    onFrameChange?.(frameIndex, owned ?? stackIds[frameIndex] ?? stackIds[0] ?? '');
+  }, [frameIndex, stackKey, onFrameChange, frameOwners]);
 
   useEffect(() => {
     const element = ref.current;

@@ -259,4 +259,17 @@ describe('WorkspaceDicomLayer · 多帧分期①', () => {
     window.dispatchEvent(evt);
     await waitFor(() => expect(screen.queryByText(/影像无法渲染/)).toBeNull());
   });
+
+  it('A.52：帧归属上报的是**后端** image_id（不是 cornerstone 句柄）', async () => {
+    const onFrameChange = vi.fn();
+    render(
+      <WorkspaceDicomLayer
+        imageIds={['dicomfile:0?frame=1']}
+        frameOwners={['img_backend_7']}
+        onFrameChange={onFrameChange}
+      />,
+    );
+    await waitFor(() => expect(onFrameChange).toHaveBeenCalled());
+    expect(onFrameChange).toHaveBeenCalledWith(0, 'img_backend_7');
+  });
 });

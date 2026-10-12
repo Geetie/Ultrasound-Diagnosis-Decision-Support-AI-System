@@ -38,6 +38,17 @@ export interface DicomUploadState {
   localImageIds: string[];
   /** 多帧显示栈·服务端副本（同序；某张回取失败时该位缺省）。 */
   serverImageIds: string[];
+  /**
+   * A.52 帧归属：与 localImageIds **逐位对齐**的后端 image_id 数组。
+   *
+   * 为什么需要：显示栈里是 Cornerstone 句柄（`dicomfile:N?frame=k`），而分割结果
+   * 自带的是后端 `img_...` —— 前端帧级门控若拿句柄去比，**永远不相等**，掩膜在
+   * 任何帧都不显示（A.52 浏览器走查实测：提示一直挂着、翻到第 2/7 帧也不出覆盖层）。
+   * 这里把「这一位显示条目属于哪张后端影像」并行带出去，门控改比后端 id。
+   */
+  localFrameOwners: string[];
+  /** 同上，与 serverImageIds 逐位对齐。 */
+  serverFrameOwners: string[];
   /** 后端 image_id（判读用）。 */
   imageId?: string;
   fileName: string | null;
@@ -114,6 +125,8 @@ export function useDicomUpload(
     imageIds: [],
     localImageIds: [],
     serverImageIds: [],
+    localFrameOwners: [],
+    serverFrameOwners: [],
   });
 
   const handleFiles = useCallback(
@@ -125,6 +138,8 @@ export function useDicomUpload(
           error: '尚未选择检查会话，无法装载影像',
           localImageIds: [],
           serverImageIds: [],
+          localFrameOwners: [],
+          serverFrameOwners: [],
         });
         return;
       }
@@ -134,6 +149,11 @@ export function useDicomUpload(
       // —— 上传了 3 张却只能看 1 张，帧指示器没有数据源）。
       const localIds: string[] = [];
       const serverIds: string[] = [];
+      // A.52 帧归属：与两条显示栈逐位对齐的后端 image_id（见 DicomUploadState 注释）。
+      // 本地栈每张占多少位（多帧展开后 = 帧数）在上传前就要记下来 —— 后端 id 要等
+      // 上传成功才知道，末尾再统一回填。
+      const localFrameCounts: number[] = [];
+      const serverOwners: string[] = [];
 
       let lastLocal: string | undefined;
 
@@ -148,6 +168,8 @@ export function useDicomUpload(
           imageIds: ids,
           localImageIds: localIds,
           serverImageIds: serverIds,
+          localFrameOwners: ids.flatMap((id, i) => Array(localFrameCounts[i] ?? 1).fill(id)),
+          serverFrameOwners: [...serverOwners],
         });
 
         // 先显示：不等网络。注册失败也不影响后续上传。
@@ -155,7 +177,10 @@ export function useDicomUpload(
 
         lastLocal = localImageId;
         // 分期②：多帧 DICOM（单文件 NumberOfFrames>1）展开为帧栈
-        if (localImageId) localIds.push(...(await expandStackId(localImageId)));
+        const localFrames = localImageId ? await expandStackId(localImageId) : [];
+        const localCount = Math.max(1, localFrames.length);
+        localFrameCounts.push(localCount);
+        if (localImageId) localIds.push(...localFrames);
 
         try {
           const resp = await uploadDicom(file, sessionId, DEFAULT_PRIORITY);
@@ -165,7 +190,14 @@ export function useDicomUpload(
             () => undefined,
           );
           lastServer = serverImageId;
-          if (serverImageId) serverIds.push(...(await expandStackId(serverImageId)));
+          if (serverImageId) {
+            const serverFrames = await expandStackId(serverImageId);
+            serverIds.push(...serverFrames);
+            // 这些显示位都属于同一张后端影像（多帧时逐位重复同一个 image_id）
+            for (let k = 0; k < Math.max(1, serverFrames.length); k += 1) {
+              serverOwners.push(resp.image_id);
+            }
+          }
           setState({
             phase: 'uploading',
             localImageId,
@@ -173,6 +205,10 @@ export function useDicomUpload(
             imageIds: ids,
             localImageIds: localIds,
             serverImageIds: serverIds,
+            localFrameOwners: ids.flatMap((id, i) =>
+              Array(localFrameCounts[i] ?? 1).fill(id),
+            ),
+            serverFrameOwners: [...serverOwners],
             fileName: file.name,
             error: null,
           });
@@ -185,6 +221,8 @@ export function useDicomUpload(
             imageIds: ids,
             localImageIds: localIds,
             serverImageIds: serverIds,
+            localFrameOwners: ids.flatMap((id, i) => Array(localFrameCounts[i] ?? 1).fill(id)),
+            serverFrameOwners: [...serverOwners],
           });
           return;
         }
@@ -198,6 +236,8 @@ export function useDicomUpload(
         serverImageId: lastServer,
         localImageIds: localIds,
         serverImageIds: serverIds,
+        localFrameOwners: ids.flatMap((id, i) => Array(localFrameCounts[i] ?? 1).fill(id)),
+        serverFrameOwners: [...serverOwners],
         fileName: null,
         error: null,
       });
@@ -209,7 +249,15 @@ export function useDicomUpload(
   const handleFile = useCallback((files: File[]) => handleFiles(files), [handleFiles]);
 
   const reset = useCallback(() => {
-    setState({ phase: 'idle', fileName: null, error: null, localImageIds: [], serverImageIds: [] });
+    setState({
+      phase: 'idle',
+      fileName: null,
+      error: null,
+      localImageIds: [],
+      serverImageIds: [],
+      localFrameOwners: [],
+      serverFrameOwners: [],
+    });
   }, []);
 
   return { state, handleFile, reset };

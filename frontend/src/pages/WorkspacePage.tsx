@@ -55,6 +55,7 @@ export default function WorkspacePage({
   onRevealConclusion,
   dicomImageId,
   dicomImageIds,
+  dicomFrameOwners,
   /** 测量注释存档 key（A.40：后端 image_id）。undefined = 不持久化。 */
   annotationArchiveKey,
   uploadSlot,
@@ -85,6 +86,8 @@ export default function WorkspacePage({
   dicomImageId?: string;
   /** 多帧栈（A.38 分期①）：本会话已装载的 imageIds（顺序=上传顺序）。 */
   dicomImageIds?: string[];
+  /** A.52：与 dicomImageIds 逐位对齐的后端 image_id（帧级分割门控用）。 */
+  dicomFrameOwners?: string[];
   /** 测量注释存档 key（A.40：后端 image_id）。undefined = 不持久化。 */
   annotationArchiveKey?: string;
   /** 影像装载入口插槽（仅 02 扫查态渲染，见 WorkspaceConclusionBody）。 */
@@ -135,6 +138,7 @@ export default function WorkspacePage({
         organBar={hasOrganBar(state) ? <WorkspaceOrganBar onReviewClick={onReviewDetail} /> : undefined}
         dicomImageId={dicomImageId}
         dicomImageIds={dicomImageIds}
+        dicomFrameOwners={dicomFrameOwners}
         annotationArchiveKey={annotationArchiveKey}
         segmentation={view?.segmentation}
       />

@@ -64,6 +64,7 @@ export default function WorkspaceImageRegion({
   organBar,
   dicomImageId,
   dicomImageIds,
+  dicomFrameOwners,
   segmentation,
   annotationArchiveKey,
 }: {
@@ -76,6 +77,14 @@ export default function WorkspaceImageRegion({
   /** 多帧（A.38 分期①）：本会话已装载的 imageIds 栈（顺序=上传顺序）。
    *  传入时优先于 dicomImageId；空/省略回落单张语义。 */
   dicomImageIds?: string[];
+  /**
+   * A.52 帧归属：与 dicomImageIds **逐位对齐**的后端 image_id。
+   *
+   * 显示栈里是 Cornerstone 句柄（`dicomfile:N?frame=k`），分割自带的是后端 `img_...`，
+   * 拿句柄比后端 id 永不相等 → 掩膜任何帧都不显示（A.52 走查实测）。缺省时退化为
+   * 只比帧号（原语义），不阻塞旧调用方。
+   */
+  dicomFrameOwners?: string[];
   /** 分割旁路视图（来自诊断结果的 nodule_segmentation）。 */
   segmentation?: SegmentationView;
   /** 测量注释存档 key（A.40：后端 image_id，img_/frame_ 前缀）。
@@ -87,6 +96,12 @@ export default function WorkspaceImageRegion({
     : dicomImageId
       ? [dicomImageId]
       : [];
+  // A.52：与 stack 同长同序的「这一位属于哪张后端影像」。栈来自 dicomImageIds 时
+  // 直接取对齐数组；单张语义时取首元素（并只对首位有效——多帧展开缺失时退化为空串，
+  // 门控只比帧号，不会误判为"不归属"而彻底不显示）。
+  const frameOwners = dicomImageIds && dicomImageIds.length > 0
+    ? (dicomFrameOwners ?? [])
+    : (dicomFrameOwners?.[0] ? [dicomFrameOwners[0]] : []);
   // 设计稿 2:5/2:6/2:101 的「结节A/B、18.4×12.1mm」是**写死的示意数据**。
   // 真实影像显示时必须隐藏 —— 假框叠在真片子上等于伪造标注（2026-10-08 走查发现）。
   const showMock = stack.length === 0;
@@ -112,6 +127,7 @@ export default function WorkspaceImageRegion({
       {stack.length > 0 && (
         <WorkspaceDicomLayer
           imageIds={stack}
+          frameOwners={frameOwners}
           archiveKey={annotationArchiveKey}
           onFrameChange={(index, imageId) => setLiveFrame({ index, imageId })}
         />
