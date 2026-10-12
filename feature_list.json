@@ -260,13 +260,14 @@
     },
     {
       "id": "prod-capacity-acceptance",
-      "name": "生产部署定容后 P99 并发验收",
-      "description": "容量上限锚定在批量调度与判官配额，随生产部署定容复验",
-      "status": "planned",
+      "name": "生产容量验收：诊断准入控制 + 阶梯压测定容",
+      "description": "此前无准入判断（队列到 1000 才拒）→ 50 并发时结果接口 10/50 超时（排队被算进超时）；且入队失败被静默吞掉（200 + 僵尸 processing 行）。本轮加 admission_control（深度≥24 → 503+Retry-After）、入队失败标 failed 并 503，并完成真机阶梯压测定容。",
+      "status": "done",
       "dependencies": [
-        "p99-capacity"
+        "refresh-token-grace-period"
       ],
-      "evidence": "16 号 A.13 收敛路径"
+      "evidence": "16 号 A.53；reports/prod_capacity_a53.json；tests/unit/api/test_admission_control.py（6 例）",
+      "result": "真机 1/5/10/20/50 并发：0/0/0/0/1 拒绝，结果超时 0（旧口径 10/50），50 档 49 completed；安全区 ≤20 并发（P99 17.7s）；拒绝为 503 E2004A + Retry-After:30"
     },
     {
       "id": "consent-withdrawal-consumer",

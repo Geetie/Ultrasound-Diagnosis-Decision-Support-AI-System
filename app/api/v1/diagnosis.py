@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.agents.routing import RoutingDecision
 from app.api.v1.errors import (
     BadRequestException,
+    DiagnosisQueueFullException,
     NotFoundException,
     SafetyGatewayUnavailableException,
 )
@@ -46,6 +47,7 @@ from app.models.schemas import (
     RoutingConfirmationResponse,
 )
 from app.security.auth import get_current_active_user
+from app.services.admission_control import check_diagnosis_admission
 from app.services.diagnosis_pipeline import get_routing_router
 from app.services.diagnosis_worker import enqueue_diagnosis
 from app.services.multi_organ_orchestrator import (
@@ -150,6 +152,42 @@ async def _push_diagnosis_result(result, request_id: str, db: AsyncSession):
         logger.warning("Failed to push diagnosis result via WebSocket", error=str(e))
 
 
+
+async def _mark_request_failed(
+    diagnosis_repo,
+    *,
+    request_id: str,
+    reason: str,
+    message: str,
+) -> None:
+    """把未能受理的判读请求标成 ``failed``（A.53：入队失败不再留僵尸 processing 行）。
+
+    为什么必须落库：请求行在建会话/提交阶段已经 commit（worker 需要它可见），
+    不标失败的话它会永远停在 processing，医生轮询到超时也拿不到结论，事后排查
+    还看不出"其实根本没入队"。这里用**既有仓储方法**做状态迁移，并把可读原因写进
+    findings，失败不抛出（标记失败是尽力而为，不能盖掉对外的 503 语义）。
+    """
+    try:
+        await diagnosis_repo.update_result(
+            request_id=request_id,
+            status="failed",
+            findings={
+                "status": "failed",
+                "error": reason,
+                "error_message": message,
+                "reason": "未受理：判读未能入队（系统繁忙）",
+            },
+        )
+        await diagnosis_repo.db.commit()
+        logger.info("diagnosis_request_marked_failed", request_id=request_id, reason=reason)
+    except Exception as exc:
+        logger.error(
+            "diagnosis_request_mark_failed_error",
+            request_id=request_id,
+            error=str(exc),
+            error_type=type(exc).__name__,
+        )
+
 @router.post("/request", response_model=DiagnosisRequestResponse)
 async def submit_diagnosis_request(
     request: DiagnosisRequest,
@@ -211,6 +249,12 @@ async def submit_diagnosis_request(
     consent_record = await consent_repo.get_latest_consent(session.patient_id)
     check_consent_status(consent_record, session.patient_id)
 
+    # === 准入控制（第二梯队② 生产容量验收，2026-10-12）===
+    # 放在**建行之前**：队列过深时立刻 503 + Retry-After，绝不落一条永远等不到
+    # worker 的 processing 行（那种"静默排队"既骗医生又污染数据）。
+    # 探测不到深度（Redis 抖动）时放行 —— 入队侧还有自己的长度上限兜底。
+    queue_depth = await check_diagnosis_admission()
+
     request_id = _generate_request_id()
 
     # 幂等键并发占位（A.50.7 E12 探针实测：check-then-set 在并发窗口下两个
@@ -259,22 +303,48 @@ async def submit_diagnosis_request(
     # 顺序不能颠倒：先提交（行可见）→ 再入队（worker 才可能读到）。
     await diagnosis_repo.db.commit()
 
-    # T-GA-INT-01: 把 request_id 入队到后台 worker 池
-    # 入队失败不阻塞端点返回 — worker 池有 fallback 处理
+    # T-GA-INT-01: 把 request_id 入队到后台 worker 池。
+    # **入队失败必须显式失败**（A.53 修正）：此前只记 warning 就返回 200 —— 请求行
+    # 已在库里（status=processing）却没有任何 worker 会处理它，医生轮询到超时也等不到
+    # 结论，而且这条僵尸行还会一直留在库里。现在：标记该行为 failed（带可读原因），
+    # 并抛 503 + Retry-After，让前端明确重试而不是空等。
     try:
         enqueued = await enqueue_diagnosis(request_id)
         if not enqueued:
-            logger.warning(
+            logger.error(
                 "diagnosis_enqueue_failed_endpoint",
                 request_id=request_id,
+                queue_depth=queue_depth,
             )
+            await _mark_request_failed(
+                diagnosis_repo,
+                request_id=request_id,
+                reason="enqueue_failed_queue_full",
+                message="系统队列已满，本次判读未能入队，请稍后重试。",
+            )
+            raise DiagnosisQueueFullException(
+                error_message="系统队列已满，本次判读未能入队，请稍后重试（未产生结论，可安全重发）。",
+                headers={"Retry-After": str(settings.diagnosis_admission_retry_after_s)},
+            )
+    except DiagnosisQueueFullException:
+        raise
     except Exception as exc:
-        logger.warning(
+        logger.error(
             "diagnosis_enqueue_exception_endpoint",
             request_id=request_id,
             error=str(exc),
             error_type=type(exc).__name__,
         )
+        await _mark_request_failed(
+            diagnosis_repo,
+            request_id=request_id,
+            reason="enqueue_exception",
+            message="入队过程出错，本次判读未能受理，请稍后重试。",
+        )
+        raise DiagnosisQueueFullException(
+            error_message="系统暂时无法受理判读（入队异常），请稍后重试。",
+            headers={"Retry-After": str(settings.diagnosis_admission_retry_after_s)},
+        ) from exc
 
     if request.retry and not request.retry_strategy:
         request.retry_strategy = RetryStrategy.FULL_RETRIEVAL
@@ -475,6 +545,9 @@ async def submit_multi_organ_diagnosis(
 
     consent_record = await consent_repo.get_latest_consent(session.patient_id)
     check_consent_status(consent_record, session.patient_id)
+
+    # 多器官一次要占住一个 worker 跑完整串行链 → 同样走准入（占用更久，更该早拒）
+    await check_diagnosis_admission()
 
     try:
         outcome = await run_multi_organ_diagnosis(

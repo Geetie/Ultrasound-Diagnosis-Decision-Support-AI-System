@@ -63,6 +63,14 @@ def _get_fallback_queue() -> asyncio.Queue:
 # ----------------------------------------------------------------------
 
 
+def get_pending_depth_sync() -> int:
+    """进程内降级队列的当前深度（准入控制在 Redis 探测不到时用它）。
+
+    只读、不创建队列：没建过说明本进程从未降级入队 → 深度 0。
+    """
+    return _fallback_queue.qsize() if _fallback_queue is not None else 0
+
+
 async def enqueue_diagnosis(request_id: str) -> bool:
     """把 ``request_id`` 入队到 Redis pending queue（或 in-process fallback）。
 

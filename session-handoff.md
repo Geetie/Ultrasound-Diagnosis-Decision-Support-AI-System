@@ -22,6 +22,10 @@
   `node scripts/a51_ui_walkthrough.mjs --dicom <CAMUS 单文件多帧样本>`；
   样本在服务器现转：`scripts/camus_frame_to_dicom.py --out x.dcm --count 7 --multiframe`
   （**必须带 `--multiframe`** 才是单文件多帧路径）→ scp 回本机。
+- **容量压测（第二梯队②）**：`bash scripts/run_bench.sh --levels 1,5,10,20,50 --users 10
+  --cooldown 20 --poll-deadline 240 --output reports/prod_capacity_a53.json`（服务器；
+  **必须以服务同源环境跑**，启动器已入库 `scripts/run_bench.sh`）。汇总脚本读
+  `reports/prod_capacity_a53.json`。
 - **cine 走查（第二梯队①）**：`node scripts/audit/p22_cine_playback.mjs --dicom <单文件多帧>`
   （需 `UAI_ADMIN_USER/PASSWORD` 兜底造授权患者；报告 `C:/Windows/TEMP/uai_p22/`）。
 - **前端边界摸排（31 项，退出码可进 CI）**：

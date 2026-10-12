@@ -194,6 +194,9 @@ async def submit(client: httpx.AsyncClient, token: str, idx: int) -> dict:
             "ok": False,
             "http_status": resp.status_code,
             "error": resp.text[:160],
+            # A.53 容量验收：准入闸门用 503 + Retry-After 明确拒收 —— 采集它，
+            # 才能证明"高并发下是**早拒**而不是把医生拖到超时"。
+            "retry_after": resp.headers.get("Retry-After"),
             "submit_s": round(submit_s, 3),
         }
     body = resp.json()
@@ -345,6 +348,12 @@ async def run_level(
         "accepted": len(accepted),
         "rejected": len(rejected),
         "rejected_429": sum(1 for s in rejected if s.get("http_status") == 429),
+        # A.53：准入闸门（队列过深 → 503 + Retry-After）与限流（429）必须分开计数，
+        # 二者语义不同：429 是"你太快了"，503 是"系统忙、稍后再来"。
+        "rejected_503": sum(1 for s in rejected if s.get("http_status") == 503),
+        "retry_after_values": sorted(
+            {str(s.get("retry_after")) for s in rejected if s.get("retry_after")}
+        ),
         "rejected_other": [
             {"http_status": s.get("http_status"), "error": s.get("error")}
             for s in rejected

@@ -247,6 +247,22 @@ class Settings(BaseSettings):
     # server_populate_vector_index.py）
     rag_kb_version: str = 'kb_v1.0.0'
     int_worker_pool_size: int = 4
+
+    # === 诊断准入控制（第二梯队② 生产容量验收，2026-10-12）===
+    # 背景：worker 池只有 int_worker_pool_size 个并发位，超出只能排队；此前无准入判断，
+    # 队列可涨到 1000 才拒 —— 压测实测 50 并发时结果接口**集体超时**（端到端等待被算进
+    # RESULT_TIMEOUT_SECONDS），排队者互相拖累、已入队者 P99 一起爆。改为「早拒」：
+    # 队列深到"等下去大概率超时"时立刻 503 + Retry-After，让前端明确重试。
+    diagnosis_admission_enabled: bool = True
+    # 队列深度上限。标定依据见 16 号 A.53：worker 16 位、单例 e2e ≈ 8s 量级，
+    # 上限设为「约 1.5 轮」→ 24，使最坏等待仍在一次重试窗口（30s）内。
+    diagnosis_admission_queue_depth_limit: int = 24
+    # Retry-After 的下限（估算等待不足时也至少让前端等这么久，避免打转）
+    diagnosis_admission_retry_after_s: int = 30
+    # Retry-After 上限（估算再久也不超过它）
+    diagnosis_admission_retry_after_cap_s: int = 120
+    # 估算用的单例服务时长（秒）——用于 depth→等待秒数换算
+    diagnosis_admission_assumed_service_s: float = 8.0
     # wiring-audit P2-5：删除孤儿配置 int_pipeline_total_timeout_ms
     # （管线各阶段用 time.monotonic 计时，总超时从未被强制执行；如需
     # 总超时门控须先设计降级语义再恢复此字段）。
