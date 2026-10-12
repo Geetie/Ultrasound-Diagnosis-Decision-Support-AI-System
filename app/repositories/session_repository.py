@@ -36,9 +36,18 @@ class SessionRepository:
         device_id: str,
         target_organs: list[str],
         consent_status: ConsentStatus,
-        knowledge_base_version: str = "kb_v1.0.0",
+        knowledge_base_version: str | None = None,
     ) -> DiagnosisSession:
+        # A.52 口径修复：此前默认硬编码 "kb_v1.0.0"（Phase 0A 占位），KB 切到
+        # 生产版本后仍写旧值 → 会话/报告标注的知识库版本与实际检索来源不符。
+        # 现缺省取 settings.rag_kb_version（生产真值），调用方显式传入时以其为准。
         """创建新的诊断会话"""
+        if not knowledge_base_version:
+            # 局部导入：保持仓储层对配置的依赖只在此一处、且不参与模块导入期
+            from app.config.settings import settings
+
+            knowledge_base_version = settings.rag_kb_version
+
         now = datetime.now(timezone.utc)
         session_id = self._generate_session_id()
 

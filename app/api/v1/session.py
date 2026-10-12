@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends
 
 from app.api.v1.errors import NotFoundException
 from app.api.v1.utils import check_consent_status, get_actor_id
+from app.config.settings import settings
 from app.dependencies import get_audit_service, get_consent_repo, get_session_repo
 from app.models.schemas import (
     ConsentStatus,
@@ -145,6 +146,9 @@ async def create_session(
         device_id=request.device_id,
         target_organs=request.target_organs,
         consent_status=consent_status,
+        # A.52：会话落库的**知识库版本**必须是本次判读真正会检索的那个库
+        # （报告模板会渲染它）。此前缺省硬编码 kb_v1.0.0 占位。
+        knowledge_base_version=settings.rag_kb_version,
     )
 
     actor_id = get_actor_id(current_user)

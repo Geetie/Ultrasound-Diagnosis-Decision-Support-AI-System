@@ -962,6 +962,12 @@ async def _write_result_to_db(
         "fusion_result": _fusion_result_to_dict(fusion_result),
         "sg_result": sg_result or {"service_unavailable": True},
         "timings_ms": timings_ms,
+        # A.52 口径修复：报告/结果声明的**知识库版本**必须是本次判读真正检索的
+        # 那个库。此前 findings 不写该键，读路径（api/v1/diagnosis.py）只能退回
+        # Phase 0A 占位常量 `phase0a_mock_kb_version`(=kb_v1.0.0)，于是出现
+        # 「证据行是 kb_v1.3.0:… 而报告标注知识库版本 kb_v1.0.0」的自相矛盾。
+        # 单一事实源 = settings.rag_kb_version（生产启动脚本由 .env 注入）。
+        "knowledge_base_version": settings.rag_kb_version,
         "review_reason": review_reason,
         "completed_at": datetime.now(timezone.utc).isoformat(),
         # T-GB-AGT-02 路由判定（前端确认对话框与路由分布观测的依据）
