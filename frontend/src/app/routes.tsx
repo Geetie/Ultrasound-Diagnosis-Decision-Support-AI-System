@@ -30,6 +30,7 @@ const KbManagementPage = lazy(() => import('@/pages/KbManagementPage'));
 const ConsentPage = lazy(() => import('@/pages/ConsentPage'));
 const FeedbackPage = lazy(() => import('@/pages/FeedbackPage'));
 const ReportPage = lazy(() => import('@/pages/ReportPage'));
+const PatientHistoryPage = lazy(() => import('@/pages/PatientHistoryPage'));
 
 // DiagnosisPage 已按17-医生侧展示契约 §5 裁定 4 删除独立路由：
 // LoadingPhase / useProgressiveDiagnosis / reviewAcknowledged 三项能力
@@ -423,6 +424,8 @@ export default function AppRoutes() {
         <Route path="/consent" element={<PageSuspense><ConsentPage /></PageSuspense>} />
         <Route path="/feedback" element={<PageSuspense><FeedbackPage /></PageSuspense>} />
         <Route path="/report" element={<PageSuspense><ReportPage /></PageSuspense>} />
+        {/* 第二梯队③ 历史对比阅片（A.54）：?patient_id=… 打开该患者的历史检查对比 */}
+        <Route path="/history" element={<PageSuspense><PatientHistoryPage /></PageSuspense>} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

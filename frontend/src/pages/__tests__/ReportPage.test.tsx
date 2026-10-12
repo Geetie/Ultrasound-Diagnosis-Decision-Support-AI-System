@@ -1,6 +1,6 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const getMock = vi.fn();
@@ -249,5 +249,50 @@ describe('ReportPage（M8 报告查看与签发）', () => {
 
     expect(postMock).not.toHaveBeenCalled();
     expect(getMock).not.toHaveBeenCalled();
+  });
+
+  // === A.54 历史对比入口（第二梯队③）===
+
+  function renderWithHistory(entry: string) {
+    return render(
+      <MemoryRouter initialEntries={[entry]}>
+        <Routes>
+          <Route path="/report" element={<ReportPage />} />
+          <Route path="/history" element={<div data-region="history-stub" />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+  }
+
+  it('A.54：报告带 patient_id → 「历史对比」可点，跳转到该患者历史页', async () => {
+    const user = userEvent.setup();
+    renderWithHistory('/report?request_id=req_1');
+    const entry = await screen.findByRole('button', { name: /历史对比/ });
+    await waitFor(() => expect(entry).not.toBeDisabled());
+    await user.click(entry);
+    expect(document.querySelector('[data-region="history-stub"]')).not.toBeNull();
+  });
+
+  it('A.54：报告没写 patient_id → 退回所属会话解析（老报告也能查历史）', async () => {
+    getMock.mockReset();
+    getMock.mockResolvedValueOnce({ data: { ...draftReport, patient_id: null } });
+    getMock.mockResolvedValueOnce({
+      data: { session_id: 'sess_1', patient_id: 'P-9', target_organs: ['thyroid'] },
+    });
+    renderWithHistory('/report?request_id=req_1');
+    const entry = await screen.findByRole('button', { name: /历史对比/ });
+    await waitFor(() => expect(entry).not.toBeDisabled());
+    expect(getMock).toHaveBeenCalledWith('/sessions/sess_1');
+  });
+
+  it('A.54：报告与会话都给不出患者标识 → 入口禁用并说明原因（不猜）', async () => {
+    getMock.mockReset();
+    getMock.mockResolvedValueOnce({
+      data: { ...draftReport, patient_id: null, session_id: null },
+    });
+    renderWithHistory('/report?request_id=req_1');
+    const entry = await screen.findByRole('button', { name: /历史对比/ });
+    await waitFor(() => expect(entry).toBeDisabled());
+    expect(entry.getAttribute('title')).toMatch(/尚未取得患者标识/);
   });
 });

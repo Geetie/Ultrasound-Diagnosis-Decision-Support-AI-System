@@ -959,6 +959,69 @@ class PatientListResponse(BaseModel):
     limit: int
 
 
+# === 第二梯队③ 历史对比阅片（A.54）：患者历史检查数据源 ===
+
+
+class PatientHistorySegmentation(BaseModel):
+    """历史检查里的分割摘要（**只保留前后对比需要的字段**，不搬整份 findings）。"""
+
+    available: bool
+    area_mm2: float | None = None
+    area_px: int | None = None
+    frame_index: int | None = None
+    total_frames: int | None = None
+    selection_policy: str | None = None
+    organ: str | None = None
+    reason: str | None = None
+
+
+class PatientHistoryItem(BaseModel):
+    """一次历史检查 = ``sessions`` 行 + 该次最近一次判读结果 + 报告 + 影像计数。
+
+    为什么要一次带齐：医生做前后对比看的是「上次结论/面积 → 这次结论/面积」，
+    逐项再发请求既慢又容易前后不一致（两次取数之间数据可能变）。
+    """
+
+    session_id: str
+    created_at: datetime
+    status: str
+    target_organs: list[str] = Field(default_factory=list)
+    # 本次检查用于对比的主器官（取最近一次判读结果的 organ）
+    organ: str | None = None
+    knowledge_base_version: str | None = None
+    request_id: str | None = None
+    confidence: float | None = None
+    # 结论摘要（优先取报告「诊断意见」，无报告则从判读 findings 抽取）
+    conclusion: str | None = None
+    report_id: str | None = None
+    # draft | signed | pushed | failed
+    report_status: str | None = None
+    report_signed: bool = False
+    signed_at: datetime | None = None
+    image_count: int = 0
+    # 该次检查最早一张影像的后端 image_id（对比视图并排预览用）
+    first_image_id: str | None = None
+    segmentation: PatientHistorySegmentation | None = None
+
+
+class PatientHistoryResponse(BaseModel):
+    """患者历史检查列表（历史对比阅片的数据源）。
+
+    对比必须**同器官**才有临床意义（甲状腺 vs 心脏不可比），因此同时给出
+    ``organs``（历史出现过的器官，按出现次数降序）与 ``comparable_organs``
+    （出现 ≥2 次的器官 —— 只有这些才谈得上前后对比）。
+    ``patient_exists=False`` 表示该 patient_id 在 patients 表里没有行
+    （与「有患者但无检查」区分开，前端据此引导建档而非显示空列表）。
+    """
+
+    patient_id: str
+    patient_exists: bool
+    total: int
+    organs: list[str] = Field(default_factory=list)
+    comparable_organs: list[str] = Field(default_factory=list)
+    items: list[PatientHistoryItem] = Field(default_factory=list)
+
+
 class DeviceDeregisterResponse(BaseModel):
     device_id: str
     status: str

@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Alert, Button, Card, Input, Modal, Space, Tag, Typography, message } from 'antd';
 import {
   CheckCircleOutlined,
   CloseCircleOutlined,
   CloudUploadOutlined,
   FileTextOutlined,
+  HistoryOutlined,
   PrinterOutlined,
   SafetyCertificateOutlined,
   ReloadOutlined,
@@ -20,6 +21,7 @@ import {
   verifyReportSignature,
 } from '@/services/reportService';
 import type { ReportResponse } from '@/types/report';
+import { getSession } from '@/services/sessionService';
 import { tokens } from '@/styles/tokens';
 
 /**
@@ -63,6 +65,7 @@ function labelOf(field: string): string {
 
 export default function ReportPage() {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const requestId = searchParams.get('request_id') ?? '';
 
   // 输入框取值："默认跟着 URL 上的 request_id，医生手动改过之后以手动值为准"。
@@ -256,6 +259,45 @@ export default function ReportPage() {
 
   const signed = Boolean(report?.signature_present);
 
+  /**
+   * 历史对比入口的患者标识（A.54）。
+   *
+   * 三级来源，缺一不可少：
+   *   1. 报告自带 `patient_id`（新版报告都有）；
+   *   2. 没有就退回报告所属会话 —— 用 `session_id` 查会话拿 `patient_id`
+   *      （老报告可能没写 patient_id，但会话一定知道是谁）；
+   *   3. 都没有 → 入口禁用并说明原因（不猜、不用 request_id 顶替）。
+   * 为什么放在顶部且不依赖"是否已生成报告"：历史对比看的是**既往检查**，
+   * 与当前这次有没有报告无关 —— 报告页恰恰是医生最早想看历史的地方。
+   */
+  const [historyPatientId, setHistoryPatientId] = useState('');
+  const [historyPidResolving, setHistoryPidResolving] = useState(false);
+  useEffect(() => {
+    if (report?.patient_id) {
+      setHistoryPatientId(report.patient_id);
+      return;
+    }
+    if (!report?.session_id) {
+      setHistoryPatientId('');
+      return;
+    }
+    let alive = true;
+    setHistoryPidResolving(true);
+    getSession(report.session_id)
+      .then((s) => {
+        if (alive) setHistoryPatientId(s.patient_id ?? '');
+      })
+      .catch(() => {
+        if (alive) setHistoryPatientId('');
+      })
+      .finally(() => {
+        if (alive) setHistoryPidResolving(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [report?.patient_id, report?.session_id]);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacing.md }}>
       <Space direction="vertical" size={4}>
@@ -293,6 +335,24 @@ export default function ReportPage() {
             style={{ minHeight: tokens.touch.hitTarget }}
           >
             校验签名
+          </Button>
+          {/* 第二梯队③ 历史对比阅片（A.54）：入口不依赖"当前是否已生成报告"——
+              医生在签发前就想看既往检查的结论与测值趋势。患者标识按
+              报告 → 会话 两级解析（见 historyPatientId 注释）。 */}
+          <Button
+            icon={<HistoryOutlined />}
+            loading={historyPidResolving}
+            disabled={!historyPatientId}
+            title={
+              historyPatientId
+                ? '查看该患者的历史检查并做前后对比'
+                : '尚未取得患者标识（报告与所属会话都没有），无法查历史'
+            }
+            onClick={() => navigate(`/history?patient_id=${encodeURIComponent(historyPatientId)}`)}
+            style={{ minHeight: tokens.touch.hitTarget }}
+            data-region="report-to-history"
+          >
+            历史对比
           </Button>
         </Space>
       </Card>
@@ -499,6 +559,7 @@ export default function ReportPage() {
               >
                 打印 / 导出 PDF
               </Button>
+
               {!signed && (
                 <Text style={{ color: tokens.color.text.muted, fontSize: 12 }}>
                   未签发不可推送：推送的是已签名的报告正文，避免无签名内容进入病历。
