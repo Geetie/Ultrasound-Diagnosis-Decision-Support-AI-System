@@ -45,6 +45,9 @@
   ⑦**医生可见的错误文案必须是中文**（后端英文原文会原样显示）；有棘轮守卫
   `tests/unit/quality/test_error_messages_are_chinese.py`，机器对机器面（device/alerts/utils）
   在允许清单里显式豁免。
+  ⑨**不要随手删 `frontend/node_modules/.vite`**：清了之后本机 vitest 冷缓存重转极慢
+    （>10 min 仍不产出摘要，多轮重试同现象），前端全量/单文件验证会直接卡住。
+    另：`--reporter=basic` 与 `--reporter=json` **不能同时给**（两个 --reporter 会让 vitest 挂起）。
   ⑧**改了某个包的实现，必须跑那个包的测试**：A.51 改 `qdrant_client` 用 `query_points`
   时没跑 `tests/unit/emb`，5 例红被瞒了整整一轮（AsyncMock 下 `hasattr` 恒真，旧 mock 静默失效）。
 - 本轮修复后的门禁：`deploy_acceptance_gate.sh` **PASS=24 FAIL=0**（服务器已部署到
