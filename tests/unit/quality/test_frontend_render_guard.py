@@ -244,6 +244,28 @@ class TestSpaFallbackMount:
         )
         assert 'app.mount("/ui"' not in main, "mount('/ui') 会吃掉 SPA 回落路由"
 
+    def test_shipped_index_html_uses_ui_base_and_refs_exist(self):
+        """A.55 实测事故：产物用默认 base（'/'）构建 → 资源引用 ``/assets/…`` 经 SPA 回落
+        返回 JSON（MIME 不符）→ React 永不挂载 = **全站白屏**；而当时本机 pytest 全绿
+        （没有任何守卫看**入库产物**的资源前缀，只看了源码）。
+
+        同时钉两件事：① 每个站内资源引用必须带 ``/ui/`` 前缀（``deploy_frontend.sh``
+        设 ``VITE_BASE=/ui/``）；② 引用的文件必须真实存在于产物目录（防"改了没重建/没部署"）。
+        """
+        ui = APP / "static" / "ui"
+        index = ui / "index.html"
+        assert index.exists(), "缺少入库产物 app/static/ui/index.html（前端产物未部署）"
+        html = index.read_text(encoding="utf-8")
+        refs = re.findall(r'(?:src|href)="([^"]+)"', html)
+        assert refs, "产物 index.html 没有任何资源引用（异常）"
+        offenders = [r for r in refs if r.startswith("/") and not r.startswith("/ui/")]
+        assert not offenders, (
+            f"产物资源路径缺 /ui/ 前缀：{offenders} —— 构建时丢了 VITE_BASE=/ui/，全站白屏"
+            "（用 scripts/deploy_frontend.sh 重建）"
+        )
+        missing = [r for r in refs if r.startswith("/ui/") and not (ui / r[len("/ui/") :]).exists()]
+        assert not missing, f"产物引用的文件不存在（产物过期/未部署）：{missing}"
+
 
 class TestDoctorCanLoadDicom:
     """P0（2026-10-05 走查实测全站 input[type=file] = 0，含隐藏）：影像装载入口。"""
