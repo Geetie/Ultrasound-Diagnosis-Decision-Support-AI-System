@@ -30,6 +30,17 @@ X/Y 帧」）；③设备/患者列表端点（p16 14/14，零 api_key）；④f
 - 前端产物部署：`cd frontend && VITE_BASE=/ui/ npm run build` → 拷贝 `dist/*` 到
   **`app/static/ui/`**（该目录入库，随之提交）。
 
+### ⏳ 遗留同步项（服务器失联，下一位先补）
+
+- **服务器层已是应用代码 `4fefdb5`**（A.51 四项功能全在，门禁 PASS=24 在该版本通过）；
+  `1e3a00f` 之后只有**文档层**（16 号 A.51 附二/附三/附四、`feature_list.json`、
+  `progress.md`、本文件）与 1 处探针注释（p15 去掉多余 noqa）**未同步**。
+- 原因：2026-10-12 03:0x 起 `10.20.28.21` **ping 与 TCP 22 均不通**（3 次重试 + 60s 等待），
+  ssh `Connection timed out`；与本机网络/隧道无关（隧道日志无新条目）。
+- 恢复后一条命令补齐（先确认 HEAD）：`cd <repo> && git archive --format=tar.gz -o /tmp/uai_head2.tar.gz HEAD && scp /tmp/uai_head2.tar.gz student03@10.20.28.21:/tmp/ && ssh student03@10.20.28.21 "cd ~/uai/src && tar -xzf /tmp/uai_head2.tar.gz --overwrite && rm -f /tmp/uai_head2.tar.gz"`
+  随后核验：`grep -c '附四' <16 号>` 与 `curl -s -o /dev/null -w '%{http_code}' 127.0.0.1:18000/api/v1/health`。
+  **应用代码未变，无需重启主服务**。
+
 ### 常驻服务新增（复跑 p13 前确认在跑）
 - HAPI：`cd ~/uai/hapi && nohup java -jar ROOT.war --server.address=127.0.0.1 --server.port=8080 > ~/uai/logs/hapi_war.log 2>&1 &`（30s 就绪，`/fhir/metadata`）
 - bridge：`cd ~/uai/src && FHIR_BRIDGE_HAPI_URL=http://127.0.0.1:8080/fhir nohup ~/uai/venv/bin/python scripts/fhir_bridge.py > ~/uai/logs/fhir_bridge.log 2>&1 &`（8091）
