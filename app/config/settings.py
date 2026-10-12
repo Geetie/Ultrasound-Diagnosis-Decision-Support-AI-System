@@ -274,10 +274,17 @@ class Settings(BaseSettings):
     #   临床语义不变，省下整段重试开销（含 retry_delay）。
     self_rag_max_retries: int = 0
     self_rag_retry_delay_s: float = 0.0
-    # ②validate 级预算：只封顶病态尾（此前实测最坏 14s），不设到小于常态
-    #   （P99 2.3s）——超时即优雅降级为 needs_review（不失败、不挂死），
-    #   并落 timings_ms["fusion.validate_degraded"]=True。
-    pipeline_validate_budget_s: float = 3.0
+    # ②validate 级预算：只封顶**病态尾**（历史最坏 14s），超时即优雅降级为
+    #   needs_review（不失败、不挂死），并落 timings_ms["fusion.validate_degraded"]。
+    #
+    #   **标定证据（A.52 回归复标定，2026-10-12）**：初值 3.0s 是按安静窗口
+    #   P99 0.88s 定的，投产到**14 人共享 GPU** 的环境后立刻暴雷——验收演练
+    #   `deploy_acceptance_gate.sh` D 组的请求实测 `validate_ms=3001.93`（正好卡
+    #   在 3.0s 被截断）→ needs_review → 演练判 FAIL（门禁 24→20）。同批正常请求
+    #   validate 只有 775.3ms / 140.5ms，说明这不是"慢"，而是 LLM 排队下的**离群**。
+    #   预算的职责是封顶离群，不是给常态画线 —— 故重标定为 12.0s：
+    #   >10× 常态、<历史最坏 14s（病态尾仍被截），共享环境不再误降级。
+    pipeline_validate_budget_s: float = 12.0
     # 并发审查 P2-3：诊断 DLQ 是无 TTL 的 list，下游长时间故障时单调增长
     # （同意撤回 DLQ 早已用 maxlen=1000，此处补齐同口径）。
     int_dlq_max_length: int = 1000

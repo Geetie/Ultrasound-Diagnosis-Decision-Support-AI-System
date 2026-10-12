@@ -53,6 +53,30 @@ describe('WorkspaceImageRegion · A.51 帧级归属门控', () => {
     expect(segBelongsToLiveFrame({ available: false }, { index: 0, imageId: 'x' })).toBe(false);
     expect(segBelongsToLiveFrame(MULTI, null)).toBe(true);
   });
+
+  it('A.52 分期②：多帧且分割不在当前帧 → 出「跳到该帧」按钮（一键直达）', () => {
+    render(
+      <WorkspaceImageRegion
+        dicomImageIds={['dicomfile:0?frame=1', 'dicomfile:0?frame=2']}
+        dicomFrameOwners={['img_multi', 'img_multi']}
+        segmentation={MULTI}
+      />,
+    );
+    const jump = screen.getByRole('button', { name: /跳到第 \d+ 帧/ });
+    expect(jump).toBeInTheDocument();
+    expect(jump.getAttribute('data-region')).toBe('segmentation-jump');
+  });
+
+  it('A.52 分期②：单帧分割（totalFrames=1）不出直达按钮（没有可跳的帧）', () => {
+    render(
+      <WorkspaceImageRegion
+        dicomImageIds={['dicomfile:0?frame=1', 'dicomfile:0?frame=2']}
+        dicomFrameOwners={['img_single', 'img_single']}
+        segmentation={{ ...SEG_OK, imageId: 'img_single', frameIndex: 0, totalFrames: 1 }}
+      />,
+    );
+    expect(screen.queryByRole('button', { name: /跳到第 \d+ 帧/ })).toBeNull();
+  });
 });
 
 describe('WorkspaceImageRegion · 分割标注', () => {

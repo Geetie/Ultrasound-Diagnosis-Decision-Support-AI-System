@@ -716,6 +716,17 @@
       "result": "修 F821/I001；棘轮改扫 git ls-files '*.py'（ruff JSON 逐条过滤，显式 UTF-8 避免 Windows GBK 炸）+ 按新口径重定基线（重定即上限）；test_ruff_ratchet.py 9 passed",
       "dependencies": [],
       "evidence": "16 号 A.52.3-10；tests/unit/quality/test_ruff_ratchet.py"
+    },
+    {
+      "id": "multi-frame-cine-playback",
+      "name": "多帧分期②：cine 播放 + 关键帧直达",
+      "description": "原生多帧解析已在 A.51 完成；本轮补 cine 能力：播放/暂停（末帧回绕）、空格快捷键、速度档 8/15/30fps、播放中禁测量（防测量归属错帧）、分割所属帧「跳到该帧」一键直达。",
+      "status": "done",
+      "result": "真机 p22 9/9（帧序含 7→2 回绕、暂停稳定 5→5、播放中长度工具 aria-pressed true→false、速度档 8→15→30、跳到该帧 7→2 且覆盖层出现）；层单测 20 passed",
+      "dependencies": [
+        "multiframe-best-frame-selection"
+      ],
+      "evidence": "16 号 A.52.3b；scripts/audit/p22_cine_playback.mjs；WorkspaceDicomLayer.test.tsx（cine 6 例）"
     }
   ]
 }

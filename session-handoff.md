@@ -22,6 +22,8 @@
   `node scripts/a51_ui_walkthrough.mjs --dicom <CAMUS 单文件多帧样本>`；
   样本在服务器现转：`scripts/camus_frame_to_dicom.py --out x.dcm --count 7 --multiframe`
   （**必须带 `--multiframe`** 才是单文件多帧路径）→ scp 回本机。
+- **cine 走查（第二梯队①）**：`node scripts/audit/p22_cine_playback.mjs --dicom <单文件多帧>`
+  （需 `UAI_ADMIN_USER/PASSWORD` 兜底造授权患者；报告 `C:/Windows/TEMP/uai_p22/`）。
 - **前端边界摸排（31 项，退出码可进 CI）**：
   `node scripts/audit/p20_frontend_boundary.mjs --dicom <同上>` —— 覆盖认证守卫 / 建会话
   输入边界（阈值·通配·注入·超长·不存在·空值·必填）/ 装载坏文件三类 / 报告页异常入参 /

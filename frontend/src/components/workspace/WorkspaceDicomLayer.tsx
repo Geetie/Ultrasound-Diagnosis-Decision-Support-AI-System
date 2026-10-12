@@ -43,11 +43,16 @@ const TOOL_LABEL: Record<BrowseTool, string> = {
   ellipse: '椭圆',
 };
 
+/** cine 播放速度档位（帧/秒）。CAMUS 类心超 cine 常见 15~30fps，
+ *  但浏览器逐帧渲染 + 网络取帧下 8fps 最稳；医生可自行调。 */
+const FPS_PRESETS = [8, 15, 30] as const;
+
 export default function WorkspaceDicomLayer({
   imageIds,
   frameOwners,
   archiveKey,
   onFrameChange,
+  targetFrame,
 }: {
   imageIds: string[];
   /** 测量注释存档 key（后端 image_id）。undefined = 不持久化（预览场景）。 */
@@ -55,6 +60,13 @@ export default function WorkspaceDicomLayer({
   /** 当前帧回调（A.51 帧级归属）：把帧下标与该帧对应的 image_id 交给父层，
    *  供分割覆盖层判断"这条分割属于不属于正在看的这一帧"。 */
   onFrameChange?: (frameIndex: number, imageId: string) => void;
+  /**
+   * 跳到指定帧（A.52 多帧分期②：cine 的「关键帧直达」）。
+   *
+   * 由父层在医生点「跳到第 N 帧」（分割所属帧）时递增 `nonce` 触发一次；
+   * 用 nonce 而不是纯 index，是为了让"再点一次同一帧"也能重新生效。
+   */
+  targetFrame?: { index: number; nonce: number };
   /**
    * A.52 帧归属：与 imageIds 逐位对齐的**后端** image_id。
    *
@@ -71,6 +83,9 @@ export default function WorkspaceDicomLayer({
   // 指示器按钮/键盘则主动 scrollStack —— 单一事实源是 viewport 本身。
   const [frameIndex, setFrameIndex] = useState(0);
   const [activeTool, setActiveTool] = useState<BrowseTool>('windowLevel');
+  // A.52 多帧分期②：cine 播放（播放中禁止测量，见播放 effect 的注释）
+  const [playing, setPlaying] = useState(false);
+  const [fps, setFps] = useState<number>(FPS_PRESETS[0]);
   // 最近一次测量读数（长度 mm / 面积 mm²）。带 stackKey 标识：换会话/换影像后
   // 渲染期对不上就当 null（旧读数不属于新影像），不搞 effect 里同步 setState。
   // 只显示最近一条 —— 历史测量是标注持久化的事（feature_list 远期项）。
@@ -334,6 +349,79 @@ export default function WorkspaceDicomLayer({
     return () => window.removeEventListener('keydown', onKey);
   }, [multiFrame, scrollBy]);
 
+  // 空格 = 播放/暂停（心超阅片最常用的单手动作；输入框聚焦时不劫持）
+  useEffect(() => {
+    if (!multiFrame) return;
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
+      if (e.code === 'Space' || e.key === ' ') {
+        e.preventDefault();
+        setPlaying((p) => !p);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [multiFrame]);
+
+  /**
+   * cine 播放（A.52 分期②）。
+   *
+   * ①**末帧回绕**：到末帧后回第一帧（cine 语义；停在末帧反复触发 delta=+1 会被
+   *   cornerstone 钳住，观察上就是"卡住"）。
+   * ②**播放中禁止测量**：测量注释带 frame_index/referencedImageId 锚点，边播边画
+   *   会把"此刻看到的帧"与"落笔那一刻的帧"错位 —— 医生量到的数值归属错误帧。
+   *   因此播放期间强制切回 windowLevel（测量工具停用）；暂停后不自动恢复，
+   *   由医生自己再点测量（保守：宁可多点一下，不留下归属可疑的测量）。
+   * ③定时器只在播放态存在，停止/卸载即清，避免后台空转。
+   */
+  useEffect(() => {
+    if (!playing || !multiFrame || !loaded) return;
+    const element = ref.current;
+    if (!element) return;
+    const timer = window.setInterval(() => {
+      import('@/components/dicom/cornerstone')
+        .then((cs) => {
+          const cur = cs.getStackIndex(element);
+          const last = frames - 1;
+          const delta = typeof cur === 'number' && cur >= last ? -last : 1;
+          const next = cs.scrollStack(element, delta);
+          if (typeof next === 'number') setFrameIndex(next);
+        })
+        .catch(() => undefined);
+    }, Math.round(1000 / fps));
+    return () => window.clearInterval(timer);
+  }, [playing, fps, multiFrame, loaded, frames]);
+
+  useEffect(() => {
+    if (playing) setActiveTool('windowLevel');
+  }, [playing]);
+
+  // 切影像/换会话时停播（旧栈的播放器没有意义，且会去 scroll 新 element）
+  useEffect(() => {
+    setPlaying(false);
+  }, [stackKey]);
+
+  // 关键帧直达（父层点「跳到第 N 帧」）：按 delta 一次滚到位；播放中先停表，
+  // 否则定时器会立刻把画面推走，医生看不到目标帧。
+  useEffect(() => {
+    if (!targetFrame || !multiFrame || !loaded) return;
+    const element = ref.current;
+    if (!element) return;
+    setPlaying(false);
+    import('@/components/dicom/cornerstone')
+      .then((cs) => {
+        const cur = cs.getStackIndex(element) ?? 0;
+        const delta = targetFrame.index - cur;
+        if (delta === 0) return;
+        const next = cs.scrollStack(element, delta);
+        if (typeof next === 'number') setFrameIndex(next);
+      })
+      .catch(() => undefined);
+    // nonce 是唯一触发源：同一个目标帧再点一次也要重新生效
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [targetFrame?.nonce, multiFrame, loaded]);
+
   return (
     <div
       ref={ref}
@@ -456,6 +544,39 @@ export default function WorkspaceDicomLayer({
             style={frameBtnStyle}
           >
             ‹
+          </button>
+          {/* A.52 分期②：cine 播放/暂停 + 速度档。播放中测量工具被强制停用
+              （见播放 effect 注释：避免测量归属错帧），故按钮 title 里有提示。 */}
+          <button
+            type="button"
+            data-region="cine-toggle"
+            aria-label={playing ? '暂停' : '播放'}
+            aria-pressed={playing}
+            title={playing ? '暂停（播放中不能测量）' : '播放（播放中不能测量）'}
+            onClick={() => setPlaying((p) => !p)}
+            style={{
+              ...frameBtnStyle,
+              width: 'auto',
+              padding: '0 8px',
+              color: playing ? 'var(--color-attention)' : 'var(--color-text-secondary)',
+            }}
+          >
+            {playing ? '❙❙' : '▶'}
+          </button>
+          <button
+            type="button"
+            data-region="cine-fps"
+            aria-label={`播放速度 ${fps} 帧/秒`}
+            title="切换播放速度"
+            onClick={() =>
+              setFps((cur) => {
+                const i = FPS_PRESETS.indexOf(cur as (typeof FPS_PRESETS)[number]);
+                return FPS_PRESETS[(i + 1) % FPS_PRESETS.length];
+              })
+            }
+            style={{ ...frameBtnStyle, width: 'auto', padding: '0 8px', fontSize: 10 }}
+          >
+            {fps}fps
           </button>
           <span
             style={{

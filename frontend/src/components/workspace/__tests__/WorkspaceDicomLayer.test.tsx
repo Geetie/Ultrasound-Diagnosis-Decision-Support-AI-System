@@ -22,6 +22,7 @@ const cs = vi.hoisted(() => ({
   restoreAnnotations: vi.fn(() => 0),
   clearAnnotations: vi.fn(),
   getCurrentImageId: vi.fn(() => 'dicomfile:0'),
+  getStackIndex: vi.fn(() => 0),
 }));
 
 vi.mock('@/components/dicom/cornerstone', () => cs);
@@ -269,6 +270,73 @@ describe('WorkspaceDicomLayer · 多帧分期①', () => {
     });
     window.dispatchEvent(evt);
     expect(await screen.findByText(/影像无法渲染/)).toBeInTheDocument();
+  });
+
+  it('A.52 分期②：多帧出 cine 播放/速度控件；播放后帧在推进，暂停即停', async () => {
+    render(<WorkspaceDicomLayer imageIds={['dicomfile:0', 'dicomfile:1', 'dicomfile:2']} />);
+    await waitFor(() => expect(cs.displayImage).toHaveBeenCalled());
+    const play = screen.getByLabelText('播放');
+    expect(screen.getByText('8fps')).toBeInTheDocument();
+
+    fireEvent.click(play);
+    expect(screen.getByLabelText('暂停')).toBeInTheDocument();
+    await new Promise((r) => setTimeout(r, 220)); // 8fps → 约 1~2 次推进
+    const callsWhilePlaying = cs.scrollStack.mock.calls.length;
+    expect(callsWhilePlaying).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByLabelText('暂停'));
+    await new Promise((r) => setTimeout(r, 220));
+    expect(cs.scrollStack.mock.calls.length).toBe(callsWhilePlaying);
+  });
+
+  it('A.52 分期②：末帧回绕到首帧（cine 语义，不停在末帧）', async () => {
+    cs.getStackIndex.mockReturnValue(2); // 3 帧栈的末帧
+    render(<WorkspaceDicomLayer imageIds={['dicomfile:0', 'dicomfile:1', 'dicomfile:2']} />);
+    await waitFor(() => expect(cs.displayImage).toHaveBeenCalled());
+    fireEvent.click(screen.getByLabelText('播放'));
+    await new Promise((r) => setTimeout(r, 200));
+    expect(cs.scrollStack).toHaveBeenCalledWith(expect.anything(), -2); // 回绕 delta
+  });
+
+  it('A.52 分期②：单帧不出 cine 控件（没有可播的东西）', async () => {
+    render(<WorkspaceDicomLayer imageIds={['dicomfile:0']} />);
+    await waitFor(() => expect(cs.displayImage).toHaveBeenCalled());
+    expect(screen.queryByLabelText('播放')).toBeNull();
+  });
+
+  it('A.52 分期②：播放中强制切回窗宽窗位（测量工具停用，避免归属错帧）', async () => {
+    render(<WorkspaceDicomLayer imageIds={['dicomfile:0', 'dicomfile:1']} />);
+    await waitFor(() => expect(cs.displayImage).toHaveBeenCalled());
+    fireEvent.click(screen.getByRole('button', { name: '长度' }));
+    await waitFor(() => expect(cs.activateTool).toHaveBeenCalled());
+    cs.activateTool.mockClear();
+    fireEvent.click(screen.getByLabelText('播放'));
+    await waitFor(() => expect(cs.activateTool).toHaveBeenCalled());
+  });
+
+  it('A.52 分期②：空格切换播放/暂停', async () => {
+    render(<WorkspaceDicomLayer imageIds={['dicomfile:0', 'dicomfile:1']} />);
+    await waitFor(() => expect(cs.displayImage).toHaveBeenCalled());
+    fireEvent.keyDown(window, { code: 'Space', key: ' ' });
+    expect(await screen.findByLabelText('暂停')).toBeInTheDocument();
+    fireEvent.keyDown(window, { code: 'Space', key: ' ' });
+    expect(await screen.findByLabelText('播放')).toBeInTheDocument();
+  });
+
+  it('A.52 分期②：关键帧直达（targetFrame）按 delta 滚到目标帧', async () => {
+    const { rerender } = render(
+      <WorkspaceDicomLayer imageIds={['dicomfile:0', 'dicomfile:1', 'dicomfile:2', 'dicomfile:3']} />,
+    );
+    await waitFor(() => expect(cs.displayImage).toHaveBeenCalled());
+    cs.scrollStack.mockClear();
+    cs.getStackIndex.mockReturnValue(0);
+    rerender(
+      <WorkspaceDicomLayer
+        imageIds={['dicomfile:0', 'dicomfile:1', 'dicomfile:2', 'dicomfile:3']}
+        targetFrame={{ index: 2, nonce: 1 }}
+      />,
+    );
+    await waitFor(() => expect(cs.scrollStack).toHaveBeenCalledWith(expect.anything(), 2));
   });
 
   it('A.52：帧归属上报的是**后端** image_id（不是 cornerstone 句柄）', async () => {

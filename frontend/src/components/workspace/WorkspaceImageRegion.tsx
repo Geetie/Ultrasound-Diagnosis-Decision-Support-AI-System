@@ -111,6 +111,8 @@ export default function WorkspaceImageRegion({
   // 否则多帧栈里会出现"这一帧根本没跑分割，却叠了上一帧的框"的错标。
   const [liveFrame, setLiveFrame] = useState<{ index: number; imageId: string } | null>(null);
   const segFrameMatches = segBelongsToLiveFrame(seg, liveFrame);
+  // A.52 分期②：分割所属帧的「直达」目标。nonce 递增 —— 同一帧再点一次也要生效。
+  const [targetFrame, setTargetFrame] = useState<{ index: number; nonce: number } | undefined>();
   const bbox = seg?.available ? seg.bbox : null;
   const areaLabel = seg?.available
     ? seg.area_mm2 != null
@@ -129,6 +131,7 @@ export default function WorkspaceImageRegion({
           imageIds={stack}
           frameOwners={frameOwners}
           archiveKey={annotationArchiveKey}
+          targetFrame={targetFrame}
           onFrameChange={(index, imageId) => setLiveFrame({ index, imageId })}
         />
       )}
@@ -176,12 +179,39 @@ export default function WorkspaceImageRegion({
       {seg?.available && !segFrameMatches && stack.length > 0 && (
         <span
           className="ws-image__text"
-          style={{ left: 24, bottom: 12, width: 460 }}
+          style={{ left: 24, bottom: 12, width: 460, display: 'flex', gap: 8, alignItems: 'center' }}
           data-region="segmentation-off-frame"
         >
           {`分割结果在第 ${(seg.frameIndex ?? 0) + 1}/${seg.totalFrames ?? 1} 帧（${
             seg.selectionPolicy === 'best_mean_prob' ? '多候选择优' : '单帧'
-          }）· 翻页查看`}
+          }）`}
+          {/* A.52 分期②：多帧时给「一键直达该帧」——医生不必手动翻几十帧去找病灶帧 */}
+          {(seg.totalFrames ?? 1) > 1 && (
+            <button
+              type="button"
+              data-region="segmentation-jump"
+              aria-label={`跳到第 ${(seg.frameIndex ?? 0) + 1} 帧`}
+              onClick={() =>
+                setTargetFrame((prev) => ({
+                  index: seg.frameIndex ?? 0,
+                  nonce: (prev?.nonce ?? 0) + 1,
+                }))
+              }
+              style={{
+                height: 22,
+                padding: '0 10px',
+                fontSize: 11,
+                lineHeight: '22px',
+                borderRadius: 11,
+                cursor: 'pointer',
+                border: '1px solid var(--color-attention)',
+                background: 'rgba(10, 14, 22, 0.72)',
+                color: 'var(--color-attention)',
+              }}
+            >
+              跳到该帧
+            </button>
+          )}
         </span>
       )}
 
