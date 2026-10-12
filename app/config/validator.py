@@ -170,8 +170,8 @@ def validate_version_compatibility(
     kb v1）直接落到不兼容区。因此这里在进程启动时即判定，不兼容则拒绝启动，
     而不是等到某次诊断请求才暴露——那时已经有医生在看结果了。
     """
-    model = settings.phase0a_mock_model_version if model_version is None else model_version
-    kb = settings.phase0a_mock_kb_version if kb_version is None else kb_version
+    model = settings.resolved_model_version if model_version is None else model_version
+    kb = settings.rag_kb_version if kb_version is None else kb_version
 
     from app.knowledge.version import is_compatible
 

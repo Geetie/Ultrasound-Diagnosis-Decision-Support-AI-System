@@ -397,6 +397,10 @@ class DiagnosisResult(BaseModel):
     processing_time_ms: int
     model_version: str | None = None
     knowledge_base_version: str | None = None
+    # A.52：实际产出结论的生成模型标识（如 Qwen2.5-7B-Instruct@rev），与
+    # `model_version`（诊断引擎版本，参与兼容矩阵）分行溯源：前者答"哪个模型"、
+    # 后者答"哪一版能力"。
+    llm_model: str | None = None
     # === 医生直接信息需求（M1~M12）===
     # 全部为可选展示型字段：新字段先承载于此契约（并由
     # ``diagnosis_results.findings`` JSONB 落库），避免为展示型数据

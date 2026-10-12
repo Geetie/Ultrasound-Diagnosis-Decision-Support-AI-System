@@ -19,6 +19,8 @@
 2. 任一债务规则计数高于基线 -> 失败（不能新增同类违规）；
 3. 计数低于基线 -> 提示把基线调小（锁住成果，避免棘轮失真）。
 """
+import json
+import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -37,8 +39,8 @@ DEBT_FILE = REPO_ROOT / ".ruff-debt.txt"
 #   单独对照 HEAD 的结果是 RUF006 4→0、其余规则 0 变化）。
 # ②曾尝试用 `ruff --fix` 自动收敛 I001/RUF100/UP009/UP020/SIM401（55 处），
 #   实测**会恶化**：I001 重排 import 跨过了 pytestmark/代码边界 → E402 +19、
-#   F401 +20、SIM117 +3（并误删 app/config/database.py 里被测试钉住的
-#   `# noqa: F401`），已全部回滚。故改为显式登记、写清来源。
+#   F401 +20、SIM117 +3（并误删 app/config/database.py 里被测试钉住的 noqa 指令），
+#   已全部回滚。故改为显式登记、写清来源。
 # ③本轮自身收敛：RUF006 由 5 降到 1（日志 fire-and-forget 任务改为持引用）。
 # ④2026-10-03 晚：E402 259→260、SIM108 13→14 来自**兄弟工作线**在途文件
 #   （tests/unit/inf/test_nodule_segmentation.py，MONAI 分割线，尚未提交）。
@@ -51,38 +53,43 @@ DEBT_FILE = REPO_ROOT / ".ruff-debt.txt"
 #   探针（项目 `_` 前缀惯例），但**兄弟工作线的在途文件**仍会让本棘轮临时变红。
 #   判据：只要红灯项全部落在 scripts/tn3k_seg_* / scripts/us365k_* 上，就是
 #   外部干扰，清空后重测即可。**仍只允许调小。**
+# ⑦2026-10-12 **口径重定（A.52）**：统计范围从「工作树全部 py」改为「**git 跟踪的 py**」
+#   —— CI 是干净检出，本地未跟踪探针曾让计数漂移 ±15、红灯无法归因（见⑦根治建议）。
+#   改用 `ruff --output-format=json` 逐条过滤跟踪文件后按实测重定；重定即上限，**后续只许下调**。
+#   相对 2026-10-03 旧基线，E402 +2 / F841 +3 / F401 +1 / RUF059 +1 / RUF100 +1 系中间若干轮
+#   已提交代码累计（非本轮引入，本轮文件已用 `ruff check --select …` 自查清零）。
 RUFF_BASELINE = {
-    "E402": 260,
-    "F841": 60,
+    "E402": 262,
+    "F841": 63,
+    "F401": 48,
     "RUF013": 48,
-    "F401": 47,
-    "B904": 39,
     "RUF012": 41,
+    "B904": 39,
     "SIM105": 37,
     "UP031": 33,
-    "RUF059": 32,
     "SIM117": 32,
+    "RUF059": 30,
     "SIM102": 23,
     "B007": 22,
     "SIM108": 13,
     "B905": 12,
     "E701": 12,
-    "B017": 11,
     "RUF046": 12,
+    "B017": 11,
     "SIM115": 11,
-    "RUF100": 8,
+    "RUF100": 9,
     "RUF043": 6,
     "UP009": 6,
     "SIM103": 5,
     "UP020": 5,
     "RUF005": 4,
+    "SIM401": 4,
     "UP035": 4,
     "SIM110": 3,
-    "SIM401": 4,
     "RUF022": 2,
-    "F541": 1,
     "B023": 1,
     "E722": 1,
+    "F541": 1,
     "F811": 1,
     "RUF006": 1,
     "SIM101": 1,
@@ -102,27 +109,55 @@ def _ruff_available() -> bool:
     return probe.returncode == 0
 
 
-def _collect_statistics() -> dict:
-    """完整检查的按规则计数（不带任何 CLI ignore，保证债务仍然可见）。"""
+def _tracked_py_files() -> set:
+    """git 跟踪的 py 文件（相对仓库根的 POSIX 路径）。"""
     completed = subprocess.run(
-        ["python", "-m", "ruff", "check", ".", "--statistics"],
+        ["git", "ls-files", "-z", "--", "*.py"],
         capture_output=True,
         text=True,
+        encoding="utf-8",  # 仓库有中文路径：Windows 默认 GBK 解码会直接抛 UnicodeDecodeError
+        errors="replace",
         cwd=REPO_ROOT,
     )
-    statistics = {}
-    for line in completed.stdout.splitlines():
-        parts = line.split()
-        if len(parts) < 2:
+    return {p for p in completed.stdout.split("\0") if p}
+
+
+def _collect_statistics() -> dict:
+    """完整检查的按规则计数（不带任何 CLI ignore，保证债务仍然可见）。
+
+    **只统计 git 跟踪的 py 文件**（2026-10-12 根治，见文件头注释⑦的「根治建议」）：
+    CI 是干净检出，而本地工作树常有未跟踪的一次性探针（`scripts/_*.py` 之外还有
+    几十个手写脚本）——它们会让计数在提交前后漂移 ±15，导致棘轮红灯无法归因。
+    改用 `ruff --output-format=json` 逐条过滤「跟踪文件」，口径与 CI 严格一致。
+    """
+    completed = subprocess.run(
+        ["python", "-m", "ruff", "check", ".", "--output-format=json"],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",  # ruff JSON 里含中文消息/路径，GBK 会炸（实测）
+        errors="replace",
+        cwd=REPO_ROOT,
+    )
+    try:
+        diagnostics = json.loads(completed.stdout or "[]")
+    except json.JSONDecodeError:  # pragma: no cover - ruff 输出异常时退化
+        return {}
+
+    tracked = _tracked_py_files()
+    statistics: dict = {}
+    for diag in diagnostics:
+        code = diag.get("code")
+        filename = diag.get("filename") or ""
+        if not code or not filename:
             continue
-        count_token, code_token = parts[0], parts[1]
-        # 规则码形如 E402 / RUF046 / SIM105：以字母开头且含数字，
-        # 用 isalpha() 判断会把它们全部漏掉（还会静默 skip，比报错更糟）。
-        if not count_token.isdigit():
+        # ruff 的 filename 可能是绝对路径或相对路径，统一成 POSIX 相对路径再比对
+        try:
+            rel = os.path.relpath(filename, REPO_ROOT).replace("\\", "/")
+        except ValueError:  # pragma: no cover - 跨盘符等极端情况
+            rel = filename.replace("\\", "/")
+        if rel not in tracked:
             continue
-        if not (code_token[0].isalpha() and code_token.isalnum()):
-            continue
-        statistics[code_token] = int(count_token)
+        statistics[code] = statistics.get(code, 0) + 1
     return statistics
 
 

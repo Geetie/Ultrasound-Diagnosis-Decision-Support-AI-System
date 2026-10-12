@@ -574,10 +574,10 @@ async def get_diagnosis_result(
             ai_diagnosis_failed=False,
             hallucination_severity=None,
             version_compatibility=check_version_compatibility(
-                settings.phase0a_mock_model_version, settings.rag_kb_version
+                settings.resolved_model_version, settings.rag_kb_version
             ),
             processing_time_ms=0,
-            model_version=settings.phase0a_mock_model_version,
+            model_version=settings.resolved_model_version,
             # A.52：知识库版本用生产真值（不写 Phase 0A 占位常量）
             knowledge_base_version=settings.rag_kb_version,
         )
@@ -639,7 +639,9 @@ async def get_diagnosis_result(
     if diagnosis_payload:
         timings = diagnosis_payload.get("timings_ms") or {}
         processing_time_ms = int(timings.get("pipeline.total_ms") or 0) or settings.phase0a_mock_processing_time_ms
-        model_version = diagnosis_payload.get("model_version") or settings.phase0a_mock_model_version
+        model_version = diagnosis_payload.get("model_version") or settings.resolved_model_version
+        # A.52 溯源：生成模型标识（哪个模型出的结论）；管线已写回，回退取运行期真值
+        llm_model = diagnosis_payload.get("llm_model") or settings.resolved_llm_model
         # A.52：优先取管线写回的真实库版本；回退也用生产真值 settings.rag_kb_version
         # （此前回退到 phase0a_mock_kb_version=kb_v1.0.0，与检索来源不符）
         knowledge_base_version = (
@@ -654,7 +656,8 @@ async def get_diagnosis_result(
             "pending": True,
         }
         processing_time_ms = settings.phase0a_mock_processing_time_ms
-        model_version = settings.phase0a_mock_model_version
+        model_version = settings.resolved_model_version
+        llm_model = settings.resolved_llm_model
         # A.52：占位（processing）路径同样标注真实库版本
         knowledge_base_version = settings.rag_kb_version
 
@@ -719,6 +722,7 @@ async def get_diagnosis_result(
         ),
         processing_time_ms=processing_time_ms,
         model_version=model_version,
+        llm_model=llm_model,
         knowledge_base_version=knowledge_base_version,
     )
 

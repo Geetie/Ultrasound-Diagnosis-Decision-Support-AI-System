@@ -17,31 +17,31 @@ pytestmark = pytest.mark.track_api
 class TestValidateDICOMFormat:
     def test_valid_dicom_magic_word(self):
         content = b"\x00" * 128 + b"DICM" + b"\x00" * 100
-        is_valid, error = validate_dicom_format(content)
+        is_valid, _error = validate_dicom_format(content)
         assert is_valid is True
-        assert error is None
+        assert _error is None
 
     def test_file_too_small(self):
         content = b"\x00" * 50
-        is_valid, error = validate_dicom_format(content)
+        is_valid, _error = validate_dicom_format(content)
         assert is_valid is False
         # A.52：文案中文化（原文 File too small 会原样显示给医生）
-        assert "文件过小" in error
+        assert "文件过小" in _error
 
     def test_invalid_magic_word(self):
         content = b"\x00" * 128 + b"XXXX" + b"\x00" * 100
-        is_valid, error = validate_dicom_format(content)
+        is_valid, _error = validate_dicom_format(content)
         assert is_valid is False
-        assert "不是 DICOM 文件" in error
+        assert "不是 DICOM 文件" in _error
 
     def test_exactly_132_bytes_valid(self):
         content = b"\x00" * 128 + b"DICM"
-        is_valid, error = validate_dicom_format(content)
+        is_valid, _error = validate_dicom_format(content)
         assert is_valid is True
 
     def test_exactly_131_bytes_invalid(self):
         content = b"\x00" * 131
-        is_valid, error = validate_dicom_format(content)
+        is_valid, _error = validate_dicom_format(content)
         assert is_valid is False
 
 
@@ -110,9 +110,9 @@ class TestGenerateIds:
 class TestParseAndValidateDICOM:
     def test_invalid_dicom_content(self):
         content = b"\x00" * 200
-        dataset, error, missing = parse_and_validate_dicom(content)
+        dataset, _error, _missing = parse_and_validate_dicom(content)
         assert dataset is None
-        assert error is not None
+        assert _error is not None
 
     def test_required_tags_count(self):
         tag_names = [t[2] for t in REQUIRED_DICOM_TAGS]

@@ -661,11 +661,12 @@
     },
     {
       "id": "model-version-reporting",
-      "name": "报告「模型版本」占位语义（待项目方拍板）",
-      "description": "A.52 摸排：report_service 仍写 phase0a_mock_model_version='thyroid_v1.0.0'。知识库版本已修真；模型版本语义未定义（生成模型 Qwen2.5-7B-Instruct？还是 T2a 任务分类头？）——需拍板后一次改对，不擅自选一种解释。",
-      "status": "planned",
+      "name": "报告版本溯源：诊断引擎版本 + 真实生成模型标识",
+      "description": "此前 model_version 全线写 Phase 0A 占位 thyroid_v1.0.0（既非本系统版本、也非线上模型）。定案（溯源可核验原则）：model_version=诊断引擎版本（可解析 vN.M，供兼容矩阵）；新增 llm_model=实际生成模型标识（vLLM 配置的模型名+revision）。报告模板两行分列。",
+      "status": "done",
       "dependencies": [],
-      "evidence": "16 号 A.52.4-5 / A.52.5"
+      "evidence": "16 号 A.52.3-8；tests/unit/api/test_model_version_reporting.py（5 例）",
+      "result": "医生可见面 Phase 0A 占位零引用；报告/结果/模板均带生成模型标识；5 例守卫"
     },
     {
       "id": "fhir-patient-order-404-before-403",
@@ -695,6 +696,26 @@
         "retrieval-parity-service-path"
       ],
       "evidence": "16 号 A.52.3-7；tests/unit/emb/test_qdrant_client.py"
+    },
+    {
+      "id": "odd-frame-normalization",
+      "name": "不合规多帧入库规范化（8→16 位，零像素改动）",
+      "description": "原生多帧「每帧字节数为奇」（8 位 Rows×Cols 为奇）会被 DICOM 偶长度填充破坏「总长/帧数」整除 → 前端 dicom-image-loader 报 Invalid frame length → 影像黑屏。入库侧规范化：8→16 位重写（BitsStored 仍 8），尺寸/间距/窗位不变、像素值逐位相同。",
+      "status": "done",
+      "result": "真机 p21 7/7（帧长 427122 偶、总长%7==0、549×389×7 不变、像素逐位相同）；浏览器用原坏文件跑 p20 31/31（帧指示器 1/7、覆盖层唯一在所属帧）",
+      "dependencies": [
+        "diagnosis-multimodal-input"
+      ],
+      "evidence": "16 号 A.52.3-9；scripts/audit/p21_odd_frame_normalize.py；tests/unit/api/test_odd_frame_multiframe.py（3 例）"
+    },
+    {
+      "id": "ruff-ratchet-rootfix",
+      "name": "ruff 棘轮根治（真 bug 修复 + 只扫 git 跟踪文件）",
+      "description": "红灯根因两条：①scripts/audit/timings_dump.py 用 json 未导入（F821，跑必崩）+ import 未排序；②棘轮扫「工作树全部 py」，本地未跟踪探针造成计数漂移 ±15（CI 是干净检出，口径本就不一致）。",
+      "status": "done",
+      "result": "修 F821/I001；棘轮改扫 git ls-files '*.py'（ruff JSON 逐条过滤，显式 UTF-8 避免 Windows GBK 炸）+ 按新口径重定基线（重定即上限）；test_ruff_ratchet.py 9 passed",
+      "dependencies": [],
+      "evidence": "16 号 A.52.3-10；tests/unit/quality/test_ruff_ratchet.py"
     }
   ]
 }

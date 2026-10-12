@@ -968,6 +968,12 @@ async def _write_result_to_db(
         # 「证据行是 kb_v1.3.0:… 而报告标注知识库版本 kb_v1.0.0」的自相矛盾。
         # 单一事实源 = settings.rag_kb_version（生产启动脚本由 .env 注入）。
         "knowledge_base_version": settings.rag_kb_version,
+        # A.52 版本溯源：报告/结果里「模型版本」写**本次运行的真实值**——
+        # ①model_version = 诊断引擎版本（参与「模型↔知识库」兼容矩阵，可解析 vN.M）
+        # ②llm_model = 实际产出结论的生成模型标识（值来自 vLLM 配置，可对线上核对）
+        # 二者都取自运行期 settings，不写任何 Phase 0A 占位常量。
+        "model_version": settings.resolved_model_version,
+        "llm_model": settings.resolved_llm_model,
         "review_reason": review_reason,
         "completed_at": datetime.now(timezone.utc).isoformat(),
         # T-GB-AGT-02 路由判定（前端确认对话框与路由分布观测的依据）

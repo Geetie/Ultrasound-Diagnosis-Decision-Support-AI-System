@@ -103,9 +103,84 @@ def parse_and_validate_dicom(content: bytes) -> tuple[pydicom.Dataset | None, st
 
     bits_allocated = int(ds[0x0028, 0x0100].value)
     if bits_allocated <= 0 or bits_allocated > 16:
-        return None, f"BitsAllocated must be 1-16, got {bits_allocated}", [f"BitsAllocated={bits_allocated}"]
+        return (
+            None,
+            f"位深不受支持：BitsAllocated 须为 1~16，实际 {bits_allocated}",
+            [f"BitsAllocated={bits_allocated}"],
+        )
 
     return ds, None, []
+
+
+def _normalize_odd_frame_multiframe(
+    content: bytes, dataset: pydicom.Dataset
+) -> tuple[bytes, pydicom.Dataset, str | None]:
+    """把「原生多帧 + 每帧字节数为奇」的文件规范化成合规编码（A.52）。
+
+    返回 ``(内容, 数据集, 规范化方式)``；不需要规范化时方式为 ``None``（内容原样返回）。
+
+    **为什么必须做**：DICOM 的值长度必须为偶数，而原生多帧要求
+    ``像素数据长度 == 帧数 × 每帧字节数``。每帧字节数
+    ``= Rows × Columns × BitsAllocated/8 × SamplesPerPixel`` 为奇时
+    （例如 8 位 549×389 = 213561），写入端只能补 1 个填充字节 →
+    前端 `总长/帧数` 不整除 → dicom-image-loader 抛 `Invalid frame length`、
+    影像区黑屏。后端口径（pydicom 按帧数截取）不受影响，所以这个坑只在浏览器暴露。
+
+    **为什么选 8→16 位重写**：①**零像素改动** —— 每个值原样放进 16 位字
+    （BitsStored 仍为 8、HighBit=7），不做插值也不补边，Rows/Columns/PixelSpacing/
+    窗宽窗位全部保持不变，测量与判读口径完全不受影响；②补边方案（补 1 列/行）会
+    改变图像尺寸 → 影响 mm 测量，不可接受；③封装（压缩）方案需要 RLE/JPEG 编解码器，
+    代价与许可风险更高。
+    """
+    try:
+        frames = int(getattr(dataset, "NumberOfFrames", 1) or 1)
+    except (TypeError, ValueError):
+        return content, dataset, None
+    if frames < 2:
+        return content, dataset, None
+
+    rows = int(getattr(dataset, "Rows", 0) or 0)
+    cols = int(getattr(dataset, "Columns", 0) or 0)
+    bits = int(getattr(dataset, "BitsAllocated", 0) or 0)
+    samples = int(getattr(dataset, "SamplesPerPixel", 1) or 1)
+    bytes_per_sample = bits // 8
+    if not rows or not cols or bytes_per_sample <= 0:
+        return content, dataset, None
+    frame_bytes = rows * cols * bytes_per_sample * samples
+    if frame_bytes % 2 == 0:
+        return content, dataset, None
+
+    # 目前只处理 8 位（唯一可能产生「奇帧长」的位深：16/32 位必定为偶）
+    if bits != 8 or samples != 1:
+        logger.warning(
+            "dicom_multiframe_odd_frame_length_unsupported",
+            bits_allocated=bits,
+            samples_per_pixel=samples,
+            frame_bytes=frame_bytes,
+        )
+        return content, dataset, None
+
+    import copy as _copy
+
+    normalized_ds = _copy.deepcopy(dataset)
+    array = dataset.pixel_array  # (frames, rows, cols) uint8
+    normalized_ds.BitsAllocated = 16
+    normalized_ds.BitsStored = 8
+    normalized_ds.HighBit = 7
+    normalized_ds.PixelRepresentation = 0
+    normalized_ds.PixelData = array.astype("<u2").tobytes()
+
+    buffer = BytesIO()
+    pydicom.dcmwrite(buffer, normalized_ds, enforce_file_format=True)
+    normalized = buffer.getvalue()
+    logger.info(
+        "dicom_multiframe_normalized_for_display",
+        frames=frames,
+        old_frame_bytes=frame_bytes,
+        new_frame_bytes=frame_bytes * 2,
+        reason="odd_frame_length_to_16bit",
+    )
+    return normalized, normalized_ds, "odd_frame_length_to_16bit"
 
 
 def _safe_int(value) -> int | None:
@@ -203,10 +278,22 @@ async def upload_dicom(
             error_message=tags_error or "缺少 DICOM 必填字段", detail=",".join(missing_tags)
         )
 
+    # A.52 鲁棒性：原生（非封装）多帧且**每帧字节数为奇**时，DICOM 值长度必须为偶 →
+    # 必然多出 1 个填充字节 → `总长/帧数` 不整除 → 前端 dicom-image-loader 直接抛
+    # `Invalid frame length`、影像区只剩黑屏（真机实测）。这里在**入库侧**把它规范化成
+    # 合规编码，且**不改变任何像素值**（8 位 → 16 位重写，值一一对应，Rows/Columns/
+    # PixelSpacing 全不动，测量与判读口径不受影响）。
+    content, dataset, normalized = await asyncio.to_thread(
+        _normalize_odd_frame_multiframe, content, dataset
+    )
+
     response_metadata, internal_metadata, raw_patient_id = extract_metadata_from_dataset(dataset, content)
     internal_metadata = dict(internal_metadata)
     internal_metadata["original_filename"] = file.filename
     internal_metadata["priority"] = priority
+    if normalized:
+        # A.52：入库时做过显示规范化 —— 留痕供审计（原始像素值未改，仅编码位深）
+        internal_metadata["dicom_normalized"] = normalized
 
     image_id = generate_image_id()
 

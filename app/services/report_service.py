@@ -133,7 +133,8 @@ _FALLBACK_TEMPLATE = """# 超声诊断报告
 - 诊断请求：{{request_id}}
 - 生成时间：{{generated_at}}
 - 知识库版本：{{knowledge_base_version}}
-- 模型版本：{{model_version}}
+- 模型版本（诊断引擎）：{{model_version}}
+- 生成模型：{{llm_model}}
 
 ## 一、检查所见
 
@@ -459,7 +460,9 @@ def build_report_content(result: Any, session: Any = None) -> dict[str, Any]:
             getattr(session, "knowledge_base_version", "")
             or settings.phase0a_mock_kb_version
         ),
-        "model_version": settings.phase0a_mock_model_version,
+        "model_version": settings.resolved_model_version,
+        # A.52：单独给出**真实生成模型标识**（引擎版本 vs 生成模型，溯源各行其职）
+        "llm_model": settings.resolved_llm_model,
         "diagnosis_status": str(getattr(result, "status", "") or ""),
         "confidence": round(confidence, 4),
         # 检查所见：医生提交的临床文本（含语音转写）即最可靠的一手描述

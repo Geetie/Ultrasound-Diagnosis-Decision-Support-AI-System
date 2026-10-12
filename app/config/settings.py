@@ -226,8 +226,20 @@ class Settings(BaseSettings):
     dicom_frame_buffer_capacity: int = 90
 
     phase0a_mock_processing_time_ms: int = 2500
+    # ⚠️ Phase 0A 遗留占位：**不得再出现在报告/判读结果/医生可见面**（A.52 已改真值）。
+    # 仅 `validator.validate_version_compatibility` 的旧签名默认值仍可能用到（见该函数注释）。
     phase0a_mock_model_version: str = "thyroid_v1.0.0"
     phase0a_mock_kb_version: str = "kb_v1.0.0"
+
+    # === 版本溯源（A.52：报告「模型版本」必须是可核验的真值）===
+    # ① 诊断引擎版本：**本系统自己维护的能力版本**，参与「模型↔知识库」兼容矩阵
+    #    （矩阵由 app/knowledge/version.py 唯一定义，需形如 xxx_vN.M.0 才可解析）。
+    #    随诊断能力发布升级（提示词/规则集/融合策略变更即升）；不是某个第三方权重号。
+    diagnosis_engine_version: str = "diag_v1.0.0"
+    # ② 生成模型标识：实际产出结论的 LLM。空则回落到 vLLM 实际服务的模型名
+    #    （vllm_default_model），保证报告里这一行**永远对得上线上在跑的模型**。
+    llm_model_version: str = ""
+    llm_model_revision: str = ""
 
     # === T-GA-INT-01 端到端集成配置 ===
     # 当前激活的知识库版本（RAG 检索与知识智能体缓存键共用；换版本走
@@ -546,6 +558,23 @@ class Settings(BaseSettings):
         populate_by_name=True,
         extra='ignore',
     )
+
+    # ---------------- 版本溯源（A.52） ----------------
+    @property
+    def resolved_model_version(self) -> str:
+        """报告/判读结果 `model_version` 的唯一取值来源：**诊断引擎版本**。
+
+        兼容矩阵（app/knowledge/version.py）按 `xxx_vN.M.0` 解析，故这里给引擎版本
+        而非第三方权重名。Phase 0A 占位常量只在 `diagnosis_engine_version` 被显式
+        置空时兜底 —— 正常部署永远是真值。
+        """
+        return self.diagnosis_engine_version or self.phase0a_mock_model_version
+
+    @property
+    def resolved_llm_model(self) -> str:
+        """实际产出结论的生成模型标识（报告里单独一行，供溯源核对线上模型）。"""
+        base = self.llm_model_version or self.vllm_default_model or "unknown"
+        return f"{base}@{self.llm_model_revision}" if self.llm_model_revision else base
 
     @field_validator("deployment_profile")
     @classmethod
