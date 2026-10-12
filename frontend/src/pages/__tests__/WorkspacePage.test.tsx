@@ -158,11 +158,13 @@ describe('WorkspacePage · 02 扫查态元素还原', () => {
     expect(container.querySelector('[data-node="2:6"]')?.className).toContain(
       'ws-anno--verified'
     );
+    // A.55：标注框压在影像底板上 → 用**不随主题漂移**的叠加 token
+    // （此前用 --color-attention：浅色主题下 #5A6673 对 #15171B 只有 3.06，几乎看不见）
     expect(ruleBody(workspaceCss, '.ws-anno--unverified')).toMatch(
-      /border:\s*2px dashed var\(--color-attention\)/
+      /border:\s*2px dashed var\(--color-overlay-attention\)/
     );
     expect(ruleBody(workspaceCss, '.ws-anno--verified')).toMatch(
-      /border:\s*2px solid var\(--color-text-primary\)/
+      /border:\s*2px solid var\(--color-overlay-text\)/
     );
   });
 

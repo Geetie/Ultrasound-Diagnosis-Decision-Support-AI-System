@@ -23,6 +23,20 @@
   --color-attention: #8C99A6;
   --color-semantic-stop: #9B2423;
   --color-border: #3A3F47;
+  /* ---- 影像叠加专用色（不随 UI 主题漂移）----
+     为什么必须有这一组：叠加标注压在 `--color-image-bg`（#15171B，**两主题同值**）上，
+     即"深底"这一事实与主题无关；而 UI 色板是按界面底色设计的，浅色主题里
+     --color-text-primary=#1F2937 对 #15171B 只有 1.22、--color-attention=#5A6673 只有 3.06
+     —— 叠加标注会几乎不可见（2026-10-12 由 scripts/contrast.py 解析生产 CSS 算出，
+     此前"硬编码一份深色色板"的量法永远看不见浅色主题，属静默失效）。
+     因此这里把"压在影像上的颜色"独立成语义 token，并在两个主题里**显式取同值**，
+     由 tests/unit/quality/test_contrast_tokens.py 计算式守卫（每个主题 ≥ AA 正文 4.5）。 */
+  --color-overlay-text: #E6E8EB;           /* 14.62 : 1 */
+  --color-overlay-text-secondary: #A8AEB6; /*  8.03 : 1 */
+  --color-overlay-attention: #8C99A6;      /*  6.17 : 1 */
+  --color-overlay-stop: #F08A88;           /*  7.64 : 1（停档当**文字**压深底时用；
+                                              语义色 #9B2423 作为文字只有 2.28，只可作填充） */
+  --color-overlay-border: #3A3F47;         /* 结构性描边，非文字；不参与 4.5 门槛 */
   --color-inverse: #E6E8EB;
   --color-on-inverse: #1B1E23;
   --radius-tag: 4px;
@@ -65,4 +79,12 @@
   --color-border: #D8DDE3;
   --color-inverse: #1F2937;
   --color-on-inverse: #FFFFFF;
+  /* 叠加色显式与深色主题**同值**：影像底板不随主题切换（--color-image-bg 同值），
+     叠加标注也必须如此；这里重复声明是刻意的 —— 让"浅色主题改 UI 色板"不会
+     静默带走影像上的可读性（有计算式守卫盯着）。 */
+  --color-overlay-text: #E6E8EB;
+  --color-overlay-text-secondary: #A8AEB6;
+  --color-overlay-attention: #8C99A6;
+  --color-overlay-stop: #F08A88;
+  --color-overlay-border: #3A3F47;
 }

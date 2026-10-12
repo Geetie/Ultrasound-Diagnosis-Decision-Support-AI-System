@@ -73,7 +73,8 @@
 .ws-image__text {
   position: absolute;
   font-size: var(--font-size-micro);
-  color: var(--color-text-secondary);
+  /* 叠加 token：压在影像底板上（底板不随主题切换）→ 颜色也不随主题漂移 */
+  color: var(--color-overlay-text-secondary);
   line-height: 1;
   /* `pre` 而非 `nowrap`：时间角标原文是「2026-10-02␣␣14:26:41」两个空格，
      而 nowrap 会像 normal 一样把连续空格折叠成一个，导致与画布不一致。
@@ -100,7 +101,7 @@
 .ws-image__scale {
   position: absolute;
   font-size: var(--font-size-micro);
-  color: var(--color-text-secondary);
+  color: var(--color-overlay-text-secondary);
   font-family: var(--font-numeric);
   text-align: right;
   line-height: 96px;
@@ -115,18 +116,18 @@
 }
 
 .ws-anno--unverified {
-  border: 2px dashed var(--color-attention);
+  border: 2px dashed var(--color-overlay-attention);
 }
 
 .ws-anno--verified {
-  border: 2px solid var(--color-text-primary);
+  border: 2px solid var(--color-overlay-text);
 }
 
 /* 测量框-冻结态：strokeWeight 1 + dashPattern [5,4] */
 .ws-measure {
   position: absolute;
   box-sizing: border-box;
-  border: 1px dashed var(--color-text-primary);
+  border: 1px dashed var(--color-overlay-text);
 }
 
 /* 测量值：Inter + tabular numerals，否则逐次比对会跳动 */
@@ -136,7 +137,7 @@
   font-variant-numeric: tabular-nums;
   font-weight: 500;
   font-size: var(--font-size-tiny);
-  color: var(--color-text-primary);
+  color: var(--color-overlay-text);
   line-height: 1;
   white-space: nowrap;
   /* 同上：测量值也压在组织上，需要底板 */

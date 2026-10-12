@@ -437,7 +437,7 @@ export default function WorkspaceDicomLayer({
             left: 24,
             bottom: 12,
             fontSize: 11,
-            color: 'var(--color-semantic-stop)',
+            color: 'var(--color-overlay-stop)',
           }}
         >
           影像无法渲染：{error}
@@ -450,7 +450,7 @@ export default function WorkspaceDicomLayer({
             left: 24,
             bottom: 12,
             fontSize: 11,
-            color: 'var(--color-text-secondary)',
+            color: 'var(--color-overlay-text-secondary)',
           }}
         >
           影像加载中…
@@ -488,9 +488,9 @@ export default function WorkspaceDicomLayer({
                   lineHeight: '26px',
                   borderRadius: 13,
                   cursor: 'pointer',
-                  border: `1px solid ${active ? 'var(--color-attention)' : 'var(--color-border)'}`,
+                  border: `1px solid ${active ? 'var(--color-overlay-attention)' : 'var(--color-overlay-border)'}`,
                   background: 'rgba(10, 14, 22, 0.72)',
-                  color: active ? 'var(--color-attention)' : 'var(--color-text-secondary)',
+                  color: active ? 'var(--color-overlay-attention)' : 'var(--color-overlay-text-secondary)',
                 }}
               >
                 {TOOL_LABEL[tool]}
@@ -509,7 +509,7 @@ export default function WorkspaceDicomLayer({
                 lineHeight: '26px',
                 borderRadius: 13,
                 background: 'rgba(10, 14, 22, 0.72)',
-                color: 'var(--color-text-primary)',
+                color: 'var(--color-overlay-text)',
               }}
             >
               {measure.text}
@@ -533,7 +533,7 @@ export default function WorkspaceDicomLayer({
             padding: '0 10px',
             borderRadius: 13,
             background: 'rgba(10, 14, 22, 0.72)',
-            border: '1px solid var(--color-border)',
+            border: '1px solid var(--color-overlay-border)',
             zIndex: 2,
           }}
         >
@@ -558,7 +558,7 @@ export default function WorkspaceDicomLayer({
               ...frameBtnStyle,
               width: 'auto',
               padding: '0 8px',
-              color: playing ? 'var(--color-attention)' : 'var(--color-text-secondary)',
+              color: playing ? 'var(--color-overlay-attention)' : 'var(--color-overlay-text-secondary)',
             }}
           >
             {playing ? '❙❙' : '▶'}
@@ -581,7 +581,7 @@ export default function WorkspaceDicomLayer({
           <span
             style={{
               fontSize: 11,
-              color: 'var(--color-text-primary)',
+              color: 'var(--color-overlay-text)',
               minWidth: 34,
               textAlign: 'center',
             }}
@@ -612,5 +612,5 @@ const frameBtnStyle: CSSProperties = {
   cursor: 'pointer',
   border: 'none',
   background: 'transparent',
-  color: 'var(--color-text-primary)',
+  color: 'var(--color-overlay-text)',
 };

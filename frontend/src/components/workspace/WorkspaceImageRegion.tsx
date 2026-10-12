@@ -154,7 +154,7 @@ export default function WorkspaceImageRegion({
               width={bbox[2] - bbox[0]}
               height={bbox[3] - bbox[1]}
               fill="none"
-              stroke="var(--color-attention)"
+              stroke="var(--color-overlay-attention)"
               strokeWidth={2}
               strokeDasharray="8 5"
               vectorEffect="non-scaling-stroke"
@@ -164,7 +164,7 @@ export default function WorkspaceImageRegion({
             <text
               x={bbox[0]}
               y={Math.max(18, bbox[1] - 8)}
-              fill="var(--color-attention)"
+              fill="var(--color-overlay-attention)"
               fontSize={16}
               vectorEffect="non-scaling-stroke"
             >
@@ -204,9 +204,9 @@ export default function WorkspaceImageRegion({
                 lineHeight: '22px',
                 borderRadius: 11,
                 cursor: 'pointer',
-                border: '1px solid var(--color-attention)',
+                border: '1px solid var(--color-overlay-attention)',
                 background: 'rgba(10, 14, 22, 0.72)',
-                color: 'var(--color-attention)',
+                color: 'var(--color-overlay-attention)',
               }}
             >
               跳到该帧
