@@ -201,9 +201,10 @@
       "id": "zero-silence-guard",
       "name": "零静默守卫（静默失败清查）",
       "description": "59 处静默清查 → 主路径修复 + 守卫测试；评测器三层 fail-fast（预检/连错熔断/失败率退出）",
-      "status": "ongoing",
+      "status": "done",
+      "result": "A.10 的清查已由 A.58「零静默守卫机制化」接续：升级为常驻门禁（后端 ast 全仓棘轮 + 前端 ESLint 独立棘轮 + p28 渲染层探针 + 语义层索要守卫），本条不再单独跟踪，后续演进见 zero-silence-guard-mechanized",
       "dependencies": [],
-      "evidence": "16 号 A.10.1"
+      "evidence": "16 号 A.10.1；接续见 16 号 A.58 与 zero-silence-guard-mechanized"
     },
     {
       "id": "faithfulness-gate",
@@ -251,7 +252,7 @@
     {
       "id": "t2a-independent-val",
       "name": "T2a 独立验证集",
-      "description": "AUL 单数据集口径，生产分布需独立验证集持续监控",
+      "description": "AUC 0.8751 的证据来自开发集（患者级切分），属内部验证；对外引用（NMPA 临床评价/论文）需独立集复验，混引口径是硬伤（TN3K 公开集数字不能当独立验证）。A.58 已补**数据方案**（21 号 §阶段三-A）：来源候选（①合作医院+病理金标准=注册级 / ②公开集另行冻结 held-out=公开集泛化下界 / ③体模=仅功能回归）、按患者分层切分 + 清单 sha256 冻结防换集刷分、指标 AUC+95%CI（bootstrap）+ 敏感性/特异性/校准、门控建议 AUC≥0.80 且 CI 下界≥0.70（待 00 号拍板）、最小可执行路径（冻结清单→跑 AUC+CI→16 号分列三口径）。",
       "status": "planned",
       "dependencies": [
         "t2a-malignancy"
@@ -805,12 +806,57 @@
     },
     {
       "id": "main-flow-voice-entry",
-      "name": "语音入口在主流程不可达（口径登记）",
-      "description": "主流程四页（工作区 / 工作列表 / 新建会话 / 设置）刻意不套 AppLayout，而 VoiceControl 挂在 AppLayout 上 → 语音入口只在 质控 / 知识库 / 同意 / 反馈 四页可达。另：/api/v1/admin/device 医生 token 403 属权限边界（需管理员角色），非端点缺失。两项均由 p26 如实记录（T1-3 / T1-6c），本轮不改。",
-      "status": "planned",
-      "result": "登记口径；如需医生在主流程用语音，需把 VoiceControl 移到页面级（或给工作区加入口），属交互设计改动",
+      "name": "语音入口进主流程 + 设备台账权限面落界面",
+      "description": "原口径：主流程四页（工作区 / 工作列表 / 新建会话 / 设置）刻意不套 AppLayout，而 VoiceControl 挂在 AppLayout 上 → 语音只在 质控/知识库/同意/反馈 可达；GET /api/v1/admin/device 医生 403 属权限边界但界面无落点。A.58 落地：①工作区按页面级挂 VoiceControl，会话 id 经**可选 sessionId 入参显式传入**（不写全局 sessionStore —— 写了会让 AppLayout 的 useRealtimeConnection 误判会话就绪去连 nav WebSocket，真机 p26 的 T0-err 抓到）；②建会话页给「口述患者编号」的 VoiceDictationButton（本页无 session_id，故用听写而非指令型）；③设置页新增「设备与权限」只读区组（新增 frontend/src/services/adminService.ts 调 GET /admin/device；403 给可读权限说明、成功列台账、不猜角色、不自动重试）。",
+      "status": "done",
+      "result": "p26 新增/改造判据：T1-3 主流程（工作区）语音入口可达、T1-3c 建会话页口述入口、T1-3b 遗留页仍可达；PagesShell 13→15 例（设置 403 可读说明）；前端 tsc 0、vitest 全绿",
       "dependencies": [],
-      "evidence": "16 号 A.56.5②③；scripts/audit/p26_squad_e2e_walkthrough.mjs（T1-3 / T1-6c）"
+      "evidence": "16 号 A.58；frontend/src/app/routes.tsx；frontend/src/pages/SettingsPage.tsx；frontend/src/services/adminService.ts；scripts/audit/p26_squad_e2e_walkthrough.mjs（T1-3/T1-3b/T1-3c）"
+    },
+    {
+      "id": "seg-eval-echocare-tn3k",
+      "name": "EchoCare 分割评测（TN3K mask 监督三臂对照）",
+      "description": "同配方（冻结编码器 + 轻 FPN 解码器）在 TN3K 官方划分（2879/614）上三臂对照，回答「底座对分割有没有用」。结论：EchoCare 冻结 5ep DSC 0.5027 / 微调 8ep 0.5430 / BiomedCLIP ViT 冻结 0.5510 —— 三臂齐聚 0.50~0.55，差距来自配方（轻解码器 + 短训练）而非底座；换任务原生架构（MONAI UNet from scratch 4.3M 参数 25ep）达 DSC 0.7961 / IoU 0.7004（超 0.70 目标 9.6pp，零预训练权重）。此前 progress.md 把它列为「未做候选」属滞后信息，A.58 销号。",
+      "status": "done",
+      "result": "报告 reports/tn3k_seg_echocare.json（三臂）与 reports/tn3k_seg_unet.json（UNet 0.7961/0.7004，4.3M 参数，292.6s）；脚本 scripts/tn3k_seg_echocare.py / tn3k_seg_echocare_finetune.py；结论已用于「甲状腺辅助勾画不需要大底座」的架构决策",
+      "dependencies": [],
+      "evidence": "16 号附录 A.20（三臂表 + UNet）；reports/tn3k_seg_echocare.json；reports/tn3k_seg_unet.json；21 号阶段三行（已销号）"
+    },
+    {
+      "id": "zero-silence-guard-mechanized",
+      "name": "零静默守卫机制化（约定层 / 渲染层 / 语义层 + 全仓棘轮）",
+      "description": "20 号研究设计的落地：约定层 = 后端 except 静默判定从「7 文件白名单 + 正则」升级为 ast 全仓扫描 + 存量棘轮（含 contextlib.suppress 后门），前端新增本地 ESLint 规则 local/no-silent-catch（含 promise .catch 形态）+ 独立 config + 基线棘轮（不污染 npm run lint 的 --max-warnings 1 预算）；渲染层 = p28 探针 15s 窗口断言影像区真实数据特征（canvas>0 且无设计稿示意框）+ 结论区非占位文案 + 截图像素方差（PIL），并用 page.route abort 做 A.35 形态反证；语义层 = 模型「反向索要」守卫（强动作 + 影像对象判据，显式豁免 A.56 转人工文案）。途中修掉渲染层暴露的真缺陷：影像字节取回失败原先静默退回设计预览态（假标注框 + 零提示）。",
+      "status": "done",
+      "result": "后端守卫 6 例（含 suppress 后门与三种证据形态自测）、全仓基线 428 处/193 文件；前端棘轮 3 例（含「新增静默 catch 必红」反证）、基线 44 处/10 文件（扫描 155 文件）；语义层 21 例；p28 正反两腿真机可复跑 PASS=6 FAIL=0（退出码 0：canvas=1 mock=0 / 像素方差 4830.08·3273.47 / abort 后 canvas=0 + load-error=1 + PIL 判红）；tests/unit/quality 113 passed、tests/unit/agt 509 passed",
+      "dependencies": [],
+      "evidence": "16 号 A.58；tests/unit/quality/test_no_silent_catch.py；tests/unit/quality/test_frontend_silent_catch.py；frontend/eslint-rules/no-silent-catch.js；scripts/audit/p28_degradation_visibility.mjs；scripts/degradation_visibility.py；tests/unit/agt/test_no_solicitation_guard.py"
+    },
+    {
+      "id": "conclusion-text-readability",
+      "name": "结论正文可读化：剥离裸露 Markdown 强调标记（显示层归一化）",
+      "description": "真机截图实证：结论区显示成 `**[cardiac] LVEF=unknown…**LVEF:**无法计算**分级:**无法判断…`——医生可见正文里裸露 Markdown 强调标记。链路：LLM 自由文本 → diagnosisAdapter 原样透传（契约要求「不二次改写」，有断言钉住）→ WorkspaceConclusionBody / 报告页 pre 原样渲染，三层都没洗。修：新增 frontend/src/utils/text.ts#stripMarkdownEmphasis，只在渲染那一刻归一化（数据层保持原文便于与后端对账）：成对 ** 与 ` 去标记保留内容、落单标记符也去掉；__ 只在成对时去（标识符里的下划线属技术标识符，一刀切等于伪造数据）；行首 # 默认保留（报告正文是 Markdown 文档），仅结论区按 headings 去掉。",
+      "status": "done",
+      "result": "utils/text.ts + __tests__/text.test.ts（含「落单标记符」「__ 标识符不误伤」边界用例）；应用于结论区与报告页正文；vitest 全绿、tsc 0",
+      "dependencies": [],
+      "evidence": "16 号 A.58.6；frontend/src/utils/text.ts；frontend/src/utils/__tests__/text.test.ts；frontend/src/components/workspace/WorkspaceConclusionBody.tsx；frontend/src/pages/ReportPage.tsx"
+    },
+    {
+      "id": "image-load-failure-visible",
+      "name": "影像取回失败不再静默退回设计预览态（假标注框 + 零提示）",
+      "description": "由 A.58 的 p28 反证腿（page.route 屏蔽 /api/v1/imaging/**）暴露的产品级缺陷：取不到影像字节时原实现只把 imageId 保持为空（不写 state、不报错）→ 工作区退回设计预览态，影像区摆出假标注框（结节 A/B、18.4×12.1 mm）且零提示，医生既不知道影像没取回来也不知道要不要重试（A.35 同族形态：占位被当成真实阅片）。修：路由层把失败原因落到 sessionImageIssue（影像列表读取失败 / 影像字节取回失败；技术细节进 console），WorkspaceImageRegion 在 imageLoadIssue 有值时显示 data-region=image-load-error 的 role=alert 可读提示（含重试与回工作列表指引），且 showMock = stack.length===0 && !imageLoadIssue（不再渲染示意框）。",
+      "status": "done",
+      "result": "p28 反证腿由「静默空白」变为「可读错误」：P28-R1 canvas=0、P28-R2 image-load-error=1、P28-R3 PIL 判红（证明守卫不是永远 PASS）；正向腿 P28-1/2/3 全绿（像素方差 4830.08 / 3273.47）",
+      "dependencies": [],
+      "evidence": "16 号 A.58.3/A.58.5；frontend/src/app/routes.tsx（sessionImageIssue）；frontend/src/components/workspace/WorkspaceImageRegion.tsx；scripts/audit/p28_degradation_visibility.mjs"
+    },
+    {
+      "id": "sg-contraindication-message-readable",
+      "name": "安全门「禁忌条件」提示含原始英文枚举（未修，登记）",
+      "description": "真机 p28 实测医生可见的停止告警为「需人工确认后继续 / 检测到禁忌条件：检测到4条禁忌 [cardiac] LVEF=unknown, severity=normal — …」——safety_gateway/checker/contraindication_threshold_phase.py 直接拼接下层 message，把原始英文枚举与键值暴露给医生（拦停行为正确，属可读性问题）。建议在 SG 侧把命中条件映射为中文后回填 message；改 SG 影响面大（9001 服务），需与主服务一起回归。",
+      "status": "planned",
+      "result": "本轮只登记（A.58.10①），未改 SG",
+      "dependencies": [],
+      "evidence": "16 号 A.58.10①；safety_gateway/checker/contraindication_threshold_phase.py；frontend/src/components/workspace/WorkspaceStopAlert.tsx；scripts/audit/p28_degradation_visibility.mjs（P28-2 实测文本）"
     }
   ]
 }

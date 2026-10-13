@@ -5,6 +5,50 @@
 
 ## Last Updated
 
+2026-10-13（分支 `main`；**A.58「零静默失败」常驻机制 + 结论正文可读化 + 两项口径落地**——
+把 20 号研究产出的「零静默」从**出事才清查**升级为**常驻门禁**，三层各带反证：
+①**约定层（后端）** `test_no_silent_catch.py` 由「7 文件白名单 + 正则」改为 **`ast` 全仓扫描**
+（193 个 git 跟踪 `*.py`）+ 存量基线（**428 处，只许下调**）+ 7 主路径文件**零容忍** +
+`contextlib.suppress` 后门一并判；②**约定层（前端）** 本地规则 `local/no-silent-catch`
+（catch 必须 `console.error` + 用户可见降级）+ **独立 config/基线棘轮**（44 处/10 文件，不动
+`--max-warnings 1`）+ `npm run lint:silent-catch`；③**渲染层** 新探针
+`p28_degradation_visibility.mjs`（15s 窗口 + clip 截图 PIL 像素方差 + **`page.route` abort 反证腿**）
+—— 反证腿当场暴露产品级缺陷：**影像取回失败原先静默退回设计预览态（假标注框 + 零提示）**，已修
+（`data-region="image-load-error"` 可读告警 + `showMock` 不再渲染示意框）；④**语义层** 模型
+「反向索要」守卫（`app/agents/specialist/solicitation.py`：强动作 + 影像对象判据，豁免 A.56 转人工
+文案）→ `needs_review` + trace，**只在索要真进正文时**才换正文；⑤**结论正文可读化**
+（`utils/text.ts#stripMarkdownEmphasis`，仅显示层）；⑥**口径落地**：语音进主流程（工作区页面级
+`VoiceControl` + 建会话页口述；**踩坑**：写全局 `sessionStore` 会让 `AppLayout` 的 nav WebSocket
+消费者误连，p26 `T0-err` 当场抓到 → 改**显式 `sessionId` 入参**）、设置页「设备与权限」（403 可读）。
+真机：**p26 PASS=35 FAIL=0**（上轮 33/0）· **p28 PASS=6 FAIL=0** · **p20 PASS=31 FAIL=0** ·
+**p27 PASS=3 FAIL=0（降级 0/8）**。详见 16 号附录 A.58）
+
+### A.58 复跑入口与踩坑（下一位直接用）
+
+- 渲染层降级可见性（**本机**）：`node scripts/audit/p28_degradation_visibility.mjs`
+  （先建会话→装真实多帧 DICOM；产出 `C:/Windows/TEMP/uai_p28/` 截图 + `p28_variance*.json`；
+  **退出码 0/1/2**；反证腿会用 `page.route` 屏蔽 `/api/v1/imaging/**`（影像字节面））
+- 零静默棘轮：`pytest tests/unit/quality/test_no_silent_catch.py test_frontend_silent_catch.py`
+  （后端 428 处基线 / 前端 44 处基线；**只许下调**，重算见两文件头注释）；
+  `cd frontend && npm run lint:silent-catch`（独立 config，**不要**并进 `npm run lint`）
+- 语义层守卫：`pytest tests/unit/agt/test_no_solicitation_guard.py`（21 例，含「请结合图像与病史
+  自行判断」不误伤的反证）
+- 结论正文归一化：`frontend/src/utils/text.ts`（只做显示层；`__` **只在成对时**去，避免改动
+  `grade_unparseable` 这类技术标识符）
+- **踩坑（A.58 新增，都会再犯）**：
+  ① **往全局 store 写字段 = 触发别人的副作用**：为让语音可用而把会话写进 `sessionStore`，
+  直接让 `AppLayout` 的 `useRealtimeConnection` 「以为会话就绪」去连 nav WebSocket（隧道下必失败，
+  p26 `T0-err` 抓到）。**页面级组件要什么就显式传什么**。
+  ② **登录刚跳完就一次性 `count()` = 假 FAIL**：工作区是懒加载路由，刚落点时 DOM 里还没有工作区
+  节点 → 必须**轮询等渲染**（p26 已改 30×500ms，并在 detail 带 `workspace-root=1`）。
+  ③ **严格预算的 ESLint 上别加新规则**（`--max-warnings 1`）→ 必须独立 config + 基线棘轮。
+  ④ **`Start-Process cmd.exe /c x.bat` 可能静默不跑**（无日志无进程）→ 改
+  `Start-Process node.exe -ArgumentList … -RedirectStandardOutput <绝对路径>`，并**先确认日志文件存在**。
+  ⑤ **改了包就要跑它的棘轮**：本轮新脚本一处多余 `int()` 让 ruff `RUF046 13 > 12` 立刻红。
+  ⑥ 静态产物仍需 `VITE_BASE=/ui/` 清空式重建 + 部署（见 A.55/A.52 踩坑）。
+
+### 上一轮（A.57）Last Updated 原文
+
 2026-10-13（分支 `main`；**A.57 第一/第二梯队收口 —— p26 零 FAIL**——收口 A.56 走查登记的
 易做项，并在复跑中又抓到 2 个真缺陷：①**报告模板补「影像分割（模型辅助）」段**（liver/cardiac
 原缺 `{{nodule_summary}}` → 心脏/肝脏报告正文看不到分割面积与帧级溯源）→ 真机 **T1-5b 由 FAIL
@@ -226,7 +270,9 @@ X/Y 帧」）；③设备/患者列表端点（p16 14/14，零 api_key）；④f
 改进方向见 feature_list 未闭合条目（LLM 模型侧提速、真实设备奇数帧长多帧的 loader 兼容、
 同意撤回的消费端）。
 **第二梯队进度**：①多帧分期② cine 播放（A.52.3b）②生产容量验收（A.53）③历史对比阅片（A.54）
-均已交付；剩余候选见 21 号路线图。
+均已交付；**第三梯队**里唯一「数据已就绪、可真机验证」的 `zero-silence-guard` 已机制化（A.58，
+约定/渲染/语义三层常驻门禁）；其余为数据/口径前置（t2a 独立集、Langfuse ≥700 例）。剩余候选见
+21 号路线图（含 §阶段三-A 的 t2a 数据方案）。
 
 ## 医生视角走查结论（2026-10-05 夜，下一位 Agent 先读这段）
 
@@ -399,6 +445,9 @@ X/Y 帧」）；③设备/患者列表端点（p16 14/14，零 api_key）；④f
 | 甲状腺注册数据 | 管理决策 + 授权 | 无商用公开集，须自有/合作医院 |
 | 核心覆盖率 90% | 真机依赖 | SoftHSM / 真实 Redis 语义 |
 | 服务器代码与仓库同步 | 本机可做 | `git archive` 铺 HEAD + 重启主服务 |
+| t2a 独立验证集数据 | 项目组 / 数据方 | 现 AUC 0.8751 属开发集内部验证；方案已备（21 号 §阶段三-A），缺**独立集数据** |
+| Langfuse 评测管理 ≥700 例采集 | 环境 + 排期 | 机制已就绪，缺采集窗口（依赖性能阶段） |
+| SG 禁忌提示中文化 | 本机可做（可回归） | A.58.10① 登记：`[cardiac] LVEF=unknown, severity=normal` 直进医生可见告警 |
 
 ## Files（交接涉及的路径）
 

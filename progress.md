@@ -1,7 +1,16 @@
 # progress.md — 当前状态（唯一「现在在哪」来源）
 
-**Last Updated**: 2026-10-13（A.57 第一/第二梯队收口：报告模板补分割段 + 影像角标去硬编码 + 历史对比默认配对）
-**HEAD-A.57**: 分支 `main`（本轮收口 A.56 走查登记的易做项，并在复跑中又抓到 2 个真缺陷：
+**Last Updated**: 2026-10-13（A.58「零静默失败」常驻机制：约定/渲染/语义三层 + 结论正文可读化 + 两项口径落地）
+**HEAD-A.58**: 分支 `main`（把 20 号研究产出的「零静默」从**出事才清查**升级为**常驻门禁**，三层各带反证：
+①**约定层（后端）** `test_no_silent_catch.py` 由「7 文件白名单 + 正则」改为 **`ast` 全仓扫描**（193 个 git 跟踪 `*.py`）+ 存量基线 `silent_catch_baseline.json`（**428 处，只许下调**）+ 7 个主路径文件升**零容忍区** + `contextlib.suppress` 后门一并判；
+②**约定层（前端）** 新增本地规则 `local/no-silent-catch`（catch 必须 `console.error` + 用户可见降级）+ **独立 config + 基线棘轮**（44 处/10 文件；不污染 `npm run lint` 的 `--max-warnings 1`）+ `npm run lint:silent-catch`；
+③**渲染层** 新增真机探针 `p28_degradation_visibility.mjs`（15s 窗口断言影像区真实影像 + 结论区真实字段文案 + clip 截图像素方差 PIL 判定）并**强制反证腿**（`page.route` 屏蔽影像字节 → 守卫必须判红且给可读错误）——**反证腿当场暴露一个产品级缺陷**：影像取回失败原先**静默退回设计预览态**（假标注框「结节 A/B」+ 零提示），已修（`data-region="image-load-error"` 可读告警 + 不再渲染示意框）；
+④**语义层** 新增模型「反向索要」守卫（`app/agents/specialist/solicitation.py`：强动作 + 影像/临床对象判据，显式豁免 A.56 的转人工降级文案）→ `needs_review` + trace 留痕，**只在索要真进了正文时**才换正文（避免丢分级结论）；
+⑤**结论正文可读化**：新增 `utils/text.ts#stripMarkdownEmphasis`（仅显示层归一化，数据层仍原样透传）修掉医生可见的裸露 `**`；
+⑥**两项口径落地**：语音进主流程（工作区页面级 `VoiceControl` + 建会话页口述录入；**踩坑**：往全局 `sessionStore` 写会话会让 `AppLayout` 的 nav WebSocket 消费者误连，p26 `T0-err` 当场抓到 → 改**显式 `sessionId` 入参**）、设置页新增「设备与权限」区组（403 给可读权限说明）。
+真机总账：**p26 PASS=35 FAIL=0**（上轮 33/0）· **p28 PASS=6 FAIL=0** · **p20 PASS=31 FAIL=0** · **p27 PASS=3 FAIL=0**（降级 0/8）。详见 16 号附录 A.58）
+
+**上一轮 HEAD-A.57**: 分支 `main`（收口 A.56 走查登记的易做项，并在复跑中又抓到 2 个真缺陷：
 ①**报告模板补「影像分割（模型辅助）」段**（liver/cardiac 原先缺 `{{nodule_summary}}` → 心脏/肝脏报告正文看不到分割面积与帧级溯源；**注意模板有进程内缓存 `_TEMPLATE_CACHE`，改完必须重启主服务**）→ 真机 p26 **T1-5b 由 FAIL 转 PASS**（正文出现「取自第 6/7 帧（多帧候选择优）」）；
 ②**影像角标去硬编码**（参数条写死「甲状腺 · 线阵 12 MHz · 增益 62 · 深度 10 cm」、时间写死「2026-10-02 14:26:41」，心脏会话照显甲状腺 → 改「声明部位 + 影像参数以设备为准 / 参数待装载」+ 会话起始时间，并加静态守卫）；
 ③**历史对比默认配对修正**（原取 `comparable_organs[0]`（按器官名排序）→ 患者最新两次是心脏时默认并排了更早的甲状腺对，Δ 0.0%；改为优先「最近一次检查所在器官」）+ 文案器官中立（「结节面积」→「分割面积」）；
@@ -18,6 +27,21 @@
 ## Current State
 
 ### What 已完成（有证据，详见 `feature_list.json` 与 16 号附录 A）
+
+- **「零静默失败」常驻机制（2026-10-13，A.58）**：
+  ①**约定层**：后端 `ast` 全仓棘轮（428 处/193 文件基线，**只许下调**；7 主路径文件零容忍；
+  `contextlib.suppress` 视为后门一并判）+ 前端本地 ESLint 规则 `local/no-silent-catch`（44 处/10 文件
+  独立基线，不污染 `--max-warnings 1` 预算）。
+  ②**渲染层**：`p28_degradation_visibility.mjs`（15s 窗口 + 截图 PIL 像素方差）+ **反证腿**（route abort）
+  —— **反证腿暴露真缺陷**：影像取回失败原**静默退回设计预览态**（假标注框 + 零提示，A.35 同族），
+  已修（`image-load-error` 可读告警 + `showMock` 不再渲染示意框）。
+  ③**语义层**：模型「反向索要」（请提供病灶边界/请描述图像/请上传影像）→ `needs_review` + 可读转人工
+  正文；与 A.56 的「无法判断/无法计算/已转人工判读」严格区分（判据 = 强动作 + 影像对象）。
+  ④**结论正文可读化**：`stripMarkdownEmphasis`（仅显示层；`__` 只在成对时去，避免改动技术标识符）。
+  ⑤**两项口径落地**：语音进主流程（工作区 + 建会话页；**不写全局 store**）；设置页「设备与权限」
+  （403 → 可读权限边界说明，不猜角色字段）。
+  ⑥真机：**p26 35/0 · p28 6/0 · p20 31/0 · p27 3/0（降级 0/8）**；守卫单测 30 例、quality 113、agt 509、
+  前端 10 文件 161。
 
 - **第一/第二梯队收口：p26 零 FAIL（2026-10-13，A.57）**：
   ①**报告模板补「影像分割（模型辅助）」段**（liver/cardiac 原缺 `{{nodule_summary}}`）——T1-5b 根因；
@@ -299,15 +323,18 @@
 
 ## Recommended Next Step
 
-> **A.57 收口结果（2026-10-13）**：A.56 走查登记的易做项**本轮已收口**：
-> ①报告模板 `{{nodule_summary}}` 段已补（liver/cardiac）→ 真机 p26 **T1-5b 由 FAIL 转 PASS**；
-> ②复跑中又发现并修掉两处真缺陷——**影像角标写死器官/设备参数**（心脏会话照显甲状腺）、
-> **历史对比默认配对取错器官对**（按器官名排序而非"最近一次检查所在器官"）；
-> ③p20 重跑 **PASS=31 FAIL=0**（A.55 尾巴复核完毕）；④21 号路线图已刷新。
-> 详见 16 号附录 A.57。
-> **仍不改（口径登记）**：语音入口只在 质控/知识库/同意/反馈 四页可达（主流程四页刻意不套
-> `AppLayout`）；`/api/v1/admin/device` 医生 token 403 属权限边界（需管理员角色）。
-> **下一步候选**：`zero-silence-guard` 机制化（第三梯队里唯一"数据已就绪、可真机验证"的一项）。
+> **A.58 结果（2026-10-13）**：「零静默失败」已机制化（约定/渲染/语义三层，全部可 CI 门禁）——
+> 后端 `ast` 全仓棘轮（428 处基线只许下调）、前端本地 ESLint 规则 + 独立棘轮（44 处）、
+> 真机 p28 渲染层探针（15s 窗口 + 截图 PIL 方差，**含 route abort 反证腿**）、语义层「反向索要」
+> 守卫；顺带修掉 p28 反证腿暴露的产品级缺陷（**影像取回失败静默退回假标注框**）并完成结论正文
+> 可读化（裸 `**`）。两项旧口径已落地：**语音进主流程**（工作区/建会话页）、**设置页「设备与权限」**。
+> 真机：**p26 35/0 · p28 6/0 · p20 31/0 · p27 3/0**。详见 16 号附录 A.58。
+> **仍未修（已登记）**：①**安全门「禁忌条件」提示含原始英文枚举**（`[cardiac] LVEF=unknown,
+> severity=normal` 直接进医生可见的停止告警；拦停行为正确，属可读性，改 SG 需与 9001 一起回归）；
+> ②`t2a-independent-val` 缺**独立集数据**、Langfuse 评测管理缺 ≥700 例采集（准备方案见 21 号
+> §阶段三-A，属数据/口径前置，非代码可解）。
+> **下一步候选**：①接手 SG 禁忌提示中文化（可真实机回归）；②数据到位后跑 t2a 独立集（冻结清单 →
+> AUC+95%CI → 16 号分列三口径）。
 
 1. **交付收口（2026-10-12 A.51 更新，距 10-17 交付）**：P2 登记两项已销号
    （speech 引擎已部署、告警联系人语义已定案）；本轮第一梯队四项（检索口径、多帧③、
@@ -356,8 +383,11 @@
 | `scripts/a51_ui_walkthrough.mjs` | A.52 浏览器层走查（本机 Playwright + 隧道，11/11，含截图/视频） |
 | `scripts/audit/p20_frontend_boundary.mjs` | A.52 前端深度边界摸排（31/31：认证/输入/装载/报告/帧/渲染/请求面，退出码可进 CI） |
 | `scripts/audit/p25_overlay_contrast.mjs` + `scripts/contrast.py` | A.55 影像叠加对比度真机取证（两主题截图 + 真实 DOM 旁证 + WCAG 计算式判定，退出码可门禁） |
-| `scripts/audit/p26_squad_e2e_walkthrough.mjs` | A.56 第一/第二梯队端到端走查（医生视角：登录→建会话→真实多帧 DICOM→cine→测量→判读→报告→第二次检查→历史对比；PASS=32 FAIL=1，退出码可门禁） |
-| `scripts/audit/p27_grade_extraction.py` + `p27a_structured_output_probe.py` | A.56 分级提取降级率门禁（真机 8 轮：降级 0/8、零技术串、退出码 0）+ 结构化输出能力实测（`response_format` 3/3、`guided_json` 0/3） |
+| `scripts/audit/p26_squad_e2e_walkthrough.mjs` | A.56/A.58 第一/第二梯队端到端走查（医生视角：登录→建会话→真实多帧 DICOM→cine→测量→判读→报告→第二次检查→历史对比；A.58 起 PASS=35 FAIL=0，含 T1-3 主流程语音入口，退出码可门禁） |
+| `scripts/audit/p27_grade_extraction.py` + `p27a_structured_output_probe.py` | A.56 分级提取降级率门禁（真机 8 轮：**A.58 复跑降级 0/8、零技术串、退出码 0**）+ 结构化输出能力实测（`response_format` 3/3、`guided_json` 0/3） |
+| `scripts/audit/p28_degradation_visibility.mjs` + `scripts/degradation_visibility.py` | A.58 渲染层降级可见性（15s 窗口真实影像/结论非占位 + clip 截图 PIL 像素方差 + **`page.route` abort 反证腿**；PASS=6 FAIL=0，退出码 0/1/2 可门禁） |
+| `npm run lint:silent-catch`（`frontend/eslint-rules/`） | A.58 前端静默 catch 棘轮（155 文件扫描；10 文件/44 处 ≤ 基线；独立 config，**不动** `--max-warnings 1` 预算） |
+| `pytest tests/unit/quality/test_no_silent_catch.py` | A.58 后端静默 except 棘轮（`ast` 全仓 193 文件；基线 428 处只许下调；7 主路径零容忍；`contextlib.suppress` 后门一并判） |
 | `scripts/deploy_frontend.sh` | A.52 前端产物清空式部署（防陈旧 chunk 堆积） |
 | `scripts/audit/p15_retrieval_parity.py` | A.51 检索口径（服务腿 vs eval，真机可复跑） |
 | `scripts/audit/p16_list_endpoints.py` | A.51 设备/患者列表端点（14 项判定） |
