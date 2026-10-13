@@ -110,12 +110,24 @@ export default function PatientHistoryPage() {
       setRightSid(null);
       return;
     }
-    const targetOrgan = organ ?? data.comparable_organs[0];
-    const same = data.items.filter((it) => it.organ === targetOrgan);
-    if (targetOrgan && same.length >= 2) {
-      setRightSid(same[0].session_id);
-      setLeftSid(same[1].session_id);
-      return;
+    // 候选器官按优先级：**最近一次检查所在器官** → comparable_organs（服务端给的
+    // 可比器官，顺序按器官名，不代表"最近"）。取第一个凑得出两次的。
+    //
+    // A.57（真机 p26 实测）：旧逻辑直接取 `comparable_organs[0]`，患者最新两次是心脏
+    // （本轮刚做的两次检查）时，comparable_organs 里 thyroid 排在前面 → 默认并排的是
+    // 更早的一对甲状腺检查，医生打开历史页看不到刚做完的对比，且与注释声明
+    // 「最近两次同器官」不符。
+    const candidates = [
+      organ ?? data.items[0]?.organ ?? null,
+      ...data.comparable_organs,
+    ].filter((o, i, arr): o is string => !!o && arr.indexOf(o) === i);
+    for (const cand of candidates) {
+      const same = data.items.filter((it) => it.organ === cand);
+      if (same.length >= 2) {
+        setRightSid(same[0].session_id);
+        setLeftSid(same[1].session_id);
+        return;
+      }
     }
     setRightSid(data.items[0].session_id);
     setLeftSid(data.items[1]?.session_id ?? null);
@@ -211,7 +223,7 @@ export default function PatientHistoryPage() {
               置信度：{typeof item.confidence === 'number' ? `${(item.confidence * 100).toFixed(0)}%` : '—'}
             </Text>
             <Text style={{ fontSize: 12 }}>
-              结节面积：
+              分割面积：
               {typeof seg?.area_mm2 === 'number'
                 ? `${seg.area_mm2.toFixed(1)} mm²`
                 : seg && !seg.available
@@ -386,11 +398,14 @@ export default function PatientHistoryPage() {
 
               {/* 面积变化只在**同器官**时显示（A.54 真机走查抓到：跨器官也给了
                   "-23.2%" —— 甲状腺结节面积与心脏结构面积之间没有可比性，
-                  给数字等于制造伪"病情变化"，宁可不说）。 */}
+                  给数字等于制造伪"病情变化"，宁可不说）。
+                  A.57：文案器官中立 —— 取的是**分割面积**，甲状腺是结节、心脏是心腔，
+                  写「结节」会让心脏腿读出错误解剖语义（真机 p26 实测在 cardiac 上显示
+                  「结节面积变化：0.0%」）。 */}
               {delta && !organMismatch && (
                 <Card size="small" style={{ marginTop: 12 }} data-region="history-delta-area">
                   <Space size={8}>
-                    <Text strong>结节面积变化：</Text>
+                    <Text strong>分割面积变化：</Text>
                     <Text style={{ color: delta.color }}>{delta.text}</Text>
                   </Space>
                 </Card>

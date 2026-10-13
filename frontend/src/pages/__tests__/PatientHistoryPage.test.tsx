@@ -121,6 +121,45 @@ describe('PatientHistoryPage', () => {
     await waitFor(() => expect(screen.getAllByTestId('dicom-layer').length).toBe(2));
   });
 
+  it('A.57：默认配对优先「最近一次检查所在器官」，不是 comparable_organs 第一个', async () => {
+    // 真机 p26 实测场景：最新两次是心脏（本轮刚做的），更早还有成对的甲状腺；
+    // comparable_organs 按器官名排序把 thyroid 排在前面 → 旧逻辑默认并排了**旧甲状腺对**，
+    // 医生看不到刚做完的两次对比（也与「默认选中最近两次同器官」的意图不符）。
+    const cardiacNew = item({
+      session_id: 'c-new', organ: 'cardiac', target_organs: ['cardiac'],
+      created_at: '2026-10-13T05:42:26Z', segmentation: { available: true, area_mm2: 2936.8 },
+    });
+    const cardiacOld = item({
+      session_id: 'c-old', organ: 'cardiac', target_organs: ['cardiac'],
+      created_at: '2026-10-13T05:42:12Z', segmentation: { available: true, area_mm2: 2003.3 },
+    });
+    const thyroidNew = item({
+      session_id: 't-new', created_at: '2026-10-13T04:22:47Z',
+      segmentation: { available: true, area_mm2: 3205.8 },
+    });
+    const thyroidOld = item({
+      session_id: 't-old', created_at: '2026-10-13T04:22:40Z',
+      segmentation: { available: true, area_mm2: 3205.8 },
+    });
+    fetchHistory.mockResolvedValue(
+      resp({
+        total: 4,
+        organs: ['cardiac', 'thyroid'],
+        comparable_organs: ['thyroid', 'cardiac'], // 服务端顺序：thyroid 在前
+        items: [cardiacNew, cardiacOld, thyroidNew, thyroidOld],
+      }),
+    );
+    renderPage();
+    await waitFor(() =>
+      expect(document.querySelector('[data-region="history-delta-area"]')).not.toBeNull(),
+    );
+    // 配对的是**心脏**那两次（2003.3 → 2936.8 ≈ +46.6%）
+    expect(screen.getByText(/2003\.3 → 2936\.8 mm²/)).toBeInTheDocument();
+    expect(screen.getByText(/\+46\.6%/)).toBeInTheDocument();
+    // 绝不是旧甲状腺对（3205.8 → 3205.8 = 0%）
+    expect(screen.queryByText(/3205\.8 → 3205\.8 mm²/)).toBeNull();
+  });
+
   it('两次部位不同 → 明确提示不做直接对比', async () => {
     fetchHistory.mockResolvedValue(
       resp({

@@ -389,6 +389,27 @@ class TestOrganDeclarationGuard:
             "的引导 —— 否则医生对着「未做分割」只能自己猜是没病还是没跑"
         )
 
+    def test_image_annotations_are_data_driven(self):
+        """影像角标（参数 / 时间）必须来自会话数据 —— 不得写死器官与设备参数。
+
+        A.57 走查实证：心脏会话（真实心脏影像）的参数角标照显
+        「甲状腺 · 线阵 12 MHz · 增益 62 · 深度 10 cm」，时间角标固定
+        「2026-10-02 14:26:41」—— 与 A.36「患者身份写死」同类：**占位值被当成真实
+        检查信息**（医生据此以为这是本次检查的部位与设备参数）。
+
+        真实影像分支（有 canvas，不能在本机 vitest 里跑，见文件头已知限制）由真机
+        p26 截图覆盖；这里钉住"源码里不许再出现这些字面量"这一可静态判定的形态。
+        """
+        code = _code(SRC / "components" / "workspace" / "WorkspaceImageRegion.tsx")
+        for bad in ("甲状腺 ·", "线阵 12 MHz", "增益 62", "2026-10-02"):
+            assert bad not in code, (
+                f"影像区角标仍写死「{bad}」—— 参数角标/时间角标必须来自会话数据"
+                "（部位走 organDisplayName、时间走 formatLocalTimestamp），"
+                "否则心脏会话会显示甲状腺 + 假探头参数"
+            )
+        assert "declaredOrgan" in code, "参数角标必须接声明部位（declaredOrgan）"
+        assert "formatLocalTimestamp" in code, "时间角标必须走 formatLocalTimestamp（数据驱动）"
+
 
 class TestNavigationPaths:
     """导航路径**不得重复 basename**。

@@ -29,6 +29,7 @@ import { useState } from 'react';
 import type { ReactNode } from 'react';
 import WorkspaceDicomLayer from './WorkspaceDicomLayer';
 import type { SegmentationView } from '@/services/diagnosisAdapter';
+import { formatLocalTimestamp } from '@/utils/datetime';
 
 /** available=false 的降级原因 → 医生能看懂的一句话（未知原因原文透传）。 */
 const SEG_REASON_LABEL: Record<string, string> = {
@@ -67,6 +68,8 @@ export default function WorkspaceImageRegion({
   dicomFrameOwners,
   segmentation,
   annotationArchiveKey,
+  declaredOrgan,
+  sessionStartedAt,
 }: {
   /** 部位指示条插槽：仅部位数 ≥ 2 时传入（05 / 14）。它落在影像区内部底缘，
    *  不改变影像区高度 —— 影像区恒定 600。 */
@@ -90,6 +93,12 @@ export default function WorkspaceImageRegion({
   /** 测量注释存档 key（A.40：后端 image_id，img_/frame_ 前缀）。
    *  undefined = 不持久化（预览/无后端 id 场景）。 */
   annotationArchiveKey?: string;
+  /** 声明部位的中文显示名（会话 `target_organs[0]` 经 `organDisplayName`）。
+   *  参数角标必须用它 —— 写死「甲状腺」会让心脏会话显示错误的部位（A.57）。 */
+  declaredOrgan?: string | null;
+  /** 会话起始时间（ISO）。影像采集时间本系统**未解析** DICOM 采集时间，故角标
+   *  如实标为"会话起始"；无值时不猜（显示「时间未提供」）。 */
+  sessionStartedAt?: string | null;
 }) {
   const stack = dicomImageIds && dicomImageIds.length > 0
     ? dicomImageIds
@@ -268,20 +277,35 @@ export default function WorkspaceImageRegion({
 
       {/* 2:97 影像叠加层-成像视口 */}
       <div className="ws-image__overlay" data-node="2:97">
+        {/* 2:98 参数角标 —— **部位数据驱动，设备参数不伪造**（A.57，2026-10-13 走查实证）：
+            原先写死「甲状腺 · 线阵 12 MHz · 增益 62 · 深度 10 cm」（设计稿示意值），
+            于是心脏会话、真实心脏影像上也照显「甲状腺」+ 线阵探头参数 —— 属 A.36
+            「身份写死」同类问题：占位值被当成了真实检查信息。本系统暂不解析 DICOM 的
+            探头/频率/增益，故如实标为「以设备为准」，不编数值。 */}
         <span
           className="ws-image__text"
           style={{ left: 24, top: 20, width: 234 }}
           data-node="2:98"
+          title={
+            stack.length > 0
+              ? '声明部位（本系统不解析探头/增益等设备参数，请以设备显示为准）'
+              : '声明部位（影像尚未装载，参数待装载）'
+          }
         >
-          甲状腺 · 线阵 12 MHz · 增益 62 · 深度 10 cm
+          {`${declaredOrgan ?? '部位未声明'} · ${
+            stack.length > 0 ? '影像参数以设备为准' : '参数待装载'
+          }`}
         </span>
 
+        {/* 2:99 时间角标 —— 会话起始时间（不是影像采集时间：本系统未解析 DICOM 采集时间，
+            所以 title 如实写明；无值时不猜）。 */}
         <span
           className="ws-image__text ws-image__text--numeric"
           style={{ left: 1256, top: 20, width: 160 }}
           data-node="2:99"
+          title="检查会话开始时间（非影像采集时间：采集时间未解析）"
         >
-          2026-10-02  14:26:41
+          {sessionStartedAt ? formatLocalTimestamp(sessionStartedAt) : '时间未提供'}
         </span>
 
         {/* 6 行刻度，行高 96px = 576 */}

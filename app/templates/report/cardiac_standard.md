@@ -15,23 +15,27 @@
 
 {{measurement_summary}}
 
-## 三、心功能评估
+## 三、影像分割（模型辅助）
+
+{{nodule_summary}}
+
+## 四、心功能评估
 
 {{diagnosis}}
 
-## 四、建议
+## 五、建议
 
 {{recommendation}}
 
-## 五、处置建议
+## 六、处置建议
 
 {{clinical_actions}}
 
-## 六、证据来源
+## 七、证据来源
 
 {{evidence}}
 
-## 七、质量控制
+## 八、质量控制
 
 - 置信度：{{confidence}}
 - 一致性：{{consistency_status}}

@@ -133,14 +133,26 @@ describe('WorkspacePage · 02 扫查态元素还原', () => {
     ).toBeInTheDocument();
   });
 
+  it('影像区角标数据驱动：部位 / 参数 / 时间一律不写死（A.57）', () => {
+    // 无声明部位、无会话时间 → 如实说"没有"，不编。旧实现写死
+    // 「甲状腺 · 线阵 12 MHz · 增益 62 · 深度 10 cm」与「2026-10-02 14:26:41」，
+    // 于是**心脏会话也显示甲状腺 + 线阵探头参数**（真机 p26 走查实证），
+    // 属 A.36「身份写死」同类问题：占位值被当成了真实检查信息。
+    render(<WorkspacePage />);
+    expect(screen.getByText('部位未声明 · 参数待装载')).toBeInTheDocument();
+    expect(screen.getByText('时间未提供')).toBeInTheDocument();
+  });
+
+  it('影像区角标用声明部位 + 会话起始时间（心脏会话不再显示甲状腺）', () => {
+    render(<WorkspacePage declaredOrgan="心脏" sessionStartedAt="2026-10-13T03:59:56.000Z" />);
+    expect(screen.getByText('心脏 · 参数待装载')).toBeInTheDocument();
+    // 本地时区无关：只断格式（YYYY-MM-DD HH:mm:ss）
+    expect(screen.getByText(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/)).toBeInTheDocument();
+  });
+
   it('影像区角标与测量值按节点坐标还原', () => {
     const { container } = render(<WorkspacePage />);
 
-    expect(
-      screen.getByText('甲状腺 · 线阵 12 MHz · 增益 62 · 深度 10 cm')
-    ).toBeInTheDocument();
-    // 画布里是两处空格，getByText 默认会归一化空白，故用正则
-    expect(screen.getByText(/2026-10-02\s+14:26:41/)).toBeInTheDocument();
     expect(screen.getByText('18.4 × 12.1 mm')).toBeInTheDocument();
     expect(screen.getByText('结节 A · 未校验')).toBeInTheDocument();
     expect(screen.getByText('结节 B · 已校验')).toBeInTheDocument();
@@ -193,9 +205,10 @@ describe('WorkspacePage · 02 扫查态元素还原', () => {
     expect(ruleBody(workspaceCss, '.ws-image__scale')).not.toMatch(/background:/);
   });
 
-  it('时间角标的两个空格不能被折叠（逐区域比对时目视发现）', () => {
-    // 原文是「2026-10-02␣␣14:26:41」两个空格。white-space: nowrap 会像 normal
-    // 一样把连续空格折叠成一个 —— 必须用 pre。参考图 S04 里该处间距明显更宽。
+  it('角标文字禁止折行（数据驱动文案长度不受控）', () => {
+    // A.57 之前这条的理由是「原文时间角标有两个空格」，而 nowrap 会折叠连续空格。
+    // 时间角标改数据驱动（formatLocalTimestamp，单空格）后该理由消失，但**禁止折行**
+    // 仍然必要：部位名/参数文案来自数据，折行会顶破 600 骨架里的角标位置。
     expect(ruleBody(workspaceCss, '.ws-image__text')).toMatch(/white-space:\s*pre\b/);
     expect(ruleBody(workspaceCss, '.ws-image__text')).not.toMatch(/white-space:\s*nowrap/);
   });

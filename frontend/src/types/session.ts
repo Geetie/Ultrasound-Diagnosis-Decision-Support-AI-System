@@ -42,6 +42,20 @@ export function organTypeFromLabel(label: string): OrganType | undefined {
   );
 }
 
+/**
+ * 部位**代码** → 中文显示名（后端 `target_organs[0]` 这类字符串）。
+ *
+ * 未知代码**原样返回**（不兜底成「未知部位」/不猜器官）：显示成"未知"会掩盖数据问题，
+ * 而猜一个器官等于伪造临床语义。空值返回 `null`（调用方决定怎么表达"没有部位"）。
+ *
+ * 为什么需要它：工作区影像区的参数角标原先写死「甲状腺 · 线阵 12 MHz …」，
+ * 心脏会话也照显甲状腺（2026-10-13 走查实证）—— 属 A.36「身份写死」同类占位硬编码。
+ */
+export function organDisplayName(code?: string | null): string | null {
+  if (!code) return null;
+  return ORGAN_LABEL[code as OrganType] ?? code;
+}
+
 export interface SessionState {
   sessionId: string | null;
   patientId: string | null;

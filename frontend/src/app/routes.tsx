@@ -10,6 +10,7 @@ import { useWorkspaceFlow } from '@/hooks/useWorkspaceFlow';
 import { useDicomUpload } from '@/hooks/useDicomUpload';
 import { getSession } from '@/services/sessionService';
 import type { SessionInfo } from '@/types/api';
+import { organDisplayName } from '@/types/session';
 import { fetchDicomForDisplay, listSessionImages } from '@/services/imagingService';
 import { needsDoctorReview, toConclusionView } from '@/services/diagnosisAdapter';
 import ClinicalInfoPanel from '@/components/workspace/ClinicalInfoPanel';
@@ -108,6 +109,8 @@ function WorkspaceRoute() {
     issue: string | null;
     identity: string | null;
     demo: { age: number | null; gender: string | null };
+    /** 会话起始时间（ISO）—— 影像区时间角标用。影像采集时间本系统未解析，不冒充。 */
+    startedAt: string | null;
   } | null>(null);
   const [clinical, setClinical] = useState<ClinicalInfoValue>(EMPTY_CLINICAL_INFO);
 
@@ -125,6 +128,7 @@ function WorkspaceRoute() {
           // A.36 P0：身份随会话数据驱动（服务端已脱敏），写死人名 = 患者身份错显
           identity: identityOf(s),
           demo: { age: s.age ?? null, gender: s.gender ?? null },
+          startedAt: s.created_at ?? null,
         });
       })
       .catch(() => {
@@ -135,6 +139,7 @@ function WorkspaceRoute() {
             issue: '检查会话读取失败，请回到工作列表重新选择',
             identity: null,
             demo: { age: null, gender: null },
+            startedAt: null,
           });
         }
       });
@@ -324,6 +329,8 @@ function WorkspaceRoute() {
       annotationArchiveKey={annotationArchiveKey}
       progressChars={flow.progressChars}
       generationPreview={flow.previewText}
+      declaredOrgan={organDisplayName(organ) ?? undefined}
+      sessionStartedAt={sessionMatched ? sessionInfo.startedAt ?? undefined : undefined}
         onConfirm={flow.confirm}
         identity={sessionMatched ? sessionInfo.identity ?? undefined : undefined}
         clinicalSlot={

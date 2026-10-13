@@ -68,6 +68,8 @@ export default function WorkspacePage({
   progressChars,
   /** 安全预览（A.46）：已过段落级 SG 的文本尾部；null = 无预览或 SG 拒绝。 */
   generationPreview,
+  declaredOrgan,
+  sessionStartedAt,
 }: {
   state?: WorkspaceState;
   /**
@@ -105,6 +107,11 @@ export default function WorkspacePage({
   clinicalSlot?: ReactNode;
   progressChars?: number;
   generationPreview?: string | null;
+  /** 影像区角标的**声明部位**中文名（会话 `target_organs[0]`）；不传 = 部位未声明。
+   *  参数角标不得写死器官 —— 写死「甲状腺」会让心脏会话显示错误部位（A.57）。 */
+  declaredOrgan?: string | null;
+  /** 影像区时间角标：会话起始时间（ISO）。影像采集时间未解析，故用它并如实标注。 */
+  sessionStartedAt?: string | null;
 }) {
   const overlay = overlayOf(state);
 
@@ -141,6 +148,8 @@ export default function WorkspacePage({
         dicomFrameOwners={dicomFrameOwners}
         annotationArchiveKey={annotationArchiveKey}
         segmentation={view?.segmentation}
+        declaredOrgan={declaredOrgan}
+        sessionStartedAt={sessionStartedAt}
       />
 
       <WorkspaceConclusion

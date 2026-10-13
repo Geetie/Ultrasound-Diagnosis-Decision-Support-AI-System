@@ -396,10 +396,20 @@ try {
   }
 
   // ---- 帧级归属 / 择优帧（T1-5）----
+  // ---- 判读结论（T1-7 正常路径）----
+  // ⚠️ 顺序：**先等结论落地，再验分割入口**。分割旁路（「跳到该帧」）是**结果的一部分**，
+  // 判读本身要跑完管线（重启后冷启动实测 ~90s+），先等按钮会把「判读慢」误记成
+  // 「分割旁路没出」（A.57 实测踩到：报告里明明有「取自第 6/7 帧」，T1-5a 却报 FAIL）。
+  // 结论已落地之后按钮仍不出现，才是真缺陷。
+  const c1 = await waitConclusion();
+  record('T1-7a', '判读正常完成并出结论（降载的对照腿）', c1.ok, c1.text.slice(0, 90));
+  await shot('c6-conclusion');
+  if (!c1.ok) throw new Error('第一次判读未出结论');
+
   let jump = false;
-  for (let i = 0; i < 60 && !jump; i += 1) {
+  for (let i = 0; i < 12 && !jump; i += 1) {
     jump = (await page.locator('[data-region="segmentation-jump"]').count()) > 0;
-    if (!jump) await sleep(1500);
+    if (!jump) await sleep(1000);
   }
   if (jump) {
     const before = await frameNo();
@@ -416,14 +426,13 @@ try {
     );
     await shot('c5-segmentation-frame');
   } else {
-    record('T1-5a', '「跳到该帧」入口出现（需分割结果）', false, '等了 90s 未出现分割旁路');
+    record(
+      'T1-5a',
+      '「跳到该帧」入口出现（需分割结果）',
+      false,
+      '结论已落地但 12s 内未出现分割旁路入口 —— 结果含分割却没入口属真缺陷（本轮结果见 T1-5b/T1-5c）',
+    );
   }
-
-  // ---- 判读结论（T1-7 正常路径）----
-  const c1 = await waitConclusion();
-  record('T1-7a', '判读正常完成并出结论（降载的对照腿）', c1.ok, c1.text.slice(0, 90));
-  await shot('c6-conclusion');
-  if (!c1.ok) throw new Error('第一次判读未出结论');
 
   // ================= D) 报告页 =================
   const reportBtn = await page.$("button:has-text('报告')");
