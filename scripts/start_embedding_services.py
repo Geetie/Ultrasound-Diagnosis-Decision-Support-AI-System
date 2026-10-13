@@ -342,19 +342,35 @@ class OpenClipBackend:
 
         import joblib
 
-        weights = os.environ.get(
-            "T2A_FT_WEIGHTS",
-            "/mnt/ee16/home/student03/uai/src/reports/t2a_finetune.pt",
-        )
-        probe_path = os.environ.get(
-            "T2A_PROBE",
-            "/mnt/ee16/home/student03/uai/models/t2a_v2/t2a_probe_lr.joblib",
-        )
-        if not (Path(weights).exists() and Path(probe_path).exists()):
+        # A.60：默认路径**必须与资产实际落点一致**，否则表现为 503 让"分类能力静默不可用"
+        # （真机实测：默认写 src/reports/t2a_finetune.pt，而资产在 models/t2a_v2/ 下 →
+        # /v1/classify 全批次 503，而服务健康检查照常 200，排查只能靠翻日志）。
+        # 现在按候选列表逐个探测，全找不到时报错**列出所有尝试过的路径**。
+        def _pick(env_name: str, candidates: list[str]) -> str:
+            env_val = os.environ.get(env_name)
+            pool = ([env_val] if env_val else []) + candidates
+            for c in pool:
+                if c and Path(c).exists():
+                    return str(c)
             raise HTTPException(
                 status_code=503,
-                detail=f"t2a classifier assets missing: {weights} / {probe_path}",
+                detail=f"{env_name} not found; tried: {pool}",
             )
+
+        weights = _pick(
+            "T2A_FT_WEIGHTS",
+            [
+                "/mnt/ee16/home/student03/uai/models/t2a_v2/t2a_finetune.pt",
+                "/mnt/ee16/home/student03/uai/src/reports/t2a_finetune.pt",
+            ],
+        )
+        probe_path = _pick(
+            "T2A_PROBE",
+            [
+                "/mnt/ee16/home/student03/uai/models/t2a_v2/t2a_probe_lr.joblib",
+                "/mnt/ee16/home/student03/uai/src/reports/t2a_probe_lr.joblib",
+            ],
+        )
         sd = torch.load(weights, map_location=self.device, weights_only=True)
         self._t2a_visual = copy.deepcopy(self.model.visual)
         self._t2a_visual.load_state_dict(sd)

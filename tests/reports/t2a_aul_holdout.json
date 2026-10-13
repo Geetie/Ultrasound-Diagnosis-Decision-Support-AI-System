@@ -1,0 +1,49 @@
+{
+  "probe": "p29_t2a_aul_holdout",
+  "generated_at": "2026-10-13 19:15:18",
+  "scope": "public_dataset_holdout_lower_bound",
+  "scope_note": "AUL 为公开集（CC BY 4.0，无患者 ID、与训练数据是否重叠不可证）→ 本数字只作「公开集泛化下界」，**不得**当作注册申报的独立验证（见 21 号 §阶段三-A）",
+  "dataset": {
+    "name": "AUL",
+    "dir": "/mnt/ee16/home/student03/uai/data/aul",
+    "n": 735,
+    "failed": []
+  },
+  "classifier": {
+    "endpoint": "http://127.0.0.1:8003/v1/classify",
+    "mechanism": "finetuned_visual_tower + logistic_probe"
+  },
+  "metrics": {
+    "mal_vs_rest_auc": 0.895,
+    "auc_ci95": [
+      0.8712,
+      0.9168
+    ],
+    "bootstrap_n": 2000,
+    "sensitivity@0.5": 0.9011,
+    "specificity@0.5": 0.6933,
+    "accuracy_3class": 0.7429,
+    "confusion": {
+      "Benign": {
+        "Benign": 82,
+        "Malignant": 114,
+        "Normal": 4,
+        "Unknown": 0
+      },
+      "Malignant": {
+        "Benign": 22,
+        "Malignant": 412,
+        "Normal": 1,
+        "Unknown": 0
+      },
+      "Normal": {
+        "Benign": 42,
+        "Malignant": 6,
+        "Normal": 52,
+        "Unknown": 0
+      }
+    },
+    "gate": 0.75
+  },
+  "wall_s": 6.7
+}
