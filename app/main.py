@@ -35,6 +35,7 @@ from app.api.v1.errors import (
     general_exception_handler,
     http_exception_handler,
 )
+from app.api.v1.eval_set import router as eval_set_router
 from app.api.v1.feedback import router as feedback_router
 from app.api.v1.fhir import router as fhir_router
 from app.api.v1.health import router as health_router
@@ -792,6 +793,8 @@ app.include_router(session_router, prefix="/api/v1/sessions")
 app.include_router(consent_router, prefix="/api/v1/consent")
 app.include_router(device_router, prefix="/api/v1/admin/device")
 app.include_router(feedback_router, prefix="/api/v1/feedback")
+# 评测集进度（只读；数据来自 scripts/langfuse/collect_eval_set.py 的报告文件）
+app.include_router(eval_set_router, prefix="/api/v1/eval-set")
 app.include_router(imaging_router, prefix="/api/v1/imaging")
 app.include_router(annotations_router, prefix="/api/v1/images")
 # 结节分割（app/inference/nodule_segmentation.py；权重缺失时端点 503 + 原因）

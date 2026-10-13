@@ -1,5 +1,5 @@
-import { useCallback, useState } from 'react';
-import { Card, Form, Input, Button, Typography, Radio, message, Select, Space } from 'antd';
+import { useCallback, useEffect, useState } from 'react';
+import { Card, Form, Input, Button, Typography, Radio, message, Select, Space, Progress } from 'antd';
 import { SendOutlined } from '@ant-design/icons';
 import apiClient from '@/services/api';
 import { useSessionStore } from '@/stores/sessionStore';
@@ -8,7 +8,23 @@ import { useTouchAdaptation } from '@/hooks/useTouchAdaptation';
 import { generateFeedbackId } from '@/utils/idGenerator';
 import { getApiErrorMessage } from '@/utils/apiError';
 import VoiceDictationButton from '@/components/voice/VoiceDictationButton';
+import { reportWarn } from '@/utils/errorReport';
 import type { FeedbackRequest } from '@/types/api';
+
+/** `GET /api/v1/eval-set/stats` 的响应（只读进度；后端契约见 app/api/v1/eval_set.py）。 */
+interface EvalSetStats {
+  available: boolean;
+  reason?: string | null;
+  generated_at?: string | null;
+  source?: string | null;
+  total: number;
+  deduped: number;
+  undedupable: number;
+  skipped_no_image: number;
+  doctor_labeled: number;
+  targets: Record<string, number>;
+  progress: Record<string, number>;
+}
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -43,6 +59,29 @@ export default function FeedbackPage() {
   const [form] = Form.useForm<FeedbackFormValues>();
   const sessionId = useSessionStore((s) => s.sessionId);
   const touch = useTouchAdaptation();
+  // A.61：评测集进度（只读）。医生看不到「还有多少没采」就只能靠口口相传 —— 进度必须上屏。
+  const [evalStats, setEvalStats] = useState<EvalSetStats | null>(null);
+  const [evalIssue, setEvalIssue] = useState<string | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    apiClient
+      .get<EvalSetStats>('/eval-set/stats')
+      .then((resp) => {
+        if (alive) setEvalStats(resp.data);
+      })
+      .catch((err: unknown) => {
+        if (!alive) return;
+        // 零静默：读取失败要说出来（页面不崩，给可读原因）。
+        // 固定加前缀：`getApiErrorMessage` 可能返回后端原文（形如 "boom"），
+        // 单独显示它医生不知道是哪块出的问题。
+        reportWarn('eval-set-stats', '评测集进度读取失败', err);
+        setEvalIssue(`评测集进度读取失败：${getApiErrorMessage(err, '请稍后重试')}`);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   // T-GB-FE-05：语音转写落到目标字段，文本保持可编辑
   const handleTranscript = useCallback(
@@ -208,6 +247,69 @@ export default function FeedbackPage() {
               </Button>
             </Form.Item>
           </Form>
+        </Card>
+
+        {/* A.61：评测集进度（**只读**）—— 19 号计划要求「≥700 例进度条 / ≥50 例医生标注坏例」。
+            数据来自 `GET /api/v1/eval-set/stats`（后端只读采集报告，不触发采集）。
+            放在表单**之后**：本页主任务是提交反馈，进度是背景信息，不抢主操作。
+            缺报告/读取失败都要给可读原因（零静默），而不是显示一个假的 0/700。 */}
+        <Card
+          data-region="eval-set-progress"
+          style={{
+            marginTop: 16,
+            background: tokens.color.bg.secondary,
+            border: `1px solid ${tokens.color.border.default}`,
+          }}
+        >
+          <Text strong style={{ fontSize: 13 }}>
+            评测集进度（双引擎）
+          </Text>
+          {evalIssue ? (
+            <div style={{ marginTop: 8 }}>
+              <Text style={{ color: tokens.color.text.secondary, fontSize: 12 }}>
+                {evalIssue}（不影响反馈提交；进度由后端离线采集产生）
+              </Text>
+            </div>
+          ) : !evalStats ? (
+            <div style={{ marginTop: 8 }}>
+              <Text style={{ color: tokens.color.text.secondary, fontSize: 12 }}>读取中…</Text>
+            </div>
+          ) : evalStats.available === false ? (
+            <div style={{ marginTop: 8 }}>
+              <Text style={{ color: tokens.color.text.secondary, fontSize: 12 }}>
+                尚未采集：{evalStats.reason || '无采集报告'}
+              </Text>
+            </div>
+          ) : (
+            <div style={{ marginTop: 10, display: 'grid', gap: 8 }}>
+              <div>
+                <Text style={{ color: tokens.color.text.secondary, fontSize: 12 }}>
+                  样本（去重后）：{evalStats.deduped} / {evalStats.targets?.total ?? 0}
+                </Text>
+                <Progress
+                  percent={Math.round((evalStats.progress?.samples ?? 0) * 100)}
+                  size="small"
+                  strokeColor={tokens.color.accent.secondary}
+                />
+              </div>
+              <div>
+                <Text style={{ color: tokens.color.text.secondary, fontSize: 12 }}>
+                  医生标注坏例（含正确口径）：{evalStats.doctor_labeled} /{' '}
+                  {evalStats.targets?.doctor_labeled ?? 0}
+                </Text>
+                <Progress
+                  percent={Math.round((evalStats.progress?.doctor_labeled ?? 0) * 100)}
+                  size="small"
+                  strokeColor={tokens.color.accent.secondary}
+                />
+              </div>
+              <Text style={{ color: tokens.color.text.secondary, fontSize: 12 }}>
+                判读总数 {evalStats.total} · 无法去重 {evalStats.undedupable} · 无影像跳过{' '}
+                {evalStats.skipped_no_image}
+                {evalStats.generated_at ? ` · 采集于 ${evalStats.generated_at}` : ''}
+              </Text>
+            </div>
+          )}
         </Card>
       </div>
     </div>

@@ -8,7 +8,7 @@ TRACKS_UNIT := tests/unit
 TRACKS_INT := tests/integration/int
 PYTEST_FLAGS := -q -p no:cacheprovider -n 8 --dist=loadfile --timeout=300
 
-.PHONY: help install lint lint-fix test test-unit test-int test-all test-perf cov bench bench-all frontend fe-test fe-lint fe-build fe-smoke edge compose-up
+.PHONY: help install lint lint-fix test test-unit test-int test-all test-perf cov bench bench-all frontend fe-test fe-lint fe-build fe-smoke edge compose-up eval-collect eval-gate
 
 help:
 	@echo "make install     - 安装后端依赖（含开发依赖）"
@@ -79,6 +79,24 @@ fe-build:
 # 环境不具备时脚本默认 SKIP（加 --require 强制判失败）。
 fe-smoke:
 	node scripts/frontend_browser_smoke.mjs
+
+# 评测集（19 号计划）：采集与门控。
+#
+# 为什么单独成目标：19 号把「双引擎评测集 ≥700 例」定为**可持续运营的资产**，
+# 采集/门控必须能一条命令复跑（人肉导出无法去重、无法复现、也无法进 CI）。
+#
+# 采集源是**业务库**（diagnosis_results + feedback_records + dicom_images，见脚本 docstring）；
+# 默认落 ~/uai/data/eval/double_engine_eval_set.jsonl 与 ~/uai/reports/langfuse_eval_set.json
+# （服务器路径；本机跑需自行给 --out/--report）。
+#
+# 门控是**两层**：L1 内容门控（结论非空率/技术串泄漏/降级率/完整性，恒跑、纯 CPU）
+# + L2 忠实度（faithfulness ≥0.95 / 相关性 ≥0.90，需 LLM 判官；本仓库暂无判官脚本，
+# 缺判官报告时脚本如实记 `not_run`，**不**假装达标也不整体判红）。
+eval-collect:
+	$(PY) scripts/langfuse/collect_eval_set.py
+
+eval-gate:
+	$(PY) scripts/langfuse/eval_gate.py
 
 # 开发机（无 TensorRT）启动边缘端：自动退回空导航后端，链路仍可跑通
 edge:

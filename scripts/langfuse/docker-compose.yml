@@ -4,8 +4,15 @@
 name: langfuse
 
 services:
+  # ⚠️ A.61 修复：web 与 worker 是**两个不同的镜像**！
+  # 原先两者都用 `langfuse/langfuse:3`，于是"worker"容器实际跑的是 `./web/server.js`
+  # （web 入口），**没有任何队列消费者** —— 现象：OTLP 导出返回 200、Redis 里
+  # `bull:otel-ingestion-queue:wait` 一直堆积 job，而 ClickHouse `traces` 恒为 0
+  # （Langfuse 界面"一条 trace 都没有"）。真机证据：worker 容器 `ps` 显示
+  # `node ./web/server.js`，镜像 Cmd 即 web 入口。
+  # 官方自托管 compose 的 worker 用 `langfuse/langfuse-worker:3`（自带 worker 入口）。
   langfuse-worker:
-    image: ghcr.io/langfuse/langfuse:3
+    image: ghcr.io/langfuse/langfuse-worker:3
     restart: unless-stopped
     depends_on: &langfuse-depends
       postgres:
@@ -44,10 +51,16 @@ services:
       LANGFUSE_S3_MEDIA_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
       LANGFUSE_S3_MEDIA_ENDPOINT: http://minio:9000
       LANGFUSE_S3_MEDIA_FORCE_PATH_STYLE: "true"
-      # ⚠️ A.60 修复：redis 服务带 `--requirepass`，URL 里**必须带密码** ——
-      # 原先写 `redis://redis:6379`（无密码）→ Langfuse 起不来 OTLP 摄取队列
-      # （容器日志 "Failed to instantiate otel ingestion queue" / "Redis not initialized"），
-      # 外部表现为**每条 trace 导出都被 500 拒绝、界面上一条都没有**（真机 2026-10-10 起）。
+      # ⚠️ A.61 修复（两处，缺一不可）：Redis 连接串
+      #
+      # ① **变量名必须是 `REDIS_CONNECTION_STRING`** —— Langfuse v3 镜像的构建产物里
+      #    只读这个名（以及 REDIS_HOST/PORT/AUTH 回退），**不读 `REDIS_URL`**；
+      #    只设 `REDIS_URL` 时 Redis 客户端等于没配置 → OTLP 摄取队列起不来
+      #    （`Failed to instantiate otel ingestion queue`，表现为"每条 trace 导出都被 500 拒、
+      #    界面上一条都没有"，而 UI/Postgres 侧完全正常，极难察觉）。
+      # ② **URL 里必须带密码** —— redis 服务带 `--requirepass ${REDIS_PASSWORD}`。
+      # 两者都在（REDIS_URL 供其它组件/人读），语义一致。
+      REDIS_CONNECTION_STRING: redis://:${REDIS_PASSWORD}@redis:6379
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       LANGFUSE_ENABLE_OTLP_TRACES: "true"
       # 首启自动初始化 org/project + 固定 API keys（评测管线可脚本化引用）
