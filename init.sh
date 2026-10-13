@@ -6,6 +6,11 @@
 #   ./init.sh --full     # 全量：make test（单元 + INT 集成，约数分钟）
 #   ./init.sh --skip-tests   # 只做环境自检（用于快速开工）
 #
+# 运行姿态（A.58 实测）：本仓库 Windows 工作副本是 CRLF。用 **Git Bash** 跑最稳
+# （`"C:\Program Files\Git\bin\bash.exe" -lc "./init.sh"`）；**WSL 的 bash 直接跑会报
+# `set: pipefail: invalid option name`**（CRLF 让 `set -euo pipefail` 变成 `pipefail\r`），
+# 此时用 `tr -d '\r' < init.sh | bash -s`（在仓库根目录执行，脚本会按 cwd 定位）。
+#
 # 设计约束：fail-fast（set -e），任何一步失败即非零退出——不要用「跑完再说」的心态。
 set -euo pipefail
 
