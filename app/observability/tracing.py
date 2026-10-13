@@ -228,6 +228,26 @@ def _setup_exporter(provider) -> None:
                 if "=" in part:
                     k, _, v = part.partition("=")
                     headers[k.strip()] = v.strip()
+            # A.60（零静默）：**必须校验 auth 头本身是否成形**。真机实测（2026-10-13）：
+            # `~/uai/.env` 里 `OBS_TRACING_OTLP_HEADERS=Authorization=Basic cGst...`
+            # 没加引号，启动脚本 `set -a; source .env` 按空格断词 → 进程环境里只剩
+            # `Authorization=Basic`（凭据被当成命令丢掉）→ 每次导出都被 Langfuse 401 拒，
+            # **而应用侧只有一行 "auth=True" 的 info**（它只判"有没有 headers"，不判内容）——
+            # 结果是"tracing 开着、界面上一条 trace 都没有"，排查全靠猜。
+            malformed = [
+                k for k, v in headers.items()
+                if k.lower() == "authorization" and len(v.split(None, 1)[-1]) < 16
+            ]
+            if malformed:
+                _logger.warning(
+                    "otlp_auth_header_looks_malformed",
+                    header=",".join(malformed),
+                    hint=(
+                        "Authorization 头疑似被截断（值里含空格时 .env 必须加引号，"
+                        "否则 `source .env` 会按空格断词）—— 导出会被接收端 401 拒绝，"
+                        "而界面上表现为「一条 trace 都没有」"
+                    ),
+                )
         endpoint = settings.obs_tracing_otlp_endpoint
         exporter = None
         try:
