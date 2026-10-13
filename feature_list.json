@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "project": "超声诊疗决策支持 AI 系统",
   "updated_at": "2026-10-13",
-  "head_commit": "c98c112",
+  "head_commit": "4970d5c",
   "branch": "main",
   "status_legend": {
     "done": "已交付且有证据（命令/报告/测试）",
