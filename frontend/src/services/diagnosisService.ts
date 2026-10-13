@@ -152,6 +152,26 @@ export function extractStageTimings(result: DiagnosisResult | null): StageTiming
  */
 export const RESULT_WAIT_MS = 210_000;
 
+/**
+ * 结果接口的**终态**集合。
+ *
+ * ⚠️ `needs_review` 是**终态** —— 判读已经完成，只是要求人工复核（A.59 真机实测：
+ * 它原先不在终态判断里，于是「待复核」的检查被前端当成"还在跑"，界面永远停在
+ * 「分析中 已用时 N 秒」，医生既看不到结论也走不到报告与签名；与 A.28「timeout
+ * 不当终态」是**同一族**缺陷）。`cancelled` 同理（服务端会给出该状态）。
+ *
+ * 判据：**服务端语义**为准（`/api/v1/diagnosis/result/{rid}` 的 `status`）。
+ * 后端已终态的状态集合见 `scripts/audit/p27_grade_extraction.py` 的轮询条件。
+ */
+export const TERMINAL_RESULT_STATUSES = [
+  'completed',
+  'needs_review',
+  'failed',
+  'cancelled',
+  // 服务端把"超过 result_read_timeout_seconds 仍 processing"标成 timeout
+  'timeout',
+] as const;
+
 export interface PollOptions {
   signal?: AbortSignal;
   firstPollDelay?: number;
@@ -242,9 +262,9 @@ export function pollDiagnosisResult(
         // 标成它。不当作终态的话，客户端会一直轮询到 maxWaitMs 才放弃，
         // 期间界面停在「分析中」—— 医生看到的是"还在跑"，而后台早已判超时。
         if (
-          result.status === 'completed' ||
-          result.status === 'failed' ||
-          result.status === 'timeout'
+          TERMINAL_RESULT_STATUSES.includes(
+            result.status as (typeof TERMINAL_RESULT_STATUSES)[number],
+          )
         ) {
           // 结果已到：阶段切换为真实（estimated=false），再由调用方分段揭示
           emitStage({

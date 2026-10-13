@@ -45,6 +45,42 @@ describe('pollDiagnosisResult · 终态判定', () => {
     vi.useRealTimers();
   });
 
+  it('status=needs_review 也是终态：待复核的检查不许停在「分析中」（A.59 真机实测）', async () => {
+    // 真机 p28 抓到的形态：判读已完成、只是要求人工复核（status=needs_review），
+    // 而终态判断原先只认 completed/failed/timeout → 前端当"还在跑"，
+    // 界面永远停在「分析中 已用时 N 秒」，医生看不到结论也走不到报告与签名。
+    vi.mocked(apiClient.get).mockResolvedValue({ data: result('needs_review') });
+    const onResult = vi.fn();
+    const onTimeout = vi.fn();
+
+    pollDiagnosisResult('req_1', onResult, onTimeout, {
+      firstPollDelay: 10,
+      pollInterval: 100,
+      maxWaitMs: RESULT_WAIT_MS,
+    });
+    await vi.advanceTimersByTimeAsync(50);
+
+    expect(onResult).toHaveBeenCalledTimes(1);
+    expect((onResult.mock.calls[0][0] as { status: string }).status).toBe('needs_review');
+    expect(onTimeout).not.toHaveBeenCalled();
+  });
+
+  it('status=cancelled 也是终态（服务端会给出该状态）', async () => {
+    vi.mocked(apiClient.get).mockResolvedValue({ data: result('cancelled') });
+    const onResult = vi.fn();
+    const onTimeout = vi.fn();
+
+    pollDiagnosisResult('req_1', onResult, onTimeout, {
+      firstPollDelay: 10,
+      pollInterval: 100,
+      maxWaitMs: RESULT_WAIT_MS,
+    });
+    await vi.advanceTimersByTimeAsync(50);
+
+    expect(onResult).toHaveBeenCalledTimes(1);
+    expect(onTimeout).not.toHaveBeenCalled();
+  });
+
   it('status=timeout 也算终态：立刻回调而不是继续轮询到上限', async () => {
     vi.mocked(apiClient.get).mockResolvedValue({ data: result('timeout') });
     const onResult = vi.fn();

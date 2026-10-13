@@ -104,12 +104,25 @@ async function api(method, p, body, token) {
   return { status: r.status, json: await r.json().catch(() => null) };
 }
 
-/** 挑一个「有影像 + 已有判读请求」的会话（这样打开工作区就能同时验影像区与结论区）。 */
+/** 挑一个「有影像 + 判读已到终态且有结论」的会话（这样打开工作区就能同时验影像区与结论区）。 */
 async function pickSession(token) {
   const r = await api('GET', `/api/v1/patients/${encodeURIComponent(PATIENT)}/sessions?limit=30`, null, token);
   const items = r.json?.items || [];
-  const hit = items.find((x) => x.first_image_id && x.request_id);
-  return hit || null;
+  // A.59 修正：原先只要「有影像 + 有 request_id」就选 —— 于是会挑到**刚发起、仍在 processing**
+  // 的会话，结论区只显示「分析中 已用时 N 秒」→ P28-2 假 FAIL（真机实测：p27 刚跑完时中招）。
+  // 判据改为「该 request 已到终态（completed / needs_review）」。
+  for (const x of items) {
+    if (!x.first_image_id || !x.request_id) continue;
+    const res = await api(
+      'GET',
+      `/api/v1/diagnosis/result/${encodeURIComponent(x.request_id)}`,
+      null,
+      token,
+    );
+    const status = res.json?.status;
+    if (status === 'completed' || status === 'needs_review') return { ...x, status };
+  }
+  return null;
 }
 
 /** 结论区是否出现**真实字段**（占位文案不算）。 */
@@ -137,6 +150,8 @@ async function snapshot() {
     loadError,
     conclusionReal: REAL_CONCLUSION.test(conclusionText) && !PLACEHOLDER.test(conclusionText),
     conclusionHead: conclusionText.slice(0, 80),
+    // 全文另存：P28-4 要按标记扫**整段**正文（只给 head 会漏掉后半段的技术串）
+    conclusion: conclusionText,
   };
 }
 
@@ -156,9 +171,22 @@ async function waitFor(pred, windowMs) {
 function runPil(shots, jsonOut, expectPass) {
   const argsList = [path.resolve('scripts/degradation_visibility.py'), '--json-out', jsonOut];
   for (const s of shots) argsList.push('--shot', s);
-  const res = execFileSync('python', argsList, { encoding: 'utf-8' });
-  const parsed = JSON.parse(fs.readFileSync(jsonOut, 'utf-8'));
-  return { exitOk: true, out: res.trim(), parsed, expectPass };
+  // ⚠️ PIL 脚本以**退出码**表达判定（0=达标 / 1=判红 / 2=缺输入）。`execFileSync` 在
+  // 非零退出时**抛异常** —— 不加这层 try/catch 的话：①「判红」这一条腿会让整个探针崩在
+  // 半路（探测框架自己的 bug）；②真正的判定理由（JSON 里的方差）读不到。
+  // 正确姿势：捕获异常，**照读 JSON**，把判定交给调用方（A.59 实测踩到）。
+  let exitOk = true;
+  let stdout = '';
+  try {
+    stdout = execFileSync('python', argsList, { encoding: 'utf-8' }).trim();
+  } catch (err) {
+    exitOk = false;
+    stdout = String(err?.stdout || err?.message || '').trim();
+  }
+  const parsed = fs.existsSync(jsonOut)
+    ? JSON.parse(fs.readFileSync(jsonOut, 'utf-8'))
+    : null;
+  return { exitOk, out: stdout, parsed, expectPass };
 }
 
 let failed = false;
@@ -217,11 +245,13 @@ try {
     'parse_failed',
     'manual review required',
   ];
-  const leaked = TECH_MARKERS.filter((m) => real.snap.conclusion.includes(m));
+  // ⚠️ 必须扫**结论腿那一刻**的快照（`concl.snap`）—— 用影像腿的 `real.snap` 会扫到
+  // 还没出结论时的「分析中」占位，等于**守卫查错了对象**（detail 还会误导读者）。
+  const leaked = TECH_MARKERS.filter((m) => concl.snap.conclusion.includes(m));
   record(
     'P28-4 结论正文不含英文键值对/器官代码（A.59 可读化）',
     leaked.length === 0,
-    leaked.length ? `leaked=${JSON.stringify(leaked)}` : `正文=${real.snap.conclusionHead || '(空)'}`,
+    leaked.length ? `leaked=${JSON.stringify(leaked)}` : `正文=${concl.snap.conclusionHead || '(空)'}`,
   );
 
   const imgShot = `${OUT}/p28-image.png`;
