@@ -161,7 +161,10 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--aul-dir", default=str(Path.home() / "uai" / "data" / "aul"))
     ap.add_argument("--clip-url", default="http://127.0.0.1:8003")
-    ap.add_argument("--manifest", default="data/eval/t2a_aul_manifest.json")
+    # ⚠️ A.60：清单默认放 `tests/reports/`（与 t2a 报告同处）而不是 21 号草拟的 `data/eval/` ——
+    # 仓库的 `.gitignore` 忽略 `data/`，放那里会导致**冻结清单进不了版控**（本轮实测踩到），
+    # 而"冻结清单"的价值恰恰在于可追溯。
+    ap.add_argument("--manifest", default="tests/reports/t2a_aul_manifest.json")
     ap.add_argument("--report", default="reports/t2a_aul_holdout.json")
     ap.add_argument("--batch", type=int, default=16)
     ap.add_argument("--bootstrap", type=int, default=2000)

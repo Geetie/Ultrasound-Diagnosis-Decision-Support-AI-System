@@ -1,0 +1,4418 @@
+{
+  "_note": "AUL 公开集冻结清单（A.60）：相对路径 + 标签 + sha256；复跑前逐条校验，防换集刷分",
+  "dataset": "AUL (CC BY 4.0, Zenodo 7272660)",
+  "scope": "public_dataset_holdout_lower_bound",
+  "count": 735,
+  "items": [
+    {
+      "path": "Benign/image/1.jpg",
+      "label": "Benign",
+      "sha256": "27044d58173904454a83cfcd0af77852c8656724df00a162c060a686f4de861f",
+      "bytes": 147893
+    },
+    {
+      "path": "Benign/image/10.jpg",
+      "label": "Benign",
+      "sha256": "329eba16bda5031d59f78d65b1e7def03f271f4da48bdf8082a8e5498ee53fda",
+      "bytes": 89388
+    },
+    {
+      "path": "Benign/image/100.jpg",
+      "label": "Benign",
+      "sha256": "b8fcc86fa0225b79fe5728958cd2a494eac72d4e1012cbdf716695ec78b4a687",
+      "bytes": 105861
+    },
+    {
+      "path": "Benign/image/101.jpg",
+      "label": "Benign",
+      "sha256": "0c56a1318590b31cffffc74fd7dec0d02e42a77c2943b3cb0d89afc5f4b7ee52",
+      "bytes": 71571
+    },
+    {
+      "path": "Benign/image/102.jpg",
+      "label": "Benign",
+      "sha256": "7b3a6977d8df202e20e6b9c1856b421f828b402336183bfe57f97038531e3fa5",
+      "bytes": 62170
+    },
+    {
+      "path": "Benign/image/103.jpg",
+      "label": "Benign",
+      "sha256": "7209c0dae7e44526d99f2d3a33d2ecef57a99474ca2fdadcec878915f668b04a",
+      "bytes": 43472
+    },
+    {
+      "path": "Benign/image/104.jpg",
+      "label": "Benign",
+      "sha256": "28d57769034c5543762a3e81c144ce9df595ad9c238edb329abfd7e91fbe4eae",
+      "bytes": 41693
+    },
+    {
+      "path": "Benign/image/105.jpg",
+      "label": "Benign",
+      "sha256": "70e5e42947cf7c0ece43b0cfb2672c7994ffc835497f71f29a24fe3213a8a2fa",
+      "bytes": 54639
+    },
+    {
+      "path": "Benign/image/106.jpg",
+      "label": "Benign",
+      "sha256": "b7693812ad69e0f887e4a1365fbb800677c7b662360a478edcbf274a51e74f9a",
+      "bytes": 100994
+    },
+    {
+      "path": "Benign/image/107.jpg",
+      "label": "Benign",
+      "sha256": "ce7a8c266dce660e1517a2fa59bf7f398d880144c8385dfee807b592985d95bb",
+      "bytes": 75767
+    },
+    {
+      "path": "Benign/image/108.jpg",
+      "label": "Benign",
+      "sha256": "a473d68cfa153b176a9c70639d172e34cf93b9b13d6046adb8afb4e830195487",
+      "bytes": 130858
+    },
+    {
+      "path": "Benign/image/109.jpg",
+      "label": "Benign",
+      "sha256": "d63f4cabcaeafee5252c0afcad7d4f415460358376c617994fbff9da6346d2a6",
+      "bytes": 71445
+    },
+    {
+      "path": "Benign/image/11.jpg",
+      "label": "Benign",
+      "sha256": "883dc30e1d9fda5490745c57fd94bb22be81e118beb5145642471b7223658f4b",
+      "bytes": 109979
+    },
+    {
+      "path": "Benign/image/110.jpg",
+      "label": "Benign",
+      "sha256": "b57efc269367dd045549aff1611ff150550313f0550da73e0f98de5105282024",
+      "bytes": 105543
+    },
+    {
+      "path": "Benign/image/111.jpg",
+      "label": "Benign",
+      "sha256": "c904128268e193b59d8c54718efce81020038bda789f0669f90540e38aff7c12",
+      "bytes": 144456
+    },
+    {
+      "path": "Benign/image/112.jpg",
+      "label": "Benign",
+      "sha256": "d7db838e553becd8fa489b85e640ba003f8e68fc0617074976bd7aeac8523ec8",
+      "bytes": 68852
+    },
+    {
+      "path": "Benign/image/113.jpg",
+      "label": "Benign",
+      "sha256": "3133603c86fffdc4911f94cc8066acb9d4a2ba116f1ef2e47a27cfd52ba4a972",
+      "bytes": 81725
+    },
+    {
+      "path": "Benign/image/114.jpg",
+      "label": "Benign",
+      "sha256": "abe5ccca862d22e764dece64cd5ad40642ab080da4bea651ba4aa24c7254ac6b",
+      "bytes": 63819
+    },
+    {
+      "path": "Benign/image/115.jpg",
+      "label": "Benign",
+      "sha256": "0e174aa13c70496a39f1580af8b30fb0ef6ce6067c2f13827044915de09203dc",
+      "bytes": 124965
+    },
+    {
+      "path": "Benign/image/116.jpg",
+      "label": "Benign",
+      "sha256": "f36d2118bb41616b2651062661c48532723c88ea1c960d7750434e5de8cb11a2",
+      "bytes": 135318
+    },
+    {
+      "path": "Benign/image/117.jpg",
+      "label": "Benign",
+      "sha256": "4633f3ce3227b5c3b53adf0d648373920d63930ef203cf60672cdd46144a7343",
+      "bytes": 76324
+    },
+    {
+      "path": "Benign/image/118.jpg",
+      "label": "Benign",
+      "sha256": "cdf55490a80798f403362565558637daac251a9de16da5e0228dbaf5970e09e1",
+      "bytes": 107645
+    },
+    {
+      "path": "Benign/image/119.jpg",
+      "label": "Benign",
+      "sha256": "fb8ffbdb13f5d4a339958f9beca61f09c42181bde10d9c07d11c4c5fe482ebf2",
+      "bytes": 136912
+    },
+    {
+      "path": "Benign/image/12.jpg",
+      "label": "Benign",
+      "sha256": "af6a426af4535d186ebc21a008f703e5a0de7cc6b827bc742e9039e35069d1e9",
+      "bytes": 56802
+    },
+    {
+      "path": "Benign/image/120.jpg",
+      "label": "Benign",
+      "sha256": "cef3021ef37e75b7c72bc4c8b048a64db21ae53013356d68e1003c50c372bc3d",
+      "bytes": 151595
+    },
+    {
+      "path": "Benign/image/121.jpg",
+      "label": "Benign",
+      "sha256": "e9d37edd10e197c69aa8daf343fce5b97d710a081be63c11457a886b8d5ebca5",
+      "bytes": 113108
+    },
+    {
+      "path": "Benign/image/122.jpg",
+      "label": "Benign",
+      "sha256": "c6b462713b39ca1b8f12a0db53afdf38728ca53882050e6694bb84b6017d6a6b",
+      "bytes": 90705
+    },
+    {
+      "path": "Benign/image/123.jpg",
+      "label": "Benign",
+      "sha256": "eddd298d0cafb18a3a7c04fb4addbcf62c2a98cd093fa8dccf27d409efaaac73",
+      "bytes": 82117
+    },
+    {
+      "path": "Benign/image/124.jpg",
+      "label": "Benign",
+      "sha256": "0ca582c2841af3e0e15e2dc5d73a95a337dc9410ebd61605e3b48a6cb6289a13",
+      "bytes": 88449
+    },
+    {
+      "path": "Benign/image/125.jpg",
+      "label": "Benign",
+      "sha256": "cc75eea570027522fca63fdd327ddde0af433821353ca0d2d5e8de350487e1b1",
+      "bytes": 152067
+    },
+    {
+      "path": "Benign/image/126.jpg",
+      "label": "Benign",
+      "sha256": "9cea8fc24b59edbd0d2c3585df70ee72c9fa5ea4f16533e51aad42bf295cd22a",
+      "bytes": 90050
+    },
+    {
+      "path": "Benign/image/127.jpg",
+      "label": "Benign",
+      "sha256": "801dbc16bdaff75e0b7ff5da0afbf85cd5d13ac99f4d4f296ff6c249c1f94a5c",
+      "bytes": 83140
+    },
+    {
+      "path": "Benign/image/128.jpg",
+      "label": "Benign",
+      "sha256": "092ddd40b953504e4d4e35a1abb6a2301dd500166e76c50b1851d014a127d99e",
+      "bytes": 79378
+    },
+    {
+      "path": "Benign/image/129.jpg",
+      "label": "Benign",
+      "sha256": "536f796d4ee5526ea954e82820379aa71930bd4f3f7a1b5ed0929000cba17d08",
+      "bytes": 74425
+    },
+    {
+      "path": "Benign/image/13.jpg",
+      "label": "Benign",
+      "sha256": "86c09ed8c157e6b825060060397051cd7389315f8f155ab3a3500d27deee600d",
+      "bytes": 63754
+    },
+    {
+      "path": "Benign/image/130.jpg",
+      "label": "Benign",
+      "sha256": "c07447dd7799ed711ac16d3aa13ce86e7a2c51857c099c319f74f7923ac850f4",
+      "bytes": 59034
+    },
+    {
+      "path": "Benign/image/131.jpg",
+      "label": "Benign",
+      "sha256": "d24ac667e53ae39c67cb8ce5cc57850a33b9ce3b8aeed1be15b520c87c863499",
+      "bytes": 99194
+    },
+    {
+      "path": "Benign/image/132.jpg",
+      "label": "Benign",
+      "sha256": "86f77b78532bf2e4a23725944844d425cf787352d32780bf1a401b48807726a7",
+      "bytes": 79920
+    },
+    {
+      "path": "Benign/image/133.jpg",
+      "label": "Benign",
+      "sha256": "3406131dc30ed4d38e456535a87e9da795a3d198249b8acee42a8e064826b672",
+      "bytes": 130880
+    },
+    {
+      "path": "Benign/image/134.jpg",
+      "label": "Benign",
+      "sha256": "d32f46c8e6d2007d711467b6ad352758cbfbe379fdb2b1ec3754ef4249af3adf",
+      "bytes": 69380
+    },
+    {
+      "path": "Benign/image/135.jpg",
+      "label": "Benign",
+      "sha256": "ec71e599bddf1ccad6c27943f07073c1c73f91e13fced770b30a24f2770f9f07",
+      "bytes": 79892
+    },
+    {
+      "path": "Benign/image/136.jpg",
+      "label": "Benign",
+      "sha256": "5f35c8884974ab0c27e6db11831fb6d86488c32c63b82ad1b0bd2265f7851e23",
+      "bytes": 86321
+    },
+    {
+      "path": "Benign/image/137.jpg",
+      "label": "Benign",
+      "sha256": "321237aa941e95a524e6ff10add37b7b752400cbd5d0df2433322403cef0cfe3",
+      "bytes": 42410
+    },
+    {
+      "path": "Benign/image/138.jpg",
+      "label": "Benign",
+      "sha256": "b7764e34a1e0ccdafa293e0a425c67350d2099e5d60e40b7770150c9fcd755b6",
+      "bytes": 64556
+    },
+    {
+      "path": "Benign/image/139.jpg",
+      "label": "Benign",
+      "sha256": "a6f371a577f90902b195ebfe68b285305ae21d236a1e3e0d8d80dbc69d12f8ca",
+      "bytes": 83556
+    },
+    {
+      "path": "Benign/image/14.jpg",
+      "label": "Benign",
+      "sha256": "8ecd8e4237dd83a9dfa9227b64b5d250b3bce2af4206dc00665178def64ba557",
+      "bytes": 126968
+    },
+    {
+      "path": "Benign/image/140.jpg",
+      "label": "Benign",
+      "sha256": "79fb6ab65611bc86cdbb9931a545759ac4672788686e77f442a6845a9e6b04d8",
+      "bytes": 143419
+    },
+    {
+      "path": "Benign/image/141.jpg",
+      "label": "Benign",
+      "sha256": "595a4436851bc3168cec643fa7f65f3b5fd7f8b1623c39fe4fe5b8b1777b840d",
+      "bytes": 67843
+    },
+    {
+      "path": "Benign/image/142.jpg",
+      "label": "Benign",
+      "sha256": "e92b35e6d40954a46596b5db63d4f794b16fb87cf04705593ccdb9ba186b6f19",
+      "bytes": 57373
+    },
+    {
+      "path": "Benign/image/143.jpg",
+      "label": "Benign",
+      "sha256": "d17a6bb27eaaeae84ecd35eb1688e67166f2e139d796cedc0570b44813120000",
+      "bytes": 68953
+    },
+    {
+      "path": "Benign/image/144.jpg",
+      "label": "Benign",
+      "sha256": "12213205a235ac65762a8a69c690d57135eea693c96d8712e0f20b3acbcf9a81",
+      "bytes": 94629
+    },
+    {
+      "path": "Benign/image/145.jpg",
+      "label": "Benign",
+      "sha256": "29b1984a0b0b5d4d81ebdba33b253684e3bce26a45c4c14c80e8866f5a8fd10b",
+      "bytes": 55587
+    },
+    {
+      "path": "Benign/image/146.jpg",
+      "label": "Benign",
+      "sha256": "4436d33e589626ea89daba19ebb14a7bd563ebeedb19c62760f84f5114f682e2",
+      "bytes": 58517
+    },
+    {
+      "path": "Benign/image/147.jpg",
+      "label": "Benign",
+      "sha256": "921790c6ca58873594cee4aba21a5d4d7f3b4b0e9d88203ff9603a03fc39d93d",
+      "bytes": 90664
+    },
+    {
+      "path": "Benign/image/148.jpg",
+      "label": "Benign",
+      "sha256": "b2389e2c813183726e4fdf2786c2694bb9fedb37e829d642d2c4945eef8f12b0",
+      "bytes": 120798
+    },
+    {
+      "path": "Benign/image/149.jpg",
+      "label": "Benign",
+      "sha256": "2a6b7267a78ae55e8f1e20d12fe4c7318e21b45438b6961423dcb80c5fb0d2f0",
+      "bytes": 124834
+    },
+    {
+      "path": "Benign/image/15.jpg",
+      "label": "Benign",
+      "sha256": "7c5b93245d6003dc8c7cc56f2396c0a3e05cf24f913f0ffac4f176c03fc69a65",
+      "bytes": 114820
+    },
+    {
+      "path": "Benign/image/150.jpg",
+      "label": "Benign",
+      "sha256": "7abd9863272a549b398ef82f89ad8c4081bd5256a711b87a9fca615847e0086f",
+      "bytes": 133385
+    },
+    {
+      "path": "Benign/image/151.jpg",
+      "label": "Benign",
+      "sha256": "9468d786a88dad485236fdd304c82b04f2050508c63990b7f771081782e047c2",
+      "bytes": 52860
+    },
+    {
+      "path": "Benign/image/152.jpg",
+      "label": "Benign",
+      "sha256": "4a360a6e6eeb7810ce51b84d4ab69a6de4628fe39fe7fc934e2e4a6c2f38831a",
+      "bytes": 133593
+    },
+    {
+      "path": "Benign/image/153.jpg",
+      "label": "Benign",
+      "sha256": "5a1cbe6bfa31845ec64b213421a06aebf95e8b7a6a09842988ea818fdb4fe371",
+      "bytes": 63570
+    },
+    {
+      "path": "Benign/image/154.jpg",
+      "label": "Benign",
+      "sha256": "fd87d1f920adc19b5746f096c752846b467a576a0f5b7a76d4d23304d19c50e0",
+      "bytes": 57527
+    },
+    {
+      "path": "Benign/image/155.jpg",
+      "label": "Benign",
+      "sha256": "415b3607e768f5eacd5109609d8be091ab0e15289f55d957b4908c1303b87804",
+      "bytes": 90480
+    },
+    {
+      "path": "Benign/image/156.jpg",
+      "label": "Benign",
+      "sha256": "9289090876dd51ad3b833893a3e0eac603a7dbf5fe666b10f708f3c814bcf7ff",
+      "bytes": 145281
+    },
+    {
+      "path": "Benign/image/157.jpg",
+      "label": "Benign",
+      "sha256": "a971fdc7b25676a0482d09d73b0f890c7fa996a8fee83ea49f592d85d175608d",
+      "bytes": 75145
+    },
+    {
+      "path": "Benign/image/158.jpg",
+      "label": "Benign",
+      "sha256": "cb03fd9a0c2bcb62cf2d0b6ddeaaec71a95ddd707e36369ef59b83ef4f9e5065",
+      "bytes": 54729
+    },
+    {
+      "path": "Benign/image/159.jpg",
+      "label": "Benign",
+      "sha256": "3bc551d3927ac43e88c527b82af9e414c6820fad89df14b035e2158ba042fbc8",
+      "bytes": 115573
+    },
+    {
+      "path": "Benign/image/16.jpg",
+      "label": "Benign",
+      "sha256": "538237c9d5a1848d72c0d2145c29409186e83a913537c627f9865d9efd7c25c9",
+      "bytes": 147702
+    },
+    {
+      "path": "Benign/image/160.jpg",
+      "label": "Benign",
+      "sha256": "e6de57921d070a91439aca965eb1d720a5195c7d77ff08c1c39c5ba9bf9a7165",
+      "bytes": 98318
+    },
+    {
+      "path": "Benign/image/161.jpg",
+      "label": "Benign",
+      "sha256": "6ed8b8001e12351f80ab383141d1bb22beeb535476619081190851aa4211b35f",
+      "bytes": 69624
+    },
+    {
+      "path": "Benign/image/162.jpg",
+      "label": "Benign",
+      "sha256": "da0e1f5873042dd9feebd7a16dad1ab96c7bb9dadc34e4e8378d179f2fb5daea",
+      "bytes": 55920
+    },
+    {
+      "path": "Benign/image/163.jpg",
+      "label": "Benign",
+      "sha256": "94bce1d3f13d92cab03b8f3eb469b965bc52629641ac9ff572c89c3fc7ed4480",
+      "bytes": 77592
+    },
+    {
+      "path": "Benign/image/164.jpg",
+      "label": "Benign",
+      "sha256": "6d65bdba96a0ad805d7e65e2b3c9206a959000acae159e4dd3e3393dddbdad96",
+      "bytes": 145162
+    },
+    {
+      "path": "Benign/image/165.jpg",
+      "label": "Benign",
+      "sha256": "9a04fd63702981e4e4b7b018bc52f0768be96cf2249e8b843dffde08f4fed6be",
+      "bytes": 79617
+    },
+    {
+      "path": "Benign/image/166.jpg",
+      "label": "Benign",
+      "sha256": "7b31413d4d14c942245fb634f4b7ee621b9157e60f16afe24103cf79eae78fc2",
+      "bytes": 67581
+    },
+    {
+      "path": "Benign/image/167.jpg",
+      "label": "Benign",
+      "sha256": "e2f6ad9e6a00c338fd6cd222d224e308ada53d0ebcf55b75da92082f61627d44",
+      "bytes": 56765
+    },
+    {
+      "path": "Benign/image/168.jpg",
+      "label": "Benign",
+      "sha256": "5e8ac9cfd87014347a139d36440e0124d4e5795ba5962bf735891cca84f009f5",
+      "bytes": 98245
+    },
+    {
+      "path": "Benign/image/169.jpg",
+      "label": "Benign",
+      "sha256": "c70952e0779693c560889561835b554ec457a834db4df323531671e2b0baa3b4",
+      "bytes": 58014
+    },
+    {
+      "path": "Benign/image/17.jpg",
+      "label": "Benign",
+      "sha256": "b6431375e68314d02c1524e0b2f7f4fc9731d6f0e03d278197dfdc945de2751f",
+      "bytes": 74053
+    },
+    {
+      "path": "Benign/image/170.jpg",
+      "label": "Benign",
+      "sha256": "6780185c67d0257f51cb0a28cbb5a0612db37d75e1c7191fa42fb3938f2bb8c7",
+      "bytes": 74034
+    },
+    {
+      "path": "Benign/image/171.jpg",
+      "label": "Benign",
+      "sha256": "ddd96a60fd7db027f20ba042bc252352ba94e0089db53bd2b1dcc705e26d9fba",
+      "bytes": 59253
+    },
+    {
+      "path": "Benign/image/172.jpg",
+      "label": "Benign",
+      "sha256": "b3be62cdd69ce8e3d3b5ea24b9844e506cacf8e3646cb30431d949c32dd7deb5",
+      "bytes": 40955
+    },
+    {
+      "path": "Benign/image/173.jpg",
+      "label": "Benign",
+      "sha256": "55be17dc136bbad412b3f39d9f20765884a227bceb78ea60129821116b7722fd",
+      "bytes": 93349
+    },
+    {
+      "path": "Benign/image/174.jpg",
+      "label": "Benign",
+      "sha256": "aa59c314bf6736acc58048314b8a6c4c0a8b961546c16670323f0466c5cd5b17",
+      "bytes": 64678
+    },
+    {
+      "path": "Benign/image/175.jpg",
+      "label": "Benign",
+      "sha256": "5d97b449180798a7e7363d5ca91c54193346e02386e63366ce14d61d123c4ba8",
+      "bytes": 80901
+    },
+    {
+      "path": "Benign/image/176.jpg",
+      "label": "Benign",
+      "sha256": "3330c23666405c771b3f51460473d8c343f430cac411ddde65c2fda26891726e",
+      "bytes": 49211
+    },
+    {
+      "path": "Benign/image/177.jpg",
+      "label": "Benign",
+      "sha256": "e458f2fc6384bd11c23bc67761315001060712782ab1d29d13cfc2d5b3304bb0",
+      "bytes": 71134
+    },
+    {
+      "path": "Benign/image/178.jpg",
+      "label": "Benign",
+      "sha256": "2315b571dace191ddc25a6292c59ad3fc74211541a745a94cbe592bee994476f",
+      "bytes": 112799
+    },
+    {
+      "path": "Benign/image/179.jpg",
+      "label": "Benign",
+      "sha256": "78ea6f3cb372e37a5019a61be12c85a2b6523b15da55337a81a55d7883f07254",
+      "bytes": 61910
+    },
+    {
+      "path": "Benign/image/18.jpg",
+      "label": "Benign",
+      "sha256": "d5d8c607fe69ff057aafba86b26e1612f4b919e84e437b485b1314e690f45cb3",
+      "bytes": 116193
+    },
+    {
+      "path": "Benign/image/180.jpg",
+      "label": "Benign",
+      "sha256": "544f12496afbf88207784078684cfa68965351726157f0c7de5be1537e41062f",
+      "bytes": 119433
+    },
+    {
+      "path": "Benign/image/181.jpg",
+      "label": "Benign",
+      "sha256": "3be575e72a50ed3fa98490d464ac47a5d1b89e62258d1538e3ef12a97d54716b",
+      "bytes": 96705
+    },
+    {
+      "path": "Benign/image/182.jpg",
+      "label": "Benign",
+      "sha256": "0716292e2058f79ed90cbdef67fcf8a76d7d4567adc5e80fcc217cb9bcc19e64",
+      "bytes": 98393
+    },
+    {
+      "path": "Benign/image/183.jpg",
+      "label": "Benign",
+      "sha256": "90368bd0dddeb67a5e0d903d693c89f85f9300de9e8abe17c3e1ea5cd1012258",
+      "bytes": 49024
+    },
+    {
+      "path": "Benign/image/184.jpg",
+      "label": "Benign",
+      "sha256": "b991d7f045d5d9d21156a395558c26c353b3205a9051ee7bfa4b880e58791ca1",
+      "bytes": 85375
+    },
+    {
+      "path": "Benign/image/185.jpg",
+      "label": "Benign",
+      "sha256": "4fbc9833ed80c99948f0736a90bb7d40f1dfacf22f01f9e4eb990bd8927f6ebd",
+      "bytes": 41509
+    },
+    {
+      "path": "Benign/image/186.jpg",
+      "label": "Benign",
+      "sha256": "db34cafd2071e38b8b0ec18c85c403acd67e9413a262223b5ab5f08d3ecf46db",
+      "bytes": 72381
+    },
+    {
+      "path": "Benign/image/187.jpg",
+      "label": "Benign",
+      "sha256": "e813a80a5cb714d936429413bdaa997a14b3c1ef7dee7007bfb91aabeba7409f",
+      "bytes": 77540
+    },
+    {
+      "path": "Benign/image/188.jpg",
+      "label": "Benign",
+      "sha256": "51b95bd368f6e859e7a79fde33cd88fe9a52537c32d1e057016071d35a7a67f7",
+      "bytes": 95455
+    },
+    {
+      "path": "Benign/image/189.jpg",
+      "label": "Benign",
+      "sha256": "3e83ee17fa7a5aad682784dee5c10004654583bccd7d5662300ba01551e7d04a",
+      "bytes": 79918
+    },
+    {
+      "path": "Benign/image/19.jpg",
+      "label": "Benign",
+      "sha256": "7e9db26673404cbc4b4175b9727a6d4d07115de92d8107c3a96f4a0d1330c570",
+      "bytes": 117986
+    },
+    {
+      "path": "Benign/image/190.jpg",
+      "label": "Benign",
+      "sha256": "de9b0ead9e440f699b94982b8659cb70190d648d82c1e6bd06dc281d41b4c021",
+      "bytes": 121567
+    },
+    {
+      "path": "Benign/image/191.jpg",
+      "label": "Benign",
+      "sha256": "d83c876b577aa067f8797c790ea92e78b5461264e76b118d5b0f0ba2483d283d",
+      "bytes": 78851
+    },
+    {
+      "path": "Benign/image/192.jpg",
+      "label": "Benign",
+      "sha256": "502508370281af9aad6a76be116fffa3b60089d9852ca69fd378b0e7a393002c",
+      "bytes": 98876
+    },
+    {
+      "path": "Benign/image/193.jpg",
+      "label": "Benign",
+      "sha256": "3d30aef96c2fd785e383cdfab247bf917bfe175863e75c92b2b7658623a55faa",
+      "bytes": 55164
+    },
+    {
+      "path": "Benign/image/194.jpg",
+      "label": "Benign",
+      "sha256": "c9082a3ef9980b93b44888317a9ec97a91ed52a46f01f15f397ef73d5cf22081",
+      "bytes": 78929
+    },
+    {
+      "path": "Benign/image/195.jpg",
+      "label": "Benign",
+      "sha256": "0e1d0c46074356c83c83931420afded698b4fa1a2a2346f106c2dd33b1fead20",
+      "bytes": 78868
+    },
+    {
+      "path": "Benign/image/196.jpg",
+      "label": "Benign",
+      "sha256": "f951338d1250b46b5a19edd3eb1710e47fbac077d8bf978f7334367a29e3f4a2",
+      "bytes": 90684
+    },
+    {
+      "path": "Benign/image/197.jpg",
+      "label": "Benign",
+      "sha256": "22fb13fb575a2590d1ac76f5c9547b70bab388ead61bacf36fb915c99f0b1d7d",
+      "bytes": 101588
+    },
+    {
+      "path": "Benign/image/198.jpg",
+      "label": "Benign",
+      "sha256": "ffdfcbeb8b414c4d134acdf877f1718deea16bda4c3e88d67d791757d3605894",
+      "bytes": 49773
+    },
+    {
+      "path": "Benign/image/199.jpg",
+      "label": "Benign",
+      "sha256": "92a7efca5e137762784388a319d232ca77ae11943fbe2610c1ed35f7e97db9df",
+      "bytes": 92061
+    },
+    {
+      "path": "Benign/image/2.jpg",
+      "label": "Benign",
+      "sha256": "c4e0eb2ec6a32e82864315a1a3d9c7e748ebfda80643b2eb34032b6d2dec05be",
+      "bytes": 95037
+    },
+    {
+      "path": "Benign/image/20.jpg",
+      "label": "Benign",
+      "sha256": "f9a15b1447420a348899d596ab028072dbed7e3b105e3f21ea3a4b9c211ca5b6",
+      "bytes": 107293
+    },
+    {
+      "path": "Benign/image/200.jpg",
+      "label": "Benign",
+      "sha256": "7fe8ba13f0cec9e4c8208370a3a1a7ad656ae02bdf0277a7ed554c2205a9c47a",
+      "bytes": 94338
+    },
+    {
+      "path": "Benign/image/21.jpg",
+      "label": "Benign",
+      "sha256": "0cb1e688cad36883686c559d25eda0620caecc9e619ac013f693b563bf60b8a6",
+      "bytes": 118496
+    },
+    {
+      "path": "Benign/image/22.jpg",
+      "label": "Benign",
+      "sha256": "27ea05ad15152d3ec57f7f868df41e74246d9b13352f4a96f028cb88aac0a415",
+      "bytes": 127133
+    },
+    {
+      "path": "Benign/image/23.jpg",
+      "label": "Benign",
+      "sha256": "14f5b530219074f92af2996ffea38ef57f17c349c4c91d10820bd501332c5d8a",
+      "bytes": 75138
+    },
+    {
+      "path": "Benign/image/24.jpg",
+      "label": "Benign",
+      "sha256": "70e957a2a917d43774bd947898f8936fbf9cd815a652e113239707ac40217b11",
+      "bytes": 102363
+    },
+    {
+      "path": "Benign/image/25.jpg",
+      "label": "Benign",
+      "sha256": "cdc64e46d98e2b7b94f3faf99a76338b513524fca908a20eed5f6ed8c4f03b9a",
+      "bytes": 132301
+    },
+    {
+      "path": "Benign/image/26.jpg",
+      "label": "Benign",
+      "sha256": "52c69cf8896a46fb30c6ac8c2bd860378003fc4abe6f57e62085afe068d9afc0",
+      "bytes": 78755
+    },
+    {
+      "path": "Benign/image/27.jpg",
+      "label": "Benign",
+      "sha256": "7f10ec3bf2ed19752aad39aed495cb18d24b5272be21b833c946d912c931cf4a",
+      "bytes": 96398
+    },
+    {
+      "path": "Benign/image/28.jpg",
+      "label": "Benign",
+      "sha256": "fbfd0ced1fb629806b60bc9083e1e3684d29e463283c2e4b014295b993d6c178",
+      "bytes": 64086
+    },
+    {
+      "path": "Benign/image/29.jpg",
+      "label": "Benign",
+      "sha256": "e843d135b35edda2fc1bc3e9ef14c36bbe2d1c81201374e38c0c5f790d743f84",
+      "bytes": 119077
+    },
+    {
+      "path": "Benign/image/3.jpg",
+      "label": "Benign",
+      "sha256": "e354e04021bc390c430d0bd85b5aabddf73d35571921b6535a3d2aeced9691e8",
+      "bytes": 115787
+    },
+    {
+      "path": "Benign/image/30.jpg",
+      "label": "Benign",
+      "sha256": "aea9070af9c16224573da3292ef00f01928d04437d22518e34afe660482f70b6",
+      "bytes": 50810
+    },
+    {
+      "path": "Benign/image/31.jpg",
+      "label": "Benign",
+      "sha256": "8e7e6e4cc898d594e64f2202c33098b8f90ec0b28258cda4bd2cb0fee8deefaa",
+      "bytes": 81365
+    },
+    {
+      "path": "Benign/image/32.jpg",
+      "label": "Benign",
+      "sha256": "983bb7e104728bb1d9fbe118023a2ccac10cd1be31e440622b77cc5ce82b49fc",
+      "bytes": 67053
+    },
+    {
+      "path": "Benign/image/33.jpg",
+      "label": "Benign",
+      "sha256": "88e926b2d681d66e302fd6df027c97531526a0c89b3fee0dc4154e6c297f8547",
+      "bytes": 101499
+    },
+    {
+      "path": "Benign/image/34.jpg",
+      "label": "Benign",
+      "sha256": "245f9655166a071c04deb17ac635900730d59ab579a2289048103487428d9ea8",
+      "bytes": 77029
+    },
+    {
+      "path": "Benign/image/35.jpg",
+      "label": "Benign",
+      "sha256": "756ca7451238eb79f82d901e08a5a37c7bf3cac4decb59bf9590c4561cada90c",
+      "bytes": 132638
+    },
+    {
+      "path": "Benign/image/36.jpg",
+      "label": "Benign",
+      "sha256": "0806b9bde02b0a300d46d7accce8676efb8421a15828a06acfb4dac72abee53f",
+      "bytes": 80531
+    },
+    {
+      "path": "Benign/image/37.jpg",
+      "label": "Benign",
+      "sha256": "65eda09e2d1945a3822a1720d721aacacd2c55f559d2c3e1a3c1c066729d5456",
+      "bytes": 79887
+    },
+    {
+      "path": "Benign/image/38.jpg",
+      "label": "Benign",
+      "sha256": "ee8361926fb7e59476bfb523662db74aea2d921ec5e611b1f9fdda51d1dcca95",
+      "bytes": 87479
+    },
+    {
+      "path": "Benign/image/39.jpg",
+      "label": "Benign",
+      "sha256": "f95a8bcaa4b89cd1aed10c21a1a691aeca8dedff9bd03829a65f69ac252a9c44",
+      "bytes": 69877
+    },
+    {
+      "path": "Benign/image/4.jpg",
+      "label": "Benign",
+      "sha256": "1f84c9feff1e8f7eb6db03266c26d78fe6fd7ee94c7de6249ab2bfdf96f1e84d",
+      "bytes": 150011
+    },
+    {
+      "path": "Benign/image/40.jpg",
+      "label": "Benign",
+      "sha256": "85474f5880833d17af13d45637e1a9f63034e6ca07fd9552d2c418b186ef921f",
+      "bytes": 46467
+    },
+    {
+      "path": "Benign/image/41.jpg",
+      "label": "Benign",
+      "sha256": "a09c21d8df992406a6baaf1786b89339ad30abfcd67c0167fafa526e922168af",
+      "bytes": 81933
+    },
+    {
+      "path": "Benign/image/42.jpg",
+      "label": "Benign",
+      "sha256": "7ed5b98ec79ca367dcd749e6f682487bf7bf3bd0e9815fd9d9b06c04d645bd88",
+      "bytes": 74911
+    },
+    {
+      "path": "Benign/image/43.jpg",
+      "label": "Benign",
+      "sha256": "bfe850913cbc2d0a7d3c810ee9b823bc4eb4568597df2f0e73cfc94020e87271",
+      "bytes": 91520
+    },
+    {
+      "path": "Benign/image/44.jpg",
+      "label": "Benign",
+      "sha256": "0ded993dd12d1ea78967b56280bb3a0be7867add37697e46dbed924783eb4239",
+      "bytes": 63470
+    },
+    {
+      "path": "Benign/image/45.jpg",
+      "label": "Benign",
+      "sha256": "43322ccc65af1c978e2fe46847e20e0c38e449bd4fd1398b401db78663cfe72f",
+      "bytes": 88629
+    },
+    {
+      "path": "Benign/image/46.jpg",
+      "label": "Benign",
+      "sha256": "9b06c3e43fc1f8886c00e97b782f08b1978e4ed65ca2733bd113aa342f71f531",
+      "bytes": 72522
+    },
+    {
+      "path": "Benign/image/47.jpg",
+      "label": "Benign",
+      "sha256": "0462b4543bbb5fe3e4bfce093d85a3d67ef7a234574df625ef91924695024976",
+      "bytes": 126572
+    },
+    {
+      "path": "Benign/image/48.jpg",
+      "label": "Benign",
+      "sha256": "8ff3ab6c5adb07898708fa3d6eec41cc1ef1d036dd2d3521c2b54bfb97f00b06",
+      "bytes": 125468
+    },
+    {
+      "path": "Benign/image/49.jpg",
+      "label": "Benign",
+      "sha256": "82ebd8797e86e456bc2fa26f6063b5a29d2e7428161237b7ba7dfdfc40cbd7ad",
+      "bytes": 53801
+    },
+    {
+      "path": "Benign/image/5.jpg",
+      "label": "Benign",
+      "sha256": "930140e4a3f6bc85d08d76de8efb1e18221c181423f4d1329c97de4e7e4ff78e",
+      "bytes": 119591
+    },
+    {
+      "path": "Benign/image/50.jpg",
+      "label": "Benign",
+      "sha256": "26e28bd8cff9f57d837a602beab38f70c93df4237ef98b47848d52be013605a7",
+      "bytes": 46936
+    },
+    {
+      "path": "Benign/image/51.jpg",
+      "label": "Benign",
+      "sha256": "859b4e5ee61621e92764d97de76f5d765db29caeb335e6aa55f1ede686b8be1b",
+      "bytes": 150300
+    },
+    {
+      "path": "Benign/image/52.jpg",
+      "label": "Benign",
+      "sha256": "96b292f72c5f8605714da6bfc834ba0d250bf39dcdcbfefbbfb871116c737144",
+      "bytes": 148392
+    },
+    {
+      "path": "Benign/image/53.jpg",
+      "label": "Benign",
+      "sha256": "17b5a9d4dd221a71571bbaf7d1704b7bad060462447f404acf437be3b584031a",
+      "bytes": 133503
+    },
+    {
+      "path": "Benign/image/54.jpg",
+      "label": "Benign",
+      "sha256": "77ae0541f562cec25a0e8cc343d2d9ff5e72031c8ef76883a5573d532f6f0c18",
+      "bytes": 84320
+    },
+    {
+      "path": "Benign/image/55.jpg",
+      "label": "Benign",
+      "sha256": "4de06e8bbf595df59ed9b821d815303741327cd6753e70e77137751bb827687f",
+      "bytes": 84540
+    },
+    {
+      "path": "Benign/image/56.jpg",
+      "label": "Benign",
+      "sha256": "642dd8c3c89c7d39de11785315d0cb46758423612e73c7432407fb623da21fe9",
+      "bytes": 101224
+    },
+    {
+      "path": "Benign/image/57.jpg",
+      "label": "Benign",
+      "sha256": "7c0b532b2e0591270e95a1feb08db65c559aef3feede3f06d74f9deb108580e1",
+      "bytes": 113161
+    },
+    {
+      "path": "Benign/image/58.jpg",
+      "label": "Benign",
+      "sha256": "0582991e721e7b9ae25fb2e091bcc2df018b5978c271fbe75eacfaff06125a45",
+      "bytes": 55601
+    },
+    {
+      "path": "Benign/image/59.jpg",
+      "label": "Benign",
+      "sha256": "ba285341c61612404e6623bbe5164486957ab1d4fad16f17b3670fab9f627151",
+      "bytes": 136431
+    },
+    {
+      "path": "Benign/image/6.jpg",
+      "label": "Benign",
+      "sha256": "a6295d25c4839e47d7143768dc81cde82ed29fc81023e95fe66cb22548c9f2ec",
+      "bytes": 159317
+    },
+    {
+      "path": "Benign/image/60.jpg",
+      "label": "Benign",
+      "sha256": "2a7a443557348454b5132d63acad0033c6263f8239935028958738ffb171c6f0",
+      "bytes": 89533
+    },
+    {
+      "path": "Benign/image/61.jpg",
+      "label": "Benign",
+      "sha256": "fbac43a3a73ef514f2bd73c4986e37f509e55f495d2d1c746d485c2a0a68d708",
+      "bytes": 143607
+    },
+    {
+      "path": "Benign/image/62.jpg",
+      "label": "Benign",
+      "sha256": "2c82e0b921120d571e54bd1056f0c9a661f95395d17bc0706f40d31de0b62472",
+      "bytes": 60428
+    },
+    {
+      "path": "Benign/image/63.jpg",
+      "label": "Benign",
+      "sha256": "0e083122d03970752b2ae02e061cda4c8547ce64bc37a28e0bb7004fab0e928c",
+      "bytes": 136985
+    },
+    {
+      "path": "Benign/image/64.jpg",
+      "label": "Benign",
+      "sha256": "9522cc9851353a91077e33551d4e41c15d710dd20887cd613fb8c593769cf2b8",
+      "bytes": 149297
+    },
+    {
+      "path": "Benign/image/65.jpg",
+      "label": "Benign",
+      "sha256": "5729ac2673312794c7e408c7965fa7ad0da309174e26a9cc9f21a49ba75e5833",
+      "bytes": 64792
+    },
+    {
+      "path": "Benign/image/66.jpg",
+      "label": "Benign",
+      "sha256": "94b003192a8445717d59005e29424855e27c8a160da9182786ea88db7733dd53",
+      "bytes": 105939
+    },
+    {
+      "path": "Benign/image/67.jpg",
+      "label": "Benign",
+      "sha256": "e8271841518af383d3162b6ee586b6bf0ed76d1f19158c037c99e9ad36111552",
+      "bytes": 89520
+    },
+    {
+      "path": "Benign/image/68.jpg",
+      "label": "Benign",
+      "sha256": "fde59fe59bbf9c1220dd14695d7d9b7bad99c0eed8e06547c499230c319e6843",
+      "bytes": 99105
+    },
+    {
+      "path": "Benign/image/69.jpg",
+      "label": "Benign",
+      "sha256": "867af73d5a8a5b6ad1c7ae1a6ab40c4dc2bd5bcff1a5c72d9073644deb7bf2f9",
+      "bytes": 52663
+    },
+    {
+      "path": "Benign/image/7.jpg",
+      "label": "Benign",
+      "sha256": "086f2fe4059ff86b7b718771bf96f0f97d19db5bd388fc965d121e2a3b32443a",
+      "bytes": 121237
+    },
+    {
+      "path": "Benign/image/70.jpg",
+      "label": "Benign",
+      "sha256": "35c3592392db2ee77ae802519391edd63d6f818a59f72a5bac2406cf9a9c6412",
+      "bytes": 135519
+    },
+    {
+      "path": "Benign/image/71.jpg",
+      "label": "Benign",
+      "sha256": "bffbdc2dee9f5ff11fd7e0f1c2024ec21711b499c470bd5362a59aa50f8ac0d8",
+      "bytes": 65238
+    },
+    {
+      "path": "Benign/image/72.jpg",
+      "label": "Benign",
+      "sha256": "5826d93d1fee10015f833572bb97f5caf47d05faa9bb1543625e3171b9ac5a9b",
+      "bytes": 102349
+    },
+    {
+      "path": "Benign/image/73.jpg",
+      "label": "Benign",
+      "sha256": "98c2d79b2967d695ad85fe6c8538697da177f28f7be74643cd5f389f7ef1af09",
+      "bytes": 150066
+    },
+    {
+      "path": "Benign/image/74.jpg",
+      "label": "Benign",
+      "sha256": "4b7f8ca92ff7dae4538f721848eef019b99a20497136c654162c5f59e879c028",
+      "bytes": 82637
+    },
+    {
+      "path": "Benign/image/75.jpg",
+      "label": "Benign",
+      "sha256": "b53f9fe8c8031538c7575d8f72a8debe478630f900b258a77269afbf7b8b7256",
+      "bytes": 89031
+    },
+    {
+      "path": "Benign/image/76.jpg",
+      "label": "Benign",
+      "sha256": "1d6190b07f6ab23296b429b14d3a365d995b7cfcd358118af398405dec6d11b6",
+      "bytes": 67324
+    },
+    {
+      "path": "Benign/image/77.jpg",
+      "label": "Benign",
+      "sha256": "e00f9a36617f52f4e1ce303abb21d21b612c09f6c0545d7f87d46992642f9375",
+      "bytes": 52245
+    },
+    {
+      "path": "Benign/image/78.jpg",
+      "label": "Benign",
+      "sha256": "3cb229b466e718a8662230855e8e0d2bfecc5e9ccd6fc5a7b1eb1768fe774dd5",
+      "bytes": 84844
+    },
+    {
+      "path": "Benign/image/79.jpg",
+      "label": "Benign",
+      "sha256": "7f6efe8473bb01d5785f9d4f6eed2fcf22060310a8b1ff60961b6bafe8d51842",
+      "bytes": 134843
+    },
+    {
+      "path": "Benign/image/8.jpg",
+      "label": "Benign",
+      "sha256": "2b83daf44e5ae3b48c2d2f52947bc73e3714bba6fa2000815f02a0d2770e56d6",
+      "bytes": 94553
+    },
+    {
+      "path": "Benign/image/80.jpg",
+      "label": "Benign",
+      "sha256": "3102b9a641df6bf7d8fa92cd5a87fad1a688a454213b854ab397e141338da50c",
+      "bytes": 66986
+    },
+    {
+      "path": "Benign/image/81.jpg",
+      "label": "Benign",
+      "sha256": "f739898ee2366907e7181b98493cde1dae5a0a29c594790a57a27d70d5f079e9",
+      "bytes": 58285
+    },
+    {
+      "path": "Benign/image/82.jpg",
+      "label": "Benign",
+      "sha256": "a52aa5a02352ca9c1e2117cfc17ec502af6e10640862fd1b739a9420beeab004",
+      "bytes": 82365
+    },
+    {
+      "path": "Benign/image/83.jpg",
+      "label": "Benign",
+      "sha256": "3572c337cd1173bffeeaf1599242c252c2ddd042f278c04cb9851a1fdd814790",
+      "bytes": 123354
+    },
+    {
+      "path": "Benign/image/84.jpg",
+      "label": "Benign",
+      "sha256": "7d3d22bb8971c6fc723613e2a45d00a94af6cf91f9f2b8289a3d49b80235ed62",
+      "bytes": 72757
+    },
+    {
+      "path": "Benign/image/85.jpg",
+      "label": "Benign",
+      "sha256": "bca6e1ac42c8533b134953ce89db2a18ed9d0f35ab4c5eddd7c88001d45478bb",
+      "bytes": 84859
+    },
+    {
+      "path": "Benign/image/86.jpg",
+      "label": "Benign",
+      "sha256": "5e7fa10f5b8e1283d6e89035d0a8538c50a76db9a43b2065dd6ac606b0d671d7",
+      "bytes": 98344
+    },
+    {
+      "path": "Benign/image/87.jpg",
+      "label": "Benign",
+      "sha256": "b82b35673551163f265845678e1046385b41a7044efed6b9099389923d8c007e",
+      "bytes": 72973
+    },
+    {
+      "path": "Benign/image/88.jpg",
+      "label": "Benign",
+      "sha256": "403e8949f5e6c702b667c15159b8e1ea7880d74a48bc03c8183b9171e600a66f",
+      "bytes": 156494
+    },
+    {
+      "path": "Benign/image/89.jpg",
+      "label": "Benign",
+      "sha256": "fad7763b7297f4abe61a89d13ac27a6d1b2633f5f853fce052d6beef44d7f596",
+      "bytes": 135309
+    },
+    {
+      "path": "Benign/image/9.jpg",
+      "label": "Benign",
+      "sha256": "8bfc6c0dff8127a834f80a09db638d7e95eaa0b7418005511bfc2255cd13ff23",
+      "bytes": 72233
+    },
+    {
+      "path": "Benign/image/90.jpg",
+      "label": "Benign",
+      "sha256": "cff4d152498fc1ffe1a7af295dcd545ca34ba6083c5887362e1dfc5a9245673e",
+      "bytes": 72632
+    },
+    {
+      "path": "Benign/image/91.jpg",
+      "label": "Benign",
+      "sha256": "c7e594234879172cf4ab4fd401295c91a71e7aea88052751922bf4532240cf9c",
+      "bytes": 53760
+    },
+    {
+      "path": "Benign/image/92.jpg",
+      "label": "Benign",
+      "sha256": "83029a99fa2f9d6b49f32fdd0b27dd369fd361f8c64c76546acef9fd67888317",
+      "bytes": 64855
+    },
+    {
+      "path": "Benign/image/93.jpg",
+      "label": "Benign",
+      "sha256": "c1731745d4d8ce1fe7b3d1d539d89bbcce0c621d592a1fdd6d13d8dad0c369e4",
+      "bytes": 92675
+    },
+    {
+      "path": "Benign/image/94.jpg",
+      "label": "Benign",
+      "sha256": "da37163faf4bfab2876d8465bafe2f91f8edfc0a3636d6dc3e9dc54898489080",
+      "bytes": 82610
+    },
+    {
+      "path": "Benign/image/95.jpg",
+      "label": "Benign",
+      "sha256": "400624d223f4a6df9e412f740333609572cbfd8081467262a8f70b24605af166",
+      "bytes": 59130
+    },
+    {
+      "path": "Benign/image/96.jpg",
+      "label": "Benign",
+      "sha256": "927e70e37692fc007b099d50c62559eb542e4af3de9bfae56ec88d89f6a55982",
+      "bytes": 167421
+    },
+    {
+      "path": "Benign/image/97.jpg",
+      "label": "Benign",
+      "sha256": "8661faef531af75ec3235d408ab843317ce1e600048ed75427dcd45844ecb153",
+      "bytes": 125728
+    },
+    {
+      "path": "Benign/image/98.jpg",
+      "label": "Benign",
+      "sha256": "31eb7d2fe70f3633d8245a659d125a0cde53c715b6247941d7f9e2d9a6644ec8",
+      "bytes": 59856
+    },
+    {
+      "path": "Benign/image/99.jpg",
+      "label": "Benign",
+      "sha256": "7f3f36a2f42d8af190b9dbf98a4a383eaf900805b6c585db707d596804133149",
+      "bytes": 138986
+    },
+    {
+      "path": "Malignant/image/1.jpg",
+      "label": "Malignant",
+      "sha256": "7b98de0d4cadb441acddea8d48e9c93877565455e40147e1adbcc0fae0358af8",
+      "bytes": 128514
+    },
+    {
+      "path": "Malignant/image/10.jpg",
+      "label": "Malignant",
+      "sha256": "e1efdb50f87913113feef55827a6c27d1923f9062c3fb1ac279276149eed2e05",
+      "bytes": 134572
+    },
+    {
+      "path": "Malignant/image/100.jpg",
+      "label": "Malignant",
+      "sha256": "501185e047ef130571aac5a4e3b80e53ba6687740e1496cb32103a4a95487b81",
+      "bytes": 128384
+    },
+    {
+      "path": "Malignant/image/101.jpg",
+      "label": "Malignant",
+      "sha256": "47d909f207372dc7ce02552b3e69b65bf8ba448ee343d278b541c63d3162088a",
+      "bytes": 83577
+    },
+    {
+      "path": "Malignant/image/102.jpg",
+      "label": "Malignant",
+      "sha256": "d29883f8b8f332457879bc5cd2e1a6770aad61c80913d94cb8bde11557f6acdc",
+      "bytes": 131753
+    },
+    {
+      "path": "Malignant/image/103.jpg",
+      "label": "Malignant",
+      "sha256": "6d0bc201f6496c616bb74fd252d8400d87a6443a2add6759a939ef7133a94480",
+      "bytes": 101930
+    },
+    {
+      "path": "Malignant/image/104.jpg",
+      "label": "Malignant",
+      "sha256": "bdebd061304731ca164ae05399e021246097e4da7c06492d58772e6c1e9599ed",
+      "bytes": 120475
+    },
+    {
+      "path": "Malignant/image/105.jpg",
+      "label": "Malignant",
+      "sha256": "459af3ec1d45e72e4e5719c7f74afc7b7428d5c25207fc047850b0be5f95ab7d",
+      "bytes": 115148
+    },
+    {
+      "path": "Malignant/image/106.jpg",
+      "label": "Malignant",
+      "sha256": "14c1862d73b2a21b9e373d0dc62e33639230688f42df32add7a77a44b8e28ca3",
+      "bytes": 132885
+    },
+    {
+      "path": "Malignant/image/107.jpg",
+      "label": "Malignant",
+      "sha256": "c5610092137606f5e5e3464556928a7fcbfc2b261acbb34e73505f880bd0a21e",
+      "bytes": 122184
+    },
+    {
+      "path": "Malignant/image/108.jpg",
+      "label": "Malignant",
+      "sha256": "d2029d674444d20ea606bac298db83005ed21abe0b045605f57eaafef400be18",
+      "bytes": 132028
+    },
+    {
+      "path": "Malignant/image/109.jpg",
+      "label": "Malignant",
+      "sha256": "6f791060926054eed1cf0fc9e053a44848dd190c7da9141dde2eb8ba7eacca3f",
+      "bytes": 129746
+    },
+    {
+      "path": "Malignant/image/11.jpg",
+      "label": "Malignant",
+      "sha256": "60ca6b40c620a1b1a7d891d8f86a2c7016c74a809ef4f13b71a5e2f1fc803d8e",
+      "bytes": 132210
+    },
+    {
+      "path": "Malignant/image/110.jpg",
+      "label": "Malignant",
+      "sha256": "fd7341c738e339ad6280b821a1cbbd9b80db7139d8dc1cf203f0f72cf7f1436f",
+      "bytes": 160987
+    },
+    {
+      "path": "Malignant/image/111.jpg",
+      "label": "Malignant",
+      "sha256": "c957ea4b37915b52b35986af7339b914dced5a4246f6a35841a931d8d22b4515",
+      "bytes": 133756
+    },
+    {
+      "path": "Malignant/image/112.jpg",
+      "label": "Malignant",
+      "sha256": "6de49a415cd13ce1c14b3bdc816deb5f683b12762875dbf625983ef94e9fed2b",
+      "bytes": 120524
+    },
+    {
+      "path": "Malignant/image/113.jpg",
+      "label": "Malignant",
+      "sha256": "cc811814834b540f283d6a633a3e627bb727b560ca5ec3f0432598578c0e1180",
+      "bytes": 79017
+    },
+    {
+      "path": "Malignant/image/114.jpg",
+      "label": "Malignant",
+      "sha256": "0f3c1e768ca99a0a15c85af91413e723ad624a7f815be27241987c47a19c99e2",
+      "bytes": 113011
+    },
+    {
+      "path": "Malignant/image/115.jpg",
+      "label": "Malignant",
+      "sha256": "c32bf845f5ee9339f404d39d3e63d54de9081f4b620968a12bf6aab3be6d9b60",
+      "bytes": 129673
+    },
+    {
+      "path": "Malignant/image/116.jpg",
+      "label": "Malignant",
+      "sha256": "692cc9f9c739816aec1651fea1b2ebe5b532efe44baa8d671d2e8fac3161dc3e",
+      "bytes": 138872
+    },
+    {
+      "path": "Malignant/image/117.jpg",
+      "label": "Malignant",
+      "sha256": "a12d04e0774e62e3cb3b1f1e484d607500255a7f2d8b1e86078f873864041917",
+      "bytes": 131432
+    },
+    {
+      "path": "Malignant/image/118.jpg",
+      "label": "Malignant",
+      "sha256": "a2cdaa0eb4f931f7b3b3e3af3629657d35232217e6f715fa5d3a1bef6369fd20",
+      "bytes": 149253
+    },
+    {
+      "path": "Malignant/image/119.jpg",
+      "label": "Malignant",
+      "sha256": "cc31e5b62a45001ec3e2d31dfe3e1536c73da181448657150d973e9629fbe024",
+      "bytes": 136187
+    },
+    {
+      "path": "Malignant/image/12.jpg",
+      "label": "Malignant",
+      "sha256": "9b8ba580558eac9f2d83c7f955cff4abc49029547ac0a102ced31341fca92719",
+      "bytes": 156131
+    },
+    {
+      "path": "Malignant/image/120.jpg",
+      "label": "Malignant",
+      "sha256": "a63c363cb21612adf79f55130af0768ddfe8bc95fe713ca15da13a820768efc5",
+      "bytes": 149153
+    },
+    {
+      "path": "Malignant/image/121.jpg",
+      "label": "Malignant",
+      "sha256": "30098dc353d3f61e98948d2820480e8155770d2902d6a3bd0668a1bee8c92d49",
+      "bytes": 117219
+    },
+    {
+      "path": "Malignant/image/122.jpg",
+      "label": "Malignant",
+      "sha256": "2daf30b310e5bb6023789747c8f4c7aa643fe924418b83b2435ddd4c4bb277cd",
+      "bytes": 129935
+    },
+    {
+      "path": "Malignant/image/123.jpg",
+      "label": "Malignant",
+      "sha256": "a14d259c2f0f65877319aaabebd98e16d364eae38b2f2e4fe2e960874a0f35c0",
+      "bytes": 91168
+    },
+    {
+      "path": "Malignant/image/124.jpg",
+      "label": "Malignant",
+      "sha256": "c1980d7d2bf84e02a95e05d149abbe3e233693169b68850302c5abc9f44c59f0",
+      "bytes": 117101
+    },
+    {
+      "path": "Malignant/image/125.jpg",
+      "label": "Malignant",
+      "sha256": "3b2e91d677ecd1acafce7c587bc584a2a34de079b036a9e66e5c9c45dcfa583d",
+      "bytes": 157080
+    },
+    {
+      "path": "Malignant/image/126.jpg",
+      "label": "Malignant",
+      "sha256": "b19e534931a87d7e264d45b18cfd728eece56450ef9cd311ca6815de219d9ece",
+      "bytes": 124570
+    },
+    {
+      "path": "Malignant/image/127.jpg",
+      "label": "Malignant",
+      "sha256": "1218f435b79fa60f333b6f9e36e69aac14d4a72fbdafdf16e718817f84c7f01a",
+      "bytes": 141922
+    },
+    {
+      "path": "Malignant/image/128.jpg",
+      "label": "Malignant",
+      "sha256": "051495c95ac1396d90b95461bdbe6788b9f6d8391886bebed0c76429682cfb1a",
+      "bytes": 157385
+    },
+    {
+      "path": "Malignant/image/129.jpg",
+      "label": "Malignant",
+      "sha256": "8bd7be786928251b349597bd1e982b40af54b43591909f0fa5c340b616cc68db",
+      "bytes": 150785
+    },
+    {
+      "path": "Malignant/image/13.jpg",
+      "label": "Malignant",
+      "sha256": "999919e4ae397836e5e4250eae00de548b56bf1b0a46e0e7c26de0dc719f594a",
+      "bytes": 144611
+    },
+    {
+      "path": "Malignant/image/130.jpg",
+      "label": "Malignant",
+      "sha256": "c8f29b45e870c9890d00b244836c7b597f6a35809fd42a24571387b6d4457fb2",
+      "bytes": 112939
+    },
+    {
+      "path": "Malignant/image/131.jpg",
+      "label": "Malignant",
+      "sha256": "160e055afc63249a92078af3bf3a9c3b8148e5ae89982f6bcc49976f830e9905",
+      "bytes": 53753
+    },
+    {
+      "path": "Malignant/image/132.jpg",
+      "label": "Malignant",
+      "sha256": "9231cc3cff3fd98d8a3edcde7dc21595c2a23355b213b87bffd2b554cc6552f9",
+      "bytes": 109654
+    },
+    {
+      "path": "Malignant/image/133.jpg",
+      "label": "Malignant",
+      "sha256": "e0fea59c72b5a5321f0fab83c940052598d8c8dc70792c85219f7cef0284c934",
+      "bytes": 145688
+    },
+    {
+      "path": "Malignant/image/134.jpg",
+      "label": "Malignant",
+      "sha256": "6279e0972f1993bd5ce9326931054a13d2d08a9ac041c36ed6d21bcf4978da8c",
+      "bytes": 124299
+    },
+    {
+      "path": "Malignant/image/135.jpg",
+      "label": "Malignant",
+      "sha256": "728ad4098cd786264f14c6c48709ef852cb1e151c398ce47708ff44fc7e1873a",
+      "bytes": 139395
+    },
+    {
+      "path": "Malignant/image/136.jpg",
+      "label": "Malignant",
+      "sha256": "1e854983b2624dcf10d969d42ae984cc8b51f3dce9ca25bdae0020a676bc982d",
+      "bytes": 133797
+    },
+    {
+      "path": "Malignant/image/137.jpg",
+      "label": "Malignant",
+      "sha256": "982245ea7b35c006d8c0caa23337380c703bcc8bcf806313e822b408d9d52260",
+      "bytes": 169553
+    },
+    {
+      "path": "Malignant/image/138.jpg",
+      "label": "Malignant",
+      "sha256": "162c7ebf90c1bd801d39d5007faa02a49d357b79e484ece58ab0b4527e14e34d",
+      "bytes": 98431
+    },
+    {
+      "path": "Malignant/image/139.jpg",
+      "label": "Malignant",
+      "sha256": "321a84d3a61751d450d967fa7e9c731287ac03cc0c42135f8c0a8c6f9fa7b805",
+      "bytes": 140988
+    },
+    {
+      "path": "Malignant/image/14.jpg",
+      "label": "Malignant",
+      "sha256": "500b4084b02ecf0bc350bfbd1294f31677d563d198024a18355f989155262d0b",
+      "bytes": 85908
+    },
+    {
+      "path": "Malignant/image/140.jpg",
+      "label": "Malignant",
+      "sha256": "e5698b05ba4f5e1de69c40b73f3635a27facb9c38e069fefddf9266d39bdba25",
+      "bytes": 121385
+    },
+    {
+      "path": "Malignant/image/141.jpg",
+      "label": "Malignant",
+      "sha256": "7b04b2d5b0afc11de9f9da4f1612138fe91636c333aa7eff6723647375651ae2",
+      "bytes": 146359
+    },
+    {
+      "path": "Malignant/image/142.jpg",
+      "label": "Malignant",
+      "sha256": "eaaee479702b6be7a3d34f5f181e9b0972acdd4a2d3bc843d73ba5fdc8ba6f57",
+      "bytes": 121253
+    },
+    {
+      "path": "Malignant/image/143.jpg",
+      "label": "Malignant",
+      "sha256": "6bb731d9e30d796157ae14eca06743d32a934bf1b8fd7f0b668ffb21be631b02",
+      "bytes": 127587
+    },
+    {
+      "path": "Malignant/image/144.jpg",
+      "label": "Malignant",
+      "sha256": "a7ffa5f00a84315e8368452e381d6753ebec5de519aaa2341e9d5a720172dc52",
+      "bytes": 150535
+    },
+    {
+      "path": "Malignant/image/145.jpg",
+      "label": "Malignant",
+      "sha256": "57b73f501770a3a7ee103bad02d51fba40cf98feb1cbf7200b7b37a2c4947c76",
+      "bytes": 133526
+    },
+    {
+      "path": "Malignant/image/146.jpg",
+      "label": "Malignant",
+      "sha256": "ca47ea9145030eaddd7e9d6324b33a1e013938a8a371feaa5231a9943707dab5",
+      "bytes": 102984
+    },
+    {
+      "path": "Malignant/image/147.jpg",
+      "label": "Malignant",
+      "sha256": "1fe5fbe59f629944c6abd306d7575788dbbbe7413105f25a3efad7f322515a28",
+      "bytes": 124161
+    },
+    {
+      "path": "Malignant/image/148.jpg",
+      "label": "Malignant",
+      "sha256": "309eb0dd74c04f05e301ba3dc1c5d458d263fe5630372bb5fb467522d25da2d6",
+      "bytes": 122822
+    },
+    {
+      "path": "Malignant/image/149.jpg",
+      "label": "Malignant",
+      "sha256": "777552880aa2e1c782d3af11b3978b72bc0044f3a067db78a5ab308e8f43ef52",
+      "bytes": 99212
+    },
+    {
+      "path": "Malignant/image/15.jpg",
+      "label": "Malignant",
+      "sha256": "f69def50bab9f6fb717f23244131b8cd85b362e41d691c04e3d6e4392f1c223c",
+      "bytes": 140900
+    },
+    {
+      "path": "Malignant/image/150.jpg",
+      "label": "Malignant",
+      "sha256": "3456fb06c29bbdb3f2e22cc5cbb9fcd63cbeb98b1f8abda2a71dc714a2a9a753",
+      "bytes": 140460
+    },
+    {
+      "path": "Malignant/image/151.jpg",
+      "label": "Malignant",
+      "sha256": "ec3b547cf9f61d3a1002ce510df9dc1b4ceed86f09aefd123a886977525c7b9a",
+      "bytes": 116786
+    },
+    {
+      "path": "Malignant/image/152.jpg",
+      "label": "Malignant",
+      "sha256": "edbe5e567ca8ba1ea93d26eaab7cc5b23fa05bd3e9c072994dad305dab29f02d",
+      "bytes": 139342
+    },
+    {
+      "path": "Malignant/image/153.jpg",
+      "label": "Malignant",
+      "sha256": "d81d3069ec196c9532e124a7ca7ef0354e167b298982083e56f8e8698600bc66",
+      "bytes": 138253
+    },
+    {
+      "path": "Malignant/image/154.jpg",
+      "label": "Malignant",
+      "sha256": "79230e8a77048dfeb7ee91f7e2bbca9a463ab53f224e1d65c5109c49ab4985c6",
+      "bytes": 122195
+    },
+    {
+      "path": "Malignant/image/155.jpg",
+      "label": "Malignant",
+      "sha256": "522cfd7e6f6272a25032d4d7f07428f431aed315e624e9e0865afc24c784f1e1",
+      "bytes": 133545
+    },
+    {
+      "path": "Malignant/image/156.jpg",
+      "label": "Malignant",
+      "sha256": "32800431585592d434fa98220770895c630760c18ff24e082daf8190ab67f56f",
+      "bytes": 127338
+    },
+    {
+      "path": "Malignant/image/157.jpg",
+      "label": "Malignant",
+      "sha256": "d010675c83ebb7b3b0c814b97636dbaa5b35977c56076434f77d2db80d318e16",
+      "bytes": 121244
+    },
+    {
+      "path": "Malignant/image/158.jpg",
+      "label": "Malignant",
+      "sha256": "4c87a360de2bb94392372b2d51636d20b0d864ebee098efa1d6c19058c1d9a9e",
+      "bytes": 126464
+    },
+    {
+      "path": "Malignant/image/159.jpg",
+      "label": "Malignant",
+      "sha256": "ce488626b0096819d47b5dc0fe700a2cf081dcc7a986043ce62371ab39fafe98",
+      "bytes": 140276
+    },
+    {
+      "path": "Malignant/image/16.jpg",
+      "label": "Malignant",
+      "sha256": "f28b676b97173ac2ccef8525448fc5d7dd7f4b2194fd8307414e5cc29d50e39c",
+      "bytes": 122608
+    },
+    {
+      "path": "Malignant/image/160.jpg",
+      "label": "Malignant",
+      "sha256": "9f31d54f9b6dd5a9cc39374c78716ad8a87f16d061f080b92d05b3e978a39107",
+      "bytes": 99455
+    },
+    {
+      "path": "Malignant/image/161.jpg",
+      "label": "Malignant",
+      "sha256": "30cb35cdd5fb4a51ff2a68915a9209a4ed9a8f6bff5bea1dd8ed6e9c60507bf0",
+      "bytes": 90634
+    },
+    {
+      "path": "Malignant/image/162.jpg",
+      "label": "Malignant",
+      "sha256": "1db80b7b0f6e1521b322419b418c17d244c659c7749a0ac200588a893e97f05d",
+      "bytes": 98538
+    },
+    {
+      "path": "Malignant/image/163.jpg",
+      "label": "Malignant",
+      "sha256": "0e415ce4ebc3bc31a2ffb96c20a60309fd86731826ae6e58a1fd16b60482df83",
+      "bytes": 138457
+    },
+    {
+      "path": "Malignant/image/164.jpg",
+      "label": "Malignant",
+      "sha256": "eaefd74748434ef180acdb4bf7c04270a271ae2b8441979f981d48260785e549",
+      "bytes": 149503
+    },
+    {
+      "path": "Malignant/image/165.jpg",
+      "label": "Malignant",
+      "sha256": "9d8be9f216a11deab5fd26b946b40336c5542eab7b9f8659139a2e8d44a4b8a2",
+      "bytes": 137907
+    },
+    {
+      "path": "Malignant/image/166.jpg",
+      "label": "Malignant",
+      "sha256": "a03681fdd90d66b66746a3e3d83dec2f48f65dc025c5ecdbbf140177e1de454a",
+      "bytes": 155544
+    },
+    {
+      "path": "Malignant/image/167.jpg",
+      "label": "Malignant",
+      "sha256": "7deab6605f840e174168bedc91d27820b1f568f5f107f9ee01dbd11f073bea54",
+      "bytes": 131146
+    },
+    {
+      "path": "Malignant/image/168.jpg",
+      "label": "Malignant",
+      "sha256": "bc73ef85e894b5bc1fe1cdfb6335b69deb2b2ca4ac979d7149a03f55bfc582a9",
+      "bytes": 129795
+    },
+    {
+      "path": "Malignant/image/169.jpg",
+      "label": "Malignant",
+      "sha256": "bc33e7e1393451576f2357c9804f5b729f1c46454342911ab98ad4286a5d1e5a",
+      "bytes": 142073
+    },
+    {
+      "path": "Malignant/image/17.jpg",
+      "label": "Malignant",
+      "sha256": "9e8606e5eed7b7a3a0fb140c6639d70f631c8048c2b465f6794116380c20406d",
+      "bytes": 63758
+    },
+    {
+      "path": "Malignant/image/170.jpg",
+      "label": "Malignant",
+      "sha256": "3b6d540990e88ed3d1035d6dac712232d4ee0930c1fdaeda57093a9649f79000",
+      "bytes": 136139
+    },
+    {
+      "path": "Malignant/image/171.jpg",
+      "label": "Malignant",
+      "sha256": "df17ceb0888312da975219294d2e2e70ebf9b3d8e6581c77d1b9535c639a4aff",
+      "bytes": 112595
+    },
+    {
+      "path": "Malignant/image/172.jpg",
+      "label": "Malignant",
+      "sha256": "d89229bff4faf8353eb193a9dab3dcb8fb82ebb83dc10aa0e60b59387acdb9c5",
+      "bytes": 151141
+    },
+    {
+      "path": "Malignant/image/173.jpg",
+      "label": "Malignant",
+      "sha256": "1e62919bf4b3323e4040e42bcb79741218a79a54f15caa68a8247b4b0bc6157f",
+      "bytes": 137933
+    },
+    {
+      "path": "Malignant/image/174.jpg",
+      "label": "Malignant",
+      "sha256": "7e17992c21a63c60017a660e780ab50b75dc9fa7d7d7d65b577846bf408e4412",
+      "bytes": 81014
+    },
+    {
+      "path": "Malignant/image/175.jpg",
+      "label": "Malignant",
+      "sha256": "5515828ac6f78e842675643ffeae438e056adbbf606fd0465209e450af9e6baa",
+      "bytes": 146845
+    },
+    {
+      "path": "Malignant/image/176.jpg",
+      "label": "Malignant",
+      "sha256": "70b825585d278049cccfab4b6d159a72dd29e2d7be62929774f3423c68532cc8",
+      "bytes": 123855
+    },
+    {
+      "path": "Malignant/image/177.jpg",
+      "label": "Malignant",
+      "sha256": "8549aadc40cd7ce40b1fca0d48a823860dd755e42cd57d89713d5d8fd5c919f5",
+      "bytes": 117095
+    },
+    {
+      "path": "Malignant/image/178.jpg",
+      "label": "Malignant",
+      "sha256": "67203580b4b98c0ad367ca1fd454cdc3b485bbb3792515f0ef07a1e5779bdb44",
+      "bytes": 153460
+    },
+    {
+      "path": "Malignant/image/179.jpg",
+      "label": "Malignant",
+      "sha256": "2de8698b3d5cab93cba0c8b01b30e61c1443f45d18fb4100da14b379b6c78b54",
+      "bytes": 131709
+    },
+    {
+      "path": "Malignant/image/18.jpg",
+      "label": "Malignant",
+      "sha256": "3a6545af0fc7e5fe9c009457e2b5c935cbebd19dfb3cd3e0a9560582d250b99f",
+      "bytes": 138360
+    },
+    {
+      "path": "Malignant/image/180.jpg",
+      "label": "Malignant",
+      "sha256": "a63599e6d072565f8e841ebc832d1cbe82698ac35c36342f7161018fcc53c89a",
+      "bytes": 51581
+    },
+    {
+      "path": "Malignant/image/181.jpg",
+      "label": "Malignant",
+      "sha256": "0a95f92a6805aeeb4cba890601f7bb067408e058aff4225ca8471550cb45af77",
+      "bytes": 135347
+    },
+    {
+      "path": "Malignant/image/182.jpg",
+      "label": "Malignant",
+      "sha256": "bd95dbc520bd00c6d9fd6c6a963f5b65642a8f74c2bc5c6d86229fcee1aba52a",
+      "bytes": 83045
+    },
+    {
+      "path": "Malignant/image/183.jpg",
+      "label": "Malignant",
+      "sha256": "8339fcee70e30fcd149d61cbdea0c06a7854ae530a1732c4bfa6d29d9cebed15",
+      "bytes": 130151
+    },
+    {
+      "path": "Malignant/image/184.jpg",
+      "label": "Malignant",
+      "sha256": "fe45a7011f863dc48ebc28e920197b9745bafc5ecfeb9b16c085914389168484",
+      "bytes": 37529
+    },
+    {
+      "path": "Malignant/image/185.jpg",
+      "label": "Malignant",
+      "sha256": "0a2318952537b3a637e93c0bcc8b67e5099d05b4d4df7b6f62a7684a1206f3c3",
+      "bytes": 141222
+    },
+    {
+      "path": "Malignant/image/186.jpg",
+      "label": "Malignant",
+      "sha256": "92a913d4f4e7e6003c0bba578ce9e5102528d5ef7f7b76dc9f50f4eff8b3d023",
+      "bytes": 67614
+    },
+    {
+      "path": "Malignant/image/187.jpg",
+      "label": "Malignant",
+      "sha256": "810babc48dbf6334a53ae3609e24c258ea5274af49cb19525b1660c7dcb1b356",
+      "bytes": 140158
+    },
+    {
+      "path": "Malignant/image/188.jpg",
+      "label": "Malignant",
+      "sha256": "007cc73aa65ab89125ec8a2589a6e2a52dfda7faca46332734d24654e27f1cc8",
+      "bytes": 138110
+    },
+    {
+      "path": "Malignant/image/189.jpg",
+      "label": "Malignant",
+      "sha256": "5f8424e48dba6d242df43475cae00fa1fc2a11fc0d49a9f664bb25e2c3f20399",
+      "bytes": 124964
+    },
+    {
+      "path": "Malignant/image/19.jpg",
+      "label": "Malignant",
+      "sha256": "cccda0240977da5de4300e296fc9b185c5dd31139099f6a1b077c187509caf35",
+      "bytes": 124943
+    },
+    {
+      "path": "Malignant/image/190.jpg",
+      "label": "Malignant",
+      "sha256": "3551c9bf1f7bc6c7442d2ec0397cde73c24680240db2cf1519f2f3b68cbb2d0a",
+      "bytes": 138946
+    },
+    {
+      "path": "Malignant/image/191.jpg",
+      "label": "Malignant",
+      "sha256": "40b53650dd79650cda839889eaa86742f2d3b03406e341b739c0104deae6793a",
+      "bytes": 139892
+    },
+    {
+      "path": "Malignant/image/192.jpg",
+      "label": "Malignant",
+      "sha256": "cc6209b84c76b8368e9298418826d62d0ade120c537795d54996d47e73b834ee",
+      "bytes": 137563
+    },
+    {
+      "path": "Malignant/image/193.jpg",
+      "label": "Malignant",
+      "sha256": "09a10f2717f31e95e91528e5fa21663ceae9df5cffc669bd9cb1b04a16414524",
+      "bytes": 158697
+    },
+    {
+      "path": "Malignant/image/194.jpg",
+      "label": "Malignant",
+      "sha256": "955ba90739652b43f2c610ab1f98b7ca77307c469077f96524ac12b0321d9289",
+      "bytes": 97650
+    },
+    {
+      "path": "Malignant/image/195.jpg",
+      "label": "Malignant",
+      "sha256": "5059a8a05e223ab3173ee90945e3457fc5b759e9d3cef0325bdf2a06bd1ff848",
+      "bytes": 134571
+    },
+    {
+      "path": "Malignant/image/196.jpg",
+      "label": "Malignant",
+      "sha256": "532705e1f8432d34dc21a7ca554a8e899ca9e24818ef8112b2893bc47770554a",
+      "bytes": 131087
+    },
+    {
+      "path": "Malignant/image/197.jpg",
+      "label": "Malignant",
+      "sha256": "39bacfabcc8e4f1d7efde6eda05521cf7eaaef428674acfc2cc60450b5f6d3cb",
+      "bytes": 124288
+    },
+    {
+      "path": "Malignant/image/198.jpg",
+      "label": "Malignant",
+      "sha256": "bc5fea2661e5c9d29077c2f1e9db8dec830d2080084f9271f96bcfd70ab021fd",
+      "bytes": 105705
+    },
+    {
+      "path": "Malignant/image/199.jpg",
+      "label": "Malignant",
+      "sha256": "8070ceeb39d4f9f98e0bb203013b513cc464e7db00bb826485ed4f8dd5d6b47e",
+      "bytes": 130453
+    },
+    {
+      "path": "Malignant/image/2.jpg",
+      "label": "Malignant",
+      "sha256": "b9031085e5b9df3453ec1ef8a3921e5887cfd53e11841e082c58a346aed1525c",
+      "bytes": 133402
+    },
+    {
+      "path": "Malignant/image/20.jpg",
+      "label": "Malignant",
+      "sha256": "6f7de9430d67252057307b5e827a29ad56a68fbe8d84c9d3dc6b9c050c1dd370",
+      "bytes": 147270
+    },
+    {
+      "path": "Malignant/image/200.jpg",
+      "label": "Malignant",
+      "sha256": "66d6b1029183b5f6a91d501f1dc892304ce2233693d218d6d6fab029e8ead03a",
+      "bytes": 146697
+    },
+    {
+      "path": "Malignant/image/201.jpg",
+      "label": "Malignant",
+      "sha256": "7b60df5d0308c16680862deded0fa30df3f5b84a99eada2aedcee9233c39ba8d",
+      "bytes": 81697
+    },
+    {
+      "path": "Malignant/image/202.jpg",
+      "label": "Malignant",
+      "sha256": "b97addae1c7dc65cada2d2ccf6fe00485328e88c0c390073eca47e8c56e0a6de",
+      "bytes": 144373
+    },
+    {
+      "path": "Malignant/image/203.jpg",
+      "label": "Malignant",
+      "sha256": "97da16458775a1e57c1b31bef5ea3996c93244d96762ac6cdca51b8cc0357496",
+      "bytes": 148792
+    },
+    {
+      "path": "Malignant/image/204.jpg",
+      "label": "Malignant",
+      "sha256": "296fe647230d5e8ad01f242c0c1c664ccd5e25ae4a6b215c59f99d0f70948461",
+      "bytes": 110492
+    },
+    {
+      "path": "Malignant/image/205.jpg",
+      "label": "Malignant",
+      "sha256": "b16f5f46c5dcc05a6bd1d56c18cecfd16be2733c45ec80778e7fb6dd36c9f859",
+      "bytes": 149493
+    },
+    {
+      "path": "Malignant/image/206.jpg",
+      "label": "Malignant",
+      "sha256": "39b6baead4c2e7d55f1c418166812e1dff9385e6091b57cd8636fab0eacc5c62",
+      "bytes": 121393
+    },
+    {
+      "path": "Malignant/image/207.jpg",
+      "label": "Malignant",
+      "sha256": "61714c049bc22ee7e3249f2da7fd8c268f4d75e5195ff438c294c1b604c6f2a0",
+      "bytes": 130854
+    },
+    {
+      "path": "Malignant/image/208.jpg",
+      "label": "Malignant",
+      "sha256": "e69b5af658d5f9fc9871b77cac893edcdaed255c87aff018b6371e1da00ca96d",
+      "bytes": 101245
+    },
+    {
+      "path": "Malignant/image/209.jpg",
+      "label": "Malignant",
+      "sha256": "bc450b6f66aea1cc19f16576dde5651b12c705c423dfa77890673cbe297b90c7",
+      "bytes": 86583
+    },
+    {
+      "path": "Malignant/image/21.jpg",
+      "label": "Malignant",
+      "sha256": "06f2f3ca0219593d790d4464e2e6faab71d8d7d0c7eea4633e4bcbada155c5f1",
+      "bytes": 134991
+    },
+    {
+      "path": "Malignant/image/210.jpg",
+      "label": "Malignant",
+      "sha256": "0f0503056af2a756b8c51d4e834b699ea486cf1387cc0274fbf594c1708895d3",
+      "bytes": 155045
+    },
+    {
+      "path": "Malignant/image/211.jpg",
+      "label": "Malignant",
+      "sha256": "dc5798b07967b975b8c305a05a39a6a8778ce15a2d22d586b9a2ac7748c830cd",
+      "bytes": 139512
+    },
+    {
+      "path": "Malignant/image/212.jpg",
+      "label": "Malignant",
+      "sha256": "e9dfc4b5e9fedcc131f838228fd2af0e251a465edc3edd10964c84eb4023ae02",
+      "bytes": 116040
+    },
+    {
+      "path": "Malignant/image/213.jpg",
+      "label": "Malignant",
+      "sha256": "206b8be8768a37ad1689cc901c6067b8e4955f90d03dfcd5074134ec43eef0f6",
+      "bytes": 80790
+    },
+    {
+      "path": "Malignant/image/214.jpg",
+      "label": "Malignant",
+      "sha256": "29dd39077ab9f2ef9b6c778d7b71ff58647ab797b52a556cdc034bf46e32597d",
+      "bytes": 75897
+    },
+    {
+      "path": "Malignant/image/215.jpg",
+      "label": "Malignant",
+      "sha256": "a6a4f3bdeb64da901f41a38e2757440b793f48051eb22eef5aeb04c9d4c133f8",
+      "bytes": 134471
+    },
+    {
+      "path": "Malignant/image/216.jpg",
+      "label": "Malignant",
+      "sha256": "88c581b382951cad59beb08948aa374fa96105abfea8ba5a2de9af6928e071ed",
+      "bytes": 85456
+    },
+    {
+      "path": "Malignant/image/217.jpg",
+      "label": "Malignant",
+      "sha256": "29a9504cb1b393af4db58e4214c9f03dc8d617766af37369a354f3d927ac7a73",
+      "bytes": 151733
+    },
+    {
+      "path": "Malignant/image/218.jpg",
+      "label": "Malignant",
+      "sha256": "5f139d4c93f31e43ed2329460349beeaabb8fd646540e679fba27b1b74c10407",
+      "bytes": 137245
+    },
+    {
+      "path": "Malignant/image/219.jpg",
+      "label": "Malignant",
+      "sha256": "9c323ba55ace249a6cbf30563ab9e412d0c4d5b7ba25b42e59fcbef4c7b75117",
+      "bytes": 65212
+    },
+    {
+      "path": "Malignant/image/22.jpg",
+      "label": "Malignant",
+      "sha256": "8718003c879c0a6416ce239a93079464dc7b01d94ebd5fce0124f450cbe58900",
+      "bytes": 90257
+    },
+    {
+      "path": "Malignant/image/220.jpg",
+      "label": "Malignant",
+      "sha256": "ea28544bc7132ffd4ab5f22935717cf44e2c99b4f16ab4f9d31af9b3d7073f46",
+      "bytes": 118577
+    },
+    {
+      "path": "Malignant/image/221.jpg",
+      "label": "Malignant",
+      "sha256": "2cf0b97988286242d2eebcae391648ff0a2228d055dd3666c08f1bc15fdc380e",
+      "bytes": 140564
+    },
+    {
+      "path": "Malignant/image/222.jpg",
+      "label": "Malignant",
+      "sha256": "cff59556b072a3de816ff309f22fe791ed192aa83d6f166edf32fa573a2c6094",
+      "bytes": 142079
+    },
+    {
+      "path": "Malignant/image/223.jpg",
+      "label": "Malignant",
+      "sha256": "5cf5c919f6c4c296fe101992be78c3cc7ef8db667c25d5c76ad7f653c7e90cea",
+      "bytes": 136725
+    },
+    {
+      "path": "Malignant/image/224.jpg",
+      "label": "Malignant",
+      "sha256": "468ad0aaf7add158589c305b4804725a511030792b0630e2aa71cddb769620ba",
+      "bytes": 110352
+    },
+    {
+      "path": "Malignant/image/225.jpg",
+      "label": "Malignant",
+      "sha256": "a7fcdd4081ebb84aada9aa409258359679c2e854bcf305769c77f32e7ee82125",
+      "bytes": 127784
+    },
+    {
+      "path": "Malignant/image/226.jpg",
+      "label": "Malignant",
+      "sha256": "04a294a131a3398cd3e16a1c35f88d151f05147c9d704f00e2f2dc3460aff698",
+      "bytes": 127690
+    },
+    {
+      "path": "Malignant/image/227.jpg",
+      "label": "Malignant",
+      "sha256": "e069602a61a259d581e34eb7ba8164d64cb396a853c588252f62b659d8d6310e",
+      "bytes": 44276
+    },
+    {
+      "path": "Malignant/image/228.jpg",
+      "label": "Malignant",
+      "sha256": "09576d91d9fc1444d9eab38b1d790ce18c3a6ae7c1de321f824b55541500da5a",
+      "bytes": 129904
+    },
+    {
+      "path": "Malignant/image/229.jpg",
+      "label": "Malignant",
+      "sha256": "a8aa6d102d31a7c4d3c6b420339fcc01cf8f44e5a9c1d1270377bae21d792dfd",
+      "bytes": 85337
+    },
+    {
+      "path": "Malignant/image/23.jpg",
+      "label": "Malignant",
+      "sha256": "62970cf14b8dc52684acd75722a0fb4aac1547e483ca5cc1c76a49dfd18dc46a",
+      "bytes": 133370
+    },
+    {
+      "path": "Malignant/image/230.jpg",
+      "label": "Malignant",
+      "sha256": "38b1b38a51addb7625ba03ef4d98a7d57ea3f3c1394537fff70396cdef660519",
+      "bytes": 139782
+    },
+    {
+      "path": "Malignant/image/231.jpg",
+      "label": "Malignant",
+      "sha256": "ceb3e7ccf7fd3da1edcbd101024d86c5cf27ca82a96f9460df2ab3c422390d6f",
+      "bytes": 145812
+    },
+    {
+      "path": "Malignant/image/232.jpg",
+      "label": "Malignant",
+      "sha256": "c408375d03c598523d72747e75cd5ff7b1a9be914995aba49bdd522612af3eb1",
+      "bytes": 112733
+    },
+    {
+      "path": "Malignant/image/233.jpg",
+      "label": "Malignant",
+      "sha256": "e4169975076f51774ce073ede9af45502a395a432cee178abd4f2976a56e4eb7",
+      "bytes": 134207
+    },
+    {
+      "path": "Malignant/image/234.jpg",
+      "label": "Malignant",
+      "sha256": "45a4f58f577fd6fe8ac619c56664be65d37ae28f1d904104ebdf6a2e829d8c3e",
+      "bytes": 142902
+    },
+    {
+      "path": "Malignant/image/235.jpg",
+      "label": "Malignant",
+      "sha256": "70df9247aff8608105e54f8f2eb1d39d5fc3021b1e3ed8890f403e91ad936929",
+      "bytes": 39017
+    },
+    {
+      "path": "Malignant/image/236.jpg",
+      "label": "Malignant",
+      "sha256": "346f649680321bbaca84b4d921466a1122b06b4de64ec2f0d6f3799173198ca1",
+      "bytes": 121250
+    },
+    {
+      "path": "Malignant/image/237.jpg",
+      "label": "Malignant",
+      "sha256": "1cf98068216a5847cb517ce7704d10314e562fdc10e60d098c9401564fbbda5f",
+      "bytes": 112320
+    },
+    {
+      "path": "Malignant/image/238.jpg",
+      "label": "Malignant",
+      "sha256": "7fbdc4245ecf730d38221cc76ba350dabada7673962eae1f17233301d1575890",
+      "bytes": 157610
+    },
+    {
+      "path": "Malignant/image/239.jpg",
+      "label": "Malignant",
+      "sha256": "a93b3f7278528ab06797005146bf2784b5f26e3a994985f94a75136e44a74320",
+      "bytes": 148111
+    },
+    {
+      "path": "Malignant/image/24.jpg",
+      "label": "Malignant",
+      "sha256": "241fd46a36a84f1f75f422f28748a4fc308d564acbe368c4266a4e1f4450f6f9",
+      "bytes": 58478
+    },
+    {
+      "path": "Malignant/image/240.jpg",
+      "label": "Malignant",
+      "sha256": "dcafdf8511b019adc087e62110c4119a79fd094c8a21a7409212b82827d013c1",
+      "bytes": 68156
+    },
+    {
+      "path": "Malignant/image/241.jpg",
+      "label": "Malignant",
+      "sha256": "c85a1dba3a3ba12b0ae72a93c3dc4515fd9f9e9cb9cc25a35868ee99bba397f6",
+      "bytes": 84644
+    },
+    {
+      "path": "Malignant/image/242.jpg",
+      "label": "Malignant",
+      "sha256": "7fc084e408b38f789de108dd3393fcbc05a5320b96fbd30edbd106d01f91ac8b",
+      "bytes": 157572
+    },
+    {
+      "path": "Malignant/image/243.jpg",
+      "label": "Malignant",
+      "sha256": "3b19afdafcb284cc08000082629b70618272244e585a5847632b5b6995bd92ec",
+      "bytes": 144707
+    },
+    {
+      "path": "Malignant/image/244.jpg",
+      "label": "Malignant",
+      "sha256": "765958836ea3fba6608af668f327bbfee70305c304d9988618ab74536e284d50",
+      "bytes": 106406
+    },
+    {
+      "path": "Malignant/image/245.jpg",
+      "label": "Malignant",
+      "sha256": "715e6b73ded8c35057f074cd8dabc82eb6058bf848a94a2aec8863e1fee636f2",
+      "bytes": 157309
+    },
+    {
+      "path": "Malignant/image/246.jpg",
+      "label": "Malignant",
+      "sha256": "df0536a1235a1ce90009231e9ab10166bb5b9bd8049d11ab9784af98f4ac0c5c",
+      "bytes": 75512
+    },
+    {
+      "path": "Malignant/image/247.jpg",
+      "label": "Malignant",
+      "sha256": "4b10aaf9f255a38512e65abb0cd0b0b34f126ac269e7cb07982d43d40c00e40e",
+      "bytes": 178494
+    },
+    {
+      "path": "Malignant/image/248.jpg",
+      "label": "Malignant",
+      "sha256": "94aa0df41d5486f2fb58fbeeea4421abb685484004e4412717297b08bb5ff2d1",
+      "bytes": 144218
+    },
+    {
+      "path": "Malignant/image/249.jpg",
+      "label": "Malignant",
+      "sha256": "99ff6b2556da75205eca413fed405580c34cd586795b694361e5178522d3b4c0",
+      "bytes": 119526
+    },
+    {
+      "path": "Malignant/image/25.jpg",
+      "label": "Malignant",
+      "sha256": "f2dd77ccb4370e6b3d1878ad8be66eca0e440173a4982eeed6eba08ed6ef1491",
+      "bytes": 107380
+    },
+    {
+      "path": "Malignant/image/250.jpg",
+      "label": "Malignant",
+      "sha256": "1f3508d6c8d958553d49c06a8901cae94450cebcae9d88d15e7f478fba975761",
+      "bytes": 133398
+    },
+    {
+      "path": "Malignant/image/251.jpg",
+      "label": "Malignant",
+      "sha256": "c7dbc9efdb664e18055d991eb2927a1dda7f39f338267e9b293f6c9993f8ad56",
+      "bytes": 138097
+    },
+    {
+      "path": "Malignant/image/252.jpg",
+      "label": "Malignant",
+      "sha256": "e1b4a12f5de144997ab7e008ec5c3e5ea070586336387d5e46ae0e4fe45a1ac6",
+      "bytes": 126249
+    },
+    {
+      "path": "Malignant/image/253.jpg",
+      "label": "Malignant",
+      "sha256": "ad95e372967d8f870220b9e163e17feaec13892244e3cc910525ce612950abaf",
+      "bytes": 82267
+    },
+    {
+      "path": "Malignant/image/254.jpg",
+      "label": "Malignant",
+      "sha256": "6d2b9e6942d7fc12eb61171ae0d75898d204530ecb0c4f943f6d1f075959ea22",
+      "bytes": 37957
+    },
+    {
+      "path": "Malignant/image/255.jpg",
+      "label": "Malignant",
+      "sha256": "f2442e3c76b70f79fc7517b5814ac89f14c60defcc3b19373660046f2f161e02",
+      "bytes": 141239
+    },
+    {
+      "path": "Malignant/image/256.jpg",
+      "label": "Malignant",
+      "sha256": "d19283033bc768ca438c66ccf160026d85738d7c19e598503efa6ab90a734306",
+      "bytes": 143463
+    },
+    {
+      "path": "Malignant/image/257.jpg",
+      "label": "Malignant",
+      "sha256": "0cf0c40a95fd140ec4c531c7bf46e7f78c05aea602b765a1a9cf26d06b1c3adf",
+      "bytes": 66513
+    },
+    {
+      "path": "Malignant/image/258.jpg",
+      "label": "Malignant",
+      "sha256": "c6964132c00d868e396d7764098a014b0244cf560650925cdb4a526d50d5ff23",
+      "bytes": 144668
+    },
+    {
+      "path": "Malignant/image/259.jpg",
+      "label": "Malignant",
+      "sha256": "5f694adfbd77582ac1aec79de8a149e1723dc2c51813f20429986b5185cbb185",
+      "bytes": 130168
+    },
+    {
+      "path": "Malignant/image/26.jpg",
+      "label": "Malignant",
+      "sha256": "687bebdd5c1fa11231d896ddc240d86436073976a493e14258c391a31b4d97f5",
+      "bytes": 141184
+    },
+    {
+      "path": "Malignant/image/260.jpg",
+      "label": "Malignant",
+      "sha256": "54ebd7364b15ac186c848536b5563d166a10029e59332156fe21c2b9e87e7af1",
+      "bytes": 52660
+    },
+    {
+      "path": "Malignant/image/261.jpg",
+      "label": "Malignant",
+      "sha256": "b92fef1ab5d075d705b35d9e9a13f5b266b549a594111f00b6128ea7f7f9a04e",
+      "bytes": 117318
+    },
+    {
+      "path": "Malignant/image/262.jpg",
+      "label": "Malignant",
+      "sha256": "e96a436997a33e6b2187737d385c6f48906950cfb43cef103291532b4ab99878",
+      "bytes": 136802
+    },
+    {
+      "path": "Malignant/image/263.jpg",
+      "label": "Malignant",
+      "sha256": "d1d6540dc1e0529acdc75da645bdf6f962c060efa5b4b210277b5ddf80aa70d6",
+      "bytes": 134015
+    },
+    {
+      "path": "Malignant/image/264.jpg",
+      "label": "Malignant",
+      "sha256": "b052b03d1da84a3f8449399c210ea883e8847c16d1bae6d287c2062dd359c2c1",
+      "bytes": 42777
+    },
+    {
+      "path": "Malignant/image/265.jpg",
+      "label": "Malignant",
+      "sha256": "6ec5592bd0025b36caea6b607b12bd12fba3bea50e60e984998934cc72dbbf0f",
+      "bytes": 59262
+    },
+    {
+      "path": "Malignant/image/266.jpg",
+      "label": "Malignant",
+      "sha256": "4d8d1bce16d0a9b6afcdcd4eb6075998fc0188bb700f22805ef78e56128b5d1a",
+      "bytes": 129832
+    },
+    {
+      "path": "Malignant/image/267.jpg",
+      "label": "Malignant",
+      "sha256": "1bc32d562fead16447b742f94bae26e4dec5e63a440b7d77cd4dadd5b2df4f96",
+      "bytes": 78730
+    },
+    {
+      "path": "Malignant/image/268.jpg",
+      "label": "Malignant",
+      "sha256": "36156b8cdaa085ea551442f4582d58a163a710d04e230303702cdcdb77792899",
+      "bytes": 157997
+    },
+    {
+      "path": "Malignant/image/269.jpg",
+      "label": "Malignant",
+      "sha256": "72f5d95d8bcb3dc77409ee0bb06bb33d434b31fe310e3d0b1263a079e9761534",
+      "bytes": 114837
+    },
+    {
+      "path": "Malignant/image/27.jpg",
+      "label": "Malignant",
+      "sha256": "1874d6d3fd45458ce81d5701cbab480decb31ceef0b91c9db99941f476200558",
+      "bytes": 157894
+    },
+    {
+      "path": "Malignant/image/270.jpg",
+      "label": "Malignant",
+      "sha256": "128790fdc2bd75f69479cbd1eb86257f4c2ecac811624ed299fbb99a4563ec3b",
+      "bytes": 97298
+    },
+    {
+      "path": "Malignant/image/271.jpg",
+      "label": "Malignant",
+      "sha256": "38a8b55a0fdc0720493d0db0d9abb8eecf1f7c9048b6721a2d7f88509b101e20",
+      "bytes": 121743
+    },
+    {
+      "path": "Malignant/image/272.jpg",
+      "label": "Malignant",
+      "sha256": "5ae7857e75944f9bf128db39052b1db9cc412a5ff64efd6db7b8cd5f0fb0642e",
+      "bytes": 84473
+    },
+    {
+      "path": "Malignant/image/273.jpg",
+      "label": "Malignant",
+      "sha256": "7c5e2a29ce451cc55f130147c15ca50cceb67a277150a3eda8677088382e6545",
+      "bytes": 141593
+    },
+    {
+      "path": "Malignant/image/274.jpg",
+      "label": "Malignant",
+      "sha256": "3c583e5c5f5c4ad4fde932d61c64f95d48d2a1eeadec9eb5f52a01c161a2ed9a",
+      "bytes": 120490
+    },
+    {
+      "path": "Malignant/image/275.jpg",
+      "label": "Malignant",
+      "sha256": "04f25c914357034dba529157f274cc8c208cd2a97f6ff0c6c879b382f452060a",
+      "bytes": 148671
+    },
+    {
+      "path": "Malignant/image/276.jpg",
+      "label": "Malignant",
+      "sha256": "06ec4d8e21868480238dd77944121f55891b68935df20d9301ecd7324317a3a8",
+      "bytes": 117915
+    },
+    {
+      "path": "Malignant/image/277.jpg",
+      "label": "Malignant",
+      "sha256": "ccf800c443b5a5acdf96e1052726536de40cc57401ee63cc8568d9f9a1ac2ed9",
+      "bytes": 115046
+    },
+    {
+      "path": "Malignant/image/278.jpg",
+      "label": "Malignant",
+      "sha256": "b9a082d95b636929b5a9321f6f76ee46972038e8509a09ecf3c5a4e596eb23ce",
+      "bytes": 125454
+    },
+    {
+      "path": "Malignant/image/279.jpg",
+      "label": "Malignant",
+      "sha256": "46c20a03c8c829e06ca2fd1da67d48072cc9f2989c327a8209a9a12db5a1b722",
+      "bytes": 113309
+    },
+    {
+      "path": "Malignant/image/28.jpg",
+      "label": "Malignant",
+      "sha256": "6083253c2979cbcf8d8a6018e2c6b7f531ec47302679ec6c9cb72a2ef47a5193",
+      "bytes": 127790
+    },
+    {
+      "path": "Malignant/image/280.jpg",
+      "label": "Malignant",
+      "sha256": "bf2b5ad2d6b232d88d1de10f7fb766d096c15fdd0110117177780355dad58ace",
+      "bytes": 94051
+    },
+    {
+      "path": "Malignant/image/281.jpg",
+      "label": "Malignant",
+      "sha256": "ddc0346b7fb9977acf77ababa94977e6923fc9ac22c7813cc71e8c9e746acda2",
+      "bytes": 88048
+    },
+    {
+      "path": "Malignant/image/282.jpg",
+      "label": "Malignant",
+      "sha256": "1066b6d199b3cc70cd4316cccbdd95f4dafdc182725ca973be6a463be3694466",
+      "bytes": 136772
+    },
+    {
+      "path": "Malignant/image/283.jpg",
+      "label": "Malignant",
+      "sha256": "857a932cf7e86e45d79179a3a5f3714158023e3224cc639a2ec74216b2e86de7",
+      "bytes": 90753
+    },
+    {
+      "path": "Malignant/image/284.jpg",
+      "label": "Malignant",
+      "sha256": "e4b4468667e6ddc50d3a8a04225952db028114d39d2210e3f961ae2fab78f0b7",
+      "bytes": 69889
+    },
+    {
+      "path": "Malignant/image/285.jpg",
+      "label": "Malignant",
+      "sha256": "02b07deb6d369b8e58fc5bdf8c28cbd349a04b8529bf7e7ac0cad9e642d03ee9",
+      "bytes": 85711
+    },
+    {
+      "path": "Malignant/image/286.jpg",
+      "label": "Malignant",
+      "sha256": "b16b48d101225f426e55a823668037a8be960e3fce01e80e2a1fa1cf6eeef893",
+      "bytes": 122065
+    },
+    {
+      "path": "Malignant/image/287.jpg",
+      "label": "Malignant",
+      "sha256": "9b63d661df8a22ef18322aec9e38eff5322990a60636fddfdeb671625ca05224",
+      "bytes": 58758
+    },
+    {
+      "path": "Malignant/image/288.jpg",
+      "label": "Malignant",
+      "sha256": "c5bfbb7ba514bebdf9813a9aad5056e323ff95dbed3388e242df5db52d019ab0",
+      "bytes": 73557
+    },
+    {
+      "path": "Malignant/image/289.jpg",
+      "label": "Malignant",
+      "sha256": "2931da23f1c7168ffc4ddc6b76088068ab38cad16529137f2d9c5031ab16a559",
+      "bytes": 110257
+    },
+    {
+      "path": "Malignant/image/29.jpg",
+      "label": "Malignant",
+      "sha256": "3286f89fcea87c51b2feae00a38647e5c77f6a90e04196bd5020001a5270c6ec",
+      "bytes": 121877
+    },
+    {
+      "path": "Malignant/image/290.jpg",
+      "label": "Malignant",
+      "sha256": "fcc30862c363cdcc357c66dbea214db6252881a3fc410611c0da7dd5d4456d0e",
+      "bytes": 105400
+    },
+    {
+      "path": "Malignant/image/291.jpg",
+      "label": "Malignant",
+      "sha256": "dccf248349c9f00df33ab7f2bd2e6b9ac561503b20d9eb31859e52e85763788f",
+      "bytes": 135238
+    },
+    {
+      "path": "Malignant/image/292.jpg",
+      "label": "Malignant",
+      "sha256": "a8ad3d883f12005327f272e03734402af03e2506de38a0010a1b3db37496d9c1",
+      "bytes": 147505
+    },
+    {
+      "path": "Malignant/image/293.jpg",
+      "label": "Malignant",
+      "sha256": "e71392e397e1c2c1ae7aee1a8ff9b8b1a4d0bdb99faacbb7079a07edc3a3950b",
+      "bytes": 141864
+    },
+    {
+      "path": "Malignant/image/294.jpg",
+      "label": "Malignant",
+      "sha256": "f075d0129339c8821a87da932ad82711d0d6f3a268a5e29c7c2e4665ccf59568",
+      "bytes": 158656
+    },
+    {
+      "path": "Malignant/image/295.jpg",
+      "label": "Malignant",
+      "sha256": "33e3e3fbaf2f8443cca447d0833a8d4ee537ffbe314f44d4aabaec1f891328ec",
+      "bytes": 80864
+    },
+    {
+      "path": "Malignant/image/296.jpg",
+      "label": "Malignant",
+      "sha256": "8464ce16585ba619c8ede2b359932225d6e2969a7715f27c218fba69a0c7399e",
+      "bytes": 134731
+    },
+    {
+      "path": "Malignant/image/297.jpg",
+      "label": "Malignant",
+      "sha256": "e6a2984f9300275fafb7f5027d418352831fab1341db8b0d16f8889b77b8fd36",
+      "bytes": 153210
+    },
+    {
+      "path": "Malignant/image/298.jpg",
+      "label": "Malignant",
+      "sha256": "3593aaec64a4cdf9fd3822bfafcb227f975a9cf4cdb5617da363ee6b19499fe6",
+      "bytes": 155695
+    },
+    {
+      "path": "Malignant/image/299.jpg",
+      "label": "Malignant",
+      "sha256": "8dacfb6432b90f5671d75ebabf11ad5034bdf33df05edc49085f51b717f9f7d6",
+      "bytes": 140983
+    },
+    {
+      "path": "Malignant/image/3.jpg",
+      "label": "Malignant",
+      "sha256": "aa70470ac582a36258ecdf7828f51bea794e157933efe62a75e4deaea5efc9db",
+      "bytes": 138742
+    },
+    {
+      "path": "Malignant/image/30.jpg",
+      "label": "Malignant",
+      "sha256": "5771af6cb83163a30e5450e2d56de3b2a028360e5a123d8d2f14b0b5d56823fe",
+      "bytes": 125194
+    },
+    {
+      "path": "Malignant/image/300.jpg",
+      "label": "Malignant",
+      "sha256": "6f6eb7a15f90fc568ee6bdff9f9ea6a297d550ff5372e07927d20bebb73f4388",
+      "bytes": 56842
+    },
+    {
+      "path": "Malignant/image/301.jpg",
+      "label": "Malignant",
+      "sha256": "d9abab415a9d94342fcc4cfd11102a97a7731413ef038a5151b1b38eaca6b7e2",
+      "bytes": 138414
+    },
+    {
+      "path": "Malignant/image/302.jpg",
+      "label": "Malignant",
+      "sha256": "9ddc4d3ff0d4d48d65185c8e8421394cacf95639c3b6ed326d3716c034ec14f8",
+      "bytes": 74628
+    },
+    {
+      "path": "Malignant/image/303.jpg",
+      "label": "Malignant",
+      "sha256": "8387064d199850a825f6b40645abab58cc159dbcb2fdda8fcdce33244951b613",
+      "bytes": 148343
+    },
+    {
+      "path": "Malignant/image/304.jpg",
+      "label": "Malignant",
+      "sha256": "2411e78f0d5bf6cdf1cc15cdf6689bf11ec514c4cc338dd5510dfd2fe61a9406",
+      "bytes": 136313
+    },
+    {
+      "path": "Malignant/image/305.jpg",
+      "label": "Malignant",
+      "sha256": "05f465a27420c1b1d2b4e2be548c025dfb0f6a83c6b99da2d70d5c17a96564ec",
+      "bytes": 126308
+    },
+    {
+      "path": "Malignant/image/306.jpg",
+      "label": "Malignant",
+      "sha256": "94053c1dc6a9924808bbf4413b9ae80fa696a9d4f325a2e4ace8acf2e9ba0198",
+      "bytes": 90638
+    },
+    {
+      "path": "Malignant/image/307.jpg",
+      "label": "Malignant",
+      "sha256": "ae3f28c5a96c0e81cfc1a12837c91df600d88e1df6d27fdb7a61fdc0adde77b2",
+      "bytes": 126766
+    },
+    {
+      "path": "Malignant/image/308.jpg",
+      "label": "Malignant",
+      "sha256": "29ef8a6b0e860f083b1a54668cc666a64d897bed86f0ce0c4a9908dc0d77742e",
+      "bytes": 85496
+    },
+    {
+      "path": "Malignant/image/309.jpg",
+      "label": "Malignant",
+      "sha256": "2d73283f439c889d798d47b5e4306248c1a99279ad9f14160a3d6e8ffc406b84",
+      "bytes": 165261
+    },
+    {
+      "path": "Malignant/image/31.jpg",
+      "label": "Malignant",
+      "sha256": "4e8511b7e8bc2e63e41c21ba6bf95cf45fe1477a7efe66e393670fced8ba30cc",
+      "bytes": 56263
+    },
+    {
+      "path": "Malignant/image/310.jpg",
+      "label": "Malignant",
+      "sha256": "aef80ad2a558bbf05d0c6331aa1c07f7d49817ac93e48e72ff2a0ae8cf4215c9",
+      "bytes": 98539
+    },
+    {
+      "path": "Malignant/image/311.jpg",
+      "label": "Malignant",
+      "sha256": "cc7ddf8519052505893054af006558f896fa01b2c5167cb27f978c2397269f84",
+      "bytes": 54859
+    },
+    {
+      "path": "Malignant/image/312.jpg",
+      "label": "Malignant",
+      "sha256": "a31ada0fc3403514acc8aeecc76cfa42dc599287d2621e38dff99ba6eb67628c",
+      "bytes": 159771
+    },
+    {
+      "path": "Malignant/image/313.jpg",
+      "label": "Malignant",
+      "sha256": "c49c6b4a12cf965ba04cdb8f8016fa0f0ef4a36a208d2a047e7c834d0c649fea",
+      "bytes": 101207
+    },
+    {
+      "path": "Malignant/image/314.jpg",
+      "label": "Malignant",
+      "sha256": "f5530d7d33735f6c91327362e8f811d41ac66ddf2e4452f6eef97379566b53ce",
+      "bytes": 86563
+    },
+    {
+      "path": "Malignant/image/315.jpg",
+      "label": "Malignant",
+      "sha256": "aaccd5a8f262987fb5b02268c12ffe8c0ed4c9355ac80d58fdb52fb82947e6cc",
+      "bytes": 126234
+    },
+    {
+      "path": "Malignant/image/316.jpg",
+      "label": "Malignant",
+      "sha256": "2541530855939d6436b900aa1fd53896f657029908d217d5f8b6e225e3ea3c0f",
+      "bytes": 119550
+    },
+    {
+      "path": "Malignant/image/317.jpg",
+      "label": "Malignant",
+      "sha256": "d6cb21fe5aeb81d6d6f8ab17af2da8db95ba0fdb1e015eef45802364ec6a0baf",
+      "bytes": 82480
+    },
+    {
+      "path": "Malignant/image/318.jpg",
+      "label": "Malignant",
+      "sha256": "eec3cf212a8fd1134cb6f69878703253e53893ce06eae7591d9a62425908392f",
+      "bytes": 156577
+    },
+    {
+      "path": "Malignant/image/319.jpg",
+      "label": "Malignant",
+      "sha256": "123486e7e449261e31c87a3fb0a02de6493ac15e1fbc6d5acde495dc4d25810c",
+      "bytes": 143568
+    },
+    {
+      "path": "Malignant/image/32.jpg",
+      "label": "Malignant",
+      "sha256": "342577fd40ca7c05c764fdf64043f256b8cc75d7f2c3bb0b0ce0794e7ad8d940",
+      "bytes": 135858
+    },
+    {
+      "path": "Malignant/image/320.jpg",
+      "label": "Malignant",
+      "sha256": "90b20eb7c8230a6643965fa68724ae30456120e9062d76204e7064d6f596b14b",
+      "bytes": 146856
+    },
+    {
+      "path": "Malignant/image/321.jpg",
+      "label": "Malignant",
+      "sha256": "66672440c66b6ae45bb14949a98c183d42c17d05439c31af93596625e8c118ce",
+      "bytes": 153891
+    },
+    {
+      "path": "Malignant/image/322.jpg",
+      "label": "Malignant",
+      "sha256": "579dba4bfbea7812b7c4cc82463a92541c755a6819b3a9f3ead9ecdaf26aefad",
+      "bytes": 140063
+    },
+    {
+      "path": "Malignant/image/323.jpg",
+      "label": "Malignant",
+      "sha256": "ca8c1ba3af7e09e1327a4b854e69c087e74487d2d8b61e26621664e35890f676",
+      "bytes": 105043
+    },
+    {
+      "path": "Malignant/image/324.jpg",
+      "label": "Malignant",
+      "sha256": "adb46d43a6bd4d50aa165dab7b83b3d9efb5142cc34e747d585626a69b96c2b0",
+      "bytes": 50784
+    },
+    {
+      "path": "Malignant/image/325.jpg",
+      "label": "Malignant",
+      "sha256": "347a19600d2553977a200a3bb8fa00525f49b0d6158015b9002037af6c387535",
+      "bytes": 72355
+    },
+    {
+      "path": "Malignant/image/326.jpg",
+      "label": "Malignant",
+      "sha256": "814eacd53486539204cb0e7a68dfb8931b4068867c69caa5fdc238704d3ab705",
+      "bytes": 146382
+    },
+    {
+      "path": "Malignant/image/327.jpg",
+      "label": "Malignant",
+      "sha256": "bce150be223029f0f5ff04441c7f24c20b64034dc1ff599ced5efee8a60849f5",
+      "bytes": 115437
+    },
+    {
+      "path": "Malignant/image/328.jpg",
+      "label": "Malignant",
+      "sha256": "4079a6fff886d09d4f9f5f6259b993a9e28765883ce7946c2cb43419f8c629f9",
+      "bytes": 85167
+    },
+    {
+      "path": "Malignant/image/329.jpg",
+      "label": "Malignant",
+      "sha256": "0d50230025c649a3dd83dab6c8aa6fedf35d42c71f9ed12fc3255ce873d790e6",
+      "bytes": 63422
+    },
+    {
+      "path": "Malignant/image/33.jpg",
+      "label": "Malignant",
+      "sha256": "f1696f5a18fbf7e23e12781eff765b9bb154d86710b71767af5422fd92267cbd",
+      "bytes": 139064
+    },
+    {
+      "path": "Malignant/image/330.jpg",
+      "label": "Malignant",
+      "sha256": "33dfba1fd92154d82e9f6b5ffa08809eecfcd820431a6859d078457508c6634c",
+      "bytes": 145260
+    },
+    {
+      "path": "Malignant/image/331.jpg",
+      "label": "Malignant",
+      "sha256": "eeaf83b38a1231d9ec05ee7c513da32a2ff790c3784c2750b91b3a3cb258be23",
+      "bytes": 144059
+    },
+    {
+      "path": "Malignant/image/332.jpg",
+      "label": "Malignant",
+      "sha256": "9eed8ea3e1b8a467ad5b9da5781678c806256beb0d2e04d6970b74ee3d7cea5d",
+      "bytes": 130502
+    },
+    {
+      "path": "Malignant/image/333.jpg",
+      "label": "Malignant",
+      "sha256": "41b2312e5ea14cbe39b7304654a2b120d78dc1a1d70453442a14c146aaf5ef56",
+      "bytes": 122650
+    },
+    {
+      "path": "Malignant/image/334.jpg",
+      "label": "Malignant",
+      "sha256": "99b49463acadc3c423d236c394e012cf827def945fbf76e90b0982bf0b03748b",
+      "bytes": 69828
+    },
+    {
+      "path": "Malignant/image/335.jpg",
+      "label": "Malignant",
+      "sha256": "a9495155710bc7a675af3e65088faa21d6327a0abf708765dfeeeddb46b3d042",
+      "bytes": 57855
+    },
+    {
+      "path": "Malignant/image/336.jpg",
+      "label": "Malignant",
+      "sha256": "516fcd16c28395a50fa15a764033b41aa07c2bd0e3655d4ed76e88883d5dd62b",
+      "bytes": 147977
+    },
+    {
+      "path": "Malignant/image/337.jpg",
+      "label": "Malignant",
+      "sha256": "99eaccdf424bf994fe4cd0ce9b4e922278a46100e30f374492f3f1cc44992f08",
+      "bytes": 128599
+    },
+    {
+      "path": "Malignant/image/338.jpg",
+      "label": "Malignant",
+      "sha256": "8fa7c0219349b786318c11937f1f579414afe6a7cb86df245863fb68a8966b92",
+      "bytes": 129596
+    },
+    {
+      "path": "Malignant/image/339.jpg",
+      "label": "Malignant",
+      "sha256": "03c94b1aa622c4d7b020ccc334b34dd3713fba186b43ac149573e58f146e3e90",
+      "bytes": 156347
+    },
+    {
+      "path": "Malignant/image/34.jpg",
+      "label": "Malignant",
+      "sha256": "d50c6cb9773cebc8aa9dd39c78e3c1e16269588eee58e9c0dea008094bff2be6",
+      "bytes": 150070
+    },
+    {
+      "path": "Malignant/image/340.jpg",
+      "label": "Malignant",
+      "sha256": "7a247c5e25cf28871de12956fa34b9f5ec04e0e159910bf0281c02774f53899a",
+      "bytes": 149574
+    },
+    {
+      "path": "Malignant/image/341.jpg",
+      "label": "Malignant",
+      "sha256": "9cafdda7e9699a7c06bf4ead2e2bbdd4142d5561001cf55687092c14f8b9b91a",
+      "bytes": 42659
+    },
+    {
+      "path": "Malignant/image/342.jpg",
+      "label": "Malignant",
+      "sha256": "32cc2e44a1370bba819418a94416d424c8484d99167b38dde9f732b40a5ab7af",
+      "bytes": 143162
+    },
+    {
+      "path": "Malignant/image/343.jpg",
+      "label": "Malignant",
+      "sha256": "e3061da963dd58df03fef5fb4f47fa07aa6ce5ea79d9e691cacdbabd9c5b2bcf",
+      "bytes": 69905
+    },
+    {
+      "path": "Malignant/image/344.jpg",
+      "label": "Malignant",
+      "sha256": "ef993acded000f52a3b27e8a3b9f7b9267c821ae721deff0d6a1264595a10b7c",
+      "bytes": 108093
+    },
+    {
+      "path": "Malignant/image/345.jpg",
+      "label": "Malignant",
+      "sha256": "0786f5847aeb7d46469183cdb0a7834ee5fb184bf8533edc9f7f51e47807576f",
+      "bytes": 138841
+    },
+    {
+      "path": "Malignant/image/346.jpg",
+      "label": "Malignant",
+      "sha256": "3e14af8e55a62e2d7bb20df6675eea51d405ab91f31f2ec1a04f61dad1866e1e",
+      "bytes": 118313
+    },
+    {
+      "path": "Malignant/image/347.jpg",
+      "label": "Malignant",
+      "sha256": "0e0371619f7b3c43856ec03ca9fea587217c8e7364ef3df33abb97ff60ad2627",
+      "bytes": 65649
+    },
+    {
+      "path": "Malignant/image/348.jpg",
+      "label": "Malignant",
+      "sha256": "3f790cf50b0f3ba8e4c86ad176f03a674ae9dfea228923c93f3b98ec44884554",
+      "bytes": 146214
+    },
+    {
+      "path": "Malignant/image/349.jpg",
+      "label": "Malignant",
+      "sha256": "1196f8cdda73a25afa190387e27100393144a88ecc0a4d14ec233a9b4f3e2c78",
+      "bytes": 141551
+    },
+    {
+      "path": "Malignant/image/35.jpg",
+      "label": "Malignant",
+      "sha256": "ffc12bd79679fa7bb05090e7ea489412a31a98fae0b3d91bf8793d124c0f5f39",
+      "bytes": 152651
+    },
+    {
+      "path": "Malignant/image/350.jpg",
+      "label": "Malignant",
+      "sha256": "ec4566a1510fe92b0235af7a6fef3f669ff938841225ac95252b0b3d046a9e77",
+      "bytes": 65573
+    },
+    {
+      "path": "Malignant/image/351.jpg",
+      "label": "Malignant",
+      "sha256": "40a4ae7d7af983e48a0ee4511125ab9c8e4798058c200b33fff7fd49c4224159",
+      "bytes": 86536
+    },
+    {
+      "path": "Malignant/image/352.jpg",
+      "label": "Malignant",
+      "sha256": "59c6f34ff9bd9bc45648fab3d8009a088f3e19e22e2d9046112b0d95cc8f849f",
+      "bytes": 121035
+    },
+    {
+      "path": "Malignant/image/353.jpg",
+      "label": "Malignant",
+      "sha256": "2f829bf4a69c4c1591c2c6e90dfb799e1d8fda33e9f6a5b9e3c318114aae19c7",
+      "bytes": 67186
+    },
+    {
+      "path": "Malignant/image/354.jpg",
+      "label": "Malignant",
+      "sha256": "744c46128d905f7722b213310e3d256118676022d2020d416c2062da970c566c",
+      "bytes": 134230
+    },
+    {
+      "path": "Malignant/image/355.jpg",
+      "label": "Malignant",
+      "sha256": "89a2618d0cb602a380e1a817b178a7d04c3f9e247854ff53344e3008903f778f",
+      "bytes": 160157
+    },
+    {
+      "path": "Malignant/image/356.jpg",
+      "label": "Malignant",
+      "sha256": "b34c363aad1f929048dde81e0faf14b21dce7b987dc08e57fd798be2898d4268",
+      "bytes": 147944
+    },
+    {
+      "path": "Malignant/image/357.jpg",
+      "label": "Malignant",
+      "sha256": "76df3d00fa55f430e9be8e666b9ec70f6a2197e13402e0ab8cb41d8bf2bfdd91",
+      "bytes": 68505
+    },
+    {
+      "path": "Malignant/image/358.jpg",
+      "label": "Malignant",
+      "sha256": "9f77daecdf2e7735f2547404da8e7c60ab3bd9a3fe43d0d62e5868d772109bcc",
+      "bytes": 116745
+    },
+    {
+      "path": "Malignant/image/359.jpg",
+      "label": "Malignant",
+      "sha256": "561626b69395ae7243e3e0390418b2752df2791e91559be7df3c0f21a9b08619",
+      "bytes": 89383
+    },
+    {
+      "path": "Malignant/image/36.jpg",
+      "label": "Malignant",
+      "sha256": "7ff019e5abb268e102578cdeafb00006fc2c12f9b12af634591f68fb33a51960",
+      "bytes": 112741
+    },
+    {
+      "path": "Malignant/image/360.jpg",
+      "label": "Malignant",
+      "sha256": "214484042f4ebe53047f34ac1574fe5444906b6bacc5ffd917d93db68241cb7c",
+      "bytes": 133390
+    },
+    {
+      "path": "Malignant/image/361.jpg",
+      "label": "Malignant",
+      "sha256": "1e1d927988884eeac7ccdee7537b20af14b29680ed92d85fcbfb861b78735589",
+      "bytes": 133157
+    },
+    {
+      "path": "Malignant/image/362.jpg",
+      "label": "Malignant",
+      "sha256": "4eba5967fe2794975ff886597a35de844d4ed413e2e429764307971e20f8c3e9",
+      "bytes": 82052
+    },
+    {
+      "path": "Malignant/image/363.jpg",
+      "label": "Malignant",
+      "sha256": "fe6a3d95b6bb16d669032d9372a9564c5fe844968c18e4b9957266638ed0b79b",
+      "bytes": 143059
+    },
+    {
+      "path": "Malignant/image/364.jpg",
+      "label": "Malignant",
+      "sha256": "3431328750006be1943397a6df0d71b0e1ee6027da3f5f07062fb596a5898e0d",
+      "bytes": 147059
+    },
+    {
+      "path": "Malignant/image/365.jpg",
+      "label": "Malignant",
+      "sha256": "7eb3ddb6924fddd41966d1461ed7002010e31b887213235090b105cc78f1a7ef",
+      "bytes": 150623
+    },
+    {
+      "path": "Malignant/image/366.jpg",
+      "label": "Malignant",
+      "sha256": "2ebf25e201c29a782197c45bb2b89c9f741e04bf234ce91220d0d66c01f03185",
+      "bytes": 138042
+    },
+    {
+      "path": "Malignant/image/367.jpg",
+      "label": "Malignant",
+      "sha256": "bfbb86e7f53531a2e5aabc3ac3cadf081de12d258307e71d67b705f1b49d9837",
+      "bytes": 99353
+    },
+    {
+      "path": "Malignant/image/368.jpg",
+      "label": "Malignant",
+      "sha256": "41d78fe832da868440ffe3e806701d4f5f83f0f4fc6f92d7fe58a1e4ede6528c",
+      "bytes": 87436
+    },
+    {
+      "path": "Malignant/image/369.jpg",
+      "label": "Malignant",
+      "sha256": "d53c2a9f5d8c10be82e6ceda6631455cf034dc08854cbd031fde4c02aad93b0e",
+      "bytes": 51636
+    },
+    {
+      "path": "Malignant/image/37.jpg",
+      "label": "Malignant",
+      "sha256": "2c182549247cdf49f3b64027ef71eb958a373fb7099a7b63800d2482780079dd",
+      "bytes": 124565
+    },
+    {
+      "path": "Malignant/image/370.jpg",
+      "label": "Malignant",
+      "sha256": "236795155d52f44fdf910eb325824f0c7e308342ecb4f30bb35d63e1a118caa5",
+      "bytes": 73591
+    },
+    {
+      "path": "Malignant/image/371.jpg",
+      "label": "Malignant",
+      "sha256": "1fed0f1327b0391c3552511cc593dbfd4e901b97640d3163f399942294b693c4",
+      "bytes": 88274
+    },
+    {
+      "path": "Malignant/image/372.jpg",
+      "label": "Malignant",
+      "sha256": "312de667a32e4f1b1450d60b5cad931be3a532f2cb4e657aa6d4042d9c2a338b",
+      "bytes": 149190
+    },
+    {
+      "path": "Malignant/image/373.jpg",
+      "label": "Malignant",
+      "sha256": "78a5f02cc6e153958a206074d863c391bbcd3e5ce3fc7ff936c994c3fe3808aa",
+      "bytes": 81202
+    },
+    {
+      "path": "Malignant/image/374.jpg",
+      "label": "Malignant",
+      "sha256": "0078101d81092e0936268e0b5f3d43af12618da4a5656a2d5ee1e0458fb36475",
+      "bytes": 88892
+    },
+    {
+      "path": "Malignant/image/375.jpg",
+      "label": "Malignant",
+      "sha256": "f537b8706533d8108d5a342665e597b30ea53dd4c23a643f9c2aa7152ec147be",
+      "bytes": 155992
+    },
+    {
+      "path": "Malignant/image/376.jpg",
+      "label": "Malignant",
+      "sha256": "71ee8360c287abb9e16b9c529db58aa48586d40b85a4fd9680b89f99c25fc788",
+      "bytes": 115075
+    },
+    {
+      "path": "Malignant/image/377.jpg",
+      "label": "Malignant",
+      "sha256": "8f1e8c7df7b098aad85bc26131b03aab826948b897882af75e01080926048837",
+      "bytes": 127921
+    },
+    {
+      "path": "Malignant/image/378.jpg",
+      "label": "Malignant",
+      "sha256": "d19e08a29c6155de5a54b58d4f0adcd7ed9c5cce95c1dd271f225f1683ec5038",
+      "bytes": 60956
+    },
+    {
+      "path": "Malignant/image/379.jpg",
+      "label": "Malignant",
+      "sha256": "9bd3fe17dcae9c4f0f185fbf093ff5cf37e8138640d8882a4e1df9fd9fc28b06",
+      "bytes": 108300
+    },
+    {
+      "path": "Malignant/image/38.jpg",
+      "label": "Malignant",
+      "sha256": "fc8dd05e355fff11d3d526eae1e1155e0af08d91f92df3283f4762fef1d3dd9e",
+      "bytes": 138689
+    },
+    {
+      "path": "Malignant/image/380.jpg",
+      "label": "Malignant",
+      "sha256": "6d5fa75589769e9fb94568a74ec4c8f071fb5d86ff9d470a4c65b4aad980d46b",
+      "bytes": 80387
+    },
+    {
+      "path": "Malignant/image/381.jpg",
+      "label": "Malignant",
+      "sha256": "7d57851a42509ea67d019f569d68c9486089fefd60e9866f9070dd619a5f1522",
+      "bytes": 134124
+    },
+    {
+      "path": "Malignant/image/382.jpg",
+      "label": "Malignant",
+      "sha256": "b01c446c070e30815b467bf59b5270639ec30f5886c0151eda2fa53de4d3522a",
+      "bytes": 130565
+    },
+    {
+      "path": "Malignant/image/383.jpg",
+      "label": "Malignant",
+      "sha256": "e5b91235ea0a6dc447e3218d5be3a720fde92ebf0c90fc902922c5bc31c25380",
+      "bytes": 125192
+    },
+    {
+      "path": "Malignant/image/384.jpg",
+      "label": "Malignant",
+      "sha256": "2a4be79310acf1143e6b2c63339fc8a319412d415ff3b839ace68f7a80dcb860",
+      "bytes": 85265
+    },
+    {
+      "path": "Malignant/image/385.jpg",
+      "label": "Malignant",
+      "sha256": "db2a61576783781f4fed78c3140d9139852a919784936685440a3ee3f03f708d",
+      "bytes": 69839
+    },
+    {
+      "path": "Malignant/image/386.jpg",
+      "label": "Malignant",
+      "sha256": "dc1afdf265ec4ac1d7d2edd97779dcd8027df75ef1ce3e0076d9268894970713",
+      "bytes": 70616
+    },
+    {
+      "path": "Malignant/image/387.jpg",
+      "label": "Malignant",
+      "sha256": "a41562cf48e5f4e5f441c67a4793da7bec2b0e4cc14c07d9aa31a8705b08e86e",
+      "bytes": 143085
+    },
+    {
+      "path": "Malignant/image/388.jpg",
+      "label": "Malignant",
+      "sha256": "2499a5119c71b53404a6a36dc5d7152ebd82d74bde259e4658cb79417cc43257",
+      "bytes": 89754
+    },
+    {
+      "path": "Malignant/image/389.jpg",
+      "label": "Malignant",
+      "sha256": "3fc3e4e550d7ee3cb5208e1555e4e4b06f76636a718ad0b35b1446df169d07a2",
+      "bytes": 138950
+    },
+    {
+      "path": "Malignant/image/39.jpg",
+      "label": "Malignant",
+      "sha256": "08b018a23d92b8bc7f93f8744c86492855eeb8910b93ee0e99dcee55b6b477d4",
+      "bytes": 69033
+    },
+    {
+      "path": "Malignant/image/390.jpg",
+      "label": "Malignant",
+      "sha256": "a18e2026e988c0b4e0ce1921b4bf5159054df073e27d4907b97bc0f660a47f95",
+      "bytes": 144465
+    },
+    {
+      "path": "Malignant/image/391.jpg",
+      "label": "Malignant",
+      "sha256": "bfaf3f7389cf8b49f47ed444f724546da4b5d677f5314296cffbf87571451832",
+      "bytes": 115672
+    },
+    {
+      "path": "Malignant/image/392.jpg",
+      "label": "Malignant",
+      "sha256": "76a7b7bea226532209b0a791949fd68ba8df46c9f4bd71bcc7796876ec277416",
+      "bytes": 153140
+    },
+    {
+      "path": "Malignant/image/393.jpg",
+      "label": "Malignant",
+      "sha256": "3c721a69e08aa1c2ad7c91bf0d69baa6eb6c5fde3bfcd3226a5777f383b7734f",
+      "bytes": 110870
+    },
+    {
+      "path": "Malignant/image/394.jpg",
+      "label": "Malignant",
+      "sha256": "0513b654e309a296386913473d9aebf877c6954df46232c165b27ee599e13ba4",
+      "bytes": 117996
+    },
+    {
+      "path": "Malignant/image/395.jpg",
+      "label": "Malignant",
+      "sha256": "66063407e78e59d46dfa89b0a88e70d1adf70b3f4b17e7e09cf69a9082582c53",
+      "bytes": 143679
+    },
+    {
+      "path": "Malignant/image/396.jpg",
+      "label": "Malignant",
+      "sha256": "4ecf215337d5f2d8bc6d35aa4d1cc8b85c4f9975d06083721856257261b871db",
+      "bytes": 53386
+    },
+    {
+      "path": "Malignant/image/397.jpg",
+      "label": "Malignant",
+      "sha256": "da2a305692732a69e0374f98abfeb6d54122137fc4004b40c04fc16702b1a5df",
+      "bytes": 93223
+    },
+    {
+      "path": "Malignant/image/398.jpg",
+      "label": "Malignant",
+      "sha256": "ee4de19faede75ce22166013a3389fdc776baefe7dd4e8e9d7f8b232a405d6e3",
+      "bytes": 39671
+    },
+    {
+      "path": "Malignant/image/399.jpg",
+      "label": "Malignant",
+      "sha256": "74c86c79d602d82bc3ad487e342ff79d32948147174efd8689dc32143037ebb6",
+      "bytes": 81918
+    },
+    {
+      "path": "Malignant/image/4.jpg",
+      "label": "Malignant",
+      "sha256": "0e302fcc983a6a3365478526c4111caafc466bd115cd459b558047a73feac21b",
+      "bytes": 136717
+    },
+    {
+      "path": "Malignant/image/40.jpg",
+      "label": "Malignant",
+      "sha256": "5590599d71b88b9545a787f1fe8cec6a17fb6e182d0d72ac29f25cad3cee2182",
+      "bytes": 142734
+    },
+    {
+      "path": "Malignant/image/400.jpg",
+      "label": "Malignant",
+      "sha256": "7c23a02ce1106844840f390f5304dc3a3282d7e6bcf64286c6b9a9d465635aef",
+      "bytes": 134389
+    },
+    {
+      "path": "Malignant/image/401.jpg",
+      "label": "Malignant",
+      "sha256": "231fa2293c46004cc66eadc9df09464f326fc056a28f4bb85fafb6d42256f72e",
+      "bytes": 85078
+    },
+    {
+      "path": "Malignant/image/402.jpg",
+      "label": "Malignant",
+      "sha256": "0ff5ce19462efd439886b6f573e4190ea58488d2326eaf9cd8b8a2861cb1ba94",
+      "bytes": 119435
+    },
+    {
+      "path": "Malignant/image/403.jpg",
+      "label": "Malignant",
+      "sha256": "bafcb3cf4ec7d0921aef1e74cdacf0606b6967f7fb32523cd61dd9f52e4b23e8",
+      "bytes": 143316
+    },
+    {
+      "path": "Malignant/image/404.jpg",
+      "label": "Malignant",
+      "sha256": "a6e14cbe064438a466f586e250fe6bfe5b1ebd7b0160d69d821dbec19d3d438c",
+      "bytes": 119383
+    },
+    {
+      "path": "Malignant/image/405.jpg",
+      "label": "Malignant",
+      "sha256": "9240c3268dcb2ada72b121104db37ca55627eefbbee8ee184332f271cdec587d",
+      "bytes": 158753
+    },
+    {
+      "path": "Malignant/image/406.jpg",
+      "label": "Malignant",
+      "sha256": "65192371d54fb4c6b481875690109b2af17be55073b9afbe71bda0546f1202c0",
+      "bytes": 123475
+    },
+    {
+      "path": "Malignant/image/407.jpg",
+      "label": "Malignant",
+      "sha256": "59bf77c4491edade298b4691f562e41adc00ce1a29cdff0a0b0207ae1d74b027",
+      "bytes": 128478
+    },
+    {
+      "path": "Malignant/image/408.jpg",
+      "label": "Malignant",
+      "sha256": "9ba292fca588abe76fa5ab69049fc10170fe15a8b9e478a0301b18c439ca1729",
+      "bytes": 131216
+    },
+    {
+      "path": "Malignant/image/409.jpg",
+      "label": "Malignant",
+      "sha256": "cfce05c65fac7db3530fa639684483b537ff16032a82b6931084cbcb1b7a897d",
+      "bytes": 108554
+    },
+    {
+      "path": "Malignant/image/41.jpg",
+      "label": "Malignant",
+      "sha256": "c11cdc9b234bda1afd9553554a40f130b5449a8e52482d6fa45927e08e098798",
+      "bytes": 123531
+    },
+    {
+      "path": "Malignant/image/410.jpg",
+      "label": "Malignant",
+      "sha256": "2cf93531456df12346894c6a22ee93fe31bc712946fc6ce3ca18589bad176100",
+      "bytes": 135722
+    },
+    {
+      "path": "Malignant/image/411.jpg",
+      "label": "Malignant",
+      "sha256": "e4a7b5d15dee6f7356d50125becc236976f188a9ac99c321ec493ecf38d5e50a",
+      "bytes": 112565
+    },
+    {
+      "path": "Malignant/image/412.jpg",
+      "label": "Malignant",
+      "sha256": "3f06c1ac25afed3482208aceb69ccb33bcd23c8a74387eed3fb305b07e1bed53",
+      "bytes": 143934
+    },
+    {
+      "path": "Malignant/image/413.jpg",
+      "label": "Malignant",
+      "sha256": "364320d27f802966d5864ea25ec13e4c4e33ed7c797eef2348a7d7b3435142de",
+      "bytes": 160106
+    },
+    {
+      "path": "Malignant/image/414.jpg",
+      "label": "Malignant",
+      "sha256": "14836a08995363f7ceefd50ec530d5e01313f7a9d9c0eca5072c5b3b7d64312a",
+      "bytes": 155455
+    },
+    {
+      "path": "Malignant/image/415.jpg",
+      "label": "Malignant",
+      "sha256": "6655341a413f70cb38fb6acada7622ea8cdbd90affbbfecd5dd3b21ca1519625",
+      "bytes": 79951
+    },
+    {
+      "path": "Malignant/image/416.jpg",
+      "label": "Malignant",
+      "sha256": "7f39502eb03e5df62935caca8ba7c481226f0b15e2f8d4ef0bca975bfcf19be5",
+      "bytes": 137414
+    },
+    {
+      "path": "Malignant/image/417.jpg",
+      "label": "Malignant",
+      "sha256": "8700e968e90fb65c612952fe7182d9c8626244e5be6f2d02ae3a25a3d030241a",
+      "bytes": 70944
+    },
+    {
+      "path": "Malignant/image/418.jpg",
+      "label": "Malignant",
+      "sha256": "9e738153e8158a9805b38cce5275485192635ced5ba4f6cde9b891c50ac3a502",
+      "bytes": 146716
+    },
+    {
+      "path": "Malignant/image/419.jpg",
+      "label": "Malignant",
+      "sha256": "8f114a08aed0d60ba9ea9eb5e4589a30f4bd313a68f0f5e00afc34ad1bdd3b03",
+      "bytes": 77193
+    },
+    {
+      "path": "Malignant/image/42.jpg",
+      "label": "Malignant",
+      "sha256": "bf81a63963ef1d56eee03efa0982cb3f5b84878c182caecd54ffa3ce2c95c010",
+      "bytes": 167617
+    },
+    {
+      "path": "Malignant/image/420.jpg",
+      "label": "Malignant",
+      "sha256": "fc0c26b46d365445b24e244d4381d63aebbe408358c6a36c2b3ad91682ab0049",
+      "bytes": 65463
+    },
+    {
+      "path": "Malignant/image/421.jpg",
+      "label": "Malignant",
+      "sha256": "8879cbcde79787a3195853bebbc0cf429199ee919d52698cf0473a41e5d1f480",
+      "bytes": 83736
+    },
+    {
+      "path": "Malignant/image/422.jpg",
+      "label": "Malignant",
+      "sha256": "cbdcece4491287ff6f8f06163533d6616971b18a1298a3238d6140d71c95adb0",
+      "bytes": 108439
+    },
+    {
+      "path": "Malignant/image/423.jpg",
+      "label": "Malignant",
+      "sha256": "b83fdf600466019870980b1b461054d769a682d2e366b13b1b4f9559ba627bf0",
+      "bytes": 106075
+    },
+    {
+      "path": "Malignant/image/424.jpg",
+      "label": "Malignant",
+      "sha256": "1802ac38c50fc9b6b077dd7c4e091138d0c94714e8543c1bba4135d9011f7c29",
+      "bytes": 144128
+    },
+    {
+      "path": "Malignant/image/425.jpg",
+      "label": "Malignant",
+      "sha256": "a063c3006c651e75c505c19623b641fe3c6c158f3941d6eafc24cb6ffd84a301",
+      "bytes": 114381
+    },
+    {
+      "path": "Malignant/image/426.jpg",
+      "label": "Malignant",
+      "sha256": "fee9e6e7ab367aee52537029e0b5ee8df911be1f267fc7032793f5aca14a4648",
+      "bytes": 58026
+    },
+    {
+      "path": "Malignant/image/427.jpg",
+      "label": "Malignant",
+      "sha256": "188e873a2c1a29a089dba5cecf364bdb929b412209ab10eff9e0e6ef67d20582",
+      "bytes": 55892
+    },
+    {
+      "path": "Malignant/image/428.jpg",
+      "label": "Malignant",
+      "sha256": "8a08428653b82aae41e5c5b5edb5ba96e951c43ac0d8e2d16cd264b91462c94c",
+      "bytes": 54822
+    },
+    {
+      "path": "Malignant/image/429.jpg",
+      "label": "Malignant",
+      "sha256": "dc2d455e8d78de63401f665527a5811081e45fa0c4ff48e9abfd8db99cfe167b",
+      "bytes": 69270
+    },
+    {
+      "path": "Malignant/image/43.jpg",
+      "label": "Malignant",
+      "sha256": "6c892672c791e3856aeebc9075a7090f5a2d16991bd1ca9e41abd0baac867ec5",
+      "bytes": 86944
+    },
+    {
+      "path": "Malignant/image/430.jpg",
+      "label": "Malignant",
+      "sha256": "5e93ab4f3c67f6afb4933bd50f65308ac7407d73ad84b5d02487719130e5f6b3",
+      "bytes": 143075
+    },
+    {
+      "path": "Malignant/image/431.jpg",
+      "label": "Malignant",
+      "sha256": "7120a7410822672f180192835a5d1e052e309ac3660848c6c6ae7e1c4d67c13a",
+      "bytes": 137462
+    },
+    {
+      "path": "Malignant/image/432.jpg",
+      "label": "Malignant",
+      "sha256": "acd444518f53042551367f30f279e39746e30dfda6c8cbd6923b064eb087b8e0",
+      "bytes": 123282
+    },
+    {
+      "path": "Malignant/image/433.jpg",
+      "label": "Malignant",
+      "sha256": "c00e9c908b6ace4c8ba1021b0b6f0ef9c3af2a6f495a5725463d2079519648df",
+      "bytes": 116443
+    },
+    {
+      "path": "Malignant/image/434.jpg",
+      "label": "Malignant",
+      "sha256": "05c4610fff4851939714abd2227b9a8c51bf044221b4b7950f4b4f569e66b3ca",
+      "bytes": 72559
+    },
+    {
+      "path": "Malignant/image/435.jpg",
+      "label": "Malignant",
+      "sha256": "94f34b8aee58c2591f1fc4d7f6e4bf09c8c93740f81b02da0f83c3f712ffea54",
+      "bytes": 94274
+    },
+    {
+      "path": "Malignant/image/44.jpg",
+      "label": "Malignant",
+      "sha256": "fdf5f93b7433cecc4cd83939236761d5848c9094570b2fa9a990d4a3528825ab",
+      "bytes": 148081
+    },
+    {
+      "path": "Malignant/image/45.jpg",
+      "label": "Malignant",
+      "sha256": "dac7beff18c641b646bd3279574074e1cc93849a0c0f74adcdee1154d53f63db",
+      "bytes": 68162
+    },
+    {
+      "path": "Malignant/image/46.jpg",
+      "label": "Malignant",
+      "sha256": "caa675268973d0e821017f8157310d5da8a5df85d55c138d97d706ae6299e903",
+      "bytes": 163152
+    },
+    {
+      "path": "Malignant/image/47.jpg",
+      "label": "Malignant",
+      "sha256": "2b68ef33abd915c673c21a06d3bb7e3e004acce734d261e70db7d96456e50511",
+      "bytes": 123951
+    },
+    {
+      "path": "Malignant/image/48.jpg",
+      "label": "Malignant",
+      "sha256": "530001bde9982fb3dff1f847b236ec1d4fa6badb19e2ab1e6be8884da6392400",
+      "bytes": 110783
+    },
+    {
+      "path": "Malignant/image/49.jpg",
+      "label": "Malignant",
+      "sha256": "e66589e415e3a03e955723ce615cf175b48e17a3a7102e2f53c620e3bf601c45",
+      "bytes": 62837
+    },
+    {
+      "path": "Malignant/image/5.jpg",
+      "label": "Malignant",
+      "sha256": "4a2d44a32763060278bad83834841696efc789c497ebd9efe99e2050398194c4",
+      "bytes": 139463
+    },
+    {
+      "path": "Malignant/image/50.jpg",
+      "label": "Malignant",
+      "sha256": "267c8d97156342d8c380821023538d7d01323cbf74669fd46c6357bd3b61ede7",
+      "bytes": 121109
+    },
+    {
+      "path": "Malignant/image/51.jpg",
+      "label": "Malignant",
+      "sha256": "1adc79dceff9d0a1720f4d6d8cda400c5251bbd448141f9ad66cfdf9d7af0bd6",
+      "bytes": 125316
+    },
+    {
+      "path": "Malignant/image/52.jpg",
+      "label": "Malignant",
+      "sha256": "3d07488b17a4c0f741f2d9b80bb0755fbb6722cf81846e14f93595cc71550897",
+      "bytes": 83765
+    },
+    {
+      "path": "Malignant/image/53.jpg",
+      "label": "Malignant",
+      "sha256": "5c75608e54fc553ffa58bc08f515da3a5748772152b2f913e82b16ee44f43ee9",
+      "bytes": 142211
+    },
+    {
+      "path": "Malignant/image/54.jpg",
+      "label": "Malignant",
+      "sha256": "d5f048b3f1cfcc6e80700d925c0dea27f840068f3575b0dc490cfd7b1b85a15e",
+      "bytes": 57153
+    },
+    {
+      "path": "Malignant/image/55.jpg",
+      "label": "Malignant",
+      "sha256": "beb19b61bff45db21c05bb82550de6e0c256547e29f01bb90ac0640b050c5b2d",
+      "bytes": 110830
+    },
+    {
+      "path": "Malignant/image/56.jpg",
+      "label": "Malignant",
+      "sha256": "b42399946b138f9ea532e717036cf6952e051e3d02da8b03f83b41dd5fafb5a0",
+      "bytes": 132032
+    },
+    {
+      "path": "Malignant/image/57.jpg",
+      "label": "Malignant",
+      "sha256": "17daa49b9d0a643e02798c51e6719b2442c2696119f3adc8b909d3e2aaf391fa",
+      "bytes": 143673
+    },
+    {
+      "path": "Malignant/image/58.jpg",
+      "label": "Malignant",
+      "sha256": "36ea8d2f22864183ec6d5ad0f6702d97aff8185ea49c74232031ab7a8a2ad81a",
+      "bytes": 104543
+    },
+    {
+      "path": "Malignant/image/59.jpg",
+      "label": "Malignant",
+      "sha256": "f3393d92bfa247dd0670ca82a27dcd9c217e545cc37fa11d4219393f91e86d91",
+      "bytes": 147261
+    },
+    {
+      "path": "Malignant/image/6.jpg",
+      "label": "Malignant",
+      "sha256": "0ce4e6065cc19f4ecf5aa80b8a7a3244848fcb336ffd55e33be9c2689dabc4d7",
+      "bytes": 132831
+    },
+    {
+      "path": "Malignant/image/60.jpg",
+      "label": "Malignant",
+      "sha256": "702db450176310a077ec4476b3f7a40eb8c344b16407e0a0e5084a312f04b274",
+      "bytes": 79960
+    },
+    {
+      "path": "Malignant/image/61.jpg",
+      "label": "Malignant",
+      "sha256": "86c5a9e3b668867a893e0cb376bf1b6a8c89fdb16d9d2fb7acd5f57b29ce5da1",
+      "bytes": 124300
+    },
+    {
+      "path": "Malignant/image/62.jpg",
+      "label": "Malignant",
+      "sha256": "2f07f36e3fda86c48779f9294e79aa98c32e9625cf90fe0290db505bf4faa446",
+      "bytes": 161523
+    },
+    {
+      "path": "Malignant/image/63.jpg",
+      "label": "Malignant",
+      "sha256": "a9b5f8430c052ae49a69bab386e66babaeee0b6c91d1dbb85224a7ecdb256bba",
+      "bytes": 76789
+    },
+    {
+      "path": "Malignant/image/64.jpg",
+      "label": "Malignant",
+      "sha256": "629d609bb1263ad8f3ff9025b6c661fd0cb1e51ccb44c10710b4fd705cff6793",
+      "bytes": 126631
+    },
+    {
+      "path": "Malignant/image/65.jpg",
+      "label": "Malignant",
+      "sha256": "35d70d2474d2f086557a6e28a52a72cf1ac5dc2f8908881b114bee51b6ef814f",
+      "bytes": 130086
+    },
+    {
+      "path": "Malignant/image/66.jpg",
+      "label": "Malignant",
+      "sha256": "92fabda0f1dff00ffbd37b93dd37f0e1fd51639ecb483a1997eea51d3f11c6a2",
+      "bytes": 137116
+    },
+    {
+      "path": "Malignant/image/67.jpg",
+      "label": "Malignant",
+      "sha256": "6fa7aaf870a87f1903241d475286b2f7d9e53ea5ad69932fcda6098ee72f06bc",
+      "bytes": 131224
+    },
+    {
+      "path": "Malignant/image/68.jpg",
+      "label": "Malignant",
+      "sha256": "ff38b7dc96e18327458bb9020743d98add0eb439f0b8d768d8c9b8be85712859",
+      "bytes": 133375
+    },
+    {
+      "path": "Malignant/image/69.jpg",
+      "label": "Malignant",
+      "sha256": "e1feec98c831e93e154d178dc35f7f00583ba55fa56f9fcda122053bde7eeab3",
+      "bytes": 102885
+    },
+    {
+      "path": "Malignant/image/7.jpg",
+      "label": "Malignant",
+      "sha256": "225ccac8792edf047669ec010be1bc87190d38f8b521d275a77c47f72476a733",
+      "bytes": 52897
+    },
+    {
+      "path": "Malignant/image/70.jpg",
+      "label": "Malignant",
+      "sha256": "75c2400443e5cc40832f7892912bbc9e0b2ded616719ffa8450fa87e68517e57",
+      "bytes": 57620
+    },
+    {
+      "path": "Malignant/image/71.jpg",
+      "label": "Malignant",
+      "sha256": "3a0da0ca5028728187cef577a58b0bf2c6b8ab458b88494fcd92d49258a25672",
+      "bytes": 139653
+    },
+    {
+      "path": "Malignant/image/72.jpg",
+      "label": "Malignant",
+      "sha256": "469743888c665af273ed70cb52df4c91c6878d6a0c1e790ba88bae2b44923ecd",
+      "bytes": 137984
+    },
+    {
+      "path": "Malignant/image/73.jpg",
+      "label": "Malignant",
+      "sha256": "a285146ebba08860b1d670a5be582a77a97fbbf6f0635b021dd90318c9a4a3a2",
+      "bytes": 134399
+    },
+    {
+      "path": "Malignant/image/74.jpg",
+      "label": "Malignant",
+      "sha256": "612c4a63eacd75950541a4943588280b509afedb642b18f0e23d1c693d63af84",
+      "bytes": 143920
+    },
+    {
+      "path": "Malignant/image/75.jpg",
+      "label": "Malignant",
+      "sha256": "4e274ae24033b5619036162e4218904bd8fb071a12db4a51e770034b5fdd0917",
+      "bytes": 140385
+    },
+    {
+      "path": "Malignant/image/76.jpg",
+      "label": "Malignant",
+      "sha256": "20dd89aa5767447b134bbf0efff7c1e08f7e7bf3265c9cdc3f449a8b044034c3",
+      "bytes": 123055
+    },
+    {
+      "path": "Malignant/image/77.jpg",
+      "label": "Malignant",
+      "sha256": "a64abe95506ce44a885f75f60655f6338ae47c6603e31c09da07d1c5caab04cf",
+      "bytes": 153243
+    },
+    {
+      "path": "Malignant/image/78.jpg",
+      "label": "Malignant",
+      "sha256": "1cd97acdd92d2ec637922e41d3d5839a713ddd7aaa49f1195970c3576cd36057",
+      "bytes": 126918
+    },
+    {
+      "path": "Malignant/image/79.jpg",
+      "label": "Malignant",
+      "sha256": "2bdc02a0347591f87d292c1af383f9a3ea02f69a8bedde704999c9e9978ab657",
+      "bytes": 139737
+    },
+    {
+      "path": "Malignant/image/8.jpg",
+      "label": "Malignant",
+      "sha256": "bdacdc32de6d115bc42ef823cd8b34357b7ad57a93d7f6602aa468d9fa551088",
+      "bytes": 126471
+    },
+    {
+      "path": "Malignant/image/80.jpg",
+      "label": "Malignant",
+      "sha256": "6a0135a541b769bf9f66d91c4c9a1ffeda917576bba4be2d388d6125257bde0e",
+      "bytes": 148486
+    },
+    {
+      "path": "Malignant/image/81.jpg",
+      "label": "Malignant",
+      "sha256": "c0a81c01994c92b6f8199a2d170295b2cbb9e3c9b6e7789486bab5c61bd77da6",
+      "bytes": 142408
+    },
+    {
+      "path": "Malignant/image/82.jpg",
+      "label": "Malignant",
+      "sha256": "60f2b801121e39d0cb3db693ed6d0c6c735dfa9cecbd8d37b4cb87565233ef20",
+      "bytes": 144615
+    },
+    {
+      "path": "Malignant/image/83.jpg",
+      "label": "Malignant",
+      "sha256": "86e4a3598f7ed94bc8e5b8d02e420062cd17ebcf201d1f020fb74f4522649ee1",
+      "bytes": 99175
+    },
+    {
+      "path": "Malignant/image/84.jpg",
+      "label": "Malignant",
+      "sha256": "e7f99d74f964ac0cea7994e67717c62752020854af694c86414baa627ba76b02",
+      "bytes": 118363
+    },
+    {
+      "path": "Malignant/image/85.jpg",
+      "label": "Malignant",
+      "sha256": "33ce75f29d81df42cd7826ec89694ef8d994d1206ae5b7dc9a851cb9023d3a7f",
+      "bytes": 118648
+    },
+    {
+      "path": "Malignant/image/86.jpg",
+      "label": "Malignant",
+      "sha256": "0ed11a18e1cde6cf85c2c9266da4d4b1eb1b490bfb36c9ed0da23974c0aa8eae",
+      "bytes": 60799
+    },
+    {
+      "path": "Malignant/image/87.jpg",
+      "label": "Malignant",
+      "sha256": "24e25f16b6195c83a7c836c49952fdce3f892a57578548b5d54cebc853650631",
+      "bytes": 113281
+    },
+    {
+      "path": "Malignant/image/88.jpg",
+      "label": "Malignant",
+      "sha256": "41cfe7a8bbdd777a497ff5b9476931cb8a0f0882e4c1cc4cb42fbc09db0a3f7f",
+      "bytes": 97935
+    },
+    {
+      "path": "Malignant/image/89.jpg",
+      "label": "Malignant",
+      "sha256": "efbfd9a2846a2c63822aba3ef7e217ca4e19d29947516b81b10c07f4aaa88c3c",
+      "bytes": 141789
+    },
+    {
+      "path": "Malignant/image/9.jpg",
+      "label": "Malignant",
+      "sha256": "53531842288f667bcfb7502136f692a4b5fed5c27dd04bddd4492d98519a3852",
+      "bytes": 139212
+    },
+    {
+      "path": "Malignant/image/90.jpg",
+      "label": "Malignant",
+      "sha256": "4f855a82faef3c0829556443fdc52d57a5f6e57acd25463a4a8874d9c9f81f68",
+      "bytes": 136629
+    },
+    {
+      "path": "Malignant/image/91.jpg",
+      "label": "Malignant",
+      "sha256": "1c05784c5b17803c66e560a314f3bf08ac1946439ae5e91c8945c6483ee5fd85",
+      "bytes": 140774
+    },
+    {
+      "path": "Malignant/image/92.jpg",
+      "label": "Malignant",
+      "sha256": "35b936b03869582808a36ea1639c6aa4d74aa3f96608da7367c1b74b63026f5c",
+      "bytes": 139499
+    },
+    {
+      "path": "Malignant/image/93.jpg",
+      "label": "Malignant",
+      "sha256": "f12eefd0b4a050342e90ec8be3799a2d1c9866de19eac5541391fa8f9c80fbeb",
+      "bytes": 136221
+    },
+    {
+      "path": "Malignant/image/94.jpg",
+      "label": "Malignant",
+      "sha256": "d6df602780d89f68f3f7e4baa4d7845bd6be90a277d1c8ef603a55d46b1c3331",
+      "bytes": 150730
+    },
+    {
+      "path": "Malignant/image/95.jpg",
+      "label": "Malignant",
+      "sha256": "3328f982e8c0b8fbe64fd645be88a7f5685e20d1db8b21ccc6b79b6558dbd5b9",
+      "bytes": 82151
+    },
+    {
+      "path": "Malignant/image/96.jpg",
+      "label": "Malignant",
+      "sha256": "afd7890c49c50cd02b585f7d40fe140c02df48fad17843aaf4e4b6cdebaeefbb",
+      "bytes": 143572
+    },
+    {
+      "path": "Malignant/image/97.jpg",
+      "label": "Malignant",
+      "sha256": "fe044d5421fdd68a8b9a7826f59f15ed07a3bf90d3e73caea0178ffffc34f3e4",
+      "bytes": 150449
+    },
+    {
+      "path": "Malignant/image/98.jpg",
+      "label": "Malignant",
+      "sha256": "00e9aee422237fdc0698affd2760e818e4232b8f2884498cd43da046822215bf",
+      "bytes": 130613
+    },
+    {
+      "path": "Malignant/image/99.jpg",
+      "label": "Malignant",
+      "sha256": "def42fb830796695a339a358917bde18d250b0fd5e656222cd208c748baed1cf",
+      "bytes": 143521
+    },
+    {
+      "path": "Normal/image/1.jpg",
+      "label": "Normal",
+      "sha256": "82ab188315128372c3688c740ba15502d24a415ff595b32cb0a2dd20ac4d908b",
+      "bytes": 79319
+    },
+    {
+      "path": "Normal/image/10.jpg",
+      "label": "Normal",
+      "sha256": "5e757d8ebda4e41e293207735128f7fddc95cc58fd5b14714bc6c25f45df5c63",
+      "bytes": 72365
+    },
+    {
+      "path": "Normal/image/100.jpg",
+      "label": "Normal",
+      "sha256": "3b2e5f7b914d0e4fd1d192872ed129e75b712e8e786019880b119aefea19f2d7",
+      "bytes": 72773
+    },
+    {
+      "path": "Normal/image/11.jpg",
+      "label": "Normal",
+      "sha256": "7e9d70f786de82e15ffce9a7097ae81ae5d76e920e10b7f2dfe3eb7c95646434",
+      "bytes": 55612
+    },
+    {
+      "path": "Normal/image/12.jpg",
+      "label": "Normal",
+      "sha256": "61b82b3a9a096caf67dcbde9e312261e762435ece99cb7a3297ce3683d18a50f",
+      "bytes": 77940
+    },
+    {
+      "path": "Normal/image/13.jpg",
+      "label": "Normal",
+      "sha256": "fcafe2512b150f228459ef5cb91d20c0629eff71509e693584bd847156c2c25a",
+      "bytes": 80511
+    },
+    {
+      "path": "Normal/image/14.jpg",
+      "label": "Normal",
+      "sha256": "a941c65b3db5974b50510b184fca9d95218b729c399a99afdf7b0df70da76c76",
+      "bytes": 52251
+    },
+    {
+      "path": "Normal/image/15.jpg",
+      "label": "Normal",
+      "sha256": "280151a0ec8c09b0ceab39f6144668c74b59a1a7be55aca7b130585abd1494d9",
+      "bytes": 75868
+    },
+    {
+      "path": "Normal/image/16.jpg",
+      "label": "Normal",
+      "sha256": "fb113b6f708610e126c2fa4c82a4681e4084797b454163f54ab5bf186247d273",
+      "bytes": 70135
+    },
+    {
+      "path": "Normal/image/17.jpg",
+      "label": "Normal",
+      "sha256": "432fd52c142183f320b00d2a08510650785e06224be1a38bedac77cb2e791dd4",
+      "bytes": 52489
+    },
+    {
+      "path": "Normal/image/18.jpg",
+      "label": "Normal",
+      "sha256": "a8a4c8ce0b7d55d2a394dec846fd829195ffcd6b9a274e5c8bc3f610906f2a84",
+      "bytes": 77683
+    },
+    {
+      "path": "Normal/image/19.jpg",
+      "label": "Normal",
+      "sha256": "eb6df37c204b8919a997af9078f2911fc3f37b92d4df201453e1adab035ea378",
+      "bytes": 85631
+    },
+    {
+      "path": "Normal/image/2.jpg",
+      "label": "Normal",
+      "sha256": "218f5e1a706cbc6ad0f50819c0cfc426822cad19fed51d3dd453ebabb9390873",
+      "bytes": 87183
+    },
+    {
+      "path": "Normal/image/20.jpg",
+      "label": "Normal",
+      "sha256": "9656da976f1a2103523c70e6696b63c9e7e12aaec3e6426583be494dfd9abcc3",
+      "bytes": 84128
+    },
+    {
+      "path": "Normal/image/21.jpg",
+      "label": "Normal",
+      "sha256": "09eae83e18b7ceadff4f4c60f6cbf93c34830a7b9f670086ebe8501c672849ea",
+      "bytes": 49744
+    },
+    {
+      "path": "Normal/image/22.jpg",
+      "label": "Normal",
+      "sha256": "2ee7ec7ae8c64d9a4f5b035f61b79420ad3e04838f9e01e34750784bb697bd0f",
+      "bytes": 47869
+    },
+    {
+      "path": "Normal/image/23.jpg",
+      "label": "Normal",
+      "sha256": "06143ff8edd681ab1613d32c7446d9d06cda4e3dc63dd43cb3181838eea44c14",
+      "bytes": 99086
+    },
+    {
+      "path": "Normal/image/24.jpg",
+      "label": "Normal",
+      "sha256": "29fae8fd978665fdb79636297205baf8379dcaaa5cb88da66cd4603958ed1382",
+      "bytes": 55558
+    },
+    {
+      "path": "Normal/image/25.jpg",
+      "label": "Normal",
+      "sha256": "c81ee5ac2da17273f2495f9db3fef8bc2b0d88e895e8346349e3ec847c4aca90",
+      "bytes": 76224
+    },
+    {
+      "path": "Normal/image/26.jpg",
+      "label": "Normal",
+      "sha256": "ff3e5cf2f963402f4c7a1e29aad2ea741e42bb24626640bfd9951eee32cb9bce",
+      "bytes": 49858
+    },
+    {
+      "path": "Normal/image/27.jpg",
+      "label": "Normal",
+      "sha256": "289cc0b1342400da3d34a81d9f8facf7d7e32f0c96fe8316e4af0934a321fd2d",
+      "bytes": 86786
+    },
+    {
+      "path": "Normal/image/28.jpg",
+      "label": "Normal",
+      "sha256": "327a91dd6023dee15c93065d7cb3a1aef58cf15f70aec8a55847a8830ab9ad56",
+      "bytes": 83637
+    },
+    {
+      "path": "Normal/image/29.jpg",
+      "label": "Normal",
+      "sha256": "07491b8686b400f6c02b35993f8af063f60fd37da98758e4d959ad3d6112cf92",
+      "bytes": 75909
+    },
+    {
+      "path": "Normal/image/3.jpg",
+      "label": "Normal",
+      "sha256": "1087354066bc9db1f46a84dfc74e548f72d60b9fcbf8dec267270104b1d866c3",
+      "bytes": 77980
+    },
+    {
+      "path": "Normal/image/30.jpg",
+      "label": "Normal",
+      "sha256": "e2147bff6abd416dd25930930714ce36115dce7a09ab5113fdd28c68c356c780",
+      "bytes": 58758
+    },
+    {
+      "path": "Normal/image/31.jpg",
+      "label": "Normal",
+      "sha256": "71c2566f4805da24aaed5857f4fd0daa2aeedb753a581ab89a687d77ec53e05c",
+      "bytes": 81478
+    },
+    {
+      "path": "Normal/image/32.jpg",
+      "label": "Normal",
+      "sha256": "04f1370c94ee6d3c95c052550f4e4ba7049d18e71e1f06342104df4ffeacb7e6",
+      "bytes": 78219
+    },
+    {
+      "path": "Normal/image/33.jpg",
+      "label": "Normal",
+      "sha256": "097a865fe5bf37f2f14d168c352fa7c287fe387a273cf17530cd9f5d9589e5fa",
+      "bytes": 51293
+    },
+    {
+      "path": "Normal/image/34.jpg",
+      "label": "Normal",
+      "sha256": "2e1546dd6008f6bcf86756fcebdf9e2762ce0e8c2f22464fb990f88b5a12d9e6",
+      "bytes": 80359
+    },
+    {
+      "path": "Normal/image/35.jpg",
+      "label": "Normal",
+      "sha256": "8140fe7336286d7913f7dd00c6859302b9317eb50c358a5c404531005e83b0bb",
+      "bytes": 54706
+    },
+    {
+      "path": "Normal/image/36.jpg",
+      "label": "Normal",
+      "sha256": "c78104613f8113b716671945e6bd0dc13125b039c74ca6f902f95df93769744d",
+      "bytes": 85266
+    },
+    {
+      "path": "Normal/image/37.jpg",
+      "label": "Normal",
+      "sha256": "ccb8124184d9ea2c7e94c96d0703680e84200716c9026c437776a21fa926b23e",
+      "bytes": 72880
+    },
+    {
+      "path": "Normal/image/38.jpg",
+      "label": "Normal",
+      "sha256": "de2f0f1f7b291c309456d913395f80e1f72e194bcca1cc40f2712277539b9ccf",
+      "bytes": 85373
+    },
+    {
+      "path": "Normal/image/39.jpg",
+      "label": "Normal",
+      "sha256": "1614797cc6b2c1de7df786aee083e79b8e7ce5a38c33dda0077b155c2fe3a095",
+      "bytes": 83161
+    },
+    {
+      "path": "Normal/image/4.jpg",
+      "label": "Normal",
+      "sha256": "13059f9fd835e91299d7f75d62a64adea8509e9c845f11199fd765ab746fa07d",
+      "bytes": 55461
+    },
+    {
+      "path": "Normal/image/40.jpg",
+      "label": "Normal",
+      "sha256": "669ddd147ac466f5608fa008ac2e462c1c37afd70e57fe69eb32cab449e9b126",
+      "bytes": 51573
+    },
+    {
+      "path": "Normal/image/41.jpg",
+      "label": "Normal",
+      "sha256": "360f3fb523f8f2a0b0cb5780bb3f497d5c4b1c011df9ec4e58124827c752c752",
+      "bytes": 76143
+    },
+    {
+      "path": "Normal/image/42.jpg",
+      "label": "Normal",
+      "sha256": "fa73de5bc77cc4077c3e67639f00c39c7868390f0bf194e4ad5a8c7e4881f8a9",
+      "bytes": 63930
+    },
+    {
+      "path": "Normal/image/43.jpg",
+      "label": "Normal",
+      "sha256": "94b0aa3ac6d269618be6b0a421d2008dcd0f2f75a8631e0a6372edb21200e818",
+      "bytes": 83960
+    },
+    {
+      "path": "Normal/image/44.jpg",
+      "label": "Normal",
+      "sha256": "fa8fa714d5bfdb08da010667786f6e1c4eee6fe3799702a63e9aed982c073a59",
+      "bytes": 76251
+    },
+    {
+      "path": "Normal/image/45.jpg",
+      "label": "Normal",
+      "sha256": "bdf9f7231485c56e0b72160dd468b66070dbb092a0cafb5cc77e1830574e4262",
+      "bytes": 52795
+    },
+    {
+      "path": "Normal/image/46.jpg",
+      "label": "Normal",
+      "sha256": "83ec73c787fae431388180a45d9e7236ee99375239466bdafe4c133ae99ab892",
+      "bytes": 84560
+    },
+    {
+      "path": "Normal/image/47.jpg",
+      "label": "Normal",
+      "sha256": "17f0a0e22937c7e18e75fda079cea0e82935b3c08f0d900bbbcd89f3e8f9eacf",
+      "bytes": 83970
+    },
+    {
+      "path": "Normal/image/48.jpg",
+      "label": "Normal",
+      "sha256": "c075f2834eced3c324ad06eab12061183375a22dd8b8e627b47109e9325701da",
+      "bytes": 70147
+    },
+    {
+      "path": "Normal/image/49.jpg",
+      "label": "Normal",
+      "sha256": "efb84a6fc96a4105229d21417ead811c715cb06cd6ea99ca5427f3005fd8fec0",
+      "bytes": 44656
+    },
+    {
+      "path": "Normal/image/5.jpg",
+      "label": "Normal",
+      "sha256": "941b0b73e8ed041a82131b8c1de5dd0e2393fa95ce8f4fb9a8fd2073c6df53d6",
+      "bytes": 79074
+    },
+    {
+      "path": "Normal/image/50.jpg",
+      "label": "Normal",
+      "sha256": "dd48b8c2f650c72b962d29b653d27e8b611d273b7d2f20e9d74dc81ec3eee068",
+      "bytes": 87370
+    },
+    {
+      "path": "Normal/image/51.jpg",
+      "label": "Normal",
+      "sha256": "94ed8e15797662b3c3cb30099679e0b782796e5e2a0400eff727689fbfb10ac5",
+      "bytes": 64066
+    },
+    {
+      "path": "Normal/image/52.jpg",
+      "label": "Normal",
+      "sha256": "1ddb5d38fca4ea7d937579d7f83bf6e51963d67c70660dbd84a0782a78aca9f8",
+      "bytes": 80374
+    },
+    {
+      "path": "Normal/image/53.jpg",
+      "label": "Normal",
+      "sha256": "04e0ad2394e3a13abccc846fee5dd0e04a9d8b09a6bb12638b7b66d023bdadb8",
+      "bytes": 83583
+    },
+    {
+      "path": "Normal/image/54.jpg",
+      "label": "Normal",
+      "sha256": "13d0b87215d3a96a85df7ea87531431dd7018f6f6a60c6e5bbf23af7271e097a",
+      "bytes": 49648
+    },
+    {
+      "path": "Normal/image/55.jpg",
+      "label": "Normal",
+      "sha256": "eeeeb984b8bbd01389c931e5a46f19a0a59b6eeb7e770c19159eb93e01de74b3",
+      "bytes": 84108
+    },
+    {
+      "path": "Normal/image/56.jpg",
+      "label": "Normal",
+      "sha256": "b14862ab3471a3ac8876e5c17a92526c2a35c94a4256bffb27a68b3253d7ecf0",
+      "bytes": 94277
+    },
+    {
+      "path": "Normal/image/57.jpg",
+      "label": "Normal",
+      "sha256": "fcfff37fd9640688a8a875e9b26d882ea881361c59215473a48f77d4754cee9e",
+      "bytes": 61916
+    },
+    {
+      "path": "Normal/image/58.jpg",
+      "label": "Normal",
+      "sha256": "b6e4a2d8eea9692425f1ecf4dceaf6875ae252cb2957b6bb46b31c65f91a7bcf",
+      "bytes": 73446
+    },
+    {
+      "path": "Normal/image/59.jpg",
+      "label": "Normal",
+      "sha256": "c890d8e2d9f31d543c977e9606140dcf8d0d6103643a15bb55ce11d77c8e2d4f",
+      "bytes": 67302
+    },
+    {
+      "path": "Normal/image/6.jpg",
+      "label": "Normal",
+      "sha256": "5c987120d78655191b9deacc3daec951220f745b0f704f32c8803229d38b95c0",
+      "bytes": 82204
+    },
+    {
+      "path": "Normal/image/60.jpg",
+      "label": "Normal",
+      "sha256": "40569894d53abc0b80049e5113d0bcbf4deefa375d3887cbe36eba5a47ecbe7d",
+      "bytes": 77142
+    },
+    {
+      "path": "Normal/image/61.jpg",
+      "label": "Normal",
+      "sha256": "512abe829d6f339e1bff7823407a9516c4005510ec8ed851e1bed91ce3f957ea",
+      "bytes": 75208
+    },
+    {
+      "path": "Normal/image/62.jpg",
+      "label": "Normal",
+      "sha256": "eadbdd3748baeeedecfd799db6d1fcd9ac841fd2fc9db3905f91545603ade05b",
+      "bytes": 92490
+    },
+    {
+      "path": "Normal/image/63.jpg",
+      "label": "Normal",
+      "sha256": "728489caa039feca88571e2a13b0fd0d9e701d6263158d74079d28da082e051f",
+      "bytes": 50252
+    },
+    {
+      "path": "Normal/image/64.jpg",
+      "label": "Normal",
+      "sha256": "026f7fb225c627ad36f5a8063fdd0e28bb7e64e08aa6edf45c2f56dd0c23a73e",
+      "bytes": 49415
+    },
+    {
+      "path": "Normal/image/65.jpg",
+      "label": "Normal",
+      "sha256": "2cdb63f41944f4a6e50b21eac702e199b0b22f7dde3e7e9a2b7e7190faf42c32",
+      "bytes": 60759
+    },
+    {
+      "path": "Normal/image/66.jpg",
+      "label": "Normal",
+      "sha256": "b99fc532916ddf619bc22d289998b17bb63b67a76f8d0abf1dc8819382109481",
+      "bytes": 66334
+    },
+    {
+      "path": "Normal/image/67.jpg",
+      "label": "Normal",
+      "sha256": "ee30cde09b11837d76aa0e513a9a29234e6b13da149a210f23a6ec7e563dd9f3",
+      "bytes": 90968
+    },
+    {
+      "path": "Normal/image/68.jpg",
+      "label": "Normal",
+      "sha256": "ed4f5ffd607b9bf14345369ea432310cc6515a34334c3ccf9684859d17bec4d7",
+      "bytes": 89784
+    },
+    {
+      "path": "Normal/image/69.jpg",
+      "label": "Normal",
+      "sha256": "6fb91b76aee87ed7d2224775708b4ec133eba48d102b6282c148fc744635b512",
+      "bytes": 55825
+    },
+    {
+      "path": "Normal/image/7.jpg",
+      "label": "Normal",
+      "sha256": "b308781f30593799130378a4d6d1cdc17aa24619c37727ce0e0015dee089f1ed",
+      "bytes": 76698
+    },
+    {
+      "path": "Normal/image/70.jpg",
+      "label": "Normal",
+      "sha256": "4aa3e2ed0afa6b9310a7c71a2173e17be9558fe6f93c62acc439ff6a184acd1a",
+      "bytes": 81327
+    },
+    {
+      "path": "Normal/image/71.jpg",
+      "label": "Normal",
+      "sha256": "f0262420ea3de441717a5b385e294becb0591451ac0141b0846d88c487bcce25",
+      "bytes": 80021
+    },
+    {
+      "path": "Normal/image/72.jpg",
+      "label": "Normal",
+      "sha256": "3215ebdea223a0b8103f257ec3e0d9ddf9e47e981c19baf0ab6cd3ad25d271cb",
+      "bytes": 47075
+    },
+    {
+      "path": "Normal/image/73.jpg",
+      "label": "Normal",
+      "sha256": "14b0065c6eeb443543a2ad3d9a157ccd6c8cbd0538babf1ba351e54628bbc56b",
+      "bytes": 70317
+    },
+    {
+      "path": "Normal/image/74.jpg",
+      "label": "Normal",
+      "sha256": "8183107cc29eb2202c461cb00e3bb7a7c98765fc361689e96b19c503540c22d1",
+      "bytes": 52553
+    },
+    {
+      "path": "Normal/image/75.jpg",
+      "label": "Normal",
+      "sha256": "298f08fe1d05c13b8ffb85c5a8efe9d5e19fefe17f32317ec0d264e53056280f",
+      "bytes": 50319
+    },
+    {
+      "path": "Normal/image/76.jpg",
+      "label": "Normal",
+      "sha256": "fd7347e1375763bd23ec6ddd0b4c7c27cd2ddd6fc248afd1949cf9a6d2adcfed",
+      "bytes": 67633
+    },
+    {
+      "path": "Normal/image/77.jpg",
+      "label": "Normal",
+      "sha256": "0d36aa1f72bac1548862dda422cc97152c668f8f96e4e326776f21730cbab91d",
+      "bytes": 52043
+    },
+    {
+      "path": "Normal/image/78.jpg",
+      "label": "Normal",
+      "sha256": "879e5d8b0b2ee647aa89339afc7f8df72701607cf98aadc1fc618e6af4af7c6c",
+      "bytes": 71623
+    },
+    {
+      "path": "Normal/image/79.jpg",
+      "label": "Normal",
+      "sha256": "cfcf929c1450fd5bc5a5e9df7f0c7c50b4648e26e818b87ac9fe51cbdc35541e",
+      "bytes": 58250
+    },
+    {
+      "path": "Normal/image/8.jpg",
+      "label": "Normal",
+      "sha256": "876cab30f12b879f404d7e7bf114413e13c9b3d505c4917212a8a400c9e793d4",
+      "bytes": 73009
+    },
+    {
+      "path": "Normal/image/80.jpg",
+      "label": "Normal",
+      "sha256": "135c2f532ac039a4ac3a9d072d771bab518e3dc8e63ba6bda6efe0104cc8c8b7",
+      "bytes": 79801
+    },
+    {
+      "path": "Normal/image/81.jpg",
+      "label": "Normal",
+      "sha256": "3a0694a4315eaaa1fd7b766b063470bf29ca21adf5738487ef7011455738dff4",
+      "bytes": 78563
+    },
+    {
+      "path": "Normal/image/82.jpg",
+      "label": "Normal",
+      "sha256": "f71fd72d08f78423648c73b9a8641fe4a54e14a8c5e4bec5532d7c59072115d0",
+      "bytes": 78215
+    },
+    {
+      "path": "Normal/image/83.jpg",
+      "label": "Normal",
+      "sha256": "f6fee068342e8d836294a9acb5f747488ba6516b7cd366a4e54f3fd095ec27d9",
+      "bytes": 57478
+    },
+    {
+      "path": "Normal/image/84.jpg",
+      "label": "Normal",
+      "sha256": "d9480d697fb0cac5fa8f6107721b219d0afc80a3a466f5cf9ac0e53dcd0b1ac5",
+      "bytes": 81931
+    },
+    {
+      "path": "Normal/image/85.jpg",
+      "label": "Normal",
+      "sha256": "19efad185fc75255049a15c2604e4770d2463d318d025895196bf1e7d22c190c",
+      "bytes": 63125
+    },
+    {
+      "path": "Normal/image/86.jpg",
+      "label": "Normal",
+      "sha256": "b561198184952adebfcc148c77dc50614ce64dcb7e14b22c0c7c833282968a12",
+      "bytes": 85625
+    },
+    {
+      "path": "Normal/image/87.jpg",
+      "label": "Normal",
+      "sha256": "a601740eec8dbcf4fad798f96fe0304e456c0cf443ed0dc585545b864f6454b5",
+      "bytes": 81203
+    },
+    {
+      "path": "Normal/image/88.jpg",
+      "label": "Normal",
+      "sha256": "17534a0aa639bba6932d70b178cd377f361f03ef7fd040db7b901e8e01e603c6",
+      "bytes": 68762
+    },
+    {
+      "path": "Normal/image/89.jpg",
+      "label": "Normal",
+      "sha256": "b4c13127682bd681d4c392a21752207c6650ec6cf71c819bc56158fe14afa85a",
+      "bytes": 74341
+    },
+    {
+      "path": "Normal/image/9.jpg",
+      "label": "Normal",
+      "sha256": "2378f07e1dc3e5739c88d58383a883eb67924f2b4e711139b79aa9e4f5da1bb9",
+      "bytes": 85387
+    },
+    {
+      "path": "Normal/image/90.jpg",
+      "label": "Normal",
+      "sha256": "69dcae12a3935c7f02a91c2a2f15e4f8b69684f7a1ab4a7f556386498b1f2dab",
+      "bytes": 73398
+    },
+    {
+      "path": "Normal/image/91.jpg",
+      "label": "Normal",
+      "sha256": "1a9d3b370fdb77df13cffda58b0ca529dc1fa12366f689dfa1063fa48b5eea9e",
+      "bytes": 71999
+    },
+    {
+      "path": "Normal/image/92.jpg",
+      "label": "Normal",
+      "sha256": "05e2b4c8ffcbfacc10e750a0ee0ca531dd3d3b174d7fdb1990360860f8a4872a",
+      "bytes": 47341
+    },
+    {
+      "path": "Normal/image/93.jpg",
+      "label": "Normal",
+      "sha256": "e389182d74e280d4783a6fcde58e3a5632012d2d5aaa94715084de3f313f522f",
+      "bytes": 62371
+    },
+    {
+      "path": "Normal/image/94.jpg",
+      "label": "Normal",
+      "sha256": "db40c4b113c8b4a068950b9498c9c5edb269ce309ff40da70f24575834d05745",
+      "bytes": 77205
+    },
+    {
+      "path": "Normal/image/95.jpg",
+      "label": "Normal",
+      "sha256": "d470c4a9a9f2adb60bcb86dd8d864991bf1907dad14cf947b63dbf751e5dc49c",
+      "bytes": 58475
+    },
+    {
+      "path": "Normal/image/96.jpg",
+      "label": "Normal",
+      "sha256": "3a09356cf4b71b126b8240334a258e9f06b0e553a90b65ced537c3805664a1df",
+      "bytes": 68822
+    },
+    {
+      "path": "Normal/image/97.jpg",
+      "label": "Normal",
+      "sha256": "1792faffa6cf717926eef8aa9a03ad0c9ad13fc2393602f99182a5a0a3ffb2df",
+      "bytes": 69318
+    },
+    {
+      "path": "Normal/image/98.jpg",
+      "label": "Normal",
+      "sha256": "d8dbf9eb85436d667d74682a02902d3d659a32600f0b83fcf4a3418e51000416",
+      "bytes": 68665
+    },
+    {
+      "path": "Normal/image/99.jpg",
+      "label": "Normal",
+      "sha256": "2655afa51e0e9d358ebd13300626300fadd349d48434f845fdc5d82728690c1c",
+      "bytes": 64620
+    }
+  ]
+}
