@@ -15,7 +15,7 @@ image_sha256**，已核实）；无影像样本不入集但计 `skipped_no_image
 → 进度 **142/700 = 20.3%**；`doctor_labeled 0/50`（尚无医生修正反馈，属临床使用前置）。
 ③**门控两层化**：`enforced`（>= `--enforce-since`，默认可读化上线时刻 08:00Z，判红）+
 `informational`（全量，仅告知）—— 首跑 118/142 存量泄漏会让门禁**永远红**（存量含 A.59 之前的
-旧判读），与棘轮"存量不作为新账"同源；L2 忠实度因**本仓库无 RAGAS 判官脚本**如实记 `not_run`。
+旧判读），与棘轮"存量不作为新账"同源；L2 忠实度**已接入**（RAGAS 官方 prompt + 独立判官 8006，见 A.61.7）—— 首版那句「本仓库无 RAGAS 判官脚本」**是错的**（漏检 `scripts/**`，已在台账更正）。
 ④**进度上屏**：`GET /api/v1/eval-set/stats`（只读报告；缺报告/损坏均 **200 + 可读原因**）+
 反馈页只读进度区块 + `make eval-collect/eval-gate`。
 真机：**p26 35/0 · p28 7/0 · p20 31/0 · p27 3 轮 4/0**；门控近端 24 条 **3/4 PASS**（G2 泄漏 **= 0**
@@ -88,7 +88,7 @@ refresh_token 撤族「该撤没撤」留痕、emergency_signing fail-closed 留
   ②**采集器改为业务库来源**（`diagnosis_results` + `feedback_records`（=正确口径）+ `dicom_images`
   （去重 `sop_instance_uid`））→ 真机 **142 条 / 进度 20.3%**；无影像样本显式计 `skipped_no_image`。
   ③**门控两层化**（`enforced` 判红 / `informational` 仅告知）：存量 118/142 泄漏若一起算会让门禁永远红；
-  L2（faithfulness/相关性）因**无 RAGAS 判官脚本**如实记 `not_run`。
+  L2 **已接入**并实测（口径 A 0.0798 / 口径 B 0.1891，n=12，判官 8006）；机制齐备但数值**暂按 advisory**（口径待拍板，报告仍记 `ok=false`）。
   ④**进度上屏**：只读端点 + 反馈页进度区块（缺报告 200 + 可读）+ `make eval-collect/eval-gate`。
   真机 **p26 35/0 · p28 7/0 · p20 31/0 · p27 4/0**；门控近端 3/4（G2 泄漏 = 0；G3 41.7% 红 = 心脏腿
   无 LVEF 按设计转人工，已登记下批）。
@@ -403,11 +403,14 @@ refresh_token 撤族「该撤没撤」留痕、emergency_signing fail-closed 留
 > 公开 API `totalItems=12`（界面可见，19 号门控①满足）。
 > ②**评测集**：采集器**重写为业务库来源**（输入/输出/正确口径/去重键），真机 **142 条**（286 判读折叠）
 > → 进度 **20.3%**；`doctor_labeled 0/50`（需医生真实提交修正，属临床使用前置）。
-> ③**门控两层化**（存量只告知 / 近端判红）+ **L2 判官 `not_run`**（本仓库无 RAGAS 脚本）。
+> ③**门控两层化**（存量只告知 / 近端判红）+ **L2 判官已接入**（RAGAS 官方 prompt 复用 +
+> 独立判官 8006；实测口径 A 0.0798 / 口径 B 0.1891，n=12）—— 首版「无 RAGAS 判官脚本」
+> 的判断**是错的**，已在 A.61.7 更正；L2 暂按 `advisory`（口径未拍板），
+> `--judge-mode gate` 一行纳入退出码。
 > ④**进度上屏**：`/api/v1/eval-set/stats` + 反馈页区块 + `make eval-collect/eval-gate`。
 > 真机：p26 35/0 · p28 7/0 · p20 31/0 · p27 4/0；门控近端 24 条 **3/4 PASS**（G2 泄漏 **= 0**）。
 > **下一步候选**：①**心脏腿「无 LVEF」策略**（G3 判红的成因：9 条心脏样本全部降级转人工 ——
-> 能否由其它参数推算或明确提示补测）；②**RAGAS 判官脚本**（接上 L2 门控，faithfulness/相关性）；
+> 能否由其它参数推算或明确提示补测）；②**L2 口径拍板 + `knowledge_ids` 证据链核对**（判官机制已就绪，见 A.61.7）；
 > ③后端静默**剩余运行时 128 处**继续收敛；④`doctor_labeled ≥50` 需推动医生提交修正反馈（运营）；
 > ⑤p20 的 G5.4 时序竞态硬化。
 
@@ -479,7 +482,7 @@ refresh_token 撤族「该撤没撤」留痕、emergency_signing fail-closed 留
 
 | 阻塞项 | 类型 | 解除条件 | 影响 feature |
 |---|---|---|---|
-| faithfulness 95% 门控 | 口径/语料 | 项目组口径决策 或 域内语料到位；**A.61 补充：本仓库尚无 RAGAS 判官脚本**（`eval_gate.py` 的 L2 层如实记 `not_run`，判官就绪即接入） | `faithfulness-gate` |
+| faithfulness 95% 门控 | 口径/语料 | **A.61 更新：判官机制已接入**（RAGAS 官方 prompt + 独立判官 8006）；实质阻塞改为①**口径决策**（结论里的系统派生分级/总分是否计入 → 同一批样本 0.0798 vs 0.1891）②**`knowledge_ids` 与生成上下文是否一致**（证据链完整性） | `faithfulness-gate`、`eval-set-l2-judge` |
 | 评测集 `doctor_labeled ≥50` | 临床使用/运营 | 医生真实提交修正类反馈（`feedback_type='correction'`）；**代码侧已就绪**（采集器按 `request_id` 关联正确口径 + 进度条上屏），实测 0/50 | `langfuse-eval-pipeline` |
 | 甲状腺注册数据 | 管理决策 + 授权 | 自有/合作医院或授权采购 | `thyroid-registry-data`、`nmpa-materials` |
 | 核心覆盖率 90% | 真机依赖 | SoftHSM 签名字节、真实 Redis 语义可测 | `coverage-core` |
@@ -507,7 +510,8 @@ refresh_token 撤族「该撤没撤」留痕、emergency_signing fail-closed 留
 | `scripts/audit/p28_degradation_visibility.mjs` + `scripts/degradation_visibility.py` | A.58 渲染层降级可见性（15s 窗口真实影像/结论非占位 + clip 截图 PIL 像素方差 + **`page.route` abort 反证腿**；PASS=6 FAIL=0，退出码 0/1/2 可门禁） |
 | `scripts/langfuse/docker-compose.yml` | A.61 Langfuse 自托管栈（关键约束：**`REDIS_CONNECTION_STRING` 必须设**（镜像不读 `REDIS_URL`）+ **worker 必须用 `langfuse-worker:3` 镜像**（与 web 不同镜像）；摄取成功判据 = worker 日志 `otel-ingestion-queue executor started` + `traces` 增长） |
 | `scripts/langfuse/collect_eval_set.py` | A.61 评测集采集（业务库来源：`diagnosis_results` + `feedback_records`（=正确口径）+ `dicom_images` 去重 `sop_instance_uid`；真机 142 条 / `skipped_no_image` 显式计数；退出码 0/1/2） |
-| `scripts/langfuse/eval_gate.py` | A.61 门控两层（`enforced` 判红 / `informational` 仅告知；L2 判官缺省 `not_run`）+ `make eval-gate` |
+| `scripts/langfuse/eval_gate.py` | A.61 门控两层（`enforced` 判红 / `informational` 仅告知 + L2 `advisory`/`gate` 双模）+ `make eval-gate` |
+| `scripts/langfuse/judge_eval_set.py` | A.61.7 L2 忠实度判官（RAGAS 官方 prompt **复用**；口径 raw/reasoning；判官 8006；**仪器自检**：verdict 解析为空即报错而非给 0 分）+ `make eval-judge` |
 | `GET /api/v1/eval-set/stats`（`app/api/v1/eval_set.py`） | A.61 评测集进度只读端点（缺报告/损坏均 200 + 可读原因；匿名 401）+ 反馈页只读进度区块 |
 | `npm run lint:silent-catch`（`frontend/eslint-rules/`） | A.58 前端静默 catch 棘轮（155 文件扫描；10 文件/44 处 ≤ 基线；独立 config，**不动** `--max-warnings 1` 预算） |
 | `pytest tests/unit/quality/test_no_silent_catch.py` | A.58 后端静默 except 棘轮（`ast` 全仓 193 文件；基线 428 处只许下调；7 主路径零容忍；`contextlib.suppress` 后门一并判） |

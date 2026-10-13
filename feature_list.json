@@ -209,7 +209,7 @@
     {
       "id": "faithfulness-gate",
       "name": "faithfulness 门控（官方 RAGAS 口径 ≥95%）",
-      "description": "生成侧溯源约束 v2 + 双轨口径（官方/宽松）；判官 Qwen3-8B GPU",
+      "description": "生成侧溯源约束 v2 + 双轨口径（官方/宽松）；判官 Qwen3-8B GPU ｜A.61 续做：L2 判官机制已接入（RAGAS 官方 prompt + 独立判官 8006，见 `eval-set-l2-judge`）；本条的**实质阻塞**是口径决策（结论里的系统派生分级/总分是否计入 faithfulness，同一批样本 0.0798 vs 0.1891）与 `knowledge_ids` 与生成上下文是否一致（证据链完整性）。",
       "status": "blocked",
       "gate": "≥95%",
       "result": "官方 68.96% / 宽松 72.8%；主因 context Top-5 缺依据（语料覆盖）",
@@ -932,6 +932,17 @@
         "langfuse-eval-pipeline"
       ],
       "evidence": "16 号 A.61.4；app/api/v1/eval_set.py；app/main.py（注册）；frontend/src/pages/FeedbackPage.tsx；frontend/src/pages/__tests__/FeedbackPageEvalProgress.test.tsx；tests/unit/api/test_eval_set_stats.py；Makefile（eval-collect/eval-gate）"
+    },
+    {
+      "id": "eval-set-l2-judge",
+      "name": "评测集 L2 忠实度判官（RAGAS 官方口径，复用既有资产）+ 台账更正",
+      "description": "19 号门控的 L2 层（faithfulness ≥0.95 / 答案相关性 ≥0.90）。A.61 首版曾写「本仓库没有 RAGAS 判官脚本」——**该结论是错的**：`scripts/prompts/ragas_faithfulness.py`（官方 prompt 原文，Apache-2.0）与 `scripts/t1_eval_faithfulness.py` 一直在仓库里，错因是一次漏掉 `scripts/**` 的 grep 被当成硬结论写进台账（已更正）。本轮：①采集器补检索上下文（`diagnosis_results.knowledge_ids` → `knowledge_chunks.content`，最多 5 块/块 ≤600 字；实测 148/148 条有上下文）；②新增 `scripts/langfuse/judge_eval_set.py`，**复用**官方 prompt 与既有渲染/JSON 容错/判分（不自造第二套口径），判官走**独立实例 8006（Qwen3-8B）**；③门控支持**部分**判官报告（缺 `answer_relevance` 记 `metrics_not_measured`，不按 0 判红）与 `--judge-mode advisory|gate`（默认 advisory：照常测量并**原样写 ok=false**，但不决定退出码）；④判官调用显式给 max_tokens（Qwen3 先吐 <think> → 复用不带 max_tokens 的 _chat 会截断，实测 13/24 假失败）。",
+      "status": "done",
+      "result": "真机 n=12 近端样本（判官 8006 Qwen3-8B，失败 0）：口径 A（判结论全文）faithfulness **0.0798**；口径 B（只判「理由:」后叙述，排除系统派生的分级/总分）**0.1891**。两个必须先解决的真问题已登记：①**口径未拍板**（派生决策是否计入，需 00 号决定）；②**`knowledge_ids` 是否等于生成时的检索上下文**（B 口径下「实性特征被赋予 3 分」这类评分规则被判不支持，而它应当在 TI-RADS 指南块里 → 检索未召回 or 证据链只记了部分）。因此 L2 机制齐备但数值**暂不作为门禁依据**（报告里 enforcement=advisory，口径/证据链解决后 `--judge-mode gate` 一行切换）。守卫 8 例（含 advisory 记 ok=false 但不判红、gate 模式判红、缺口径字段记 not_measured）。",
+      "dependencies": [
+        "langfuse-eval-pipeline"
+      ],
+      "evidence": "16 号 A.61.7（含更正与两口径实测）；scripts/langfuse/judge_eval_set.py；scripts/langfuse/collect_eval_set.py（context）；scripts/langfuse/eval_gate.py；tests/unit/quality/test_eval_gate_layers.py（8 例）；reports/langfuse_eval_judge.json（+ _reasoning 对照）"
     }
   ]
 }

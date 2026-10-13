@@ -22,8 +22,11 @@ fusion/output`）、公开 API `GET /api/public/traces → totalItems=12`（**�
 → 进度 **142/700 = 20.3%**；`doctor_labeled 0/50`（尚无医生修正反馈，属临床使用前置）。
 ④**门控两层化**（棘轮口径）：`enforced`（`created_at >= --enforce-since`，默认可读化上线时刻
 `2026-10-13T08:00:00`，**决定退出码**）/ `informational`（全量，仅告知）—— 首跑 118/142 存量泄漏
-会让门禁**永远红**（存量含 A.59 之前的旧判读）；L2 忠实度因**本仓库无 RAGAS 判官脚本**如实记
-`not_run`。近端 24 条实测 **3/4 PASS**（G1 100% · **G2 泄漏 = 0** · G4 100% · **G3 41.7% 判红**）。
+会让门禁**永远红**（存量含 A.59 之前的旧判读）；L2 忠实度**已接入**（RAGAS 官方 prompt 复用 +
+独立判官 8006；口径 A 0.0798 / 口径 B 0.1891，n=12）——⚠️ 首版「本仓库无 RAGAS 判官脚本」的判断
+**是错的**（漏检 `scripts/**`），已在 16 号 A.61.7 更正；L2 暂按 `advisory`（口径未拍板，
+报告仍记 `ok=false`），`--judge-mode gate` 一行纳入退出码。近端实测 **3/4 PASS**（G1 100% ·
+**G2 泄漏 = 0** · G4 100% · **G3 41.7% 判红**）+ L2 advisory 展示。
 ⑤**进度上屏**：`GET /api/v1/eval-set/stats`（只读报告；缺报告/损坏均 **200 + 可读原因**；
 匿名 401）+ 反馈页只读「评测集进度（双引擎）」区块 + `make eval-collect/eval-gate`。
 真机：**p26 35/0 · p28 7/0 · p20 31/0 · p27 3 轮 4/0**。详见 16 号附录 A.61）
@@ -37,6 +40,11 @@ fusion/output`）、公开 API `GET /api/public/traces → totalItems=12`（**�
 - 评测集（**服务器**）：`make eval-collect`（= `collect_eval_set.py`，默认写
   `~/uai/data/eval/double_engine_eval_set.jsonl` + `~/uai/reports/langfuse_eval_set.json`）
   → `make eval-gate`（近端判红/存量告知；`--enforce-since` **生产应传本次部署时间戳**）。
+- L2 判官（**服务器**，需 8006 判官就绪）：`python scripts/langfuse/judge_eval_set.py
+  --judge-url http://127.0.0.1:8006 --model Qwen3-8B --since 2026-10-13T08:00:00 --limit 12`
+  （`--answer-mode raw|reasoning` 两口径对照；产出 `~/uai/reports/langfuse_eval_judge.json`）
+  → `eval_gate.py --judge-report <该报告>`（默认 `advisory` 展示不判红；口径拍板后加
+  `--judge-mode gate`）。**判官调用必须给 max_tokens**（Qwen3 先吐 `<think>`，否则截断成假"no JSON"）。
 - 进度面上屏（本机→服务器）：`curl http://127.0.0.1:8000/api/v1/eval-set/stats`（匿名应 401；
   带 token 应见 `available/progress/targets`）。
 - **踩坑（A.61 新增，都会再犯）**：
@@ -52,6 +60,13 @@ fusion/output`）、公开 API `GET /api/public/traces → totalItems=12`（**�
   `\C:\Users\...` → 同样落脚本。
   ⑥ 宿主会把某些一行式命令判成"服务"并**吞掉 stdout**（`Start-Sleep` + 读日志尤其容易中招）→
   写日志文件 + 用**单独一条只读命令**取结果。
+  ⑦ **复用管线要连解析器一起复用**：只复用 prompt、自写解析会读出**假 0 分**（判官把逐条判定放在
+  `statements` 键下，`t1_eval_faithfulness.py:240` 就是这么读的）。**"有断言却解析出 0 条 verdict"**
+  要报错，不许当 0 分（"测量失败" ≠ "测得 0"）。
+  ⑧ **判官调用必须显式 `max_tokens`**：Qwen3 先吐 `<think>`，复用不带该参数的 `_chat` → 输出截断 →
+  `no JSON` 假失败（实measure 13/24）。
+  ⑨ **写"不存在"之前换一种检索复核**：那句"本仓库无 RAGAS 判官脚本"来自一次漏掉 `scripts/**` 的
+  grep，而资产一直在 —— **"没找到" ≠ "不存在"**。
 
 ### 上一轮（A.60）Last Updated 原文
 

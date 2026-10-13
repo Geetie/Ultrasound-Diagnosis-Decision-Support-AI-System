@@ -26,10 +26,18 @@
 （"没样本"不等于"达标"）。
 
 **L2 忠实度门控（faithfulness ≥ 0.95 / 答案相关性 ≥ 0.90，19 号原文）** —— 需要
-LLM 判官（RAGAS 口径）。**本仓库当前没有 RAGAS 判官脚本**（A.61 全仓核实：仅文档提及），
-因此 L2 默认 **`not_run`**：脚本如实写进报告并**不计入失败**（不假装达标，也不因缺判官
-把门禁整体判红 —— 那会让 L1 也失去意义）。判官就绪后传 `--judge-report <json>`
-（形如 `{"faithfulness": 0.96, "answer_relevance": 0.91, "n": 700}`）即自动纳入门禁。
+LLM 判官（RAGAS 口径），由 `scripts/langfuse/judge_eval_set.py` 产出判官报告后传
+`--judge-report <json>` 纳入门禁。
+
+📌 **A.61 更正（台账级事实）**：A.61 首版曾写「本仓库没有 RAGAS 判官脚本」—— **这是错的**。
+仓库里一直有 `scripts/prompts/ragas_faithfulness.py`（官方 prompt 原文，Apache-2.0）与
+`scripts/t1_eval_faithfulness.py`（复用它的端到端实现）；当时的检索把 `scripts/**` 漏掉了。
+现已接上：`judge_eval_set.py` **直接复用**这两处的渲染/容错/判分（不自造第二套口径）。
+
+**部分判官报告（如实，不按 0 判红）**：RAGAS 官方 `answer_relevancy` 的 prompt
+**本仓库确实未收录**（`scripts/prompts/` 只有 faithfulness 一份），因此判官报告里
+`answer_relevance: null` → 本脚本只对**存在的**指标加判据，缺的记进
+`judge.metrics_not_measured`（写成 0.0 会把"没测"当成"不及格"，那是另一种静默）。
 
 用法：
     python scripts/langfuse/eval_gate.py [--eval-set <jsonl>] [--report <json>] [--judge-report <json>]
@@ -90,6 +98,18 @@ def main() -> int:
     )
     ap.add_argument("--report", default=str(Path.home() / "uai/reports/langfuse_eval_gate.json"))
     ap.add_argument("--judge-report", default=None, help="L2 LLM 判官报告（缺省则 L2 记 not_run）")
+    ap.add_argument(
+        "--judge-mode",
+        choices=("advisory", "gate"),
+        default="advisory",
+        help=(
+            "advisory（默认）= L2 照常测量并展示，但**不决定退出码**；gate = L2 不达标即判红。"
+            "为什么默认 advisory（A.61 实测）：当前样本构成（探针源 + 结论里含系统派生的分级/总分）"
+            "会让 RAGAS faithfulness 系统性偏低（实测 raw 0.0798 / reasoning 0.1891），"
+            "把未拍板的口径直接当门禁＝红灯噪声；口径拍板后改 `--judge-mode gate` 即可，"
+            "**报告里仍显式记 `ok=false` + `advisory: true`**，不会被人误读成达标。"
+        ),
+    )
     ap.add_argument(
         "--enforce-since",
         default="2026-10-13T08:00:00",
@@ -176,24 +196,64 @@ def main() -> int:
     checks, leaked, detail = _checks(recent)
 
     # ---- L2：忠实度（需 LLM 判官；缺判官报告则如实记 not_run）----
-    judge: dict = {"status": "not_run", "reason": "本仓库暂无 RAGAS 判官脚本（A.61 核实）"}
+    # `advisory_checks` = 照常测量与展示、但**不决定退出码**（默认口径，见 --judge-mode 说明）
+    advisory_checks: list[tuple[str, bool, str]] = []
+    judge: dict = {
+        "status": "not_run",
+        "reason": "本轮未提供判官报告（`scripts/langfuse/judge_eval_set.py --judge-report`）",
+    }
     if args.judge_report:
         jp = Path(args.judge_report).expanduser()
         if not jp.is_file():
             print(f"给了 --judge-report 但文件不存在：{jp}")
             return 2
         data = json.loads(jp.read_text(encoding="utf-8"))
-        faith = float(data.get("faithfulness", 0.0))
-        rel = float(data.get("answer_relevance", 0.0))
+        raw_faith = data.get("faithfulness")
+        raw_rel = data.get("answer_relevance")
+        not_measured = [
+            k
+            for k, v in (("faithfulness", raw_faith), ("answer_relevance", raw_rel))
+            if v is None
+        ]
         judge = {
             "status": "ran",
-            "faithfulness": faith,
-            "answer_relevance": rel,
+            "engine": data.get("engine"),
+            "judge_url": data.get("judge_url"),
+            "model": data.get("model"),
+            "answer_mode": data.get("answer_mode"),
             "n": data.get("n"),
+            "skipped_no_context": data.get("skipped_no_context"),
+            "failure_count": data.get("failed"),
+            "wall_s": data.get("wall_s"),
+            "faithfulness": raw_faith,
+            "answer_relevance": raw_rel,
+            "metrics_not_measured": not_measured,
             "thresholds": {"faithfulness": _FAITHFULNESS_MIN, "answer_relevance": _RELEVANCE_MIN},
         }
-        checks.append((f"L2 faithfulness ≥ {_FAITHFULNESS_MIN}", faith >= _FAITHFULNESS_MIN, f"{faith}"))
-        checks.append((f"L2 答案相关性 ≥ {_RELEVANCE_MIN}", rel >= _RELEVANCE_MIN, f"{rel}"))
+        target = checks if args.judge_mode == "gate" else advisory_checks
+        if raw_faith is not None:
+            faith = float(raw_faith)
+            target.append(
+                (
+                    f"L2 faithfulness ≥ {_FAITHFULNESS_MIN}",
+                    faith >= _FAITHFULNESS_MIN,
+                    f"{faith}（n={data.get('n')}，口径={data.get('answer_mode')}，"
+                    f"judge={data.get('model')}）",
+                )
+            )
+        if raw_rel is not None:
+            rel = float(raw_rel)
+            target.append(
+                (f"L2 答案相关性 ≥ {_RELEVANCE_MIN}", rel >= _RELEVANCE_MIN, f"{rel}")
+            )
+        if not_measured:
+            print(f"  （L2 未测指标：{not_measured} —— 官方 prompt 未收录，**不按 0 判红**）")
+        if args.judge_mode == "advisory":
+            judge["enforcement"] = "advisory"
+            judge["advisory_note"] = (
+                "口径待拍板（结论里的派生决策是否计入）+ 当前样本为探针源；"
+                "`--judge-mode gate` 即纳入退出码。报告里 ok=false 原样保留，不读成达标。"
+            )
 
     print(f"—— 近端样本（>= {args.enforce_since}，{len(recent)} 条；**决定退出码**）——")
     failed = 0
@@ -206,6 +266,11 @@ def main() -> int:
     for c in leaked[:3]:
         m = _TECH_RE.search(c)
         print(f"  泄漏样例：{m.group(0) if m else '?'}")
+    if advisory_checks:
+        print(f"—— L2 判官（{judge.get('enforcement')}：展示但**不决定退出码**）——")
+        for name, ok, desc in advisory_checks:
+            print(f"[{'PASS' if ok else '告知'}] {name} — {desc}")
+        print(f"  （{judge.get('advisory_note')}）")
 
     print(f"—— 全部样本（{total} 条；存量体检，仅告知）——")
     for name, ok, desc in all_checks:
@@ -236,6 +301,9 @@ def main() -> int:
             "checks": [{"name": n, "ok": ok, "detail": d} for n, ok, d in all_checks],
             "detail": all_detail,
         },
+        "advisory": [
+            {"name": n, "ok": ok, "detail": d} for n, ok, d in advisory_checks
+        ],
         "judge": judge,
         "passed": failed == 0,
         "layers": {"L1_content": status, "L2_faithfulness": judge["status"]},

@@ -8,7 +8,7 @@ TRACKS_UNIT := tests/unit
 TRACKS_INT := tests/integration/int
 PYTEST_FLAGS := -q -p no:cacheprovider -n 8 --dist=loadfile --timeout=300
 
-.PHONY: help install lint lint-fix test test-unit test-int test-all test-perf cov bench bench-all frontend fe-test fe-lint fe-build fe-smoke edge compose-up eval-collect eval-gate
+.PHONY: help install lint lint-fix test test-unit test-int test-all test-perf cov bench bench-all frontend fe-test fe-lint fe-build fe-smoke edge compose-up eval-collect eval-judge eval-gate
 
 help:
 	@echo "make install     - 安装后端依赖（含开发依赖）"
@@ -90,10 +90,17 @@ fe-smoke:
 # （服务器路径；本机跑需自行给 --out/--report）。
 #
 # 门控是**两层**：L1 内容门控（结论非空率/技术串泄漏/降级率/完整性，恒跑、纯 CPU）
-# + L2 忠实度（faithfulness ≥0.95 / 相关性 ≥0.90，需 LLM 判官；本仓库暂无判官脚本，
-# 缺判官报告时脚本如实记 `not_run`，**不**假装达标也不整体判红）。
+# + L2 忠实度（faithfulness ≥0.95 / 相关性 ≥0.90）：L2 由 `eval-judge` 产报告后经
+# `eval-gate --judge-report` 纳入（缺该报告时如实记 `not_run`）。
+#
+# ⚠️ A.61 更正：本仓库**有** RAGAS 判官资产（`scripts/prompts/ragas_faithfulness.py`
+# 官方 prompt + `scripts/t1_eval_faithfulness.py`），`judge_eval_set.py` 直接复用它们；
+# **没有**的是官方 `answer_relevancy` 的 prompt（故相关性记 `not_measured`，不按 0 判红）。
 eval-collect:
 	$(PY) scripts/langfuse/collect_eval_set.py
+
+eval-judge:
+	$(PY) scripts/langfuse/judge_eval_set.py
 
 eval-gate:
 	$(PY) scripts/langfuse/eval_gate.py

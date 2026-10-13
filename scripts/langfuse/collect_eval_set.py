@@ -12,6 +12,7 @@
 | 输入 | `diagnosis_results`（`DiagnosisResult`） | `clinical_text` / `organ` / `patient_context` / `image_ids` |
 | 输出 | 同上，`findings` JSONB 里的 `fusion_result.content` | 结论正文；`confidence` |
 | 正确口径 | `feedback_records`（`FeedbackRecord`） | `feedback_type='correction'` → `content.{field,original_value,corrected_value,reason}` |
+| **检索上下文** | `knowledge_chunks`（`KnowledgeChunkModel`） | 按 `diagnosis_results.knowledge_ids` 取 chunk 正文（**L2 忠实度判官的必要输入**） |
 | 去重键 | `dicom_images`（`DicomImage`） | `sop_instance_uid` → `image_id` → `storage_path` |
 
 去重键 = `(patient_id, 影像标识)`：**同一患者的同一张影像只入集一次**（多帧/多次判读
@@ -39,6 +40,10 @@ from pathlib import Path
 
 DEFAULT_TARGET_TOTAL = 700
 DEFAULT_TARGET_DOCTOR_LABELED = 50
+
+#: 每条样本最多保留几个检索块、每块最多多少字符（L2 判官的输入；防止 JSONL 膨胀）
+_MAX_CONTEXT_CHUNKS = 5
+_MAX_CONTEXT_CHARS = 600
 
 
 def _conclusion_of(findings: object) -> str:
@@ -72,7 +77,12 @@ async def _collect(args) -> tuple[list[dict], dict]:
     from sqlalchemy import select
 
     from app.config.database import AsyncSessionLocal
-    from app.models.database import DiagnosisResult, DicomImage, FeedbackRecord
+    from app.models.database import (
+        DiagnosisResult,
+        DicomImage,
+        FeedbackRecord,
+        KnowledgeChunkModel,
+    )
 
     rows: list[dict] = []
     dedup_basis = defaultdict(int)
@@ -108,6 +118,14 @@ async def _collect(args) -> tuple[list[dict], dict]:
             str(r.image_id): _image_basis(r) for r in img_rows
         }
 
+        # ②b 检索块：chunk_id → 正文（L2 忠实度判官的输入；KB 规模 ~1.3k 块，直接全量取）
+        chunk_rows = (
+            await session.execute(
+                select(KnowledgeChunkModel.chunk_id, KnowledgeChunkModel.content)
+            )
+        ).all()
+        chunk_text = {str(cid): (content or "") for cid, content in chunk_rows}
+
         # ③ 判读结果（输出来源）
         stmt = select(DiagnosisResult)
         if args.since:
@@ -141,6 +159,13 @@ async def _collect(args) -> tuple[list[dict], dict]:
             dedup_basis[basis_name] += 1
 
             corrections_for = corrections.get(str(r.request_id), [])
+            # 检索上下文（判官输入）：按 knowledge_ids 顺序取，最多 N 块、每块截断
+            ctx_ids = [str(cid) for cid in (getattr(r, "knowledge_ids", None) or [])]
+            ctx_text = [
+                chunk_text[cid][:_MAX_CONTEXT_CHARS]
+                for cid in ctx_ids[:_MAX_CONTEXT_CHUNKS]
+                if chunk_text.get(cid)
+            ]
             rows.append(
                 {
                     "dedup_key": dedup_key,
@@ -152,6 +177,8 @@ async def _collect(args) -> tuple[list[dict], dict]:
                     "conclusion": _conclusion_of(getattr(r, "findings", None)),
                     "confidence": float(getattr(r, "confidence", 0.0) or 0.0),
                     "status": str(getattr(r, "status", "") or ""),
+                    "context_ids": ctx_ids[:_MAX_CONTEXT_CHUNKS],
+                    "context": ctx_text,
                     "corrections": corrections_for,
                     "source": "doctor_correction" if corrections_for else "diagnosis_only",
                     "created_at": (
@@ -176,6 +203,7 @@ async def _collect(args) -> tuple[list[dict], dict]:
         "deduped": len(deduped),
         "undedupable": undedupable,
         "skipped_no_image": skipped_no_image,
+        "context_present": sum(1 for x in deduped if x["context"]),
         "doctor_labeled": sum(1 for x in deduped if x["corrections"]),
         "dedup_basis": dict(dedup_basis),
         "targets": {
@@ -224,7 +252,8 @@ def main() -> int:
 
     t_total, t_doc = stats["targets"]["total"], stats["targets"]["doctor_labeled"]
     print(f"评测集：{stats['deduped']} 条（原始判读 {stats['total']}，"
-          f"无影像跳过 {stats['skipped_no_image']}，有影像但无稳定标识 {stats['undedupable']}）→ {out}")
+          f"无影像跳过 {stats['skipped_no_image']}，有影像但无稳定标识 {stats['undedupable']}，"
+          f"含检索上下文 {stats['context_present']}）→ {out}")
     print(f"进度：样本 {stats['deduped']}/{t_total}（{stats['deduped'] / t_total:.1%}）·"
           f" 医生标注坏例 {stats['doctor_labeled']}/{t_doc}"
           f"（{stats['doctor_labeled'] / t_doc:.1%}）")
