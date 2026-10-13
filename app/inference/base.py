@@ -30,6 +30,7 @@ from enum import Enum
 from typing import Any
 
 import httpx
+import structlog
 
 from app.common.http_client_base import BaseHttpClient
 from app.inference.constants import InferenceConstants as _IC
@@ -42,6 +43,10 @@ from app.inference.protocols import (
     ModelInfo,
 )
 
+# A.60：模块级 Redis 进度/预览读写原先**没有 logger**（只有类内 `self._log`），
+# 于是这些 best-effort 分支只能静默 pass —— 现在统一走本模块 logger 留痕。
+logger = structlog.get_logger("app.inference.base")
+
 _MODEL_INFO_TTL_SECONDS = 300.0
 
 # 生成进度可见（A.43）：默认关（Self-RAG/CRAG 等短输出无收益），主服务环境置 1 开启。
@@ -51,7 +56,7 @@ try:
     import os as _os
 
     _STREAM_PROGRESS_ENABLED = _os.environ.get("UAI_LLM_STREAM_PROGRESS", "") == "1"
-except Exception:  # pragma: no cover
+except Exception:  # pragma: no cover  # silent-ok: 读环境开关属能力探测（读不到即保持默认关）
     pass
 
 
@@ -73,8 +78,15 @@ async def _write_generation_progress(request_id: str, chars: int, raw_tail: str 
             await RedisPool.setex(
                 RedisKey.custom_idempotency("diag_preview_raw", request_id), 120, raw_tail
             )
-    except Exception:  # best-effort：进度写失败不影响判读
-        pass
+    except Exception as exc:  # best-effort：进度写失败不影响判读（但必须留痕）
+        # A.60：进度/预览是**前端等待期的唯一反馈**。写失败会让医生看到「分析中」长时间无字数
+        # 变化（看起来像卡死）。debug 级：每次判读都可能发生，warning 会刷屏。
+        logger.debug(
+            "stream_progress_write_failed",
+            request_id=request_id,
+            error=str(exc),
+            error_type=type(exc).__name__,
+        )
 
 
 async def read_generation_raw_preview(request_id: str) -> str | None:
@@ -87,7 +99,7 @@ async def read_generation_raw_preview(request_id: str) -> str | None:
             RedisKey.custom_idempotency("diag_preview_raw", request_id)
         )
         return r.value.decode("utf-8", errors="replace") if r.value else None
-    except Exception:
+    except Exception:  # silent-ok: 探测式读（拿不到原始预览即跳过段落级 SG，终态由全文 SG 兜底）
         return None
 
 
@@ -100,8 +112,13 @@ async def write_generation_safe_preview(request_id: str, text: str) -> None:
         await RedisPool.setex(
             RedisKey.custom_idempotency("diag_preview_safe", request_id), 300, text
         )
-    except Exception:  # best-effort
-        pass
+    except Exception as exc:  # best-effort：安全预览写失败（医生看不到渐进预览）
+        logger.debug(
+            "stream_preview_write_failed",
+            request_id=request_id,
+            error=str(exc),
+            error_type=type(exc).__name__,
+        )
 
 
 async def read_generation_safe_preview(request_id: str) -> str | None:
@@ -114,7 +131,7 @@ async def read_generation_safe_preview(request_id: str) -> str | None:
             RedisKey.custom_idempotency("diag_preview_safe", request_id)
         )
         return r.value.decode("utf-8", errors="replace") if r.value else None
-    except Exception:
+    except Exception:  # silent-ok: 探测式读（无安全预览即不显示预览 —— 保守方向，不是故障）
         return None
 
 
@@ -127,8 +144,15 @@ async def write_generation_preview_refused(request_id: str) -> None:
         await RedisPool.setex(
             RedisKey.custom_idempotency("diag_preview_refused", request_id), 300, "1"
         )
-    except Exception:  # best-effort
-        pass
+    except Exception as exc:  # best-effort：拒绝标志写失败 → 前端可能继续显示未过 SG 的预览
+        # 这条比其它预览写更重要：拒绝标志是**临床红线**的载体（未过 SG 的文本不许上屏），
+        # 写失败意味着前端可能继续显示预览 → 用 warning。
+        logger.warning(
+            "stream_preview_refused_write_failed",
+            request_id=request_id,
+            error=str(exc),
+            error_type=type(exc).__name__,
+        )
 
 
 async def read_generation_preview_refused(request_id: str) -> bool:
@@ -140,7 +164,7 @@ async def read_generation_preview_refused(request_id: str) -> bool:
             RedisKey.custom_idempotency("diag_preview_refused", request_id)
         )
         return bool(r.value)
-    except Exception:
+    except Exception:  # silent-ok: 探测式读（读不到拒绝标志 → 按未拒绝处理；最终把关是全文 SG）
         return False
 
 
@@ -159,7 +183,7 @@ async def read_generation_progress(request_id: str) -> int | None:
             RedisKey.custom_idempotency("diag_progress", request_id)
         )
         return int(r.value) if r.value else None
-    except Exception:
+    except Exception:  # silent-ok: 探测式读（进度读不到 → 不显示字数，仍在「分析中」，由终态收敛）
         return None
 
 
@@ -516,7 +540,7 @@ class BaseHttpInferenceEngine(BaseHttpClient, InferenceEngine, ABC):
                     break
                 try:
                     obj = json.loads(chunk)
-                except json.JSONDecodeError:
+                except json.JSONDecodeError:  # silent-ok: 单个 SSE chunk 非 JSON 时跳过（偶发心跳/空行属正常）
                     continue
                 choices = obj.get("choices") or [{}]
                 delta = (choices[0] or {}).get("delta") or {}

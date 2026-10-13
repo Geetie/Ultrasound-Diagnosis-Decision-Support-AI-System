@@ -39,7 +39,15 @@ class FileLogStorage(LogStorageBackend):
     def _ensure_log_dir(self) -> None:
         try:
             self.log_dir.mkdir(parents=True, exist_ok=True)
-        except PermissionError:
+        except PermissionError as exc:
+            # A.60：目录无权限时静默改到 home —— 日志**写到了别处**却毫无记录，
+            # 运维按原路径找不到日志（"日志怎么没了"）。这是一次降级，必须留痕。
+            _logger.warning(
+                "log_dir_fallback_to_home",
+                wanted=str(self.log_dir),
+                fallback=str(Path.home() / ".ultrasound" / "logs"),
+                error=str(exc),
+            )
             self.log_dir = Path.home() / ".ultrasound" / "logs"
             self.log_dir.mkdir(parents=True, exist_ok=True)
 
@@ -55,7 +63,7 @@ class FileLogStorage(LogStorageBackend):
         try:
             if file_path.exists():
                 return file_path.stat().st_size >= self.max_file_size
-        except OSError:
+        except OSError:  # silent-ok: 探测式 stat（读不到即按"不需要轮转"，下次写入再看）
             pass
         return False
 
@@ -65,8 +73,15 @@ class FileLogStorage(LogStorageBackend):
             rotated_name = f"{file_path.stem}_{timestamp}{file_path.suffix}"
             rotated_path = file_path.parent / rotated_name
             file_path.rename(rotated_path)
-        except OSError:
-            pass
+        except OSError as exc:
+            # A.60：轮转失败原先静默 —— 后果是同一文件**无限增长**（磁盘告警时才被发现），
+            # 而且没有线索说明轮转没成功。
+            _logger.warning(
+                "log_rotate_failed",
+                path=str(file_path),
+                error=str(exc),
+                error_type=type(exc).__name__,
+            )
 
     async def awrite(self, record: LogRecord) -> None:
         async with self._get_async_lock():
@@ -168,8 +183,14 @@ class FileLogStorage(LogStorageBackend):
                     if mtime < cutoff:
                         file_path.unlink()
                         deleted_count += 1
-                except OSError:
-                    pass
+                except OSError as exc:
+                    # A.60：清理失败原先静默（残留旧日志会占盘；但清理是尽力而为，不阻断主流程）
+                    _logger.warning(
+                        "log_cleanup_file_failed",
+                        path=str(file_path),
+                        error=str(exc),
+                        error_type=type(exc).__name__,
+                    )
             if deleted_count > 0:
                 _logger.info("Cleaned up old log files",
                              count=deleted_count,

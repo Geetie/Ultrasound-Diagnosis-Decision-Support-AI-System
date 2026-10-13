@@ -61,7 +61,7 @@ def decompress_zstd(data: bytes) -> bytes | None:
         import zstandard as zstd
         decompressor = zstd.ZstdDecompressor()
         return decompressor.decompress(data, max_output_size=MAX_DICOM_FRAME_PAYLOAD_BYTES)
-    except Exception:
+    except Exception:  # silent-ok: 解压失败返回 None，调用方（L295）已判 None 并 warning
         return None
 
 
@@ -130,8 +130,14 @@ async def websocket_dicom_endpoint(
                         detail={"status": "success"},
                     )
                     await db.commit()
-                except Exception:
+                except Exception as e:  # A.60：审计写库失败须留痕（"该记的没记"）
                     await db.rollback()
+                    logger.warning(
+                        "dicom_channel_auth_audit_failed",
+                        session_id=session_id,
+                        error=str(e),
+                        error_type=type(e).__name__,
+                    )
 
             auth_ok = AuthOKMessage(
                 type=WebSocketMessageType.AUTH_OK,
@@ -172,7 +178,13 @@ async def websocket_dicom_endpoint(
                         )
                         await websocket.close(code=status.WS_1001_GOING_AWAY)
                         return
-                except Exception:
+                except Exception as e:  # A.60：心跳发送失败原先静默 return（现象是"影像不再更新"）
+                    logger.warning(
+                        "dicom_channel_heartbeat_send_failed",
+                        session_id=session_id,
+                        error=str(e),
+                        error_type=type(e).__name__,
+                    )
                     return
 
         heartbeat_task = asyncio.create_task(heartbeat_sender())
@@ -192,7 +204,7 @@ async def websocket_dicom_endpoint(
                                 last_heartbeat_time = time.monotonic()
                                 missed_pongs = 0
                             continue
-                        except (json.JSONDecodeError, KeyError):
+                        except (json.JSONDecodeError, KeyError):  # silent-ok: 非 PONG 控制帧无需处理
                             continue
 
                     binary_data = message.get("bytes")
@@ -366,12 +378,21 @@ async def websocket_dicom_endpoint(
                                     detail={"frame_count": frame_count},
                                 )
                                 await db.commit()
-                            except Exception:
+                            except Exception as e:
+                                # A.60：帧审计写库失败原先静默 rollback（"该记的没记"必须留痕；
+                                # 不 raise —— 审计失败不该打断正在推流的影像通道）
                                 await db.rollback()
+                                logger.warning(
+                                    "dicom_frame_audit_failed",
+                                    session_id=session_id,
+                                    frame_count=frame_count,
+                                    error=str(e),
+                                    error_type=type(e).__name__,
+                                )
                     except Exception as e:
-                        logger.warning("dicom_frame_audit_failed", error=str(e))
+                        logger.warning("dicom_frame_audit_outer_failed", error=str(e))
 
-            except WebSocketDisconnect:
+            except WebSocketDisconnect:  # silent-ok: 医生关页面/断网属正常断开（审计在 finally 里写）
                 break
             except Exception as e:
                 logger.error("DICOM channel error", session_id=session_id, error=str(e))
@@ -393,7 +414,13 @@ async def websocket_dicom_endpoint(
                         detail={"frame_count": frame_count, "status": "disconnected"},
                     )
                     await db.commit()
-                except Exception:
+                except Exception as e:  # A.60：断开审计写失败须留痕（原先只 rollback）
                     await db.rollback()
+                    logger.warning(
+                        "dicom_channel_disconnect_audit_failed",
+                        session_id=session_id,
+                        error=str(e),
+                        error_type=type(e).__name__,
+                    )
         except Exception as e:
             logger.error("Failed to log audit", error=str(e))

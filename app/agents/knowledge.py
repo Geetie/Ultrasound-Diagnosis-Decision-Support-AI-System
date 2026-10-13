@@ -133,7 +133,7 @@ class _TTLLRUCache:
         exp = self._expires.get(key)
         if exp is None or time.monotonic() >= exp:
             # 过期：移除
-            with contextlib.suppress(KeyError):
+            with contextlib.suppress(KeyError):  # silent-ok: 过期缓存的幂等删除（可能已被并发清掉）
                 del self._cache[key]
             self._expires.pop(key, None)
             return False

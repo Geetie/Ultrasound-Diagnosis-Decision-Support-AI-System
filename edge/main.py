@@ -69,7 +69,7 @@ class HttpDeviceTransport:
             return {}
         try:
             return response.json()
-        except ValueError:
+        except ValueError:  # silent-ok: 非 JSON 响应按原文回传（上层按 raw 字段处理，非丢数据）
             return {"raw": response.text}
 
     async def close(self) -> None:
@@ -153,15 +153,16 @@ class EdgeService:
         self._tasks = []
 
         if self._dicom_scp is not None:
-            with contextlib.suppress(Exception):
+            # silent-ok: 停机收尾的幂等关闭（边端进程即将退出，失败无补救意义）
+            with contextlib.suppress(Exception):  # silent-ok: 停机幂等关闭（进程即将退出）
                 await self._dicom_scp.stop()
 
         if self._uplink is not None:
-            with contextlib.suppress(Exception):
+            with contextlib.suppress(Exception):  # silent-ok: 停机幂等关闭（同上）
                 await self._uplink.close()
 
         if self._transport is not None:
-            with contextlib.suppress(Exception):
+            with contextlib.suppress(Exception):  # silent-ok: 停机幂等关闭（同上）
                 await self._transport.close()
 
         self._started = False
@@ -197,8 +198,8 @@ class EdgeService:
                 continue
             try:
                 self._loop.add_signal_handler(sig, self.request_stop)
-            except NotImplementedError:  # Windows
-                with contextlib.suppress(ValueError):
+            except NotImplementedError:  # silent-ok: Windows 不支持 loop.add_signal_handler，走 signal 回退
+                with contextlib.suppress(ValueError):  # silent-ok: 非主线程装 signal 会抛（回退不可用）
                     signal.signal(sig, _handler)
 
     # ---- 帧处理 ----
@@ -252,7 +253,7 @@ class EdgeService:
                     self._stop_event.wait(),
                     timeout=self.settings.reconnect_interval_seconds,
                 )
-            except asyncio.TimeoutError:
+            except asyncio.TimeoutError:  # silent-ok: 等待间隔到点即进入下一轮（循环节拍，非故障）
                 continue
 
     async def _heartbeat_loop(self) -> None:
@@ -264,7 +265,7 @@ class EdgeService:
             await self._device.maybe_heartbeat()
             try:
                 await asyncio.wait_for(self._stop_event.wait(), timeout=interval)
-            except asyncio.TimeoutError:
+            except asyncio.TimeoutError:  # silent-ok: 循环节拍（同上）
                 continue
 
     async def _health_loop(self) -> None:
@@ -277,7 +278,7 @@ class EdgeService:
                     self._stop_event.wait(),
                     timeout=self.settings.health_check_interval_seconds,
                 )
-            except asyncio.TimeoutError:
+            except asyncio.TimeoutError:  # silent-ok: 循环节拍（同上）
                 continue
 
     # ---- 观测 ----

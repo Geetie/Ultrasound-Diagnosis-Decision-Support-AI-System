@@ -316,7 +316,8 @@ class BaselineAnnotator:
         labels: list[AnnotationLabel] = []
 
         organ_enum = None
-        with contextlib.suppress(ValueError):
+        # 部位字符串不认识即按"未指定部位"（回落 None，解析器有默认处理）
+        with contextlib.suppress(ValueError):  # silent-ok: 部位字符串不认识即按"未指定部位"回落
             organ_enum = Organ(case.organ) if isinstance(case.organ, str) else case.organ
 
         result = self._parser.parse(case.input_text, organ_enum)

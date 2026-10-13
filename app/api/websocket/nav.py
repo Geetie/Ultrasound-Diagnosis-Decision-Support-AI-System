@@ -435,7 +435,7 @@ class ConnectionManager:
             self._redis_sub_task.cancel()
             try:
                 await self._redis_sub_task
-            except asyncio.CancelledError:
+            except asyncio.CancelledError:  # silent-ok: 停机时主动 cancel 属正常收尾路径
                 pass
             self._redis_sub_task = None
             logger.info("websocket_redis_pubsub_subscriber_stopped", worker_id=self._worker_id)
@@ -818,7 +818,16 @@ async def websocket_nav_endpoint(
                         timestamp=get_timestamp(),
                     )
                     await websocket.send_json(ping.model_dump())
-                except Exception:
+                except Exception as e:
+                    # A.60：导航心跳发送失败原先静默 return —— 现象是"实时导航/状态不再更新"
+                    # 且毫无线索。留痕后返回（由外层 finally 收尾）。
+                    logger.warning(
+                        "nav_channel_heartbeat_send_failed",
+                        session_id=session_id,
+                        device_id=device_id,
+                        error=str(e),
+                        error_type=type(e).__name__,
+                    )
                     return
 
         heartbeat_task = asyncio.create_task(heartbeat_check())
@@ -898,7 +907,7 @@ async def websocket_nav_endpoint(
                             image_quality=edge_msg.image_quality,
                         )
 
-            except WebSocketDisconnect:
+            except WebSocketDisconnect:  # silent-ok: 医生关页面/断网属正常断开（审计在 finally 里写）
                 break
             except Exception as e:
                 logger.error("WebSocket error", session_id=session_id, error=str(e))
@@ -922,7 +931,13 @@ async def websocket_nav_endpoint(
                         detail={"status": "disconnected"},
                     )
                     await db.commit()
-                except Exception:
+                except Exception as e:  # A.60：断开审计写失败须留痕（原先只 rollback）
                     await db.rollback()
+                    logger.warning(
+                        "nav_channel_disconnect_audit_failed",
+                        session_id=session_id,
+                        error=str(e),
+                        error_type=type(e).__name__,
+                    )
         except Exception as e:
             logger.error("Failed to log audit", error=str(e))

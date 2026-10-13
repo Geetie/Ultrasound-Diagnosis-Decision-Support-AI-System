@@ -43,7 +43,7 @@ class RedisSubscriber:
             self._task.cancel()
             try:
                 await self._task
-            except asyncio.CancelledError:
+            except asyncio.CancelledError:  # silent-ok: 停机主动 cancel 属正常收尾
                 pass
             self._task = None
             logger.info("sg_redis_subscriber_stopped", channel=self._channel)
@@ -138,7 +138,7 @@ class RedisStreamConsumer:
             self._task.cancel()
             try:
                 await self._task
-            except asyncio.CancelledError:
+            except asyncio.CancelledError:  # silent-ok: 停机主动 cancel 属正常收尾
                 pass
             self._task = None
             logger.info("sg_redis_stream_consumer_stopped", stream=self._stream)
@@ -201,7 +201,7 @@ class RedisStreamConsumer:
                             try:
                                 payload = json.loads(payload_data)
                                 await self._handler(payload)
-                            except json.JSONDecodeError:
+                            except json.JSONDecodeError:  # silent-ok: payload 非 JSON 时按原始字段字典交付
                                 await self._handler(data)
                         else:
                             await self._handler(data)
@@ -243,7 +243,7 @@ class RedisStreamConsumer:
                                     try:
                                         payload = json.loads(payload_data)
                                         await self._handler(payload)
-                                    except json.JSONDecodeError:
+                                    except json.JSONDecodeError:  # silent-ok: payload 非 JSON 时按原始字段字典交付
                                         await self._handler(data)
                                 else:
                                     action = data.get("action", "")
@@ -251,7 +251,7 @@ class RedisStreamConsumer:
                                         try:
                                             payload = json.loads(action)
                                             await self._handler(payload)
-                                        except json.JSONDecodeError:
+                                        except json.JSONDecodeError:  # silent-ok: action 非 JSON 时按原始字段字典交付
                                             await self._handler(data)
                                     else:
                                         await self._handler(data)

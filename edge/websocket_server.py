@@ -131,7 +131,7 @@ class EdgeWebSocketClient:
 
     async def close(self) -> None:
         if self._connection is not None:
-            with contextlib.suppress(Exception):
+            with contextlib.suppress(Exception):  # silent-ok: 关闭连接是幂等清理（已断/已关都属正常收尾）
                 await self._connection.close()
             self._connection = None
             logger.info("edge_ws_closed", url=self.url)

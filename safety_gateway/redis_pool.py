@@ -55,7 +55,7 @@ class SafetyGatewayRedisPool:
         try:
             current_loop = asyncio.get_running_loop()
             current_loop_id = id(current_loop)
-        except RuntimeError:
+        except RuntimeError:  # silent-ok: 无运行中事件循环属正常（同步上下文取锁），按 None 归组
             current_loop_id = None
 
         if cls._init_lock is None or cls._lock_loop_id != current_loop_id:
@@ -68,7 +68,7 @@ class SafetyGatewayRedisPool:
         try:
             await client.ping()
             return True
-        except Exception:
+        except Exception:  # silent-ok: 探活（False 即触发重连，调用方 L112 已 warning）
             return False
 
     @classmethod
@@ -94,7 +94,7 @@ class SafetyGatewayRedisPool:
                 ),
                 "uptime_in_seconds": info.get("uptime_in_seconds"),
             }
-        except Exception as e:
+        except Exception as e:  # silent-ok: 可读降级（返回 unhealthy + 原因，上层健康端点原样呈现）
             return {"status": "unhealthy", "error": str(e)}
 
     @classmethod
@@ -106,7 +106,7 @@ class SafetyGatewayRedisPool:
                 if cls._client is not None and not await cls._is_connected(cls._client):
                     try:
                         await cls._client.aclose()
-                    except Exception:
+                    except Exception:  # silent-ok: 关闭陈旧连接是幂等清理（紧接着已 warning 触发重连）
                         pass
                     cls._client = None
                     logger.warning("sg_redis_connection_stale_triggering_reconnect")
@@ -191,7 +191,7 @@ class SafetyGatewayRedisPool:
                     if cls._client is not None:
                         try:
                             await cls._client.aclose()
-                        except Exception:
+                        except Exception:  # silent-ok: 重置前的幂等清理（上面已 warning 记下失败原因）
                             pass
                         cls._client = None
                 cls._consecutive_failures = 0

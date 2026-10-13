@@ -14,7 +14,7 @@ async def _check_redis():
     try:
         healthy = await RedisPool.health_check()
         return healthy, ""
-    except Exception as e:
+    except Exception as e:  # silent-ok: 可读降级（返回 False + 原因，端点据此给 503 与说明）
         return False, f"{type(e).__name__}: {e!s}"
 
 
@@ -37,7 +37,7 @@ def _refresh_store_health() -> dict:
     process_local = not isinstance(store, RedisRefreshTokenStore)
     try:
         workers = int(os.environ.get("WEB_CONCURRENCY", "1"))
-    except ValueError:
+    except ValueError:  # silent-ok: 解析 WEB_CONCURRENCY 失败即按单进程（保守，不影响健康判定）
         workers = 1
     return {
         "backend": type(store).__name__,
@@ -57,7 +57,7 @@ async def _check_db():
         async with async_engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
         return True, ""
-    except Exception as e:
+    except Exception as e:  # silent-ok: 可读降级（同上，数据库不可用由健康端点显式暴露）
         return False, f"{type(e).__name__}: {e!s}"
 
 
@@ -147,7 +147,7 @@ async def get_hsm_health():
         result["key_count"] = key_count
 
         return result
-    except Exception as e:
+    except Exception as e:  # silent-ok: 可读降级（HSM 不可用以 status=error + 原因显式暴露）
         return {
             "status": "error",
             "error": f"{type(e).__name__}: {e!s}"

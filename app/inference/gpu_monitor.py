@@ -133,7 +133,7 @@ class FragmentationCalculator:
             pynvml.nvmlInit()
             pynvml.nvmlShutdown()
             return True
-        except (ImportError, Exception):
+        except (ImportError, Exception):  # silent-ok: 探测 pynvml 是否可用（不可用即降级到 psutil 路径）
             return False
 
     def calculate_fragmentation(
@@ -329,7 +329,7 @@ def create_memory_reader(platform: Platform | None = None) -> SystemMemoryReader
             import psutil
             if psutil:
                 return WindowsMemoryReader()
-        except ImportError:
+        except ImportError:  # silent-ok: 可选依赖探测（无 psutil 即用下面的 FallbackReader）
             pass
 
         # fallback返回空实现
@@ -482,7 +482,7 @@ class GPUScheduleStrategy:
                     async with self._lock:
                         if self._retrieval_active:
                             return True
-            except asyncio.TimeoutError:
+            except asyncio.TimeoutError:  # silent-ok: 等资源超时后 break，紧接着已 warning 并返回 False
                 break
 
         self._log.warning(
@@ -629,8 +629,13 @@ class GPUMemoryMonitor:
             try:
                 from app.observability.metrics_collector import get_metrics_collector
                 get_metrics_collector().set_gpu_fragmentation_duration("gpu:0", duration)
-            except Exception:
-                pass
+            except Exception as exc:
+                # A.60：指标上报失败原先静默 —— 会让"碎片化持续超阈"的告警链条少一环却查不出来
+                self._log.debug(
+                    "gpu_fragmentation_metric_report_failed",
+                    error=str(exc),
+                    error_type=type(exc).__name__,
+                )
             if duration > 600:
                 self._log.warning(
                     "gpu_fragmentation_sustained_warning",
@@ -643,8 +648,13 @@ class GPUMemoryMonitor:
             try:
                 from app.observability.metrics_collector import get_metrics_collector
                 get_metrics_collector().set_gpu_fragmentation_duration("gpu:0", 0.0)
-            except Exception:
-                pass
+            except Exception as exc:
+                # A.60：清零失败会让指标卡在旧值（假告警来源）
+                self._log.debug(
+                    "gpu_fragmentation_metric_clear_failed",
+                    error=str(exc),
+                    error_type=type(exc).__name__,
+                )
 
         return snapshot
 
@@ -843,7 +853,7 @@ class SystemMemoryProfiler:
                 return float(mem_str[:-2]) / 1024
             elif mem_str.endswith("B"):
                 return float(mem_str[:-1]) / 1024 / 1024
-        except ValueError:
+        except ValueError:  # silent-ok: 解析 docker 内存串（格式不认识即回落 0.0，调用方按无数据看）
             pass
         return 0.0
 
@@ -877,7 +887,7 @@ class GPUFragmentationMonitor:
                 try:
                     bar1_info = pynvml.nvmlDeviceGetBAR1MemoryInfo(handle)
                     largest_free_block = bar1_info.bar1Free
-                except (AttributeError, Exception):
+                except (AttributeError, Exception):  # silent-ok: 老驱动无 BAR1 接口即回落整体占用率口径
                     largest_free_block = None
                 if largest_free_block is not None and largest_free_block > 0:
                     return 1.0 - (largest_free_block / total_free) if total_free > 0 else 0.0

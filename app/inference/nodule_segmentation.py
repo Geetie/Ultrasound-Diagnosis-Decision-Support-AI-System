@@ -321,9 +321,17 @@ class NoduleSegmenter:
         """健康检查（不抛异常，供 /health 与降级矩阵使用）。"""
         try:
             self._ensure_loaded()
-        except SegmentationUnavailableError as exc:
+        except SegmentationUnavailableError as exc:  # silent-ok: 可读降级（未训练器官/功能未启用不是故障）
             return {"available": False, "organ": self._organ, "reason": str(exc)}
         except Exception as exc:  # pragma: no cover
+            # A.60：**未知异常**与"未训练器官"不是一回事 —— 后者是设计内降级，前者是缺陷。
+            # 两者都返回 available=False，若不区分就永远查不出来（健康检查"一直不可用"）。
+            logger.warning(
+                "nodule_seg_health_unexpected_error",
+                organ=self._organ,
+                error=str(exc),
+                error_type=type(exc).__name__,
+            )
             return {
                 "available": False,
                 "organ": self._organ,
@@ -364,10 +372,17 @@ class NoduleSegmenter:
                 "organ": self._organ,
                 "warmup_ms": round((_time.perf_counter() - t0) * 1000, 1),
             }
-        except SegmentationUnavailableError as exc:
+        except SegmentationUnavailableError as exc:  # silent-ok: 权重缺失/功能关闭属设计内降级（同上）
             # 权重缺失/功能关闭：如实返回，不视为错误（liver 等未训练器官）
             return {"available": False, "organ": self._organ, "reason": str(exc)}
         except Exception as exc:  # pragma: no cover
+            # A.60：预热期未知异常必须留痕（否则"预热一直失败"无任何线索）
+            logger.warning(
+                "nodule_seg_warmup_unexpected_error",
+                organ=self._organ,
+                error=str(exc),
+                error_type=type(exc).__name__,
+            )
             return {
                 "available": False,
                 "organ": self._organ,

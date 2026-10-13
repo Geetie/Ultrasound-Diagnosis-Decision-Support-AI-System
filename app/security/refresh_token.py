@@ -43,7 +43,7 @@ def _grace_window_active(revoked_at: str | None) -> bool:
         return False
     try:
         revoked_at_dt = datetime.fromisoformat(revoked_at)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError):  # silent-ok: 时间戳不可解析即判"不在宽限期"（保守方向，安全）
         return False
     return (datetime.now(timezone.utc) - revoked_at_dt).total_seconds() <= grace_s
 
@@ -756,7 +756,15 @@ return 0
                 return None
             try:
                 successor = json.loads(successor_str)
-            except json.JSONDecodeError:
+            except json.JSONDecodeError as exc:
+                # A.60：后继 token 记录损坏原先静默返回 None —— 复用链检测（安全语义）会静默失效，
+                # 属"该发现没发现"，必须留痕。
+                logger.warning(
+                    "refresh_successor_record_corrupt",
+                    successor_id=successor_id,
+                    error=str(exc),
+                    error_type=type(exc).__name__,
+                )
                 return None
             if not successor.get("revoked", False):
                 return successor
@@ -939,8 +947,15 @@ return 0
                             update_pipe.set(RedisKey.auth_token(token_id), json.dumps(token_data))
                         update_pipe.srem(RedisKey.auth_user_tokens(token_data['user_id']), token_id)
                         revoked_count += 1
-                except json.JSONDecodeError:
-                    pass
+                except json.JSONDecodeError as exc:
+                    # A.60：撤族时单条记录损坏原先静默 pass —— "该撤的没撤"是安全相关，必须留痕；
+                    # **不 raise**：中断会连累同族其余 token 的撤销。
+                    logger.warning(
+                        "refresh_family_revoke_record_corrupt",
+                        family_id=family_id,
+                        error=str(exc),
+                        error_type=type(exc).__name__,
+                    )
 
         family_revoked_ttl = int(timedelta(days=settings.jwt_refresh_expire_days + 1).total_seconds())
         update_pipe.set(RedisKey.auth_family_revoked(family_id), "1", ex=family_revoked_ttl)
@@ -987,8 +1002,14 @@ return 0
                             update_pipe.set(RedisKey.auth_token(token_id), json.dumps(token_data))
                         update_pipe.srem(RedisKey.auth_family_tokens(family_id), token_id)
                         revoked_count += 1
-                except json.JSONDecodeError:
-                    pass
+                except json.JSONDecodeError as exc:
+                    # A.60：全量撤用户 token 时单条损坏同样"该撤没撤"，留痕但不中断批次
+                    logger.warning(
+                        "refresh_revoke_all_record_corrupt",
+                        user_id=user_id,
+                        error=str(exc),
+                        error_type=type(exc).__name__,
+                    )
 
         update_pipe.delete(RedisKey.auth_user_tokens(user_id))
         if revoked_count > 0:
@@ -1025,7 +1046,14 @@ return 0
                             await pipe.execute()
 
                         expired_count += 1
-                except (json.JSONDecodeError, KeyError):
+                except (json.JSONDecodeError, KeyError) as exc:
+                    # A.60：损坏/缺字段的键原先直接删除但**零留痕** —— 删除是有副作用的动作，
+                    # 必须能事后解释"这条记录为什么没了"。
+                    logger.warning(
+                        "expired_token_record_corrupt_deleted",
+                        error=str(exc),
+                        error_type=type(exc).__name__,
+                    )
                     await redis_client.delete(key)
 
         logger.info("expired_tokens_cleaned_redis", count=expired_count)
@@ -1065,7 +1093,7 @@ return 0
                             expired += 1
                         else:
                             active += 1
-                except json.JSONDecodeError:
+                except json.JSONDecodeError:  # silent-ok: 统计口径下跳过损坏条目（不影响任何授权判定）
                     pass
 
         return {
@@ -1100,7 +1128,7 @@ return 0
                         expires_at = datetime.fromisoformat(token_data["expires_at"])
                         if now <= expires_at:
                             count += 1
-                except json.JSONDecodeError:
+                except json.JSONDecodeError:  # silent-ok: 统计口径下跳过损坏条目（同上）
                     pass
 
         return count
@@ -1131,7 +1159,7 @@ return 0
                         if oldest_time is None or created_at < oldest_time:
                             oldest_time = created_at
                             oldest_token = token_id
-                except json.JSONDecodeError:
+                except json.JSONDecodeError:  # silent-ok: 挑最旧 token 时跳过损坏条目（挑不到即返回 False）
                     pass
 
         if oldest_token:
