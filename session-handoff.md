@@ -5,7 +5,56 @@
 
 ## Last Updated
 
-2026-10-13（分支 `main`；**A.59 结论正文可读化 + 零静默补漏三处（含 1 个 P0）**——
+2026-10-13（分支 `main`；**A.60 零静默存量收敛 + Langfuse 栈根因 + t2a 公开集全集复验**——
+①**前端静默 catch 44→0**（10 文件全 0、基线清空）：新增 `frontend/src/utils/errorReport.ts`
+（统一上报 + sink 注入；只记录不展示），真处置 13 处（**`cornerstone.displayImage` 整栈预缓存链重新抛出**
+= A.35 病灶；标注存档失败新增 `data-region="annotation-archive-error"` 可见角标；DicomViewer
+失败走 IMAGE LOAD ERROR overlay…），其余 31 处 `silent-ok` 写明理由；规则放宽为接受
+`/* silent-ok: 理由 */` 与 catch 块内标记。
+②**后端 Tier A 80 处**（14 文件 + 2 处 `suppress` 后门）→ **运行时 208→128 / 总 428→348**（基线下调；
+守卫 docstring 数字校正）。重点：`app/inference/base.py` 首次有模块级 logger（**拒绝标志写失败=临床
+红线→warning**）、审计写库/心跳发送失败→warning、`nodule_segmentation` 区分「未训练器官」与「未知
+异常」、`refresh_token` 撤族「该撤没撤」留痕且不 raise、`emergency_signing` fail-closed 留痕、
+日志目录降级/轮转失败→warning。
+③**Langfuse**：实测**一条 trace 都没有**；根因 1 = compose `REDIS_URL` **漏 Redis 密码**
+（web `Failed to instantiate otel ingestion queue`）→ **已修**（仓库+服务器）；根因 2 = 部署侧
+`.env` 的 OTLP Basic 头**手抄错一位**且含空格未加引号（`source .env` 断词）→ **已修**；
+修完**仍**报同一条队列错误、真实 OTLP 载荷 **500**（空批次 200）→ **摄取阻塞**（Langfuse 栈问题）。
+已交付：`scripts/langfuse/collect_eval_set.py`（去重+进度+指纹）、`eval_gate.py`（四条指标门控）、
+`tracing.py` 的 OTLP 头截断告警、`TestLangfuseStackConfig` 守卫；`/api/v1/eval-set/stats` 与
+反馈页进度条**未做**（无 trace 无数字）。
+④**t2a 公开集全集复验**（`scripts/audit/p29_t2a_aul_holdout.py`）：AUL **735/735 无失败**、
+**AUC 0.8950 / 95%CI [0.8712, 0.9168]**、敏感性@0.5 0.9011、特异性@0.5 0.6933、三分类 0.7429、
+门控（0.75）PASS；**口径 `public_dataset_holdout_lower_bound`（非注册级独立验证）**；途中修 8003 的
+`T2A_FT_WEIGHTS` 默认路径过期（`/v1/classify` 全批 503 而 `/health` 200 的「能力静默不可用」）。
+真机：**p26 PASS=35 FAIL=0 · p28 PASS=7 FAIL=0 · p20 PASS=31 FAIL=0**（首跑 30/1 属探针时序偶发）·
+**p27 PASS=4 FAIL=0**。详见 16 号附录 A.60）
+
+### A.60 复跑入口与踩坑（下一位直接用）
+
+- 前端静默门禁：`cd frontend && npm run lint:silent-catch`（当前 **0 文件 / 0 处**；扫描 156 文件）
+  与 `pytest tests/unit/quality/test_frontend_silent_catch.py`（含反证腿）
+- 后端静默棘轮：`pytest tests/unit/quality/test_no_silent_catch.py`（基线 **178 文件/348 处**；
+  **豁免标记必须写在 `except` 同行**——与前端规则不同，别写进块里）
+- t2a 公开集复验（**服务器**，需 8003 与分类资产）：
+  `PYTHONPATH=~/uai/src ~/uai/venv/bin/python scripts/audit/p29_t2a_aul_holdout.py --aul-dir ~/uai/data/aul
+  --clip-url http://127.0.0.1:8003`（清单在 `tests/reports/t2a_aul_manifest.json`，逐条校验 sha256；
+  **8003 必须带 `T2A_FT_WEIGHTS`** 或让候选路径命中 `models/t2a_v2/`）
+- Langfuse 评测集/门控（**服务器**）：`python scripts/langfuse/collect_eval_set.py --out <jsonl>` →
+  `python scripts/langfuse/eval_gate.py --eval-set <jsonl>`（**当前 traces=0 → 门控会返回 2**，
+  属预期：摄取队列仍坏）
+- 真机回归：p26（35）/ p28（7）/ p20（31）/ p27（各 4）
+- **踩坑（A.60 新增）**：
+  ① **服务健康 ≠ 能力可用**：8003 `/health` 200 而 `/v1/classify` 全批 503；
+  Langfuse 六容器 Up 而 OTLP 摄取队列起不来 —— 能力级探针要打**能力端点**；
+  ② **豁免标记位置前后端不同**（见上）；
+  ③ **提交消息含引号必须走 `git commit -F <file>`**（PowerShell 会撕碎 `-m` 字串）；
+  ④ **`data/` 被 gitignore** → 冻结清单/证据别放 `data/`（改放 `tests/reports/`）；
+  ⑤ `Start-Process cmd.exe /c x.bat` 静默不跑（第 4 次）→ 直连 exe + 绝对路径重定向；
+  ⑥ `Get-Content -Raw` 会触发宿主编码守卫 → 用 `[IO.File]::ReadAllText()`；PowerShell **无 heredoc**。
+
+**下一批候选**：①修 Langfuse OTLP 摄取（解锁 ≥700 采集 + 进度面）；②后端静默继续收敛剩余运行时
+128 处；③p20 G5.4 时序竞态硬化。
 从**核对 A.58 登记项的归因**出发：①**更正一条错误归因**（A.58.10① 把专科正文里的
 `[cardiac] LVEF=unknown, severity=normal` 误记成安全门问题；安全门那句本来就是中文）；
 ②**结论正文可读化**：新增 `app/agents/specialist/readable.py`（`graded_content` / `cardiac_content` /

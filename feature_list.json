@@ -257,7 +257,8 @@
       "dependencies": [
         "t2a-malignancy"
       ],
-      "evidence": "16 号 A.11"
+      "result": "**公开集那一半已做实**（A.60）：AUL 全集 735 张冻结复跑 AUC 0.8950 / 95%CI [0.8712,0.9168]，口径明确标为「公开集 held-out 下界」（见 t2a-aul-holdout）。**注册级仍缺**：需合作医院 + 病理金标准、按患者分层切分的数据（21 号 §阶段三-A 的来源候选①），本项保持 planned",
+      "evidence": "16 号 A.11；A.60.4（公开集下界的实测数字与口径）；接续 t2a-aul-holdout"
     },
     {
       "id": "prod-capacity-acceptance",
@@ -881,9 +882,45 @@
       "name": "注册：tests/unit/sec 在某随机顺序下偶发失败（待查，非本轮改动引入）",
       "description": "`pytest tests/unit` 全量 6565 passed / 1 failed：唯一失败是 tests/unit/sec/test_regression_fixes.py::TestDesensitizationRestoreKeyVersionMismatch::test_decrypt_with_wrong_key_version_raises；该例**单独跑 1 passed**、`tests/unit/agt tests/unit/sec` 合并跑 1878 passed，仅在全量随机顺序下偶发。本轮未触及 app/security/* 与 settings。待查方向：前置用例对全局 settings/环境变量的污染（order-dependent），建议定位后加 fixture 隔离。",
       "status": "planned",
-      "result": "已登记（16 号 A.59.6 验证表末行），未定位污染源",
+      "result": "已登记（16 号 A.59.6 / A.60.5 验证表），未定位污染源",
       "dependencies": [],
-      "evidence": "16 号 A.59.6；tests/unit/sec/test_regression_fixes.py"
+      "evidence": "16 号 A.59.6；A.60.5；tests/unit/sec/test_regression_fixes.py"
+    },
+    {
+      "id": "frontend-silent-zero",
+      "name": "前端静默 catch 44 处归零（基线清空）+ 统一上报出口",
+      "description": "A.58 立的 `local/no-silent-catch` 棘轮存量 44 处（10 文件：cornerstone.ts 12 / WorkspaceDicomLayer 9 / DicomViewer 8 / useDicomUpload 5 / DualWebSocketManager 4 / ConsentPage 2 / routes 1 / diagnosisService 1 / dicomStore 1 / dicomChannel 1）逐处分档：真处置 13 处 + silent-ok 31 处。新增 frontend/src/utils/errorReport.ts（reportError/reportWarn + registerErrorSink 注入点；只记录不展示；上报通道自身异常就地吞掉）。真处置重点：①cornerstone.ts#displayImage 整栈预缓存链**重新抛出**（A.35 病灶：原先吞在 Promise 链里，上层 unhandledrejection 接不到 → 空白影像区零提示）；②WorkspaceDicomLayer 标注存档 PUT 失败新增可见角标 data-region=annotation-archive-error；③DicomViewer#displayImage 失败 reportError+setError；④ws nav/dicom 构造与报文解析失败留痕；⑤ConsentPage 同意状态读取失败留痕+可读提示；⑥dicomChannel 丢帧限流留痕。规则放宽：接受 /* silent-ok: 理由 */ 与 catch 块内标记。",
+      "status": "done",
+      "result": "npm run lint:silent-catch：扫描 156 文件、静默 catch **0 文件 / 0 处**（基线清空）；新增 TestZeroSilenceDispositions 三例 + errorReport 四例；pytest tests/unit/quality 116 passed；vitest 19 passed；tsc 0",
+      "dependencies": [],
+      "evidence": "16 号 A.60.1；frontend/src/utils/errorReport.ts；frontend/eslint-rules/{no-silent-catch.js,no-silent-catch.baseline.json}；tests/unit/quality/test_frontend_silent_catch.py"
+    },
+    {
+      "id": "backend-silent-tier-a",
+      "name": "后端静默 except 收敛 Tier A（运行时 208→128，14 文件归零 + 2 处 suppress 后门）",
+      "description": "按「医生可用性 / 数据完整性风险」选 14 个运行时文件（影像/推理：app/inference/{base,gpu_monitor,nodule_segmentation}.py + api/websocket/dicom.py；实时：api/websocket/nav.py；安全：security/{refresh_token,emergency_signing}.py；网关：safety_gateway/{redis_pool,redis_subscriber}.py；基础设施：config/redis.py、observability/logging/file.py、api/v1/health.py、edge/{main.py,websocket_server.py}）+ 2 处 suppress 后门（knowledge/baseline_annotation.py、agents/knowledge.py），补结构化日志或写明理由。重点：base.py 首次有模块级 logger（拒绝标志写失败=临床红线→warning）；审计写库失败与心跳发送失败→warning；nodule_segmentation 把「未训练器官」与「未知异常」分开；refresh_token 撤族/全量撤单条损坏（该撤没撤）→warning 且不 raise；emergency_signing fail-closed 必须留痕；logging/file.py 目录降级与轮转失败→warning。",
+      "status": "done",
+      "result": "基线 193 文件/428 处 → **178 文件/348 处**（运行时 73 文件/128 处）；守卫 docstring 数字校正；pytest tests/unit/agt+services+inference 952 passed、api+sec 2037 passed（1 例为已登记顺序偶发）；ruff 无新增规则",
+      "dependencies": [],
+      "evidence": "16 号 A.60.2；tests/unit/quality/{test_no_silent_catch.py,silent_catch_baseline.json}"
+    },
+    {
+      "id": "langfuse-eval-pipeline",
+      "name": "Langfuse 评测管理：采集/门控脚本已交付，OTLP 摄取仍阻塞（≥700 采集与进度面临时不可用）",
+      "description": "19 号门控（①界面可见完整 trace ②评测集 ≥700）实测阻塞。两个根因：①compose 的 REDIS_URL 漏密码（redis 带 --requirepass）→ langfuse-web 起不来 OTLP 摄取队列（已修：仓库+服务器）；②部署侧 .env 的 OTLP Basic 头手抄错一位且含空格未加引号（source .env 断词丢掉凭据）→ 401（已修：引号 + 换成 INIT 项目有效 key）。修完仍报 Failed to instantiate otel ingestion queue → 真实 OTLP 载荷被 500 拒（空批次 200 说明鉴权/路由正常）、ClickHouse traces 恒 0 → 属 Langfuse 自托管栈问题，非本项目代码。已交付不依赖入库的部分：collect_eval_set.py（去重+进度+指纹）、eval_gate.py（四条指标门控，退出码 0/1/2）、tracing.py 的 OTLP 头截断告警（零静默）、TestLangfuseStackConfig 守卫。",
+      "status": "blocked",
+      "result": "脚本与守卫已交付并通过自检；GET /api/v1/eval-set/stats 端点 + 反馈页进度条（原计划同批交付）**未做**——没有 trace 就没有可展示的数字；待 Langfuse 摄取修好后一并做",
+      "dependencies": [],
+      "evidence": "16 号 A.60.3；scripts/langfuse/{collect_eval_set.py,eval_gate.py}；scripts/langfuse/docker-compose.yml；app/observability/tracing.py；tests/unit/obs/test_tracing_wiring.py::TestLangfuseStackConfig"
+    },
+    {
+      "id": "t2a-aul-holdout",
+      "name": "t2a 公开集 held-out 复验（AUL 全集 735 张冻结复跑）",
+      "description": "对 AUL 公开集（CC BY 4.0 / Zenodo 7272660 / 735 张：Benign 200 + Malignant 435 + Normal 100）做全集冻结复跑：冻结清单（tests/reports/t2a_aul_manifest.json，735 条相对路径+标签+sha256，每次逐条校验防换集刷分）→ 逐批调 8003 POST /v1/classify（微调 visual 副本 + LR 探针，不重训不调参）→ AUC + bootstrap 95%CI + 阈值 0.5 敏感性/特异性 + 三分类准确率。口径：AUL 无患者 ID、与训练数据重叠不可证 → scope=public_dataset_holdout_lower_bound，**不得**当注册级独立验证（21 号 §阶段三-A）。途中修 scripts/start_embedding_services.py 的 T2A_FT_WEIGHTS 默认路径过期（→/v1/classify 全批 503 而 /health 200 的「能力静默不可用」）。",
+      "status": "done",
+      "result": "AUC(恶性 vs 其余) **0.8950**、95%CI **[0.8712, 0.9168]**（bootstrap 2000）、敏感性@0.5 0.9011、特异性@0.5 0.6933、三分类准确率 0.7429；735/735 无失败、wall 6.7s；门控（0.75）PASS；**CI 下界 0.8712 ≥ 0.70 且 AUC ≥ 0.80**（21 号建议门控成立）",
+      "dependencies": [],
+      "evidence": "16 号 A.60.4；scripts/audit/p29_t2a_aul_holdout.py；tests/reports/{t2a_aul_holdout.json,t2a_aul_manifest.json}；对照 tests/reports/t2a_v2_official.json"
     }
   ]
 }
