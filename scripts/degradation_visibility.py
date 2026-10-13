@@ -55,7 +55,7 @@ def _stats(path: Path) -> dict[str, float | int | str]:
         stat = ImageStat.Stat(gray)
         variance = float(stat.var[0])
         mean = float(stat.mean[0])
-        unique = int(len(rgb.getcolors(maxcolors=1 << 24) or []))
+        unique = len(rgb.getcolors(maxcolors=1 << 24) or [])
     return {
         "file": path.name,
         "variance": round(variance, 2),
