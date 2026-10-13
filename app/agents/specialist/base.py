@@ -54,6 +54,11 @@ import structlog
 
 from app.agents.protocols import Agent, AgentContext, AgentResponse
 from app.agents.protocols import KnowledgeAgent as KnowledgeAgentProtocol
+from app.agents.specialist.solicitation import (
+    HANDOFF_TEXT,
+    detect_solicitation,
+    is_system_handoff_text,
+)
 from app.inference.grading_schema import grading_gbnf, grading_json_schema
 from app.inference.protocols import InferenceEngine, InferenceRequest, InferenceResponse
 from app.knowledge.clinical_actions import actions_for
@@ -446,6 +451,9 @@ class RAGSpecialistAgent(SpecialistAgent):
                     retry_finish_reason=retry_finish or "unknown",
                 )
 
+        # 5c) 语义层：**反向索要**守卫（A.58；20 号语义层研究产出 2 第 3 条）
+        self._apply_solicitation_guard(response, llm_text, context)
+
         # 5.5) M3/M5/M9：结构化测量 + 后方回声 + 恶性概率（增强能力，失败不影响主流程）
         self._enrich_clinical_attributes(response, llm_text, chunks)
 
@@ -768,6 +776,46 @@ class RAGSpecialistAgent(SpecialistAgent):
     # ------------------------------------------------------------------
     # 内部：D1+D2 公共后处理（invoke 末尾调用）
     # ------------------------------------------------------------------
+
+    def _apply_solicitation_guard(
+        self,
+        response: AgentResponse,
+        llm_text: str,
+        context: AgentContext,
+    ) -> None:
+        """语义层守卫：模型「反向索要」→ 转人工 + 正文不把索要当结论（A.58）。
+
+        判据见 :mod:`app.agents.specialist.solicitation`（强动作 + 影像/临床输入对象；
+        「请结合图像与病史自行判断」这类**转人工建议**不命中，避免误伤 A.56 的可读降级）。
+
+        判据扫 ``llm_text``：来源明确 —— 只有**模型生成**的文本才可能是反向索要；
+        本仓库自己的转人工文案（带 ``已转人工判读`` 标记）不参与判定。
+
+        两步处理（**尽量不破坏有用信息**）：
+        1. 一律置 ``needs_review=True`` 并在 trace 里留痕（``solicitation_guard: <片段>``）；
+        2. **只有当索要真的进了医生可见正文**（``response.content`` 也能检出）才替换正文 ——
+           正文是 ``"[organ] 分级 — 理由"`` 的合成结果，若索要只出现在没进正文的段落里，
+           分级结论应当保留（把它一起换掉反而丢信息）。系统自己的降级文案
+           （A.56「本例未能解析出 … 分级」）优先保留。
+        """
+        hit = detect_solicitation(llm_text)
+        if hit is None:
+            return
+        response.needs_review = True
+        response.reasoning_trace = [
+            *(response.reasoning_trace or []),
+            f"solicitation_guard: {hit}",
+        ]
+        content = response.content or ""
+        if not is_system_handoff_text(content) and detect_solicitation(content):
+            response.content = HANDOFF_TEXT
+        logger.warning(
+            "specialist_solicitation_detected",
+            organ=self.get_organ().value,
+            request_id=context.request_id,
+            phrase=hit,
+            llm_raw_len=len(llm_text),
+        )
 
     def _post_process(
         self,

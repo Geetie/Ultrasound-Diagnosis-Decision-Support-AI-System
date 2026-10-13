@@ -70,6 +70,7 @@ export default function WorkspaceImageRegion({
   annotationArchiveKey,
   declaredOrgan,
   sessionStartedAt,
+  imageLoadIssue,
 }: {
   /** 部位指示条插槽：仅部位数 ≥ 2 时传入（05 / 14）。它落在影像区内部底缘，
    *  不改变影像区高度 —— 影像区恒定 600。 */
@@ -99,6 +100,10 @@ export default function WorkspaceImageRegion({
   /** 会话起始时间（ISO）。影像采集时间本系统**未解析** DICOM 采集时间，故角标
    *  如实标为"会话起始"；无值时不猜（显示「时间未提供」）。 */
   sessionStartedAt?: string | null;
+  /** 影像字节/列表取回失败的可读原因（A.58 零静默）。
+   *  有值时：显示错误提示，且**不再渲染设计稿示意框** —— 取不到影像时摆一堆假标注框
+   *  最容易被当成"真实阅片"（真机 p28 反证腿实测的正是这一形态）。 */
+  imageLoadIssue?: string | null;
 }) {
   const stack = dicomImageIds && dicomImageIds.length > 0
     ? dicomImageIds
@@ -113,7 +118,8 @@ export default function WorkspaceImageRegion({
     : (dicomFrameOwners?.[0] ? [dicomFrameOwners[0]] : []);
   // 设计稿 2:5/2:6/2:101 的「结节A/B、18.4×12.1mm」是**写死的示意数据**。
   // 真实影像显示时必须隐藏 —— 假框叠在真片子上等于伪造标注（2026-10-08 走查发现）。
-  const showMock = stack.length === 0;
+  // A.58：影像**取回失败**时也不渲染示意框（那是"占位被当成真实"的最坏组合）。
+  const showMock = stack.length === 0 && !imageLoadIssue;
   const seg = stack.length > 0 ? segmentation : undefined;
   // A.51 帧级归属：当前正在看的（帧号, image_id）由 DICOM 层上抛。
   // 分割覆盖层只在"它所属的那个影像/帧"上渲染，翻到别的帧自动隐藏——
@@ -222,6 +228,23 @@ export default function WorkspaceImageRegion({
             </button>
           )}
         </span>
+      )}
+
+      {/* A.58（零静默 · 渲染层）：影像取回失败必须给**可读**提示。
+          原先这条路径完全沉默（只把 imageId 保持为空 → 退回设计预览态），医生看到的是
+          假标注框，既不知道影像没取回来、也不知道要不要重试。 */}
+      {imageLoadIssue && (
+        <div
+          className="ws-image__text"
+          role="alert"
+          data-region="image-load-error"
+          style={{ left: 24, top: 20, width: 620, display: 'flex', flexDirection: 'column', gap: 4 }}
+        >
+          <strong>影像未取回：{imageLoadIssue}</strong>
+          <span style={{ fontSize: 11 }}>
+            当前画面只是占位示意（不含本次检查的影像与标注）。请重试，或回「工作列表」重新进入本次检查。
+          </span>
+        </div>
       )}
 
       {/* 后端契约：available=false 必须显示「未做分割：<原因>」，不能显示成

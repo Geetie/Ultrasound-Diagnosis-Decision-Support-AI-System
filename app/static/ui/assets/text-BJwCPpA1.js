@@ -1,0 +1,1 @@
+const p=[/\*\*([^*\n]+?)\*\*/g,/__([^_\n]+?)__/g,/`([^`\n]+?)`/g],_=/^[ \t]*#{1,6}[ \t]+/gm;function f(n,c={}){if(!n)return"";let r=n;for(const e of p)r=r.replace(e,"$1");return r=r.replace(/\*\*/g,"").replace(/__/g,(e,t,s)=>{const a=s[t-1]??"",g=s[t+2]??"",o=i=>/[\w]/.test(i);return o(a)||o(g)?e:""}),c.headings&&(r=r.replace(_,"")),r}export{f as s};

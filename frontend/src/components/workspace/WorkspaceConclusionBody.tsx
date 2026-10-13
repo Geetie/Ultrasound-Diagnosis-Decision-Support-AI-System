@@ -3,6 +3,7 @@ import WorkspaceStopAlert from './WorkspaceStopAlert';
 import type { WorkspaceState } from './states';
 import type { ConclusionView } from '@/services/diagnosisAdapter';
 import type { ReactNode } from 'react';
+import { stripMarkdownEmphasis } from '@/utils/text';
 
 /**
  * 结论区内容 —— 按视图状态切换
@@ -59,12 +60,18 @@ function ConclusionBlock({
 }) {
   const live = view ?? null;
   // 有真机数据时用数据，没有才回落到画布文案
-  const headline = live?.headline ?? '考虑良性结节（TI-RADS 3），建议 6 个月后复查';
+  // A.58：结论正文是 LLM 自由文本，会带裸露的 `**`（真机截图实证）。适配层契约要求
+  // **原样透传**（便于与后端对账），所以归一化只在这一刻做（显示层，不改数据）。
+  const headline = stripMarkdownEmphasis(
+    live?.headline ?? '考虑良性结节（TI-RADS 3），建议 6 个月后复查',
+    { headings: true },
+  );
   const attention = live ? live.attention : { reason: 'low_confidence' as const, text: 'AI 建议人工复核 · 置信度低于典型阈值' };
   const risk = live ? live.malignancyRisk : { level: '低', range: '约 2%–5%' };
-  const advice = live?.advice
-    ? `建议：${live.advice}`
-    : '建议：6 个月后复查超声，暂不需穿刺';
+  const advice = stripMarkdownEmphasis(
+    live?.advice ? `建议：${live.advice}` : '建议：6 个月后复查超声，暂不需穿刺',
+    { headings: true },
+  );
 
   return (
     <>
@@ -191,7 +198,8 @@ function AnalyzingBody({
             textAlign: 'left',
           }}
         >
-          {generationPreview}
+          {/* A.58：预览是**流式 LLM 原文**，同样会带裸露的 `**`；显示层去标记 */}
+          {stripMarkdownEmphasis(generationPreview, { headings: true })}
         </pre>
       )}
     </>

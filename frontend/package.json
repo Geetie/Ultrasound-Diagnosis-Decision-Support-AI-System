@@ -8,6 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "eslint . --max-warnings 1",
     "lint:report": "eslint .",
+    "lint:silent-catch": "node eslint-rules/silent-catch-ratchet.mjs",
+    "lint:silent-catch:update": "node eslint-rules/silent-catch-ratchet.mjs --update",
     "preview": "vite preview",
     "test": "vitest",
     "test:run": "vitest run",

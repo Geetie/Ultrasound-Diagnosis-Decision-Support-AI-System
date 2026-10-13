@@ -11,6 +11,7 @@ import { useDicomUpload } from '@/hooks/useDicomUpload';
 import { getSession } from '@/services/sessionService';
 import type { SessionInfo } from '@/types/api';
 import { organDisplayName } from '@/types/session';
+import VoiceControl from '@/components/voice/VoiceControl';
 import { fetchDicomForDisplay, listSessionImages } from '@/services/imagingService';
 import { needsDoctorReview, toConclusionView } from '@/services/diagnosisAdapter';
 import ClinicalInfoPanel from '@/components/workspace/ClinicalInfoPanel';
@@ -167,24 +168,43 @@ function WorkspaceRoute() {
     imageId: string;
     backendImageId: string;
   } | null>(null);
+  // A.58（零静默 · 渲染层）：取不到影像字节时**必须说出来**。
+  // 原实现是「只存成功取回的；取不到就不写 state，保持占位（默认沉默）」——
+  // 真机 p28 反证腿实测：屏蔽 `/api/v1/imaging/**` 后，影像区照显**设计预览态的假标注框**
+  //（结节 A/B、18.4×12.1mm）且零提示，医生完全不知道影像没取回来（A.35 同族形态）。
+  const [sessionImageIssue, setSessionImageIssue] = useState<{
+    id: string;
+    reason: string;
+  } | null>(null);
   useEffect(() => {
     if (!sessionId) return;
     let alive = true;
     listSessionImages(sessionId)
       .then(async (list) => {
         const last = list.images.at(-1);
-        if (!alive || !last) return;
+        if (!alive || !last) return; // 该会话还没有影像：不是故障，不提示
         const id = await fetchDicomForDisplay(last.image_id).catch(() => null);
-        // 只存「成功取回」的；取不到就不写 state，保持占位（默认沉默）
-        // backendImageId：标注存档 key（A.40），id 字段是 sessionId（按会话匹配）
-        if (alive && id)
+        if (!alive) return;
+        if (id) {
+          // backendImageId：标注存档 key（A.40），id 字段是 sessionId（按会话匹配）
           setSessionImage({ id: sessionId, imageId: id, backendImageId: last.image_id });
+          setSessionImageIssue(null);
+          return;
+        }
+        setSessionImageIssue({ id: sessionId, reason: '影像字节取回失败' });
       })
-      .catch(() => undefined);
+      .catch((err: unknown) => {
+        if (!alive) return;
+        // 技术细节进控制台（医生可见文案保持可读，沿用 A.56 的可读降级口径）
+        console.error('[workspace] 会话影像列表读取失败', sessionId, err);
+        setSessionImageIssue({ id: sessionId, reason: '影像列表读取失败' });
+      });
     return () => {
       alive = false;
     };
   }, [sessionId]);
+  const sessionImageIssueResolved =
+    sessionImageIssue && sessionImageIssue.id === sessionId ? sessionImageIssue.reason : null;
   const sessionImageResolved =
     sessionImage && sessionImage.id === sessionId ? sessionImage.imageId : null;
 
@@ -331,6 +351,9 @@ function WorkspaceRoute() {
       generationPreview={flow.previewText}
       declaredOrgan={organDisplayName(organ) ?? undefined}
       sessionStartedAt={sessionMatched ? sessionInfo.startedAt ?? undefined : undefined}
+      imageLoadIssue={
+        dicomImageIds.length === 0 ? (sessionImageIssueResolved ?? undefined) : undefined
+      }
         onConfirm={flow.confirm}
         identity={sessionMatched ? sessionInfo.identity ?? undefined : undefined}
         clinicalSlot={
@@ -353,6 +376,20 @@ function WorkspaceRoute() {
             onGoWorklist={() => navigate('/worklist')}
           />
         }
+      />
+      {/* A.58 口径落地：语音入口进主流程。
+          原先 `VoiceControl` 只挂在 `AppLayout`，而主流程四页**刻意不套** AppLayout
+          → 医生在工作区根本没有语音入口（真机 p26 的 T1-3 如实记录过）。
+          这里按页面级挂载（组件自带 fixed 定位，不影响 900 骨架）。
+          ⚠️ 会话 id **显式传参**，不往全局 sessionStore 写：写了会让 AppLayout 的
+          nav WebSocket 消费者误判"会话就绪"而在别的页面上发起连接（p26 T0-err 抓到）。 */}
+      <VoiceControl
+        sessionId={sessionId}
+        onExecuted={(result) => {
+          if (result.request_id) {
+            navigate(`/?request_id=${encodeURIComponent(result.request_id)}`);
+          }
+        }}
       />
     </PageSuspense>
   );

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppShell from '@/components/shell/AppShell';
+import VoiceDictationButton from '@/components/voice/VoiceDictationButton';
 import type { ThemeName } from '@/components/shell/AppSidebar';
 import { ORGAN_LABEL, ORGAN_PRESETS, type OrganType } from '@/types/session';
 import { createSession } from '@/services/sessionService';
@@ -232,6 +233,15 @@ export default function SessionCreatePage({ theme = 'dark' }: { theme?: ThemeNam
           >
             {patientState.kind === 'verifying' ? '校验中…' : '校验患者'}
           </button>
+          {/* A.58 口径落地：主流程语音入口（新建会话页）。
+              本页**还没有 session_id**，所以不用指令型 `VoiceControl`（其确认层要求会话），
+              用「口述→可编辑文本」的 `VoiceDictationButton` 填进患者编号框 ——
+              医生在设备旁双手不便时不用敲键盘。文本仍可编辑、仍要点「校验患者」。 */}
+          <VoiceDictationButton
+            label="口述患者编号"
+            disabled={patientState.kind === 'verifying' || patientState.kind === 'creating'}
+            onTranscript={(text) => setPatientInput(text.trim())}
+          />
         </div>
 
         {/* A.51 患者候选：仅在尚未确认患者时给建议，点选即校验。

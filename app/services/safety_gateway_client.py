@@ -81,7 +81,7 @@ class SafetyGatewayClient:
             self._health_probe_task.cancel()
             try:
                 await self._health_probe_task
-            except asyncio.CancelledError:
+            except asyncio.CancelledError:  # silent-ok: 按要求取消的任务（预期收尾路径）
                 pass
             self._health_probe_task = None
             logger.info("safety_gateway_health_probe_stopped")
@@ -206,7 +206,14 @@ class SafetyGatewayClient:
                 try:
                     error_body = response.json()
                     sub_code = error_body.get("code", "E4005")
-                except Exception:
+                except Exception as exc:
+                    # A.58：503 响应体解析失败原先**静默**兜默认码 —— 解析失败本身也是
+                    # 诊断信息（换了协议/非 JSON 体），必须留痕，否则只剩一个泛化错误码。
+                    logger.warning(
+                        "safety_gateway_503_body_unparseable",
+                        error=str(exc)[:120],
+                        error_type=type(exc).__name__,
+                    )
                     sub_code = "E4005"
                 logger.error(
                     "safety_gateway_check_failed_503",

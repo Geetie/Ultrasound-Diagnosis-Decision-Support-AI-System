@@ -150,6 +150,21 @@ describe('WorkspacePage · 02 扫查态元素还原', () => {
     expect(screen.getByText(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/)).toBeInTheDocument();
   });
 
+  it('A.58 影像取回失败：出可读提示且**不**渲染设计稿示意框（零静默）', () => {
+    // 真机 p28 反证腿实测形态：屏蔽 /api/v1/imaging/** → 原先影像区照显假标注框（结节 A/B）
+    // 且零提示。修后：有可读错误 + 不再摆假框（占位被当成真实的最坏组合）。
+    const { container } = render(<WorkspacePage imageLoadIssue="影像字节取回失败" />);
+
+    const alert = container.querySelector('[data-region="image-load-error"]');
+    expect(alert).not.toBeNull();
+    expect(alert?.getAttribute('role')).toBe('alert');
+    expect(alert?.textContent).toMatch(/影像未取回：影像字节取回失败/);
+    // 示意框（结节 A/B / 18.4×12.1mm）必须消失
+    expect(screen.queryByText('结节 A · 未校验')).toBeNull();
+    expect(screen.queryByText('结节 B · 已校验')).toBeNull();
+    expect(screen.queryByText('18.4 × 12.1 mm')).toBeNull();
+  });
+
   it('影像区角标与测量值按节点坐标还原', () => {
     const { container } = render(<WorkspacePage />);
 

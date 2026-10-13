@@ -191,7 +191,7 @@ class LayeredValidator:
         try:
             primary = self._select_primary_response(request.agent_responses)
             return await self._self_rag_evaluator.evaluate(primary)
-        except Exception as exc:
+        except Exception as exc:  # silent-ok: 异常原样返回，由调用方统一记录降级（见 docstring）
             return exc
 
     @staticmethod

@@ -1,6 +1,14 @@
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppShell from '@/components/shell/AppShell';
 import type { ThemeName } from '@/components/shell/AppSidebar';
+import { listDevices, type DeviceListItem } from '@/services/adminService';
+import { getApiErrorMessage } from '@/utils/apiError';
+
+/** 从 axios 形状的异常里取 HTTP 状态（不猜角色字段 —— 以状态码为准）。 */
+function httpStatusOf(err: unknown): number | undefined {
+  return (err as { response?: { status?: number } })?.response?.status;
+}
 
 /**
  * 设置 —— 08_设置（一级导航第 2 项）
@@ -15,9 +23,41 @@ import type { ThemeName } from '@/components/shell/AppSidebar';
  *   · 脚踏行**用次要色而不是 attention** —— 脚踏不得为必需项，基层可能没有此硬件，
  *     未检测到也不该报警（不是「停」档）
  *   · 侧栏高亮在「设置」（画布已修正过，原先错停在「工作列表」）
+ *
+ * 【A.58 有意偏离设计稿：新增「设备与权限」区组】
+ * 画布上没有这一区。加它的原因是「设备台账属管理员工作面」这条口径此前**只写在审计
+ * 探针里**（p16：医生 token 403 / 无 token 401），界面上完全没有落点 ——
+ * 医生既看不到"为什么没有设备列表"，也无法自助判断该找谁。这里按只读区组落地：
+ *   · 静态行说明权限口径（设备台账需管理员角色，检查与判读不受影响）；
+ *   · 动态行如实呈现取数结果：**403 给可读说明**（权限边界，不是故障）、其它错误给
+ *     可读原因、成功则列出台账（只读，最多 5 条 —— 设置页不是运维面板）。
+ * 不猜角色、不自动重试（避免对管理员面接口造成无效轰炸）。回退方式：删掉这一区组
+ * 与对应单测即可，其余功能不受影响。
  */
 export default function SettingsPage({ theme = 'dark' }: { theme?: ThemeName }) {
   const navigate = useNavigate();
+  const [devices, setDevices] = useState<DeviceListItem[] | null>(null);
+  const [permissionNote, setPermissionNote] = useState<string | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    listDevices({ limit: 5 })
+      .then((resp) => {
+        if (alive) setDevices(resp.items ?? []);
+      })
+      .catch((err: unknown) => {
+        if (!alive) return;
+        // 403 = 权限边界（需 SYSTEM_ADMIN），不是故障 —— 如实说明，不静默、不猜角色
+        setPermissionNote(
+          httpStatusOf(err) === 403
+            ? '需管理员角色 · 设备台账（型号/位置/状态）仅系统管理员可见，检查与判读不受影响'
+            : `设备台账读取失败：${getApiErrorMessage(err, '请稍后重试')}`,
+        );
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   return (
     <AppShell
@@ -63,6 +103,23 @@ export default function SettingsPage({ theme = 'dark' }: { theme?: ThemeName }) 
           甲状腺（上次使用） · 建会话时默认选中，一键即可
         </span>
       </div>
+
+      {/* A.58（有意偏离设计稿）：设备与权限 —— 见文件头说明 */}
+      <span className="page-group-title">设备与权限</span>
+      <div className="page-setting-row" data-region="settings-device-permission">
+        <span className="page-setting-row__label">设备台账权限</span>
+        <span className="page-setting-row__value">
+          {permissionNote ?? '需管理员角色 · 检查与判读不受影响'}
+        </span>
+      </div>
+      {(devices ?? []).map((d) => (
+        <div className="page-setting-row" key={d.device_id} data-region="settings-device-row">
+          <span className="page-setting-row__label">{d.device_name || d.device_id}</span>
+          <span className="page-setting-row__value">
+            {`${d.device_type} · ${d.location ?? '未登记位置'} · ${d.status}`}
+          </span>
+        </div>
+      ))}
 
       <p className="page-note">
         快捷键与主题同属设备级设置：同一台机器上所有页面共用一次设置，不按页面分别切换，避免反复打断暗适应。

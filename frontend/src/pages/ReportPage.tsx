@@ -23,6 +23,7 @@ import {
 import type { ReportResponse } from '@/types/report';
 import { getSession } from '@/services/sessionService';
 import { tokens } from '@/styles/tokens';
+import { stripMarkdownEmphasis } from '@/utils/text';
 
 /**
  * 缺失段落的临床权重（A.32，与后端 SIGN_BLOCKING_SECTIONS 同源）：
@@ -464,7 +465,11 @@ export default function ReportPage() {
                   borderRadius: tokens.radius.sm,
                 }}
               >
-                {report.rendered ?? '（无正文：该报告尚未按模板渲染）'}
+                {/* A.58：报告正文是 Markdown 模板渲染结果，`**` 在 <pre> 里会裸露。
+                    这里只去强调/行内代码标记，**保留标题与结构**（报告是文档）。 */}
+                {report.rendered
+                  ? stripMarkdownEmphasis(report.rendered)
+                  : '（无正文：该报告尚未按模板渲染）'}
               </pre>
             </div>
 

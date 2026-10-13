@@ -173,7 +173,7 @@ async def _dequeue_with_timeout(timeout: int) -> str | None:
         try:
             q = _get_fallback_queue()
             return await asyncio.wait_for(q.get(), timeout=1.0)
-        except asyncio.TimeoutError:
+        except asyncio.TimeoutError:  # silent-ok: 降级队列空轮询超时（正常空转，非失败）
             return None
         except Exception as exc:
             logger.warning(

@@ -9,6 +9,13 @@ import SettingsPage from '../SettingsPage';
 import SessionCreatePage from '../SessionCreatePage';
 import { createSession } from '@/services/sessionService';
 import { getFhirPatient } from '@/services/fhirService';
+import { listDevices } from '@/services/adminService';
+
+// A.58：设置页新增「设备与权限」区组 → 设备台账取数必须被 mock（默认 403 形态）
+const listDevicesMock = vi.mocked(listDevices);
+vi.mock('@/services/adminService', () => ({
+  listDevices: vi.fn().mockRejectedValue({ response: { status: 403 } }),
+}));
 
 /**
  * 工作列表改成数据驱动后，测试必须喂数据，不能再靠组件里的硬编码文案。
@@ -245,11 +252,29 @@ describe('08_设置', () => {
     ).toBeInTheDocument();
   });
 
-  it('4 个设置行，各 56px，分 3 组', () => {
+  it('设置行各 56px；画布 4 行 3 组 + A.58 新增的「设备与权限」组', () => {
     const { container } = wrap(<SettingsPage />);
-    expect(container.querySelectorAll('.page-setting-row')).toHaveLength(4);
+    // 画布是 4 行 3 组；A.58 有意加了一组「设备与权限」（静态行 1 条 + 动态设备行）。
+    // 这里断言**静态**行数：动态设备行只在管理员权限下才会出现（见下面的 403 用例）。
+    expect(container.querySelectorAll('.page-setting-row')).toHaveLength(5);
     expect(ruleBody(pagesCss, '.page-setting-row')).toMatch(/height:\s*56px/);
-    expect(container.querySelectorAll('.page-group-title')).toHaveLength(3);
+    expect(container.querySelectorAll('.page-group-title')).toHaveLength(4);
+  });
+
+  it('A.58 设备与权限：403 给可读权限说明（不静默、不猜角色）', async () => {
+    // 医生 token 拿设备台账必然 403（后端 RoleChecker 限 SYSTEM_ADMIN）——
+    // 界面必须说出"这是权限边界"，而不是留一片空白让人猜。
+    listDevicesMock.mockRejectedValueOnce({ response: { status: 403 } });
+    const { container } = wrap(<SettingsPage />);
+
+    await waitFor(() =>
+      expect(
+        container.querySelector('[data-region="settings-device-permission"]')!.textContent,
+      ).toMatch(/需管理员角色/),
+    );
+    expect(container.querySelectorAll('[data-region="settings-device-row"]')).toHaveLength(0);
+    // 只读展示的既有契约不受影响（仍然没有 Switch/Checkbox）
+    expect(container.querySelector('.ant-switch')).toBeNull();
   });
 
   it('脚踏未检测到**不报警**：用次要色，不用 attention', () => {

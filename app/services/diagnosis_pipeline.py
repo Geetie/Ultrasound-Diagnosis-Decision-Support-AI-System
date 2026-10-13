@@ -311,10 +311,10 @@ async def run_diagnosis_pipeline(request_id: str) -> bool:
         # 且 FULL 档行为不变。
         from app.models.schemas import ResponseTier as _ResponseTier
 
-        try:
-            _effective_tier = routing_decision.effective_tier
-        except AttributeError:
-            _effective_tier = _ResponseTier.FULL
+        # A.58：原为 try/except AttributeError 兜 FULL —— 属性缺失会被**静默**吞掉
+        # （表现成"意外降级却无人知"）。改 getattr 显式默认，语义不变但不再有静默分支
+        # （零静默守卫的零容忍区要求：主链路 except 必须带证据）。
+        _effective_tier = getattr(routing_decision, "effective_tier", _ResponseTier.FULL)
         use_self_rag = (not skip_self_rag) and (_effective_tier == _ResponseTier.FULL)
 
         # 1) 分割旁路**提前**（A.37 ③）：分割量化特征（bbox/面积/概率）必须在
@@ -783,7 +783,7 @@ async def _stream_preview_watcher(
                 merged = (safe_now + "\n\n" + text).strip() if safe_now else text
                 await write_generation_safe_preview(request_id, merged[-800:])
             seen = len(complete)
-        except asyncio.CancelledError:
+        except asyncio.CancelledError:  # silent-ok: 巡检任务被取消（停机/回收路径），非失败
             return
         except Exception as exc:
             logger.warning(

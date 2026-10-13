@@ -70,6 +70,7 @@ export default function WorkspacePage({
   generationPreview,
   declaredOrgan,
   sessionStartedAt,
+  imageLoadIssue,
 }: {
   state?: WorkspaceState;
   /**
@@ -112,6 +113,8 @@ export default function WorkspacePage({
   declaredOrgan?: string | null;
   /** 影像区时间角标：会话起始时间（ISO）。影像采集时间未解析，故用它并如实标注。 */
   sessionStartedAt?: string | null;
+  /** 影像字节/列表取回失败的可读原因（A.58 零静默：失败必须说出来，不许沉默占位）。 */
+  imageLoadIssue?: string | null;
 }) {
   const overlay = overlayOf(state);
 
@@ -150,6 +153,7 @@ export default function WorkspacePage({
         segmentation={view?.segmentation}
         declaredOrgan={declaredOrgan}
         sessionStartedAt={sessionStartedAt}
+        imageLoadIssue={imageLoadIssue}
       />
 
       <WorkspaceConclusion

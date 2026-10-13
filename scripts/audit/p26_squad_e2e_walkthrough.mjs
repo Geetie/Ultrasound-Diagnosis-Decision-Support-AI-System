@@ -226,19 +226,38 @@ try {
   await shot('a1-login');
   if (!logged) throw new Error('登录失败');
 
-  // 语音入口（T1-3 前端面）：VoiceControl 挂在 **AppLayout** 上，而医生主流程四页
-  // （工作列表/建会话/工作区/报告）刻意不套 AppLayout（routes.tsx 注释「设计包覆盖的
-  // 4 条路由全部刻意不套」）—— 所以主流程页面上没有语音入口，只在遗留页
-  // （质控/知识库/同意/反馈）可达。这里到反馈页验证入口真实存在。
+  // 语音入口（T1-3 前端面）
+  // A.58 口径落地前：VoiceControl 只挂在 **AppLayout**，而主流程四页刻意不套 AppLayout
+  // → 主流程**没有**语音入口（只在质控/知识库/同意/反馈可达）。
+  // A.58 起：工作区按页面级挂载 VoiceControl（并同步 sessionStore，见 routes.tsx），
+  // 建会话页给「口述患者编号」的听写入口。这里先在工作区（登录落点）验主流程入口。
+  // ⚠️ 登录落点后必须**轮询等渲染**：工作区是懒加载路由（PageSuspense），登录刚跳完
+  // 时 DOM 里还没有任何工作区节点 —— 一次性 count 会把"还没渲染"记成"入口不存在"
+  // （A.58 首跑实测踩到：+1.8s 直接 count=0 假 FAIL，而建会话页的同类入口同轮就找得到）。
+  let wsVoice = 0;
+  for (let i = 0; i < 30 && !wsVoice; i += 1) {
+    wsVoice = await page.locator('[data-testid="voice-control-button"]').count();
+    if (!wsVoice) await sleep(500);
+  }
+  const wsRoot = await page.locator('.ws-root').count();
+  record(
+    'T1-3',
+    '主流程（工作区）语音入口可达（A.58 口径落地）',
+    wsVoice > 0,
+    `voice-control=${wsVoice} workspace-root=${wsRoot}`,
+  );
+  await shot('a2-voice-workspace');
+
+  // 遗留页（反馈页）仍应有入口 —— 挂载点变多，不该把原来的弄丢
   await page.goto(`${BASE}/ui/feedback`, { waitUntil: 'domcontentloaded' });
   await sleep(1500);
   const voiceBtn = await page.locator('[data-testid="voice-control-button"]').count();
   const dictateBtn = await page.getByRole('button', { name: /开始口述|语音填写/ }).count();
   record(
-    'T1-3',
-    '语音入口可达（反馈页：VoiceControl / 听写按钮）',
+    'T1-3b',
+    '语音入口可达（遗留页：反馈页 VoiceControl / 听写按钮）',
     voiceBtn > 0 || dictateBtn > 0,
-    `voice-control=${voiceBtn} 听写=${dictateBtn}（注：主流程四页不套 AppLayout → 主流程无语音入口）`,
+    `voice-control=${voiceBtn} 听写=${dictateBtn}`,
   );
   await shot('a2-voice-control');
 
@@ -274,6 +293,9 @@ try {
     suggest > 0,
     `region=${suggest} text=${suggestText.replace(/\s+/g, ' ').slice(0, 60)}`,
   );
+  // A.58 口径落地：建会话页的语音入口（本页无 session_id → 用「口述→可编辑文本」的听写按钮）
+  const dictateEntry = await page.getByRole('button', { name: /口述患者编号/ }).count();
+  record('T1-3c', '建会话页有口述录入入口（主流程语音入口之二）', dictateEntry > 0, `buttons=${dictateEntry}`);
   await shot('b1-patient-suggest');
 
   const dev = await api('GET', '/api/v1/admin/device?limit=5', null, stoken);

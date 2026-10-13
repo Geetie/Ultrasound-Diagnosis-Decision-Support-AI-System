@@ -16,6 +16,19 @@ const { Text } = Typography;
 export interface VoiceControlProps {
   /** 指令执行完成（例如发起诊断后跳转诊断页） */
   onExecuted?: (result: VoiceConfirmResult) => void;
+  /**
+   * 当前会话 id 的**显式覆盖值**（A.58：主流程页面级挂载用）。
+   *
+   * 不传 = 回落到全局 `sessionStore.sessionId`（遗留 AppLayout 页面的既有行为）。
+   *
+   * 为什么要有这个覆盖：主流程四页（工作区/工作列表/建会话/设置）**不套 AppLayout**，
+   * 它们的会话来自 URL（`?session_id=`）而不是全局 store。若为了语音去往全局 store
+   * 写 `sessionId/deviceId`，会**顺手触发别的消费者**——`AppLayout` 的
+   * `useRealtimeConnection` 在 `sessionId+deviceId` 齐备时会去连 nav WebSocket
+   * （真机 p26 的 T0-err 实测抓到：隧道下必然连接失败并报 console error）。
+   * 显式传参只影响语音确认弹层的可执行性，不动全局状态。
+   */
+  sessionId?: string | null;
 }
 
 /**
@@ -27,9 +40,11 @@ export interface VoiceControlProps {
  * 无需助手式"自由对话"：临床场景下每个指令都要经医生确认，因此这里只做
  * "采集 + 解析 + 确认"，不替医生做决定。
  */
-export default function VoiceControl({ onExecuted }: VoiceControlProps) {
+export default function VoiceControl({ onExecuted, sessionId: sessionIdProp }: VoiceControlProps) {
   const touch = useTouchAdaptation();
-  const sessionId = useSessionStore((s) => s.sessionId);
+  const storeSessionId = useSessionStore((s) => s.sessionId);
+  // 显式传入优先（主流程页面级挂载）；未传时回落全局 store（AppLayout 既有用法）
+  const sessionId = sessionIdProp ?? storeSessionId;
   const isDarkRoomMode = useUiStore((s) => s.isDarkRoomMode);
   const [pending, setPending] = useState<ParsedVoiceCommand | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
