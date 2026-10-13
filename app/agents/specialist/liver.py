@@ -16,7 +16,16 @@ import re
 import structlog
 
 from app.agents.protocols import AgentResponse
-from app.agents.specialist.base import RAGSpecialistAgent, normalize_grading_text
+from app.agents.specialist.base import (
+    RAGSpecialistAgent,
+    normalize_grading_text,
+    preview_digest,
+)
+from app.inference.grading_definitions import (
+    extract_grading_severest,
+    grade_major_level,
+)
+from app.inference.grading_schema import extract_guided_grading
 from app.knowledge.protocols import KnowledgeChunk
 from app.models.schemas import Organ
 
@@ -45,6 +54,16 @@ _LI_RADS_PATTERN = re.compile(
 )
 
 
+def _to_lr_canonical(raw: str | None) -> str | None:
+    """分级码 → 专科 canonical ``LR-1..LR-5``（单一事实源 ``_GRADE_HIERARCHY``）。
+
+    ``LR-M`` / ``LR-TIV`` **不在** ``_GRADE_HIERARCHY``（没有「主级」语义，它们是
+    独立类别）→ 返回 ``None``，由调用方的器官正则兜底承接，行为与改造前一致。
+    """
+    major = grade_major_level("liver", raw)
+    return f"LR-{major}" if major is not None else None
+
+
 class LiverSpecialistAgent(RAGSpecialistAgent):
     """肝脏专科智能体（LI-RADS 分级，T-GA-AGT-05）。
 
@@ -65,10 +84,16 @@ class LiverSpecialistAgent(RAGSpecialistAgent):
     def get_grading_system(self) -> str:
         return "LI-RADS"
 
+    def _grade_from_structured(self, text: str) -> str | None:
+        """结构化重试输出 → canonical 分级（``{"grading": "3"}`` → ``LR-3``）。"""
+        return _to_lr_canonical(extract_guided_grading(text or "", "liver"))
+
     def _parse_response(
         self,
         llm_text: str,
         chunks: list[KnowledgeChunk],
+        *,
+        grade_override: str | None = None,
     ) -> AgentResponse:
         """从 LLM 输出中抽取 LR-1 ~ LR-5 / LR-M / LR-TIV 分级码。
 
@@ -85,48 +110,73 @@ class LiverSpecialistAgent(RAGSpecialistAgent):
         normalized = normalize_grading_text(llm_text)
         grade: str | None = None
 
-        # 1) 单个匹配
-        match = _LI_RADS_PATTERN.search(normalized)
-        if match:
-            suffix = match.group(1).upper()
-            if suffix == "TIV":
-                grade = "LR-TIV"
-            else:
-                grade = f"LR-{suffix}"
+        # 抽取优先级（与 thyroid 同范式，2026-10-13 分级提取根治；单一事实源
+        # = app/inference/grading_definitions）：
+        #   1) 采样层结构化输出（约束解码重试的 `{"grading": "3"}`）
+        #   2) canonical 数字形式（"LI-RADS 3" / "分级: 3" / "LR3"）
+        #   3) 器官正则兜底：**LR-M / LR-TIV 只在此路径**（它们无主级语义，
+        #      由 `LI_RADS_RISK_WEIGHT` 取风险最高，保留现网行为）
+        if grade_override:
+            # 结构化重试已给出分级（base.invoke 步骤 5b）：直接采用，不再猜
+            grade = grade_override
+        else:
+            guided = extract_guided_grading(normalized, "liver")
+            grade = _to_lr_canonical(guided or extract_grading_severest(normalized, "liver"))
 
-        # 2) 多个匹配时取风险最高
-        all_matches = _LI_RADS_PATTERN.findall(normalized)
-        if len(all_matches) > 1:
-            candidates = []
-            for m in all_matches:
-                suffix = m.upper()
+        if grade is None:
+            # 1) 单个匹配
+            match = _LI_RADS_PATTERN.search(normalized)
+            if match:
+                suffix = match.group(1).upper()
                 if suffix == "TIV":
-                    candidates.append("LR-TIV")
+                    grade = "LR-TIV"
                 else:
-                    candidates.append(f"LR-{suffix}")
-            grade = max(candidates, key=lambda g: LI_RADS_RISK_WEIGHT.get(g, 0))
+                    grade = f"LR-{suffix}"
 
-        # 抽不到 → 降级
+            # 2) 多个匹配时取风险最高
+            all_matches = _LI_RADS_PATTERN.findall(normalized)
+            if len(all_matches) > 1:
+                candidates = []
+                for m in all_matches:
+                    suffix = m.upper()
+                    if suffix == "TIV":
+                        candidates.append("LR-TIV")
+                    else:
+                        candidates.append(f"LR-{suffix}")
+                grade = max(candidates, key=lambda g: LI_RADS_RISK_WEIGHT.get(g, 0))
+
+        # 抽不到 → **可读降级**（2026-10-13 分级提取根治；技术细节只进日志/trace）
         if grade is None or grade not in LI_RADS_LEVELS:
             logger.warning(
                 "liver_grade_not_detected",
-                llm_text_preview=normalized[:200],
+                organ="liver",
+                llm_raw_len=len(normalized),
+                llm_preview_sha=preview_digest(normalized),
             )
             return AgentResponse(
                 agent_name="liver_specialist",
                 organ=Organ.LIVER,
                 content=(
-                    f"[liver] grade_unparseable: LLM output did not contain a "
-                    f"valid LI-RADS grade (LR-1..LR-5/LR-M/LR-TIV); manual "
-                    f"review required. LLM preview: {normalized[:200]}"
+                    "本例未能解析出 LI-RADS 分级（AI 输出未给出可判定的分级码），"
+                    "已转人工判读：请结合图像与病史自行分级。"
                 ),
                 confidence=0.0,
                 evidence_chunk_ids=[c.chunk_id for c in chunks[:5]],
                 reasoning_trace=[
                     "grading_system -> LI-RADS",
-                    "grade_unparseable: no LR-* match",
+                    "grading_unparseable: no LI-RADS grade extracted",
+                    f"llm_raw_len: {len(normalized)}",
+                    f"llm_preview_sha: {preview_digest(normalized)}",
                 ],
+                needs_review=True,
             )
+
+        logger.info(
+            "liver_grade_extracted",
+            organ="liver",
+            grade=grade,
+            llm_raw_len=len(normalized),
+        )
 
         # 3) 置信度组装：启发式 + 风险权重
         base_conf = self._compute_heuristic_confidence(chunks, llm_text)

@@ -270,3 +270,60 @@ def extract_grading_with_conflict(text: str, organ: str) -> tuple[str, bool] | N
                 lvef_grading = _map_lvef_to_grading(raw)
                 return (lvef_grading, has_multi_conflict)
     return (first_grading, has_multi_conflict)
+
+
+# ----------------------------------------------------------------------
+# 专科结论层用的公开 API（2026-10-13 分级提取根治）
+# ----------------------------------------------------------------------
+# 背景：专科 Agent 原先各自维护一套平行正则，与评测/一致性链路（本模块
+# ``_GRADING_PATTERNS`` / ``_GRADE_HIERARCHY``）**不同源**，导致同一份 LLM 输出
+# 在"评测能抽到"而"生产结论抽不到"（`grade_unparseable`）。这里把两项能力
+# 导出为公开 API，让专科只用单一事实源。
+
+
+def grade_major_level(organ: str, grading: str | None) -> int | None:
+    """分级 → **主级**整数（单一事实源：``_GRADE_HIERARCHY``）。
+
+    - thyroid: ``"1".."5"`` / ``"4a"``/``"4b"``/``"4c"`` → 1..5（4a/4b/4c 主级均为 4）
+    - liver:   ``"1".."5"`` / ``"lr-tr"``                 → 1..5
+    - cardiac: ``normal``/``mild``/``moderate``/``severe`` → 0..3（严重度序）
+
+    未知分级返回 ``None`` —— 调用方据此走兜底/降级，**不得**静默当成某个等级：
+    「猜一个等级」比「如实说没解析出来」更危险（错误器官/错误分级的输出有临床后果）。
+    """
+    if not grading:
+        return None
+    entry = _GRADE_HIERARCHY.get(organ, {}).get(grading.strip().lower())
+    return entry[0] if entry else None
+
+
+def extract_grading_severest(text: str, organ: str) -> str | None:
+    """抽取文本中最**严重**的分级（无匹配返回 ``None``）。
+
+    与 :func:`extract_grading_with_conflict` 的区别：后者返回「第一个匹配」，
+    供双引擎一致性比对（要的是"模型写了什么"）；本函数用于**专科结论**——
+    给医生看的结论必须**保守取重**（LLM 写 "TR3 或 TR4" 时应给 TR4），
+    这也是现网 thyroid「多码取 max」的既有语义，此处收敛为唯一实现。
+    """
+    patterns = _GRADING_PATTERNS.get(organ, [])
+    hierarchy = _GRADE_HIERARCHY.get(organ, {})
+    best: tuple[tuple[int, int], str] | None = None
+    for pattern in patterns:
+        for match in pattern.finditer(text):
+            raw = match.group(1)
+            if organ == "cardiac":
+                raw_norm = raw.lower()
+                grading = (
+                    _CN_CARDIAC_TO_GRADING.get(raw)
+                    or _EN_CARDIAC_TO_GRADING.get(raw_norm)
+                    or _CN_CARDIAC_CLASS_TO_GRADING.get(raw)
+                    or _map_lvef_to_grading(raw)
+                )
+            else:
+                grading = raw.lower()
+            level = hierarchy.get(grading)
+            if level is None:
+                continue
+            if best is None or level > best[0]:
+                best = (level, grading)
+    return best[1] if best else None

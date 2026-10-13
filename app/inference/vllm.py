@@ -168,10 +168,18 @@ class VLLMEngine(BaseHttpInferenceEngine):
                 engine=self._logger_name,
                 request_id=request.request_id,
             )
-        # P0-2 约束解码：extra["guided_json"]（JSON Schema）透传给 vLLM server
-        guided = request.extra.get("guided_json")
-        if guided:
-            payload["guided_json"] = guided
+        # 结构化输出（2026-10-13 分级提取根治）：**硬规则** —— 新版 vLLM 对
+        # `guided_json` 是「静默忽略」（既无约束也不报错，见 AGENTS.md 硬规则 #5），
+        # 因此结构化输出一律走 OpenAI 兼容的 `response_format`。
+        # 两者互斥：`response_format` 优先；`guided_json` 仅作为兼容旧服务端的回落，
+        # 保留 P0-2 既有行为（不改变老部署）。
+        response_format = request.extra.get("response_format")
+        if response_format:
+            payload["response_format"] = response_format
+        else:
+            guided = request.extra.get("guided_json")
+            if guided:
+                payload["guided_json"] = guided
 
         return payload
 

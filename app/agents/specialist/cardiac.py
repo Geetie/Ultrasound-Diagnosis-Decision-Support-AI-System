@@ -16,7 +16,13 @@ import re
 import structlog
 
 from app.agents.protocols import AgentResponse
-from app.agents.specialist.base import RAGSpecialistAgent, normalize_grading_text
+from app.agents.specialist.base import (
+    RAGSpecialistAgent,
+    normalize_grading_text,
+    preview_digest,
+)
+from app.inference.grading_definitions import extract_grading_severest
+from app.inference.grading_schema import extract_guided_grading
 from app.knowledge.protocols import KnowledgeChunk
 from app.models.schemas import Organ
 
@@ -30,6 +36,16 @@ LVEF_SEVERITY_LEVELS = (
     "moderately_reduced",
     "severely_reduced",
 )
+
+# canonical 严重度（`_GRADE_HIERARCHY["cardiac"]`）→ 本专科现网标签。
+# 两套是同一个语义的两组写法：hierarchy 用 short 名（评测/一致性口径），
+# 本专科沿用报告口径的 `*_reduced`。统一映射只此一处，避免再分叉。
+_CANONICAL_TO_CARDIAC_LABEL: dict[str, str] = {
+    "normal": "normal",
+    "mild": "mildly_reduced",
+    "moderate": "moderately_reduced",
+    "severe": "severely_reduced",
+}
 
 # LVEF 百分比 → 严重程度（基于 ASE 2015）
 def _lvef_to_severity(lvef: float) -> str:
@@ -77,10 +93,16 @@ class CardiacSpecialistAgent(RAGSpecialistAgent):
     def get_grading_system(self) -> str:
         return "LVEF"
 
+    def _grade_from_structured(self, text: str) -> str | None:
+        """结构化重试输出 → canonical 严重度（``{"grading": "severe"}`` → ``severe``）。"""
+        return extract_guided_grading(text or "", "cardiac")
+
     def _parse_response(
         self,
         llm_text: str,
         chunks: list[KnowledgeChunk],
+        *,
+        grade_override: str | None = None,
     ) -> AgentResponse:
         """从 LLM 输出中抽取 LVEF 百分比和严重程度。
 
@@ -106,6 +128,20 @@ class CardiacSpecialistAgent(RAGSpecialistAgent):
         lvef_value: float | None = None
         severity: str | None = None
         trace_extra: list[str] = []  # 矛盾检测标签（追加到 reasoning_trace）
+
+        # 0) 体系分级（单一事实源，2026-10-13 分级提取根治）：
+        #    采样层结构化输出（约束解码重试的 `{"grading": "moderate"}`）/ canonical
+        #    关键词（"正常"/"轻度降低"/"mild"）—— 与评测、双引擎一致性校验同一套
+        #    `_GRADING_PATTERNS`。数值路径（1) 仍保留：LVEF 具体数值是心脏报告的核心
+        #    信息，且 R6 矛盾检测依赖它做交叉验证。
+        if grade_override:
+            # 结构化重试已给出分级（base.invoke 步骤 5b）：直接映射，不再猜
+            severity = _CANONICAL_TO_CARDIAC_LABEL.get(grade_override)
+        else:
+            guided = extract_guided_grading(normalized, "cardiac")
+            canonical = guided or extract_grading_severest(normalized, "cardiac")
+            if canonical is not None:
+                severity = _CANONICAL_TO_CARDIAC_LABEL.get(canonical)
 
         # 1) 数值抽取
         for match in _LVEF_NUMBER_PATTERN.finditer(normalized):
@@ -148,27 +184,39 @@ class CardiacSpecialistAgent(RAGSpecialistAgent):
                 f"computed={computed_severity} but keyword={severity}"
             )
 
-        # 4) 抽取失败 → 降级
+        # 4) 抽取失败 → **可读降级**（2026-10-13 分级提取根治；技术细节只进日志/trace）
         if severity is None:
             logger.warning(
                 "cardiac_lvef_not_detected",
-                llm_text_preview=normalized[:200],
+                organ="cardiac",
+                llm_raw_len=len(normalized),
+                llm_preview_sha=preview_digest(normalized),
             )
             return AgentResponse(
                 agent_name="cardiac_specialist",
                 organ=Organ.CARDIAC,
                 content=(
-                    f"[cardiac] lvef_unparseable: LLM output did not contain a "
-                    f"valid LVEF value or severity; manual review required. "
-                    f"LLM preview: {normalized[:200]}"
+                    "本例未能解析出左心室收缩功能分级（AI 输出未给出可判定的 LVEF 值"
+                    "或严重程度），已转人工判读：请结合图像与病史自行评估。"
                 ),
                 confidence=0.0,
                 evidence_chunk_ids=[c.chunk_id for c in chunks[:5]],
                 reasoning_trace=[
                     "grading_system -> LVEF",
-                    "lvef_unparseable: no LVEF match",
+                    "grading_unparseable: no LVEF grade extracted",
+                    f"llm_raw_len: {len(normalized)}",
+                    f"llm_preview_sha: {preview_digest(normalized)}",
                 ],
+                needs_review=True,
             )
+
+        logger.info(
+            "cardiac_grade_extracted",
+            organ="cardiac",
+            severity=severity,
+            lvef_value=lvef_value,
+            llm_raw_len=len(normalized),
+        )
 
         # 5) 置信度组装
         base_conf = self._compute_heuristic_confidence(chunks, llm_text)

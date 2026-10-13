@@ -344,10 +344,10 @@ class TestParallelDispatch:
         assert thyroid_resp.confidence > 0.0
 
         assert liver_resp.confidence == 0.0
-        assert "grade_unparseable" in liver_resp.content
+        assert "未能解析出" in liver_resp.content
 
         assert cardiac_resp.confidence == 0.0
-        assert "lvef_unparseable" in cardiac_resp.content
+        assert "未能解析出" in cardiac_resp.content
 
     @pytest.mark.asyncio
     async def test_three_organs_with_correct_outputs(self):

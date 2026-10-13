@@ -1052,6 +1052,69 @@ class TestVLLMEngine:
         await engine.close()
 
 
+_GRADING_SCHEMA = {
+    "type": "object",
+    "properties": {"grading": {"type": "string", "enum": ["2", "3", "4a", "4b", "5"]}},
+    "required": ["grading"],
+}
+
+
+class TestStructuredOutputPassThrough:
+    """分级提取根治（2026-10-13）：采样层结构化输出的**透传契约**（纯 payload 级）。
+
+    背景：`grade_unparseable` 的直接诱因是专科 Agent 的主调用**没有任何采样层约束**，
+    LLM 在长上下文下漂移成「只给特征分析、不给分级码」，正则必然抽不到。修复采用
+    **按需结构化**：主调用保持自由文本（医生可见的富文本正文不能被 JSON schema 塌成
+    JSON），仅在「分级抽取失败」的有界重试上下发 schema。
+
+    - **vLLM**：`response_format`（OpenAI 兼容）优先；两者同时存在时**不得**下发
+      `guided_json`（AGENTS.md 硬规则 #5：新版 vLLM 对 `guided_json` **静默忽略**，
+      同时下发等于两套约束语义打架且无从判断谁生效）；只有 `guided_json` 时才回落
+      （兼容旧服务端，不破坏 P0-2 既有行为）。
+    - **llama.cpp**：`grammar`（GBNF 裸枚举值）透传，行为不变。
+    """
+
+    def test_vllm_prefers_response_format_and_never_sends_both(self):
+        engine = VLLMEngine(default_model="m")
+        body = engine._build_payload(
+            InferenceRequest(
+                prompt="p",
+                extra={
+                    "response_format": {
+                        "type": "json_schema",
+                        "json_schema": {"name": "thyroid_grading", "schema": _GRADING_SCHEMA},
+                    },
+                    "guided_json": _GRADING_SCHEMA,
+                },
+            )
+        )
+        assert body["response_format"]["type"] == "json_schema"
+        assert body["response_format"]["json_schema"]["schema"] == _GRADING_SCHEMA
+        assert "guided_json" not in body, (
+            "response_format 与 guided_json 同时下发 = 两套约束语义打架（硬规则 #5）"
+        )
+
+    def test_vllm_guided_json_still_supported_as_fallback(self):
+        engine = VLLMEngine(default_model="m")
+        body = engine._build_payload(
+            InferenceRequest(prompt="p", extra={"guided_json": _GRADING_SCHEMA})
+        )
+        assert body["guided_json"] == _GRADING_SCHEMA
+        assert "response_format" not in body, "只有 guided_json 时不得凭空造 response_format"
+
+    def test_vllm_without_structured_extra_sends_neither(self):
+        engine = VLLMEngine(default_model="m")
+        body = engine._build_payload(InferenceRequest(prompt="p"))
+        assert "response_format" not in body
+        assert "guided_json" not in body
+
+    def test_llama_cpp_passes_gbnf_grammar(self):
+        engine = LlamaCppEngine()
+        grammar = 'root ::= "2" | "3" | "4a" | "4b" | "5"\n'
+        body = engine._build_payload(InferenceRequest(prompt="p", extra={"grammar": grammar}))
+        assert body["grammar"] == grammar
+
+
 class TestInferenceEngineProtocol:
     def test_cannot_instantiate_abc(self):
         with pytest.raises(TypeError):

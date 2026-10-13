@@ -41,6 +41,7 @@
 """
 from __future__ import annotations
 
+import hashlib
 import inspect
 import re
 import time
@@ -53,7 +54,8 @@ import structlog
 
 from app.agents.protocols import Agent, AgentContext, AgentResponse
 from app.agents.protocols import KnowledgeAgent as KnowledgeAgentProtocol
-from app.inference.protocols import InferenceEngine, InferenceRequest
+from app.inference.grading_schema import grading_gbnf, grading_json_schema
+from app.inference.protocols import InferenceEngine, InferenceRequest, InferenceResponse
 from app.knowledge.clinical_actions import actions_for
 from app.knowledge.cross_modality import hints_for
 from app.knowledge.differential import (
@@ -250,6 +252,8 @@ class RAGSpecialistAgent(SpecialistAgent):
         self,
         llm_text: str,
         chunks: list[KnowledgeChunk],
+        *,
+        grade_override: str | None = None,
     ) -> AgentResponse:
         """把 LLM 输出 + RAG 证据解析为 AgentResponse。
 
@@ -338,7 +342,8 @@ class RAGSpecialistAgent(SpecialistAgent):
 
         # 4) LLM 调用（异常时不抛，降级为 confidence=0.0）
         try:
-            llm_text = await self._call_llm(context, prompt)
+            llm_response = await self._call_llm_response(context, prompt)
+            llm_text = llm_response.text or ""
         except Exception as exc:
             logger.warning(
                 "specialist_llm_failed",
@@ -364,6 +369,8 @@ class RAGSpecialistAgent(SpecialistAgent):
             return response
 
         trace.append(f"llm_text_len: {len(llm_text)}")
+        if llm_response.finish_reason:
+            trace.append(f"finish_reason: {llm_response.finish_reason}")
 
         # 5) 器官级解析
         try:
@@ -392,6 +399,52 @@ class RAGSpecialistAgent(SpecialistAgent):
             )
             self._post_process(context, response)
             return response
+
+        # 5b) 分级抽取失败 → **一次**结构化重试（有界；2026-10-13 分级提取根治）
+        # 为什么有界：判读 P50 预算（21 号路线图阶段一）。正常路径零额外开销 —— 只有
+        # 首次抽不到分级时才重试，且重试用采样层约束解码（输出必然带分级字段）。
+        if self._grading_unparseable(response):
+            retry_text = ""
+            retry_finish = ""
+            try:
+                retry_response = await self._call_llm_response(context, prompt, structured=True)
+                retry_text = retry_response.text or ""
+                retry_finish = retry_response.finish_reason or ""
+            except Exception as exc:
+                logger.warning(
+                    "structured_grading_retry_failed",
+                    organ=organ.value,
+                    request_id=context.request_id,
+                    error=str(exc)[:160],
+                    error_type=type(exc).__name__,
+                )
+            override = self._grade_from_structured(retry_text)
+            if override:
+                # 用**首次文本的富文本** + **重试得到的分级**重组：两者都不丢
+                # （整段换掉重试文本会让报告失去特征/理由/鉴别诊断）。
+                response = self._parse_response(llm_text, chunks, grade_override=override)
+                response.reasoning_trace = [
+                    *(response.reasoning_trace or []),
+                    "structured_grading_retry: recovered",
+                ]
+                logger.info(
+                    "structured_grading_retry_recovered",
+                    organ=organ.value,
+                    request_id=context.request_id,
+                    grade=override,
+                )
+            else:
+                trace.append("structured_grading_retry: still_unparseable")
+                if retry_finish == "length":
+                    trace.append(
+                        "structured_grading_retry: output_truncated(finish_reason=length)"
+                    )
+                logger.warning(
+                    "structured_grading_retry_exhausted",
+                    organ=organ.value,
+                    request_id=context.request_id,
+                    retry_finish_reason=retry_finish or "unknown",
+                )
 
         # 5.5) M3/M5/M9：结构化测量 + 后方回声 + 恶性概率（增强能力，失败不影响主流程）
         self._enrich_clinical_attributes(response, llm_text, chunks)
@@ -497,12 +550,19 @@ class RAGSpecialistAgent(SpecialistAgent):
         self,
         context: AgentContext,
         prompt: str,
+        *,
+        structured: bool = False,
     ) -> str:
         """调用 LLM 生成文本（统一签名 — 与 app/inference/protocols.py 对齐）。
 
         Args:
             context: AgentContext（提供 request_id / session_id）。
             prompt: 已拼装好的完整 prompt。
+            structured: 为 True 时下发**采样层结构化输出**约束（分级枚举 schema）。
+                只用于首次抽取失败后的**有界重试**——约束后的输出只有
+                ``{"grading": "<枚举>"}``，**不可用于主调用**（主调用的富文本
+                正文（特征/理由/鉴别诊断）要留给医生看，整段套 JSON schema 会把
+                正文塌成 JSON）。
 
         Returns:
             LLM 生成的纯文本。
@@ -510,14 +570,79 @@ class RAGSpecialistAgent(SpecialistAgent):
         Raises:
             app.inference.protocols.InferenceError: LLM 调用失败。
         """
+        response = await self._call_llm_response(context, prompt, structured=structured)
+        return response.text or ""
+
+    async def _call_llm_response(
+        self,
+        context: AgentContext,
+        prompt: str,
+        *,
+        structured: bool = False,
+    ) -> InferenceResponse:
+        """同 :meth:`_call_llm`，但返回完整响应对象（保留 ``finish_reason``）。
+
+        分级抽取失败的重试需要 ``finish_reason`` 区分两种失败：模型输出跑偏
+        （``stop``，重试有意义）vs 输出被 ``max_tokens`` 截断（``length``，
+        重试同一 prompt 通常无意义 → 直接走可读降级）。
+        """
         request = InferenceRequest(
             prompt=prompt,
             max_tokens=self._max_tokens,
             request_id=context.request_id,
             session_id=context.session_id,
+            extra=self._structured_output_extra() if structured else {},
         )
-        response = await self._inference.generate(request)
-        return response.text or ""
+        return await self._inference.generate(request)
+
+    @staticmethod
+    def _grading_unparseable(response: AgentResponse) -> bool:
+        """判定一次解析是否为「分级抽取失败」降级（结构化重试的触发条件）。
+
+        三专科统一在降级响应的 ``reasoning_trace`` 里写 ``grading_unparseable: ...``
+        标记 —— 这是**唯一**判据，避免用"正文里有没有英文"这种脆弱条件。
+        """
+        return any(
+            str(item).startswith("grading_unparseable")
+            for item in (response.reasoning_trace or [])
+        )
+
+    def _grade_from_structured(self, text: str) -> str | None:
+        """从**结构化重试**的输出里取 canonical 分级（子类覆盖）。
+
+        默认返回 ``None``（不识别）→ 调用方按"重试未救回"处理，保持降级。
+        """
+        return None
+
+    def _structured_output_extra(self) -> dict[str, Any]:
+        """采样层结构化输出参数（由各引擎翻译，见 ``vllm.py`` / ``llama_cpp.py``）。
+
+        返回的字典**故意同时带三种键**，各引擎只取自己支持的那一种，
+        避免在 Agent 层判断引擎类型：
+
+        - ``response_format``：vLLM / OpenAI 兼容（首选；``guided_json`` 在新版
+          vLLM 被静默忽略，见 AGENTS.md 硬规则 #5）
+        - ``guided_json``：兼容旧服务端（``vllm.py`` 仅在无 ``response_format`` 时下发）
+        - ``grammar``：llama.cpp 的 GBNF（``grading_gbnf`` 输出裸枚举值）
+
+        本器官没有对应枚举时返回空字典（不约束，行为与改造前一致）。
+        """
+        organ = self.get_organ().value
+        schema = grading_json_schema(organ)
+        if not schema:
+            return {}
+        extra: dict[str, Any] = {
+            "response_format": {
+                "type": "json_schema",
+                "json_schema": {"name": f"{organ}_grading", "schema": schema},
+            },
+            "guided_json": schema,
+        }
+        gbnf = grading_gbnf(organ)
+        if gbnf:
+            extra["grammar"] = gbnf
+        return extra
+
 
     def _build_prompt(
         self,
@@ -924,6 +1049,15 @@ def normalize_grading_text(text: str) -> str:
     return _WHITESPACE_RE.sub(" ", (text or "").strip())
 
 
+def preview_digest(text: str) -> str:
+    """LLM 原文的短摘要（日志 / ``reasoning_trace`` 用）。
+
+    降级场景需要「模型到底输出了什么」这条线索做诊断，但原文可能含患者信息
+    （PHI）——按零静默纪律「技术细节要留痕、PHI 不得落盘」，这里只留**摘要 + 长度**。
+    """
+    return hashlib.sha256((text or "").encode("utf-8")).hexdigest()[:12]
+
+
 __all__ = [
     "DEFAULT_RAG_TOP_K",
     "_LLM_TEXT_SATURATION_CHARS",
@@ -931,4 +1065,5 @@ __all__ = [
     "RAGSpecialistAgent",
     "SpecialistAgent",
     "normalize_grading_text",
+    "preview_digest",
 ]

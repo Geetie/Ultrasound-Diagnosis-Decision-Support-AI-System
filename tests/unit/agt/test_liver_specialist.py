@@ -191,7 +191,11 @@ class TestDegradation:
         s = LiverSpecialistAgent(inference, rag)
         resp = await s.invoke(_ctx())
         assert resp.confidence == 0.0
-        assert "grade_unparseable" in resp.content
+        # 可读降级（2026-10-13）：技术串不得进医生可见正文
+        assert "未能解析出" in resp.content
+        assert "grade_unparseable" not in resp.content
+        assert resp.needs_review is True
+        assert any(t.startswith("grading_unparseable") for t in resp.reasoning_trace)
 
 
 # ----------------------------------------------------------------------

@@ -212,9 +212,15 @@ class TestDegradation:
         s = ThyroidSpecialistAgent(inference, rag)
         resp = await s.invoke(_ctx())
         assert resp.confidence == 0.0
-        assert "grade_unparseable" in resp.content
-        # 占位 content 中没有 LLM 抽出的独立 TR1-TR5 分级码
-        # （content 里的 "(one of TR1..TR5)" 是范围说明，不算有效分级）
+        # 2026-10-13 分级提取根治：医生可见正文必须是**可读中文** —— 原实现直接把
+        # 英文技术占位串（`grade_unparseable … manual review required`）塞进 content，
+        # 医生读到的不是结论；技术细节现在只进 reasoning_trace。
+        assert "未能解析出" in resp.content
+        assert "grade_unparseable" not in resp.content
+        assert "manual review required" not in resp.content
+        assert resp.needs_review is True
+        assert any(t.startswith("grading_unparseable") for t in resp.reasoning_trace)
+        # content 中不得出现被误当分级码的 TR 字样
         import re as _re
         standalone = _re.findall(r"\bTR[1-5]\b", resp.content)
         assert standalone == [], f"expected no extracted grade, got {standalone}"
@@ -253,6 +259,65 @@ class TestInvocationCount:
         s = ThyroidSpecialistAgent(inference, rag)
         await s.invoke(_ctx())
         assert inference.generate_call_count == 0
+
+    @pytest.mark.asyncio
+    async def test_main_call_carries_no_structured_constraint(self, specialist, inference):
+        """主调用必须**不带**结构化约束。
+
+        设计边界（2026-10-13 分级提取根治）：若把主调用整段套上
+        `{"grading": ...}` 的 JSON schema，医生可见的富文本正文（特征 / 理由 /
+        鉴别诊断）会塌成一行 JSON —— 那比 `grade_unparseable` 更糟。所以 schema
+        只用于「分级抽取失败」的有界重试。
+        """
+        await specialist.invoke(_ctx())
+        req = inference.last_request
+        assert "response_format" not in req.extra
+        assert "guided_json" not in req.extra
+        assert "grammar" not in req.extra
+
+
+# ----------------------------------------------------------------------
+# 5b) 采样层结构化输出通道（分级提取根治，2026-10-13）
+# ----------------------------------------------------------------------
+
+
+class TestStructuredOutputChannel:
+    """`_structured_output_extra()` 与 `_call_llm(structured=True)` 的契约。
+
+    引擎各自翻译（vLLM: response_format → guided_json 回落；llama.cpp: GBNF），
+    因此这里一次性断言三种键都在，避免在 Agent 层判断引擎类型。
+    """
+
+    def test_extra_carries_openai_schema_legacy_schema_and_gbnf(self, specialist):
+        extra = specialist._structured_output_extra()
+        # vLLM / OpenAI 兼容（硬规则 #5：结构化输出一律走 response_format）
+        assert extra["response_format"]["type"] == "json_schema"
+        schema = extra["response_format"]["json_schema"]["schema"]
+        assert schema["properties"]["grading"]["enum"] == ["2", "3", "4a", "4b", "5"]
+        assert schema["required"] == ["grading"]
+        # 旧服务端回落（vllm.py 仅在无 response_format 时下发）
+        assert extra["guided_json"] == schema
+        # llama.cpp GBNF（裸枚举值模板）
+        assert '"4a"' in extra["grammar"]
+        assert extra["grammar"].startswith("root ::=")
+
+    @pytest.mark.asyncio
+    async def test_call_llm_structured_injects_extra(self, specialist, inference):
+        inference.text = '{"grading": "4b"}'
+        await specialist._call_llm(_ctx(), "p", structured=True)
+        req = inference.last_request
+        assert req.extra["response_format"]["type"] == "json_schema"
+        assert req.extra["guided_json"]["required"] == ["grading"]
+        assert req.extra["grammar"]
+
+    def test_unknown_organ_yields_empty_extra(self, rag, inference):
+        """没有枚举定义的器官 → 不约束（行为与改造前一致，不得抛）。"""
+
+        class _UnknownOrganAgent(ThyroidSpecialistAgent):
+            def get_organ(self):  # type: ignore[override]
+                return type("_FakeOrgan", (), {"value": "not_a_registered_organ"})()
+
+        assert _UnknownOrganAgent(inference, rag)._structured_output_extra() == {}
 
 
 # ----------------------------------------------------------------------

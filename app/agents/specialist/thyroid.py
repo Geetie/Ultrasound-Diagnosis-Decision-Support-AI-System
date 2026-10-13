@@ -16,7 +16,16 @@ import re
 import structlog
 
 from app.agents.protocols import AgentResponse
-from app.agents.specialist.base import RAGSpecialistAgent, normalize_grading_text
+from app.agents.specialist.base import (
+    RAGSpecialistAgent,
+    normalize_grading_text,
+    preview_digest,
+)
+from app.inference.grading_definitions import (
+    extract_grading_severest,
+    grade_major_level,
+)
+from app.inference.grading_schema import extract_guided_grading
 from app.knowledge.protocols import KnowledgeChunk
 from app.models.schemas import Organ
 
@@ -43,6 +52,17 @@ _TI_RADS_SCORE_PATTERN = re.compile(
 )
 
 
+def _to_tr_canonical(raw: str | None) -> str | None:
+    """分级码 → 专科 canonical ``TR1..TR5``（**4a/4b/4c 收敛为主级 TR4**）。
+
+    细分（4a/4b/4c）只保留在 ``reasoning_trace`` 里供审计；下游报告 / 融合 /
+    评测一律按 ``TR1..TR5`` 消费（口径与映射源见 16 号 A.56）。未知码返回 ``None``
+    —— 交给调用方走兜底，不猜等级。
+    """
+    major = grade_major_level("thyroid", raw)
+    return f"TR{major}" if major is not None else None
+
+
 class ThyroidSpecialistAgent(RAGSpecialistAgent):
     """甲状腺专科智能体（TI-RADS 5 等级分级，T-GA-AGT-04）。
 
@@ -63,10 +83,16 @@ class ThyroidSpecialistAgent(RAGSpecialistAgent):
     def get_grading_system(self) -> str:
         return "TI-RADS"
 
+    def _grade_from_structured(self, text: str) -> str | None:
+        """结构化重试输出 → canonical 分级（``{"grading": "4b"}`` → ``TR4``）。"""
+        return _to_tr_canonical(extract_guided_grading(text or "", "thyroid"))
+
     def _parse_response(
         self,
         llm_text: str,
         chunks: list[KnowledgeChunk],
+        *,
+        grade_override: str | None = None,
     ) -> AgentResponse:
         """从 LLM 输出中抽取 TR1-TR5 分级码。
 
@@ -86,44 +112,58 @@ class ThyroidSpecialistAgent(RAGSpecialistAgent):
         grade: str | None = None
         score_bonus = 0.0
 
-        # 1) 优先匹配完整 TI-RADS 关键字
-        match = _TI_RADS_PATTERN.search(normalized)
-        if match:
-            grade = f"TR{match.group(1)}"
+        # 抽取优先级（2026-10-13 分级提取根治；单一事实源 = app/inference/grading_definitions）：
+        #   1) 采样层结构化输出（约束解码重试的 `{"grading": "4b"}`）
+        #   2) canonical 数字形式（"TI-RADS 4a" / "分级: 4a" / "4 类" / "TR4a"）
+        #      —— 与评测集、双引擎一致性校验**同一套** `_GRADING_PATTERNS`；原先专科
+        #      自己一套平行正则，才出现"评测抽得到、生产结论抽不到"的 `grade_unparseable`
+        #   3) 器官正则兜底（"TR4" 简化形式，保留现网语义）
+        #   4) 都抽不到 → 降级（见下方占位响应）
+        # 多码取重由 `extract_grading_severest` 统一保证（原实现的「多码取 max」收敛到这里）。
+        if grade_override:
+            # 结构化重试已给出分级（base.invoke 步骤 5b）：直接采用，不再猜；
+            # 富文本正文仍来自首次输出 —— 重试路径是「合并」而不是「覆盖」。
+            grade = grade_override
             score_bonus = 0.15
         else:
-            # 2) 简化 TR 模式
-            match = _TI_RADS_SIMPLE_PATTERN.search(normalized)
-            if match:
-                grade = f"TR{match.group(1)}"
-                score_bonus = 0.1
+            guided = extract_guided_grading(normalized, "thyroid")
+            raw = guided or extract_grading_severest(normalized, "thyroid")
+            grade = _to_tr_canonical(raw)
+            if grade is not None:
+                # 结构化 / canonical 都属「明确的体系分级」，按完整形式给加成
+                score_bonus = 0.15
+            else:
+                match = _TI_RADS_SIMPLE_PATTERN.search(normalized) or _TI_RADS_PATTERN.search(normalized)
+                if match:
+                    grade = f"TR{match.group(1)}"
+                    score_bonus = 0.1
 
-        # 3) 多个分级码取最严重
-        all_matches = _TI_RADS_SIMPLE_PATTERN.findall(normalized)
-        if len(all_matches) > 1:
-            max_num = max(int(m) for m in all_matches)
-            grade = f"TR{max_num}"
-
-        # 抽不到分级码 → 降级
+        # 抽不到分级码 → **可读降级**（2026-10-13 分级提取根治）
+        # 医生可见正文必须是可读中文；模型原文的技术细节只进日志与 reasoning_trace
+        # （且只留长度与摘要，不落原文 —— 模型输出可能含 PHI）。
         if grade is None or grade not in TI_RADS_LEVELS:
             logger.warning(
                 "thyroid_grade_not_detected",
-                llm_text_preview=normalized[:200],
+                organ="thyroid",
+                llm_raw_len=len(normalized),
+                llm_preview_sha=preview_digest(normalized),
             )
             return AgentResponse(
                 agent_name="thyroid_specialist",
                 organ=Organ.THYROID,
                 content=(
-                    f"[thyroid] grade_unparseable: LLM output did not contain a "
-                    f"valid TI-RADS grade (one of the five canonical levels); "
-                    f"manual review required. LLM preview: {normalized[:200]}"
+                    "本例未能解析出 TI-RADS 分级（AI 输出未给出可判定的分级码），"
+                    "已转人工判读：请结合图像与病史自行分级。"
                 ),
                 confidence=0.0,
                 evidence_chunk_ids=[c.chunk_id for c in chunks[:5]],
                 reasoning_trace=[
                     "grading_system -> TI-RADS",
-                    "grade_unparseable: no TR1-TR5 match",
+                    "grading_unparseable: no TI-RADS grade extracted",
+                    f"llm_raw_len: {len(normalized)}",
+                    f"llm_preview_sha: {preview_digest(normalized)}",
                 ],
+                needs_review=True,
             )
 
         # 4) 总分匹配加成（如果 LLM 同时输出了"总分"）
@@ -138,6 +178,14 @@ class ThyroidSpecialistAgent(RAGSpecialistAgent):
         # 5) 置信度组装
         base_conf = self._compute_heuristic_confidence(chunks, llm_text)
         final_conf = round(min(base_conf + score_bonus, 1.0), 4)
+
+        logger.info(
+            "thyroid_grade_extracted",
+            organ="thyroid",
+            grade=grade,
+            score_bonus=score_bonus,
+            llm_raw_len=len(normalized),
+        )
 
         # 6) 提取理由（取"理由"或"分级"行后一段）
         reason = self._extract_reason(normalized, grade)

@@ -603,7 +603,7 @@ class TestT2LLMOutputAnomalies:
         )
         resp = await s.invoke(_ctx())
         assert resp.confidence == 0.0
-        assert "grade_unparseable" in resp.content
+        assert "未能解析出" in resp.content
 
     @pytest.mark.asyncio
     async def test_empty_llm_output_downgrades(
@@ -617,7 +617,7 @@ class TestT2LLMOutputAnomalies:
         resp = await s.invoke(_ctx())
         assert resp.confidence == 0.0
         # 占位 content 中不应有"TR1-TR5"被误识别的字符串
-        assert "grade_unparseable" in resp.content
+        assert "未能解析出" in resp.content
 
 
 # ======================================================================

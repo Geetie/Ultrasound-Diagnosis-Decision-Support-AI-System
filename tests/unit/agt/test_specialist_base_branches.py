@@ -26,6 +26,7 @@ from app.agents.specialist.base import (
     PlaceholderSpecialistAgent,
     RAGSpecialistAgent,
 )
+from app.inference.protocols import InferenceResponse
 from app.models.schemas import Organ
 
 
@@ -51,10 +52,13 @@ class _StubSpecialist(RAGSpecialistAgent):
     async def _retrieve_chunks(self, context, organ):
         return [MagicMock(chunk_id="c1")]
 
-    async def _call_llm(self, context, prompt):
-        return "llm output"
+    async def _call_llm_response(self, context, prompt, *, structured=False):
+        # 基类 `invoke` 走 `_call_llm_response`（保留 finish_reason 供截断判定）。
+        # 分级抽取失败时的结构化重试也走这里 —— 本 stub 固定返回同一文本，
+        # 因此重试必然仍抽不到（正是"降级"用例需要的语义）。
+        return InferenceResponse(text="llm output", finish_reason="stop")
 
-    def _parse_response(self, llm_text, chunks):
+    def _parse_response(self, llm_text, chunks, *, grade_override=None):
         if self.parse_should_fail:
             raise RuntimeError("unparsable json")
         return self.parsed_response or AgentResponse(
