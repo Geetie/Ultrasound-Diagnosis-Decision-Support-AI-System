@@ -1,7 +1,27 @@
 # progress.md — 当前状态（唯一「现在在哪」来源）
 
-**Last Updated**: 2026-10-13（A.60 零静默存量收敛（前端 44→0、后端运行时 208→128）+ Langfuse 栈根因 + t2a 公开集全集复验）
-**HEAD-A.60**: 分支 `main`（用户点名「三项全做」：①**存量静默收敛**——前端 `local/no-silent-catch` 棘轮
+**Last Updated**: 2026-10-13（A.61 Langfuse 摄取根因终解（**worker 用了 web 镜像**）+ 评测集采集/门控/进度上屏）
+**HEAD-A.61**: 分支 `main`（A.60 把 Langfuse 摄取判为「阻塞」并把 19 号两个交付项挂起；本轮**啃到底**：
+①**根因 #3 其实是两处**——(3a) compose 只设 `REDIS_URL`，而 Langfuse v3 镜像**只读
+`REDIS_CONNECTION_STRING`**（容器 env 实证 + 镜像产物 grep 33:0）→ 补变量；(3b) **`langfuse-worker`
+服务与 web 复用同一镜像** → "worker"容器实跑 `node ./web/server.js`（**没有任何队列消费者**；
+现象是"导出 200 + 队列堆积 + ClickHouse 恒 0 + **零错误日志**"）→ 换官方 `langfuse-worker:3` 镜像。
+修后：worker 出现 `otel-ingestion-queue executor started`、队列 wait 归零、**traces 0→12**、
+公开 API `totalItems=12`（与界面同源）。
+②**采集器重写为业务库来源**（19 号要的"正确口径"只在医生修正反馈里，trace 没有）：
+`diagnosis_results`（输入/输出）+ `feedback_records`（correction → 正确口径，口径同
+`correction_rate_monitor`）+ `dicom_images`（去重依据 `sop_instance_uid`；**全仓不存在字节级
+image_sha256**，已核实）；无影像样本不入集但计 `skipped_no_image`。真机 **142 条**（286 判读折叠）
+→ 进度 **142/700 = 20.3%**；`doctor_labeled 0/50`（尚无医生修正反馈，属临床使用前置）。
+③**门控两层化**：`enforced`（>= `--enforce-since`，默认可读化上线时刻 08:00Z，判红）+
+`informational`（全量，仅告知）—— 首跑 118/142 存量泄漏会让门禁**永远红**（存量含 A.59 之前的
+旧判读），与棘轮"存量不作为新账"同源；L2 忠实度因**本仓库无 RAGAS 判官脚本**如实记 `not_run`。
+④**进度上屏**：`GET /api/v1/eval-set/stats`（只读报告；缺报告/损坏均 **200 + 可读原因**）+
+反馈页只读进度区块 + `make eval-collect/eval-gate`。
+真机：**p26 35/0 · p28 7/0 · p20 31/0 · p27 3 轮 4/0**；门控近端 24 条 **3/4 PASS**（G2 泄漏 **= 0**
+证明可读化生效；**G3 41.7% 判红**：9/10 是心脏样本"未提供 LVEF 按设计转人工"→ 已登记为下批产品项）。
+详见 16 号附录 A.61）
+**上一轮 HEAD-A.60**: 分支 `main`（用户点名「三项全做」：①**存量静默收敛**——前端 `local/no-silent-catch` 棘轮
 **44 处归零**（10 文件全 0，基线清空）+ 新增统一上报出口 `utils/errorReport.ts`；后端 `ast` 全仓棘轮
 Tier A **80 处**（14 文件 + 2 处 `suppress` 后门）→ **运行时 208→128、总 428→348**（基线只许下调）。
 重点：`cornerstone.displayImage` 的整栈预缓存链**重新抛出**（A.35 病灶：吞在 Promise 链里 → 空白影像区
@@ -59,6 +79,19 @@ refresh_token 撤族「该撤没撤」留痕、emergency_signing fail-closed 留
 ## Current State
 
 ### What 已完成（有证据，详见 `feature_list.json` 与 16 号附录 A）
+
+- **Langfuse 摄取打通 + 评测集采集/门控/进度上屏（2026-10-13，A.61）**：
+  ①**摄取根因 #3 = 两处**：`REDIS_CONNECTION_STRING` 漏设（镜像只读它，不读 `REDIS_URL`）+
+  **worker 服务用了 web 镜像**（"worker"容器实跑 `node ./web/server.js` → 没有消费者；
+  现象是"导出 200 + 队列堆积 + ClickHouse 恒 0 + 零错误"）→ 换官方 `langfuse-worker:3`；
+  修后 **traces 0→12**、公开 API `totalItems=12`。
+  ②**采集器改为业务库来源**（`diagnosis_results` + `feedback_records`（=正确口径）+ `dicom_images`
+  （去重 `sop_instance_uid`））→ 真机 **142 条 / 进度 20.3%**；无影像样本显式计 `skipped_no_image`。
+  ③**门控两层化**（`enforced` 判红 / `informational` 仅告知）：存量 118/142 泄漏若一起算会让门禁永远红；
+  L2（faithfulness/相关性）因**无 RAGAS 判官脚本**如实记 `not_run`。
+  ④**进度上屏**：只读端点 + 反馈页进度区块（缺报告 200 + 可读）+ `make eval-collect/eval-gate`。
+  真机 **p26 35/0 · p28 7/0 · p20 31/0 · p27 4/0**；门控近端 3/4（G2 泄漏 = 0；G3 41.7% 红 = 心脏腿
+  无 LVEF 按设计转人工，已登记下批）。
 
 - **结论正文可读化 + 零静默补漏三处（2026-10-13，A.59）**：
   ①**正文去英文键值/器官代码**（`[cardiac] LVEF=unknown, severity=normal` → 「心脏 · 左室射血分数（LVEF）
@@ -363,6 +396,21 @@ refresh_token 撤族「该撤没撤」留痕、emergency_signing fail-closed 留
 
 ## Recommended Next Step
 
+> **A.61 结果（2026-10-13，清障 A.60 的 Langfuse 阻塞）**：
+> ①**Langfuse 摄取**：根因 #3 是**两处**——`REDIS_CONNECTION_STRING` 漏设 + **worker 用了 web 镜像**
+> （"worker"容器实跑 `web/server.js`，**没有队列消费者**）→ 换 `langfuse-worker:3`；
+> 修后 worker 出现 `otel-ingestion-queue executor started`、队列 wait 归零、**traces 0→12**、
+> 公开 API `totalItems=12`（界面可见，19 号门控①满足）。
+> ②**评测集**：采集器**重写为业务库来源**（输入/输出/正确口径/去重键），真机 **142 条**（286 判读折叠）
+> → 进度 **20.3%**；`doctor_labeled 0/50`（需医生真实提交修正，属临床使用前置）。
+> ③**门控两层化**（存量只告知 / 近端判红）+ **L2 判官 `not_run`**（本仓库无 RAGAS 脚本）。
+> ④**进度上屏**：`/api/v1/eval-set/stats` + 反馈页区块 + `make eval-collect/eval-gate`。
+> 真机：p26 35/0 · p28 7/0 · p20 31/0 · p27 4/0；门控近端 24 条 **3/4 PASS**（G2 泄漏 **= 0**）。
+> **下一步候选**：①**心脏腿「无 LVEF」策略**（G3 判红的成因：9 条心脏样本全部降级转人工 ——
+> 能否由其它参数推算或明确提示补测）；②**RAGAS 判官脚本**（接上 L2 门控，faithfulness/相关性）；
+> ③后端静默**剩余运行时 128 处**继续收敛；④`doctor_labeled ≥50` 需推动医生提交修正反馈（运营）；
+> ⑤p20 的 G5.4 时序竞态硬化。
+
 > **A.60 结果（2026-10-13，用户点名「三项全做」）**：
 > ①**存量静默收敛**：前端 **44→0**（基线清空，扫描 156 文件）+ 新增 `utils/errorReport.ts`；
 > 后端 Tier A **80 处**（14 文件 + 2 处 suppress）→ **运行时 208→128 / 总 428→348**。
@@ -431,7 +479,8 @@ refresh_token 撤族「该撤没撤」留痕、emergency_signing fail-closed 留
 
 | 阻塞项 | 类型 | 解除条件 | 影响 feature |
 |---|---|---|---|
-| faithfulness 95% 门控 | 口径/语料 | 项目组口径决策 或 域内语料到位 | `faithfulness-gate` |
+| faithfulness 95% 门控 | 口径/语料 | 项目组口径决策 或 域内语料到位；**A.61 补充：本仓库尚无 RAGAS 判官脚本**（`eval_gate.py` 的 L2 层如实记 `not_run`，判官就绪即接入） | `faithfulness-gate` |
+| 评测集 `doctor_labeled ≥50` | 临床使用/运营 | 医生真实提交修正类反馈（`feedback_type='correction'`）；**代码侧已就绪**（采集器按 `request_id` 关联正确口径 + 进度条上屏），实测 0/50 | `langfuse-eval-pipeline` |
 | 甲状腺注册数据 | 管理决策 + 授权 | 自有/合作医院或授权采购 | `thyroid-registry-data`、`nmpa-materials` |
 | 核心覆盖率 90% | 真机依赖 | SoftHSM 签名字节、真实 Redis 语义可测 | `coverage-core` |
 | ~~ruff 棘轮 2 项红灯~~ | — | **已根治（A.52）**：修真 bug（`timings_dump.py` F821/I001）+ 棘轮改扫 `git ls-files '*.py'`（消除本地未跟踪探针造成的 ±15 漂移）+ 按新口径重定基线；9/9 绿 | `quality-debt` |
@@ -456,6 +505,10 @@ refresh_token 撤族「该撤没撤」留痕、emergency_signing fail-closed 留
 | `scripts/audit/p26_squad_e2e_walkthrough.mjs` | A.56/A.58 第一/第二梯队端到端走查（医生视角：登录→建会话→真实多帧 DICOM→cine→测量→判读→报告→第二次检查→历史对比；A.58 起 PASS=35 FAIL=0，含 T1-3 主流程语音入口，退出码可门禁） |
 | `scripts/audit/p27_grade_extraction.py` + `p27a_structured_output_probe.py` | A.56 分级提取降级率门禁（真机 8 轮：**A.58 复跑降级 0/8、零技术串、退出码 0**）+ 结构化输出能力实测（`response_format` 3/3、`guided_json` 0/3） |
 | `scripts/audit/p28_degradation_visibility.mjs` + `scripts/degradation_visibility.py` | A.58 渲染层降级可见性（15s 窗口真实影像/结论非占位 + clip 截图 PIL 像素方差 + **`page.route` abort 反证腿**；PASS=6 FAIL=0，退出码 0/1/2 可门禁） |
+| `scripts/langfuse/docker-compose.yml` | A.61 Langfuse 自托管栈（关键约束：**`REDIS_CONNECTION_STRING` 必须设**（镜像不读 `REDIS_URL`）+ **worker 必须用 `langfuse-worker:3` 镜像**（与 web 不同镜像）；摄取成功判据 = worker 日志 `otel-ingestion-queue executor started` + `traces` 增长） |
+| `scripts/langfuse/collect_eval_set.py` | A.61 评测集采集（业务库来源：`diagnosis_results` + `feedback_records`（=正确口径）+ `dicom_images` 去重 `sop_instance_uid`；真机 142 条 / `skipped_no_image` 显式计数；退出码 0/1/2） |
+| `scripts/langfuse/eval_gate.py` | A.61 门控两层（`enforced` 判红 / `informational` 仅告知；L2 判官缺省 `not_run`）+ `make eval-gate` |
+| `GET /api/v1/eval-set/stats`（`app/api/v1/eval_set.py`） | A.61 评测集进度只读端点（缺报告/损坏均 200 + 可读原因；匿名 401）+ 反馈页只读进度区块 |
 | `npm run lint:silent-catch`（`frontend/eslint-rules/`） | A.58 前端静默 catch 棘轮（155 文件扫描；10 文件/44 处 ≤ 基线；独立 config，**不动** `--max-warnings 1` 预算） |
 | `pytest tests/unit/quality/test_no_silent_catch.py` | A.58 后端静默 except 棘轮（`ast` 全仓 193 文件；基线 428 处只许下调；7 主路径零容忍；`contextlib.suppress` 后门一并判） |
 | `scripts/deploy_frontend.sh` | A.52 前端产物清空式部署（防陈旧 chunk 堆积） |

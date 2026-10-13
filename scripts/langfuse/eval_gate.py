@@ -92,8 +92,12 @@ def main() -> int:
     ap.add_argument("--judge-report", default=None, help="L2 LLM 判官报告（缺省则 L2 记 not_run）")
     ap.add_argument(
         "--enforce-since",
-        default="2026-10-13",
-        help="只对该日期起的样本判红（默认 = 医生可见正文可读化上线日；ISO8601 前缀比较）",
+        default="2026-10-13T08:00:00",
+        help=(
+            "只对该时刻（UTC，ISO8601 前缀比较）起的样本判红。默认 = 医生可见正文可读化上线时刻"
+            "（实测分界：07:31:37Z 是最后一条带技术串的样本，08:15 起全部可读）。"
+            "生产复跑请传**本次部署时间戳**，避免把「当天早些时候的旧代码样本」算进新账。"
+        ),
     )
     ap.add_argument("--min-summary-rate", type=float, default=0.95)
     ap.add_argument("--max-degraded-rate", type=float, default=0.10)
@@ -112,23 +116,39 @@ def main() -> int:
     total = len(rows)
     labeled = sum(1 for r in rows if r.get("corrections"))
 
-    def _checks(subset: list[dict]) -> tuple[list[tuple[str, bool, str]], list[str]]:
-        """对给定子集算 G1–G4；返回 (checks, 泄漏样例)。空子集返回空 checks。"""
+    def _checks(subset: list[dict]) -> tuple[list[tuple[str, bool, str]], list[str], dict]:
+        """对给定子集算 G1–G4；返回 (checks, 泄漏样例, 明细)。空子集返回空 checks。"""
         n = len(subset)
         if not n:
-            return [], []
+            return [], [], {}
         conclusions = [_text(r, "conclusion", "output") for r in subset]
         inputs = [_text(r, "clinical_text", "input") for r in subset]
         with_output = [c for c in conclusions if c.strip()]
-        complete = [
-            1 for i, c in zip(inputs, conclusions, strict=True) if i.strip() and c.strip()
-        ]
         leaked = [c for c in conclusions if _TECH_RE.search(c)]
-        degraded = [c for c in conclusions if _DEGRADED_RE.search(c)]
+        degraded_idx = [i for i, c in enumerate(conclusions) if _DEGRADED_RE.search(c)]
+        # ⚠️ G4 的输入判据（A.61 修正语义）：这是**影像**评测集 —— 输入是影像，
+        # `clinical_text` 只是可选上下文（影像-only 判读是合法形态）。原先要求
+        # `clinical_text` 非空是 A.60 trace 时代的口径，会误判"影像腿"样本为缺件。
+        # 现在 = （有文本 **或** 有影像标识）且 结论非空。空文本的占比**单独报告**
+        # （`input_text_present`），不因为这个修正而把"空文本"藏起来。
+        complete = [
+            1
+            for r, i, c in zip(subset, inputs, conclusions, strict=True)
+            if ((i.strip() or r.get("dedup_key") or r.get("image_ids")) and c.strip())
+        ]
         summary_rate = len(with_output) / n
         complete_rate = len(complete) / n
-        degraded_rate = len(degraded) / n
-        return [
+        degraded_rate = len(degraded_idx) / n
+        text_present = sum(1 for i in inputs if i.strip()) / n
+        by_organ: dict[str, int] = {}
+        for i in degraded_idx:
+            organ = str(subset[i].get("organ") or "?")
+            by_organ[organ] = by_organ.get(organ, 0) + 1
+        detail = {
+            "input_text_present_rate": round(text_present, 4),
+            "degraded_by_organ": by_organ,
+        }
+        checks = [
             (
                 f"G1 结论非空率 ≥ {args.min_summary_rate:.0%}",
                 summary_rate >= args.min_summary_rate,
@@ -138,21 +158,22 @@ def main() -> int:
             (
                 f"G3 降级率 ≤ {args.max_degraded_rate:.0%}",
                 degraded_rate <= args.max_degraded_rate,
-                f"{len(degraded)}/{n} = {degraded_rate:.1%}",
+                f"{len(degraded_idx)}/{n} = {degraded_rate:.1%} 按器官={by_organ}",
             ),
             (
-                f"G4 条目完整性 ≥ {args.min_complete_rate:.0%}（输入+输出齐备）",
+                f"G4 条目完整性 ≥ {args.min_complete_rate:.0%}（影像或文本 + 结论）",
                 complete_rate >= args.min_complete_rate,
-                f"{len(complete)}/{n} = {complete_rate:.1%}",
+                f"{len(complete)}/{n} = {complete_rate:.1%}（clinical_text 非空率 {text_present:.1%}）",
             ),
-        ], leaked
+        ]
+        return checks, leaked, detail
 
     # 整体（含可读化之前的存量样本）—— 只告知，不判红
-    all_checks, all_leaked = _checks(rows)
+    all_checks, all_leaked, all_detail = _checks(rows)
     # 近端（>= --enforce-since）—— **决定退出码**
     # ISO8601 字符串前缀比较即可（`2026-10-13T09:12:33 >= 2026-10-13`），无需解析时区
     recent = [r for r in rows if str(r.get("created_at") or "") >= args.enforce_since]
-    checks, leaked = _checks(recent)
+    checks, leaked, detail = _checks(recent)
 
     # ---- L2：忠实度（需 LLM 判官；缺判官报告则如实记 not_run）----
     judge: dict = {"status": "not_run", "reason": "本仓库暂无 RAGAS 判官脚本（A.61 核实）"}
@@ -178,8 +199,8 @@ def main() -> int:
     failed = 0
     if not checks:
         print("  （近端样本为空 → `no_recent_samples`：没样本不等于达标）")
-    for name, ok, detail in checks:
-        print(f"[{'PASS' if ok else 'FAIL'}] {name} — {detail}")
+    for name, ok, desc in checks:
+        print(f"[{'PASS' if ok else 'FAIL'}] {name} — {desc}")
         if not ok:
             failed += 1
     for c in leaked[:3]:
@@ -187,12 +208,16 @@ def main() -> int:
         print(f"  泄漏样例：{m.group(0) if m else '?'}")
 
     print(f"—— 全部样本（{total} 条；存量体检，仅告知）——")
-    for name, ok, detail in all_checks:
-        print(f"[{'PASS' if ok else '提醒'}] {name} — {detail}")
+    for name, ok, desc in all_checks:
+        print(f"[{'PASS' if ok else '提醒'}] {name} — {desc}")
     for c in all_leaked[:3]:
         m = _TECH_RE.search(c)
         print(f"  存量泄漏样例（A.59 可读化之前的旧判读）：{m.group(0) if m else '?'}")
     print(f"评测集：{total} 条（医生标注坏例 {labeled}）· L2 判官：{judge['status']}")
+
+    if checks:
+        print(f"  （明细）clinical_text 非空率 {detail.get('input_text_present_rate')}"
+              f"；降级按器官 {detail.get('degraded_by_organ')}")
 
     status = "ran" if checks else "no_recent_samples"
     report = {
@@ -204,10 +229,12 @@ def main() -> int:
             "n": len(recent),
             "status": status,
             "checks": [{"name": n, "ok": ok, "detail": d} for n, ok, d in checks],
+            "detail": detail,
         },
         "informational": {
             "n": total,
             "checks": [{"name": n, "ok": ok, "detail": d} for n, ok, d in all_checks],
+            "detail": all_detail,
         },
         "judge": judge,
         "passed": failed == 0,

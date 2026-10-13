@@ -5,6 +5,56 @@
 
 ## Last Updated
 
+2026-10-13（分支 `main`；**A.61 Langfuse 摄取根因终解 + 评测集采集/门控/进度上屏**——
+A.60 把 Langfuse 摄取判为「阻塞」，本轮啃到底，**根因 #3 其实是两处**：
+①**`REDIS_CONNECTION_STRING` 漏设** —— Langfuse v3 镜像只读这个名（容器 `env` 实证 + 镜像产物
+grep 33:0，**不读 `REDIS_URL`**）→ compose 补上；②**`langfuse-worker` 服务与 web 复用同一镜像**
+→ "worker"容器实跑 `node ./web/server.js`（`ps` 实证）→ **没有任何队列消费者**，现象为
+"OTLP 导出 200 + `bull:otel-ingestion-queue:wait` 堆积 + ClickHouse `traces` 恒 0 + **零错误日志**"
+→ 换官方 `ghcr.io/langfuse/langfuse-worker:3`。**修后**：worker 日志
+`otel-ingestion-queue executor started: true`、队列 wait 归零、**traces 0→12**（`diagnosis.dispatch/
+fusion/output`）、公开 API `GET /api/public/traces → totalItems=12`（**与界面同源**，19 号门控①满足）。
+③**采集器重写为业务库来源**（19 号要的"正确口径"只在医生修正反馈里，trace 没有）：
+`diagnosis_results`（输入 `clinical_text` / 输出 `findings.fusion_result.content`）+
+`feedback_records`（`feedback_type='correction'` → 正确口径，口径同 `correction_rate_monitor`）+
+`dicom_images`（去重依据 `sop_instance_uid`；**全仓不存在字节级 image_sha256**，已核实）；
+无影像样本**不入集但显式计数** `skipped_no_image`。真机 **142 条**（286 判读按"同患者同影像"折叠）
+→ 进度 **142/700 = 20.3%**；`doctor_labeled 0/50`（尚无医生修正反馈，属临床使用前置）。
+④**门控两层化**（棘轮口径）：`enforced`（`created_at >= --enforce-since`，默认可读化上线时刻
+`2026-10-13T08:00:00`，**决定退出码**）/ `informational`（全量，仅告知）—— 首跑 118/142 存量泄漏
+会让门禁**永远红**（存量含 A.59 之前的旧判读）；L2 忠实度因**本仓库无 RAGAS 判官脚本**如实记
+`not_run`。近端 24 条实测 **3/4 PASS**（G1 100% · **G2 泄漏 = 0** · G4 100% · **G3 41.7% 判红**）。
+⑤**进度上屏**：`GET /api/v1/eval-set/stats`（只读报告；缺报告/损坏均 **200 + 可读原因**；
+匿名 401）+ 反馈页只读「评测集进度（双引擎）」区块 + `make eval-collect/eval-gate`。
+真机：**p26 35/0 · p28 7/0 · p20 31/0 · p27 3 轮 4/0**。详见 16 号附录 A.61）
+
+### A.61 复跑入口与踩坑（下一位直接用）
+
+- Langfuse 摄取自检（**服务器**，30 秒）：`docker logs --tail 20 langfuse-langfuse-worker-1 | grep -i executor`
+  应见 `otel-ingestion-queue executor started`；`docker exec langfuse-redis-1 redis-cli -a "$PW" LLEN
+  bull:otel-ingestion-queue:wait` 应为 0；`docker exec langfuse-clickhouse-1 clickhouse-client --query
+  "SELECT count() FROM traces"` 应随判读增长。**三个判据缺一就是没通**（导出 200 不代表落库）。
+- 评测集（**服务器**）：`make eval-collect`（= `collect_eval_set.py`，默认写
+  `~/uai/data/eval/double_engine_eval_set.jsonl` + `~/uai/reports/langfuse_eval_set.json`）
+  → `make eval-gate`（近端判红/存量告知；`--enforce-since` **生产应传本次部署时间戳**）。
+- 进度面上屏（本机→服务器）：`curl http://127.0.0.1:8000/api/v1/eval-set/stats`（匿名应 401；
+  带 token 应见 `available/progress/targets`）。
+- **踩坑（A.61 新增，都会再犯）**：
+  ① **"worker 容器"不一定在跑 worker**：Langfuse v3 的 web 与 worker 是**两个镜像**
+  （`langfuse` / `langfuse-worker`），复用同一镜像会让 worker 静默变成第二个 web —— 判据是
+  `ps -ef` 看入口 + 队列 `:wait` 深度（**堆积 ≠ 消费失败**，`:failed` 为 0 时尤其要看这个）。
+  ② **自托管栈的变量名要 grep 镜像产物**（`REDIS_URL` vs `REDIS_CONNECTION_STRING` 文档全靠不住）：
+  `docker exec <c> sh -c "grep -rhoE 'REDIS_[A-Z_]+' /app | sort | uniq -c"` 半分钟出答案。
+  ③ **累积型资产的"质量门控"必须分存量/近端**：否则上线日之前的样本会让门禁**永远红**（实测 118/142）。
+  ④ **docker pull 超时 ≠ 拉不到**：1.1GB 镜像多次"超时"后仍可续传完成（本会话先判错一次）。
+  ⑤ **fish 登录壳**：`unset LD_LIBRARY_PATH` 必炸（`Unknown command: unset`）→ 一律写脚本
+  `scp` 过去 `bash /tmp/x.sh`；`PYTHONPATH=$HOME/uai/src` 在 PowerShell 内联里会被吞成
+  `\C:\Users\...` → 同样落脚本。
+  ⑥ 宿主会把某些一行式命令判成"服务"并**吞掉 stdout**（`Start-Sleep` + 读日志尤其容易中招）→
+  写日志文件 + 用**单独一条只读命令**取结果。
+
+### 上一轮（A.60）Last Updated 原文
+
 2026-10-13（分支 `main`；**A.60 零静默存量收敛 + Langfuse 栈根因 + t2a 公开集全集复验**——
 ①**前端静默 catch 44→0**（10 文件全 0、基线清空）：新增 `frontend/src/utils/errorReport.ts`
 （统一上报 + sink 注入；只记录不展示），真处置 13 处（**`cornerstone.displayImage` 整栈预缓存链重新抛出**
@@ -41,8 +91,8 @@
   --clip-url http://127.0.0.1:8003`（清单在 `tests/reports/t2a_aul_manifest.json`，逐条校验 sha256；
   **8003 必须带 `T2A_FT_WEIGHTS`** 或让候选路径命中 `models/t2a_v2/`）
 - Langfuse 评测集/门控（**服务器**）：`python scripts/langfuse/collect_eval_set.py --out <jsonl>` →
-  `python scripts/langfuse/eval_gate.py --eval-set <jsonl>`（**当前 traces=0 → 门控会返回 2**，
-  属预期：摄取队列仍坏）
+  `python scripts/langfuse/eval_gate.py --eval-set <jsonl>`（**A.61 起可用**；脚本口径已换为
+  **业务库来源** + 两层门控，见上方 A.61 复跑入口）
 - 真机回归：p26（35）/ p28（7）/ p20（31）/ p27（各 4）
 - **踩坑（A.60 新增）**：
   ① **服务健康 ≠ 能力可用**：8003 `/health` 200 而 `/v1/classify` 全批 503；

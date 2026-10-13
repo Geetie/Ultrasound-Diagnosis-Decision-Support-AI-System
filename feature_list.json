@@ -906,12 +906,12 @@
     },
     {
       "id": "langfuse-eval-pipeline",
-      "name": "Langfuse 评测管理：采集/门控脚本已交付，OTLP 摄取仍阻塞（≥700 采集与进度面临时不可用）",
-      "description": "19 号门控（①界面可见完整 trace ②评测集 ≥700）实测阻塞。两个根因：①compose 的 REDIS_URL 漏密码（redis 带 --requirepass）→ langfuse-web 起不来 OTLP 摄取队列（已修：仓库+服务器）；②部署侧 .env 的 OTLP Basic 头手抄错一位且含空格未加引号（source .env 断词丢掉凭据）→ 401（已修：引号 + 换成 INIT 项目有效 key）。修完仍报 Failed to instantiate otel ingestion queue → 真实 OTLP 载荷被 500 拒（空批次 200 说明鉴权/路由正常）、ClickHouse traces 恒 0 → 属 Langfuse 自托管栈问题，非本项目代码。已交付不依赖入库的部分：collect_eval_set.py（去重+进度+指纹）、eval_gate.py（四条指标门控，退出码 0/1/2）、tracing.py 的 OTLP 头截断告警（零静默）、TestLangfuseStackConfig 守卫。",
-      "status": "blocked",
-      "result": "脚本与守卫已交付并通过自检；GET /api/v1/eval-set/stats 端点 + 反馈页进度条（原计划同批交付）**未做**——没有 trace 就没有可展示的数字；待 Langfuse 摄取修好后一并做",
+      "name": "Langfuse 评测管理：OTLP 摄取打通 + 评测集采集/门控/进度上屏（19 号）",
+      "description": "19 号门控原判 blocked（OTLP 摄取起不来 → 界面无 trace、评测集无数可展示）。A.61 挖到根因 #3 的**两处**（A.60 已修前两处：Redis URL 漏密码、OTLP Basic 头抄错）：①compose 只设 REDIS_URL，而 Langfuse v3 镜像**只读 REDIS_CONNECTION_STRING**（容器 env 实证 + 镜像产物 grep 33:0）→ 补该变量；②**worker 服务与 web 复用同一镜像** ghcr.io/langfuse/langfuse:3 → \"worker\"容器实跑 node ./web/server.js（ps 实证），**没有任何队列消费者** （现象：导出 200、bull:otel-ingestion-queue:wait 堆积、ClickHouse traces 恒 0、零错误日志）→ 换官方 ghcr.io/langfuse/langfuse-worker:3。修后：worker 日志出现 otel-ingestion-queue executor started、队列 wait 归零、traces 0→12（diagnosis.dispatch/fusion/output）、公开 API totalItems=12（与界面同源）。采集器重写为**业务库来源**（19 号要的\"正确口径\"只在医生修正反馈里，trace 没有）：diagnosis_results（输入/输出）+ feedback_records（correction → field/original_value/corrected_value/reason，口径同 correction_rate_monitor）+ dicom_images（去重依据 sop_instance_uid → image_id → storage_path；全仓**不存在**字节级 image_sha256，已核实）；无影像样本不入集但显式计数 skipped_no_image，取不到稳定标识计 undedupable（不静默丢）。门控两层化：enforced（created_at >= --enforce-since，判红）/ informational（全部样本，仅告知）—— 首跑 118/142 存量泄漏会让门禁永远红（存量含 A.59 可读化之前的旧判读），与棘轮\"存量不作为新账\"同源；L2 忠实度（faithfulness 0.95/相关性 0.90，19 号原文）因本仓库无 RAGAS 判官脚本而如实记 not_run（不假装达标）。",
+      "status": "done",
+      "result": "真机：traces/observations 0→12；GET /api/public/traces totalItems=12；评测集 142 条（283 判读按\"同患者同影像\"折叠，全部 sop_instance_uid 依据；无影像跳过 741）→ 进度 142/700 = 20.3%；doctor_labeled 0/50（尚无医生修正反馈，属临床使用前置，进度条已上屏）；eval_gate 两层跑通（近端判红/存量告知），退出码 0/1/2 可入 CI；make eval-collect / eval-gate 已加",
       "dependencies": [],
-      "evidence": "16 号 A.60.3；scripts/langfuse/{collect_eval_set.py,eval_gate.py}；scripts/langfuse/docker-compose.yml；app/observability/tracing.py；tests/unit/obs/test_tracing_wiring.py::TestLangfuseStackConfig"
+      "evidence": "16 号 A.61（A.61.1~A.61.7）；scripts/langfuse/docker-compose.yml（REDIS_CONNECTION_STRING + langfuse-worker 镜像）；scripts/langfuse/collect_eval_set.py；scripts/langfuse/eval_gate.py；报告 ~/uai/reports/langfuse_eval_set.json 与 langfuse_eval_gate.json；~/uai/data/eval/double_engine_eval_set.jsonl"
     },
     {
       "id": "t2a-aul-holdout",
@@ -921,6 +921,17 @@
       "result": "AUC(恶性 vs 其余) **0.8950**、95%CI **[0.8712, 0.9168]**（bootstrap 2000）、敏感性@0.5 0.9011、特异性@0.5 0.6933、三分类准确率 0.7429；735/735 无失败、wall 6.7s；门控（0.75）PASS；**CI 下界 0.8712 ≥ 0.70 且 AUC ≥ 0.80**（21 号建议门控成立）",
       "dependencies": [],
       "evidence": "16 号 A.60.4；scripts/audit/p29_t2a_aul_holdout.py；tests/reports/{t2a_aul_holdout.json,t2a_aul_manifest.json}；对照 tests/reports/t2a_v2_official.json"
+    },
+    {
+      "id": "eval-set-progress-surface",
+      "name": "评测集进度上屏：只读端点 GET /api/v1/eval-set/stats + 反馈页只读区块",
+      "description": "19 号要求\"≥700 例进度条\"。A.60 因 Langfuse 阻塞挂起，A.61 清障后落地：端点只读采集报告（不碰 DB、不触发采集 —— 采集是离线批处理），权限用 get_current_active_user（进度挂在**医生日常使用**的反馈页，要求管理员角色等于没做），返回仅聚合计数（非 PHI）；**缺报告/报告损坏均 200 + available=false + 可读原因**（不 404/500：尚未采集是正常状态）；反馈页新增只读「评测集进度（双引擎）」区块（样本 / 医生标注坏例两条进度 + 判读总数·无法去重·无影像跳过），读取失败给可读提示且不拖累主表单。",
+      "status": "done",
+      "result": "tests/unit/api/test_eval_set_stats.py 4 passed（匿名 401/403/422 · 缺报告 200 + 可读 · 字段与进度透传 · 报告损坏不 500）；frontend FeedbackPageEvalProgress.test.tsx 3 passed（两条进度 / 尚未采集不显示假的 0/700 / 读取失败不崩）；真机匿名 401、ui=200 js=200（index-DqHmRQlo.js 含 eval-set-progress）",
+      "dependencies": [
+        "langfuse-eval-pipeline"
+      ],
+      "evidence": "16 号 A.61.4；app/api/v1/eval_set.py；app/main.py（注册）；frontend/src/pages/FeedbackPage.tsx；frontend/src/pages/__tests__/FeedbackPageEvalProgress.test.tsx；tests/unit/api/test_eval_set_stats.py；Makefile（eval-collect/eval-gate）"
     }
   ]
 }
