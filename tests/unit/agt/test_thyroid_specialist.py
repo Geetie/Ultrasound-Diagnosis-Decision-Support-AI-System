@@ -175,7 +175,10 @@ class TestDegradation:
         s = ThyroidSpecialistAgent(inference, rag)
         resp = await s.invoke(_ctx())
         assert resp.confidence == 0.0
-        assert "evidence_insufficient" in resp.content
+        # A.59：正文中文可读 + 必须转人工（英文技术串只留 trace）
+        assert "本次未检索到与检查部位相关的知识条目" in resp.content
+        assert resp.needs_review is True
+        assert "evidence_insufficient" in " ".join(resp.reasoning_trace)
         # LLM 不应被调用（RAG 空 → 直接降级）
         assert inference.generate_call_count == 0
 

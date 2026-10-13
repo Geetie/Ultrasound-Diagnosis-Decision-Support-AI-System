@@ -39,7 +39,35 @@ from _audit_common import BASE, UAI, check, http, login, pw, summary  # noqa: E4
 from p11_rag_evidence import make_camus_dicoms, upload_dicom  # noqa: E402
 
 # 医生可见正文里**禁止**出现的英文技术串（零静默纪律）
-_TECHNICAL_MARKERS = ("unparseable", "LLM output did not", "manual review required")
+#
+# A.59 扩围（真机 p28 实测到的形态）：除分级降级串外，**器官代码方括号**、心脏的
+# **英文键值对**与三处**降级串**同样不许进正文 —— 实测正文曾是
+# `[cardiac] LVEF=unknown, severity=normal — …`。
+_TECHNICAL_MARKERS = (
+    "unparseable",
+    "LLM output did not",
+    "manual review required",
+    "[thyroid]",
+    "[liver]",
+    "[cardiac]",
+    "[pipeline]",
+    "LVEF=",
+    "severity=",
+    "evidence_insufficient",
+    "llm_unavailable",
+    "parse_failed",
+    "specialist_unavailable",
+)
+
+#: 器官代码 → 中文名（结论正文应出现中文部位名；与 `app.models.schemas.ORGAN_CN_LABELS` 同源）
+_ORGAN_CN = {"thyroid": "甲状腺", "liver": "肝脏", "cardiac": "心脏"}
+
+#: 各器官的临床信息（喂给探针的 `clinical_text`；心脏腿不能喂甲状腺描述）
+_CLINICAL_TEXT = {
+    "thyroid": "p27 分级提取降级率：甲状腺结节，实性低回声，边界尚清。",
+    "liver": "p27 分级提取降级率：肝内低回声灶，边界清晰。",
+    "cardiac": "p27 分级提取降级率：心慌气短，超声评估左室收缩功能。",
+}
 # 判定"本轮发生了分级降级"的正文标记（可读中文降级文案，见三专科 _parse_response）
 _DEGRADED_MARKERS = ("未能解析出",)
 
@@ -139,7 +167,7 @@ async def _one_round(idx: int, dtok: str, organ: str, patient: str) -> dict:
             "session_id": sid,
             "target_organ": organ,
             "image_ids": img_ids,
-            "clinical_text": "p27 分级提取降级率：甲状腺结节，实性低回声，边界尚清。",
+            "clinical_text": _CLINICAL_TEXT.get(organ, _CLINICAL_TEXT["thyroid"]),
         },
         timeout=60.0,
     )
@@ -177,6 +205,8 @@ async def _one_round(idx: int, dtok: str, organ: str, patient: str) -> dict:
     out["ok"] = result.get("status") in ("completed", "needs_review") and bool(text)
     out["degraded"] = any(m in text for m in _DEGRADED_MARKERS)
     out["technical_leak"] = [m for m in _TECHNICAL_MARKERS if m in text]
+    # A.59：结论正文应给**中文部位名**（器官代码不得进正文）
+    out["organ_label_ok"] = _ORGAN_CN.get(organ, organ) in text
     return out
 
 
@@ -217,6 +247,10 @@ async def main() -> int:
     check("P27-2 结论正文不含英文技术占位串（零静默/可读性）",
           not leaked,
           f"leaked={[r['round'] for r in leaked]}")
+    check("P27-5 结论正文含中文部位名（器官代码不进正文；A.59）",
+          all(r.get("organ_label_ok") for r in ok_rounds),
+          f"organ={args.organ} label={_ORGAN_CN.get(args.organ, args.organ)} "
+          f"miss={[r['round'] for r in ok_rounds if not r.get('organ_label_ok')]}")
     check(f"P27-3 降级轮数 ≤ {args.max_degrade}（分级提取稳定度）",
           len(degraded) <= args.max_degrade,
           f"degraded={len(degraded)}/{args.rounds} rounds={[r['round'] for r in degraded]}")

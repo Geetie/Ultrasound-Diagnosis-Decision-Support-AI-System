@@ -34,6 +34,7 @@ import structlog
 
 from app.agents.protocols import AgentContext, AgentResponse
 from app.agents.routing import AdaptiveRAGRouter, RetrievalProfile, RoutingDecision
+from app.agents.specialist.readable import pipeline_unavailable_text
 from app.config.database import AsyncSessionLocal
 from app.config.redis import RedisPool
 from app.config.redis_keys import RedisKey
@@ -1539,11 +1540,17 @@ async def _safe_track_diagnosis(
 
 
 def _make_failed_response(reason: str) -> AgentResponse:
-    """构造 dispatch 失败时的占位 AgentResponse。"""
+    """构造 dispatch 失败时的占位 AgentResponse。
+
+    A.59 可读化 + 转人工：原先 ``content=f"[pipeline] {reason}"`` 会把内部原因串
+    （英文标识/异常串）当医生可见正文，且不置 ``needs_review`` —— 原始原因只进
+    ``reasoning_trace``（工程侧对账用），正文给可读中文。
+    """
     return AgentResponse(
         agent_name="pipeline_fallback",
-        content=f"[pipeline] {reason}",
+        content=pipeline_unavailable_text(),
         confidence=0.0,
+        needs_review=True,
         reasoning_trace=[f"pipeline_dispatch_failed: {reason}"],
     )
 

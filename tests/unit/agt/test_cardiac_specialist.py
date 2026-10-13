@@ -109,7 +109,10 @@ class TestLvefNumberExtraction:
         inference.text = llm_text
         s = CardiacSpecialistAgent(inference, rag)
         resp = await s.invoke(_ctx())
-        assert f"LVEF={expected_value:g}%" in resp.content
+        # A.59 可读化：正文里的数值形态固定为「（LVEF）62%」（英文键值对不进正文），
+        # 该形态同时是 `consistency._extract_lvef` 的解析前提（正则已容许中文右括号）
+        assert f"（LVEF）{expected_value:g}%" in resp.content
+        assert "LVEF=" not in resp.content
 
     @pytest.mark.asyncio
     async def test_multiple_lvef_takes_minimum(self, rag, inference):
@@ -117,9 +120,10 @@ class TestLvefNumberExtraction:
         inference.text = "EF 50% 或 55%"
         s = CardiacSpecialistAgent(inference, rag)
         resp = await s.invoke(_ctx())
-        # 50% → mildly_reduced
-        assert "LVEF=50%" in resp.content
-        assert "mildly_reduced" in resp.content
+        # 50% → mildly_reduced（机器值进 trace；正文只给中文）
+        assert "（LVEF）50%" in resp.content
+        assert "轻度降低" in resp.content
+        assert "severity -> mildly_reduced" in resp.reasoning_trace
 
 
 # ----------------------------------------------------------------------
@@ -146,7 +150,9 @@ class TestSeverityKeywordExtraction:
         inference.text = llm_text
         s = CardiacSpecialistAgent(inference, rag)
         resp = await s.invoke(_ctx())
-        assert expected in resp.content
+        # A.59：机器值（英文枚举）移出医生可见正文 → 断言看 trace，正文断言中文标签
+        assert f"severity -> {expected}" in resp.reasoning_trace
+        assert expected not in resp.content
 
 
 # ----------------------------------------------------------------------
@@ -163,8 +169,9 @@ class TestConsistencyBonus:
         inference.text = "EF 50%, mildly_reduced"
         s = CardiacSpecialistAgent(inference, rag)
         resp = await s.invoke(_ctx())
-        assert "LVEF=50%" in resp.content
-        assert "mildly_reduced" in resp.content
+        assert "（LVEF）50%" in resp.content
+        assert "轻度降低" in resp.content
+        assert "severity -> mildly_reduced" in resp.reasoning_trace
         # 一致性加成 → score_bonus 至少 0.1（数值）+ 0.1（一致性）= 0.2
         assert resp.confidence >= 0.6
 
@@ -176,11 +183,12 @@ class TestConsistencyBonus:
         inference.text = "EF 60%, severely_reduced"
         s = CardiacSpecialistAgent(inference, rag)
         resp = await s.invoke(_ctx())
-        assert "LVEF=60%" in resp.content
+        assert "（LVEF）60%" in resp.content
         # 关键字优先级高于数值推算？让我们看看实现：
         # 实际实现：severity 优先用关键字（如果匹配），数值不交叉校验
-        # 关键字抽取得到 severely_reduced
-        assert "severely_reduced" in resp.content
+        # 关键字抽取得到 severely_reduced（A.59：机器值在 trace，正文是中文标签）
+        assert "重度降低" in resp.content
+        assert "severity -> severely_reduced" in resp.reasoning_trace
 
 
 # ----------------------------------------------------------------------
@@ -195,7 +203,10 @@ class TestDegradation:
         s = CardiacSpecialistAgent(inference, rag)
         resp = await s.invoke(_ctx())
         assert resp.confidence == 0.0
-        assert "evidence_insufficient" in resp.content
+        # A.59：正文给可读中文（英文技术串只留在 trace），并**必须转人工**（不许静默降级）
+        assert "本次未检索到与检查部位相关的知识条目" in resp.content
+        assert resp.needs_review is True
+        assert "evidence_insufficient" in " ".join(resp.reasoning_trace)
         assert inference.generate_call_count == 0
 
     @pytest.mark.asyncio

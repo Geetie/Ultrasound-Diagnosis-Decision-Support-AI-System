@@ -37,6 +37,7 @@ from app.integrations.pacs import (
     get_pacs_adapter,
 )
 from app.models.database import DiagnosisReport
+from app.models.schemas import ORGAN_CN_LABELS
 from app.repositories.report_repository import ReportRepository
 
 logger = structlog.get_logger("app.services.report_service")
@@ -47,11 +48,10 @@ TEMPLATE_VERSION = "report-template-v1"
 
 TEMPLATE_DIR = Path(__file__).resolve().parent.parent / "templates" / "report"
 
-ORGAN_LABELS: dict[str, str] = {
-    "thyroid": "甲状腺",
-    "liver": "肝脏",
-    "cardiac": "心脏",
-}
+# 器官代码 → 中文名：**复用领域模型里的单一事实源**（A.59）。
+# 原先这里自己写了一份，与专科正文（A.59 起用 `organ_cn`）会出现两份映射 ——
+# 保留 `ORGAN_LABELS` 名字（`__all__` 已导出、模板/测试引用），只把它接到同一份表上。
+ORGAN_LABELS: dict[str, str] = ORGAN_CN_LABELS
 
 # M8 报告模板库：器官 → 模板文件名。未登记的器官回退
 # settings.report_template_name（默认 default.md）。

@@ -21,6 +21,7 @@ from app.agents.specialist.base import (
     normalize_grading_text,
     preview_digest,
 )
+from app.agents.specialist.readable import graded_content
 from app.inference.grading_definitions import (
     extract_grading_severest,
     grade_major_level,
@@ -196,10 +197,8 @@ class ThyroidSpecialistAgent(RAGSpecialistAgent):
         return AgentResponse(
             agent_name="thyroid_specialist",
             organ=Organ.THYROID,
-            content=(
-                f"[thyroid] {grade} — {reason}"
-                if reason else f"[thyroid] {grade}"
-            ),
+            # A.59 可读化：原先写 `[thyroid] TR3 — …`（英文器官代码进医生可见正文）
+            content=graded_content(Organ.THYROID, grade, reason),
             confidence=final_conf,
             evidence_chunk_ids=evidence_ids,
             reasoning_trace=[

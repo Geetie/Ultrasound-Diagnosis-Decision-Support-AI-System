@@ -142,8 +142,11 @@ class TestInvokeDegradation:
         response = await agent.invoke(_context())
 
         assert response.confidence == 0.0
-        assert "parse_failed" in response.content
-        assert "manual review required" in response.content
+        # A.59：正文中文可读（英文技术串只留 trace），且降级**必须转人工**
+        assert "判读结果无法解析" in response.content
+        assert "已转人工判读" in response.content
+        assert "parse_failed" not in response.content
+        assert response.needs_review is True
         assert any(tag.startswith("parse_failed:") for tag in response.reasoning_trace)
         assert response.latency_ms >= 0.0
 

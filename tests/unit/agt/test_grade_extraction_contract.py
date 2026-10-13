@@ -181,7 +181,10 @@ class TestCardiacCanonicalContract:
     async def test_canonical_and_numeric_paths(self, llm_text, expected):
         s = _agent(CardiacSpecialistAgent, "cardiac", llm_text)
         resp = await s.invoke(_ctx(Organ.CARDIAC))
-        assert expected in resp.content
+        # A.59：严重程度英文枚举只进 trace；医生可见正文给中文标签
+        # （原断言 `expected in resp.content` 钉的是 A.59 之前的 `severity=<枚举>` 正文格式）
+        assert f"severity -> {expected}" in resp.reasoning_trace
+        assert expected not in resp.content
         assert "lvef_unparseable" not in resp.content
 
 
@@ -196,6 +199,11 @@ class TestNoTechnicalStringInDoctorFacingContent:
     现场证据（2026-10-13 真机走查）：结论区曾整段显示
     ``[thyroid] grade_unparseable: LLM output did not contain a valid TI-RADS grade …
     LLM preview: …`` —— 医生看到的是技术日志而不是结论。本守卫按器官逐个钉住。
+
+    A.59 扩围：除「分级降级」外，**器官代码方括号**（``[thyroid]`` 等）、心脏的
+    **英文键值对**（``LVEF=`` / ``severity=``）与三处**降级串**
+    （``evidence_insufficient`` / ``llm_unavailable`` / ``parse_failed``）也一律不许进正文 ——
+    p28 真机实测到的正文正是 ``[cardiac] LVEF=unknown, severity=normal — …``。
     """
 
     _TECHNICAL = (
@@ -203,6 +211,17 @@ class TestNoTechnicalStringInDoctorFacingContent:
         "manual review required",
         "LLM preview",
         "LLM output did not",
+        # A.59 扩围
+        "[thyroid]",
+        "[liver]",
+        "[cardiac]",
+        "[pipeline]",
+        "LVEF=",
+        "severity=",
+        "evidence_insufficient",
+        "llm_unavailable",
+        "parse_failed",
+        "specialist_unavailable",
     )
 
     @pytest.mark.asyncio
@@ -221,6 +240,54 @@ class TestNoTechnicalStringInDoctorFacingContent:
             assert bad not in resp.content, f"{organ} 降级正文混入技术串：{bad}"
         assert resp.needs_review is True
         assert any(t.startswith("grading_unparseable") for t in resp.reasoning_trace)
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("cls", "organ", "text", "label"),
+        [
+            (ThyroidSpecialistAgent, "thyroid", "分级: TR3 总分: 3 理由: 实性(3)", "甲状腺"),
+            (LiverSpecialistAgent, "liver", "分级: LR-3 理由: 边界清晰", "肝脏"),
+            (CardiacSpecialistAgent, "cardiac", "EF 55% 正常", "心脏"),
+        ],
+    )
+    async def test_normal_content_is_readable_chinese(self, cls, organ, text, label):
+        """正常路径同样不许把器官代码 / 英文键值写进正文（A.59）。"""
+        s = _agent(cls, organ, text)
+        resp = await s.invoke(_ctx(Organ(organ)))
+        for bad in self._TECHNICAL:
+            assert bad not in resp.content, f"{organ} 正文混入技术串：{bad}"
+        assert label in resp.content, f"{organ} 正文应含中文部位名「{label}」"
+
+    @pytest.mark.asyncio
+    async def test_llm_failure_content_is_readable_and_review_flagged(self):
+        """LLM 调用异常分支：正文可读 + 必须转人工（降级不许静默）。"""
+        inference = _FailingInference(RuntimeError("upstream down"))
+        rag = FakeKnowledgeAgent(chunks=make_chunks(5, organ="thyroid"))
+        s = ThyroidSpecialistAgent(inference_engine=inference, knowledge_agent=rag)
+
+        resp = await s.invoke(_ctx(Organ.THYROID))
+
+        for bad in self._TECHNICAL:
+            assert bad not in resp.content, f"LLM 异常分支正文混入技术串：{bad}"
+        assert "判读服务暂不可用" in resp.content
+        assert "已转人工判读" in resp.content
+        assert resp.needs_review is True
+        assert any(t.startswith("llm_failed") for t in resp.reasoning_trace)
+
+
+class _FailingInference:
+    """``generate`` 直接抛异常的推理引擎 fake（降级分支专用）。"""
+
+    def __init__(self, exc: BaseException) -> None:
+        self._exc = exc
+        self.generate_call_count = 0
+
+    async def generate(self, request) -> InferenceResponse:
+        self.generate_call_count += 1
+        raise self._exc
+
+    async def health_check(self) -> bool:
+        return False
 
 
 # ----------------------------------------------------------------------

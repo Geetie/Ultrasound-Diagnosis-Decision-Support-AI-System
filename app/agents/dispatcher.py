@@ -34,6 +34,10 @@ from app.agents.protocols import (
     DispatcherAgent,
     KnowledgeAgent,
 )
+from app.agents.specialist.readable import (
+    pipeline_unavailable_text,
+    specialist_unavailable_text,
+)
 from app.knowledge.protocols import KnowledgeChunk
 from app.models.schemas import DiagnosisRequest, Organ
 
@@ -121,8 +125,10 @@ class DispatcherAgentImpl(DispatcherAgent, Agent):
             return AgentResponse(
                 agent_name=f"unknown_{organ.value}",
                 organ=organ,
-                content=f"[{organ.value}] specialist_unavailable",
+                # A.59 可读化 + 转人工：原先 `[thyroid] specialist_unavailable` 直接当正文
+                content=specialist_unavailable_text(organ),
                 confidence=0.0,
+                needs_review=True,
                 reasoning_trace=self._make_degraded_trace(
                     organ, "no registered specialist", include_route_in_trace
                 ),
@@ -140,8 +146,10 @@ class DispatcherAgentImpl(DispatcherAgent, Agent):
             return AgentResponse(
                 agent_name=f"failed_{specialist.__class__.__name__}",
                 organ=organ,
-                content=f"[{organ.value}] specialist_unavailable",
+                # A.59 可读化 + 转人工（同上）
+                content=specialist_unavailable_text(organ),
                 confidence=0.0,
+                needs_review=True,
                 reasoning_trace=self._make_degraded_trace(
                     organ, type(exc).__name__, include_route_in_trace
                 ),
@@ -239,16 +247,19 @@ class DispatcherAgentImpl(DispatcherAgent, Agent):
         if not specialist_responses:
             return AgentResponse(
                 agent_name=self._name,
-                content="[dispatcher] no specialist responded",
+                content=pipeline_unavailable_text(),
                 confidence=0.0,
+                needs_review=True,
                 reasoning_trace=["aggregated 0 specialist(s)"],
             )
 
         contents: list[str] = []
         confidences: list[float] = []
         evidence_ids: list[str] = []
+        used_evidence_ids: list[str] = []
         trace: list[str] = []
         seen_evidence: set[str] = set()
+        seen_used: set[str] = set()
 
         for resp in specialist_responses:
             contents.append(resp.content)
@@ -257,10 +268,23 @@ class DispatcherAgentImpl(DispatcherAgent, Agent):
                 if cid not in seen_evidence:
                     seen_evidence.add(cid)
                     evidence_ids.append(cid)
+            # A.59：`used_evidence_ids` 同样要聚合（KB safety_critical 精确撤销依据）
+            for cid in resp.used_evidence_ids:
+                if cid not in seen_used:
+                    seen_used.add(cid)
+                    used_evidence_ids.append(cid)
             trace.extend(resp.reasoning_trace)
 
         avg_confidence = round(sum(confidences) / len(confidences), 4) if confidences else 0.0
         trace.append(f"aggregated {len(specialist_responses)} specialist(s)")
+
+        # A.59（零静默）：**任何** specialist 要求人工复核 → 聚合结果必须保留该标记。
+        # 原实现重建 AgentResponse 时漏掉 `needs_review`，于是「经 dispatcher.invoke()
+        # 走的单器官链路」会把专科的转人工标记**静默丢掉**（`aggregate()` 是
+        # `invoke()` 的唯一出口）。判据取「或」——复核标记只增不减。
+        needs_review = any(r.needs_review for r in specialist_responses)
+        if needs_review:
+            trace.append("aggregated_needs_review: any specialist flagged")
 
         return AgentResponse(
             agent_name=self._name,
@@ -268,6 +292,8 @@ class DispatcherAgentImpl(DispatcherAgent, Agent):
             content="\n\n".join(contents),
             confidence=avg_confidence,
             evidence_chunk_ids=evidence_ids,
+            used_evidence_ids=used_evidence_ids,
+            needs_review=needs_review,
             reasoning_trace=trace,
         )
 

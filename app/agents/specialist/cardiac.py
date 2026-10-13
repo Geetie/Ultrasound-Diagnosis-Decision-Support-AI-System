@@ -21,6 +21,7 @@ from app.agents.specialist.base import (
     normalize_grading_text,
     preview_digest,
 )
+from app.agents.specialist.readable import cardiac_content
 from app.inference.grading_definitions import extract_grading_severest
 from app.inference.grading_schema import extract_guided_grading
 from app.knowledge.protocols import KnowledgeChunk
@@ -238,12 +239,11 @@ class CardiacSpecialistAgent(RAGSpecialistAgent):
         # 7) 选 top-3 证据
         evidence_ids = [c.chunk_id for c in chunks[:3]]
 
-        # 8) 组装 content
-        lvef_str = f"{lvef_value:g}%" if lvef_value is not None else "unknown"
-        if reason:
-            content = f"[cardiac] LVEF={lvef_str}, severity={severity} — {reason}"
-        else:
-            content = f"[cardiac] LVEF={lvef_str}, severity={severity}"
+        # 8) 组装 content（A.59 可读化）
+        # 原先写 `[cardiac] LVEF=unknown, severity=normal — …`：英文器官代码 + 英文键值
+        # + 英文枚举值（unknown/normal）全部进了医生可见正文（真机 p28 实测）。
+        # 数值形态刻意保留 `LVEF 62%`（空格分隔）—— `consistency._extract_lvef` 依赖它。
+        content = cardiac_content(lvef_value, severity, reason)
 
         reasoning_trace = [
             "grading_system -> LVEF",

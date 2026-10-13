@@ -57,6 +57,30 @@ class Organ(str, Enum):
     CARDIAC = "cardiac"
 
 
+#: 器官代码 → **医生可见中文名**（单一事实源，A.59）。
+#:
+#: 为什么放在领域模型旁：报告模板的 `{{organ_label}}` 与专科结论正文
+#: （A.59 可读化）用的是同一份映射 —— 两份映射必然走散（A.57 的教训：
+#: 前端写死「甲状腺」而心脏会话真实部位是心脏）。报告侧改为 import 本表。
+ORGAN_CN_LABELS: dict[str, str] = {
+    "thyroid": "甲状腺",
+    "liver": "肝脏",
+    "cardiac": "心脏",
+}
+
+
+def organ_cn(organ: Organ | str | None) -> str:
+    """器官代码 → 中文名；**未知代码原样返回**。
+
+    刻意不兜底成「未知器官」之类：把没登记的代码原样显示出来，才能被发现；
+    兜底成通用词只会把「映射缺项」这个事实藏起来（A.36/A.57 同族教训）。
+    """
+    if organ is None:
+        return "未知部位"
+    code = organ.value if isinstance(organ, Organ) else str(organ)
+    return ORGAN_CN_LABELS.get(code, code)
+
+
 class FusionStatus(str, Enum):
     NORMAL = "normal"
     BYPASSED = "bypassed"

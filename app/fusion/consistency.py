@@ -270,10 +270,20 @@ def _content_matches(resp: AgentResponse, *keywords: str) -> bool:
 
 
 def _extract_lvef(text: str) -> int | None:
-    """从文本中抽取 LVEF 数值（仅 fallback 用）。"""
+    """从文本中抽取 LVEF 数值（仅 fallback 用）。
+
+    A.59：容许 `LVEF` 与数值之间出现**中文右括号/英文右括号** —— 专科正文自 A.59 起
+    写成「左室射血分数（LVEF）62%」（医生可读），而原正则要求 `LVEF` 后紧跟
+    `[:=]?`+空白+数字，遇到 `）` 就抽不到（跨器官规则「肝-心综合征」依赖本函数）。
+    兼容既有形态：``LVEF=62%`` / ``LVEF: 62%`` / ``LVEF 62%`` / ``EF 62%``。
+    """
     if not text:
         return None
-    m = re.search(r"(?:LVEF|EF|射血分数)\s*[:=]?\s*(\d{1,3})", text, re.IGNORECASE)
+    m = re.search(
+        r"(?:LVEF|EF|射血分数)\s*[:=]?\s*[）)]?\s*(\d{1,3})",
+        text,
+        re.IGNORECASE,
+    )
     if m:
         try:
             return int(m.group(1))

@@ -317,10 +317,14 @@ class TestD1OrganThresholdBoundary:
     async def test_zero_confidence_skips_threshold_check(
         self, thyroid_rag, thyroid_inference
     ):
-        """D1: confidence == 0.0（已降级）→ 跳过阈值检查。
+        """D1: confidence == 0.0（已降级）→ 跳过**阈值**检查。
 
         降级响应本身已通过 evidence_insufficient / llm_failed 等 trace 标记
         表达"不可用"，不需再附加 below_organ_threshold 标签。
+
+        A.59 语义变更：降级响应在**构造处**就置 ``needs_review=True``（零静默：
+        降级必须转人工），因此这里断言的是「needs_review 由降级本身给出，
+        **不是**阈值检查给的」—— 判据落在 trace 标签上。
         """
         s = ThyroidSpecialistAgent(
             inference_engine=thyroid_inference,
@@ -330,8 +334,8 @@ class TestD1OrganThresholdBoundary:
         ctx = _ctx()
         resp = await s.invoke(ctx)
         assert resp.confidence == 0.0
-        assert resp.needs_review is False
-        # 不应出现 below_organ_threshold 标签
+        assert resp.needs_review is True  # A.59：降级必须转人工
+        # 不应出现 below_organ_threshold 标签（阈值检查确实被跳过）
         assert not any("below_organ_threshold" in t for t in resp.reasoning_trace)
 
     @pytest.mark.asyncio
@@ -585,8 +589,9 @@ class TestT2LLMOutputAnomalies:
             inference_engine=cardiac_inference, knowledge_agent=cardiac_rag
         )
         resp = await s.invoke(_ctx())
-        # 应含 LVEF 数值（格式为 LVEF=50%）
-        assert "LVEF=50%" in resp.content
+        # 应含 LVEF 数值（A.59 起正文形态为「（LVEF）50%」；机器值 `lvef_value -> 50.0` 在 trace）
+        assert "（LVEF）50%" in resp.content
+        assert "LVEF=" not in resp.content
         assert resp.confidence > 0.0
 
     @pytest.mark.asyncio

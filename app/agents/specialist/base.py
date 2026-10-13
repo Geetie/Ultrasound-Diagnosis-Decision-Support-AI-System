@@ -54,6 +54,11 @@ import structlog
 
 from app.agents.protocols import Agent, AgentContext, AgentResponse
 from app.agents.protocols import KnowledgeAgent as KnowledgeAgentProtocol
+from app.agents.specialist.readable import (
+    evidence_insufficient_text,
+    llm_unavailable_text,
+    parse_failed_text,
+)
 from app.agents.specialist.solicitation import (
     HANDOFF_TEXT,
     detect_solicitation,
@@ -328,14 +333,17 @@ class RAGSpecialistAgent(SpecialistAgent):
             response = AgentResponse(
                 agent_name=self._agent_name(),
                 organ=organ,
-                content=(
-                    f"[{organ.value}] evidence_insufficient: "
-                    "no relevant knowledge retrieved; manual review required"
-                ),
+                # A.59 可读化：原先把 `[thyroid] evidence_insufficient: no relevant
+                # knowledge retrieved; manual review required` 当医生可见正文
+                content=evidence_insufficient_text(organ),
                 confidence=EMPTY_RAG_RESULT_CONFIDENCE,
                 evidence_chunk_ids=[],
                 reasoning_trace=trace,
                 latency_ms=(time.monotonic() - start) * 1000.0,
+                # A.59：降级**必须**转人工。原实现只改 content，而 `_post_process` 的阈值
+                # 检查显式跳过 confidence==0 的降级响应 → 这条路径既不转人工、正文还是
+                # 英文技术串，正是 A.58「零静默」定义下的静默降级。
+                needs_review=True,
             )
             self._post_process(context, response)
             return response
@@ -361,14 +369,13 @@ class RAGSpecialistAgent(SpecialistAgent):
             response = AgentResponse(
                 agent_name=self._agent_name(),
                 organ=organ,
-                content=(
-                    f"[{organ.value}] llm_unavailable: "
-                    f"{type(exc).__name__}; manual review required"
-                ),
+                # A.59 可读化 + 转人工（异常类名进括号，原始报错只进 trace/日志）
+                content=llm_unavailable_text(organ, type(exc).__name__),
                 confidence=0.0,
                 evidence_chunk_ids=[c.chunk_id for c in chunks],
                 reasoning_trace=trace,
                 latency_ms=(time.monotonic() - start) * 1000.0,
+                needs_review=True,
             )
             self._post_process(context, response)
             return response
@@ -393,14 +400,13 @@ class RAGSpecialistAgent(SpecialistAgent):
             response = AgentResponse(
                 agent_name=self._agent_name(),
                 organ=organ,
-                content=(
-                    f"[{organ.value}] parse_failed: "
-                    f"{type(exc).__name__}; manual review required"
-                ),
+                # A.59 可读化 + 转人工（同上）
+                content=parse_failed_text(organ, type(exc).__name__),
                 confidence=0.0,
                 evidence_chunk_ids=[c.chunk_id for c in chunks],
                 reasoning_trace=trace,
                 latency_ms=(time.monotonic() - start) * 1000.0,
+                needs_review=True,
             )
             self._post_process(context, response)
             return response

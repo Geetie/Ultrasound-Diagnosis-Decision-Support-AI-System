@@ -69,7 +69,9 @@ class TestAggregate:
         resp = await d.aggregate([])
         assert resp.agent_name == "dispatcher"
         assert resp.confidence == 0.0
-        assert "no specialist responded" in resp.content
+        # A.59：可读中文 + 转人工（原先正文是 `[dispatcher] no specialist responded`）
+        assert "判读流程未能启动" in resp.content
+        assert resp.needs_review is True
         assert resp.reasoning_trace == ["aggregated 0 specialist(s)"]
 
     @pytest.mark.asyncio
@@ -158,7 +160,9 @@ class TestInvoke:
         d = DispatcherAgentImpl(specialists=all_specialists)
         resp = await d.invoke(_ctx(Organ.THYROID))
         assert resp.confidence == 0.0
-        assert "specialist_unavailable" in resp.content
+        # A.59：正文给可读中文（原先直接是 `[thyroid] specialist_unavailable`）+ 转人工
+        assert "甲状腺：专科判读不可用" in resp.content
+        assert resp.needs_review is True
         # Implementation logs exception type name (not message) into trace
         # to avoid leaking sensitive error details.
         assert any("RuntimeError" in t for t in resp.reasoning_trace)
@@ -172,7 +176,9 @@ class TestInvoke:
         # Invoke with LIVER (not registered)
         resp = await d.invoke(_ctx(Organ.LIVER))
         assert resp.confidence == 0.0
-        assert "specialist_unavailable" in resp.content
+        # A.59：可读中文（部位名随响应 organ 走）+ 转人工
+        assert "肝脏：专科判读不可用" in resp.content
+        assert resp.needs_review is True
         assert "no registered specialist" in " ".join(resp.reasoning_trace)
 
     @pytest.mark.asyncio
@@ -258,7 +264,9 @@ class TestDispatchAll:
         assert len(responses) == 3
         # Failed one: confidence 0
         assert responses[0].confidence == 0.0
-        assert "specialist_unavailable" in responses[0].content
+        # A.59：可读中文 + 转人工（失败腿）
+        assert "专科判读不可用" in responses[0].content
+        assert responses[0].needs_review is True
         # Healthy ones: real confidence
         assert responses[1].confidence == pytest.approx(0.7)
         assert responses[2].confidence == pytest.approx(0.6)

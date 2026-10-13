@@ -112,7 +112,11 @@ class TestFailedHelpers:
     def test_make_failed_response(self):
         r = _make_failed_response("boom")
         assert r.confidence == 0.0
-        assert "boom" in r.content
+        # A.59：正文给可读中文（原始原因只进 trace —— 它可能含内部标识/英文异常串），
+        # 并**必须转人工**（零静默：失败不许静默照出）
+        assert "判读流程未能启动" in r.content
+        assert r.needs_review is True
+        assert "pipeline_dispatch_failed: boom" in r.reasoning_trace
 
     def test_make_failed_fusion_result_with_candidates(self):
         from app.agents.protocols import AgentResponse

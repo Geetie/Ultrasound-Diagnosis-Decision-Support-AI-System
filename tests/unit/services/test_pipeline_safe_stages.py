@@ -29,7 +29,10 @@ class TestSafeDispatch:
                 SimpleNamespace(organ="thyroid", session_id="s1"), "r1"
             )
         assert out[0].confidence == 0.0
-        assert "dispatcher_unavailable" in out[0].content
+        # A.59：可读中文 + 转人工；机器标记留在 trace（`_make_failed_response` 的 reason 参数）
+        assert "判读流程未能启动" in out[0].content
+        assert out[0].needs_review is True
+        assert any("dispatcher_unavailable" in t for t in out[0].reasoning_trace)
 
     async def test_invoke_success_with_routing(self, clear_desens):
         response = SimpleNamespace(confidence=0.9, content="ok")
@@ -63,7 +66,10 @@ class TestSafeDispatch:
         with patch("app.main.app", fake_app):
             out = await _safe_dispatch(request, "r3")
         assert out[0].confidence == 0.0
-        assert "dispatcher_failed" in out[0].content
+        # A.59：可读中文 + 转人工；机器标记（dispatcher_failed: <ExcType>）留在 trace
+        assert "判读流程未能启动" in out[0].content
+        assert out[0].needs_review is True
+        assert any("dispatcher_failed" in t for t in out[0].reasoning_trace)
 
     async def test_l1_desensitize_called(self, clear_desens, monkeypatch):
         dispatcher = MagicMock()

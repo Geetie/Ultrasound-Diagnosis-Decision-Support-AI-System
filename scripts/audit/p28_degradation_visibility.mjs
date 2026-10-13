@@ -201,6 +201,29 @@ try {
     `${concl.snap.conclusionHead || '(空)'} 耗时=${concl.ms}ms`,
   );
 
+  // ---------- A.59：结论正文不得含**英文键值对 / 器官代码** ----------
+  // 真机实测到的形态：`[cardiac] LVEF=unknown, severity=normal — …`（医生可见正文里的
+  // 技术串）。判据与 `pytest tests/unit/agt/test_grade_extraction_contract.py::
+  // TestNoTechnicalStringInDoctorFacingContent` 同源，这里做**端到端**确认。
+  const TECH_MARKERS = [
+    '[thyroid]',
+    '[liver]',
+    '[cardiac]',
+    '[pipeline]',
+    'LVEF=',
+    'severity=',
+    'evidence_insufficient',
+    'llm_unavailable',
+    'parse_failed',
+    'manual review required',
+  ];
+  const leaked = TECH_MARKERS.filter((m) => real.snap.conclusion.includes(m));
+  record(
+    'P28-4 结论正文不含英文键值对/器官代码（A.59 可读化）',
+    leaked.length === 0,
+    leaked.length ? `leaked=${JSON.stringify(leaked)}` : `正文=${real.snap.conclusionHead || '(空)'}`,
+  );
+
   const imgShot = `${OUT}/p28-image.png`;
   const conclShot = `${OUT}/p28-conclusion.png`;
   await page.locator('[data-region="image"]').screenshot({ path: imgShot }).catch(() => {});
