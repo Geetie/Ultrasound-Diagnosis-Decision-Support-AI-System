@@ -5,19 +5,43 @@
 
 ## Last Updated
 
-2026-10-13（分支 `main`；**A.56 分级提取根治 + 器官声明对齐 + 走查修掉「工作区导航静默失效」
-已交付**——①**分级提取**改走 `grading_definitions` 单一事实源 + 抽取失败后的**有界重试/按需结构化**
-+ 可读降级（技术串移出医生可见正文），真机 **p27（8 轮）降级 0/8、零技术串、退出码 0**，
-并据此把分级抽取改为**显式分级段优先**（修掉「理由里的范围说明被当结论 → 分级抬高一级」）；
-真机 p27a 钉死 `response_format` 3/3 生效、`guided_json` **0/3 被 vLLM 静默忽略**。
-②**器官声明对齐（临床安全）**：`ORGAN_PRESETS` 补 `cardiac` + 分割不可用时的「改选部位」引导。
-③**走查修掉 P0 级可用性缺陷**：工作区装载真实影像后点导航（报告/工作列表/设置）**URL 变、
-视图永不切换**（react-router v7 默认把 location 更新放进 `startTransition`，该 lane 在工作区
-永不提交）→ 改 `<BrowserRouter useTransitions={false}>` + 守卫（反证即红）。
-真机 **p26 PASS=32 FAIL=1**（唯一 FAIL=T1-5b：`liver/cardiac` 报告模板缺 `{{nodule_summary}}`
-段 → 分割面积与帧级溯源不进正文，**已登记未修**）。详见 16 号附录 A.56）
+2026-10-13（分支 `main`；**A.57 第一/第二梯队收口 —— p26 零 FAIL**——收口 A.56 走查登记的
+易做项，并在复跑中又抓到 2 个真缺陷：①**报告模板补「影像分割（模型辅助）」段**（liver/cardiac
+原缺 `{{nodule_summary}}` → 心脏/肝脏报告正文看不到分割面积与帧级溯源）→ 真机 **T1-5b 由 FAIL
+转 PASS**；②**影像角标去硬编码**（参数条写死「甲状腺 · 线阵 12 MHz · 增益 62 · 深度 10 cm」、
+时间写死「2026-10-02」，心脏会话照显甲状腺→改「声明部位 + 影像参数以设备为准/参数待装载」+
+会话起始时间）；③**历史对比默认配对修正**（原取 `comparable_organs[0]`（按器官名排序），患者
+最新两次是心脏时却默认并排更早的甲状腺对 → 改优先「最近一次检查所在器官」；文案「结节面积」→
+「分割面积」）；④**p20 重跑 PASS=31 FAIL=0**（A.55 尾巴 G1.2 复核通过）+ 21 号路线图刷新。
+真机 **p26 PASS=33 FAIL=0**（同时修掉 p26 自身的竞态：它原先"先等分割入口 90s 再等结论"，
+判读冷启动时会制造假 FAIL）。详见 16 号附录 A.57）
 
-### A.56 复跑入口与踩坑（下一位直接用）
+### A.57 复跑入口与踩坑（下一位直接用）
+
+- 第一/第二梯队端到端走查（**本机** Playwright + 隧道；样本在服务器现转，见下）：
+  `node scripts/audit/p26_squad_e2e_walkthrough.mjs --dicom1 <w1.dcm> --dicom2 <w2.dcm>`
+  （样本：`scripts/camus_frame_to_dicom.py --out /tmp/uai_w1.dcm --count 7 --multiframe
+  --keyword 4CH_half`；第二次换 `2CH_half`（同器官 cardiac）；scp 回本机 `C:\Windows\TEMP\uai_e2e\`）
+- 前端深度边界（**本机**）：`node scripts/audit/p20_frontend_boundary.mjs --dicom <7 帧样本>`
+- 报告模板改动后**必须重启主服务**（`report_service._TEMPLATE_CACHE` 是进程内缓存）：
+  `cd ~/uai/src && set -a && source ~/uai/.env && set +a && nohup ~/uai/venv/bin/python -m uvicorn
+  app.main:app --host 127.0.0.1 --port 18000 >> ~/uai/logs/api.log 2>&1 &`
+- 守卫：`pytest tests/unit/quality`（105 例，含角标数据驱动守卫）、
+  `pytest tests/unit/api/test_report_templates.py`（模板渲染）、
+  `vitest run src/pages/__tests__/WorkspacePage.test.tsx src/pages/__tests__/PatientHistoryPage.test.tsx`
+- **踩坑（都会再犯）**：
+  ① **启动期资产有进程内缓存**（报告模板）→ 改完**必须重启主服务**；只同步文件不重启 = "改了没生效"。
+  ② **重启后第一次判读明显变慢**（冷启动，实测 ~90s vs 常态 ~10s）→ **探针要先等结果落地再验结果
+     里的入口**；反过来（先等入口）会在慢判读时稳定产生**假 FAIL**。
+  ③ **页面用例传 `dicomImageId` 会拉进 cornerstone 依赖图 → vitest 长时间不返回**：真实影像分支
+     用静态守卫 + 真机 p26 覆盖，页面用例只渲染预览态。
+  ④ **`Start-Process -FilePath x.bat` 报 "not a valid application"** → 要
+     `Start-Process cmd.exe -ArgumentList '/c','x.bat'`；子进程 `%TEMP%` 可能与当前 shell 不同，
+     日志写**绝对路径**。
+  ⑤ **cmd 里中文参数会因代码页变形**（`vitest -t "中文"` 恒 0 匹配）→ 过滤词用 ASCII。
+  ⑥ **服务器 shell 是 fish**：带 `|`/`$`/引号的 ssh 一行式命令会被双层解释 → **写脚本 + scp 过去跑**。
+
+### 上一轮（A.56）复跑入口与踩坑
 
 - 第一/第二梯队端到端走查（**本机** Playwright + 隧道，被测系统 = 服务器）：
   `node scripts/audit/p26_squad_e2e_walkthrough.mjs --dicom1 <w1.dcm> --dicom2 <w2.dcm>`

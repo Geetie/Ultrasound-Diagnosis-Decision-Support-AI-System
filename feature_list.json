@@ -779,11 +779,29 @@
     {
       "id": "report-segmentation-section-liver-cardiac",
       "name": "报告模板补「影像分割（模型辅助）」段（liver / cardiac）",
-      "description": "{{nodule_summary}} 只出现在 templates/report/thyroid_standard.md 与 report_service 内置默认模板里，liver_standard.md / cardiac_standard.md 缺该段 → 心脏/肝脏报告正文看不到分割面积与帧级溯源（实测 content.nodule_summary 已含「模型辅助分割（cardiac）：…；取自第 6/7 帧（多帧候选择优）」，但正文不渲染）。即真机 p26 唯一失败判据 T1-5b 的根因。建议修法：两模板各加一段 ## N、影像分割（模型辅助）+ {{nodule_summary}} 并顺移后续段号；属医疗文书结构改动，需与设计/文档一并登记后再动。",
-      "status": "planned",
-      "result": "未修（本轮只登记）：p26 T1-5b FAIL 已就地升级为诊断式判据（失败时查后端 content，区分「内容里没有」与「模板没渲染」）",
+      "description": "{{nodule_summary}} 只出现在 templates/report/thyroid_standard.md 与 report_service 内置默认模板里，liver_standard.md / cardiac_standard.md 缺该段 → 心脏/肝脏报告正文看不到分割面积与帧级溯源（实测 content.nodule_summary 已含「模型辅助分割（cardiac）：…；取自第 6/7 帧（多帧候选择优）」，但正文不渲染）。即真机 p26 唯一失败判据 T1-5b 的根因。修法：两模板各加一段 ## N、影像分割（模型辅助）+ {{nodule_summary}} 并顺移后续段号。注意 report_service.load_template 有进程内 _TEMPLATE_CACHE，改模板必须重启主服务才生效。",
+      "status": "done",
+      "result": "真机 p26 T1-5b **由 FAIL 转 PASS**：报告正文出现「模型辅助分割（cardiac）：…；取自第 6/7 帧（多帧候选择优）」；同批次 p26 PASS=33 FAIL=0",
       "dependencies": [],
-      "evidence": "16 号 A.56.5①；app/templates/report/{liver,cardiac}_standard.md；app/templates/report/thyroid_standard.md（对照组）；scripts/audit/p26_squad_e2e_walkthrough.mjs（T1-5b）"
+      "evidence": "16 号 A.57.1；app/templates/report/{liver,cardiac}_standard.md（已补段）；scripts/audit/p26_squad_e2e_walkthrough.mjs（T1-5b/T1-5c）"
+    },
+    {
+      "id": "ui-data-driven-annotations",
+      "name": "影像角标去硬编码（参数/时间数据驱动）",
+      "description": "影像区参数角标写死「甲状腺 · 线阵 12 MHz · 增益 62 · 深度 10 cm」、时间角标写死「2026-10-02 14:26:41」→ 心脏会话与真实心脏影像上也照显甲状腺 + 线阵探头参数，占位值被当成真实检查信息（A.36「患者身份写死」同类）。修：新增 organDisplayName（部位代码→中文）与 formatLocalTimestamp；路由把声明部位与会话起始时间传给工作区；角标改「{部位} · {有真实影像?影像参数以设备为准:参数待装载}」与「{会话起始时间|时间未提供}」，并加 title 写明不解析设备参数/非采集时间。",
+      "status": "done",
+      "result": "静态守卫 test_image_annotations_are_data_driven（源码不得再出现四个写死字面量 + 必须接 declaredOrgan/formatLocalTimestamp）；前端用例 WorkspacePage 42 passed（含「心脏会话不再显示甲状腺」的反证）；真机 p26 截图核对",
+      "dependencies": [],
+      "evidence": "16 号 A.57.2；frontend/src/types/session.ts；frontend/src/utils/datetime.ts；frontend/src/components/workspace/WorkspaceImageRegion.tsx；tests/unit/quality/test_frontend_render_guard.py"
+    },
+    {
+      "id": "history-default-pairing",
+      "name": "历史对比默认配对优先「最近一次检查所在器官」+ 文案器官中立",
+      "description": "两处：①文案写「结节面积变化」，但取的是**分割面积** —— 甲状腺是结节、心脏是心腔，心脏腿读出错误解剖语义（真机 p26 实测 cardiac 上显示「结节面积变化：0.0%」）。②默认配对取 comparable_organs[0]（服务端按器官名排序），与注释声明的「默认选中最近两次同器官检查」不符：患者最新两次是心脏时，默认并排了更早的一对甲状腺检查（3205.8 → 3205.8，Δ 0.0%），医生看不到刚做完的对比。",
+      "status": "done",
+      "result": "文案改「分割面积变化」/「分割面积：」；配对改按「最近一次检查所在器官 → comparable_organs」优先级取第一个凑得出两次的器官；前端 13 passed（含「不得配成旧甲状腺对」反证）；真机 p26 T2-3-e 变为「分割面积变化：+46.6%（2003.3 → 2936.8 mm²）」，与后端 sessions 端点数据一致",
+      "dependencies": [],
+      "evidence": "16 号 A.57.3；frontend/src/pages/PatientHistoryPage.tsx；frontend/src/pages/__tests__/PatientHistoryPage.test.tsx；scripts/audit/p26_squad_e2e_walkthrough.mjs（T2-3-e）"
     },
     {
       "id": "main-flow-voice-entry",
