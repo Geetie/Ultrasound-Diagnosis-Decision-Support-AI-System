@@ -88,6 +88,27 @@ def cardiac_content(lvef_value: float | None, severity: str | None, reason: str 
     return f"{head} — {reason}" if reason else head
 
 
+def cardiac_lvef_unparseable_text() -> str:
+    """心脏「拿不到 LVEF / 收缩功能分级」→ 可读降级 + **可行动的下一步**。
+
+    A.62 批 1：原先文案只说「已转人工判读：请结合图像与病史自行评估」，医生看不出
+    **该补什么**（真机实测：近端 30 条样本里 10 条降级，其中 9 条是心脏，正文全为
+    「LVEF: 无法计算 分级: 无法判断」）。这里补两条可执行路径：已有测量值 → 补填后重发；
+    没有测量 → 人工判读并自行评估。
+
+    写法刻意与 :func:`lvef_phrase` 对齐（``LVEF 55%``）：A.59 踩过「（LVEF）55%」这种
+    紧贴中文括号的写法会让下游 ``consistency._extract_lvef`` 抽不到数值。
+
+    ⚠️ 「让医生补填测量值」这一操作指引属**待 00 号确认**的措辞（见 16 号附录 A.62）；
+    文案是单一事实源，改措辞只动这一处。
+    """
+    return (
+        "心脏：本次未取得可判定的左室射血分数（LVEF）。如已有测量结果，"
+        "请在临床信息中补填（写法如「LVEF 55%」）后重新发起判读；如无测量结果，"
+        f"{_HANDOFF_ADVICE}"
+    )
+
+
 def evidence_insufficient_text(organ: Organ | str) -> str:
     """检索为空 → 可读降级（技术细节留在 ``reasoning_trace``）。"""
     return f"{organ_cn(organ)}：本次未检索到与检查部位相关的知识条目，{_HANDOFF_ADVICE}"
@@ -121,6 +142,7 @@ __all__ = [
     "HANDOFF_MARKER",
     "SEVERITY_CN",
     "cardiac_content",
+    "cardiac_lvef_unparseable_text",
     "evidence_insufficient_text",
     "graded_content",
     "llm_unavailable_text",

@@ -206,6 +206,9 @@ def main() -> int:
         try:
             result = _faithfulness_of(item, args.judge_url, args.model, args.answer_mode)
         except Exception as exc:
+            # 单条失败必须**当场可见**（零静默）：既进报告，也立刻打屏一行
+            # （棘轮 `test_no_silent_catch` 只认 except 体内的留痕/raise/error=，光赋值不给过）
+            print(f"  [{i}/{len(judgeable)}] 判官失败：{type(exc).__name__}: {exc}")
             result = {"score": None, "error": f"{type(exc).__name__}: {exc}"}
         result["request_id"] = item.get("request_id")
         result["organ"] = item.get("organ")

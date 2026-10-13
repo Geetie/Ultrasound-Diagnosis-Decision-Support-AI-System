@@ -209,7 +209,7 @@
     {
       "id": "faithfulness-gate",
       "name": "faithfulness 门控（官方 RAGAS 口径 ≥95%）",
-      "description": "生成侧溯源约束 v2 + 双轨口径（官方/宽松）；判官 Qwen3-8B GPU ｜A.61 续做：L2 判官机制已接入（RAGAS 官方 prompt + 独立判官 8006，见 `eval-set-l2-judge`）；本条的**实质阻塞**是口径决策（结论里的系统派生分级/总分是否计入 faithfulness，同一批样本 0.0798 vs 0.1891）与 `knowledge_ids` 与生成上下文是否一致（证据链完整性）。",
+      "description": "生成侧溯源约束 v2 + 双轨口径（官方/宽松）；判官 Qwen3-8B GPU ｜A.61 续做：L2 判官机制已接入（RAGAS 官方 prompt + 独立判官 8006，见 `eval-set-l2-judge`）；本条的**实质阻塞**是口径决策（结论里的系统派生分级/总分是否计入 faithfulness，同一批样本 0.0798 vs 0.1891）与 `knowledge_ids` 与生成上下文是否一致（证据链完整性）。 ｜A.62 批 1 新增实测：补全上下文**不改变** faithfulness（记录版 vs 模型所见版 = 0.0 vs 0.0，2/2）⇒ 本条的实质阻塞是**口径**（结论=决策+依据，派生字段是否计入），备选口径 A/B/C 数字见 16 号 A.61.7 与 A.62.2。",
       "status": "blocked",
       "gate": "≥95%",
       "result": "官方 68.96% / 宽松 72.8%；主因 context Top-5 缺依据（语料覆盖）",
@@ -943,6 +943,63 @@
         "langfuse-eval-pipeline"
       ],
       "evidence": "16 号 A.61.7（含更正与两口径实测）；scripts/langfuse/judge_eval_set.py；scripts/langfuse/collect_eval_set.py（context）；scripts/langfuse/eval_gate.py；tests/unit/quality/test_eval_gate_layers.py（8 例）；reports/langfuse_eval_judge.json（+ _reasoning 对照）"
+    },
+    {
+      "id": "a62-batch1-evidence-and-cardiac",
+      "name": "批 1（价值/风险最高）：证据链核实 + 心脏腿「无 LVEF」可行动提示 + L2 口径三选一",
+      "description": "① **核实检索证据链**：`diagnosis_results.knowledge_ids` 记的块是否就是**当时真正喂给模型**的上下文（L2 判官在口径 B 下判「实性特征被赋予 3 分」这类 TI-RADS 规则\"上下文不支持\"，而它们本应在指南块里）→ 新增真机探针 `scripts/audit/p30_evidence_chain.py`，判定「只记部分 / 顺序不同 / 未落库」三者之一并带反证腿。② **心脏腿「无 LVEF」策略**：现正文「LVEF: 无法计算 分级: 无法判断」没告诉医生下一步 → 改为可行动指引（补测/上传带测量的影像/只能人工判读），保留 needs_review 与 trace 留痕；涉及医学口径的改动单独标注「待 00 号拍板」。③ **L2 口径三选一给 00 号**：口径 A（结论全文 0.0798）/ 口径 B（只判「理由:」后叙述 0.1891）/ 口径 C（剔除系统派生的分级·总分后再判）三种数字并列，一页纸落 16 号附录。",
+      "status": "done",
+      "result": "①**证据链**：新增生产侧 env 留痕（`UAI_EVIDENCE_CHAIN_DEBUG=1` → `base._log_evidence_chain` 打「prompt 里的块」与「落库的块」）+ 探针 `scripts/audit/p30_evidence_chain.py`（7 条反证腿）。真机 n=7：**甲状腺 5/5 = PREFIX_TRUNCATED**（prompt 5 块、落库 3 块 = **前 3 条**、顺序一致 → 「忠实但截断」）；**心脏 2/2 = MISMATCH**（落库的 `dialogue_cardiac_外科_0028#0000` 不在任何 prompt 留痕里 → 该路径证据拼接不完全走 `_parse_response`，嫌疑 CRAG 三段拼接/融合选链）。②**L2 口径对照**：同一结论用「落库 3 块」与「模型所见 5 块」各判一次 RAGAS faithfulness → **0.0 vs 0.0（2/2）** ⇒ L2 低分不是「记少了」的伪影，是**口径**问题（系统派生决策不计入知识支持）。③**心脏腿文案**：收进 `readable.py::cardiac_lvef_unparseable_text()`，给出可行动指引（补填 `LVEF 55%` 后重发 / 无测量则人工判读），保留 needs_review 与 trace；并**决定不做**「数值抽取读临床文本」——实测 18 条心脏样本 14 条降级、其中文本含 LVEF = **0 条**（零受益）。真机：p27 thyroid 4/4、cardiac 4/4；本机 agt 514 passed、新探针守卫 11 passed、两棘轮绿。",
+      "dependencies": [
+        "langfuse-eval-pipeline",
+        "eval-set-l2-judge"
+      ],
+      "evidence": "16 号 A.62（A.62.1~A.62.5）；scripts/audit/p30_evidence_chain.py；tests/unit/quality/test_evidence_chain_probe.py；app/agents/specialist/base.py（_log_evidence_chain）；app/agents/specialist/readable.py（cardiac_lvef_unparseable_text）；reports/evidence_chain.json；~/uai/logs/api.log（evidence_chain 留痕）"
+    },
+    {
+      "id": "a62-batch2-guard-hardening",
+      "name": "批 2（防回退）：后端静默 128 处分批收敛 + p20 时序竞态 + 全量测试偶发定位",
+      "description": "① 后端静默 `except` **剩余 128 处**按链路分批清理（**只加留痕、不改原有降级行为**：默认 `logger.warning(事件名, error=…, error_type=…)`；确属「可选依赖探测」的用 `# silent-ok: 理由` 显式豁免）；每清一批就把 `tests/unit/quality/silent_catch_baseline.json` **下调一次**（只许降）。② p20 探针 G5.4 时序偶发：结果到达后立刻数覆盖层偶发数到 0（A.60 首跑 30/1、复跑 31/0）→ 改为「等到位后再等一次渲染/翻帧重试」。③ `unit-full-suite-sec-flaky`（A.59 登记：全量顺序偶发、单独跑恒过）定位并隔离/修复。",
+      "status": "planned",
+      "result": null,
+      "dependencies": [
+        "a62-batch1-evidence-and-cardiac"
+      ],
+      "evidence": "21 号「分批开发计划·批 2」；tests/unit/quality/silent_catch_baseline.json；scripts/audit/p20_frontend_boundary.mjs"
+    },
+    {
+      "id": "a62-batch3-eval-assets",
+      "name": "批 3（攒资产）：评测集 148→700 + 医生标注 50 例配合清单 + t2a 三口径分列",
+      "description": "① 评测集从 **148** 往 **700** 推（真机判读持续积累 + 复核「同患者同影像只算一条」的去重口径，依据用的是 DICOM `SOPInstanceUID`；无影像的判读不入集但显式计数）。② 「≥50 例医生标注坏例」的**配合说明**（要医生做什么、在反馈页哪里做、做完系统怎么变）——当前 0/50，属临床使用前置，代码侧已就绪（进度条已上屏）。③ t2a **三种口径分列**（开发集 / 公开集 held-out / 注册级独立集）并**预置**独立集冻结与跑批脚本（清单 + sha256 冻结），数据一到即可套同一套脚本；**禁止合并引用三种口径**。",
+      "status": "planned",
+      "result": null,
+      "dependencies": [
+        "a62-batch2-guard-hardening",
+        "t2a-aul-holdout"
+      ],
+      "evidence": "21 号「分批开发计划·批 3」与 §阶段三-A；scripts/langfuse/collect_eval_set.py；scripts/audit/p29_t2a_aul_holdout.py"
+    },
+    {
+      "id": "a62-batch4-external-deps-pack",
+      "name": "批 4（推外部）：口径决策包 + UDT 医生勾选 + 注册数据协议 + 语音/覆盖率替代方案",
+      "description": "把「必须别人拍板/给数据」的事整理成能直接送去决策的包，每条按**「前置条件 + 建议方案 + 现在就能先做的准备」**三段式写：① 口径决策包（faithfulness 门控口径 / L2 口径 / t2a 门控 AUC≥0.80 且 CI 下界≥0.70）；② `udt-phase1` 词表（约 1650 条）医生勾选的推进方案（谁勾、勾多久、卡住怎么办）；③ `thyroid-registry-data` 与 t2a 注册级数据的数据协议与最小可执行路径；④ `e5-speech-medical-verify`（真实医生口述样本）与 `coverage-core`（检索覆盖率核心集）的替代方案。**不改任何阈值**（19 号 0.95/0.90、t2a 0.80/0.70 均需 00 号拍板）。",
+      "status": "planned",
+      "result": null,
+      "dependencies": [
+        "a62-batch3-eval-assets"
+      ],
+      "evidence": "21 号「分批开发计划·批 4」与「三梯队现状总览」；progress.md `## Blockers`"
+    },
+    {
+      "id": "evidence-chain-crag-path",
+      "name": "证据链在 CRAG/降级路径上不一致（落库有、prompt 留痕无）——待查",
+      "description": "A.62 批 1 真机实测：心脏腿 2/2 出现「数据库 `knowledge_ids` 里有块不在任何 `_build_prompt` 留痕中」（如 `dialogue_cardiac_外科_0028#0000`），而甲状腺腿 5/5 都是「落库 = prompt 前 3 条」的正常形态。嫌疑点：①CRAG 恢复的 `old+new+reinvoked` 三段证据拼接（`app/fusion/crag.py:600-620`）；②融合层 `final_response` 选择口径（`app/fusion/service.py:190,289-303`）；③某个分支在 `_post_process` 之外设置 evidence。要查清「这条块是谁、在哪一步写进 `final_response.evidence_chunk_ids`」，并决定「留痕是否要覆盖全部写证据的路径」（当前只覆盖 `_build_prompt`/`_post_process`）。",
+      "status": "planned",
+      "result": null,
+      "dependencies": [
+        "a62-batch1-evidence-and-cardiac"
+      ],
+      "evidence": "16 号 A.62.1（n=7 判定表）；reports/evidence_chain.json（per_entry.db_minus_prompt）"
     }
   ]
 }

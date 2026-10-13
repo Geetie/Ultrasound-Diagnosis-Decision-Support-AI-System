@@ -5,6 +5,26 @@
 
 ## Last Updated
 
+2026-10-13（分支 `main`；**A.62 三梯队现状总览 + 分批计划 + 批 1 交付**——用户拍板：三梯队全量现状 + 完整计划、**价值/风险优先**、一次给全分 4 批、外部依赖写「前置条件 + 建议方案 + 现在就能做的准备」、**写人话**。
+
+**现状总览与计划**：21 号新增「三梯队现状总览」（梯队一性能代码项已闭合 / 梯队二全交付 / 梯队三一半交付：Langfuse 技术打通但 148/700、t2a 公开集下界已出而注册级缺数据）+「分批开发计划（批 1~4）」；`feature_list.json` 建 4 个批次条目 `a62-batch1~4`。
+
+**批 1（已收口）**：
+- **证据链**：判读走在 **Redis 队列 → worker 进程**（端点只入队），所以**进程内拦截探针必然捕空**（实测：类级包装 `RAGServiceImpl.retrieve` 一条都没捕到）→ 改在**生产侧**留痕（`UAI_EVIDENCE_CHAIN_DEBUG=1`，`base._log_evidence_chain` 打 prompt 块 + 落库块，同 request_id 对齐）→ 探针 `scripts/audit/p30_evidence_chain.py` 读留痕 + DB 判定。真机 **n=7**：甲状腺 **5/5 `PREFIX_TRUNCATED`**（prompt 5、落库 3 = **前 3 条**）；心脏 **2/2 `MISMATCH`**（落库块不在 prompt 留痕里 → 新登记 `evidence-chain-crag-path` 待查）。
+- **L2 口径**：记录版 vs 模型所见版 faithfulness = **0.0 vs 0.0（2/2）** → L2 低分是**口径**问题（派生决策不计入知识支持），待 00 号拍板；`--judge-mode gate` 一行可切。
+- **心脏腿文案**：`readable.py::cardiac_lvef_unparseable_text()`（补填 `LVEF 55%` 后重发 / 无测量则人工判读），保留 needs_review 与 trace；**不做**「抽取读临床文本」（实测零受益）。
+
+### A.62 批 1 复跑入口与踩坑（下一位直接用）
+
+- 证据链：①带上开关重启主服务（`export UAI_EVIDENCE_CHAIN_DEBUG=1` 后再起 uvicorn）；②跑一次判读（`p27_grade_extraction.py --rounds 1`）；③`python scripts/audit/p30_evidence_chain.py --all`（读 `~/uai/logs/api.log` 的 `evidence_chain` 两行 + DB，输出判定分布与「落库有不等于 prompt」的块）。
+- L2 判官：`judge_eval_set.py --judge-url http://127.0.0.1:8006 --model Qwen3-8B --answer-mode raw|reasoning`。
+- **踩坑（本轮新增，都会再犯）**：
+  ① **判读不在 API 进程里跑**（Redis 队列 → worker）→ 任何「进程内拦截」都捕空；查证据链只能靠生产侧留痕。
+  ② **给被测系统打桩前先直调自检**：签名写错（`retrieve(self, request)` 被我按 3 参调用）→ TypeError 被优雅降级吞掉 → 探针报「什么都没发生」的假象。
+  ③ **一次请求可能有多条留痕**（CRAG 再检索/专科重调）：按 request_id 聚合时**不能后写覆盖**（第一版把 2 次压成 1 条 → 心脏腿假 MISMATCH），要保留 `*_calls` 与保序并集。
+  ④ **解析留痕要截到最后一个 `]`**：行尾有兄弟字段（`prompt_chunks=5`）→ `literal_eval` 报错，而我把异常吞成空 list → 又报「日志里没有留痕」。
+  ⑤ **评估「要不要改」之前先量**：心脏腿「抽取也读临床文本」的念头被「14 条降级里 0 条文本含 LVEF」否掉。
+
 2026-10-13（分支 `main`；**A.61 Langfuse 摄取根因终解 + 评测集采集/门控/进度上屏**——
 A.60 把 Langfuse 摄取判为「阻塞」，本轮啃到底，**根因 #3 其实是两处**：
 ①**`REDIS_CONNECTION_STRING` 漏设** —— Langfuse v3 镜像只读这个名（容器 `env` 实证 + 镜像产物

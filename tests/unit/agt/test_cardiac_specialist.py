@@ -241,10 +241,28 @@ class TestDegradation:
         resp = await s.invoke(_ctx())
         assert resp.confidence == 0.0
         # 可读降级（2026-10-13）：技术串不得进医生可见正文
-        assert "未能解析出" in resp.content
+        assert "未取得可判定的左室射血分数" in resp.content
         assert "lvef_unparseable" not in resp.content
         assert resp.needs_review is True
         assert any(t.startswith("grading_unparseable") for t in resp.reasoning_trace)
+
+    async def test_降级文案给出可行动指引且不含工程视角(self, rag, inference):
+        """A.62 批 1：医生要看到「我该做什么」，而不是「AI 输出没给出什么」。
+
+        真机证据：近端 30 条样本里 10 条降级、其中 9 条是心脏，正文全是
+        「LVEF: 无法计算 分级: 无法判断」—— 医生看不出该补测还是该人工判读。
+        """
+        inference.text = "心脏超声未见明显异常。"
+        s = CardiacSpecialistAgent(inference, rag)
+        resp = await s.invoke(_ctx())
+
+        assert "补填" in resp.content, "要告诉医生已有测量值可以补填"
+        # 补填写法必须是下游抽得到的形态（`LVEF 55%`）——A.59 踩过「（LVEF）55%」抽不到
+        assert "LVEF 55%" in resp.content
+        assert "已转人工判读" in resp.content, "无测量结果时仍要走转人工口径"
+        # 不再把工程视角（AI 输出/解析）甩给医生
+        assert "AI 输出" not in resp.content
+        assert "未能解析" not in resp.content
 
 
 # ----------------------------------------------------------------------

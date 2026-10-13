@@ -43,6 +43,7 @@ from __future__ import annotations
 
 import hashlib
 import inspect
+import os
 import re
 import time
 from abc import abstractmethod
@@ -658,6 +659,36 @@ class RAGSpecialistAgent(SpecialistAgent):
         return extra
 
 
+    def _log_evidence_chain(
+        self,
+        context: AgentContext,
+        *,
+        prompt_chunk_ids: list[str] | None = None,
+        recorded_ids: list[str] | None = None,
+    ) -> None:
+        """证据链留痕（A.62 批 1）：默认关闭，`UAI_EVIDENCE_CHAIN_DEBUG=1` 时每次判读打一行。
+
+        为什么需要在**生产侧**留痕：判读经 Redis 队列由 worker 进程执行
+        （`enqueue_diagnosis` + BLPOP，跨进程），外部探针**无法**拦截检索调用
+        （A.62 实测：进程内包装 `RAGServiceImpl.retrieve` 捕不到任何调用 —— 判读被生产
+        worker 消费了）。要回答「落库的 `knowledge_ids` 是不是当时喂进 prompt 的那几块」，
+        只有让生产侧把两边都打出来：`_build_prompt` 打「prompt 里的块」、
+        `_post_process` 打「落库的块」，两者用同一个 `request_id` 对齐。
+        """
+        if os.environ.get("UAI_EVIDENCE_CHAIN_DEBUG") != "1":
+            return
+        payload: dict[str, object] = {
+            "request_id": context.request_id,
+            "organ": str(getattr(context.organ, "value", context.organ)),
+        }
+        if prompt_chunk_ids is not None:
+            payload["prompt_chunks"] = len(prompt_chunk_ids)
+            payload["prompt_chunk_ids"] = prompt_chunk_ids
+        if recorded_ids is not None:
+            payload["recorded_chunks"] = len(recorded_ids)
+            payload["recorded_ids"] = recorded_ids
+        logger.info("evidence_chain", **payload)
+
     def _build_prompt(
         self,
         context: AgentContext,
@@ -685,6 +716,8 @@ class RAGSpecialistAgent(SpecialistAgent):
         子类可覆盖本方法自定义格式（如 few-shot 注入位置不同）。
         """
         parts: list[str] = [self._prompt_template, ""]
+        # A.62 证据链留痕（env 开关）：prompt 里实际喂了哪几块（与 _post_process 那条按 request_id 对齐）
+        self._log_evidence_chain(context, prompt_chunk_ids=[c.chunk_id for c in chunks])
         parts.append(f"# 检索到的知识（top {len(chunks)}）")
         for idx, chunk in enumerate(chunks, start=1):
             source = chunk.source_doc_id or chunk.chunk_id
@@ -828,7 +861,7 @@ class RAGSpecialistAgent(SpecialistAgent):
         context: AgentContext,
         response: AgentResponse,
     ) -> None:
-        """invoke 末尾的公共后处理（D1 阈值 + D2 used_evidence_ids 写入）。
+        """invoke 末尾的公共后处理（D1 阈值 + D2 used_evidence_ids 写入 + 证据链留痕）。
 
         **D2 修正**：将 ``response.evidence_chunk_ids`` ``extend`` 到
         ``context.used_evidence_ids``，供 KB safety_critical 更新时做
@@ -840,6 +873,8 @@ class RAGSpecialistAgent(SpecialistAgent):
         _check_disease_threshold，则不再重复检查器官级 — 避免
         重复 trace 标签）。
         """
+        # A.62 证据链留痕（env 开关）：本条记录**落库**的块（= 走 `knowledge_ids` 的那批）
+        self._log_evidence_chain(context, recorded_ids=list(response.evidence_chunk_ids))
         # D2: 写入 used_evidence_ids（保留顺序，去重由调用方负责）
         if response.evidence_chunk_ids:
             context.used_evidence_ids.extend(response.evidence_chunk_ids)

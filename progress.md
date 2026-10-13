@@ -1,6 +1,13 @@
 # progress.md — 当前状态（唯一「现在在哪」来源）
 
-**Last Updated**: 2026-10-13（A.61 Langfuse 摄取根因终解（**worker 用了 web 镜像**）+ 评测集采集/门控/进度上屏）
+**Last Updated**: 2026-10-13（A.62 三梯队现状总览 + 分批计划落地；**批 1 交付**：证据链核实 + 心脏腿可行动文案 + L2 口径判据）
+**HEAD-A.62（批 1）**: 分支 `main`（用户拍板：三梯队全量现状 + 完整计划、价值/风险优先、一次给全分 4 批、外部依赖写三段式、**写人话**）。
+①**现状总览 + 分批计划**落 21 号（视图层）与 `feature_list.json`（4 个批次条目 `a62-batch1~4`）：梯队一（性能）代码项已闭合、梯队二（能力补全）全交付、梯队三一半交付（Langfuse 技术打通但 148/700、t2a 公开集下界已出、注册级缺数据）。
+②**批 1-A 证据链**：新增生产侧 env 留痕 `UAI_EVIDENCE_CHAIN_DEBUG=1`（`base._log_evidence_chain` 打「prompt 里的块」+「落库的块」，同 request_id 对齐）+ 探针 `scripts/audit/p30_evidence_chain.py`（7 条反证腿）。真机 **n=7**：甲状腺 **5/5 = PREFIX_TRUNCATED**（prompt 5 块、落库 3 块 = **前 3 条**，顺序一致 → 忠实但截断）；心脏 **2/2 = MISMATCH**（落库的块不在任何 prompt 留痕里 → 已建 `evidence-chain-crag-path` 待查）。
+③**批 1-C L2 口径**：同一结论用「落库 3 块」与「模型所见 5 块」各判一次 RAGAS faithfulness → **0.0 vs 0.0（2/2）** ⇒ L2 低分**不是**「记少了」的伪影，而是**口径**（系统派生决策不计入知识支持）→ 给 00 号的口径 A/B/C 数字齐备，`--judge-mode gate` 一行可切。
+④**批 1-B 心脏腿文案**：收进 `readable.py::cardiac_lvef_unparseable_text()`，改成可行动指引（补填 `LVEF 55%` 后重发 / 无测量则人工判读）；**决定不做**「数值抽取读临床文本」——实测 18 条心脏样本 14 条降级、文本含 LVEF = **0 条**（零受益）。
+真机：p27 thyroid 4/4 · cardiac 4/4；本机 `tests/unit/agt` 514 passed、新探针守卫 11 passed、两棘轮绿。详见 16 号附录 A.62）
+
 **HEAD-A.61**: 分支 `main`（A.60 把 Langfuse 摄取判为「阻塞」并把 19 号两个交付项挂起；本轮**啃到底**：
 ①**根因 #3 其实是两处**——(3a) compose 只设 `REDIS_URL`，而 Langfuse v3 镜像**只读
 `REDIS_CONNECTION_STRING`**（容器 env 实证 + 镜像产物 grep 33:0）→ 补变量；(3b) **`langfuse-worker`
@@ -396,6 +403,14 @@ refresh_token 撤族「该撤没撤」留痕、emergency_signing fail-closed 留
 
 ## Recommended Next Step
 
+> **A.62 批 1 结果（2026-10-13，价值/风险优先）**：
+> ① **证据链**：甲状腺腿 5/5「看 5 记 3、前 3 条一致」（`PREFIX_TRUNCATED`，忠实但截断）；
+> 心脏腿 2/2 出现「落库有、prompt 无」的块 → 新登记 `evidence-chain-crag-path` 待查
+> （嫌疑：CRAG 三段拼接 / 融合选 final_response 的口径 / 留痕未覆盖全部写证据路径）。
+> ② **L2**：补全上下文**不提升** faithfulness（0.0 vs 0.0）⇒ 问题在**口径**不在记录 → 待 00 号拍板。
+> ③ **心脏腿**：降级文案已改可行动（补填/人工判读两条路），并据实测**不做**改动抽取逻辑。
+> **下一步（批 2）**：查 CRAG/融合路径的证据拼接（`evidence-chain-crag-path`）→ 后端静默按链路分批收敛（剩余 128 处，基线下调）→ p20 G5.4 时序竞态 + `unit-full-suite-sec-flaky` 定位。
+
 > **A.61 结果（2026-10-13，清障 A.60 的 Langfuse 阻塞）**：
 > ①**Langfuse 摄取**：根因 #3 是**两处**——`REDIS_CONNECTION_STRING` 漏设 + **worker 用了 web 镜像**
 > （"worker"容器实跑 `web/server.js`，**没有队列消费者**）→ 换 `langfuse-worker:3`；
@@ -511,6 +526,8 @@ refresh_token 撤族「该撤没撤」留痕、emergency_signing fail-closed 留
 | `scripts/langfuse/docker-compose.yml` | A.61 Langfuse 自托管栈（关键约束：**`REDIS_CONNECTION_STRING` 必须设**（镜像不读 `REDIS_URL`）+ **worker 必须用 `langfuse-worker:3` 镜像**（与 web 不同镜像）；摄取成功判据 = worker 日志 `otel-ingestion-queue executor started` + `traces` 增长） |
 | `scripts/langfuse/collect_eval_set.py` | A.61 评测集采集（业务库来源：`diagnosis_results` + `feedback_records`（=正确口径）+ `dicom_images` 去重 `sop_instance_uid`；真机 142 条 / `skipped_no_image` 显式计数；退出码 0/1/2） |
 | `scripts/langfuse/eval_gate.py` | A.61 门控两层（`enforced` 判红 / `informational` 仅告知 + L2 `advisory`/`gate` 双模）+ `make eval-gate` |
+| `scripts/audit/p30_evidence_chain.py` | A.62 证据链核对（读生产侧留痕 `evidence_chain` + DB，7 条反证腿；n=7 判定分布 `{PREFIX_TRUNCATED:5, MISMATCH:2}`） |
+| `UAI_EVIDENCE_CHAIN_DEBUG=1`（`app/agents/specialist/base.py`） | A.62 证据链留痕开关：打「prompt 里的块」与「落库的块」（生产侧唯一可用的核对手段：判读走 Redis 队列 → worker 进程） |
 | `scripts/langfuse/judge_eval_set.py` | A.61.7 L2 忠实度判官（RAGAS 官方 prompt **复用**；口径 raw/reasoning；判官 8006；**仪器自检**：verdict 解析为空即报错而非给 0 分）+ `make eval-judge` |
 | `GET /api/v1/eval-set/stats`（`app/api/v1/eval_set.py`） | A.61 评测集进度只读端点（缺报告/损坏均 200 + 可读原因；匿名 401）+ 反馈页只读进度区块 |
 | `npm run lint:silent-catch`（`frontend/eslint-rules/`） | A.58 前端静默 catch 棘轮（155 文件扫描；10 文件/44 处 ≤ 基线；独立 config，**不动** `--max-warnings 1` 预算） |

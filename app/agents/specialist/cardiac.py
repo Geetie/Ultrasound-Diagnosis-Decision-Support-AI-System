@@ -21,7 +21,7 @@ from app.agents.specialist.base import (
     normalize_grading_text,
     preview_digest,
 )
-from app.agents.specialist.readable import cardiac_content
+from app.agents.specialist.readable import cardiac_content, cardiac_lvef_unparseable_text
 from app.inference.grading_definitions import extract_grading_severest
 from app.inference.grading_schema import extract_guided_grading
 from app.knowledge.protocols import KnowledgeChunk
@@ -196,10 +196,10 @@ class CardiacSpecialistAgent(RAGSpecialistAgent):
             return AgentResponse(
                 agent_name="cardiac_specialist",
                 organ=Organ.CARDIAC,
-                content=(
-                    "本例未能解析出左心室收缩功能分级（AI 输出未给出可判定的 LVEF 值"
-                    "或严重程度），已转人工判读：请结合图像与病史自行评估。"
-                ),
+                # A.62 批 1：文案收进 `readable.py`（单一事实源）并补**可行动**指引 ——
+                # 原先把「AI 输出没给出可判定的 LVEF」这种工程视角告诉医生，医生看不到
+                # 「那我该做什么」。现在给出两条路径（补填测量值 / 人工判读）。
+                content=cardiac_lvef_unparseable_text(),
                 confidence=0.0,
                 evidence_chunk_ids=[c.chunk_id for c in chunks[:5]],
                 reasoning_trace=[
