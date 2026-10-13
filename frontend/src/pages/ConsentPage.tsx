@@ -11,6 +11,7 @@ import {
 import { getConsentStatus, grantConsent, withdrawConsent } from '@/services/consentService';
 import type { ConsentActionData } from '@/services/consentService';
 import { getApiErrorMessage } from '@/utils/apiError';
+import { reportError } from '@/utils/errorReport';
 import { useSessionStore } from '@/stores/sessionStore';
 import { tokens } from '@/styles/tokens';
 import type { ConsentStatus } from '@/types/api';
@@ -78,8 +79,12 @@ export default function ConsentPage() {
       const result = await getConsentStatus(patientId);
       setConsentDetail(result);
       setConsentStatus(result.consent_status);
-    } catch {
-      // silently fail
+    } catch (err) {
+      // A.60：知情同意状态是「AI 是否解锁」的唯一判据 —— 原先 `// silently fail` 让页面
+      // 停在默认态，医生看不到状态就可能误判成"未签署"（把可用当不可用，或反过来）。
+      // 现在：留痕 + 可读提示（可刷新重试）。
+      reportError('consent', '知情同意状态获取失败', err);
+      message.warning('知情同意状态获取失败，请刷新重试');
     }
   }, [patientId, setConsentStatus]);
 
@@ -89,7 +94,12 @@ export default function ConsentPage() {
 
   useEffect(() => {
     if (consentStatus === 'withdrawn' && consentDetail?.consent_status !== 'withdrawn' && patientId) {
-      getConsentStatus(patientId).then(setConsentDetail).catch(() => {});
+      getConsentStatus(patientId)
+        .then(setConsentDetail)
+        .catch((err: unknown) => {
+          // A.60：撤回后补拉失败 → 详情停在**撤回前**的旧快照（显示"已签署"的过期信息）
+          reportError('consent', '撤回后同意详情刷新失败（详情可能为旧快照）', err);
+        });
     }
   }, [consentStatus, consentDetail?.consent_status, patientId]);
 

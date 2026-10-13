@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties } from 're
 // 仅类型：编译期擦除，不会把 cornerstone 拉进 jsdom 测试（运行时仍是动态 import）
 import type { MeasureResult } from '@/components/dicom/cornerstone';
 import type { StoredAnnotation } from '@/services/annotationsService';
+import { reportError, reportWarn } from '@/utils/errorReport';
 
 /**
  * 影像区里的真实 DICOM 层（铺在影像区底部的 DICOM 容器）。
@@ -93,6 +94,14 @@ export default function WorkspaceDicomLayer({
   // 测量注释存档（A.40）：画完一条立即 PUT（含此前画的所有 —— 全量覆盖语义，
   // 服务端原子写）。恢复的注释不计入（再次 PUT 会把恢复的原样写回，无害）。
   const [savedAnnotations, setSavedAnnotations] = useState<StoredAnnotation[]>([]);
+  /**
+   * 标注存档写入失败的**可读**原因（A.60 零静默）。
+   *
+   * 原先该路径完全无声（注释还写着"失败静默 —— 标注是增强"）：医生画完标注以为已经存上，
+   * 实际没存 —— 等到下一次打开这次检查发现标注不见了。标注是**医疗记录**，不是"增强"：
+   * 失败必须说出来（提示 + 让医生可以重画一次重试）。
+   */
+  const [archiveIssue, setArchiveIssue] = useState<string | null>(null);
   // 数组身份每次渲染都可能变，effect 只关心内容 —— 用 join 做依赖。
   // 不能在渲染期写 imageIdsRef.current = imageIds（react-hooks error：
   // 渲染期访问 ref 会触发级联渲染），内容统一从 stackKey 派生。
@@ -171,7 +180,7 @@ export default function WorkspaceDicomLayer({
       // cornerstone 可能还没加载完，交给上面的 try 兜底
       import('@/components/dicom/cornerstone')
         .then((cs) => cs.resize(element))
-        .catch(() => undefined);
+        .catch(() => undefined); // silent-ok: 可选增强（chunk 未就绪时还没有影像可 resize）
     };
     window.addEventListener('resize', onResize);
 
@@ -189,7 +198,7 @@ export default function WorkspaceDicomLayer({
       element.removeEventListener('cornerstoneimagerendered', onRendered);
       import('@/components/dicom/cornerstone')
         .then((cs) => cs.disable(element))
-        .catch(() => undefined);
+        .catch(() => undefined); // silent-ok: 卸载清理（幂等；chunk 没就绪时也无资源可释放）
     };
   }, [stackKey]);
 
@@ -255,7 +264,11 @@ export default function WorkspaceDicomLayer({
           }
         });
       })
-      .catch(() => undefined);
+      .catch((err: unknown) => {
+        // A.60：工具/测量注册失败 = 医生点了「长度」画不出东西、点了「窗宽窗位」不生效，
+        // 原先完全无声（`.catch(() => undefined)`）。留痕即可，不弹窗（重进本次检查可恢复）。
+        reportWarn('workspace', '浏览/测量工具激活失败（本次可能画不出测量或调不了窗位）', err);
+      });
     return () => {
       cancelled = true;
       off?.();
@@ -264,12 +277,19 @@ export default function WorkspaceDicomLayer({
   }, [activeTool, loaded, stackKey, frameIndex]);
 
   // 存档写入：有 archiveKey 且有未保存注释时 PUT 全量（服务端原子覆盖）。
-  // 失败静默 —— 标注是增强，不该因网络抖动打断阅片；重画一次即重试。
+  //
+  // A.60 修正口径：原先写「失败静默 —— 标注是增强」。**标注是医疗记录**：静默丢标注
+  // 的后果是医生以为存上了、下次打开发现没了（且无任何线索）。现在失败要说出声
+  // （角标提示 + 可重画一次重试）；成功则清掉提示。
   useEffect(() => {
     if (!archiveKey || savedAnnotations.length === 0) return;
     import('@/services/annotationsService')
       .then((svc) => svc.saveAnnotations(archiveKey, savedAnnotations))
-      .catch(() => undefined);
+      .then(() => setArchiveIssue(null))
+      .catch((err: unknown) => {
+        reportError('workspace', '标注未保存（本次画的测量可能没有存档）', err);
+        setArchiveIssue('标注未保存（网络或服务异常）：请重画一条重试');
+      });
   }, [archiveKey, savedAnnotations]);
 
   // 存档恢复：装载完成且有 archiveKey 时 GET 并渲染**当前帧**的历史标注
@@ -306,9 +326,14 @@ export default function WorkspaceDicomLayer({
             // 恢复的注释进存档缓存：医生再画一条时 PUT 会把整批写回（全量覆盖）
             setSavedAnnotations(anns);
           })
-          .catch(() => undefined);
+          .catch((err: unknown) => {
+            // A.60：恢复失败 = 历史标注不显示，医生会当成"本帧没画过标注"（静默误导）
+            reportWarn('workspace', '历史标注恢复失败（本帧标注可能不显示）', err);
+          });
       })
-      .catch(() => undefined);
+      .catch((err: unknown) => {
+        reportWarn('workspace', '历史标注读取失败（存档不可用，标注显示可能不完整）', err);
+      });
     return () => {
       cancelled = true;
     };
@@ -325,7 +350,8 @@ export default function WorkspaceDicomLayer({
           // 个别路径上渲染事件不可靠，指示器会停在旧帧号）
           if (typeof idx === 'number') setFrameIndex(idx);
         })
-        .catch(() => undefined);
+        .catch(() => undefined); // silent-ok: 翻帧是渲染事件驱动的二次兜底，失败下帧会重试
+
     },
     [multiFrame],
   );
@@ -388,7 +414,7 @@ export default function WorkspaceDicomLayer({
           const next = cs.scrollStack(element, delta);
           if (typeof next === 'number') setFrameIndex(next);
         })
-        .catch(() => undefined);
+        .catch(() => undefined); // silent-ok: cine 逐帧推进（下一拍重试，无残留状态）
     }, Math.round(1000 / fps));
     return () => window.clearInterval(timer);
   }, [playing, fps, multiFrame, loaded, frames]);
@@ -417,7 +443,7 @@ export default function WorkspaceDicomLayer({
         const next = cs.scrollStack(element, delta);
         if (typeof next === 'number') setFrameIndex(next);
       })
-      .catch(() => undefined);
+      .catch(() => undefined); // silent-ok: 同 scrollBy（doctor 可再点一次，幂等）
     // nonce 是唯一触发源：同一个目标帧再点一次也要重新生效
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [targetFrame?.nonce, multiFrame, loaded]);
@@ -454,6 +480,25 @@ export default function WorkspaceDicomLayer({
           }}
         >
           影像加载中…
+        </span>
+      )}
+
+      {/* A.60（零静默 · 渲染层）：标注存档**写入失败**必须说出来。
+          原先这条路径完全无声（注释自认"失败静默"）→ 医生画完标注以为已存，
+          下次打开这次检查发现标注没了。文案给可执行动作（重画一条重试）。 */}
+      {archiveIssue && (
+        <span
+          data-region="annotation-archive-error"
+          role="alert"
+          style={{
+            position: 'absolute',
+            left: 24,
+            bottom: 34,
+            fontSize: 11,
+            color: 'var(--color-overlay-stop)',
+          }}
+        >
+          {archiveIssue}
         </span>
       )}
 

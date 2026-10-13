@@ -28,6 +28,7 @@ import cornerstone, {
   init as loaderInit,
   wadouri,
 } from '@cornerstonejs/dicom-image-loader';
+import { reportError, reportWarn } from '@/utils/errorReport';
 
 let initPromise: Promise<void> | null = null;
 const engineByElement = new WeakMap<HTMLElement, RenderingEngine>();
@@ -121,7 +122,7 @@ export function enable(element: HTMLElement): void {
           const stack = vp as Types.IStackViewport | undefined;
           imageIndex = stack?.getCurrentImageIdIndex?.();
         } catch {
-          // 元素可能已分离
+          // silent-ok: 元素已分离时读帧号属正常控制流（imageIndex 留 undefined，指示器回落不显示）
         }
         element.dispatchEvent(
           new CustomEvent('cornerstoneimagerendered', { detail: { imageIndex } }),
@@ -139,7 +140,7 @@ export function disable(element: HTMLElement): void {
     if (tgId) ToolGroupManager.destroyToolGroup(tgId);
     engine.destroy();
   } catch {
-    // already detached
+    // silent-ok: disable 是幂等清理（重复销毁 / 元素已分离属预期），无用户可见影响
   }
   engineByElement.delete(element);
   viewportIdByElement.delete(element);
@@ -196,7 +197,15 @@ export function displayImage(
     stack.setProperties({
       voiRange: { lower: min, upper: max },
     });
-  })().catch((err: unknown) => console.error('[cornerstone3d] display failed', err));
+  })().catch((err: unknown) => {
+    // A.60 补处置（A.35 病灶的正主）：这条链 = 整栈预缓存 → setStack → setProperties。
+    // 原先只打一行 console.error 就吞掉，而它把异常咽在 Promise 链里 —— 上层
+    // WorkspaceDicomLayer 的 `unhandledrejection` 监听**接不到**，医生看到的是一块空白
+    // 影像区、门禁全绿（A.35「空白活了 3 天」正是这个形态）。
+    // 现在：统一出口留痕 + **重新抛出**，让上层可见出口（`dicom-load-error`）兜住。
+    reportError('cornerstone3d', '影像显示失败（像素/帧数据未能装载，影像区可能空白）', err);
+    throw err;
+  });
 }
 
 /**
@@ -213,6 +222,7 @@ export function scrollStack(element: HTMLElement, distance: number): number | nu
     const idx = (enabled.viewport as Types.IStackViewport).getCurrentImageIdIndex?.();
     return typeof idx === 'number' ? idx : null;
   } catch {
+    // silent-ok: null 是契约内语义（调用方直读+渲染事件双路兜底），探测式读无需留痕
     return null;
   }
 }
@@ -225,6 +235,7 @@ export function getStackIndex(element: HTMLElement): number | null {
     const idx = (enabled.viewport as Types.IStackViewport).getCurrentImageIdIndex?.();
     return typeof idx === 'number' ? idx : null;
   } catch {
+    // silent-ok: 同上，未 enable / 已分离属正常分支，null 由调用方兜底
     return null;
   }
 }
@@ -245,6 +256,7 @@ export function getCurrentImageId(element: HTMLElement): string | null {
     const id = (enabled?.viewport as Types.IStackViewport | undefined)?.getCurrentImageId?.();
     return typeof id === 'string' ? id : null;
   } catch {
+    // silent-ok: 未 enable / 已分离时拿不到 imageId 属正常（标注归属回落「不显示」）
     return null;
   }
 }
@@ -272,6 +284,7 @@ export function getViewport(element: HTMLElement) {
       invert: Boolean(props.invert),
     };
   } catch {
+    // silent-ok: 读窗口参数属探测式调用（viewport 未就绪即返回 null，调用方用默认值）
     return null;
   }
 }
@@ -308,8 +321,11 @@ export function setViewport(element: HTMLElement, viewport: Record<string, unkno
       camChanged = true;
     }
     if (camChanged) vp.setCamera(cam);
-  } catch {
-    // ignore
+  } catch (err) {
+    // A.60：**写**失败与"读不到"不同 —— 医生这次调的窗位/缩放可能没生效，必须留痕。
+    // 不给弹窗：view 侧仍持有目标值，下一次渲染事件会重试；但零留痕会让"调了没反应"
+    // 变成无法排查的怪象（本处原为 `catch {} // ignore`）。
+    reportWarn('cornerstone3d', '窗位/相机写回影像失败（本次调节可能未生效）', err);
   }
 }
 
@@ -320,7 +336,7 @@ export function resetViewport(element: HTMLElement): void {
     enabled.viewport.resetCamera();
     enabled.viewport.resetProperties();
   } catch {
-    // ignore
+    // silent-ok: 复位是幂等操作（元素未就绪时无副作用，医生可再点一次）
   }
 }
 
@@ -361,6 +377,7 @@ export async function getNumberOfFrames(imageId: string): Promise<number> {
     const n = parseInt(dataSet.string?.('x00280008') ?? '', 10);
     return Number.isFinite(n) && n > 1 ? n : 1;
   } catch {
+    // silent-ok: 读 NumberOfFrames 属能力探测（缺标签/未装载即回落单帧，多帧是增强）
     return 1;
   }
 }
@@ -443,7 +460,7 @@ export function clearAnnotations(): void {
       if (a.annotationUID) annotation.state.removeAnnotation(a.annotationUID);
     }
   } catch {
-    // 无注释/已分离
+    // silent-ok: 清场是幂等操作（本帧无注释 / 元素已分离都属正常）
   }
 }
 
@@ -452,10 +469,13 @@ export function restoreAnnotations(
   annotations: Array<Record<string, unknown> & { toolName?: string }>,
 ): number {
   let restored = 0;
+  let failed = 0;
+  let firstError: unknown;
   const enabled = (() => {
     try {
       return getEnabledElement(element as HTMLDivElement);
     } catch {
+      // silent-ok: 未 enable 的正常分支（随后 return 0，调用方按"本帧无标注"处理）
       return null;
     }
   })();
@@ -473,9 +493,19 @@ export function restoreAnnotations(
       // 已存注释只渲染不响应绘制 —— 工具组 Passive（在组内渲染，但不吃鼠标）
       tg?.setToolPassive(toolName);
       restored += 1;
-    } catch {
-      // 单条坏了不拖累整批
+    } catch (err) {
+      // 逐条容错（一条坏不拖累整批），但**必须留痕**：静默少一条 = 医生以为
+      // 「这条标注当时没画/丢了」（A.60：恢复侧原先完全无声）。
+      failed += 1;
+      if (firstError === undefined) firstError = err;
     }
+  }
+  if (failed > 0) {
+    reportWarn(
+      'cornerstone3d',
+      `本帧 ${failed}/${annotations.length} 条历史标注未能恢复（标注显示可能不完整）`,
+      firstError,
+    );
   }
   if (restored) {
     enabled.viewport.render();

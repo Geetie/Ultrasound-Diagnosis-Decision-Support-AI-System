@@ -64,7 +64,7 @@ export const useDicomStore = create<DicomStoreState & DicomActions>((set, get) =
           csSetViewport(element, csViewport);
         }
       } catch {
-        // cornerstone sync failed
+        // silent-ok: 元素未 enable 时同步必失败属正常分支（store 侧值已落，view 会在就绪后重读）
       }
     }
   },

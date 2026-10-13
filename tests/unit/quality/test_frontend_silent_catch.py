@@ -19,6 +19,7 @@ node 不可用时**显式失败**（不 skip）：这条门禁是约定层的一
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -71,7 +72,58 @@ def test_rule_and_config_are_wired():
         "`npm run lint` 的严格预算被改动了 —— 静默 catch 必须走独立 config + 棘轮"
     )
     counts = json.loads(BASELINE.read_text(encoding="utf-8")).get("counts")
-    assert isinstance(counts, dict) and counts, "基线 counts 为空：棘轮会退化成「永远通过」"
+    # A.60 更正：存量已**全部归零**，因此 counts 允许为空 —— 空基线不是"棘轮退化"：
+    # 未登记文件默认 0（新代码一律不许静默），而"到底会不会咬"由下面的反证用例
+    # （test_ratchet_bites_on_new_silent_catch）保证。A.58 当初写「counts 非空」，
+    # 那是"还有存量"阶段的前提，现在会误报。
+    assert isinstance(counts, dict), "基线 counts 必须是对象（文件 → 静默 catch 数）"
+    assert all(isinstance(v, int) and v > 0 for v in counts.values()), (
+        "基线计数必须为正整数（0 值条目应删除，否则棘轮会在 0 与 0 之间空转）"
+    )
+
+
+class TestZeroSilenceDispositions:
+    """A.60：存量归零时**逐处处置**留下的关键出口必须钉住（否则会被"顺手简化"掉）。
+
+    这三条对应 A.35「影像层静默失败活 3 天」的真正病灶，A.60 修复后立此存照：
+    ① 统一上报出口存在（散落的 `console.error` 无法接采集、无法统一文案）；
+    ② `displayImage` 的异步链**重新抛出**（原先吞在 Promise 链里，上层
+       `unhandledrejection` 监听接不到 → 空白影像区零提示）；
+    ③ 影像/标注失败在**界面上**有出口（有上报没出口 = 医生照样不知道）。
+    """
+
+    SRC = REPO_ROOT / "frontend" / "src"
+
+    def test_error_report_module_exists(self):
+        text = (self.SRC / "utils" / "errorReport.ts").read_text(encoding="utf-8")
+        for symbol in ("export function reportError", "export function reportWarn",
+                       "export function registerErrorSink"):
+            assert symbol in text, f"统一上报出口缺 {symbol}"
+
+    def test_display_image_rethrows_so_ui_can_see_it(self):
+        text = (self.SRC / "components" / "dicom" / "cornerstone.ts").read_text(
+            encoding="utf-8"
+        )
+        assert "reportError('cornerstone3d'" in text, (
+            "displayImage 的失败链必须先上报（A.35 病灶：原先只打一行 console.error）"
+        )
+        assert re.search(r"reportError\('cornerstone3d'.*?\n\s*throw err;", text, re.S), (
+            "displayImage 的失败链必须**重新抛出**，否则 WorkspaceDicomLayer 的 "
+            "unhandledrejection 监听接不到 → 空白影像区零提示（A.35 形态）"
+        )
+
+    def test_failure_outlets_exist_in_ui(self):
+        layer = (
+            self.SRC / "components" / "workspace" / "WorkspaceDicomLayer.tsx"
+        ).read_text(encoding="utf-8")
+        assert 'data-region="dicom-load-error"' in layer, "影像渲染失败的可读出口不见了"
+        assert 'data-region="annotation-archive-error"' in layer, (
+            "标注存档失败必须有可读出口（A.60：原先完全无声，医生以为已存上）"
+        )
+        region = (
+            self.SRC / "components" / "workspace" / "WorkspaceImageRegion.tsx"
+        ).read_text(encoding="utf-8")
+        assert 'data-region="image-load-error"' in region, "影像未取回的可读出口不见了"
 
 
 def test_ratchet_passes():

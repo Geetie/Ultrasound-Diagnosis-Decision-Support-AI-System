@@ -79,6 +79,7 @@ async function registerLocalImage(file: File): Promise<string | undefined> {
     const cornerstone = await import('@/components/dicom/cornerstone');
     return cornerstone.wadouri.fileManager.add(file) as string;
   } catch {
+    // silent-ok: 本地显示副本是增强（上传主线失败才提示）；返回 undefined 走服务端副本回落
     return undefined;
   }
 }
@@ -92,6 +93,7 @@ async function expandStackId(imageId: string): Promise<string[]> {
     const cornerstone = await import('@/components/dicom/cornerstone');
     return await cornerstone.expandStackId(imageId);
   } catch {
+    // silent-ok: 读 NumberOfFrames 属能力探测（失败回落单帧，多帧是增强）
     return [imageId];
   }
 }
@@ -104,6 +106,7 @@ async function registerServerImage(imageId: string): Promise<string | undefined>
   try {
     return await fetchDicomForDisplay(imageId);
   } catch {
+    // silent-ok: 取服务端副本失败即回落本地副本（影像不会因此消失，模块头有优先级说明）
     return undefined;
   }
 }
@@ -173,7 +176,7 @@ export function useDicomUpload(
         });
 
         // 先显示：不等网络。注册失败也不影响后续上传。
-        const localImageId = await registerLocalImage(file).catch(() => undefined);
+        const localImageId = await registerLocalImage(file).catch(() => undefined); // silent-ok: 与 registerLocalImage 内层同义（双层保险，回落 undefined）
 
         lastLocal = localImageId;
         // 分期②：多帧 DICOM（单文件 NumberOfFrames>1）展开为帧栈
@@ -186,9 +189,10 @@ export function useDicomUpload(
           const resp = await uploadDicom(file, sessionId, DEFAULT_PRIORITY);
           ids.push(resp.image_id);
           // 升级为服务端副本（同管线同源）。失败回落本地副本 —— 显示是增强。
-          const serverImageId = await registerServerImage(resp.image_id).catch(
-            () => undefined,
-          );
+          const serverImageId = await registerServerImage(resp.image_id).catch(() => {
+            // silent-ok: 与 registerServerImage 内层同义（回落本地副本，影像不会消失）
+            return undefined;
+          });
           lastServer = serverImageId;
           if (serverImageId) {
             const serverFrames = await expandStackId(serverImageId);

@@ -10,6 +10,7 @@ import type {
   WsAuthResponse,
 } from '@/types/websocket';
 import { useWebSocketStore } from '@/stores/websocketStore';
+import { reportWarn } from '@/utils/errorReport';
 
 type EventHandler<T> = (data: T) => void;
 
@@ -175,7 +176,10 @@ export class DualWebSocketManager {
 
     try {
       this.navWs = new WebSocket(wsUrl);
-    } catch {
+    } catch (err) {
+      // A.60：构造失败（URL 非法 / 浏览器禁用 WS）原先完全无声，只有静默退避重连 ——
+      // 现象是"实时状态永远停在旧值"，谁也查不出来。留痕，重连逻辑不变。
+      reportWarn('ws-nav', '导航通道建立失败（实时状态可能不更新），已进入重连退避', err);
       this.scheduleNavReconnect();
       return;
     }
@@ -219,7 +223,9 @@ export class DualWebSocketManager {
 
     try {
       this.dicomWs = new WebSocket(wsUrl);
-    } catch {
+    } catch (err) {
+      // A.60：同 nav 通道（构造失败须留痕，否则表现为"影像始终不推新帧"却毫无线索）
+      reportWarn('ws-dicom', '影像通道建立失败（实时影像推送不可用），已进入重连退避', err);
       this.scheduleDicomReconnect();
       return;
     }
@@ -312,8 +318,11 @@ export class DualWebSocketManager {
           useWebSocketStore.getState().setLastHeartbeat(Date.now());
           break;
       }
-    } catch {
-      // ignore parse errors
+    } catch (err) {
+      // A.60：畸形/非 JSON 文本帧原先被 `// ignore parse errors` 吞掉 —— 后果是 nav 状态
+      // 永远停在旧值（医生看到"连接正常"却什么都不更新）。留痕即可，**不**改状态：
+      // 单帧畸形不代表通道断了，谎报 disconnected 会制造假的"断线"告警。
+      reportWarn('ws-nav', '导航通道收到无法解析的报文（本次事件已丢弃）', err);
     }
   }
 
@@ -329,8 +338,9 @@ export class DualWebSocketManager {
           // 与 nav 通道同理：不回 pong 会被服务端心跳判死（dicom.py:173）
           this.dicomWs?.send(JSON.stringify({ type: 'pong' }));
         }
-      } catch {
-        // ignore
+      } catch (err) {
+        // A.60：同 nav（误丢 ping/auth 表现为"莫名重连"，原先毫无线索）
+        reportWarn('ws-dicom', '影像通道控制帧无法解析（已丢弃本次控制帧）', err);
       }
       return;
     }

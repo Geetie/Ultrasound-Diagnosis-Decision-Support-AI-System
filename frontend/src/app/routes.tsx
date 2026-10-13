@@ -11,6 +11,7 @@ import { useDicomUpload } from '@/hooks/useDicomUpload';
 import { getSession } from '@/services/sessionService';
 import type { SessionInfo } from '@/types/api';
 import { organDisplayName } from '@/types/session';
+import { reportError } from '@/utils/errorReport';
 import VoiceControl from '@/components/voice/VoiceControl';
 import { fetchDicomForDisplay, listSessionImages } from '@/services/imagingService';
 import { needsDoctorReview, toConclusionView } from '@/services/diagnosisAdapter';
@@ -183,7 +184,12 @@ function WorkspaceRoute() {
       .then(async (list) => {
         const last = list.images.at(-1);
         if (!alive || !last) return; // 该会话还没有影像：不是故障，不提示
-        const id = await fetchDicomForDisplay(last.image_id).catch(() => null);
+        const id = await fetchDicomForDisplay(last.image_id).catch((err: unknown) => {
+          // A.60：医生可见出口在下面（`data-region="image-load-error"`，非静默）；
+          // 这里补技术留痕，走统一出口便于将来接采集。
+          reportError('workspace', '影像字节取回失败（本次检查的影像将不可显示）', err);
+          return null;
+        });
         if (!alive) return;
         if (id) {
           // backendImageId：标注存档 key（A.40），id 字段是 sessionId（按会话匹配）
@@ -196,7 +202,7 @@ function WorkspaceRoute() {
       .catch((err: unknown) => {
         if (!alive) return;
         // 技术细节进控制台（医生可见文案保持可读，沿用 A.56 的可读降级口径）
-        console.error('[workspace] 会话影像列表读取失败', sessionId, err);
+        reportError('workspace', '会话影像列表读取失败', err);
         setSessionImageIssue({ id: sessionId, reason: '影像列表读取失败' });
       });
     return () => {

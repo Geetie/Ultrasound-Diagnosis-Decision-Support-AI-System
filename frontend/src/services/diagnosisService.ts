@@ -291,8 +291,8 @@ export function pollDiagnosisResult(
         }
         currentDelay = pollInterval;
       } catch {
+        // silent-ok: 单次轮询的瞬时失败按退避重试；终态由服务端给出，超时由外层 onTimeout 提示
         if (checkCancelled()) return;
-        // 瞬时失败（网络抖动/后端重启）按退避重试，不打断医生等待
         currentDelay = Math.min(currentDelay * 1.5, maxBackoffMs);
       }
 

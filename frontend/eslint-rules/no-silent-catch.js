@@ -16,14 +16,22 @@
  *   c) **用户可见降级**：antd `message.error|warning|info`、`notification.*`、
  *      `toast.*`、`alert(...)`、React state setter（`set` + 大写字母，如
  *      `setError(...)`）、把失败写进名字含 error/warn/fail/issue/problem 的变量；
- *   d) 行内豁免 `// silent-ok: 理由`（理由必填，≥4 字符，便于审计与 grep）。
+ *   d) 豁免标记 `// silent-ok: 理由`（理由必填，≥4 字符，便于审计与 grep）。
+ *      位置：写在 **`catch` 同行**，或写在 **catch 块内**（含空块里的注释行）。
+ *      A.60 放宽：`} catch {` 行常已很长，把理由写进块内更易读；两种写法都认。
  *
  * 与 20 号原文的**有意偏离**：原文写"catch 必须带 `console.error` **+** 用户可见降级"。
  * 实测按"二者皆需"会让 `catch (e) { logger…; throw e }` 这类正当写法判红，
  * 规则会立刻被绕过（历史教训：守卫误报一次，之后就没人再信它）。
  * 本实现要求"**不得两者皆无**"，并把 baseline 锁在存量上——只挡新增。
  */
-const WAIVER = '// silent-ok:';
+/**
+ * 豁免标记：`// silent-ok: 理由` 或 `/* silent-ok: 理由 *\/`（A.60 起两种都认）。
+ *
+ * 为什么要两种：单行写法 `try { x(); } catch { /* silent-ok: 幂等 *\/ }` 只能用块注释，
+ * 而块注释里的标记此前不被识别 → 那两处明明写了理由却仍判红（A.60 实测：DicomViewer 8 -> 2）。
+ */
+const WAIVER_RE = /(?:\/\/|\/\*)\s*silent-ok:\s*([^\n]*)/;
 
 const LOG_CALLEES = new Set([
   'reportError',
@@ -155,10 +163,24 @@ const noSilentCatch = {
     const sourceCode = context.sourceCode ?? context.getSourceCode();
     const lines = sourceCode.lines ?? sourceCode.getText().split('\n');
 
+    /** 理由是否够实（≥4 字符，且去掉块注释尾部 `*\/`）。 */
+    const reasonOk = (raw) => String(raw || '').replace(/\*\/.*$/, '').trim().length >= 4;
+
     const waived = (line) => {
-      const lineText = lines[line - 1] || '';
-      const markerAt = lineText.indexOf(WAIVER);
-      return markerAt >= 0 && lineText.slice(markerAt + WAIVER.length).trim().length >= 4;
+      const m = WAIVER_RE.exec(lines[line - 1] || '');
+      return Boolean(m && reasonOk(m[1]));
+    };
+
+    /**
+     * 豁免判定（A.60）：标记写在 `catch` 同行，或写在 **catch 块内**（含空块里的注释行）。
+     *
+     * 只看块内文本而不是逐行扫描——空块 `catch { /* 注释 *\/ }` 没有语句行，
+     * 逐行法会漏掉这类（而"空块 + 理由注释"正是最常见的正当静默形态）。
+     */
+    const waivedInBlock = (blockNode) => {
+      if (!blockNode || !blockNode.range) return false;
+      const m = WAIVER_RE.exec(sourceCode.getText(blockNode));
+      return Boolean(m && reasonOk(m[1]));
     };
 
     /** 简洁箭头体是否"空"：`() => undefined` / `() => null` / `() => {}`。 */
@@ -171,7 +193,8 @@ const noSilentCatch = {
 
     return {
       CatchClause(node) {
-        if (waived(node.loc.start.line)) return; // 显式豁免（理由必填）
+        // 显式豁免（理由必填）：`catch` 同行，或 catch 块内
+        if (waived(node.loc.start.line) || waivedInBlock(node.body)) return;
         const body = node.body && node.body.body ? node.body.body : [];
         if (body.length === 0 || !body.some(isEvidence)) {
           context.report({ node, messageId: 'silent' });
@@ -188,8 +211,10 @@ const noSilentCatch = {
         if (!handler || (handler.type !== 'ArrowFunctionExpression' && handler.type !== 'FunctionExpression')) {
           return;
         }
-        if (waived(callee.property.loc.start.line)) return;
         const body = handler.body;
+        // 豁免：`.catch(` 同行，或 handler 块内（A.60 与 try/catch 同口径）
+        if (waived(callee.property.loc.start.line)) return;
+        if (body.type === 'BlockStatement' && waivedInBlock(body)) return;
         const silent =
           (body.type === 'BlockStatement' && (body.body.length === 0 || !body.body.some(isEvidence))) ||
           (body.type !== 'BlockStatement' && isEmptyArrowBody(body));

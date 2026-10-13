@@ -14,6 +14,7 @@ import {
 import DicomToolbar from './DicomToolbar';
 import DicomOverlay from './DicomOverlay';
 import LoadingOverlay from '@/components/common/LoadingOverlay';
+import { reportError } from '@/utils/errorReport';
 
 interface DicomViewerProps {
   imageId?: string;
@@ -40,14 +41,14 @@ export default function DicomViewer({ imageId, onFrameChange }: DicomViewerProps
     try {
       enable(element);
     } catch {
-      // cornerstone.enable may fail if element has no dimensions yet
+      // silent-ok: 元素尚无尺寸时 enable 会抛（随 ResizeObserver 就绪后重建），无用户可见影响
     }
 
     useDicomStore.getState().setCornerstoneElement(element);
 
     const handleResize = () => {
       if (element) {
-        try { resize(element); } catch { /* ignore */ }
+        try { resize(element); } catch { /* silent-ok: 未 enable 时 resize 无意义（幂等，下次事件重试） */ }
       }
     };
 
@@ -70,7 +71,7 @@ export default function DicomViewer({ imageId, onFrameChange }: DicomViewerProps
           });
         }
       } catch {
-        // viewport read failed
+        // silent-ok: 渲染事件里读 viewport 属同步式读（拿不到即跳过本次同步，下次事件重试）
       }
     };
 
@@ -80,7 +81,7 @@ export default function DicomViewer({ imageId, onFrameChange }: DicomViewerProps
       resizeObserver.disconnect();
       element.removeEventListener('cornerstoneimagerendered', handleImageRendered);
       useDicomStore.getState().setCornerstoneElement(null);
-      try { disable(element); } catch { /* ignore */ }
+      try { disable(element); } catch { /* silent-ok: 卸载清理（幂等，元素已分离属预期） */ }
     };
   }, []);
 
@@ -99,8 +100,12 @@ export default function DicomViewer({ imageId, onFrameChange }: DicomViewerProps
         if (cancelled) return;
         try {
           displayImage(element, image);
-        } catch {
-          // display may fail if element is not ready
+        } catch (err) {
+          // A.60：显示失败**必须说出来**。原先空块忽略，紧接着无条件 `setLoaded(true)`
+          // → 医生看到的是"已加载"的黑屏/空白影像区、零提示（A.35 形态：占位被当成真实）。
+          // 这里落进 store 的 error，由本组件的 IMAGE LOAD ERROR overlay 呈现。
+          reportError('dicom-viewer', '影像渲染失败（像素数据可能不受支持）', err);
+          setError('影像渲染失败，请重新选择检查');
         }
         setLoaded(true);
         setLoading(false);
@@ -118,7 +123,7 @@ export default function DicomViewer({ imageId, onFrameChange }: DicomViewerProps
             });
           }
         } catch {
-          // viewport read failed
+          // silent-ok: 同渲染事件里的读（同步式读，失败跳过本次同步）
         }
 
         if (image.data) {
@@ -149,7 +154,7 @@ export default function DicomViewer({ imageId, onFrameChange }: DicomViewerProps
               bitsAllocated,
             });
           } catch {
-            // metadata extraction failed, non-critical
+            // silent-ok: DICOM 元数据是只读展示增强（缺标签时 overlay 少几行，不影响影像与判读）
           }
         }
       })
@@ -180,7 +185,7 @@ export default function DicomViewer({ imageId, onFrameChange }: DicomViewerProps
         activateTool('PanTool');
       }
     } catch {
-      // tool activation may fail if cornerstone is not initialized
+      // silent-ok: 工具切换在 cornerstone 未初始化时必抛（UI 会在初始化后重放本次 activeTool）
     }
   }, [activeTool]);
 
