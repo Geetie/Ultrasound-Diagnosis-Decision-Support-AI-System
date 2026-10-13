@@ -1,7 +1,7 @@
 # progress.md — 当前状态（唯一「现在在哪」来源）
 
-**Last Updated**: 2026-10-13（A.55 影像叠加色主题无关化 + 对比度审计鲁棒化；收尾轮修掉 1 个 P0）
-**HEAD**: 分支 `main`（本轮：叠加色 token 主题无关化（浅色主题下 `--color-text-primary` 对影像底板只有 1.22、叠加标注几乎不可见；旧审计脚本是硬编码色板+坐标的穷举法，静默通过）；**收尾轮修掉 P0——A.55 上轮提交的前端产物丢了 `VITE_BASE=/ui/`，引用 `/assets/…` 全 404（MIME=json）→ React 永不挂载=全站白屏**，已重建产物+新增产物前缀守卫；并修掉 p25 取证探针两处缺陷（`--user-data-dir` 被 Playwright 拒绝、工作区 URL 写错 `/ui/workspace` 致 query 丢失落到设计预览态）。真机 p25 **PASS**（两主题各 8 个真实 DOM 叠加元素全部 AA 达标、像素级最坏 6.79~9.39、dark/light 截图完全一致、0 JS 错误），截图对应 HEAD `da58f3d`。详见 16 号附录 A.55）
+**Last Updated**: 2026-10-13（A.56 分级提取根治 + 器官声明对齐 + 走查修掉「工作区导航静默失效」）
+**HEAD**: 分支 `main`（本轮三条线：①**分级提取根治**——专科 Agent 的平行正则改走 `grading_definitions` 单一事实源（`4a/4b/4c` 收敛为 `TR4`），抽取失败改**有界重试 + 按需结构化**（实测 `response_format` 3/3 生效、`guided_json` **0/3 被新版 vLLM 静默忽略**），降级文案改可读中文 + `needs_review`、技术串移出正文；真机 p27（8 轮真实判读）**降级 0/8、零技术串、退出码 0**，并据此挖出「理由里的范围说明被当结论 → 分级被抬高一级」改为**显式分级段优先**。②**器官声明对齐（临床安全）**——`ORGAN_PRESETS` 补 `cardiac`（否则心脏图只能声明甲状腺 → 按甲状腺出「结节 TI-RADS + 病灶面积」压在心脏图上）+ 分割不可用时给「改选部位」引导。③**走查修掉 P0 级可用性缺陷**——工作区装载真实多帧影像后点导航（报告 / 工作列表 / 设置）**URL 变了但视图永不切换**（react-router v7 默认把 location 更新放进 `startTransition`，该 lane 在工作区永不提交；普通 lane 的 setState 仍正常、无 JS 错误、无 chunk 请求），改 `<BrowserRouter useTransitions={false}>` + 新增守卫（反证即红）。真机 p26 **PASS=32 FAIL=1**（唯一 FAIL=T1-5b：`liver/cardiac` 报告模板缺 `{{nodule_summary}}` 段 → 分割面积与帧级溯源不进正文，已登记未修）。详见 16 号附录 A.56）
 **Owner of truth**: 本文件只记「当前状态/下一步/阻塞」；**功能与门控状态在 `feature_list.json`**，长期证据在 `16-开发进展汇报-20260928.md` 附录 A。
 
 ## Current Objective
@@ -12,6 +12,26 @@
 ## Current State
 
 ### What 已完成（有证据，详见 `feature_list.json` 与 16 号附录 A）
+
+- **分级提取根治 + 器官声明对齐 + 导航静默失效修复（2026-10-13，A.56）**：
+  ①**分级提取**：`grade_unparseable` 这类降级曾把英文技术串当**结论正文**给医生看（真机截图证），
+  修法四层 = 单一事实源（`grading_definitions.extract_grading_severest` / `grade_major_level`）+
+  按需结构化（仅在抽取失败后的**有界重试**用 `response_format`，主调用保持自由文本）+
+  可读降级（中文说明 + `reasoning_trace` 细节 + `needs_review=True`）+ 可观测；
+  真机 **p27a**：`response_format` 3/3 生效、`guided_json` **0/3 静默失效**（钉死 AGENTS.md 硬规则 #5）；
+  真机 **p27（8 轮）**：**降级 0/8、技术串泄漏 0、退出码 0**，并据此把分级抽取改为
+  **显式分级段优先**（修掉「理由里的范围说明 TR4 被当结论 → 分级抬高一级」）。
+  ②**器官声明对齐（临床安全）**：`ORGAN_PRESETS` 补第 4 项 `cardiac`（**有意偏离设计稿**，
+  `session.ts` 文件头写明理由与回退条件）+ 分割不可用时 `data-region="organ-consistency-hint"`
+  的可执行引导；实测报告 `organ=cardiac`、建会话页按钮 甲状腺/颈部淋巴结/肝脏/**心脏**。
+  ③**走查修掉 P0 级可用性缺陷（导航静默失效）**：工作区装载真实影像后，点 报告/工作列表/设置
+  **URL 变、视图永不切换**（医生被困住，报告入口形同虚设）。证据链：走 react-router `navigate`
+  → `history.push` ✓、**点击后无任何路由 chunk 请求**、DOM 变更 0、rAF 62fps、0 JS 错误、
+  **同状态普通 lane 的 setState 仍立即渲染**、有头/无头都复现 → 结论：v7 默认
+  `React.startTransition` 提交 location，而该 transition lane 在工作区（cornerstone 悬挂边界）
+  永不提交。修：`useTransitions={false}` + 守卫（`test_browser_router_disables_transitions`，
+  反证即红）。真机 p26 **T1-7c 真实点击 → 视图切换 PASS**。
+  ④**真机走查总账**：p26 **PASS=32 FAIL=1**；唯一 FAIL（T1-5b）已定位为**报告模板缺口**并登记（见下）。
 
 - **影像叠加色主题无关化 + 对比度审计鲁棒化（2026-10-13，A.55）**：
   ①**问题**：叠加标注压在**主题无关**的固定深底 `--color-image-bg=#15171B` 上，但取色跟 UI
@@ -258,6 +278,15 @@
 
 ## Recommended Next Step
 
+> **A.56 走查新发现（未修，2026-10-13）**：`liver_standard.md` / `cardiac_standard.md`
+> **缺「影像分割（模型辅助）」段**（`{{nodule_summary}}` 只在 `thyroid_standard.md` 与
+> `report_service` 内置默认模板里）→ 心脏/肝脏报告**看不到分割面积与帧级溯源**
+> （实测 `content.nodule_summary` 已含「取自第 6/7 帧」，正文不渲染），即真机 p26 唯一
+> 失败判据 **T1-5b** 的根因。建议修法：两模板各加一段 + 顺移后续段号（属医疗文书结构
+> 改动，需与设计/文档一并登记后再动）。另外两项口径已 p26 如实记录、暂不改：
+> 语音入口只在 质控/知识库/同意/反馈 四页可达（主流程四页刻意不套 `AppLayout`）；
+> `/api/v1/admin/device` 医生 token 403 属权限边界。
+
 1. **交付收口（2026-10-12 A.51 更新，距 10-17 交付）**：P2 登记两项已销号
    （speech 引擎已部署、告警联系人语义已定案）；本轮第一梯队四项（检索口径、多帧③、
    设备/患者列表端点、validate 降载）**全部闭环**。**剩余**：①NMPA 验收材料
@@ -306,6 +335,8 @@
 | `scripts/a51_ui_walkthrough.mjs` | A.52 浏览器层走查（本机 Playwright + 隧道，11/11，含截图/视频） |
 | `scripts/audit/p20_frontend_boundary.mjs` | A.52 前端深度边界摸排（31/31：认证/输入/装载/报告/帧/渲染/请求面，退出码可进 CI） |
 | `scripts/audit/p25_overlay_contrast.mjs` + `scripts/contrast.py` | A.55 影像叠加对比度真机取证（两主题截图 + 真实 DOM 旁证 + WCAG 计算式判定，退出码可门禁） |
+| `scripts/audit/p26_squad_e2e_walkthrough.mjs` | A.56 第一/第二梯队端到端走查（医生视角：登录→建会话→真实多帧 DICOM→cine→测量→判读→报告→第二次检查→历史对比；PASS=32 FAIL=1，退出码可门禁） |
+| `scripts/audit/p27_grade_extraction.py` + `p27a_structured_output_probe.py` | A.56 分级提取降级率门禁（真机 8 轮：降级 0/8、零技术串、退出码 0）+ 结构化输出能力实测（`response_format` 3/3、`guided_json` 0/3） |
 | `scripts/deploy_frontend.sh` | A.52 前端产物清空式部署（防陈旧 chunk 堆积） |
 | `scripts/audit/p15_retrieval_parity.py` | A.51 检索口径（服务腿 vs eval，真机可复跑） |
 | `scripts/audit/p16_list_endpoints.py` | A.51 设备/患者列表端点（14 项判定） |

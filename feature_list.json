@@ -748,6 +748,51 @@
       "result": "重建产物（VITE_BASE=/ui/，清空式部署 38 文件 / 29 js）；新增守卫 test_shipped_index_html_uses_ui_base_and_refs_exist（含反证：改坏前缀即红）；服务器核验 /ui/ 200、/ui/assets/index-DlUq0Vv3.js 200(text/javascript)",
       "dependencies": [],
       "evidence": "16 号 A.55.2①/A.55.4；tests/unit/quality/test_frontend_render_guard.py；scripts/deploy_frontend.sh"
+    },
+    {
+      "id": "grade-extraction-robustness",
+      "name": "分级提取根治：单一事实源 + 按需结构化 + 可读降级",
+      "description": "专科 Agent 用与评测链路不同源的平行正则抽取分级，长上下文下模型漂移成「只给特征不给分级码」时抽不到 → 降级并把英文技术占位串（grade_unparseable … manual review required）当结论正文给医生看。修法四层：①单一事实源（grading_definitions.extract_grading_severest / grade_major_level，thyroid 4a/4b/4c 收敛为 TR4）；②按需结构化（仅在抽取失败后的有界重试用 response_format，主调用保持自由文本）；③可读降级（中文说明 + reasoning_trace 细节 + needs_review=True）；④可观测（grade_extracted / structured_grading_retry_* / finish_reason / llm_raw_len，不落 PHI）。",
+      "status": "done",
+      "result": "真机 p27a：response_format 3/3 生效、guided_json 0/3 被新版 vLLM 静默忽略（钉死硬规则 #5）；真机 p27（8 轮真实判读）：降级 0/8、技术串泄漏 0、退出码 0；并据 p27 发现把分级抽取改为「显式分级段优先」（修掉理由里的范围说明 TR4 被当结论 → 分级抬高一级）",
+      "dependencies": [],
+      "evidence": "16 号 A.56.1/A.56.4；scripts/audit/p27_grade_extraction.py；scripts/audit/p27a_structured_output_probe.py；tests/unit/agt/test_grade_extraction_contract.py（27 例）"
+    },
+    {
+      "id": "organ-image-consistency",
+      "name": "器官声明对齐（心脏图不再只能声明甲状腺）+ 分割不可用引导",
+      "description": "装心脏超声图时医生无法声明 cardiac（ORGAN_PRESETS 只有 甲状腺/颈部淋巴结/肝脏，设计稿 09 亦然）→ 系统按甲状腺出「结节 TI-RADS 分级 + 病灶面积」压在心脏图上 = 错误器官语义（比不输出更危险）。修法：ORGAN_PRESETS 补 cardiac（有意偏离设计稿，session.ts 文件头写明理由与回退条件）；建会话页本就从 ORGAN_PRESETS.map() 渲染（新增守卫防写死）；WorkspaceImageRegion 分割不可用时追加 data-region=organ-consistency-hint 的「改选部位」引导。",
+      "status": "done",
+      "result": "真机 p26：T1-6d 部位=心脏、T1-6e 部位预设含「心脏」（截图 b1-patient-suggest.png 见 甲状腺/颈部淋巴结/肝脏/心脏 四按钮）；报告 organ=cardiac；静态守卫 3 例（ORGAN_PRESETS 含 cardiac / 建会话页数据驱动 / 引导存在）",
+      "dependencies": [],
+      "evidence": "16 号 A.56.2/A.56.4；frontend/src/types/session.ts；frontend/src/components/workspace/WorkspaceImageRegion.tsx；tests/unit/quality/test_frontend_render_guard.py::TestOrganDeclarationGuard"
+    },
+    {
+      "id": "report-entry-nav",
+      "name": "工作区导航静默失效修复（react-router v7 useTransitions）",
+      "description": "工作区装载真实多帧影像后，点工作区导航（报告/工作列表/设置）URL 变了但视图永不切换 —— 医生被困在工作区、报告入口形同虚设。实测证据链：走 react-router 的 navigate → history.push（抓 pushState 调用栈）、点击后无任何路由 chunk 请求、DOM 变更 0、rAF 62fps、0 JS 错误、同状态普通 lane 的 setState 仍立即渲染、有头/无头均复现。根因：v7 的 BrowserRouter 默认把 location 更新包进 React.startTransition，而该 transition lane 在工作区（cornerstone 悬挂边界）永不提交。",
+      "status": "done",
+      "result": "修：<BrowserRouter useTransitions={false}>（v7 官方 props，改回同步 setState）；守卫 test_browser_router_disables_transitions（反证：改回 true 即红）；真机 p26 T1-7c「真实点击 → 视图切换」PASS（修前 FAIL）",
+      "dependencies": [],
+      "evidence": "16 号 A.56.3/A.56.4；frontend/src/app/providers.tsx；tests/unit/quality/test_frontend_render_guard.py::TestRouterBasename；scripts/audit/p26_squad_e2e_walkthrough.mjs"
+    },
+    {
+      "id": "report-segmentation-section-liver-cardiac",
+      "name": "报告模板补「影像分割（模型辅助）」段（liver / cardiac）",
+      "description": "{{nodule_summary}} 只出现在 templates/report/thyroid_standard.md 与 report_service 内置默认模板里，liver_standard.md / cardiac_standard.md 缺该段 → 心脏/肝脏报告正文看不到分割面积与帧级溯源（实测 content.nodule_summary 已含「模型辅助分割（cardiac）：…；取自第 6/7 帧（多帧候选择优）」，但正文不渲染）。即真机 p26 唯一失败判据 T1-5b 的根因。建议修法：两模板各加一段 ## N、影像分割（模型辅助）+ {{nodule_summary}} 并顺移后续段号；属医疗文书结构改动，需与设计/文档一并登记后再动。",
+      "status": "planned",
+      "result": "未修（本轮只登记）：p26 T1-5b FAIL 已就地升级为诊断式判据（失败时查后端 content，区分「内容里没有」与「模板没渲染」）",
+      "dependencies": [],
+      "evidence": "16 号 A.56.5①；app/templates/report/{liver,cardiac}_standard.md；app/templates/report/thyroid_standard.md（对照组）；scripts/audit/p26_squad_e2e_walkthrough.mjs（T1-5b）"
+    },
+    {
+      "id": "main-flow-voice-entry",
+      "name": "语音入口在主流程不可达（口径登记）",
+      "description": "主流程四页（工作区 / 工作列表 / 新建会话 / 设置）刻意不套 AppLayout，而 VoiceControl 挂在 AppLayout 上 → 语音入口只在 质控 / 知识库 / 同意 / 反馈 四页可达。另：/api/v1/admin/device 医生 token 403 属权限边界（需管理员角色），非端点缺失。两项均由 p26 如实记录（T1-3 / T1-6c），本轮不改。",
+      "status": "planned",
+      "result": "登记口径；如需医生在主流程用语音，需把 VoiceControl 移到页面级（或给工作区加入口），属交互设计改动",
+      "dependencies": [],
+      "evidence": "16 号 A.56.5②③；scripts/audit/p26_squad_e2e_walkthrough.mjs（T1-3 / T1-6c）"
     }
   ]
 }

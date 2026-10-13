@@ -5,18 +5,43 @@
 
 ## Last Updated
 
-2026-10-13（分支 `main`，HEAD `da58f3d`；**A.55 影像叠加色主题无关化 + 对比度审计鲁棒化
-已交付**——新增 `--color-overlay-*` 五件套（两主题显式同值），影像区样式与
-`WorkspaceImageRegion/WorkspaceDicomLayer` 全改引；`scripts/contrast.py` 从「硬编码色板 +
-硬编码坐标的穷举法」重写为「生产 CSS 逐主题解析 + 真实 DOM 旁证 + WCAG 计算式 +
-缺输入退出码 2」。**收尾轮修掉 1 个 P0**：A.55 上轮提交的前端产物丢了 `VITE_BASE=/ui/`
-→ 引用 `/assets/…` 全 404（MIME=json）→ **全站白屏**（真机实测登录页 inputs=0），
-已重建产物 + 新增产物前缀守卫；并修 p25 探针两处缺陷（`--user-data-dir` 被 Playwright
-拒绝、工作区 URL 写错致 query 丢失落到设计预览态）。真机 p25 **PASS**（两主题各 8 个
-真实 DOM 元素全 AA、像素级最坏 6.79~9.39、dark/light 截图完全一致、0 JS 错误），
-截图 `C:\Windows\TEMP\uai_p25\overlay-{dark,light}.png`。详见 16 号附录 A.55）
+2026-10-13（分支 `main`；**A.56 分级提取根治 + 器官声明对齐 + 走查修掉「工作区导航静默失效」
+已交付**——①**分级提取**改走 `grading_definitions` 单一事实源 + 抽取失败后的**有界重试/按需结构化**
++ 可读降级（技术串移出医生可见正文），真机 **p27（8 轮）降级 0/8、零技术串、退出码 0**，
+并据此把分级抽取改为**显式分级段优先**（修掉「理由里的范围说明被当结论 → 分级抬高一级」）；
+真机 p27a 钉死 `response_format` 3/3 生效、`guided_json` **0/3 被 vLLM 静默忽略**。
+②**器官声明对齐（临床安全）**：`ORGAN_PRESETS` 补 `cardiac` + 分割不可用时的「改选部位」引导。
+③**走查修掉 P0 级可用性缺陷**：工作区装载真实影像后点导航（报告/工作列表/设置）**URL 变、
+视图永不切换**（react-router v7 默认把 location 更新放进 `startTransition`，该 lane 在工作区
+永不提交）→ 改 `<BrowserRouter useTransitions={false}>` + 守卫（反证即红）。
+真机 **p26 PASS=32 FAIL=1**（唯一 FAIL=T1-5b：`liver/cardiac` 报告模板缺 `{{nodule_summary}}`
+段 → 分割面积与帧级溯源不进正文，**已登记未修**）。详见 16 号附录 A.56）
 
-### A.55 复跑入口与踩坑（下一位直接用）
+### A.56 复跑入口与踩坑（下一位直接用）
+
+- 第一/第二梯队端到端走查（**本机** Playwright + 隧道，被测系统 = 服务器）：
+  `node scripts/audit/p26_squad_e2e_walkthrough.mjs --dicom1 <w1.dcm> --dicom2 <w2.dcm>`
+  （需 `UAI_DOCTOR_USER/PASSWORD`；样本在服务器现转：`scripts/camus_frame_to_dicom.py
+  --count 7 --multiframe --keyword 4CH_half` / 第二次换 `2CH_half`（同器官 cardiac）；
+  产出 `C:/Windows/TEMP/uai_p26/` 截图 + `p26_report.json`；退出码 0=全过）
+- 分级提取降级率门禁（**服务器**）：`~/uai/venv/bin/python scripts/audit/p27_grade_extraction.py
+  --rounds 8`（退出码 0=降级率达标且零技术串）
+- 结构化输出能力实测（**服务器**）：`scripts/audit/p27a_structured_output_probe.py`
+- 守卫：`pytest tests/unit/quality/test_frontend_render_guard.py`（34 例，含 `useTransitions`
+  与器官声明三例）、`tests/unit/agt/test_grade_extraction_contract.py`（27 例）
+- **踩坑（都会再犯）**：
+  ① **react-router v7 的 `<BrowserRouter>` 默认 `useTransitions`**：location 更新走 transition lane；
+  含重依赖（cornerstone）的页面里该 lane 可能**永不提交** → 导航静默失效（URL 变、视图不变、
+  无报错）。排查要点：**点击后有没有路由 chunk 请求**（没有 = React 没开始渲染新路由）+
+  **同页面普通 lane 的 setState 是否仍生效**（生效 = 不是 React 卡死）。
+  ② **本机 vitest 执行 `WorkspaceImageRegion.test.tsx` 会挂**（collect 正常、真执行长时间不返回）
+  → 覆盖改由静态守卫 + 真机 p26 承担。
+  ③ **cmd 里中文参数会因代码页变形**：`vitest -t "器官错配"` 恒 0 匹配（表现全是 skipped）→ 用 ASCII 过滤词。
+  ④ **`Start-Process` 子进程的 `%TEMP%` 与当前 shell 可能不同**：日志一律写**绝对路径**；
+  且 **bat 不能直接 `Start-Process -FilePath x.bat`**（要 `cmd.exe /c`）。
+  ⑤ 前端产物仍必须走 `scripts/deploy_frontend.sh` 口径（`VITE_BASE=/ui/`）——见上一轮 A.55 踩坑。
+
+### 上一轮（A.55）复跑入口与踩坑
 
 - 对比度真机取证（**本机** Playwright + 隧道；被测系统是服务器）：
   `node scripts/audit/p25_overlay_contrast.mjs`
