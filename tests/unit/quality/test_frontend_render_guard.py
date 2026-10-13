@@ -230,6 +230,30 @@ class TestRouterBasename:
         )
         assert "BASE_URL" in attrs, "basename 必须来自 import.meta.env.BASE_URL，别硬编码"
 
+    def test_browser_router_disables_transitions(self):
+        """A.56：`BrowserRouter` 必须显式 `useTransitions={false}`。
+
+        react-router v7 默认把 location 更新包进 `React.startTransition`。2026-10-13
+        临床视角真机走查实测：工作区装载真实多帧影像后，点工作区导航（报告 / 工作列表 /
+        设置）**URL 已切、视图永不切换** —— 按钮点得动、看起来有反应，实际什么都没发生，
+        医生被困在工作区（报告入口形同虚设）。取证结论：
+          · 走的是 react-router 的 `navigate` → `history.push`（抓 pushState 调用栈）；
+          · 点击后无任何路由 chunk 请求、无 JS 错误、DOM 零变更、rAF 62fps；
+          · **同状态普通 lane 的 setState 立即渲染**（切测量工具 aria-pressed 跟着变）
+            → 不是 React 卡死，而是该页面上的 transition lane 不提交
+            （工作区 cornerstone 懒加载/悬挂边界使 React 一直等它）；
+          · 有头/无头浏览器都复现 → 不是无头伪影。
+        关掉后路由改回同步 setState。这条守卫防它被人"顺手删掉"（删掉的表现是
+        **静默**的：页面看起来正常，只有点导航才暴露）。
+        """
+        m = re.search(r"<BrowserRouter\b([^>]*)>", _code(SRC / "app" / "providers.tsx"), re.S)
+        assert m, "BrowserRouter 标签解析失败"
+        assert re.search(r"useTransitions\s*=\s*\{\s*false\s*\}", m.group(1)), (
+            "BrowserRouter 缺 useTransitions={false}：v7 默认用 startTransition 提交 "
+            "location 更新，工作区装载真实影像后该 transition 不会提交 → 点导航 URL 变了"
+            "但页面不切换（医生被困在工作区）"
+        )
+
 
 class TestSpaFallbackMount:
     """钉子 ④：不能用 mount('/ui')，它会吃掉所有 /ui/* 让 SPA 回落永不生效。"""
@@ -327,6 +351,44 @@ class TestWorkspaceHasNavExit:
     def test_workspace_route_passes_nav(self):
         routes = _code(SRC / "app" / "routes.tsx")
         assert "navItems={" in routes, "路由层没把导航出口传给工作区"
+
+class TestOrganDeclarationGuard:
+    """A.56：器官声明必须能与真实影像对齐（临床安全）。
+
+    背景（2026-10-13 真机走查）：装心脏图时医生**无法声明** cardiac（预设只有
+    甲状腺 / 颈部淋巴结 / 肝脏），系统于是按甲状腺出「结节 TI-RADS 分级 + 病灶面积」
+    压在心脏图上 —— 错误器官语义的输出，比不输出更危险。护栏三处，必须数据驱动：
+
+    ① 部位预设含 ``cardiac``（写死三项会把心脏检查挡在门外）；
+    ② 建会话页从 ``ORGAN_PRESETS`` 渲染按钮（硬编码列表会与预设再走散）；
+    ③ 分割不可用时给「改选部位」的可执行引导，而不是让医生自己猜。
+
+    为什么放静态层：本机 vitest 执行 ``WorkspaceImageRegion.test.tsx`` 会挂在
+    cornerstone 依赖图上（A.55 起登记的已知限制），真机侧由 p26 的 T1-6d/T1-6e 覆盖。
+    """
+
+    def test_organ_presets_include_cardiac(self):
+        m = re.search(r"ORGAN_PRESETS[^=]*=\s*\[([^\]]*)\]", _code(SRC / "types" / "session.ts"))
+        assert m, "找不到 ORGAN_PRESETS"
+        assert "'cardiac'" in m.group(1), (
+            "ORGAN_PRESETS 缺 'cardiac'：心脏检查无法声明部位，只能落默认甲状腺 → "
+            "系统按甲状腺输出结节分级与病灶面积压在心脏图上（错误器官语义）"
+        )
+
+    def test_session_create_page_renders_presets_from_source(self):
+        text = _code(SRC / "pages" / "SessionCreatePage.tsx")
+        assert "ORGAN_PRESETS.map(" in text, (
+            "建会话页必须从 ORGAN_PRESETS 渲染部位按钮：硬编码列表会与预设走散，"
+            "重现「预设里有、页面点不到」（本轮真机走查实测的正是这一形态）"
+        )
+
+    def test_organ_mismatch_hint_present(self):
+        text = _code(SRC / "components" / "workspace" / "WorkspaceImageRegion.tsx")
+        assert 'data-region="organ-consistency-hint"' in text, (
+            "分割不可用时必须给「若本次影像并非当前声明的检查部位，请回新建会话改选部位」"
+            "的引导 —— 否则医生对着「未做分割」只能自己猜是没病还是没跑"
+        )
+
 
 class TestNavigationPaths:
     """导航路径**不得重复 basename**。

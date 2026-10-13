@@ -138,3 +138,32 @@ describe('WorkspaceImageRegion · 分割标注', () => {
     expect(screen.getByText('18.4 × 12.1 mm')).toBeInTheDocument();
   });
 });
+
+describe('WorkspaceImageRegion · A.56 器官错配引导', () => {
+  /**
+   * 本系统按**声明的部位**出结论。装心脏图却声明甲状腺时，会得到「结节 TI-RADS 分级 +
+   * 病灶面积」压在心脏图上 = 错误器官语义（比不输出更危险）。护栏有二：
+   *   ① 建会话页能声明 cardiac（ORGAN_PRESETS，PagesShell 测试钉住）；
+   *   ② 分割不可用（心脏无结节模型）时给出可执行的纠正路径，而不是让医生对着
+   *      「未做分割：分割旁路未启用」自己猜。
+   */
+  it('分割不可用 + 有真实影像 → 出现「改选部位」引导', () => {
+    render(
+      <WorkspaceImageRegion
+        dicomImageId="dicomfile:0"
+        segmentation={{ available: false, reason: 'not_enabled' }}
+      />,
+    );
+    expect(screen.getByText(/并非当前声明的检查部位/)).toBeInTheDocument();
+  });
+
+  it('分割可用时不出现该引导（不给正常流程加噪声）', () => {
+    render(<WorkspaceImageRegion dicomImageId="dicomfile:0" segmentation={SEG_OK} />);
+    expect(screen.queryByText(/并非当前声明的检查部位/)).toBeNull();
+  });
+
+  it('无真实影像（设计预览态）不出现该引导 —— 引导必须挂在真实影像上', () => {
+    render(<WorkspaceImageRegion segmentation={{ available: false, reason: 'not_enabled' }} />);
+    expect(screen.queryByText(/并非当前声明的检查部位/)).toBeNull();
+  });
+});

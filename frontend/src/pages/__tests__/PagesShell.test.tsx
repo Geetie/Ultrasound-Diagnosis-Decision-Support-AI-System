@@ -281,12 +281,15 @@ describe('09_新建检查会话', () => {
     expect(container.querySelector('.page-sidebar__item--active')!.textContent).toBe('工作列表');
   });
 
-  it('三个部位预设，甲状腺默认预选', () => {
+  it('部位预设：设计稿 3 项 + cardiac（临床补充），甲状腺默认预选', () => {
     const { container } = wrap(<SessionCreatePage />);
     const organs = container.querySelectorAll('.page-organ');
-    expect(organs).toHaveLength(3);
+    // 第 4 项「心脏」是**有意偏离设计稿**的临床补充：没有它，装载心脏超声图时
+    // 只能声明甲状腺 → 系统按甲状腺出"结节 TI-RADS + 病灶面积"（错误器官语义）。
+    // 见 frontend/src/types/session.ts 文件头与 16 号附录 A.56。
+    expect(organs).toHaveLength(4);
     expect([...organs].map((n) => n.textContent)).toEqual([
-      '甲状腺', '颈部淋巴结', '肝脏',
+      '甲状腺', '颈部淋巴结', '肝脏', '心脏',
     ]);
     expect(organs[0].getAttribute('aria-pressed')).toBe('true');
   });

@@ -105,9 +105,15 @@ const shot = (name) =>
 
 const errs = [];
 const badRes = [];
+// 网络流水（诊断「点入口后视图不切换」用）：记录全部请求 + 4xx/5xx
+const netLog = [];
+page.on('request', (r) => netLog.push(`→ ${r.method()} ${r.url().replace(BASE, '')}`));
 page.on('pageerror', (e) => errs.push(String(e && e.message).slice(0, 160)));
 page.on('response', (r) => {
-  if (r.status() >= 400) badRes.push(`${r.status()} ${r.url().replace(BASE, '')}`);
+  if (r.status() >= 400) {
+    badRes.push(`${r.status()} ${r.url().replace(BASE, '')}`);
+    netLog.push(`  !! ${r.status()} ${r.url().replace(BASE, '')}`);
+  }
 });
 page.on('console', (m) => {
   if (m.type() !== 'error') return;
@@ -151,8 +157,8 @@ async function createSession(patientId, deviceId) {
   }
   if (!verified) return { ok: false, why: '患者校验未通过（存在性/知情同意）' };
   // 部位显式点选：两次检查必须同部位，"前后对比"才成立。
-  // 注意：预设列表是 ORGAN_PRESETS=['thyroid','cervical_ln','liver'] —— 心脏**不在**预设里，
-  // 装心脏图时医生无法声明 cardiac（本轮走查实测的观察项，脚本如实记录实际选中的部位）。
+  // 预设列表 ORGAN_PRESETS 已补入 'cardiac'（A.56：心脏图只能声明甲状腺会产出错误器官
+  // 语义的结论）。脚本仍**如实记录实测选中的部位**，不假设按钮一定存在。
   const organBtn = page.getByRole('button', { name: ORGAN_LABEL });
   const hasOrgan = (await organBtn.count()) > 0;
   if (hasOrgan) await organBtn.first().click();
@@ -287,6 +293,13 @@ try {
     if (r.ok) {
       sess1 = r.sessionId;
       record('T1-6d', `建会话成功并直达工作区（患者 ${candidate}）`, true, `session=${sess1} 部位=${r.organSelected}`);
+      // A.56：影像与声明部位必须能对齐 —— 预设里缺该部位时医生只能错报器官
+      record(
+        'T1-6e',
+        `建会话页部位预设含「${ORGAN_LABEL}」（声明部位可对齐真实影像）`,
+        r.organSelected === ORGAN_LABEL,
+        `实测选中部位=${r.organSelected}`,
+      );
       break;
     }
     record('T1-6d', `建会话尝试失败（患者 ${candidate}）`, false, r.why);
@@ -416,6 +429,13 @@ try {
   const reportBtn = await page.$("button:has-text('报告')");
   record('T1-7b', '工作区出现「报告」入口', reportBtn !== null);
   if (reportBtn) {
+    // 诊断元信息（本轮定位「URL 已切但视图不动」用；定位完可精简）
+    const entryMeta = await reportBtn.evaluate((el) => ({
+      tag: el.tagName,
+      cls: String(el.className),
+      text: (el.textContent || '').trim(),
+    }));
+    const netFrom = netLog.length;
     await reportBtn.click();
     // 等**报告页 DOM** 就绪 —— 只看 URL 会被懒加载 chunk 抢跑（实测 URL 已切 /ui/report
     // 但 DOM 仍是工作区，四条判据因此同刻假性失败）。
@@ -428,6 +448,17 @@ try {
     record('T1-7c', '点工作区「报告」入口后**视图**切换（DOM 就绪，非只看 URL）', onReport, page.url());
     if (!onReport) {
       await shot('d0-report-nav-stuck');
+      const domState = await page.evaluate(() => ({
+        href: location.href,
+        wsRoot: !!document.querySelector('.ws-root'),
+        antLayout: !!document.querySelector('.ant-layout'),
+        reportHeading: /报告查看与签发/.test(document.body.innerText || ''),
+        rootHtmlLen: (document.getElementById('root')?.innerHTML || '').length,
+        head: (document.body.innerText || '').replace(/\s+/g, ' ').slice(0, 110),
+      }));
+      console.log(`DBG entry=${JSON.stringify(entryMeta)}`);
+      console.log(`DBG dom=${JSON.stringify(domState)}`);
+      console.log(`DBG net=${netLog.slice(netFrom, netFrom + 20).join(' | ') || '(click 后无任何请求)'}`);
       // 反证：同一 URL 直接导航能否渲染 —— 区分「路由/页面坏了」与「入口切换失效」
       const rid = new URL(page.url()).searchParams.get('request_id') || '';
       await page.goto(`${BASE}/ui/report?request_id=${encodeURIComponent(rid)}`, {
@@ -461,12 +492,22 @@ try {
       record('T1-7d', '报告页有「打印 / 导出 PDF」入口', printBtn > 0, `buttons=${printBtn}`);
       const body = (await page.locator('body').innerText().catch(() => '')).replace(/\s+/g, ' ');
       const frameRef = /第\s*\d+\s*\/\s*\d+\s*帧|\d+\s*\/\s*\d+\s*帧/.test(body);
-      record(
-        'T1-5b',
-        '报告正文含「第 X/Y 帧」帧级溯源（多帧③）',
-        frameRef,
-        frameRef ? (body.match(/第\s*\d+\s*\/\s*\d+\s*帧[^，。]{0,12}/) || [''])[0] : '未出现帧号',
-      );
+      let frameDetail = frameRef
+        ? (body.match(/第\s*\d+\s*\/\s*\d+\s*帧[^，。]{0,12}/) || [''])[0]
+        : '未出现帧号';
+      if (!frameRef) {
+        // 失败时把原因钉死，避免下一位重复调查：**内容里没有** vs **模板没渲染**是两回事
+        // （A.56 实测：结构化 content.nodule_summary 已含「取自第 6/7 帧」，但该腿
+        //  organ=cardiac 的报告模板只渲染"心功能测量"，分割段（字段名仍是
+        //  nodule_summary）未进正文 → 属报告模板侧缺口，不是判读链路丢数据）。
+        const ridNow = new URL(page.url()).searchParams.get('request_id') || '';
+        const rep = await api('GET', `/api/v1/report/by-request/${encodeURIComponent(ridNow)}`, null, stoken);
+        const inContent = '帧' in JSON.stringify(rep.json ?? {});
+        frameDetail = inContent
+          ? `报告正文未见帧号，但后端 content 已含（organ=${rep.json?.organ}）→ 报告模板未渲染该段`
+          : '报告内容（结构化 + 渲染）里都没有帧号 → 判读→报告数据链路缺口';
+      }
+      record('T1-5b', '报告正文含「第 X/Y 帧」帧级溯源（多帧③）', frameRef, frameDetail);
       const histEntry = await page.locator('[data-region="report-to-history"]').count();
       record('T2-3-pre', '报告页有「历史对比」入口', histEntry > 0, `entries=${histEntry}`);
       await shot('d1-report');

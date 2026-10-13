@@ -216,14 +216,20 @@ export default function WorkspaceImageRegion({
       )}
 
       {/* 后端契约：available=false 必须显示「未做分割：<原因>」，不能显示成
-          「未检出结节」—— 缺权重/未启用与"没病"是两回事（schemas.py 原文）。 */}
+          「未检出结节」—— 缺权重/未启用与"没病"是两回事（schemas.py 原文）。
+          尾部追加"部位"引导（2026-10-13 器官错配）：本系统按**声明的部位**出结论，
+          影像与声明部位不符时（例如心脏图声明成甲状腺）会得到错误器官语义的结论；
+          这里给医生一条可执行的纠正路径，而不是静默照出。 */}
       {seg && !seg.available && stack.length > 0 && (
         <span
           className="ws-image__text"
-          style={{ left: 24, bottom: 12, width: 400 }}
+          style={{ left: 24, bottom: 12, width: 560 }}
           data-region="segmentation-unavailable"
         >
           未做分割：{SEG_REASON_LABEL[seg.reason ?? ''] ?? seg.reason ?? '原因未提供'}
+          <span data-region="organ-consistency-hint">
+            （若本次影像并非当前声明的检查部位，请回「新建会话」改选部位后重扫）
+          </span>
         </span>
       )}
 
