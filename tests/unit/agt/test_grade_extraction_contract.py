@@ -82,6 +82,24 @@ class TestCanonicalExtractionPrimitives:
     def test_severest_returns_none_without_grading(self):
         assert extract_grading_severest("甲状腺结节 8mm，边界清晰", "thyroid") is None
 
+    def test_explicit_grade_segment_beats_reason_range_note(self):
+        """回归（真机 p27 实测的**假高**）：理由里的范围说明不得覆盖结论段。
+
+        模型原样输出（截取自 p27 真实响应）：
+        ``分级: TR3 总分: 3 … 理由: 实性(3) + 低回声(2) + 边界尚清(1) = 6 分 → TR4（注：4-6 分为 TR4）``
+        —— 全文取最严重会拿到理由里的 TR4，把医生看到的结论抬高一级。
+        """
+        real = (
+            "分级: TR3 总分: 3 置信度: 0.85 理由: 实性(3) + 低回声(2) + 边界尚清(1) "
+            "= 6 分 → TR4（注：4-6 分为 TR4） 证据: chunk_a1"
+        )
+        assert extract_grading_severest(real, "thyroid") == "3"
+
+    def test_conservative_take_within_explicit_segment(self):
+        """保守取重仍生效 —— 但只在**同一结论段内**（"或"场景）。"""
+        assert extract_grading_severest("分级: TR3 或 TR4 置信度: 0.8", "thyroid") == "4"
+        assert extract_grading_severest("分级: LR-3 或 LR-5 置信度: 0.8", "liver") == "5"
+
 
 # ----------------------------------------------------------------------
 # 2) thyroid：4a/4b → TR4，结构化 JSON 也能吃

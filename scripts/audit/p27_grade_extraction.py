@@ -44,23 +44,67 @@ _TECHNICAL_MARKERS = ("unparseable", "LLM output did not", "manual review requir
 _DEGRADED_MARKERS = ("未能解析出",)
 
 
+_SKIP_KEYS = (
+    "trace",
+    "evidence",
+    "reasoning",
+    "chunk",
+    "preview",
+    "timing",
+    "url",
+    "hash",
+    "id",
+    "version",
+    "status",
+    "organ",
+    "created_at",
+    "updated_at",
+)
+
+
+def _has_cjk(text: str) -> bool:
+    """结论文本（含降级说明）必含中文 —— 用它把 `req_…`/`sess_…` 这类标识符挡掉。"""
+    return any("\u4e00" <= ch <= "\u9fff" for ch in text)
+
+
 def _pick_conclusion(result: dict) -> str:
-    """取医生可见的结论正文（**不碰 reasoning_trace** —— 那里本来就有技术标记）。"""
-    diag = result.get("diagnosis") if isinstance(result.get("diagnosis"), dict) else {}
-    for holder in (diag, result):
-        for key in ("conclusion", "ai_conclusion", "summary"):
-            val = holder.get(key)
-            if isinstance(val, str) and val.strip():
-                return val
-    return ""
+    """取医生可见的结论正文。
+
+    结果结构随版本演进（`diagnosis.conclusion` / 顶层 `conclusion` / 融合后的
+    逐器官结论都可能），因此**按内容递归找**：跳过 ``reasoning_trace`` /
+    ``evidence`` 这类技术字段（那里本来就带 ``grading_unparseable`` 标记，误取
+    会让"降级判定"永远命中），取第一个像结论的长文本。
+    """
+    found: list[str] = []
+
+    def walk(node: object, key: str = "") -> None:
+        if isinstance(node, dict):
+            for k, v in node.items():
+                walk(v, str(k))
+        elif isinstance(node, list):
+            for v in node:
+                walk(v, key)
+        elif isinstance(node, str):
+            if any(s in key.lower() for s in _SKIP_KEYS):
+                return
+            text = node.strip()
+            if len(text) >= 20 and _has_cjk(text):
+                found.append(text)
+
+    walk(result)
+    return found[0] if found else ""
 
 
-async def _one_round(idx: int, dtok: str, organ: str) -> dict:
-    """一轮真实判读：建会话 → 上传真实 CAMUS 帧 → 判读 → 轮询终态。"""
+async def _one_round(idx: int, dtok: str, organ: str, patient: str) -> dict:
+    """一轮真实判读：建会话 → 上传真实 CAMUS 帧 → 判读 → 轮询终态。
+
+    患者必须是**已签署知情同意**的（后端 E1008/403 会挡未同意的患者 —— 这是
+    会诊护栏，不是缺陷；探针不该绕过它，只该挑一个已同意的患者）。
+    """
     import httpx
 
     out: dict = {"round": idx, "ok": False, "degraded": False, "conclusion": "", "wall_s": None}
-    pid = f"probe-p27-{int(time.time())}-{idx}"
+    pid = patient
     async with httpx.AsyncClient(timeout=60.0) as c:
         r = await c.post(
             f"{BASE}/api/v1/sessions",
@@ -79,7 +123,7 @@ async def _one_round(idx: int, dtok: str, organ: str) -> dict:
             iid = body.get("image_id") if code == 200 else None
             if iid:
                 img_ids.append(iid)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         out["error"] = f"上传异常 {type(exc).__name__}: {exc}"
         return out
     if len(img_ids) < 2:
@@ -122,8 +166,13 @@ async def _one_round(idx: int, dtok: str, organ: str) -> dict:
         return out
 
     out["status"] = result.get("status")
+    # 结构键留档：结果模型随版本演进，探针报错时要能一眼看出该去哪取结论
+    out["result_keys"] = sorted(result.keys())[:24]
+    diag = result.get("diagnosis")
+    if isinstance(diag, dict):
+        out["diagnosis_keys"] = sorted(diag.keys())[:24]
     text = _pick_conclusion(result)
-    out["conclusion"] = text[:200]
+    out["conclusion"] = text[:1500]
     out["needs_review"] = bool(result.get("needs_review"))
     out["ok"] = result.get("status") in ("completed", "needs_review") and bool(text)
     out["degraded"] = any(m in text for m in _DEGRADED_MARKERS)
@@ -136,14 +185,19 @@ async def main() -> int:
     ap.add_argument("--rounds", type=int, default=8)
     ap.add_argument("--organ", default="thyroid", choices=["thyroid", "liver", "cardiac"])
     ap.add_argument("--max-degrade", type=int, default=1, help="允许的最大降级轮数")
+    ap.add_argument(
+        "--patient",
+        default="DRILL-PATIENT-001",
+        help="必须已签署知情同意的患者（未同意会被 E1008/403 挡，属会诊护栏）",
+    )
     args = ap.parse_args()
 
     print("== p27 分级提取降级率门禁（真机端到端）==", flush=True)
-    dtok = login("smoke-doctor", pw("smoke_pw"))
+    dtok = login("smoke-doctor", pw("smoke_pw"))["access_token"]
 
     rounds: list[dict] = []
     for i in range(1, args.rounds + 1):
-        r = await _one_round(i, dtok, args.organ)
+        r = await _one_round(i, dtok, args.organ, args.patient)
         rounds.append(r)
         flag = "DEGRADED" if r.get("degraded") else ("OK" if r.get("ok") else "ERR")
         print(
@@ -186,7 +240,7 @@ async def main() -> int:
     out_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"\n   报告：{out_path}")
 
-    return summary()
+    return summary("p27 分级提取降级率门禁")
 
 
 if __name__ == "__main__":

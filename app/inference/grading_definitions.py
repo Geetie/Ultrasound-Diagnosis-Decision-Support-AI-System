@@ -297,14 +297,8 @@ def grade_major_level(organ: str, grading: str | None) -> int | None:
     return entry[0] if entry else None
 
 
-def extract_grading_severest(text: str, organ: str) -> str | None:
-    """抽取文本中最**严重**的分级（无匹配返回 ``None``）。
-
-    与 :func:`extract_grading_with_conflict` 的区别：后者返回「第一个匹配」，
-    供双引擎一致性比对（要的是"模型写了什么"）；本函数用于**专科结论**——
-    给医生看的结论必须**保守取重**（LLM 写 "TR3 或 TR4" 时应给 TR4），
-    这也是现网 thyroid「多码取 max」的既有语义，此处收敛为唯一实现。
-    """
+def _severest_in(text: str, organ: str) -> str | None:
+    """在给定片段内取最严重的分级（含 cardiac 的中英文/LVEF 归一化）。"""
     patterns = _GRADING_PATTERNS.get(organ, [])
     hierarchy = _GRADE_HIERARCHY.get(organ, {})
     best: tuple[tuple[int, int], str] | None = None
@@ -327,3 +321,45 @@ def extract_grading_severest(text: str, organ: str) -> str | None:
             if best is None or level > best[0]:
                 best = (level, grading)
     return best[1] if best else None
+
+
+# 显式分级段：`分级:` / `grading:` 之后到下一个字段名之前，是模型给出的**结论**。
+# 与"全文最严重"并存的原因见 `extract_grading_severest` 的 docstring（实测假高教训）。
+_EXPLICIT_GRADE_ANCHOR = re.compile(
+    r"(?:^|[\s（(【\[])(?:分级|grading)\s*[:：]\s*", re.IGNORECASE
+)
+_SEGMENT_STOP = re.compile(
+    r"(?:总分|置信度|理由|证据|鉴别|患者解释|建议|"
+    r"score|confidence|reason|evidence|differential)\s*[:：]",
+    re.IGNORECASE,
+)
+
+
+def extract_grading_severest(text: str, organ: str) -> str | None:
+    """抽取文本中最**严重**的分级（无匹配返回 ``None``）。
+
+    两段式（2026-10-13 真机实测修正）：
+
+    1. **显式分级段优先**：``分级:`` / ``grading:`` 之后、到下一个字段名
+       （总分 / 置信度 / 理由 / 证据 / 鉴别 …）之前的那一段，是模型**给出的结论**；
+       段内多码取重（"分级: TR3 或 TR4" → TR4，保守）。
+    2. 没有显式分级段时，才**全文兜底**扫描取最重。
+
+    为什么必须先看结论段：真机实测（p27）模型输出
+    ``分级: TR3 总分: 3 … 理由: 实性(3) + 低回声(2) + 边界尚清(1) = 6 分 → TR4（注：4-6 分为 TR4）``
+    —— 全文取最严重会把**理由里的范围说明（TR4）**当作结论，使报告分级被抬高一级
+    （假高：给医生看的是 TR4，模型明明写的是 TR3）。这与"保守取重"不冲突：保守
+    只在**同一结论段内**生效。
+
+    与 :func:`extract_grading_with_conflict` 的区别：后者返回「第一个匹配」，
+    供双引擎一致性比对（要的是"模型写了什么"）；本函数给**专科结论**用。
+    """
+    anchor = _EXPLICIT_GRADE_ANCHOR.search(text)
+    if anchor:
+        rest = text[anchor.end() :]
+        stop = _SEGMENT_STOP.search(rest)
+        segment = rest[: stop.start()] if stop else rest[:80]
+        best = _severest_in(segment, organ)
+        if best:
+            return best
+    return _severest_in(text, organ)

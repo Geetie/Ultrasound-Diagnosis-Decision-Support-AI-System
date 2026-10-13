@@ -56,14 +56,14 @@ def _post(path: str, payload: dict) -> tuple[int, dict | str]:
             return resp.status, json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:  # 4xx/5xx：把 body 带回来定位原因
         return exc.code, exc.read().decode("utf-8", "replace")[:300]
-    except Exception as exc:  # noqa: BLE001 - 探针要如实报告任何失败
+    except Exception as exc:  # 探针要如实报告任何失败
         return -1, f"{type(exc).__name__}: {exc}"
 
 
 def _text_of(data: dict) -> str:
     try:
         return data["choices"][0]["message"]["content"] or ""
-    except Exception:  # noqa: BLE001
+    except Exception:
         return ""
 
 
@@ -90,7 +90,7 @@ def _model_name() -> str:
 def main() -> int:
     try:
         model = _model_name()
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         print(f"[FAIL] vLLM 不可达 {BASE}: {type(exc).__name__}: {exc}")
         return 1
 
