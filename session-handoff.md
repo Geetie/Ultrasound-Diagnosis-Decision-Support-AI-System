@@ -5,6 +5,45 @@
 
 ## Last Updated
 
+2026-10-13（分支 `main`；**A.59 结论正文可读化 + 零静默补漏三处（含 1 个 P0）**——
+从**核对 A.58 登记项的归因**出发：①**更正一条错误归因**（A.58.10① 把专科正文里的
+`[cardiac] LVEF=unknown, severity=normal` 误记成安全门问题；安全门那句本来就是中文）；
+②**结论正文可读化**：新增 `app/agents/specialist/readable.py`（`graded_content` / `cardiac_content` /
+`severity_cn`（ASE 标签 + canonical 短名两套词表）/ 五个降级文案）与 `schemas.ORGAN_CN_LABELS`
++ `organ_cn()`（器官中文名单一事实源），三专科 + `base.py` 三处降级 + `dispatcher` + `pipeline`
+兜底全部改中文；机器值只留 `reasoning_trace`；`consistency._extract_lvef` 容许中文右括号
+（正文形态「（LVEF）62%」可解析）；③**降级必转人工**（三处降级原先不置 `needs_review` = 静默降级）；
+④**`aggregate()` 不再丢 `needs_review`**（`invoke()` 唯一出口）；⑤**P0**：`needs_review` 未算
+结果终态 → **医生打开待复核检查永远停在「分析中」**（p28 P28-2 真阳性抓到）→ 抽出
+`TERMINAL_RESULT_STATUSES`（completed/needs_review/cancelled/failed/timeout）。
+真机：**p26 PASS=35 FAIL=0 · p28 PASS=7 FAIL=0**（新增 P28-4）· **p27 甲状腺/心脏两腿各 PASS=4 FAIL=0**
+（新增 P27-5，心脏腿用 `--organ cardiac`）。本地 `tests/unit` **6565 passed / 1 例全量顺序偶发**
+（`tests/unit/sec/...::test_decrypt_with_wrong_key_version_raises`，单独跑恒过，已登记待查）。详见 16 号附录 A.59）
+
+### A.59 复跑入口与踩坑（下一位直接用）
+
+- 可读文案自检（**服务器**，秒级）：`PYTHONPATH=~/uai/src ~/uai/venv/bin/python -c "from
+  app.agents.specialist.readable import cardiac_content, evidence_insufficient_text; print(...)"`
+- 正文可读性真机门禁（**服务器**）：`p27_grade_extraction.py --rounds 8 --organ thyroid`（P27-5 部位名）
+  与 `--organ cardiac`（英文键值最早就出在这里）
+- 渲染层（**本机**）：`node scripts/audit/p28_degradation_visibility.mjs`（新增 P28-4；反证腿需屏蔽
+  `/api/v1/imaging/**`；**挑会话已改为「终态」判定**）
+- 端到端（**本机**）：`node scripts/audit/p26_squad_e2e_walkthrough.mjs --dicom1 … --dicom2 …`
+- 静态守卫：`pytest tests/unit/agt/test_grade_extraction_contract.py`（`TestNoTechnicalStringInDoctorFacingContent`
+  已扩围到器官代码 / `LVEF=` / `severity=` / 三处降级串 + 正常路径 + LLM 异常分支）
+- **踩坑（A.59 新增）**：
+  ① **同一段 UI 文本可能是几层拼接的**：判"哪个模块吐的串"必须看**该层代码**，别按相邻关系猜
+  （A.58.10① 就是这么错的）；② **修好一个缺陷会让下一个缺陷可见**（降级不再静默后，前端"终态集合漏项"
+  立刻现形）→ 终态/枚举这类集合**一次穷举完**；③ **`Start-Process cmd.exe /c x.bat` 会静默不跑**
+  （第 3 次）→ 一律直连 exe + 绝对路径重定向，且**先确认日志文件存在**；④ **PowerShell 内联多行 python
+  必炸** → 写 `.py` 再跑；⑤ `git add` 里 `app/models`（含 `__pycache__`）的 ignore 警告**不代表
+  `schemas.py` 被忽略**（用 `git ls-files` / `git cat-file -e HEAD:<path>` 核实）。
+
+**下一批（A.59 批次剩余，按序）**：①存量静默收敛（前端影像层 38 处 + 后端主路径 ~45 处，基线下调；
+真机 p26/p20）②Langfuse ≥700 例采集 + 指标门控（容器已在跑）③t2a 公开集 held-out 复验（标「公开集下界」）。
+
+### 上一轮（A.58）Last Updated 原文
+
 2026-10-13（分支 `main`；**A.58「零静默失败」常驻机制 + 结论正文可读化 + 两项口径落地**——
 把 20 号研究产出的「零静默」从**出事才清查**升级为**常驻门禁**，三层各带反证：
 ①**约定层（后端）** `test_no_silent_catch.py` 由「7 文件白名单 + 正则」改为 **`ast` 全仓扫描**

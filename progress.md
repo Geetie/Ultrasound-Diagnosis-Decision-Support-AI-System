@@ -1,7 +1,23 @@
 # progress.md — 当前状态（唯一「现在在哪」来源）
 
-**Last Updated**: 2026-10-13（A.58「零静默失败」常驻机制：约定/渲染/语义三层 + 结论正文可读化 + 两项口径落地）
-**HEAD-A.58**: 分支 `main`（把 20 号研究产出的「零静默」从**出事才清查**升级为**常驻门禁**，三层各带反证：
+**Last Updated**: 2026-10-13（A.59 结论正文可读化（去英文键值/器官代码）+ 零静默补漏三处，含 1 个 P0 级可用性缺陷）
+**HEAD-A.59**: 分支 `main`（本轮从**核对 A.58 登记项的归因**出发，修掉一条**错误归因**（A.58.10① 把专科正文的
+英文串误记成安全门问题），并顺藤摸出 3 处「零静默」漏网 + 1 个 P0 级可用性缺陷：
+①**结论正文可读化**：英文器官代码（`[cardiac]`）+ 英文键值对（`LVEF=` / `severity=`）+ 英文枚举
+（`unknown`/`normal`）+ 三处英文降级串一律移出医生可见正文 → 新增 `readable.py`（`graded_content` /
+`cardiac_content` / `severity_cn`（**两套词表**：ASE 现网标签 + canonical 短名）/ 五个降级文案）与
+`schemas.ORGAN_CN_LABELS` + `organ_cn()`（器官中文名单一事实源，`report_service` 改为引用）；
+机器值只留在 `reasoning_trace`；`consistency._extract_lvef` 正则容许中文右括号（正文形态「（LVEF）62%」可解析）。
+②**降级必转人工**：`base.py` 三处降级原先只改 content，而 `_post_process` 的阈值检查显式跳过
+`confidence==0` → 既不转人工、正文还是英文串（静默降级）→ 构造处即置 `needs_review=True`。
+③**`dispatcher.aggregate()` 静默丢 `needs_review`**（`invoke()` 的唯一出口）→ 取「或」+ 合并
+`used_evidence_ids` + trace 留痕。
+④**P0 级可用性**：`needs_review` 未在结果**终态集合**里 → **医生打开待复核检查永远停在「分析中」**
+（p28 P28-2 真阳性抓到）→ 抽出 `TERMINAL_RESULT_STATUSES`（completed/needs_review/cancelled/failed/timeout）。
+真机：**p26 PASS=35 FAIL=0 · p28 PASS=7 FAIL=0（新增 P28-4）· p27 甲状腺/心脏两腿各 PASS=4 FAIL=0
+（新增 P27-5）**；本地 `tests/unit` 6565 passed（1 例全量顺序偶发、单独跑恒过，已登记）。详见 16 号附录 A.59）
+
+**上一轮 HEAD-A.58**: 分支 `main`（把 20 号研究产出的「零静默」从**出事才清查**升级为**常驻门禁**，三层各带反证：
 ①**约定层（后端）** `test_no_silent_catch.py` 由「7 文件白名单 + 正则」改为 **`ast` 全仓扫描**（193 个 git 跟踪 `*.py`）+ 存量基线 `silent_catch_baseline.json`（**428 处，只许下调**）+ 7 个主路径文件升**零容忍区** + `contextlib.suppress` 后门一并判；
 ②**约定层（前端）** 新增本地规则 `local/no-silent-catch`（catch 必须 `console.error` + 用户可见降级）+ **独立 config + 基线棘轮**（44 处/10 文件；不污染 `npm run lint` 的 `--max-warnings 1`）+ `npm run lint:silent-catch`；
 ③**渲染层** 新增真机探针 `p28_degradation_visibility.mjs`（15s 窗口断言影像区真实影像 + 结论区真实字段文案 + clip 截图像素方差 PIL 判定）并**强制反证腿**（`page.route` 屏蔽影像字节 → 守卫必须判红且给可读错误）——**反证腿当场暴露一个产品级缺陷**：影像取回失败原先**静默退回设计预览态**（假标注框「结节 A/B」+ 零提示），已修（`data-region="image-load-error"` 可读告警 + 不再渲染示意框）；
@@ -27,6 +43,14 @@
 ## Current State
 
 ### What 已完成（有证据，详见 `feature_list.json` 与 16 号附录 A）
+
+- **结论正文可读化 + 零静默补漏三处（2026-10-13，A.59）**：
+  ①**正文去英文键值/器官代码**（`[cardiac] LVEF=unknown, severity=normal` → 「心脏 · 左室射血分数（LVEF）
+  未测值 · 严重程度：正常」）；**并更正 A.58.10① 的错误归因**（该串来自专科正文，不是安全门）。
+  ②**降级必转人工**（三处降级分支原先不置 `needs_review`，属静默降级）。
+  ③**`aggregate()` 不再静默丢 `needs_review`**（`invoke()` 唯一出口）。
+  ④**P0 级**：`needs_review` 未算结果终态 → **医生打开待复核检查永远停在「分析中」**（p28 真阳性抓到）。
+  真机 **p26 35/0 · p28 7/0 · p27 两腿各 4/0**。
 
 - **「零静默失败」常驻机制（2026-10-13，A.58）**：
   ①**约定层**：后端 `ast` 全仓棘轮（428 处/193 文件基线，**只许下调**；7 主路径文件零容忍；
@@ -322,6 +346,22 @@
   勘察结论同前：端点早就在，缺的是接线（患者/设备列表端点确实不存在，用校验+录入补位）。
 
 ## Recommended Next Step
+
+> **A.59 批次（2026-10-13，进行中；用户点名「选取下一批执行」）**：
+> **已完成（本轮）**：①结论正文可读化（去英文键值/器官代码/英文降级串）+ 更正 A.58.10① 归因；
+> ②降级必转人工；③`aggregate()` 不丢 `needs_review`；④**`needs_review` 纳入结果终态**
+> （修掉"待复核检查永远停在分析中"的 P0）。真机 p26 35/0 · p28 7/0 · p27 两腿各 4/0。
+> **批次剩余（按序执行）**：
+> 1. **存量静默收敛·前端影像层**：`cornerstone.ts`(12) / `WorkspaceDicomLayer.tsx`(9) /
+>    `DicomViewer.tsx`(8) / `useDicomUpload.ts`(5) / `DualWebSocketManager.ts`(4) 共 38 处 →
+>    清零或大幅下降后**下调基线**（当前 10 文件/44 处）。这正是 A.35「影像层静默失败活 3 天」的老巢；
+>    真机回归 p26/p20。后端同步收敛第一批：`app/inference/base.py`(9)、`app/api/websocket/dicom.py`(7)、
+>    `app/security/{refresh_token,emergency_signing}`(14)、`app/config/redis.py`(5)（当前 428 处/193 文件）。
+> 2. **Langfuse 评测管理：≥700 例采集 + 指标门控**（容器实测**已在跑**：6 个容器 Up；采集脚本目录
+>    `scripts/langfuse/` 已有）→ 真机跑通并落报告；未达门控则如实登记。
+> 3. **t2a 公开集 held-out 复验**（最小可执行路径）：冻结清单 + sha256 + AUC/95%CI(bootstrap)，
+>    **口径必须标「公开集下界」**（AUL 151M 已在 `~/uai/data/aul`，无患者 ID → 不能称注册级独立验证）。
+> 4. 待查（低优先）：`tests/unit` 全量顺序下 `tests/unit/sec` 那 1 例偶发失败（单独跑恒过）。
 
 > **A.58 结果（2026-10-13）**：「零静默失败」已机制化（约定/渲染/语义三层，全部可 CI 门禁）——
 > 后端 `ast` 全仓棘轮（428 处基线只许下调）、前端本地 ESLint 规则 + 独立棘轮（44 处）、

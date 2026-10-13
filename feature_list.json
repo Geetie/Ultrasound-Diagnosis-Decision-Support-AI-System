@@ -851,12 +851,39 @@
     },
     {
       "id": "sg-contraindication-message-readable",
-      "name": "安全门「禁忌条件」提示含原始英文枚举（未修，登记）",
-      "description": "真机 p28 实测医生可见的停止告警为「需人工确认后继续 / 检测到禁忌条件：检测到4条禁忌 [cardiac] LVEF=unknown, severity=normal — …」——safety_gateway/checker/contraindication_threshold_phase.py 直接拼接下层 message，把原始英文枚举与键值暴露给医生（拦停行为正确，属可读性问题）。建议在 SG 侧把命中条件映射为中文后回填 message；改 SG 影响面大（9001 服务），需与主服务一起回归。",
-      "status": "planned",
-      "result": "本轮只登记（A.58.10①），未改 SG",
+      "name": "结论正文/降级提示含英文键值与器官代码（A.58 归因已更正 → A.59 修复）",
+      "description": "**A.58.10① 的原归因是错的**：`[cardiac] LVEF=unknown, severity=normal` 不是安全门拼出来的（安全门那句「检测到禁忌条件：检测到4条禁忌」本来就是中文），真正来源是**专科结论正文**的组装（cardiac.py:242-246 / thyroid.py:199-202 / liver.py:196-199）+ base.py 三处降级分支 + dispatcher/pipeline 占位。A.59 修法：新增 app/models/schemas.py::ORGAN_CN_LABELS + organ_cn()（器官代码→中文名的单一事实源，report_service 改为引用）与 app/agents/specialist/readable.py（graded_content / cardiac_content / severity_cn（覆盖 ASE 现网标签与 canonical 短名两套词表）/ 五个降级文案）；正文只给中文，机器值走 reasoning_trace；consistency._extract_lvef 正则容许中文右括号，兼容既有一切形态。",
+      "status": "done",
+      "result": "真机 p27 甲状腺腿 8/8「甲状腺 · TR3 — …」、心脏腿 8/8「心脏 · 左室射血分数（LVEF）未测值 · 严重程度：正常 — …」；p28 新增 P28-4「结论正文不含英文键值对/器官代码」PASS；静态守卫 TestNoTechnicalStringInDoctorFacingContent 扩围（含正常路径与 LLM 异常分支两组新用例）",
       "dependencies": [],
-      "evidence": "16 号 A.58.10①；safety_gateway/checker/contraindication_threshold_phase.py；frontend/src/components/workspace/WorkspaceStopAlert.tsx；scripts/audit/p28_degradation_visibility.mjs（P28-2 实测文本）"
+      "evidence": "16 号 A.59.1（含归因更正对照表）；app/agents/specialist/readable.py；app/models/schemas.py；app/fusion/consistency.py；tests/unit/agt/test_grade_extraction_contract.py；scripts/audit/p28_degradation_visibility.mjs（P28-4）；scripts/audit/p27_grade_extraction.py（P27-2/P27-5）"
+    },
+    {
+      "id": "silent-degradation-needs-review",
+      "name": "零静默补漏：降级必转人工 + dispatcher 聚合不丢 needs_review",
+      "description": "两处静默降级：①base.py 三处降级分支（零 RAG / LLM 异常 / 解析异常）只改 content，而 _post_process 的阈值检查显式跳过 confidence==0 → 既不转人工、正文还是英文技术串；②DispatcherAgentImpl.aggregate() 重建 AgentResponse 时漏 needs_review（连带漏 used_evidence_ids），而 invoke() 的唯一出口就是它 → 经 invoke 走的单器官链路会把专科的转人工标记静默丢掉。修：降级在构造处即置 needs_review=True；aggregate 取「或」（复核只增不减）并合并 used_evidence_ids + trace 留痕。",
+      "status": "done",
+      "result": "降级文案统一以「已转人工判读」收尾；test_review_fixes 的旧契约断言随之更正（needs_review 由降级本身给出，判据落在 below_organ_threshold 不出现）；pytest tests/unit/agt+services 全绿",
+      "dependencies": [],
+      "evidence": "16 号 A.59.2/A.59.3；app/agents/specialist/base.py；app/agents/dispatcher.py；tests/unit/agt/test_specialist_base_branches.py；tests/unit/agt/test_dispatcher.py"
+    },
+    {
+      "id": "result-terminal-status-set",
+      "name": "结果终态集合补 needs_review / cancelled（待复核检查不再停在「分析中」）",
+      "description": "真机 p28 P28-2 判红（真阳性）：回放 status=needs_review 的检查时界面永远显示「分析中 已用时 N 秒」，医生看不到结论也走不到报告与签名。根因：diagnosisService 的轮询终态判断只认 completed/failed/timeout，漏 needs_review（判读已完成、只是要求人工复核），于是被当成还在跑轮询到 210s 上限，timeout 又被 PHASE_TO_STATE 映射回 progress。与 A.28「timeout 不当终态」同族（那次没把终态集合一次穷举）。修：抽出 TERMINAL_RESULT_STATUSES = [completed, needs_review, cancelled, failed, timeout] 统一判定（判据对齐服务端 result 接口语义与 p27 轮询集合）+ 两条 vitest。",
+      "status": "done",
+      "result": "真机 p28 PASS=7 FAIL=0（P28-2 由 FAIL 转 PASS，正文可见「心脏 · 左室射血分数（LVEF）未测值 · 严重程度：正常 …」）；vitest diagnosisWait 8 passed（新增 needs_review / cancelled 两例）；tsc 0、eslint 0",
+      "dependencies": [],
+      "evidence": "16 号 A.59.4；frontend/src/services/diagnosisService.ts；frontend/src/services/__tests__/diagnosisWait.test.ts；scripts/audit/p28_degradation_visibility.mjs"
+    },
+    {
+      "id": "unit-full-suite-sec-flaky",
+      "name": "注册：tests/unit/sec 在某随机顺序下偶发失败（待查，非本轮改动引入）",
+      "description": "`pytest tests/unit` 全量 6565 passed / 1 failed：唯一失败是 tests/unit/sec/test_regression_fixes.py::TestDesensitizationRestoreKeyVersionMismatch::test_decrypt_with_wrong_key_version_raises；该例**单独跑 1 passed**、`tests/unit/agt tests/unit/sec` 合并跑 1878 passed，仅在全量随机顺序下偶发。本轮未触及 app/security/* 与 settings。待查方向：前置用例对全局 settings/环境变量的污染（order-dependent），建议定位后加 fixture 隔离。",
+      "status": "planned",
+      "result": "已登记（16 号 A.59.6 验证表末行），未定位污染源",
+      "dependencies": [],
+      "evidence": "16 号 A.59.6；tests/unit/sec/test_regression_fixes.py"
     }
   ]
 }
