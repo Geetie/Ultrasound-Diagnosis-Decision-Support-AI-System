@@ -33,6 +33,7 @@ CRAG 流程（设计文档 12-系统性修订实施指南.md:171）：
 """
 from __future__ import annotations
 
+import os
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any, Protocol, runtime_checkable
@@ -450,6 +451,13 @@ class CRAGHandler:
                 final_evidence = self._merge_evidence_three(
                     original, new_evidence, new_response
                 )
+                self._log_evidence_merge(
+                    request.request_id or "",
+                    mode="reinvoke",
+                    original_ids=list(original.evidence_chunk_ids or []),
+                    new_ids=[str(getattr(c, "chunk_id", "")) for c in new_evidence],
+                    final_ids=final_evidence,
+                )
                 final_response = AgentResponse(
                     agent_name=new_response.agent_name,
                     organ=new_response.organ,
@@ -499,6 +507,13 @@ class CRAGHandler:
         new_trace = list(original.reasoning_trace or [])
         new_trace.append(
             f"crag_recovery_evidence_only: added {len(new_evidence)} new evidence chunk(s) (no specialist reinvoke)"
+        )
+        self._log_evidence_merge(
+            request.request_id or "",
+            mode="placeholder_evidence_only",
+            original_ids=list(original.evidence_chunk_ids or []),
+            new_ids=[str(getattr(c, "chunk_id", "")) for c in new_evidence],
+            final_ids=merged_evidence,
         )
         return (
             AgentResponse(
@@ -587,6 +602,38 @@ class CRAGHandler:
                 seen.add(cid)
                 merged.append(cid)
         return merged
+
+    @staticmethod
+    def _log_evidence_merge(
+        request_id: str,
+        *,
+        mode: str,
+        original_ids: list[str],
+        new_ids: list[str],
+        final_ids: list[str],
+    ) -> None:
+        """证据链留痕（A.62 批 2，`UAI_EVIDENCE_CHAIN_DEBUG=1` 时开启）。
+
+        为什么必须在这里留痕：`_build_specialist_context` 组装的 `crag_evidence_ids/chunks`
+        **从未传给 reinvoke 的 AgentContext**（`crag.py:563-570` 没带 `clinical_context`），
+        所以 CRAG 那次**新检索到的块从未进入任何 prompt**，却经 `_merge_evidence_three`
+        进了落库 `knowledge_ids` —— 真机表现为「落库里有块，不在任何 prompt 留痕里」
+        （批 1 的 MISMATCH，心脏腿 2/2）。留痕之后，探针能把落库块分解为
+        「模型看到过」与「仅被记录（模型从未看到）」两类，并对后者问责（见 16 号 A.62.x）。
+        """
+        if os.environ.get("UAI_EVIDENCE_CHAIN_DEBUG") != "1":
+            return
+        logger.info(
+            "crag_evidence_merge",
+            request_id=request_id,
+            mode=mode,
+            original_chunks=len(original_ids),
+            new_chunks=len(new_ids),
+            final_chunks=len(final_ids),
+            original_ids=list(original_ids),
+            new_ids=list(new_ids),
+            final_ids=list(final_ids),
+        )
 
     @staticmethod
     def _merge_evidence_three(

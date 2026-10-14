@@ -277,7 +277,9 @@ class MinioObjectStorage:
             try:
                 self._client().stat_object(self._bucket, key)
                 return True
-            except Exception:
+            except Exception as exc:
+                # 探测失败与「对象不存在」都返回 False，但前者必须可查（debug 不刷屏）
+                logger.debug("object_stat_failed", key=key, error=str(exc))
                 return False
 
         return bool(await self._with_retry("stat", _stat))
@@ -308,7 +310,8 @@ class MinioObjectStorage:
 
         try:
             return bool(await self._with_retry("bucket_exists", _health))
-        except Exception:
+        except Exception as exc:
+            logger.debug("bucket_exists_check_failed", bucket=self._bucket, error=str(exc))
             return False
 
 

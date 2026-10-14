@@ -135,7 +135,7 @@ def measurement_from_bbox(
 
     try:
         _, _, norm_width, norm_height = (float(bbox[0]), float(bbox[1]), float(bbox[2]), float(bbox[3]))
-    except (TypeError, ValueError):
+    except (TypeError, ValueError):  # silent-ok: 取值不可解析 → 回退默认（正常控制流）
         return None
 
     if norm_width <= 0 or norm_height <= 0:

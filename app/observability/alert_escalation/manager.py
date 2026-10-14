@@ -223,7 +223,7 @@ class AlertEscalationManager:
             self._check_task.cancel()
             try:
                 await self._check_task
-            except asyncio.CancelledError:
+            except asyncio.CancelledError:  # silent-ok: 停机时 await 被取消属正常控制流
                 pass
         _logger.info("alert_escalation_manager_stopped")
 

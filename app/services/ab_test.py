@@ -332,7 +332,7 @@ def _safe_required_sample_size(config: ExperimentConfig, baseline_rate: float) -
         return required_sample_size(
             baseline_rate, mde=config.mde, alpha=config.alpha, power=config.power
         )
-    except ValueError:
+    except ValueError:  # silent-ok: 取值不可解析 → 回退默认（正常控制流）
         # 基线为 0/1 时公式不适用（没有可提升空间）：返回 0 表示"不适用"，
         # 而不是编一个数字出来
         return 0

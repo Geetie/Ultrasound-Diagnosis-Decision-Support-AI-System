@@ -5,6 +5,19 @@
 
 ## Last Updated
 
+2026-10-14（分支 `main`；**A.62 批 2（守卫硬化）已交付** —— 用户指令「全删旧任务列表、继续下一批」）。
+
+- **批 2-A 证据链（CRAG 路径）**：成因 `app/fusion/crag.py:450-458`（CRAG 新块并入落库证据）＋ `crag.py:546-554` 写的 `crag_evidence_chunks` **全仓无消费者**、`_build_specialist_context`（`563-570`）也没把 `clinical_context` 传给 reinvoke → 新块**从未进 prompt 却进了 knowledge_ids**。已补 CRAG 留痕、p30 新判定 `CRAG_SUPPLEMENT`（反证腿 9 条）、修 `--all` 假 PASS。真机 n=5：甲状腺 2/2 `PREFIX_TRUNCATED`、心脏 3/3 `CRAG_SUPPLEMENT`（模型未见 4~5 块）。**修法 A/B 待 00 号拍板**；拍板前 `knowledge_ids` 不是「结论依据」的完整凭据。
+- **批 2-B 静默收敛三段**：observability 32→0 / rag+fusion 16→0 / security+services+safety_gateway+edge+integrations 37→0；全仓 **348→263 处**（基线两段更新）。
+- **批 2-C p20 G5.4**：到达后等渲染稳定 + 逐帧扫 + 只重试一次（真机 3 连跑见 16 号 A.62.8）。
+- **批 2-D**：全量 unit ×2 = 3841 passed，未复现偶发。
+
+### A.62 批 2 复跑入口（下一位直接用）
+
+- 证据链：服务带 `UAI_EVIDENCE_CHAIN_DEBUG=1` 起 → 跑判读 → `python scripts/audit/p30_evidence_chain.py --all`（读 `~/uai/logs/api.log` 的 `evidence_chain` 与 `crag_evidence_merge` 两族留痕 + DB → 输出分布，任何非 `PREFIX_TRUNCATED` 即判红）。
+- 静默棘轮：`python tests/unit/quality/test_no_silent_catch.py` 会对不上就打印实测计数 → 把 `counts` 写回 `tests/unit/quality/silent_catch_baseline.json`（**只许下调**）。
+- p20 真机：本机 `$env:UAI_DOCTOR_USER='smoke-doctor'` + `UAI_DOCTOR_PASSWORD`（服务器 `~/uai/.smoke_pw`）+ `UAI_BASE_URL=http://127.0.0.1:8000`（隧道）→ `node scripts/audit/p20_frontend_boundary.mjs --dicom <多帧.dcm>`；多帧样本可现生成：`python scripts/camus_frame_to_dicom.py --out /tmp/w.dcm --count 7 --multiframe`。
+
 2026-10-13（分支 `main`；**A.62 三梯队现状总览 + 分批计划 + 批 1 交付**——用户拍板：三梯队全量现状 + 完整计划、**价值/风险优先**、一次给全分 4 批、外部依赖写「前置条件 + 建议方案 + 现在就能做的准备」、**写人话**。
 
 **现状总览与计划**：21 号新增「三梯队现状总览」（梯队一性能代码项已闭合 / 梯队二全交付 / 梯队三一半交付：Langfuse 技术打通但 148/700、t2a 公开集下界已出而注册级缺数据）+「分批开发计划（批 1~4）」；`feature_list.json` 建 4 个批次条目 `a62-batch1~4`。

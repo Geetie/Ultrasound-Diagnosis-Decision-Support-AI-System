@@ -314,7 +314,7 @@ async def stop_data_retention_periodic_task() -> None:
         _retention_task.cancel()
         try:
             await _retention_task
-        except asyncio.CancelledError:
+        except asyncio.CancelledError:  # silent-ok: 停机时 await 被取消属正常控制流
             pass
         _retention_task = None
     logger.info("data_retention_periodic_task_stopped")

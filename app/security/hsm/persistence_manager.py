@@ -229,7 +229,9 @@ class PersistenceManager:
                         try:
                             from datetime import datetime
                             degraded_at = datetime.fromisoformat(degraded_at_str.decode())
-                        except Exception:
+                        except Exception as exc:
+                            # 解析不出降级时刻 → 回退当前时间（保守：按「刚降级」处理）
+                            logger.debug("hsm_degraded_at_unparseable", error=str(exc))
                             from datetime import datetime, timezone
                             degraded_at = datetime.now(timezone.utc)
                     if degraded_reason_str:

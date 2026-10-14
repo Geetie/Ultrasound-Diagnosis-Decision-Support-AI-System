@@ -39,7 +39,7 @@ def _spawn_background(coro) -> None:
         return
     try:
         task = asyncio.ensure_future(coro)
-    except RuntimeError:
+    except RuntimeError:  # silent-ok: 无运行事件循环属同步调用场景（改走 asyncio.run/直连路径）
         coro.close()
         return
     _BACKGROUND_TASKS.add(task)
@@ -404,7 +404,7 @@ class DesensitizationEngine:
             try:
                 asyncio.get_running_loop()
                 _spawn_background(_do_publish())
-            except RuntimeError:
+            except RuntimeError:  # silent-ok: 无运行事件循环属同步调用场景（改走 asyncio.run/直连路径）
                 loop = asyncio.new_event_loop()
                 loop.run_until_complete(_do_publish())
                 loop.close()
@@ -440,8 +440,8 @@ class DesensitizationEngine:
                 delay = (_dt.now(timezone.utc) - published_time).total_seconds()
                 from app.observability.metrics_collector import get_metrics_collector
                 get_metrics_collector().set_desensitization_sync_delay(max(delay, 0.0))
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("desensitization_sync_delay_metric_failed", error=str(exc))
 
     async def load_state_from_redis(self):
         try:
@@ -511,7 +511,7 @@ class DesensitizationEngine:
             try:
                 asyncio.get_running_loop()
                 _spawn_background(_do_persist())
-            except RuntimeError:
+            except RuntimeError:  # silent-ok: 无运行事件循环属同步调用场景（改走 asyncio.run/直连路径）
                 loop = asyncio.new_event_loop()
                 loop.run_until_complete(_do_persist())
                 loop.close()

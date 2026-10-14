@@ -238,7 +238,7 @@ async def stop_periodic_verification() -> None:
         _periodic_task.cancel()
         try:
             await _periodic_task
-        except asyncio.CancelledError:
+        except asyncio.CancelledError:  # silent-ok: 停机时 await 被取消属正常控制流
             pass
         _periodic_task = None
     logger.info("periodic_audit_verification_stopped")

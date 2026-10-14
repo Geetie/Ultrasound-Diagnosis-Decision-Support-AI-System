@@ -109,7 +109,7 @@ class PostgreSQLLogStorage(LogStorageBackend):
                 try:
                     await self.awrite(record)
                     success_count += 1
-                except Exception:
+                except Exception:  # silent-ok: 单条失败由 success_count 计数 + 随后的 error 日志兜底（在此写日志会递归入队）
                     pass
             if success_count < len(records):
                 _logger.error(
@@ -125,7 +125,7 @@ class PostgreSQLLogStorage(LogStorageBackend):
         try:
             from app.observability.metrics_collector import get_metrics_collector
             get_metrics_collector().inc_audit_log_degraded_writes()
-        except Exception:
+        except Exception:  # silent-ok: 降级统计的上报失败，本身属「计数失败」，再写日志会递归入队
             pass
 
     async def close(self) -> None:

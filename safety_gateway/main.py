@@ -249,7 +249,7 @@ def _get_actual_worker_count() -> int | None:
         current_process = psutil.Process(os.getpid())
         children = current_process.children(recursive=False)
         return len(children)
-    except (ImportError, PermissionError, OSError):
+    except (ImportError, PermissionError, OSError):  # silent-ok: 可选依赖或权限受限时降级（不影响主链路）
         return None
 
 

@@ -960,12 +960,12 @@
       "id": "a62-batch2-guard-hardening",
       "name": "批 2（防回退）：后端静默 128 处分批收敛 + p20 时序竞态 + 全量测试偶发定位",
       "description": "① 后端静默 `except` **剩余 128 处**按链路分批清理（**只加留痕、不改原有降级行为**：默认 `logger.warning(事件名, error=…, error_type=…)`；确属「可选依赖探测」的用 `# silent-ok: 理由` 显式豁免）；每清一批就把 `tests/unit/quality/silent_catch_baseline.json` **下调一次**（只许降）。② p20 探针 G5.4 时序偶发：结果到达后立刻数覆盖层偶发数到 0（A.60 首跑 30/1、复跑 31/0）→ 改为「等到位后再等一次渲染/翻帧重试」。③ `unit-full-suite-sec-flaky`（A.59 登记：全量顺序偶发、单独跑恒过）定位并隔离/修复。",
-      "status": "planned",
-      "result": null,
+      "status": "done",
+      "result": "①**批 2-A 证据链（CRAG 路径）**：查到根 —— 心脏腿 Self-RAG 不通过触发 CRAG，`app/fusion/crag.py:450-458` 把 CRAG 新检索块**无条件并进**落库证据，而新块只写进 `clinical_context[\"crag_evidence_chunks\"]`（`crag.py:546-554`），该 key **全仓只写不读**（唯一引用就是写入处 + 一个测试名）→ **进了落库、从未进过 prompt**。已补 CRAG 留痕（`_log_evidence_merge`，同 `UAE_EVIDENCE_CHAIN_DEBUG` 开关）+ p30 新增判定 `CRAG_SUPPLEMENT`（反证腿 7 → 9 条）+ 修掉 `--all` 「只看最后一条样本」的假 PASS。真机 n=5：甲状腺 **2/2 PREFIX_TRUNCATED**、心脏 **3/3 CRAG_SUPPLEMENT**（落库 10~11 块里 **4~5 块模型从未看到**）。两条修法（A 让新块进 prompt / B 落库只记进过 prompt 的块）均属语义变更 → **登记待 00 号拍板**，拍板前 `knowledge_ids` 不能当作「结论依据」的完整凭据。②**批 2-B 静默收敛三段**：`app/observability/**` 32→0、`app/rag/**`+`app/fusion/**` 16→0、`app/security`+`app/services`+`safety_gateway`+`edge`+`app/integrations` 37→0；全仓 **348 → 263 处 / 178 → 132 文件**（棘轮基线只许下调，已两段更新）。改法口径：失败路径**留痕**（审计链写入/PHI 脱敏/签名解码用 warning，回退探测用 debug 不刷屏），正常控制流**写明理由**（停机取消/无事件循环/可选依赖/取值不可解析）；日志管线自写失败刻意不写日志（**递归入队**风险，改由计数 + 另处 error 日志兜底）。③**批 2-C p20 G5.4 时序**：改「到达后等渲染稳定（计数连续两次一致）→ 逐帧扫 → 应有覆盖层却扫不到就再等一次并只重试一次」；真机连跑 3 次见 16 号 A.62.8。④**批 2-D 全量偶发**：全量 unit 连跑两次 **3841 passed ×2**，未复现 → 维持观察项（附复现判据）。验证：`pytest tests/unit` 3841 passed；quality 141 passed；ruff 与静默两棘轮绿。",
       "dependencies": [
         "a62-batch1-evidence-and-cardiac"
       ],
-      "evidence": "21 号「分批开发计划·批 2」；tests/unit/quality/silent_catch_baseline.json；scripts/audit/p20_frontend_boundary.mjs"
+      "evidence": "16 号 A.62.6~A.62.9；scripts/audit/p30_evidence_chain.py（9 反证腿）；app/fusion/crag.py（_log_evidence_merge）；scripts/audit/p20_frontend_boundary.mjs（G5.4）；tests/unit/quality/silent_catch_baseline.json（348→263）；reports/evidence_chain.json"
     },
     {
       "id": "a62-batch3-eval-assets",
@@ -995,7 +995,7 @@
       "name": "证据链在 CRAG/降级路径上不一致（落库有、prompt 留痕无）——待查",
       "description": "A.62 批 1 真机实测：心脏腿 2/2 出现「数据库 `knowledge_ids` 里有块不在任何 `_build_prompt` 留痕中」（如 `dialogue_cardiac_外科_0028#0000`），而甲状腺腿 5/5 都是「落库 = prompt 前 3 条」的正常形态。嫌疑点：①CRAG 恢复的 `old+new+reinvoked` 三段证据拼接（`app/fusion/crag.py:600-620`）；②融合层 `final_response` 选择口径（`app/fusion/service.py:190,289-303`）；③某个分支在 `_post_process` 之外设置 evidence。要查清「这条块是谁、在哪一步写进 `final_response.evidence_chunk_ids`」，并决定「留痕是否要覆盖全部写证据的路径」（当前只覆盖 `_build_prompt`/`_post_process`）。",
       "status": "planned",
-      "result": null,
+      "result": "成因已查明（见 `a62-batch2-guard-hardening` ①）：CRAG 把新检索块并进落库，而这些块未进任何 prompt。修法 A（让新块进 prompt，改模型输入）/ B（落库只记进过 prompt 的块，需 `AgentResponse.prompt_chunk_ids` 新字段 + 落库语义变更）—— **待 00 号拍板**。留痕与判定已就绪（p30 输出「模型从未看到的块」清单），拍板后可当天落地并真机复验。",
       "dependencies": [
         "a62-batch1-evidence-and-cardiac"
       ],

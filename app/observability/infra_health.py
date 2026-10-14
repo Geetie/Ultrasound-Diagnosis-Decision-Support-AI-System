@@ -47,8 +47,9 @@ async def check_redis_health(redis_url: str | None = None) -> bool:
         try:
             collector = get_metrics_collector()
             collector.set_redis_process_alive(False)
-        except Exception:
-            pass
+        except Exception as exc:
+            # 周期健康检查里的指标上报失败：debug 级（warning 会刷屏），仍是可见记录
+            _logger.debug("redis_health_metric_update_failed", error=str(exc))
         return False
 
 
@@ -108,8 +109,8 @@ async def check_pg_health(
         try:
             collector = get_metrics_collector()
             collector.set_pg_connection_pool_utilization(0.0)
-        except Exception:
-            pass
+        except Exception as exc:
+            _logger.debug("pg_health_metric_update_failed", error=str(exc))
     finally:
         # 连接池由本函数创建，必须由本函数释放（含 acquire 失败路径），
         # 否则每次探测异常都会泄漏一个连接池。
@@ -284,5 +285,5 @@ async def run_infra_health_checks(
 
         try:
             await asyncio.wait_for(shutdown_event.wait(), timeout=interval_seconds)
-        except asyncio.TimeoutError:
+        except asyncio.TimeoutError:  # silent-ok: 等待下一轮检查的定时超时属正常节奏（非故障）
             continue

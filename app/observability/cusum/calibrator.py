@@ -82,7 +82,7 @@ class CUSUMCalibrator:
         try:
             import numpy as np
             return self._simulate_arl_numpy(rate, h, delta)
-        except ImportError:
+        except ImportError:  # silent-ok: numpy 可选依赖缺失时回退纯 Python 实现
             return self._simulate_arl_pure(rate, h, delta)
 
     def _simulate_arl_numpy(self, rate: float, h: float, delta: float) -> float:
@@ -199,8 +199,10 @@ class CUSUMCalibrator:
                 detail=report,
             )
             audit.log()
-        except Exception:
-            pass
+        except Exception as exc:
+            # 审计链写入失败必须留痕：审计是「谁在何时改了什么」的唯一凭据，
+            # 悄悄吞掉等于审计链断裂（A.62 批 2 · 可观测链路）。
+            _logger.warning("cusum_calibration_audit_write_failed", error=str(exc))
 
     @staticmethod
     def load_calibration_report(path: str = "data/cusum_calibration_report.json") -> dict[str, Any] | None:

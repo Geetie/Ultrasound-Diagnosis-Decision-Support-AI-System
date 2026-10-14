@@ -52,7 +52,9 @@ async def current_pending_depth() -> int | None:
         from app.services.diagnosis_worker import get_pending_depth_sync
 
         return get_pending_depth_sync()
-    except Exception:
+    except Exception as exc:
+        # 拿不到队列深度 → 准入控制按「未知」处理；失败要可查（debug 不刷屏）
+        logger.debug("pending_depth_unavailable", error=str(exc))
         return None
 
 

@@ -259,7 +259,8 @@ class MetricsCollector(MetricsDefinitions):
             return None
         try:
             return gauge._value.get()
-        except Exception:
+        except Exception as exc:
+            _logger.debug("gauge_value_read_failed", metric=metric_name, error=str(exc))
             return None
 
     def get_histogram_p99(self, metric_name: str) -> float | None:

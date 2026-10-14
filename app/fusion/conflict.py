@@ -480,7 +480,10 @@ def _extract_grade(
     text = response.content or ""
     try:
         m = pattern.search(text)
-    except Exception:
+    except Exception as exc:
+        # 正则抽取异常 → 返回 None 是降级，但**失败要可见**：
+        # 否则「这条结论里确实没写分级」与「抽取器坏了」分不出来（A.62 批 2-B2）。
+        logger.debug("grade_pattern_search_failed", error=str(exc))
         return None
     if m is None:
         return None
@@ -494,7 +497,8 @@ def _extract_grade(
         return None
     try:
         return fmt.format(captured)
-    except Exception:
+    except Exception as exc:
+        logger.debug("grade_format_failed", error=str(exc))
         return None
 
 
@@ -524,7 +528,8 @@ def _extract_negated_objects(content: str) -> set[str]:
                 token = m.group(1).strip().lower()
                 if 1 <= len(token) <= 20:
                     negated.add(token)
-        except Exception:
+        except Exception as exc:
+            logger.debug("negation_extract_failed", error=str(exc))
             continue
     return negated
 

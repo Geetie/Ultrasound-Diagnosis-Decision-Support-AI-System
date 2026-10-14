@@ -313,14 +313,40 @@ try {
       const segUnavailable = await page.locator('[data-region="segmentation-unavailable"]').count();
       record('G5.4a 分割结果到达界面（等待至多 90s，不空跑）', segArrived, `arrived=${segArrived}`);
 
-      // 逐帧扫，确认分割覆盖层只出现在片方标注的那一帧
-      const hitFrames = [];
-      for (let i = 0; i < total; i += 1) {
-        await page.evaluate(() => undefined);
-        while ((await frameNo()) > i + 1) { await page.getByLabel('上一帧').click(); await sleep(200); }
-        while ((await frameNo()) < i + 1) { await page.getByLabel('下一帧').click(); await sleep(200); }
-        const has = await page.locator('[data-region="segmentation-overlay"]').count();
-        if (has > 0) hitFrames.push(i + 1);
+      // A.62 批 2-C：**"到达"不等于"渲染稳定"**。到达判定用的是三个区域"任一存在"，
+      // 而覆盖层可能晚一拍才挂到 DOM（A.60 首跑实测 hitFrames=[] → 30/1 偶发）。
+      // 处理：①等覆盖层计数**连续两次一致**（渲染稳定）；②逐帧扫；③若"应有覆盖层却一个都没扫到"
+      //   则**再等一次并重扫一遍**（只重试一次，不掩盖真实缺陷）。
+      const settleOverlay = async () => {
+        let prev = -1;
+        for (let i = 0; i < 10; i += 1) {
+          const n = await page.locator('[data-region="segmentation-overlay"]').count();
+          if (n === prev) return n;
+          prev = n;
+          await sleep(500);
+        }
+        return prev;
+      };
+      const scanHitFrames = async () => {
+        const hit = [];
+        for (let i = 0; i < total; i += 1) {
+          await page.evaluate(() => undefined);
+          while ((await frameNo()) > i + 1) { await page.getByLabel('上一帧').click(); await sleep(200); }
+          while ((await frameNo()) < i + 1) { await page.getByLabel('下一帧').click(); await sleep(200); }
+          const has = await page.locator('[data-region="segmentation-overlay"]').count();
+          if (has > 0) hit.push(i + 1);
+        }
+        return hit;
+      };
+
+      await settleOverlay();
+      let hitFrames = await scanHitFrames();
+      let retried = false;
+      if (hitFrames.length === 0 && segUnavailable === 0) {
+        retried = true;
+        await sleep(1500);
+        await settleOverlay();
+        hitFrames = await scanHitFrames();
       }
       if (segUnavailable > 0) {
         // 旁路未启用/无权重 → 显示降级原因，覆盖层本就不该出现
@@ -328,8 +354,11 @@ try {
           `segmentation-unavailable（旁路未启用）→ 不画掩膜 ✓`);
       } else {
         // 有可用分割 → 必须**恰好一帧**出现覆盖层（多帧错标/永不显示都算失败）
-        record('G5.4 分割覆盖层在整栈中只出现于「所属帧」（唯一性）', hitFrames.length === 1,
-          `hitFrames=[${hitFrames.join(',')}]/${total}`);
+        record(
+          'G5.4 分割覆盖层在整栈中只出现于「所属帧」（唯一性）',
+          hitFrames.length === 1,
+          `hitFrames=[${hitFrames.join(',')}]/${total}${retried ? '（已重试一次）' : ''}`,
+        );
       }
     }
   } else {

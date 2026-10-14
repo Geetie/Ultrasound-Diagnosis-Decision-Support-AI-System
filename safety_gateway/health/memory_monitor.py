@@ -36,14 +36,14 @@ class MemoryMonitor:
             import psutil
             process = psutil.Process(os.getpid())
             return process.memory_info().rss / (1024 * 1024)
-        except ImportError:
+        except ImportError:  # silent-ok: 可选依赖缺失时降级
             pass
         try:
             with open(f"/proc/{os.getpid()}/status") as f:
                 for line in f:
                     if line.startswith("VmRSS:"):
                         return int(line.split()[1]) / 1024
-        except Exception:
+        except Exception:  # silent-ok: /proc 读取失败 → 继续尝试下一来源；函数末尾统一 logger.warning(sg_memory_usage_unavailable)
             pass
         try:
             class PROCESS_MEMORY_COUNTERS_EX(ctypes.Structure):
@@ -58,7 +58,7 @@ class MemoryMonitor:
             kernel32 = ctypes.windll.kernel32
             if kernel32.GetProcessMemoryInfo(kernel32.GetCurrentProcess(), ctypes.byref(counters), counters.cb):
                 return counters.WorkingSetSize / (1024 * 1024)
-        except Exception:
+        except Exception:  # silent-ok: Windows API 探测失败 → 同函数末尾统一 warning 兜底
             pass
         logger.warning("sg_memory_usage_unavailable")
         return -1.0

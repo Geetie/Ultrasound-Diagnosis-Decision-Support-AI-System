@@ -67,11 +67,11 @@ class VictoriaMetricsBackup:
         if self._task and not self._task.done():
             try:
                 await asyncio.wait_for(self._task, timeout=30.0)
-            except (asyncio.TimeoutError, asyncio.CancelledError):
+            except (asyncio.TimeoutError, asyncio.CancelledError):  # silent-ok: 停机路径：先取消备份任务再等待其结束
                 self._task.cancel()
                 try:
                     await self._task
-                except asyncio.CancelledError:
+                except asyncio.CancelledError:  # silent-ok: 停机时备份任务被取消属正常控制流
                     pass
         _logger.info(
             "vm_backup_stopped",
@@ -96,7 +96,7 @@ class VictoriaMetricsBackup:
                     self._shutdown_event.wait(),
                     timeout=self._interval_hours * 3600,
                 )
-            except asyncio.TimeoutError:
+            except asyncio.TimeoutError:  # silent-ok: 备份周期等待超时属正常轮询节奏
                 pass
 
     async def _perform_backup(self) -> None:
@@ -173,7 +173,7 @@ class VictoriaMetricsBackup:
                     if file_time < cutoff:
                         f.unlink()
                         _logger.info("vm_backup_cleaned", file=f.name)
-                except ValueError:
+                except ValueError:  # silent-ok: 清理失败的保留目录时单条路径解析失败即跳过（其余条目继续）
                     continue
         except Exception as e:
             _logger.warning("vm_backup_cleanup_error", error=str(e))

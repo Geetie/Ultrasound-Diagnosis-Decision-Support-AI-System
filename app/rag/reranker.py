@@ -153,13 +153,15 @@ class BgeRerankerService(RerankService):
                 continue
             try:
                 idx = int(item.get("index", -1))
-            except (TypeError, ValueError):
+            except (TypeError, ValueError):  # silent-ok: 返回项缺 index/非数字 → 跳过该条（其余继续）
                 continue
             if idx < 0 or idx >= len(chunks):
                 continue
             try:
                 rel = float(item.get("relevance_score", 0.0))
-            except (TypeError, ValueError):
+            except (TypeError, ValueError) as exc:
+            # 分数不可解析 → 记 0 分（会排到最后），要可见：否则「模型给低分」与「解析坏了」分不清
+                logger.debug("rerank_score_unparseable", error=str(exc))
                 rel = 0.0
             scored.append(
                 ScoredChunk(
@@ -179,9 +181,12 @@ class BgeRerankerService(RerankService):
                 "/health", timeout=self._health_timeout
             )
             return response.status_code == 200
-        except (httpx.TimeoutException, httpx.ConnectError):
+        except (httpx.TimeoutException, httpx.ConnectError) as exc:
+            # 重排服务不可达 → 视为不健康（检索退化为融合排序）；周期探测用 debug
+            logger.debug("reranker_health_unreachable", error=str(exc))
             return False
-        except Exception:
+        except Exception as exc:
+            logger.warning("reranker_health_check_failed", error=str(exc))
             return False
 
     async def close(self) -> None:

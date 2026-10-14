@@ -287,7 +287,7 @@ def _extract_lvef(text: str) -> int | None:
     if m:
         try:
             return int(m.group(1))
-        except ValueError:
+        except ValueError:  # silent-ok: 正则组可能不是纯数字（如 TR？）→ 视为抽不到分级
             return None
     return None
 
@@ -713,7 +713,7 @@ class ConsistencyChecker:
         prior_conf_raw = prior.get("confidence")
         try:
             prior_confidence = float(prior_conf_raw) if prior_conf_raw is not None else None
-        except (TypeError, ValueError):
+        except (TypeError, ValueError):  # silent-ok: 历史置信度不可解析 → 视为「无历史」，属正常控制流
             prior_confidence = None
 
         if not prior_organ and not prior_grade and prior_confidence is None:
@@ -1047,7 +1047,7 @@ def _grade_diff(prior: str, current: str) -> int | None:
         return None
     try:
         return abs(int(p) - int(c))
-    except ValueError:
+    except ValueError:  # silent-ok: 分级非整数（如 TR4A）→ 无法算级差，返回 None
         return None
 
 

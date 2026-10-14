@@ -100,7 +100,7 @@ class EdgeDeviceAuth:
         now = time.time() if now is None else now
         try:
             device_id, expires_raw, nonce, signature_raw = token.split(".")
-        except ValueError:
+        except ValueError:  # silent-ok: 取值不可解析 → 回退默认（正常控制流）
             return False
 
         if device_id != self.device_id:
@@ -108,7 +108,7 @@ class EdgeDeviceAuth:
 
         try:
             expires = int(expires_raw)
-        except ValueError:
+        except ValueError:  # silent-ok: 取值不可解析 → 回退默认（正常控制流）
             return False
 
         if expires < int(now):
@@ -120,7 +120,7 @@ class EdgeDeviceAuth:
         ).digest()
         try:
             provided = _b64url_decode(signature_raw)
-        except Exception:
+        except Exception:  # silent-ok: 设备签名解码失败即拒绝（fail-closed，方向安全；本模块无 logger 避免噪声）
             return False
         return hmac.compare_digest(expected, provided)
 

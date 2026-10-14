@@ -55,7 +55,7 @@ def _as_float(value: Any, default: float) -> float:
         return default
     try:
         return float(value)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError):  # silent-ok: 取值不可解析 → 回退默认（正常控制流）
         return default
 
 
@@ -64,7 +64,7 @@ def _as_int(value: Any, default: int) -> int:
         return default
     try:
         return int(value)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError):  # silent-ok: 取值不可解析 → 回退默认（正常控制流）
         return default
 
 

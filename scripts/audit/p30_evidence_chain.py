@@ -40,6 +40,7 @@ import argparse
 import ast
 import asyncio
 import json
+import re
 import sys
 import time
 from pathlib import Path
@@ -51,13 +52,23 @@ _VERDICTS = (
     "ORDER_MISMATCH",
     "SUBSET_NONPREFIX",
     "NOT_RECORDED",
+    "CRAG_SUPPLEMENT",
     "MISMATCH",
     "NO_RETRIEVAL",
 )
 
 
-def classify(recorded: list[str], retrieved: list[str]) -> str:
-    """判定「落库的块」与「prompt 里的块」的关系（纯函数，便于反证自测）。"""
+def classify(
+    recorded: list[str], retrieved: list[str], crag_ids: list[str] | None = None
+) -> str:
+    """判定「落库的块」与「prompt 里的块」的关系（纯函数，便于反证自测）。
+
+    `crag_ids` = CRAG 补充合并里出现过的块（`crag_evidence_merge` 留痕）。有了它，
+    「落库里有块不在 prompt 中」就能再分两种（A.62 批 2 的核心结论）：
+    * 这些块**都出现在 CRAG 合并里** → `CRAG_SUPPLEMENT`：可解释 —— **模型从未看到它们**
+      （CRAG 的新检索块没进任何 prompt，却被并进了落库证据）；
+    * 否则 → `MISMATCH`：仍属"来源不明"，要继续查。
+    """
     if not retrieved:
         return "NO_RETRIEVAL"
     if not recorded:
@@ -69,6 +80,10 @@ def classify(recorded: list[str], retrieved: list[str]) -> str:
     if set(recorded) <= set(retrieved):
         return "PREFIX_TRUNCATED" if list(retrieved[: len(recorded)]) == list(recorded) \
             else "SUBSET_NONPREFIX"
+    if crag_ids:
+        extra = [c for c in recorded if c not in set(retrieved)]
+        if extra and all(c in set(crag_ids) for c in extra):
+            return "CRAG_SUPPLEMENT"
     return "MISMATCH"
 
 
@@ -76,19 +91,48 @@ def _counter_evidence() -> list[tuple[str, bool, str]]:
     """反证腿：判定器不能"永远 PASS" —— 故意喂坏输入必须被判成对应的问题类型。"""
     base = ["c1", "c2", "c3", "c4", "c5"]
     cases = [
-        ("全等 → PREFIX_TRUNCATED", ["c1", "c2", "c3", "c4", "c5"], base, "PREFIX_TRUNCATED"),
-        ("前 3 条 → PREFIX_TRUNCATED", ["c1", "c2", "c3"], base, "PREFIX_TRUNCATED"),
-        ("顺序倒置 → ORDER_MISMATCH", ["c5", "c4", "c3", "c2", "c1"], base, "ORDER_MISMATCH"),
-        ("子集非前缀 → SUBSET_NONPREFIX", ["c2", "c4"], base, "SUBSET_NONPREFIX"),
-        ("空记录 → NOT_RECORDED", [], base, "NOT_RECORDED"),
-        ("记录含未知块 → MISMATCH", ["c1", "cX"], base, "MISMATCH"),
-        ("prompt 为空 → NO_RETRIEVAL", ["c1"], [], "NO_RETRIEVAL"),
+        ("全等 → PREFIX_TRUNCATED", ["c1", "c2", "c3", "c4", "c5"], base, None, "PREFIX_TRUNCATED"),
+        ("前 3 条 → PREFIX_TRUNCATED", ["c1", "c2", "c3"], base, None, "PREFIX_TRUNCATED"),
+        ("顺序倒置 → ORDER_MISMATCH", ["c5", "c4", "c3", "c2", "c1"], base, None, "ORDER_MISMATCH"),
+        ("子集非前缀 → SUBSET_NONPREFIX", ["c2", "c4"], base, None, "SUBSET_NONPREFIX"),
+        ("空记录 → NOT_RECORDED", [], base, None, "NOT_RECORDED"),
+        ("记录含未知块 → MISMATCH", ["c1", "cX"], base, None, "MISMATCH"),
+        ("prompt 为空 → NO_RETRIEVAL", ["c1"], [], None, "NO_RETRIEVAL"),
+        # 批 2 新增：CRAG 补充块必须被单独识别（否则会笼统报 MISMATCH，掩盖真实成因）
+        (
+            "落库含 CRAG 补充块 → CRAG_SUPPLEMENT",
+            ["c1", "c2", "cZ"],
+            base,
+            ["cZ"],
+            "CRAG_SUPPLEMENT",
+        ),
+        (
+            "落库含来源不明块 → 仍判 MISMATCH",
+            ["c1", "c2", "cY"],
+            base,
+            ["cZ"],
+            "MISMATCH",
+        ),
     ]
     out = []
-    for name, recorded, retrieved, expect in cases:
-        got = classify(recorded, retrieved)
+    for name, recorded, retrieved, crag_ids, expect in cases:
+        got = classify(recorded, retrieved, crag_ids)
         out.append((name, got == expect, f"expect={expect} got={got}"))
     return out
+
+
+def _extract_ids(line: str, key: str) -> list[str] | None:
+    """从一行留痕里抠出 `key=[...]` 的字符串列表（块 id 里不含 `]`，故正则安全）。"""
+    m = re.search(rf"{key}=(\[[^\]]*\])", line)
+    if not m:
+        return None
+    try:
+        return [str(x) for x in ast.literal_eval(m.group(1))]
+    except (ValueError, SyntaxError) as exc:
+        # 解析失败要**当场可见**（零静默）：否则这一行会被当成"没有这个字段"，
+        # 而 CRAG 凭据一旦丢了，`CRAG_SUPPLEMENT` 就判不出来（判定器静默变弱）。
+        print(f"  [warn] 留痕字段解析失败 {key}: {type(exc).__name__}: {line[:100]}")
+        return None
 
 
 def parse_evidence_log(log_path: Path) -> list[dict]:
@@ -104,10 +148,32 @@ def parse_evidence_log(log_path: Path) -> list[dict]:
         return []
     raw = log_path.read_text(encoding="utf-8", errors="ignore").replace("\x00", "")
     for line in raw.splitlines():
-        if "evidence_chain" not in line or "request_id=" not in line:
+        if "request_id=" not in line:
             continue
-        rid = line.split("request_id=")[-1].strip()
+        is_chain = "evidence_chain" in line
+        is_crag = "crag_evidence_merge" in line
+        if not (is_chain or is_crag):
+            continue
+        # ⚠️ 不能假设 `request_id=` 在行尾：早期合成日志/不同 structlog 配置下它可能出现在中间，
+        # `split("request_id=")[-1]` 会把后半行都当 id（本探针测试踩到）。用正则取一个 token。
+        _m = re.search(r"request_id=(\S+)", line)
+        if not _m:
+            continue
+        rid = _m.group(1)
         entry = pairs.setdefault(rid, {"request_id": rid})
+        if is_crag:
+            # CRAG 补充合并留痕（A.62 批 2）：它是「落库有、prompt 无」那类块的来源凭据
+            entry["crag_calls"] = int(entry.get("crag_calls") or 0) + 1
+            for ckey in ("final_ids", "new_ids", "original_ids"):
+                ids = _extract_ids(line, ckey)
+                if ids:
+                    entry.setdefault(f"crag_{ckey}", []).extend(ids)
+            for flag, token in (("reinvoke", "mode=reinvoke"), ("placeholder", "placeholder")):
+                if token in line:
+                    entry.setdefault("crag_modes", [])
+                    if flag not in entry["crag_modes"]:
+                        entry["crag_modes"].append(flag)
+            continue
         for key in ("prompt_chunk_ids", "recorded_ids"):
             if f"{key}=" not in line:
                 continue
@@ -118,6 +184,7 @@ def parse_evidence_log(log_path: Path) -> list[dict]:
             end = frag.rfind("]")
             if end < 0:
                 entry.setdefault("parse_errors", []).append(f"{key}: 找不到 ']'：{frag[:80]}")
+                print(f"  [warn] 留痕行没有闭合的 ']'：{line[:100]}")
                 continue
             try:
                 ids = [str(x) for x in ast.literal_eval(frag[: end + 1])]
@@ -126,6 +193,7 @@ def parse_evidence_log(log_path: Path) -> list[dict]:
                 entry.setdefault("parse_errors", []).append(
                     f"{key}: {type(exc).__name__}: {frag[:80]}"
                 )
+                print(f"  [warn] 留痕字段解析失败 {key}: {type(exc).__name__}: {frag[:80]}")
                 continue
             entry.setdefault(f"{key}_calls", []).append(ids)
             entry[key] = ids  # 兼容：保留最后一次（单次调用的场景等价）
@@ -139,11 +207,20 @@ def parse_evidence_log(log_path: Path) -> list[dict]:
                         union.append(cid)
             entry[f"{key}_union"] = union
             entry[f"{key}_calls_n"] = len(entry.get(f"{key}_calls", []) or [])
+        # CRAG 三类 id 也保序去重（`crag_final_ids` 是判定 `CRAG_SUPPLEMENT` 的凭据）
+        for key in ("crag_final_ids", "crag_new_ids", "crag_original_ids"):
+            union_c: list[str] = []
+            for cid in entry.get(key, []) or []:
+                if cid not in union_c:
+                    union_c.append(cid)
+            if union_c:
+                entry[key] = union_c
     # 带解析错误的条目**也要留下**（否则"坏行"会被静默丢掉，探针又变成"日志里没有留痕"）
+    # 注意：只有 CRAG 留痕（没有 prompt 留痕）的条目也保留 —— 它本身是有用的旁证。
     return [
         e
         for e in pairs.values()
-        if e.get("prompt_chunk_ids_union") or e.get("parse_errors")
+        if e.get("prompt_chunk_ids_union") or e.get("parse_errors") or e.get("crag_calls")
     ]
 
 
@@ -289,6 +366,12 @@ async def _main() -> int:
         print(f"    recorded#{i}（{len(ids)}）={ids}")
     print(f"  prompt 里的块（并集 {len(prompt_ids)}）：{prompt_ids}")
     print(f"  日志里落库的块（并集 {len(logged_recorded)}）：{logged_recorded}")
+    # CRAG 补充合并（批 2 新增）：它是「落库有、prompt 无」那类块的**来源凭据**
+    crag_ids = list(entry.get("crag_final_ids") or [])
+    if entry.get("crag_calls"):
+        print(f"  CRAG 留痕 {entry['crag_calls']} 次（模式={entry.get('crag_modes')}）："
+              f"original={entry.get('crag_original_ids')} new={entry.get('crag_new_ids')} "
+              f"final={crag_ids}")
 
     row = await _row_for(rid)
     if not row:
@@ -308,7 +391,7 @@ async def _main() -> int:
             pid = list(e.get("prompt_chunk_ids_union") or [])
             rec = list(e.get("recorded_ids_union") or [])
             db = list(r2.get("knowledge_ids") or [])
-            v = classify(db or rec, pid)
+            v = classify(db or rec, pid, e.get("crag_final_ids"))
             distribution[v] = distribution.get(v, 0) + 1
             per_entry.append(
                 {
@@ -320,30 +403,65 @@ async def _main() -> int:
                     "db_chunks": len(db),
                     "verdict": v,
                     "db_minus_prompt": [c for c in db if c not in pid],
+                    "crag_calls": e.get("crag_calls"),
+                    "crag_modes": e.get("crag_modes"),
                 }
             )
         print(f"\n全部留痕条目（{len(per_entry)} 条）判定分布：{distribution}")
+        # ⚠️ `--all` 的退出码必须由**整体分布**决定，不能只看最后一条样本：
+        # 首版就踩了这个坑 —— 7 条里 3 条 CRAG_SUPPLEMENT（落库含模型没看到的块），
+        # 但最后一条恰好是健康的甲状腺样本 → 探针打印 PASS（"看起来全覆盖、实际没验"）。
+        non_faithful = {
+            v: n for v, n in distribution.items() if v != "PREFIX_TRUNCATED"
+        }
+        checks.append(
+            {
+                "name": "全部留痕条目都忠实（落库 ⊆ prompt）",
+                "ok": not non_faithful,
+                "detail": (
+                    f"不忠实 {sum(non_faithful.values())}/{len(per_entry)} 条：{non_faithful}"
+                    if non_faithful
+                    else f"{len(per_entry)}/{len(per_entry)}"
+                ),
+            }
+        )
         for item in per_entry:
             extra = (
                 f" db中不在prompt的块={item['db_minus_prompt']}"
                 if item["db_minus_prompt"]
                 else ""
             )
+            crag = f" CRAG={item['crag_modes']}" if item.get("crag_calls") else ""
             print(f"  {item['organ']} {item['request_id']} 调用{item['calls']}次 "
                   f"prompt={item['prompt_chunks']} recorded={item['recorded_chunks']} "
-                  f"db={item['db_chunks']} → {item['verdict']}{extra}")
+                  f"db={item['db_chunks']} → {item['verdict']}{extra}{crag}")
 
-    verdict = classify(db_ids, prompt_ids)
-    verdict_log = classify(logged_recorded, prompt_ids)
+    verdict = classify(db_ids, prompt_ids, crag_ids)
+    verdict_log = classify(logged_recorded, prompt_ids, crag_ids)
     missing = [c for c in prompt_ids if c not in db_ids]
+    not_seen = [c for c in db_ids if c not in prompt_ids]
     print(f"\n[判定] {verdict}（按日志留痕判定 = {verdict_log}）")
     print(f"  模型当时看到 {len(prompt_ids)} 块，落库记 {len(db_ids)} 块；未记录的 {len(missing)} 块：{missing}")
+    if not_seen:
+        print(f"  ⚠️ 落库里**模型从未看到**的块 {len(not_seen)} 个：{not_seen}"
+              f"（{'来自 CRAG 补充合并，可解释' if verdict == 'CRAG_SUPPLEMENT' else '来源不明，继续查'}）")
 
     checks.append(
         {
-            "name": "证据链判定（落库 = prompt 的前 N 条）",
+            "name": "证据链判定（落库 ⊆ prompt，顺序一致）",
             "ok": verdict == "PREFIX_TRUNCATED",
-            "detail": f"verdict={verdict}",
+            "detail": (
+                f"verdict={verdict}"
+                + ("（CRAG 补充块进了落库但没进 prompt）" if verdict == "CRAG_SUPPLEMENT" else "")
+            ),
+        }
+    )
+    # 单列一条：**落库里的块是否都进过 prompt**（这是"结论可溯源"能否成立的门槛）
+    checks.append(
+        {
+            "name": "落库的块全部进过 prompt（模型确实看到过）",
+            "ok": not not_seen,
+            "detail": f"模型未见 {len(not_seen)} 块：{not_seen}",
         }
     )
     # 数据库那一列记的是**融合层最终响应**的证据；CRAG 合并/多专科时它可能是"最后一次调用"或"并集"，
@@ -378,6 +496,14 @@ async def _main() -> int:
         "verdict": verdict,
         "verdict_from_log": verdict_log,
         "not_recorded_chunks": missing,
+        "not_seen_by_model": not_seen,
+        "crag": {
+            "calls": entry.get("crag_calls"),
+            "modes": entry.get("crag_modes"),
+            "original_ids": entry.get("crag_original_ids"),
+            "new_ids": entry.get("crag_new_ids"),
+            "final_ids": crag_ids,
+        },
         "verdict_distribution": distribution if args.all else None,
         "per_entry": per_entry if args.all else None,
         "judge_check": judge_result,

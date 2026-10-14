@@ -1801,15 +1801,56 @@ class TestDesensitizationRulePriority:
 
 
 class TestDesensitizationRestoreKeyVersionMismatch:
+    """密钥版本不匹配时的两条契约分支（A.62 批 2-D：改成**顺序无关**）。
+
+    为什么必须显式控制前置条件：`_decrypt_value` 在「版本不同但**旧密钥存在且能解**」时是
+    **正常返回**的（密钥轮换期的兼容路径，只打 `decrypting_with_different_key_version` 警告）。
+    原用例假设「版本+999 一定查不到旧密钥」，于是全量顺序下只要别的用例**leak 了一个
+    `RedisPool.get_client` 的 mock**（`get` 返回真值），旧密钥查找就"命中"→ 解密成功 → 不抛异常
+    （真机复现：`Failed: DID NOT RAISE RuntimeError`，只留一条 warning 日志）。
+    现在两条分支各自打桩：**旧密钥缺失 → 抛约定异常；旧密钥可用 → 兼容解密并告警**。
+    """
 
     @pytest.mark.asyncio
-    async def test_decrypt_with_wrong_key_version_raises(self):
+    async def test_旧密钥缺失时抛约定异常(self):
         service = DesensitizationRestoreService()
         plaintext = "测试数据"
         ciphertext, iv, key_version = await service._encrypt_value(plaintext)
         wrong_version = key_version + 999
-        with pytest.raises(RuntimeError, match="Cannot decrypt data with key_version"):
+        # 显式让"旧密钥查找"返回 None（Redis 不可用/无该版本记录）
+        redis_stub = MagicMock()
+        redis_stub.get = AsyncMock(return_value=None)
+        with (
+            patch(
+                "app.config.redis.RedisPool.get_client",
+                new=AsyncMock(return_value=redis_stub),
+            ),
+            pytest.raises(RuntimeError, match="Cannot decrypt data with key_version"),
+        ):
             await service._decrypt_value(ciphertext, iv, wrong_version)
+
+    @pytest.mark.asyncio
+    async def test_旧密钥可用时兼容解密并告警(self):
+        """轮换兼容路径：旧版本密钥仍在 → 用旧密钥解开并打 warning（不抛）。"""
+        service = DesensitizationRestoreService()
+        plaintext = "轮换兼容数据"
+        ciphertext, iv, key_version = await service._encrypt_value(plaintext)
+        # 旧版本记录"存在"，且 hsm 解出的就是当前密钥（= 轮换期尚未真正换钥的最常见形态）
+        redis_stub = MagicMock()
+        redis_stub.get = AsyncMock(return_value=b"wrapped-old-key")
+        current_key, _ = await service._get_aes_key()
+        with (
+            patch(
+                "app.config.redis.RedisPool.get_client",
+                new=AsyncMock(return_value=redis_stub),
+            ),
+            patch(
+                "app.security.desensitization_restore.hsm_manager.decrypt",
+                return_value=current_key,
+            ),
+        ):
+            got = await service._decrypt_value(ciphertext, iv, key_version + 1)
+        assert got == plaintext
 
 
 class TestConsentAPIConcurrentWrite:

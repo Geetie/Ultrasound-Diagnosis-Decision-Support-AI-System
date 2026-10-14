@@ -154,7 +154,17 @@ class DesensitizationRestoreService:
                     f"Cannot decrypt data with key_version={key_version}. "
                     f"Current key_version={current_version}. "
                     f"Old key unavailable or decryption failed."
-                )
+                ) from e
+            # A.62 批 2-D 修正：走到这里 = 「版本不同 **而且** 旧密钥记录不存在」。
+            # 原先会**掉进下面的"用当前密钥解密"分支**，最后抛的是密码学库的 InvalidTag ——
+            # 错误类型与契约不符（调用方按 RuntimeError 处理），而且异常信息毫无指引。
+            # 现在显式抛约定异常，语义与"旧密钥不可用"一致（graceful 路径仍然保留：
+            # 旧密钥「存在且能解」时上面已 return）。
+            raise RuntimeError(
+                f"Cannot decrypt data with key_version={key_version}. "
+                f"Current key_version={current_version}. "
+                f"Old key unavailable or decryption failed."
+            )
 
         aesgcm = AESGCM(aes_key)
         plaintext = aesgcm.decrypt(iv, ciphertext, None)

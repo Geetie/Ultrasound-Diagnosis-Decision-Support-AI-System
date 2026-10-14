@@ -76,7 +76,7 @@ def decode_access_token(token: str) -> dict[str, Any]:
             options={"verify_exp": True}
         )
         return payload
-    except jwt.InvalidTokenError:
+    except jwt.InvalidTokenError:  # silent-ok: 逐个密钥试签，全部失败后统一 warning（循环外留痕）
         pass
 
     all_keys = hsm_manager.list_keys_by_slot(KeySlot.JWT_SIGNING)
@@ -95,7 +95,7 @@ def decode_access_token(token: str) -> dict[str, Any]:
             )
             logger.info("jwt_verified_with_rotated_key", key_name=key_name)
             return payload
-        except jwt.InvalidTokenError:
+        except jwt.InvalidTokenError:  # silent-ok: 逐个密钥试签，全部失败后统一 warning（循环外留痕）
             continue
 
     logger.warning("jwt_decode_failed_all_keys_tried")

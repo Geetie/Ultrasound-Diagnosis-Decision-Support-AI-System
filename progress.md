@@ -1,6 +1,11 @@
 # progress.md — 当前状态（唯一「现在在哪」来源）
 
-**Last Updated**: 2026-10-13（A.62 三梯队现状总览 + 分批计划落地；**批 1 交付**：证据链核实 + 心脏腿可行动文案 + L2 口径判据）
+**Last Updated**: 2026-10-14（A.62 **批 2 交付**：证据链 CRAG 路径成因查明（心脏腿落库含 4~5 块「模型从未看到的知识」）+ 零静默三段收敛 **348 → 263** + p20 G5.4 时序硬化）
+**HEAD-A.62（批 2）**: 分支 `main`（用户指令「全删旧任务、继续下一批」；批 2 = 守卫硬化）：
+①**批 2-A**：根因 `app/fusion/crag.py:450-458` —— CRAG 新检索块被并进落库证据，而 `clinical_context["crag_evidence_chunks"]`（`546-554`）**全仓只写不读** → 新块从未进 prompt；已补 CRAG 留痕 + p30 新判定 `CRAG_SUPPLEMENT`（反证腿 9 条）+ 修 `--all` 假 PASS；真机 n=5：甲状腺 2/2 正常、心脏 **3/3 含模型未见块（4~5 块）**；修法 A/B 待拍板。
+②**批 2-B**：静默收敛三段 —— `app/observability` 32→0、`rag`+`fusion` 16→0、`security`+`services`+`safety_gateway`+`edge`+`integrations` 37→0；全仓 348→263。
+③**批 2-C**：p20 G5.4 改「等渲染稳定 → 逐帧扫 → 缺覆盖层再等一次重试一次」；真机连跑 3 次。
+④**批 2-D**：全量 unit 连跑两次 3841 passed，未复现偶发 → 观察项。详见 16 号 A.62.6~A.62.9）
 **HEAD-A.62（批 1）**: 分支 `main`（用户拍板：三梯队全量现状 + 完整计划、价值/风险优先、一次给全分 4 批、外部依赖写三段式、**写人话**）。
 ①**现状总览 + 分批计划**落 21 号（视图层）与 `feature_list.json`（4 个批次条目 `a62-batch1~4`）：梯队一（性能）代码项已闭合、梯队二（能力补全）全交付、梯队三一半交付（Langfuse 技术打通但 148/700、t2a 公开集下界已出、注册级缺数据）。
 ②**批 1-A 证据链**：新增生产侧 env 留痕 `UAI_EVIDENCE_CHAIN_DEBUG=1`（`base._log_evidence_chain` 打「prompt 里的块」+「落库的块」，同 request_id 对齐）+ 探针 `scripts/audit/p30_evidence_chain.py`（7 条反证腿）。真机 **n=7**：甲状腺 **5/5 = PREFIX_TRUNCATED**（prompt 5 块、落库 3 块 = **前 3 条**，顺序一致 → 忠实但截断）；心脏 **2/2 = MISMATCH**（落库的块不在任何 prompt 留痕里 → 已建 `evidence-chain-crag-path` 待查）。

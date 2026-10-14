@@ -43,11 +43,11 @@ class VictoriaMetricsPusher:
         if self._task and not self._task.done():
             try:
                 await asyncio.wait_for(self._task, timeout=10.0)
-            except (asyncio.TimeoutError, asyncio.CancelledError):
+            except (asyncio.TimeoutError, asyncio.CancelledError):  # silent-ok: 停机路径：先取消推送任务再等待其结束
                 self._task.cancel()
                 try:
                     await self._task
-                except asyncio.CancelledError:
+                except asyncio.CancelledError:  # silent-ok: 停机时推送任务被取消属正常控制流
                     pass
         _logger.info("VictoriaMetrics pusher stopped", push_count=self._push_count, fail_count=self._fail_count)
 
@@ -63,7 +63,7 @@ class VictoriaMetricsPusher:
             delay = self._calculate_delay()
             try:
                 await asyncio.wait_for(self._shutdown_event.wait(), timeout=delay)
-            except asyncio.TimeoutError:
+            except asyncio.TimeoutError:  # silent-ok: 推送周期等待超时属正常轮询节奏
                 pass
 
     def _calculate_delay(self) -> float:

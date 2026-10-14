@@ -585,7 +585,9 @@ def verify_report_signature(report: DiagnosisReport) -> bool:
 
     try:
         signature = base64.b64decode(report.signature)
-    except Exception:
+    except Exception as exc:
+        # 报告签名解码失败 = 签名不可校验（可能是数据损坏或篡改）→ warning
+        logger.warning("report_signature_b64_decode_failed", error=str(exc))
         return False
     key_name = report.signing_key_name or settings.report_signing_key_name
     try:

@@ -27,7 +27,7 @@ class ElasticsearchLogStorage(LogStorageBackend):
             try:
                 from elasticsearch import AsyncElasticsearch
                 self._client = AsyncElasticsearch([self.es_url])
-            except ImportError:
+            except ImportError:  # silent-ok: elasticsearch 可选依赖缺失时禁用后端
                 self._client = None
         return self._client
 

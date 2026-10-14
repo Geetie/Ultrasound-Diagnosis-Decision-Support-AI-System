@@ -71,7 +71,9 @@ class CorrectionRecord:
                 original_value=str(original),
                 corrected_value=str(corrected),
             )
-        except Exception:
+        except Exception as exc:
+            # 单条反馈解析失败 → 跳过该行；但「少算一条」要能查到（修正率是质量指标）
+            logger.debug("feedback_row_unparseable", error=str(exc))
             return None
 
 

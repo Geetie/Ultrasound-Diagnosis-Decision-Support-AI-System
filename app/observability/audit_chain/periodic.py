@@ -57,7 +57,7 @@ async def stop_audit_chain_periodic_tasks() -> None:
         _periodic_task.cancel()
         try:
             await _periodic_task
-        except asyncio.CancelledError:
+        except asyncio.CancelledError:  # silent-ok: 周期性任务取消属正常停机
             pass
         _periodic_task = None
     _logger.info("cross_chain_periodic_task_stopped")

@@ -92,7 +92,7 @@ class UDAFMaxMatchTokenizer:
                 for syn, standard in vocabulary.iter_synonym_mappings():
                     self._known_terms.add(syn)
                     self._known_terms.add(standard)
-            except Exception:
+            except Exception:  # silent-ok: 词表 API 形态不同则退化（仅少一轮同义扩展，不影响主流程）
                 pass  # Graceful degradation if vocabulary API differs.
 
     def tokenize(self, text: str) -> list[str]:
@@ -126,7 +126,7 @@ class UDAFMaxMatchTokenizer:
                                 syn_lower = syn.lower()
                                 if syn_lower != candidate and syn_lower != normalized:
                                     tokens.append(syn_lower)
-                    except Exception:
+                    except Exception:  # silent-ok: 同义词扩展失败即跳过该词（主 token 已产出）
                         pass  # Graceful degradation.
                     i += length
                     matched = True

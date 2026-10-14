@@ -126,7 +126,7 @@ async def close_db() -> None:
     if _async_engine is not None:
         try:
             loop = asyncio.get_running_loop()
-        except RuntimeError:
+        except RuntimeError:  # silent-ok: 无运行事件循环属同步调用场景（改走 asyncio.run/直连路径）
             loop = None
         if loop is not None and loop.is_running():
             async with _ensure_init_lock():

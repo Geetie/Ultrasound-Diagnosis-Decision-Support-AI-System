@@ -544,7 +544,7 @@ def _parse_iso(value: str | None) -> datetime | None:
         return None
     try:
         return datetime.fromisoformat(value)
-    except ValueError:
+    except ValueError:  # silent-ok: 取值不可解析 → 回退默认（正常控制流）
         return None
 
 

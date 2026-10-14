@@ -274,7 +274,9 @@ class FusionEngineImpl(FusionEngine):
                 self._conflict_detector is not None
                 and self._consistency_checker is not None
             )
-        except Exception:
+        except Exception as exc:
+            # 探测自身异常 → 视为不健康，但必须留痕：否则「探测器坏了」会伪装成「服务不健康」
+            logger.warning("fusion_health_check_failed", error=str(exc))
             return False
 
     async def close(self) -> None:

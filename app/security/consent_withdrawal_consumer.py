@@ -316,7 +316,7 @@ class ConsentWithdrawalConsumer:
             self._consumer_task.cancel()
             try:
                 await self._consumer_task
-            except asyncio.CancelledError:
+            except asyncio.CancelledError:  # silent-ok: 停机时 await 被取消属正常控制流
                 pass
         logger.info("consent_withdrawal_consumer_stopped")
 
@@ -349,7 +349,7 @@ class ConsentWithdrawalConsumer:
                                 logger.error("consent_withdrawal_event_ack_skipped",
                                            msg_id=msg_id, error=str(e))
 
-            except asyncio.CancelledError:
+            except asyncio.CancelledError:  # silent-ok: 停机时 await 被取消属正常控制流
                 break
             except Exception as e:
                 logger.error("consent_withdrawal_consume_error", error=str(e))

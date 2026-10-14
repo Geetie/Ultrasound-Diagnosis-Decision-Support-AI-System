@@ -27,7 +27,7 @@ def validate_dicom_format(content: bytes) -> tuple[bool, str | None]:
 def parse_and_validate_dicom(content: bytes) -> tuple[pydicom.Dataset | None, str | None, list[str]]:
     try:
         ds = pydicom.dcmread(BytesIO(content), force=True)
-    except Exception as e:
+    except Exception as e:  # silent-ok: 错误串已随返回值传播给调用方（本模块无 logger，返回值即留痕）
         return None, f"Failed to parse DICOM: {e!s}", []
 
     missing_tags = []

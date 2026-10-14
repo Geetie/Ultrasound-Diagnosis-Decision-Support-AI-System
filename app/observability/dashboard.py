@@ -23,7 +23,9 @@ def _get_labeled_gauge_values(metric_name: str) -> dict[str, float]:
             key = labels[0] if labels else "unknown"
             result[key] = child._value.get()
         return result
-    except Exception:
+    except Exception as exc:
+        # 监控面板读不到指标时要可见（返回空字典会让运维以为「真的没有指标」）
+        _logger.warning("metrics_gauge_read_failed", error=str(exc))
         return {}
 
 

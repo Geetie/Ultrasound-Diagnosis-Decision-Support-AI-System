@@ -82,7 +82,7 @@ class BatchLogStorageWrapper(LogStorageBackend):
                     try:
                         await self._backend.awrite(record)
                         single_success += 1
-                    except Exception:
+                    except Exception:  # silent-ok: 单条失败由 single_success 计数 + 随后的 error 日志兜底（在此写日志会递归入队）
                         pass
                 if single_success < len(batch):
                     failed_count = len(batch) - single_success
@@ -101,7 +101,7 @@ class BatchLogStorageWrapper(LogStorageBackend):
             for record in records:
                 try:
                     await fallback.awrite(record)
-                except Exception:
+                except Exception:  # silent-ok: 降级写失败由 degraded_writes 计数 + 随后的 warning 兜底（写日志会递归入队）
                     pass
             await fallback.close()
             self._metrics["degraded_writes"] = self._metrics.get("degraded_writes", 0) + len(records)
@@ -118,7 +118,7 @@ class BatchLogStorageWrapper(LogStorageBackend):
         try:
             asyncio.get_running_loop()
             self._start_flush_task()
-        except RuntimeError:
+        except RuntimeError:  # silent-ok: 无运行事件循环时不启后台 flush 任务（同步路径）
             pass
 
     async def awrite(self, record: LogRecord) -> None:

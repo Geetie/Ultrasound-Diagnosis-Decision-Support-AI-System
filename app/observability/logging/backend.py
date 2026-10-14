@@ -50,7 +50,7 @@ def spawn_tracked(coro) -> asyncio.Task | None:
         return None
     try:
         task = asyncio.ensure_future(coro)
-    except RuntimeError:
+    except RuntimeError:  # silent-ok: 无事件循环时关闭协程后同步跳过（非失败）
         coro.close()
         return None
     _tracked_tasks.add(task)
@@ -87,7 +87,7 @@ class LogStorageBackend(ABC):
                 _spawn_tracked(self.awrite(record))
             else:
                 loop.run_until_complete(self.awrite(record))
-        except RuntimeError:
+        except RuntimeError:  # silent-ok: 无运行事件循环属同步调用场景，改走 asyncio.run
             asyncio.run(self.awrite(record))
 
     def _get_async_lock(self) -> asyncio.Lock:

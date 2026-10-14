@@ -133,7 +133,9 @@ def _mask_phi_text(value: str) -> str:
         for pattern, placeholder in _PHI_PATTERNS:
             value = pattern.sub(placeholder, value)
         return value
-    except Exception:  # pragma: no cover —— 脱敏失败宁占位不泄
+    except Exception as exc:  # pragma: no cover —— 脱敏失败宁占位不泄
+        # 安全相关：正文已用占位符兜底（不泄），但**失败本身必须留痕**（A.62 批 2 · 可观测链路）
+        _logger.warning("phi_mask_text_failed", error=str(exc))
         return "[MASK_FAILED]"
 
 
@@ -159,7 +161,8 @@ def _mask_phi_attributes(attributes: Any) -> dict[str, Any] | None:
                 masked[key] = new_seq
             else:
                 masked[key] = value
-    except Exception:  # pragma: no cover —— 整体失败宁全占位不泄
+    except Exception as exc:  # pragma: no cover —— 整体失败宁全占位不泄
+        _logger.warning("phi_mask_mapping_failed", error=str(exc))
         return {k: "[MASK_FAILED]" for k in masked} if masked else None
     return masked if changed else None
 
@@ -261,7 +264,7 @@ def _setup_exporter(provider) -> None:
                 http_endpoint = f"{http_endpoint}/v1/traces"
             exporter = _HttpExporter(endpoint=http_endpoint, headers=headers)
             endpoint = http_endpoint
-        except ImportError:
+        except ImportError:  # silent-ok: opentelemetry grpc 导出器不可用时回退 http 导出器
             from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
                 OTLPSpanExporter as _GrpcExporter,
             )

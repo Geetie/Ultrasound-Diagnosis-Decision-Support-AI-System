@@ -287,7 +287,9 @@ def decode_signature(signature: str | None) -> bytes | None:
         return None
     try:
         return base64.b64decode(signature)
-    except Exception:
+    except Exception as exc:
+        # 签名解码失败属安全相关（数据损坏或篡改都会走到这里）→ 必须显眼
+        logger.warning("pacs_signature_b64_decode_failed", error=str(exc))
         return None
 
 

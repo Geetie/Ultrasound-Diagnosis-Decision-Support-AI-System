@@ -95,7 +95,9 @@ def check_oom_protection() -> dict[str, Any]:
                 "oom_score_adj": value,
                 "expected": -1000,
             }
-    except Exception:
+    except Exception as exc:
+        # /proc 不可读（容器/非 Linux）→ 回退读 docker-compose 期望值；回退要可查
+        logger.debug("oom_score_adj_proc_unavailable", error=str(exc))
         configured_value = _read_oom_from_docker_compose()
         if configured_value is not None:
             return {
@@ -145,6 +147,6 @@ def _read_oom_from_docker_compose() -> int | None:
             oom_value = sg_service.get("oom_score_adj")
             if oom_value is not None:
                 return int(oom_value)
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("oom_score_adj_compose_unavailable", error=str(exc))
     return None

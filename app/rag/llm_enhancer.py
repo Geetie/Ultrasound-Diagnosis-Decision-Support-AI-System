@@ -231,7 +231,7 @@ class AgnesLLMEnhancer(LLMEnhancer):
         content = content.strip()
         try:
             parsed = json.loads(content)
-        except json.JSONDecodeError:
+        except json.JSONDecodeError:  # silent-ok: 模型没按 JSON 指令输出 → 按设计当纯文本使用
             # If the model ignored the JSON instruction, treat content as plain text.
             return content or None
         if isinstance(parsed, dict):
@@ -247,9 +247,12 @@ class AgnesLLMEnhancer(LLMEnhancer):
             client = self._ensure_client()
             response = await client.get("/models")
             return response.status_code == 200
-        except (httpx.TimeoutException, httpx.ConnectError):
+        except (httpx.TimeoutException, httpx.ConnectError) as exc:
+            # 增强服务不可达 → 视为不健康（检索降级到原查询）；周期探测用 debug 不刷屏
+            logger.debug("llm_enhancer_health_unreachable", error=str(exc))
             return False
-        except Exception:
+        except Exception as exc:
+            logger.warning("llm_enhancer_health_check_failed", error=str(exc))
             return False
 
     async def close(self) -> None:

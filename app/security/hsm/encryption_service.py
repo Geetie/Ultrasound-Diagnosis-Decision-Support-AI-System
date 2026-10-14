@@ -158,7 +158,7 @@ class EncryptionService:
                                          key_name=key_name,
                                          old_key_name=cached_key_name)
                             return True
-                        except InvalidSignature:
+                        except InvalidSignature:  # silent-ok: 逐个密钥试签，全部失败后统一 warning（循环外留痕）
                             continue
                 logger.warning("hsm_signature_invalid", key_name=key_name)
                 return False

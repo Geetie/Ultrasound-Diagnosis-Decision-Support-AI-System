@@ -195,8 +195,8 @@ class VictoriaMetricsMemoryMonitor:
             from app.observability.metrics_collector import get_metrics_collector
             collector = get_metrics_collector()
             collector.set_victoriametrics_rss_bytes(memory_info.rss)
-        except Exception:
-            pass
+        except Exception as exc:
+            _logger.debug("vm_rss_metric_update_failed", error=str(exc))
 
     def _calculate_alert_level(self, rss_mb: float) -> AlertLevel:
         if rss_mb >= self._config.critical_threshold_mb:
@@ -258,7 +258,7 @@ class VictoriaMetricsMemoryMonitor:
         try:
             loop = asyncio.get_running_loop()
             asyncio.run_coroutine_threadsafe(self._check_memory(), loop).result(timeout=10)
-        except RuntimeError:
+        except RuntimeError:  # silent-ok: 无运行事件循环属同步调用场景，改走 asyncio.run
             asyncio.run(self._check_memory())
 
     def get_metrics(self) -> dict[str, Any]:

@@ -64,7 +64,9 @@ RUFF_BASELINE = {
     "F401": 48,
     "RUF013": 48,
     "RUF012": 41,
-    "B904": 39,
+    # 39 → 38（A.62 批 2-D）：`app/security/desensitization_restore.py` 的
+    # "旧密钥不可用"分支补 `raise ... from e`，B904 减 1（成果要落基线，否则下次会被判"改进未记录"）
+    "B904": 38,
     "SIM105": 37,
     "UP031": 24,
     "SIM117": 32,

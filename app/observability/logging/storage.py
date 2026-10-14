@@ -150,7 +150,7 @@ class LogStorage:
         if env:
             try:
                 return DeploymentProfile(env)
-            except ValueError:
+            except ValueError:  # silent-ok: 部署 profile 名无法识别时回退 COMPACT（默认档）
                 pass
         return DeploymentProfile.COMPACT
 
@@ -161,7 +161,7 @@ class LogStorage:
                 try:
                     loop = asyncio.get_running_loop()
                     loop.create_task(cls._instance._backend.close())
-                except RuntimeError:
+                except RuntimeError:  # silent-ok: 无事件循环时同步关闭后端
                     asyncio.run(cls._instance._backend.close())
             cls._instance = None
 

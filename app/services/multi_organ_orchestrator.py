@@ -616,7 +616,7 @@ def _resolve_organs(
 def _default_response_tier() -> ResponseTier:
     try:
         return ResponseTier(str(settings.multi_organ_default_response_tier))
-    except ValueError:
+    except ValueError:  # silent-ok: 取值不可解析 → 回退默认（正常控制流）
         return ResponseTier.STANDARD
 
 

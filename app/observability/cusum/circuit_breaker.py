@@ -219,8 +219,9 @@ class AISafetyCircuitBreaker:
                 message=f"AI辅助功能恢复: resumed_by={resumed_by}, previous_state={previous_state}, reason={previous_reason}",
                 extra={"action": "ai_assist_resume", "resumed_by": resumed_by, "previous_reason": previous_reason},
             )
-        except Exception:
-            pass
+        except Exception as exc:
+            # 审计日志写入失败必须留痕：AI 辅助恢复是要留痕的关键操作（A.62 批 2）
+            _logger.warning("ai_assist_resume_audit_write_failed", error=str(exc))
 
     def suspend_disease(self, disease_type: str, reason: str) -> None:
         with self._lock:

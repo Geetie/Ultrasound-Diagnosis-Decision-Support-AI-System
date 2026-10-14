@@ -54,7 +54,7 @@ class InFlightDiagnosisRegistry:
         """
         try:
             loop = asyncio.get_running_loop()
-        except RuntimeError:
+        except RuntimeError:  # silent-ok: 无运行事件循环属同步调用场景（改走 asyncio.run/直连路径）
             return
 
         current = task or asyncio.current_task()
@@ -87,7 +87,7 @@ class InFlightDiagnosisRegistry:
 
         try:
             running_loop = asyncio.get_running_loop()
-        except RuntimeError:
+        except RuntimeError:  # silent-ok: 无运行事件循环属同步调用场景（改走 asyncio.run/直连路径）
             running_loop = None
 
         cancelled: list[str] = []
