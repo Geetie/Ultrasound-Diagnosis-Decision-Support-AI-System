@@ -660,13 +660,14 @@ X/Y 帧」）；③设备/患者列表端点（p16 14/14，零 api_key）；④f
 
 | 阻塞 | 谁解 | 备注 |
 |---|---|---|
-| faithfulness 95% 门控口径 | 项目组 | 判官侧已穷尽（双口径 + 思考对照三方验证） |
+| faithfulness 95% 门控口径 | 项目组 | **A.62.14 三口径已算齐**（n=40 同切片、判官逐样本零噪声：A 0.0906 / B 0.1258 / C 0.0836）→ 待决的是**指标语义**（L2 判「能否由知识库推出」，而结论=影像所见+指南决策）；**建议不切 gate**，切换判据四条见 `eval_gate.py --judge-mode` help |
 | 甲状腺注册数据 | 管理决策 + 授权 | 无商用公开集，须自有/合作医院 |
 | 核心覆盖率 90% | 真机依赖 | SoftHSM / 真实 Redis 语义 |
-| 服务器代码与仓库同步 | 本机可做 | `git archive` 铺 HEAD + 重启主服务 |
+| 服务器代码与仓库同步 | 本机可做（**需批准**） | 本轮 HEAD `ba944ad`：**三个运行时文件已 scp**（`scripts/langfuse/answer_modes.py`、`judge_eval_set.py`、`app/inference/grading_definitions.py`，判官可直接跑三口径）；**整树 `git archive` 铺开被审批拦下 → 未完成**（归档已上传 `/tmp/_head_b1tail.tar`，下一位先执行 `cd ~/uai/src && tar -xf /tmp/_head_b1tail.tar && rm -f /tmp/_head_b1tail.tar`） |
 | t2a 独立验证集数据 | 项目组 / 数据方 | 现 AUC 0.8751 属开发集内部验证；方案已备（21 号 §阶段三-A），缺**独立集数据** |
-| Langfuse 评测管理 ≥700 例采集 | 环境 + 排期 | 机制已就绪，缺采集窗口（依赖性能阶段） |
-| SG 禁忌提示中文化 | 本机可做（可回归） | A.58.10① 登记：`[cardiac] LVEF=unknown, severity=normal` 直进医生可见告警 |
+| Langfuse 评测管理 ≥700 例采集 | 环境 + 排期 | 机制已就绪，瓶颈是**临床使用**：169 条里 152 条同一演练患者、独立病例仅 12 |
+| SG 禁忌提示中文化 | 本机可做（可回归） | A.58.10① 登记的那串 `[cardiac] LVEF=unknown, severity=normal`。**A.62.14 抽查（未做真机复核）**：`safety_gateway` 侧禁忌文案全中文、`app/**` 并不消费 `contraindication_matches`，且 A.59 已把该串归因到**专科正文**并修掉 → 本行**疑为陈旧**；下一位若要做，先跑一次心脏真机判读确认告警文案再决定动手 |
+| harness 五子系统审计 | 环境（本机缺脚本） | `~/.codebuddy/skills/harness-creator/` 目录**为空**（`validate-harness.mjs` 不存在）→ 本轮以 `bash init.sh` 四步替代（环境/状态文件/文档守卫/ruff 全通过）；**不是"审计已过 100 分"**，别在台账里那样写 |
 
 ## Files（交接涉及的路径）
 
@@ -677,14 +678,23 @@ X/Y 帧」）；③设备/患者列表端点（p16 14/14，零 api_key）；④f
 
 ## Next Session
 
-1. 读 `progress.md` → 执行 `Recommended Next Step`（口径决策 / UDT 送审 / 清收未跟踪文件）。
+1. 读 `progress.md` → 执行 `Recommended Next Step`（① CRAG 证据链修法 A/B 拍板；② L2 指标语义拍板；
+   ③ 静默剩余 263 处按链路收敛；④ 评测集靠临床使用往 700 推）。
 2. 若触服务器：加载 SKILL `remote-gpu-server-devtest`，先读「铁律（先读）」5 条。
-3. 收尾按 `AGENTS.md` 的 `End of Session` 走，并跑 harness 审计（分数 ≥70）。
+3. **本轮遗留两件必须先做**（都是审批/环境问题，不是没做完）：
+   - **服务器整树同步未完成**：`ssh …` → `cd ~/uai/src && tar -xf /tmp/_head_b1tail.tar`（归档已在服务器；
+     **远端写操作需要用户批准**）。此前三个运行时文件已 scp，故三口径判官**现在就能跑**。
+   - **服务器 `/tmp/_*` 探针未清**：本轮留下 `/tmp/_shape.py`、`/tmp/_mode_cov.py`、
+     `/tmp/_judge_analysis.py`、`/tmp/_diff_c.py`、`/tmp/_judge_a62.sh`（同样卡在远端写审批）；
+     下一位用 `ls /tmp/_*.py /tmp/_*.sh | wc -l` 核到 0。
+4. 收尾按 `AGENTS.md` 的 `End of Session` 走。**注意**：`validate-harness.mjs` 本机不存在，
+   以 `bash init.sh`（Git Bash）替代；若哪天脚本回来了再补跑正式审计。
 
 ## Restart Markers（clean restart 检查）
 
-- [ ] `./init.sh` 通过（或说明为何跳过）。
-- [ ] `progress.md` 的 Last Updated / Current Objective / Recommended Next Step 已刷新。
-- [ ] `feature_list.json` 状态迁移已记录（含 evidence）。
-- [ ] 新结论已追加 `16` 号附录 A（如涉及实测数字/决策）。
-- [ ] 远程 `/tmp/_*` 已清、GPU 进程清单核对（嵌入×3 + vLLM 8002）。
+- [x] `bash init.sh`（Git Bash；WSL 的 bash 不支持 `set -o pipefail`）四步通过：环境 / 状态文件 / 文档守卫 209 passed / ruff（全仓历史债 252 项属既有）。本机**没有** `validate-harness.mjs`，正式审计脚本缺失。
+- [x] `progress.md` 的 Last Updated / Current Objective / Recommended Next Step 已刷新（含 A.62 批 1 尾段）。
+- [x] `feature_list.json` 状态迁移已记录（`head_commit` = `ba944ad`，含 evidence）。
+- [x] 新结论已追加 `16` 号附录 **A.62.14**（三口径实测 + 判官零噪声 + 度量陷阱 + 一页纸建议）。
+- [ ] 远程 `/tmp/_*` 已清、GPU 进程清单核对（嵌入×3 + vLLM 8002）—— **本轮未完成**：远端写操作卡在审批，见 `## Next Session` 第 3 条。
+- [ ] 服务器整树同步（`tar -xf /tmp/_head_b1tail.tar`）—— **本轮未完成**，同上。
