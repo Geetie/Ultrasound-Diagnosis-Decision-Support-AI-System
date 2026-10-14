@@ -6,9 +6,12 @@
 """
 import asyncio
 import json
+import logging
 import sys
 import urllib.error
 import urllib.request
+
+logger = logging.getLogger(__name__)
 
 sys.path.insert(0, "/mnt/ee16/home/student03/uai/src")
 
@@ -34,8 +37,10 @@ def http(method, path, body=None, token=None):
         with urllib.request.urlopen(req, timeout=25) as r:
             return r.status, json.loads(r.read().decode() or "{}")
     except urllib.error.HTTPError as e:
+        logger.warning("http: 未预期异常，按原逻辑降级", exc_info=True)
         return e.code, e.read().decode()[:300]
     except Exception as e:  # noqa: BLE001
+        logger.warning("http: 未预期异常，按原逻辑降级", exc_info=True)
         return 0, str(e)[:300]
 
 

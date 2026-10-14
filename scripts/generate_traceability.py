@@ -29,10 +29,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import re
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SPEC_DOC = REPO_ROOT / "docs-for-guiding generating docs" / "开发计划" / "开发计划.md"
@@ -138,6 +141,7 @@ def scan_anchors(requirements: list[Requirement]) -> None:
             try:
                 text = path.read_text(encoding="utf-8", errors="ignore")
             except OSError:
+                logger.warning("scan_anchors: 未预期异常，按原逻辑降级", exc_info=True)
                 continue
             matched_ids = {match.group(0) for match in REQ_ID_PATTERN.finditer(text)}
             if not matched_ids:

@@ -28,6 +28,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import logging
 import sys
 import time
 from pathlib import Path
@@ -37,6 +38,8 @@ sys.path.insert(0, str(HERE.parent))
 
 from _audit_common import BASE, UAI, check, http, login, pw, summary  # noqa: E402
 from p11_rag_evidence import make_camus_dicoms, upload_dicom  # noqa: E402
+
+logger = logging.getLogger(__name__)
 
 # 医生可见正文里**禁止**出现的英文技术串（零静默纪律）
 #
@@ -152,6 +155,7 @@ async def _one_round(idx: int, dtok: str, organ: str, patient: str) -> dict:
             if iid:
                 img_ids.append(iid)
     except Exception as exc:
+        logger.warning("_one_round: 未预期异常，按原逻辑降级", exc_info=True)
         out["error"] = f"上传异常 {type(exc).__name__}: {exc}"
         return out
     if len(img_ids) < 2:

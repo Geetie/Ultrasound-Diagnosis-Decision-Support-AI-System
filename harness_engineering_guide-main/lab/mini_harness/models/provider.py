@@ -8,11 +8,14 @@ mini_harness/models/provider.py - 模型提供者抽象层
 """
 
 import json
+import logging
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, Generator, List, Optional
+
+logger = logging.getLogger(__name__)
 
 # 延迟导入，避免未安装时直接报错
 _anthropic = None
@@ -295,6 +298,7 @@ class OpenAIProvider(BaseProvider):
                     try:
                         args = json.loads(args)
                     except json.JSONDecodeError:
+                        logger.warning("OpenAIProvider.complete: 未预期异常，按原逻辑降级", exc_info=True)
                         args = {}
                 tool_calls.append(
                     {

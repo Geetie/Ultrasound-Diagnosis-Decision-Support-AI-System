@@ -12,6 +12,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
 import sys
 import time
@@ -20,6 +21,8 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 import httpx
 from _audit_common import BASE, check, login, pw, summary
+
+logger = logging.getLogger(__name__)
 
 
 async def _post(client: httpx.AsyncClient, path: str, body: dict, token: str):
@@ -36,6 +39,7 @@ def _safe_json(r: httpx.Response):
     try:
         return r.json()
     except Exception:
+        logger.warning("_safe_json: 未预期异常，按原逻辑降级", exc_info=True)
         return {}
 
 

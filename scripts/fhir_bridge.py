@@ -16,6 +16,7 @@ FHIR 客户端检索——不是 LocalFake 的内存记账。
 from __future__ import annotations
 
 import base64
+import logging
 import os
 import sys
 from datetime import datetime, timezone
@@ -24,6 +25,8 @@ from pathlib import Path
 import httpx
 import uvicorn
 from fastapi import FastAPI, HTTPException, Request
+
+logger = logging.getLogger(__name__)
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -65,6 +68,7 @@ async def health() -> dict:
             r = await c.get(f"{HAPI}/metadata")
         return {"bridge": "ok", "hapi": r.status_code == 200}
     except Exception as exc:
+        logger.warning("health: 未预期异常，按原逻辑降级", exc_info=True)
         return {"bridge": "ok", "hapi": False, "error": str(exc)[:120]}
 
 

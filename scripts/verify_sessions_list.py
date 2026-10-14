@@ -8,10 +8,13 @@
   · 不回显 birth_date、不含终态
 """
 import json
+import logging
 import sys
 import urllib.error
 import urllib.request
 from datetime import date
+
+logger = logging.getLogger(__name__)
 
 BASE = "http://127.0.0.1:18000"
 PW_FILE = "/mnt/ee16/home/student03/uai/.smoke_pw"
@@ -27,8 +30,10 @@ def http(method, path, body=None, token=None):
         with urllib.request.urlopen(req, timeout=25) as r:
             return r.status, json.loads(r.read().decode() or "{}")
     except urllib.error.HTTPError as e:
+        logger.warning("http: 未预期异常，按原逻辑降级", exc_info=True)
         return e.code, e.read().decode()[:300]
     except Exception as e:
+        logger.warning("http: 未预期异常，按原逻辑降级", exc_info=True)
         return 0, str(e)[:300]
 
 

@@ -9,9 +9,12 @@ from __future__ import annotations
 
 import concurrent.futures as cf
 import hashlib
+import logging
 import time
 import urllib.request
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 REPO = "haifan-gong/TN3K"
 BASE = f"https://hf-mirror.com/datasets/{REPO}/resolve/main"
@@ -23,6 +26,7 @@ def parse_pointer(p: Path) -> tuple[str, int] | None:
     try:
         text = p.read_text(encoding="utf-8")
     except UnicodeDecodeError:
+        logger.warning("parse_pointer: 未预期异常，按原逻辑降级", exc_info=True)
         return None  # 二进制 = 真实文件
     if not text.startswith("version https://git-lfs"):
         return None
@@ -55,6 +59,7 @@ def fetch_one(sub: str, name: str, oid: str, size: int, attempts: int = 3) -> tu
             tmp.replace(dest)
             return (name, True, "ok")
         except Exception as exc:
+            logger.warning("fetch_one: 未预期异常，按原逻辑降级", exc_info=True)
             if attempt == attempts - 1:
                 return (name, False, f"{type(exc).__name__}: {exc}")
             time.sleep(2 * (attempt + 1))
@@ -106,6 +111,7 @@ def main() -> int:
             with Image.open(p) as img:
                 img.load()
         except Exception:
+            logger.warning("main: 未预期异常，按原逻辑降级", exc_info=True)
             bad += 1
     print(f"PIL readability: {614 - bad}/614 ok, bad={bad}")
     return 0 if fail == 0 and bad == 0 else 1

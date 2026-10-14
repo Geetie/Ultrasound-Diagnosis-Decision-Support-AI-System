@@ -36,9 +36,12 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from dataclasses import dataclass
 
 import pytest
+
+logger = logging.getLogger(__name__)
 
 pytestmark = [
     pytest.mark.track_agt,
@@ -934,14 +937,17 @@ class TestLifespanAgentsHealthCheck:
             try:
                 dispatcher_ok = await dispatcher.health_check()
             except Exception:
+                logger.warning("TestLifespanAgentsHealthCheck.test_lifespan_health_check_log_emitted: 未预期异常，按原逻辑降级", exc_info=True)
                 dispatcher_ok = False
             try:
                 knowledge_ok = await knowledge.health_check()
             except Exception:
+                logger.warning("TestLifespanAgentsHealthCheck.test_lifespan_health_check_log_emitted: 未预期异常，按原逻辑降级", exc_info=True)
                 knowledge_ok = False
             try:
                 monitor_ok = await monitor.health_check()
             except Exception:
+                logger.warning("TestLifespanAgentsHealthCheck.test_lifespan_health_check_log_emitted: 未预期异常，按原逻辑降级", exc_info=True)
                 monitor_ok = False
             logging.getLogger("app.main").info(
                 "agents_health_check",

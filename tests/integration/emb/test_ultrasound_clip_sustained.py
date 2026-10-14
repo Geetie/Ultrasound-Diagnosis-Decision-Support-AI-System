@@ -17,10 +17,13 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
 import time
 
 import pytest
+
+logger = logging.getLogger(__name__)
 
 SUSTAINED_RUN_ENABLED = os.environ.get("SUSTAINED_RUN_ENABLED", "0") == "1"
 QUICK_MODE = os.environ.get("SUSTAINED_RUN_QUICK", "0") == "1"
@@ -46,12 +49,14 @@ class TestUltrasoundCLIPSustained:
         try:
             model.load()
         except Exception as exc:
+            logger.warning("TestUltrasoundCLIPSustained.test_8hour_sustained_i2t_at_10: 未预期异常，按原逻辑降级", exc_info=True)
             pytest.skip(f"GPU model load failed: {exc}")
             return
 
         try:
             adapter = BUSIAdapter(dataset_path="")
         except Exception:
+            logger.warning("TestUltrasoundCLIPSustained.test_8hour_sustained_i2t_at_10: 未预期异常，按原逻辑降级", exc_info=True)
             pass
 
         samples = []
@@ -80,6 +85,7 @@ class TestUltrasoundCLIPSustained:
                     i2t_samples.append(result.i2t_at_k)
                     latencies.append(result.latency_p99_ms)
                 except Exception as exc:
+                    logger.warning("TestUltrasoundCLIPSustained.test_8hour_sustained_i2t_at_10: 未预期异常，按原逻辑降级", exc_info=True)
                     crash_detected = True
                     pytest.fail(f"Sustained run crashed: {exc}")
 
@@ -87,6 +93,7 @@ class TestUltrasoundCLIPSustained:
                 next_sample_in = sample_interval_seconds - (elapsed % sample_interval_seconds)
                 await asyncio.sleep(min(next_sample_in, 5.0))
         except asyncio.CancelledError:
+            logger.warning("TestUltrasoundCLIPSustained.test_8hour_sustained_i2t_at_10: 未预期异常，按原逻辑降级", exc_info=True)
             pass
 
         assert not crash_detected, "process crashed during sustained run"
@@ -122,6 +129,7 @@ class TestUltrasoundCLIPSustained:
         try:
             model.load()
         except Exception as exc:
+            logger.warning("TestUltrasoundCLIPSustained.test_quick_5min_sustained: 未预期异常，按原逻辑降级", exc_info=True)
             pytest.skip(f"GPU not available: {exc}")
             return
 
@@ -146,6 +154,7 @@ class TestUltrasoundCLIPSustained:
                 model.evaluate(samples, k=10)
                 sample_count += 1
             except Exception as exc:
+                logger.warning("TestUltrasoundCLIPSustained.test_quick_5min_sustained: 未预期异常，按原逻辑降级", exc_info=True)
                 pytest.fail(f"Quick sustained run failed: {exc}")
             await asyncio.sleep(1.0)
         assert sample_count > 0, "no samples evaluated"

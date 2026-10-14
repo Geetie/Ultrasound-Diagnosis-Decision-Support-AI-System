@@ -7,12 +7,15 @@ BiomedCLIP ViT 0.551）不是瓶颈，故改用任务原生架构。
 from __future__ import annotations
 
 import json
+import logging
 import time
 from pathlib import Path
 
 import numpy as np
 import torch
 import torch.nn.functional as F
+
+logger = logging.getLogger(__name__)
 
 DATA = Path("/mnt/ee16/home/student03/uai/data/tn3k_dataset")
 OUT = Path("/mnt/ee16/home/student03/uai/reports/tn3k_seg_unet.json")
@@ -34,6 +37,7 @@ def load_pair(img_path, mask_path):
         img = Image.open(img_path).convert("RGB")
         msk = Image.open(mask_path).convert("L")
     except Exception:
+        logger.warning("load_pair: 未预期异常，按原逻辑降级", exc_info=True)
         return None
     # 保持长宽比缩放 + 中心裁剪（超声图长宽比差异大，避免直接拉伸）
     w, h = img.size

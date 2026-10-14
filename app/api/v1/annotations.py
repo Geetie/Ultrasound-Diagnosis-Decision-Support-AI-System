@@ -13,6 +13,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 import time
@@ -32,6 +33,8 @@ from app.config.settings import settings
 from app.dependencies import get_audit_service
 from app.security.auth import get_current_active_user
 from app.services.audit_service import AuditService
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["annotations"])
 
@@ -67,6 +70,7 @@ async def get_annotations(
         data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         # 档案损坏按空返回 —— 标注恢复失败不该挡影像显示
+        logger.warning("get_annotations: 未预期异常，按原逻辑降级", exc_info=True)
         return {"image_id": image_id, "annotations": []}
     return {"image_id": image_id, "annotations": data.get("annotations", [])}
 

@@ -13,6 +13,7 @@ T2b 真模型头数据源：29,963 张五类心脏标准切面图（A4C/SC/PL/PS
 from __future__ import annotations
 
 import argparse
+import logging
 import sys
 import threading
 import time
@@ -21,6 +22,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 import requests
+
+logger = logging.getLogger(__name__)
 
 BASE = (
     "https://g-772fa5.cd4fe.0ec8.data.globus.org"
@@ -70,6 +73,7 @@ def fetch_one(rel: str, dest_root: Path, session: requests.Session) -> str:
                 _stats["bytes"] += len(data)
             return "ok"
         except Exception as exc:
+            logger.warning("fetch_one: 未预期异常，按原逻辑降级", exc_info=True)
             last_err = exc
             time.sleep(2**attempt)
     dest.unlink(missing_ok=True)

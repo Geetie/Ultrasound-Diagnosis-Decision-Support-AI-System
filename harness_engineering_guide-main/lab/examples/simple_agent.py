@@ -32,6 +32,7 @@ MiniHarness 最小智能体示例
 
 import asyncio
 import json
+import logging
 import os
 import sys
 
@@ -41,6 +42,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from mini_harness.tools.builtin import BashTool, FileReadTool, FileWriteTool
 from mini_harness.tools.registry import ToolRegistry
 from mini_harness.utils.config import get_config
+
+logger = logging.getLogger(__name__)
 
 # ============================================================================
 # 1. 配置（统一从 Config 单例读取，支持 .env 文件和环境变量）
@@ -127,6 +130,7 @@ class LLMClient:
                 try:
                     chunk = json.loads(data)
                 except json.JSONDecodeError:
+                    logger.warning("LLMClient._stream_request: 未预期异常，按原逻辑降级", exc_info=True)
                     continue
 
                 choice = chunk.get("choices", [{}])[0]
@@ -261,6 +265,7 @@ class SimpleAgent:
                         else func["arguments"]
                     )
                 except json.JSONDecodeError:
+                    logger.warning("SimpleAgent.run: 未预期异常，按原逻辑降级", exc_info=True)
                     arguments = {}
 
                 print(f"   → {tool_name}({json.dumps(arguments, ensure_ascii=False)[:80]})")

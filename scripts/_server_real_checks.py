@@ -8,7 +8,10 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import sys
+
+logger = logging.getLogger(__name__)
 
 RESULTS: list[tuple[str, bool, str]] = []
 
@@ -47,6 +50,7 @@ async def real_redis_checks() -> None:
         await store.rotate_refresh_token(token_id)
         record("refresh_replay_rejected", False, "replay was allowed")
     except ValueError:
+        logger.warning("real_redis_checks: 未预期异常，按原逻辑降级", exc_info=True)
         record("refresh_replay_rejected", True)
 
     # 重放触发家族撤销后：用户集合里的令牌应全部 revoked（revoke_all

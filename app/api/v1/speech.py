@@ -160,6 +160,7 @@ async def check_health(
             engine_ready=is_ready,
         )
     except Exception:
+        logger.warning("check_health: 未预期异常，按原逻辑降级", exc_info=True)
         return HealthResponse(
             status="error",
             engine_ready=False,

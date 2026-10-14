@@ -66,6 +66,7 @@ def _compute_file_hash(filepath):
                 h.update(chunk)
         return h.hexdigest()
     except FileNotFoundError:
+        logger.warning("_compute_file_hash: 未预期异常，按原逻辑降级", exc_info=True)
         return None
 
 
@@ -85,6 +86,7 @@ def _load_hash_cache():
             with open(_HASH_CACHE_FILE, encoding="utf-8") as f:
                 return json.load(f)
     except (OSError, json.JSONDecodeError):
+        logger.warning("_load_hash_cache: 未预期异常，按原逻辑降级", exc_info=True)
         pass
     return {}
 

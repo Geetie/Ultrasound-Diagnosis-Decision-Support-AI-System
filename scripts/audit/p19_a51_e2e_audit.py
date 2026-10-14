@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import os
 import pathlib
 import sys
@@ -35,6 +36,8 @@ sys.path.insert(0, str(HERE.parent))
 
 from _audit_common import BASE, UAI, check, http, login, pw, save_ctx, summary  # noqa: E402
 from p11_rag_evidence import make_camus_dicoms, upload_dicom
+
+logger = logging.getLogger(__name__)
 
 BGE_URL = "http://127.0.0.1:8004"
 QDRANT_URL = "http://127.0.0.1:6333"
@@ -72,6 +75,7 @@ def s1_runtime_settings() -> dict:
     try:
         from app.config.settings import settings
     except Exception as exc:
+        logger.warning("s1_runtime_settings: 未预期异常，按原逻辑降级", exc_info=True)
         check("S1 加载 app.config.settings", False, f"{type(exc).__name__}: {exc}")
         return {}
 
@@ -91,6 +95,7 @@ def s1_runtime_settings() -> dict:
             "qdrant_port": str(getattr(settings, "qdrant_port", "?")),
         }
     except Exception as exc:
+        logger.warning("s1_runtime_settings: 未预期异常，按原逻辑降级", exc_info=True)
         check("S1 读取 settings 字段", False, f"{type(exc).__name__}: {exc}")
         return snap
 
@@ -188,6 +193,7 @@ async def s2_qdrant_dense(snap: dict) -> dict:
             f"n={len(res)} top={out['dense_top'][0] if out['dense_top'] else None}",
         )
     except Exception as exc:
+        logger.warning("s2_qdrant_dense: 未预期异常，按原逻辑降级", exc_info=True)
         check("S2 dense 腿直连", False, f"{type(exc).__name__}: {exc}")
     return out
 
@@ -319,6 +325,7 @@ async def s5_e2e_diagnosis(dtok: str, atok: str, snap: dict | None = None) -> di
             if iid:
                 img_ids.append(iid)
     except Exception as exc:
+        logger.warning("s5_e2e_diagnosis: 未预期异常，按原逻辑降级", exc_info=True)
         check("S5 CAMUS 帧转换/上传", False, f"{type(exc).__name__}: {exc}")
     check("S5 上传 3 张真实帧", len(img_ids) == 3, f"n={len(img_ids)}")
     if len(img_ids) < 2:
@@ -497,26 +504,32 @@ async def main() -> int:
     try:
         report["S1_runtime"] = s1_runtime_settings()
     except Exception as exc:
+        logger.warning("main: 未预期异常，按原逻辑降级", exc_info=True)
         check("S1 段执行", False, f"{type(exc).__name__}: {exc}")
     try:
         report["S2_qdrant"] = await s2_qdrant_dense(report.get("S1_runtime") or {})
     except Exception as exc:
+        logger.warning("main: 未预期异常，按原逻辑降级", exc_info=True)
         check("S2 段执行", False, f"{type(exc).__name__}: {exc}")
     try:
         report["S3_device"] = s3_device_list(dtok, atok)
     except Exception as exc:
+        logger.warning("main: 未预期异常，按原逻辑降级", exc_info=True)
         check("S3 段执行", False, f"{type(exc).__name__}: {exc}")
     try:
         report["S4_patients"] = s4_patient_list(dtok)
     except Exception as exc:
+        logger.warning("main: 未预期异常，按原逻辑降级", exc_info=True)
         check("S4 段执行", False, f"{type(exc).__name__}: {exc}")
     try:
         report["S5_e2e"] = await s5_e2e_diagnosis(dtok, atok, report.get("S1_runtime") or {})
     except Exception as exc:
+        logger.warning("main: 未预期异常，按原逻辑降级", exc_info=True)
         check("S5 段执行", False, f"{type(exc).__name__}: {exc}")
     try:
         report["S6_built"] = s6_built_artifact()
     except Exception as exc:
+        logger.warning("main: 未预期异常，按原逻辑降级", exc_info=True)
         check("S6 段执行", False, f"{type(exc).__name__}: {exc}")
 
     report["elapsed_s"] = round(time.time() - t_start, 1)

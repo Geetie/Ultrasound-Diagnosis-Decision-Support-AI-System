@@ -386,6 +386,7 @@ class UltrasoundCLIPModel:
                     from PIL import Image
                     images = [Image.open(s.image_path).convert("RGB") for s in batch]
                 except Exception:
+                    logger.warning("UltrasoundCLIPModel.finetune: 未预期异常，按原逻辑降级", exc_info=True)
                     images = None
                 texts = [s.text for s in batch]
                 if images is not None:

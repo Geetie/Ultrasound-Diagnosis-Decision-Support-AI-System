@@ -1,4 +1,6 @@
 
+import logging
+
 import pytest
 
 from app.speech.funasr import FunASROnnxEngine, find_terminology
@@ -8,6 +10,8 @@ from app.speech.protocols import (
     SpeechRequest,
     SpeechResponse,
 )
+
+logger = logging.getLogger(__name__)
 
 pytestmark = [pytest.mark.track_edg, pytest.mark.track_llm]
 
@@ -163,6 +167,7 @@ class TestFunASROnnxEngine:
         try:
             await engine.initialize()
         except SpeechError:
+            logger.warning("TestFunASROnnxEngine.test_close_after_init_attempt: 未预期异常，按原逻辑降级", exc_info=True)
             pass
         await engine.close()
         assert engine._initialized is False

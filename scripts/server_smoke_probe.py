@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import os
 import pathlib
 import secrets
@@ -20,6 +21,8 @@ import sys
 import time
 import urllib.error
 import urllib.request
+
+logger = logging.getLogger(__name__)
 
 API = "http://127.0.0.1:18000"
 USERNAME = "smoke-doctor"
@@ -45,10 +48,12 @@ def _post(path: str, payload: dict, token: str | None = None, timeout: float = 3
         with urllib.request.urlopen(request, timeout=timeout) as resp:
             return resp.status, json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
+        logger.warning("_post: 未预期异常，按原逻辑降级", exc_info=True)
         body = exc.read().decode("utf-8", "replace")
         try:
             return exc.code, json.loads(body)
         except json.JSONDecodeError:
+            logger.warning("_post: 未预期异常，按原逻辑降级", exc_info=True)
             return exc.code, {"raw": body[:200]}
 
 
@@ -60,10 +65,12 @@ def _get(path: str, token: str | None = None, timeout: float = 10.0):
         with urllib.request.urlopen(request, timeout=timeout) as resp:
             return resp.status, json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
+        logger.warning("_get: 未预期异常，按原逻辑降级", exc_info=True)
         body = exc.read().decode("utf-8", "replace")
         try:
             return exc.code, json.loads(body)
         except json.JSONDecodeError:
+            logger.warning("_get: 未预期异常，按原逻辑降级", exc_info=True)
             return exc.code, {"raw": body[:200]}
 
 

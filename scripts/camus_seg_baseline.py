@@ -13,6 +13,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import time
 from collections import defaultdict
 from pathlib import Path
@@ -21,6 +22,8 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from PIL import Image
+
+logger = logging.getLogger(__name__)
 
 DATA = Path.home() / "uai" / "data" / "camus"
 OUT_JSON = Path.home() / "uai" / "reports" / "camus_seg_baseline.json"
@@ -52,6 +55,7 @@ def list_pairs():
 
             mk = np.asarray(nib.load(str(m)).dataobj)
         except Exception:
+            logger.warning("list_pairs: 未预期异常，按原逻辑降级", exc_info=True)
             continue
         n_frames = mk.shape[2] if mk.ndim == 3 else 1
         mid = n_frames // 2
@@ -72,6 +76,7 @@ def load_pair(ip, mp, frame_idx):
         arr = np.asarray(nib.load(str(ip)).dataobj)[:, :, frame_idx]
         mk = np.asarray(nib.load(str(mp)).dataobj)[:, :, frame_idx]
     except Exception:
+        logger.warning("load_pair: 未预期异常，按原逻辑降级", exc_info=True)
         return None
     if arr.max() > 1.5:
         arr = arr / 255.0

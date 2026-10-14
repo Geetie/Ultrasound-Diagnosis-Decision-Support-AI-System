@@ -20,9 +20,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import math
 import urllib.request
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 def embed_texts(texts: list[str], bge_url: str, batch_size: int = 64) -> list[list[float]]:
@@ -73,6 +76,7 @@ def _tokenize(text: str) -> list[str]:
         return [t for t in jieba.lcut(text.lower()) if t.strip()]
     except ImportError:
         # 无 jieba 时退化为字符 bigram（中文检索的保守近似）
+        logger.warning("_tokenize: 未预期异常，按原逻辑降级", exc_info=True)
         text = text.lower()
         return [text[i : i + 2] for i in range(max(1, len(text) - 1))]
 
@@ -124,6 +128,7 @@ def bm25_topk(
 
         bm25 = BM25Okapi([_tokenize(t) for t in corpus_texts])
     except ImportError:
+        logger.warning("bm25_topk: 未预期异常，按原逻辑降级", exc_info=True)
         bm25 = SimpleBM25([_tokenize(t) for t in corpus_texts])
 
     def get(q: str) -> list[tuple[int, float]]:

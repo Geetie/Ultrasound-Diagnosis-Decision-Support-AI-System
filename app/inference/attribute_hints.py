@@ -433,8 +433,10 @@ class AttributeHintEngine:
         try:
             self._ensure_loaded()
         except AttributeHintsUnavailableError as exc:
+            logger.warning("AttributeHintEngine.health: 未预期异常，按原逻辑降级", exc_info=True)
             return {"available": False, "reason": str(exc)}
         except Exception as exc:  # pragma: no cover
+            logger.warning("AttributeHintEngine.health: 未预期异常，按原逻辑降级", exc_info=True)
             return {"available": False, "reason": f"{type(exc).__name__}: {exc}"}
         return {
             "available": True,

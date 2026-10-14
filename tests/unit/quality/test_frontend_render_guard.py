@@ -33,8 +33,11 @@ Chrome）负责。两层缺一不可：静态层抓不到运行时，本脚本�
 """
 from __future__ import annotations
 
+import logging
 import re
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 FRONTEND = REPO_ROOT / "frontend"
@@ -138,6 +141,7 @@ class TestGuardItself:
                 "manualChunks(id) { return 'vendor'; } } } } }"
             )
         except AssertionError:
+            logger.warning("TestGuardItself.test_no_blank_screen_check_raises_on_regression: 未预期异常，按原逻辑降级", exc_info=True)
             raised = True
         assert raised, "manualChunks 禁令对复现配置没有判红 —— 守卫形同虚设"
         assert_no_manual_chunks("export default { build: { target: 'es2020' } }")

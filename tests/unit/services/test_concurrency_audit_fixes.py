@@ -13,6 +13,7 @@
 """
 import asyncio
 import contextlib
+import logging
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -21,6 +22,8 @@ import pytest
 from app.config.redis_keys import RedisKey
 from app.services import diagnosis_worker as worker_module
 from app.services import report_service as report_module
+
+logger = logging.getLogger(__name__)
 
 
 def app_main_path() -> str:
@@ -126,6 +129,7 @@ class TestPipelineTotalBudget:
             await asyncio.sleep(0.01)
         task.cancel()
         with contextlib.suppress(asyncio.CancelledError):
+            logger.warning("TestPipelineTotalBudget._drain: 未预期异常，按原逻辑降级", exc_info=True)
             await task
 
     async def test_slow_pipeline_is_cut_off_and_counted_as_failure(self, monkeypatch):

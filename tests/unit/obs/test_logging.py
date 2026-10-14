@@ -4,6 +4,7 @@ Unit tests for the observability logging framework.
 """
 
 import asyncio
+import logging
 from pathlib import Path
 from unittest.mock import patch
 
@@ -27,6 +28,8 @@ from app.observability.logging import (
     create_operational_logger,
     get_log_storage,
 )
+
+logger = logging.getLogger(__name__)
 
 
 @pytest.fixture(autouse=True)
@@ -114,6 +117,7 @@ class TestPostgreSQLLogStorage:
             try:
                 await storage.awrite(record)
             except Exception:
+                logger.warning("TestPostgreSQLLogStorage.test_awrite_handles_exception: 未预期异常，按原逻辑降级", exc_info=True)
                 pytest.fail("awrite should handle exceptions silently")
 
             mock_error.assert_called_once()
@@ -129,6 +133,7 @@ class TestPostgreSQLLogStorage:
         try:
             storage.write(record)
         except Exception:
+            logger.warning("TestPostgreSQLLogStorage.test_write_nonblocking: 未预期异常，按原逻辑降级", exc_info=True)
             pytest.fail("write should not raise exceptions")
 
 
@@ -195,6 +200,7 @@ class TestFileLogStorage:
         try:
             await storage.awrite(record)
         except OSError:
+            logger.warning("TestFileLogStorage.test_awrite_handles_os_error: 未预期异常，按原逻辑降级", exc_info=True)
             pytest.fail("awrite should handle OS errors silently")
 
     def test_write_nonblocking(self, tmp_path):
@@ -204,6 +210,7 @@ class TestFileLogStorage:
         try:
             storage.write(record)
         except Exception:
+            logger.warning("TestFileLogStorage.test_write_nonblocking: 未预期异常，按原逻辑降级", exc_info=True)
             pytest.fail("write should not raise exceptions")
         # 验证日志文件被创建
         log_files = list(tmp_path.glob("operational_*.jsonl"))
@@ -234,6 +241,7 @@ class TestElasticsearchLogStorage:
         try:
             storage.write(record)
         except Exception:
+            logger.warning("TestElasticsearchLogStorage.test_write_nonblocking: 未预期异常，按原逻辑降级", exc_info=True)
             pytest.fail("write should not raise exceptions")
 
 

@@ -8,7 +8,10 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import logging
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_SOURCES = {  # 服务器路径：科别 label -> csv
     "肿瘤科": "~/uai/data/chinese_medical_dialogue/Data_数据/Oncology_肿瘤科/肿瘤科5-10000.csv",
@@ -24,6 +27,7 @@ def read_csv_rows(path: Path) -> list[dict]:
             with open(path, encoding=enc, newline="") as f:
                 return list(csv.DictReader(f))
         except UnicodeDecodeError:
+            logger.warning("read_csv_rows: 未预期异常，按原逻辑降级", exc_info=True)
             continue
     raise RuntimeError(f"无法解码: {path}")
 

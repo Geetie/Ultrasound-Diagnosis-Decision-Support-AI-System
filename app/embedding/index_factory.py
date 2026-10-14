@@ -79,6 +79,7 @@ def _resolve_backend(backend: VectorIndexBackend | str | None) -> VectorIndexBac
 
             backend = settings.vector_index_backend
         except Exception:
+            logger.warning("_resolve_backend: 未预期异常，按原逻辑降级", exc_info=True)
             backend = VectorIndexBackend.QDRANT.value
     if isinstance(backend, str):
         return VectorIndexBackend(backend)
@@ -165,6 +166,7 @@ async def _create_pgvector(database_url: str) -> VectorIndexClient:
 
             database_url = settings.database_url
         except Exception:
+            logger.warning("_create_pgvector: 未预期异常，按原逻辑降级", exc_info=True)
             database_url = ""
     client = PgvectorVectorIndex(database_url=database_url)
     healthy = await client.health_check()

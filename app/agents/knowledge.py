@@ -675,6 +675,7 @@ class KnowledgeAgentImpl(KnowledgeAgent):
                     await self._cleanup_key_lock(cache_key)
             except Exception:
                 # 锁路径异常 → 退化为无锁调用，确保业务不中断
+                logger.warning("KnowledgeAgentImpl.query: 未预期异常，按原逻辑降级", exc_info=True)
                 return await self._rag_fallback_with_cache(
                     query=query,
                     organ=organ,
@@ -774,6 +775,7 @@ class KnowledgeAgentImpl(KnowledgeAgent):
         try:
             cache_size = len(self._local_cache)
         except Exception:
+            logger.warning("KnowledgeAgentImpl.close: 未预期异常，按原逻辑降级", exc_info=True)
             cache_size = -1
         logger.info(
             "knowledge_closed",

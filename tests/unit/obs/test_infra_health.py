@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -13,6 +14,8 @@ from app.observability.infra_health import (
     run_infra_health_checks,
     stop_infra_health_checks,
 )
+
+logger = logging.getLogger(__name__)
 
 
 @pytest.fixture(autouse=True)
@@ -190,6 +193,7 @@ class TestRunInfraHealthChecks:
             try:
                 await asyncio.wait_for(asyncio.gather(task, stop_task), timeout=2.0)
             except asyncio.TimeoutError:
+                logger.warning("TestRunInfraHealthChecks.test_loop_stopped_by_shutdown: 未预期异常，按原逻辑降级", exc_info=True)
                 await stop_infra_health_checks()
                 await asyncio.sleep(0.1)
 

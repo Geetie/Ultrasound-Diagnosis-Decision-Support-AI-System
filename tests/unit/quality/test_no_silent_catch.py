@@ -44,10 +44,20 @@
 统计范围与基线
 --------------
 范围＝``git ls-files '*.py'``（CI 是干净检出；本地未跟踪探针不参与，避免计数漂移
-—— 与 ``test_ruff_ratchet`` ⑦ 的口径重定一致）。基线 **348 条 / 178 个文件**
-（2026-10-13 A.60：A.58 首次以 ast 全仓口径登记 450/199，A.60 收敛 Tier A ——
-影像/推理/实时/安全/基础设施 14 个文件**归零** + 2 处 `suppress` 后门，运行时
-208 → 128 条）。重算：
+—— 与 ``test_ruff_ratchet`` ⑦ 的口径重定一致）。
+
+**当前基线：0 条 / 0 个文件（2026-10-14 A.62「全仓归零」）**。演进：
+A.58 首次以 ast 全仓口径登记 **450/199** → A.60 收敛 Tier A（影像/推理/实时/安全/基础设施
+14 个文件归零 + 2 处 `suppress` 后门）**348/178** → A.62 批 2 三段收敛 **263/132**
+→ A.62 全仓归零 **0/0**（263 处：app/ 43、tests/ 97、scripts/ 与 lab 等 123）。
+
+A.62 的加固方式：由**本文件的 ast 判据**（不另立清单）驱动一个一次性加固器，
+对被判为静默的处理体在**开头插入** ``logger.warning("<函数>: 未预期异常，按原逻辑降级",
+exc_info=True)``（必要时补 `import logging` 与模块级 logger），**不改任何降级返回值与
+控制流**；`# silent-ok: 理由` 的豁免一仍其旧。附带成果：19 处 `except: pass` 因此不再是
+SIM105（`ruff` 基线已同步下调 37 → 18）。
+
+重算：
 
     python tests/unit/quality/test_no_silent_catch.py     # 打印当前各文件静默 catch 数
 
@@ -316,7 +326,7 @@ if __name__ == "__main__":  # pragma: no cover - 维护用：打印当前基线
             "未登记文件默认 0（新代码不许静默）。重算："
             "python tests/unit/quality/test_no_silent_catch.py"
         ),
-        "_generated_at": "2026-10-13 A.58",
+        "_generated_at": "2026-10-14 A.62（全仓归零）",
         "counts": counts(),
     }
     print(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True))

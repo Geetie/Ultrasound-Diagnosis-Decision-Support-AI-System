@@ -127,6 +127,7 @@ class TestOOMProtectionScenario:
                 result = await checker.perform_full_check(f"P{i:03d}", test_data)
                 assert result.status in [result.PASSED, result.DEGRADED] if hasattr(result, 'PASSED') else True
             except SGDatabaseUnavailableError:
+                logger.warning("TestOOMProtectionScenario.test_sg_still_responsive_under_load: 未预期异常，按原逻辑降级", exc_info=True)
                 pass
 
     def test_oom_score_adj_read_from_proc(self):
@@ -147,6 +148,7 @@ class TestOOMProtectionScenario:
 
             assert oom_value == -1000, f"Expected oom_score_adj=-1000, got {oom_value}"
         except PermissionError:
+            logger.warning("TestOOMProtectionScenario.test_oom_score_adj_read_from_proc: 未预期异常，按原逻辑降级", exc_info=True)
             pytest.skip("无权限读取oom_score_adj")
 
     def test_memory_pressure_with_tracemalloc(self):
@@ -180,6 +182,7 @@ class TestOOMProtectionScenario:
             tracemalloc.stop()
 
         except Exception as e:
+            logger.warning("TestOOMProtectionScenario.test_memory_pressure_with_tracemalloc: 未预期异常，按原逻辑降级", exc_info=True)
             gc.collect()
             tracemalloc.stop()
             pytest.fail(f"内存压力测试失败: {e}")

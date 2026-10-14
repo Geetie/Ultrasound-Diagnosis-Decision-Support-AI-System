@@ -7,10 +7,13 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 import sys
 from collections import Counter
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 SRC = Path("/mnt/ee16/home/student03/uai/src")
 KB = SRC / "data" / "kb_src_v13"
@@ -43,6 +46,7 @@ def extract_organ(organ: str) -> dict[str, int]:
         try:
             d = json.loads(p.read_text(encoding="utf-8"))
         except Exception:
+            logger.warning("extract_organ: 未预期异常，按原逻辑降级", exc_info=True)
             continue
         text = d.get("content", "") or d.get("text", "")
         for raw in TERM_RE.findall(text):

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from datetime import datetime, timezone
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -19,6 +20,8 @@ from app.security.consent_withdrawal_consumer import (
     SafetyActionHandler,
     create_consent_withdrawal_consumer,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def _event(naive=False):
@@ -195,6 +198,7 @@ class TestConsumerLifecycle:
         await asyncio.sleep(0.01)
         task.cancel()
         with contextlib.suppress(asyncio.CancelledError):
+            logger.warning("TestConsumerLifecycle.test_consume_loop_cancelled_exits: 未预期异常，按原逻辑降级", exc_info=True)
             await task
 
 

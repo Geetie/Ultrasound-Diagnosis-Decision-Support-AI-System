@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import logging
 import sys
 from pathlib import Path
 
@@ -26,6 +27,8 @@ if str(_PROJECT_ROOT) not in sys.path:
 from app.config.dsn import to_asyncpg_dsn  # noqa: E402
 from app.config.settings import settings  # noqa: E402
 from app.embedding.protocols import VectorRecord  # noqa: E402
+
+logger = logging.getLogger(__name__)
 
 
 def _parse_vector(raw: object) -> list[float]:
@@ -80,6 +83,7 @@ async def main_async(kb_version: str, organ: str, purge: bool) -> None:
         try:
             vector = _parse_vector(r["embedding"])
         except ValueError:
+            logger.warning("main_async: 未预期异常，按原逻辑降级", exc_info=True)
             skipped += 1  # 部分 chunk 无嵌入（正常态），跳过不拖垮整批
             continue
         records.append(

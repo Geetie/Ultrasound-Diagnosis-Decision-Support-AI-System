@@ -13,6 +13,9 @@ schema 约束——两引擎在采样层被强制输出 `{"grading": "<枚举>"}
 from __future__ import annotations
 
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 GRADING_ENUMS: dict[str, list[str]] = {
     "thyroid": ["2", "3", "4a", "4b", "5"],
@@ -82,13 +85,16 @@ def extract_guided_grading(text: str, organ: str | None = None) -> str | None:
     except json.JSONDecodeError:
         # json_repair 为可选依赖（schema 单字段枚举，损坏概率极低；
         # 避免为此新增 requirements 依赖）
+        logger.warning("extract_guided_grading: 未预期异常，按原逻辑降级", exc_info=True)
         try:
             import json_repair
         except ImportError:
+            logger.warning("extract_guided_grading: 未预期异常，按原逻辑降级", exc_info=True)
             return None
         try:
             data = json_repair.loads(text[match : end + 1])
         except Exception:
+            logger.warning("extract_guided_grading: 未预期异常，按原逻辑降级", exc_info=True)
             return None
     if isinstance(data, dict):
         grading = data.get("grading")

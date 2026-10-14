@@ -136,6 +136,7 @@ class RetrievalProfile:
                 ),
             )
         except (TypeError, ValueError):
+            logger.warning("RetrievalProfile.from_dict: 未预期异常，按原逻辑降级", exc_info=True)
             return defaults
 
     @classmethod
@@ -249,6 +250,7 @@ class RoutingDecision:
                 organ_threshold=payload.get("organ_threshold"),
             )
         except (KeyError, ValueError, TypeError):
+            logger.warning("RoutingDecision.from_dict: 未预期异常，按原逻辑降级", exc_info=True)
             return None
 
 

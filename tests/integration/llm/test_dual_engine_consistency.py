@@ -1,3 +1,4 @@
+import logging
 import os
 
 import pytest
@@ -14,6 +15,8 @@ from app.inference.consistency import (
 from app.inference.llama_cpp import LlamaCppEngine
 from app.inference.vllm import VLLMEngine
 
+logger = logging.getLogger(__name__)
+
 LLAMA_CPP_URL = os.environ.get("LLAMA_CPP_URL", "http://localhost:8001")
 VLLM_URL = os.environ.get("VLLM_URL", "http://localhost:8002")
 VLLM_MODEL = os.environ.get("VLLM_MODEL", "Qwen2.5-1.5B-Instruct")
@@ -25,6 +28,7 @@ def _is_service_available(url: str, timeout: float = 3.0) -> bool:
             resp = client.get(f"{url}/health", timeout=timeout)
             return resp.status_code == 200
     except Exception:
+        logger.warning("_is_service_available: 未预期异常，按原逻辑降级", exc_info=True)
         return False
 
 

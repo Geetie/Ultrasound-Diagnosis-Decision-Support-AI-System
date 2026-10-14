@@ -2,6 +2,7 @@
 mini_harness/tools/builtin.py - Built-in tools and execution pipeline
 """
 
+import logging
 import os
 import subprocess
 import time
@@ -9,6 +10,8 @@ from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
 from mini_harness.core.tool import Tool, ToolResult
+
+logger = logging.getLogger(__name__)
 
 # ============ Built-in Tools ============
 
@@ -36,6 +39,7 @@ class BashTool(Tool):
             )
 
         except subprocess.TimeoutExpired:
+            logger.warning("BashTool.call: 未预期异常，按原逻辑降级", exc_info=True)
             return ToolResult(
                 success=False,
                 content=f"Command timeout after {timeout}s",
@@ -44,6 +48,7 @@ class BashTool(Tool):
             )
 
         except Exception as e:
+            logger.warning("BashTool.call: 未预期异常，按原逻辑降级", exc_info=True)
             return ToolResult(
                 success=False,
                 content=str(e),
@@ -87,6 +92,7 @@ class FileReadTool(Tool):
             return ToolResult(success=True, content=content, execution_time=time.time() - start)
 
         except FileNotFoundError:
+            logger.warning("FileReadTool.call: 未预期异常，按原逻辑降级", exc_info=True)
             return ToolResult(
                 success=False,
                 content=f"File not found: {filepath}",
@@ -95,6 +101,7 @@ class FileReadTool(Tool):
             )
 
         except Exception as e:
+            logger.warning("FileReadTool.call: 未预期异常，按原逻辑降级", exc_info=True)
             return ToolResult(
                 success=False,
                 content=str(e),
@@ -144,6 +151,7 @@ class FileWriteTool(Tool):
             )
 
         except Exception as e:
+            logger.warning("FileWriteTool.call: 未预期异常，按原逻辑降级", exc_info=True)
             return ToolResult(
                 success=False,
                 content=str(e),
@@ -234,6 +242,7 @@ class ExecutionPipeline:
             )
 
         except Exception as e:
+            logger.warning("ExecutionPipeline.execute: 未预期异常，按原逻辑降级", exc_info=True)
             return ToolResultBlock(
                 tool_name=tool_name, success=False, content=str(e), error_type=type(e).__name__
             )

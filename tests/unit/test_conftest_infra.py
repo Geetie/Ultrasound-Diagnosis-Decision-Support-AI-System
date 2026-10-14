@@ -5,11 +5,14 @@
 2. SourceChangeDetector - 源码变更检测器
 """
 import json
+import logging
 import os
 import tempfile
 import time
 
 from tests.utils.track_progress_reporter import SourceChangeDetector, TrackProgressReporter
+
+logger = logging.getLogger(__name__)
 
 
 class TestTrackProgressReporter:
@@ -221,6 +224,7 @@ class TestSourceChangeDetector:
                 os.unlink(path)
                 assert detector.has_source_changed("test", [path]) is True
             except:
+                logger.warning("TestSourceChangeDetector.test_has_source_changed_file_deleted: 未预期异常，按原逻辑降级", exc_info=True)
                 if os.path.exists(path):
                     os.unlink(path)
 

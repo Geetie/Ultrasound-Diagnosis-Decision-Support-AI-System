@@ -1,10 +1,13 @@
 """Path validation for secure file access."""
 
+import logging
 import os
 import posixpath
 import unicodedata
 from typing import Optional
 from urllib.parse import unquote
+
+logger = logging.getLogger(__name__)
 
 
 class PathValidator:
@@ -70,6 +73,7 @@ class PathValidator:
             try:
                 current = unquote(current)
             except Exception:
+                logger.warning("PathValidator._decode_all_encodings: 未预期异常，按原逻辑降级", exc_info=True)
                 break
             iterations += 1
 

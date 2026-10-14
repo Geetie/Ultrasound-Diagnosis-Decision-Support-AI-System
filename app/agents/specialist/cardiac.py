@@ -155,6 +155,7 @@ class CardiacSpecialistAgent(RAGSpecialistAgent):
                         # 多个数值取最低（保守）
                         lvef_value = min(lvef_value, val)
             except (ValueError, TypeError):
+                logger.warning("CardiacSpecialistAgent._parse_response: 未预期异常，按原逻辑降级", exc_info=True)
                 continue
 
         # 2) 关键字抽取（备选）

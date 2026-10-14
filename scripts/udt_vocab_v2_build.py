@@ -13,9 +13,12 @@ LayerS 分级体系: 既有 UDAF 225 同义词 → tier S（已在生产）
 from __future__ import annotations
 
 import json
+import logging
 import sys
 from collections import Counter
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 SRC = Path("/mnt/ee16/home/student03/uai/src")
 KB = SRC / "data" / "kb_src_v13"
@@ -44,6 +47,7 @@ def load_thuocL() -> dict[str, int]:
             try:
                 lex[parts[0]] = int(parts[1])
             except ValueError:
+                logger.warning("load_thuocL: 未预期异常，按原逻辑降级", exc_info=True)
                 continue
     return lex
 
@@ -62,6 +66,7 @@ def corpus_freq(organ: str, terms: list[str]) -> dict[str, int]:
         try:
             d = json.loads(p.read_text(encoding="utf-8"))
         except Exception:
+            logger.warning("corpus_freq: 未预期异常，按原逻辑降级", exc_info=True)
             continue
         text = d.get("content", "") or d.get("text", "")
         for t in terms:

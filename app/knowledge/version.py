@@ -2,8 +2,11 @@
 Knowledge Base Version Management
 Implements version parsing and comparison for knowledge base versions.
 """
+import logging
 import re
 from dataclasses import dataclass
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -97,6 +100,7 @@ def parse_kb_version(version_str: str) -> KBVersion | None:
             hospital_id=hospital_id
         )
     except (ValueError, TypeError):
+        logger.warning("parse_kb_version: 未预期异常，按原逻辑降级", exc_info=True)
         return None
 
 
@@ -178,4 +182,5 @@ def _parse_simple_version(version_str: str) -> tuple[int, int] | None:
         minor = int(parts[1]) if len(parts) > 1 else 0
         return (major, minor)
     except (ValueError, IndexError):
+        logger.warning("_parse_simple_version: 未预期异常，按原逻辑降级", exc_info=True)
         return None

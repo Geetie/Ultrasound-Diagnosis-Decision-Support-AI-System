@@ -14,6 +14,7 @@
 import argparse
 import asyncio
 import json
+import logging
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -25,6 +26,8 @@ from app.inference.consistency import ConsistencyVerifier
 from app.inference.drift_detector import DriftDetector, DriftSeverity, MetricType
 from app.inference.factory import create_inference_engine
 from app.inference.verification_config import get_verification_config
+
+logger = logging.getLogger(__name__)
 
 
 def load_test_cases(path: str) -> list:
@@ -138,6 +141,7 @@ def main():
         vllm_host = args.vllm_host or settings.vllm_host
         vllm_port = args.vllm_port or settings.vllm_port
     except Exception:
+        logger.warning("main: 未预期异常，按原逻辑降级", exc_info=True)
         llama_cpp_host = args.llama_cpp_host or "localhost"
         llama_cpp_port = args.llama_cpp_port or 8001
         vllm_host = args.vllm_host or "localhost"

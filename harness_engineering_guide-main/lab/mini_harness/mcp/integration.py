@@ -267,6 +267,7 @@ class MCPToolRegistry:
             return True, result, ""
 
         except Exception as e:
+            logger.warning("MCPToolRegistry.call_tool: 未预期异常，按原逻辑降级", exc_info=True)
             return False, None, str(e)
 
     async def _get_client(self, server_id: str, config: MCPServerConfig) -> BaseMCPClient:
@@ -340,12 +341,14 @@ class MCPToolAdapter:
             }
 
         except json.JSONDecodeError as e:
+            logger.warning("MCPToolAdapter.call_tool_from_llm: 未预期异常，按原逻辑降级", exc_info=True)
             return {
                 "success": False,
                 "result": None,
                 "error": f"Invalid JSON input: {e}",
             }
         except Exception as e:
+            logger.warning("MCPToolAdapter.call_tool_from_llm: 未预期异常，按原逻辑降级", exc_info=True)
             return {
                 "success": False,
                 "result": None,

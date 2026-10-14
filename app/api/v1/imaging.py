@@ -87,6 +87,7 @@ def parse_and_validate_dicom(content: bytes) -> tuple[pydicom.Dataset | None, st
     try:
         ds = pydicom.dcmread(BytesIO(content), force=True)
     except Exception as e:
+        logger.warning("parse_and_validate_dicom: 未预期异常，按原逻辑降级", exc_info=True)
         return None, f"DICOM 解析失败：{e!s}", []
 
     missing_tags = []
@@ -135,6 +136,7 @@ def _normalize_odd_frame_multiframe(
     try:
         frames = int(getattr(dataset, "NumberOfFrames", 1) or 1)
     except (TypeError, ValueError):
+        logger.warning("_normalize_odd_frame_multiframe: 未预期异常，按原逻辑降级", exc_info=True)
         return content, dataset, None
     if frames < 2:
         return content, dataset, None
@@ -194,6 +196,7 @@ def _safe_int(value) -> int | None:
     try:
         return int(value)
     except (TypeError, ValueError):
+        logger.warning("_safe_int: 未预期异常，按原逻辑降级", exc_info=True)
         return None
 
 

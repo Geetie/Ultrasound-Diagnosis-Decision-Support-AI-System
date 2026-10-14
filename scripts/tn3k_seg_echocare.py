@@ -8,6 +8,7 @@ Recipe self-designed（EchoCare repo 无分割下游配方）：
 from __future__ import annotations
 
 import json
+import logging
 import time
 from pathlib import Path
 
@@ -16,6 +17,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from PIL import Image
+
+logger = logging.getLogger(__name__)
 
 DATA = Path("/mnt/ee16/home/student03/uai/data/tn3k_dataset")
 ECHOCARE_PT = Path("/mnt/ee16/home/student03/uai/models/echocare/model.pt")
@@ -41,6 +44,7 @@ def load_img_mask(img_path, mask_path):
         img = Image.open(img_path).convert("RGB").resize((SIZE, SIZE))
         msk = Image.open(mask_path).convert("L").resize((SIZE, SIZE))
     except Exception:
+        logger.warning("load_img_mask: 未预期异常，按原逻辑降级", exc_info=True)
         return None
     x = torch.from_numpy(np.asarray(img).copy()).permute(2, 0, 1).float() / 255.0
     y = (torch.from_numpy(np.asarray(msk).copy()).float() > 127).unsqueeze(0)

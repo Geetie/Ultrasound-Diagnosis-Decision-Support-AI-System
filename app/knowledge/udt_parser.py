@@ -357,6 +357,7 @@ class UDTParser:
             try:
                 v1 = float(match.group(1))
             except (ValueError, TypeError):
+                logger.warning("UDTParser._extract_measurements: 未预期异常，按原逻辑降级", exc_info=True)
                 continue
             v2_str = match.group(2)
             v2 = float(v2_str) if v2_str else None

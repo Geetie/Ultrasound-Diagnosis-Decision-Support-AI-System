@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -8,6 +9,8 @@ from app.security.refresh_token import (
     MemoryRefreshTokenStore,
     RedisRefreshTokenStore,
 )
+
+logger = logging.getLogger(__name__)
 
 pytestmark = [pytest.mark.track_sec, pytest.mark.track_inf, pytest.mark.sec_critical]
 @pytest.fixture(autouse=True)
@@ -581,6 +584,7 @@ class TestConsentWithdrawalLatency:
                 mock_get_session.return_value = mock_session
                 await handler.handle_withdrawal(event)
         except Exception as e:
+            logger.warning("TestConsentWithdrawalLatency.test_consent_withdrawal_marks_session_within_500ms: 未预期异常，按原逻辑降级", exc_info=True)
             pytest.fail(f"Handler raised exception: {e}")
         elapsed_ms = (time.perf_counter() - start) * 1000
 
@@ -603,6 +607,7 @@ class TestConsentWithdrawalLatency:
             try:
                 result = await checker.check_consent_status("patient_001")
             except Exception as e:
+                logger.warning("TestConsentWithdrawalLatency.test_safety_gateway_consent_check_latency: 未预期异常，按原逻辑降级", exc_info=True)
                 pytest.fail(f"Handler raised exception: {e}")
             elapsed_ms = (time.perf_counter() - start) * 1000
 

@@ -164,6 +164,7 @@ def _resolve_chunker(strategy: str) -> Chunker:
     try:
         return create_chunker(ChunkerStrategy(strategy))
     except ValueError:
+        logger.warning("_resolve_chunker: 未预期异常，按原逻辑降级", exc_info=True)
         return create_chunker(ChunkerStrategy.SENTENCE_BOUNDARY)
 
 

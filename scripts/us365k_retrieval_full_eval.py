@@ -5,6 +5,7 @@
 """
 from __future__ import annotations
 
+import logging
 import os
 
 os.environ["HF_HUB_OFFLINE"] = "1"
@@ -42,6 +43,8 @@ for fn in ("open_clip_config.json", "open_clip_pytorch_model.bin", "tokenizer.js
 (REPO_DIR / "refs" / "main").write_text("offline", encoding="utf-8")
 
 import open_clip
+
+logger = logging.getLogger(__name__)
 
 model, _, preprocess = open_clip.create_model_and_transforms(
     "hf-hub:microsoft/BiomedCLIP-PubMedBERT_256-vit_base_patch16_224",
@@ -92,6 +95,7 @@ def encode_images(tag: str) -> np.ndarray:
                 try:
                     batch.append(preprocess(Image.open(p).convert("RGB")))
                 except Exception:
+                    logger.warning("encode_images: 未预期异常，按原逻辑降级", exc_info=True)
                     batch.append(torch.zeros(3, 224, 224))
             x = torch.stack(batch).to(device, dtype=torch.float16)
             with torch.autocast("cuda", dtype=torch.float16, enabled=(device == "cuda")):

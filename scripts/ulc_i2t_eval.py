@@ -1,3 +1,4 @@
+import logging
 import os
 import shutil
 
@@ -30,6 +31,8 @@ refs.mkdir(parents=True, exist_ok=True)
 (refs / "main").write_text("offline", encoding="utf-8")
 
 import open_clip
+
+logger = logging.getLogger(__name__)
 
 model, _, preprocess = open_clip.create_model_and_transforms(
     "hf-hub:microsoft/BiomedCLIP-PubMedBERT_256-vit_base_patch16_224",
@@ -80,6 +83,7 @@ for tag in ("biomedclip_base", "ultrasound_clip"):
             try:
                 img = preprocess(Image.open(p).convert("RGB"))
             except Exception:
+                logger.warning("<module>: 未预期异常，按原逻辑降级", exc_info=True)
                 img = torch.zeros(3, 224, 224)
             toks = tokenizer([cap])[0]
             img_f = F.normalize(model.visual(img.unsqueeze(0).to(device)), dim=-1)

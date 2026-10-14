@@ -3,6 +3,7 @@
 
 import asyncio
 import json
+import logging
 import uuid
 from collections import deque
 from contextvars import ContextVar
@@ -10,6 +11,8 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Tuple
+
+logger = logging.getLogger(__name__)
 
 # ============================================================================
 # 1. 枚举定义
@@ -567,6 +570,7 @@ class OrchestrationEngine:
                 return {"success": False, "error": f"Unknown task type: {task.task_type}"}
 
         except Exception as e:
+            logger.warning("OrchestrationEngine._execute_task: 未预期异常，按原逻辑降级", exc_info=True)
             return {"success": False, "error": str(e)}
 
 

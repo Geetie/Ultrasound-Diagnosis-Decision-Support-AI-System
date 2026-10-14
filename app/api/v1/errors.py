@@ -39,6 +39,7 @@ def _coerce_detail(detail: Any) -> str | None:
     try:
         return json.dumps(detail, ensure_ascii=False, default=str)
     except Exception:
+        logger.warning("_coerce_detail: 未预期异常，按原逻辑降级", exc_info=True)
         return str(detail)
 
 
@@ -47,6 +48,7 @@ def _default_message(status_code: int) -> str:
     try:
         return HTTPStatus(status_code).phrase
     except ValueError:
+        logger.warning("_default_message: 未预期异常，按原逻辑降级", exc_info=True)
         return "Request error"
 
 

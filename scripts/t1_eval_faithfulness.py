@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import re
 import time
 import urllib.request
@@ -32,6 +33,8 @@ from prompts.ragas_faithfulness import (
     STATEMENT_GENERATOR_INSTRUCTION,
 )
 from t1_eval_retrieval import bm25_topk, cosine_topk, embed_texts, rrf_fuse
+
+logger = logging.getLogger(__name__)
 
 _CONTEXT_TOP_K = 5
 _CANDIDATE_DEPTH = 100
@@ -257,6 +260,7 @@ def main() -> int:
             item["numeric_consistent"] = ok
             item["missing_numbers"] = missing
         except Exception as exc:
+            logger.warning("main: 未预期异常，按原逻辑降级", exc_info=True)
             item["error"] = f"{type(exc).__name__}: {exc}"
         results.append(item)
         if (qi + 1) % 10 == 0:

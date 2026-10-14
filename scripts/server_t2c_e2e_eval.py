@@ -18,6 +18,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import logging
 import random
 import re
 import sys
@@ -25,6 +26,8 @@ import time
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(_PROJECT_ROOT) not in sys.path:
@@ -90,6 +93,7 @@ def _judge_nli(caption: str, conclusion: str) -> tuple[int, str]:
     try:
         v = json.loads(m.group(0))
     except json.JSONDecodeError:
+        logger.warning("_judge_nli: 未预期异常，按原逻辑降级", exc_info=True)
         import json_repair
 
         v = json_repair.loads(m.group(0))
@@ -182,6 +186,7 @@ def _run_one(
                 item["judge_verdict"] = 0
                 item["judge_reason"] = "empty-conclusion"
     except Exception as exc:
+        logger.warning("_run_one: 未预期异常，按原逻辑降级", exc_info=True)
         item["error"] = f"{type(exc).__name__}: {str(exc)[:200]}"
     return item
 

@@ -1,3 +1,4 @@
+import logging
 import threading
 from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
@@ -12,6 +13,8 @@ from app.security.refresh_token import (
     MemoryRefreshTokenStore,
     refresh_token_store,
 )
+
+logger = logging.getLogger(__name__)
 
 pytestmark = [pytest.mark.track_sec, pytest.mark.track_inf, pytest.mark.sec_domain_token]
 @pytest.fixture(autouse=True)
@@ -527,6 +530,7 @@ class TestHSMDegradedEventE2E:
                 try:
                     create_access_token({"sub": "test"})
                 except Exception:
+                    logger.warning("TestHSMDegradedEventE2E.test_auth_set_degraded_on_sign_failure: 未预期异常，按原逻辑降级", exc_info=True)
                     pass
                 mock_degraded.assert_called_once()
 
@@ -536,6 +540,7 @@ class TestHSMDegradedEventE2E:
                 try:
                     decode_access_token("invalid_token")
                 except Exception:
+                    logger.warning("TestHSMDegradedEventE2E.test_auth_set_degraded_on_public_key_missing: 未预期异常，按原逻辑降级", exc_info=True)
                     pass
                 mock_degraded.assert_called_once()
 

@@ -8,6 +8,7 @@ import asyncio
 import hashlib
 import inspect
 import json
+import logging
 import os
 import re
 import tempfile
@@ -71,6 +72,8 @@ from safety_gateway.checker import (
 )
 from safety_gateway.checker.desensitization_phase import MAX_RECURSION_DEPTH
 from safety_gateway.desensitization import SafetyGatewayDesensitizationEngine, sg_desensitization_engine
+
+logger = logging.getLogger(__name__)
 
 PATIENT_TOKEN_PATTERN = re.compile(r'PATIENT_\d{3}')
 
@@ -1715,6 +1718,7 @@ class TestRefreshTokenConcurrentRevokeAndVerifySupplementary:
                     with lock:
                         token_ids.append(token_id)
             except Exception:
+                logger.warning("TestRefreshTokenConcurrentRevokeAndVerifySupplementary.test_concurrent_create_tokens_for_same_user.create_worker: 未预期异常，按原逻辑降级", exc_info=True)
                 pass
 
         threads = [threading.Thread(target=create_worker) for _ in range(10)]

@@ -19,10 +19,13 @@
 - 关键契约字段不得是硬编码占位值。
 """
 import ast
+import logging
 import re
 from pathlib import Path
 
 import pytest
+
+logger = logging.getLogger(__name__)
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 APP_DIR = REPO_ROOT / "app"
@@ -200,6 +203,7 @@ class TestNoAsyncPrimitiveWithoutLoopBinding:
             try:
                 tree = ast.parse(path.read_text(encoding="utf-8", errors="ignore"))
             except SyntaxError:  # pragma: no cover - 坏文件交给编译器
+                logger.warning("TestNoAsyncPrimitiveWithoutLoopBinding._offenders: 未预期异常，按原逻辑降级", exc_info=True)
                 continue
             for node in tree.body:  # 只看模块顶层
                 if not isinstance(node, ast.Assign):

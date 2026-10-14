@@ -1,7 +1,10 @@
 import asyncio
+import logging
 
 import httpx
 import pytest
+
+logger = logging.getLogger(__name__)
 
 SG_BASE_URL = "http://localhost:9001"
 MAIN_SERVICE_URL = "http://localhost:8000"
@@ -14,6 +17,7 @@ def sg_available():
             resp = client.get("/health")
             return resp.status_code in (200, 503)
     except (httpx.ConnectError, httpx.TimeoutException, Exception):
+        logger.warning("sg_available: 未预期异常，按原逻辑降级", exc_info=True)
         return False
 
 
@@ -225,6 +229,7 @@ class TestProcessIsolationE2E:
                 main_resp = await client.get(f"{MAIN_SERVICE_URL}/api/v1/health", timeout=2.0)
                 main_healthy = main_resp.status_code == 200
             except (httpx.ConnectError, httpx.TimeoutException):
+                logger.warning("TestProcessIsolationE2E.test_sg_rejects_output_when_main_unavailable: 未预期异常，按原逻辑降级", exc_info=True)
                 main_healthy = False
 
             if not main_healthy:

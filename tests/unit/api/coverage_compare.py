@@ -6,11 +6,14 @@
     python tests/unit/api/coverage_compare.py --report     # 生成完整报告
 """
 import json
+import logging
 import subprocess
 import sys
 import time
 from datetime import datetime
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 API_TEST_DIR = PROJECT_ROOT / "tests" / "unit" / "api"
@@ -63,6 +66,7 @@ def parse_coverage_output(stdout):
                         "missing_lines": parts[4] if len(parts) > 4 else "",
                     }
                 except (ValueError, IndexError):
+                    logger.warning("parse_coverage_output: 未预期异常，按原逻辑降级", exc_info=True)
                     pass
         elif "TOTAL" in line:
             parts = line.split()
@@ -74,6 +78,7 @@ def parse_coverage_output(stdout):
                         "cover_pct": parts[3].replace("%", ""),
                     }
                 except (ValueError, IndexError):
+                    logger.warning("parse_coverage_output: 未预期异常，按原逻辑降级", exc_info=True)
                     pass
     return coverage_data
 
@@ -92,6 +97,7 @@ def parse_durations(stdout):
                     dur = float(parts[0].replace("s", ""))
                     durations.append({"duration_s": dur, "test": " ".join(parts[2:])})
                 except ValueError:
+                    logger.warning("parse_durations: 未预期异常，按原逻辑降级", exc_info=True)
                     pass
     return durations
 

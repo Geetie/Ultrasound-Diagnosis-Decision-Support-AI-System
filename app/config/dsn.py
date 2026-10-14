@@ -17,6 +17,10 @@
 
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 def to_asyncpg_dsn(database_url: str) -> str:
     """去掉 scheme 里的 ``+dialect`` 后缀，其余部分**原样保留**。
@@ -63,4 +67,5 @@ def redact_url(url: str) -> str:
             netloc = f"<redacted>@{netloc}"
         return urlunparse(parsed._replace(netloc=netloc))
     except Exception:
+        logger.warning("redact_url: 未预期异常，按原逻辑降级", exc_info=True)
         return "<redacted-url>"

@@ -20,12 +20,15 @@
 3. 计数低于基线 -> 提示把基线调小（锁住成果，避免棘轮失真）。
 """
 import json
+import logging
 import os
 import shutil
 import subprocess
 from pathlib import Path
 
 import pytest
+
+logger = logging.getLogger(__name__)
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 DEBT_FILE = REPO_ROOT / ".ruff-debt.txt"
@@ -67,7 +70,10 @@ RUFF_BASELINE = {
     # 39 → 38（A.62 批 2-D）：`app/security/desensitization_restore.py` 的
     # "旧密钥不可用"分支补 `raise ... from e`，B904 减 1（成果要落基线，否则下次会被判"改进未记录"）
     "B904": 38,
-    "SIM105": 37,
+    # 37 → 18（A.62 全仓零静默）：静默加固器把 `except: pass` 改成 `except: logger.warning(...)`
+    # 后，SIM105（"该用 contextlib.suppress"）随之消失 19 处 —— 附带成果也要落基线，
+    # 否则下次会被判「改进未记录」。**只许继续下调**。
+    "SIM105": 18,
     "UP031": 24,
     "SIM117": 32,
     "RUF059": 30,
@@ -143,6 +149,7 @@ def _collect_statistics() -> dict:
     try:
         diagnostics = json.loads(completed.stdout or "[]")
     except json.JSONDecodeError:  # pragma: no cover - ruff 输出异常时退化
+        logger.warning("_collect_statistics: 未预期异常，按原逻辑降级", exc_info=True)
         return {}
 
     tracked = _tracked_py_files()
@@ -156,6 +163,7 @@ def _collect_statistics() -> dict:
         try:
             rel = os.path.relpath(filename, REPO_ROOT).replace("\\", "/")
         except ValueError:  # pragma: no cover - 跨盘符等极端情况
+            logger.warning("_collect_statistics: 未预期异常，按原逻辑降级", exc_info=True)
             rel = filename.replace("\\", "/")
         if rel not in tracked:
             continue

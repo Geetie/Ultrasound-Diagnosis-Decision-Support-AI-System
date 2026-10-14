@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import sys
 import time
 from pathlib import Path
@@ -25,6 +26,8 @@ from tn3k_seg_echocare import (  # noqa: E402
     list_pairs,
     load_img_mask,
 )
+
+logger = logging.getLogger(__name__)
 
 OUT = Path("/mnt/ee16/home/student03/uai/reports/tn3k_seg_echocare.json")
 EPOCHS = 8
@@ -128,6 +131,7 @@ def main():
         try:
             prev = json.loads(OUT.read_text(encoding="utf-8"))
         except Exception:
+            logger.warning("main: 未预期异常，按原逻辑降级", exc_info=True)
             prev = {}
     fin = run_arm("finetune", EPOCHS, lr_enc=1e-5, lr_dec=1e-3)
     print(f"[finetune] {fin}", flush=True)

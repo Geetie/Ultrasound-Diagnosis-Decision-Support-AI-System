@@ -9,9 +9,12 @@
 """
 from __future__ import annotations
 
+import logging
 import os
 
 import pytest
+
+logger = logging.getLogger(__name__)
 
 # Skip entire module unless explicitly enabled.
 pytestmark = pytest.mark.skipif(
@@ -67,5 +70,6 @@ class TestPgvectorIntegration:
             try:
                 await client.delete_collection(collection)
             except Exception:
+                logger.warning("TestPgvectorIntegration.test_create_and_search: 未预期异常，按原逻辑降级", exc_info=True)
                 pass
             await client.close()

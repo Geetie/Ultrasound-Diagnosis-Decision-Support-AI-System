@@ -14,6 +14,7 @@
 """
 from __future__ import annotations
 
+import logging
 import threading
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -29,6 +30,8 @@ from app.security.desensitization import DesensitizationEngine
 from app.services import report_service
 from app.services.audit_service import AuditService
 from app.services.cold_archive import ColdArchiveService
+
+logger = logging.getLogger(__name__)
 
 PII_CLINICAL_TEXT = (
     "患者张三，身份证 110101199001011234，手机 13812345678；"
@@ -53,6 +56,7 @@ class _MemoryDb:
         try:
             return stmt.column_descriptions[0].get("entity")
         except Exception:
+            logger.warning("_MemoryDb._entity: 未预期异常，按原逻辑降级", exc_info=True)
             return None
 
     async def execute(self, stmt):

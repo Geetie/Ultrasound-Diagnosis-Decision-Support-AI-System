@@ -15,11 +15,14 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import sys
 import time
 from pathlib import Path
 
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 # 允许从任意 cwd 直接运行：把仓库根（scripts/ 的上一级）加入 sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -114,6 +117,7 @@ def _eval_case(
             # PNG 字节串当 image_path 打开（[Errno 36] File name too long）
             seg = segmenter.infer(image_bytes=tmp.read_bytes())
         except Exception as exc:
+            logger.warning("_eval_case: 未预期异常，按原逻辑降级", exc_info=True)
             per_frame.append({"frame": idx, "error": str(exc)[:120]})
             continue
         elapsed = time.monotonic() - t

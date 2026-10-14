@@ -21,6 +21,7 @@ SG-FIX-002: 验证P99延迟基准 < 5ms
 """
 
 import gc
+import logging
 import time
 from unittest.mock import patch
 
@@ -32,6 +33,8 @@ from safety_gateway.contraindication import get_contraindication_engine
 from safety_gateway.desensitization import sg_desensitization_engine
 from safety_gateway.threshold import get_threshold_engine
 from safety_gateway.validation_result import ConsentStatus
+
+logger = logging.getLogger(__name__)
 
 pytestmark = [pytest.mark.track_sg, pytest.mark.track_sec]
 
@@ -249,6 +252,7 @@ class TestHTTPEndToEndLatency:
         try:
             import httpx
         except ImportError:
+            logger.warning("TestHTTPEndToEndLatency.test_http_e2e_p99_latency: 未预期异常，按原逻辑降级", exc_info=True)
             pytest.skip("httpx not installed")
 
         sg_url = "http://localhost:9001"
@@ -266,6 +270,7 @@ class TestHTTPEndToEndLatency:
                 try:
                     await client.post("/api/v1/safety/check", json=test_payload)
                 except Exception:
+                    logger.warning("TestHTTPEndToEndLatency.test_http_e2e_p99_latency: 未预期异常，按原逻辑降级", exc_info=True)
                     pass
 
             latencies = []
@@ -277,6 +282,7 @@ class TestHTTPEndToEndLatency:
                     if resp.status_code == 200:
                         latencies.append(elapsed)
                 except Exception:
+                    logger.warning("TestHTTPEndToEndLatency.test_http_e2e_p99_latency: 未预期异常，按原逻辑降级", exc_info=True)
                     pass
 
         if not latencies:
@@ -307,11 +313,13 @@ class TestGate0ConsentQueryLatency:
             from safety_gateway.consent_checker import get_consent_checker
             from safety_gateway.sg_db import _get_async_engine
         except ImportError:
+            logger.warning("TestGate0ConsentQueryLatency.test_consent_pg_query_p99_latency: 未预期异常，按原逻辑降级", exc_info=True)
             pytest.skip("safety_gateway not installed")
 
         try:
             await _get_async_engine()
         except Exception:
+            logger.warning("TestGate0ConsentQueryLatency.test_consent_pg_query_p99_latency: 未预期异常，按原逻辑降级", exc_info=True)
             pytest.skip("PostgreSQL not available")
 
         checker = get_consent_checker()
@@ -321,6 +329,7 @@ class TestGate0ConsentQueryLatency:
             try:
                 await checker.check_consent_status(test_patient)
             except Exception:
+                logger.warning("TestGate0ConsentQueryLatency.test_consent_pg_query_p99_latency: 未预期异常，按原逻辑降级", exc_info=True)
                 pass
 
         latencies = []
@@ -331,6 +340,7 @@ class TestGate0ConsentQueryLatency:
                 elapsed = (time.perf_counter() - start) * 1000
                 latencies.append(elapsed)
             except Exception:
+                logger.warning("TestGate0ConsentQueryLatency.test_consent_pg_query_p99_latency: 未预期异常，按原逻辑降级", exc_info=True)
                 pass
 
         if not latencies:

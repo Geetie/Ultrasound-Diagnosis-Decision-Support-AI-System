@@ -1,4 +1,5 @@
 import json
+import logging
 from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, patch
 
@@ -11,6 +12,8 @@ from app.security.refresh_token import (
     MemoryRefreshTokenStore,
     RedisRefreshTokenStore,
 )
+
+logger = logging.getLogger(__name__)
 
 
 @pytest.fixture
@@ -133,6 +136,7 @@ class FakeRedisClient:
                         self._expiry[token_key] = self._expiry.get(token_key)
                     return 1
                 except (json.JSONDecodeError, Exception):
+                    logger.warning("FakeRedisClient.eval: 未预期异常，按原逻辑降级", exc_info=True)
                     return 0
             return 0
         key = keys_and_args[0] if keys_and_args else None

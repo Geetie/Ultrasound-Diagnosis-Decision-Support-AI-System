@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import sys
 from pathlib import Path
 
@@ -31,6 +32,8 @@ if str(_PROJECT_ROOT) not in sys.path:
 
 import numpy as np  # noqa: E402
 from PIL import Image  # noqa: E402
+
+logger = logging.getLogger(__name__)
 
 
 def _grayscale(path: Path) -> np.ndarray:
@@ -85,6 +88,7 @@ def main() -> int:
             try:
                 gray = _grayscale(p)
             except Exception:
+                logger.warning("main: 未预期异常，按原逻辑降级", exc_info=True)
                 continue
             frame = Frame(
                 frame_id=p.stem,
@@ -103,6 +107,7 @@ def main() -> int:
                 if q is not None:
                     quality_scores.append(float(q.overall_score))
             except Exception:
+                logger.warning("main: 未预期异常，按原逻辑降级", exc_info=True)
                 pass
 
     correct = confusion["transverse"]["transverse"] + confusion["longitudinal"]["longitudinal"]

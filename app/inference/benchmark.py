@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import time
 from dataclasses import dataclass, field
 from typing import Any
@@ -8,6 +9,8 @@ import structlog
 from app.inference.hallucination_detector import detect_hallucination as unified_detect_hallucination
 from app.inference.protocols import InferenceEngine, InferenceRequest
 from app.inference.utils import percentile as _percentile
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -247,6 +250,7 @@ class ModelBenchmark:
             )
             latency_ms = (time.monotonic() - start) * 1000
         except Exception as exc:
+            logger.warning("ModelBenchmark._benchmark_single: 未预期异常，按原逻辑降级", exc_info=True)
             return {
                 "latency_ms": None,
                 "is_correct": False,

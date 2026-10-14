@@ -12,9 +12,12 @@ from __future__ import annotations
 
 import contextlib
 import json
+import logging
 import os
 import pathlib
 import sys
+
+logger = logging.getLogger(__name__)
 
 MODELS = pathlib.Path(os.path.expanduser("~/uai/models"))
 
@@ -59,12 +62,14 @@ def check_gguf(path: pathlib.Path) -> None:
         try:
             value = field.parts[field.data[0]].tolist()
         except Exception:
+            logger.warning("check_gguf: 未预期异常，按原逻辑降级", exc_info=True)
             value = None
         if isinstance(value, list) and len(value) == 1:
             value = value[0]
         # GGUF 的字符串类型以字节数组给出，直接打印是数字序列（可读性为零）
         if isinstance(value, list) and value and all(isinstance(b, int) for b in value):
             with contextlib.suppress(UnicodeDecodeError):
+                logger.warning("check_gguf: 未预期异常，按原逻辑降级", exc_info=True)
                 value = bytes(value).decode("utf-8")
         print(f"  {key} = {value}")
     print(f"  ✓ 元数据键数 = {len(fields)}")

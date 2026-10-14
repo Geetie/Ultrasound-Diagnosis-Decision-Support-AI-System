@@ -3,8 +3,11 @@
 基于 SEC 的 SECProgressReporter 提取的通用版本，
 各轨道继承此类并定义自己的 PHASE_ICONS。
 """
+import logging
 import sys
 import time
+
+logger = logging.getLogger(__name__)
 
 
 class TrackProgressReporter:
@@ -125,6 +128,7 @@ class SourceChangeDetector:
                     h.update(chunk)
             return h.hexdigest()
         except FileNotFoundError:
+            logger.warning("SourceChangeDetector._compute_file_hash: 未预期异常，按原逻辑降级", exc_info=True)
             return None
 
     def _compute_source_hash(self, source_files):
@@ -148,6 +152,7 @@ class SourceChangeDetector:
                 with open(cache_file, encoding="utf-8") as f:
                     return json.load(f)
         except (OSError, json.JSONDecodeError):
+            logger.warning("SourceChangeDetector._load_hash_cache: 未预期异常，按原逻辑降级", exc_info=True)
             pass
         return {}
 

@@ -5,9 +5,13 @@
 2. LLM专用fixture（共享MockInferenceEngine、覆盖全局autouse）
 3. 测试阶段自动分类
 """
+import logging
+
 import pytest
 
 from tests.utils.track_progress_reporter import TrackProgressReporter
+
+logger = logging.getLogger(__name__)
 
 PHASE_ICONS = {
     "inference": "\U0001f9e0",
@@ -39,12 +43,14 @@ def reset_verification_config():
         from app.inference.verification_config import _global_config
         _global_config.clear()
     except ImportError:
+        logger.warning("reset_verification_config: 未预期异常，按原逻辑降级", exc_info=True)
         pass
     yield
     try:
         from app.inference.verification_config import _global_config
         _global_config.clear()
     except ImportError:
+        logger.warning("reset_verification_config: 未预期异常，按原逻辑降级", exc_info=True)
         pass
 
 

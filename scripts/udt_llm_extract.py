@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import random
 import re
 import sys
@@ -13,6 +14,8 @@ from collections import Counter
 from pathlib import Path
 
 from openai import AsyncOpenAI
+
+logger = logging.getLogger(__name__)
 
 SRC = Path("/mnt/ee16/home/student03/uai/src")
 KB = SRC / "data" / "kb_src_v13"
@@ -53,6 +56,7 @@ async def one(client: AsyncOpenAI, model: str, sem: asyncio.Semaphore,
                     if isinstance(t, str) and 2 <= len(t) <= 12:
                         counter[t] += 1
         except Exception:
+            logger.warning("one: 未预期异常，按原逻辑降级", exc_info=True)
             return
 
 
@@ -71,6 +75,7 @@ async def main() -> int:
             try:
                 d = json.loads(p.read_text(encoding="utf-8"))
             except Exception:
+                logger.warning("main: 未预期异常，按原逻辑降级", exc_info=True)
                 continue
             t = d.get("content", "") or d.get("text", "")
             if len(t) > 100:

@@ -1,4 +1,6 @@
 
+import logging
+
 import pytest
 
 from app.inference.gpu_monitor import (
@@ -15,6 +17,8 @@ from app.inference.gpu_monitor import (
     create_memory_reader,
     get_platform,
 )
+
+logger = logging.getLogger(__name__)
 
 pytestmark = [pytest.mark.track_inf, pytest.mark.track_obs]
 class TestGPUMemorySnapshot:
@@ -295,6 +299,7 @@ class TestSustainedRunFragmentation:
             pynvml.nvmlInit()
             pynvml.nvmlShutdown()
         except Exception:
+            logger.warning("TestSustainedRunFragmentation.test_four_hour_sustained_run: 未预期异常，按原逻辑降级", exc_info=True)
             pytest.skip("No GPU available for sustained run test")
         monitor = GPUMemoryMonitor()
         report = await monitor.run_continuous_monitor(duration_hours=4.0)

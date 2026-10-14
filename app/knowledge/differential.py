@@ -75,6 +75,7 @@ def _parse_confidence(raw: str | None) -> float | None:
     try:
         value = float(text)
     except (TypeError, ValueError):
+        logger.warning("_parse_confidence: 未预期异常，按原逻辑降级", exc_info=True)
         return None
     if value < 0.0 or value > 1.0:
         # 越界（例如模型按百分数给了 60）按百分数处理

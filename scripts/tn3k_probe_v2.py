@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import csv
 import json
+import logging
 import time
 import urllib.request
 import uuid
@@ -21,6 +22,8 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from PIL import Image
+
+logger = logging.getLogger(__name__)
 
 DATA = Path("/mnt/ee16/home/student03/uai/data/tn3k_dataset")
 FEAT_DIR = Path("/mnt/ee16/home/student03/uai/reports/features_v2")
@@ -107,6 +110,7 @@ def extract_echocare(rows, subdir, tag):
             try:
                 x = load_image_255(DATA / subdir / name).unsqueeze(0)
             except Exception:
+                logger.warning("extract_echocare: 未预期异常，按原逻辑降级", exc_info=True)
                 continue
             f = enc(x.to(device))
             xs.append(F.adaptive_avg_pool2d(f[-1], 1).flatten(1).cpu().numpy()[0])
@@ -127,6 +131,7 @@ def extract_clip(rows, subdir, tag):
             xs.append(clip_feature(DATA / subdir / name))
             ys.append(label)
         except Exception:
+            logger.warning("extract_clip: 未预期异常，按原逻辑降级", exc_info=True)
             continue
         if (i + 1) % 500 == 0:
             print(f"  [{tag}] {i+1}/{len(rows)} ({time.time()-t0:.0f}s)", flush=True)
@@ -158,6 +163,7 @@ def extract_ulc(rows, subdir, tag):
                 img = Image.open(DATA / subdir / name).convert("RGB")
                 x = preprocess(img)
             except Exception:
+                logger.warning("extract_ulc: 未预期异常，按原逻辑降级", exc_info=True)
                 continue
             f = model.visual(x.unsqueeze(0).to(device))
             if isinstance(f, tuple):

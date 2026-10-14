@@ -18,6 +18,7 @@
 """
 
 import argparse
+import logging
 import os
 import signal
 import subprocess
@@ -25,6 +26,8 @@ import sys
 import time
 
 import httpx
+
+logger = logging.getLogger(__name__)
 
 
 def wait_for_service(url: str, timeout: float = 120.0, interval: float = 2.0) -> bool:
@@ -36,6 +39,7 @@ def wait_for_service(url: str, timeout: float = 120.0, interval: float = 2.0) ->
                 if resp.status_code == 200:
                     return True
         except Exception:
+            logger.warning("wait_for_service: 未预期异常，按原逻辑降级", exc_info=True)
             pass
         time.sleep(interval)
     return False
@@ -109,6 +113,7 @@ def main():
                 p.terminate()
                 p.wait(timeout=10)
             except Exception:
+                logger.warning("main.cleanup: 未预期异常，按原逻辑降级", exc_info=True)
                 p.kill()
         sys.exit(0)
 
@@ -164,6 +169,7 @@ def main():
             for _, p in processes:
                 p.wait()
         except KeyboardInterrupt:
+            logger.warning("main: 未预期异常，按原逻辑降级", exc_info=True)
             cleanup()
     else:
         print("\nSome services failed to start. Cleaning up...")

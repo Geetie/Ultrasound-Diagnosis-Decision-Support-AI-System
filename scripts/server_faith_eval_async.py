@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import sys
 import time
 from pathlib import Path
@@ -26,6 +27,8 @@ from t1_eval_faithfulness import (
     heuristic_numeric_check,
 )
 from t1_eval_retrieval import bm25_topk, cosine_topk, embed_texts, rrf_fuse
+
+logger = logging.getLogger(__name__)
 
 GEN_URL = os.environ.get("GEN_URL", "http://127.0.0.1:8002")
 JUDGE_URL = os.environ.get("JUDGE_URL", "http://127.0.0.1:8006")
@@ -122,6 +125,7 @@ async def eval_one(gen, judge, sem, qi, q, corpus, corpus_texts, fused,
             item["numeric_consistent"] = ok
             item["missing_numbers"] = missing
         except Exception:
+            logger.warning("eval_one: 未预期异常，按原逻辑降级", exc_info=True)
             import traceback
             item["error"] = traceback.format_exc()[-400:]
         async with lock:

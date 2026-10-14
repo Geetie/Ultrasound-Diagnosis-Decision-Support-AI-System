@@ -12,6 +12,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import subprocess
 import sys
@@ -19,6 +20,8 @@ import time
 
 sys.path.insert(0, os.path.dirname(__file__))
 from _audit_common import BASE, check, http, login, pw, save_ctx, summary
+
+logger = logging.getLogger(__name__)
 
 
 def make_camus_dicoms(count: int = 2) -> list[str]:
@@ -72,6 +75,7 @@ def upload_dicom(token: str, sid: str, path: str) -> tuple[int, dict]:
         with urllib.request.urlopen(req, timeout=60) as r:
             return r.status, json.loads(r.read().decode())
     except Exception as exc:
+        logger.warning("upload_dicom: 未预期异常，按原逻辑降级", exc_info=True)
         return -1, {"error": f"{type(exc).__name__}: {exc}"}
 
 

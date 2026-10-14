@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import sys
 from pathlib import Path
 
@@ -18,6 +19,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import httpx
 from _audit_common import BASE, check, load_ctx, login, pw, summary
+
+logger = logging.getLogger(__name__)
 
 
 async def main() -> int:
@@ -56,6 +59,7 @@ async def main() -> int:
         from fhir.resources.diagnosticreport import DiagnosticReport
         from fhir.resources.patient import Patient
     except ImportError:
+        logger.warning("main: 未预期异常，按原逻辑降级", exc_info=True)
         check("fhir.resources 可用", False, "pip install fhir.resources 缺失")
         return summary("E11 FHIR 合规裁决")
 
@@ -70,6 +74,7 @@ async def main() -> int:
               any(c.system == "http://loinc.org" for c in (dr.code.coding or [])),
               f"{[c.code for c in (dr.code.coding or [])]}")
     except Exception as exc:
+        logger.warning("main: 未预期异常，按原逻辑降级", exc_info=True)
         check("fhir.resources 解析通过（R4 规范）", False, str(exc)[:160])
 
     return summary("E11 FHIR 合规裁决")

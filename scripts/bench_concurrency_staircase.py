@@ -26,6 +26,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import logging
 import os
 import statistics
 import sys
@@ -33,6 +34,8 @@ import time
 from pathlib import Path
 
 import httpx
+
+logger = logging.getLogger(__name__)
 
 API = "http://127.0.0.1:18000"
 USERNAME = "smoke-doctor"
@@ -95,6 +98,7 @@ async def redis_queues() -> dict:
         finally:
             await client.aclose()
     except Exception as exc:  # pragma: no cover - 环境依赖
+        logger.warning("redis_queues: 未预期异常，按原逻辑降级", exc_info=True)
         return {"error": f"{type(exc).__name__}: {exc}"}
 
 
@@ -182,6 +186,7 @@ async def submit(client: httpx.AsyncClient, token: str, idx: int) -> dict:
             timeout=60.0,
         )
     except Exception as exc:
+        logger.warning("submit: 未预期异常，按原逻辑降级", exc_info=True)
         return {
             "ok": False,
             "http_status": None,
@@ -223,6 +228,7 @@ async def poll(client: httpx.AsyncClient, token: str, request_id: str, deadline_
                 timeout=30.0,
             )
         except Exception:
+            logger.warning("poll: 未预期异常，按原逻辑降级", exc_info=True)
             continue
         if resp.status_code != 200:
             continue

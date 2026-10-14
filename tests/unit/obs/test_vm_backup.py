@@ -1,10 +1,13 @@
 import asyncio
+import logging
 from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from app.observability.vm_backup import VictoriaMetricsBackup
+
+logger = logging.getLogger(__name__)
 
 
 @pytest.fixture
@@ -174,6 +177,7 @@ class TestDefaultFailureCallback:
             try:
                 VictoriaMetricsBackup._default_failure_callback("test")
             except Exception:
+                logger.warning("TestDefaultFailureCallback.test_callback_swallows_exception: 未预期异常，按原逻辑降级", exc_info=True)
                 pytest.fail("_default_failure_callback should not raise")
 
 

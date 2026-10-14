@@ -14,6 +14,7 @@ p17 验的是**多影像**择优；本探针验**一个 DICOM 文件内含多帧
 from __future__ import annotations
 
 import json
+import logging
 import os
 import pathlib
 import subprocess
@@ -24,6 +25,8 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
 from _audit_common import UAI, check, http, login, pw, summary
 from p11_rag_evidence import upload_dicom
+
+logger = logging.getLogger(__name__)
 
 FRAME_COUNT = 7
 
@@ -66,6 +69,7 @@ def main() -> int:
         path = make_multiframe_dicom()
         check("CAMUS → 单文件 7 帧 DICOM", os.path.exists(path), path)
     except Exception as exc:
+        logger.warning("main: 未预期异常，按原逻辑降级", exc_info=True)
         check("CAMUS → 单文件多帧转换", False, f"{type(exc).__name__}: {exc}")
         return summary("A.51 单文件多帧择优")
 

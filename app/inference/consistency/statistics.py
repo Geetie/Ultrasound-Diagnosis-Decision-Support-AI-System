@@ -1,3 +1,4 @@
+import logging
 import math
 import re
 
@@ -9,6 +10,8 @@ from app.inference.verification_config import (
     VerificationConfig,
     get_verification_config,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def wilson_confidence_interval(successes: int, total: int, confidence: float = 0.95) -> tuple[float, float]:
@@ -41,6 +44,7 @@ def mcnemar_test(engine_a_results: list[bool], engine_b_results: list[bool]) -> 
         from scipy.stats import chi2
         p_value = 1.0 - chi2.cdf(statistic, df=1)
     except ImportError:
+        logger.warning("mcnemar_test: 未预期异常，按原逻辑降级", exc_info=True)
         p_value = math.exp(-statistic / 2.0)
     return (statistic, p_value)
 

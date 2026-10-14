@@ -18,11 +18,14 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from dataclasses import dataclass, field
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+
+logger = logging.getLogger(__name__)
 
 pytestmark = [
     pytest.mark.track_rag,
@@ -814,6 +817,7 @@ class TestRerankFallbackScenarios:
                 try:
                     await bge.rerank("甲状腺结节", chunks, top_k=3)
                 except RerankError:
+                    logger.warning("TestRerankFallbackScenarios.test_bge_reranker_5xx_degrades_to_heuristic.run: 未预期异常，按原逻辑降级", exc_info=True)
                     out = await heuristic.rerank("甲状腺结节", chunks, top_k=3)
                     return out
                 return []
@@ -1235,6 +1239,7 @@ class TestEmbeddingPipelineScenarios:
                     top_k=5,
                 )
             except VectorIndexError as e:
+                logger.warning("TestEmbeddingPipelineScenarios.test_pgvector_dimension_mismatch_raises_specific_error.run: 未预期异常，按原逻辑降级", exc_info=True)
                 return e
 
         err = asyncio.run(run())
@@ -1367,6 +1372,7 @@ class TestEmbeddingPipelineScenarios:
             try:
                 await svc._run_with_retry("embed_text", coro_factory)
             except EmbeddingError as e:
+                logger.warning("TestEmbeddingPipelineScenarios.test_embedding_service_no_retry_on_permanent_error.run: 未预期异常，按原逻辑降级", exc_info=True)
                 return e
 
         err = asyncio.run(run())
@@ -1387,6 +1393,7 @@ class TestEmbeddingPipelineScenarios:
                 )
             except Exception:
                 # 真实场景：捕获到 EmbeddingError，降级到 bge-m3-medical
+                logger.warning("TestEmbeddingPipelineScenarios.test_ultrasound_clip_unavailable_falls_back_to_text_only.run: 未预期异常，按原逻辑降级", exc_info=True)
                 from app.embedding.protocols import (
                     TextEmbeddingRequest,
                 )
@@ -1615,6 +1622,7 @@ class TestDegradationScenarios:
                     top_k=5,
                 )
             except VectorIndexError:
+                logger.warning("TestDegradationScenarios.test_dense_search_failure_logs_and_degrades.run: 未预期异常，按原逻辑降级", exc_info=True)
                 return "degraded_to_sparse"
             return "dense_succeeded"
 

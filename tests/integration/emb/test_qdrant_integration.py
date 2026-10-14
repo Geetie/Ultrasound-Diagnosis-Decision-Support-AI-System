@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import subprocess
 import time
@@ -22,6 +23,8 @@ import numpy as np
 import pytest
 
 from app.embedding.protocols import VectorRecord
+
+logger = logging.getLogger(__name__)
 
 RUN_QDRANT_INTEGRATION = os.environ.get("RUN_QDRANT_INTEGRATION", "0") == "1"
 QDRANT_HOST = os.environ.get("QDRANT_HOST", "localhost")
@@ -35,6 +38,7 @@ def _is_docker_available() -> bool:
         )
         return result.returncode == 0
     except Exception:
+        logger.warning("_is_docker_available: 未预期异常，按原逻辑降级", exc_info=True)
         return False
 
 
@@ -45,6 +49,7 @@ def _is_qdrant_reachable() -> bool:
         with socket.create_connection((QDRANT_HOST, QDRANT_PORT), timeout=2):
             return True
     except Exception:
+        logger.warning("_is_qdrant_reachable: 未预期异常，按原逻辑降级", exc_info=True)
         return False
 
 

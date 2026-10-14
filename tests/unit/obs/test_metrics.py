@@ -4,6 +4,7 @@ Unit tests for the VictoriaMetrics memory monitoring module.
 """
 
 import asyncio
+import logging
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
@@ -20,6 +21,8 @@ from app.observability.metrics import (
     get_memory_monitor,
     shutdown_memory_monitor,
 )
+
+logger = logging.getLogger(__name__)
 
 
 @pytest.fixture
@@ -354,6 +357,7 @@ class TestMemoryMonitorEdgeCases:
             try:
                 await monitor._check_memory()
             except Exception:
+                logger.warning("TestMemoryMonitorEdgeCases.test_check_memory_with_process_error: 未预期异常，按原逻辑降级", exc_info=True)
                 pytest.fail("_check_memory should handle process errors silently")
 
         await monitor.stop()

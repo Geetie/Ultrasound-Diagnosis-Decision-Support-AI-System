@@ -25,10 +25,13 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import sys
 import urllib.error
 import urllib.request
+
+logger = logging.getLogger(__name__)
 
 BASE = os.getenv("UAI_VLLM_BASE", "http://127.0.0.1:8002").rstrip("/")
 ROUNDS = int(os.getenv("UAI_P27A_ROUNDS", "3"))
@@ -55,8 +58,10 @@ def _post(path: str, payload: dict) -> tuple[int, dict | str]:
         with urllib.request.urlopen(req, timeout=90) as resp:
             return resp.status, json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:  # 4xx/5xx：把 body 带回来定位原因
+        logger.warning("_post: 未预期异常，按原逻辑降级", exc_info=True)
         return exc.code, exc.read().decode("utf-8", "replace")[:300]
     except Exception as exc:  # 探针要如实报告任何失败
+        logger.warning("_post: 未预期异常，按原逻辑降级", exc_info=True)
         return -1, f"{type(exc).__name__}: {exc}"
 
 
@@ -64,6 +69,7 @@ def _text_of(data: dict) -> str:
     try:
         return data["choices"][0]["message"]["content"] or ""
     except Exception:
+        logger.warning("_text_of: 未预期异常，按原逻辑降级", exc_info=True)
         return ""
 
 
@@ -76,6 +82,7 @@ def _conforms(text: str) -> bool:
     try:
         obj = json.loads(text[start : end + 1])
     except json.JSONDecodeError:
+        logger.warning("_conforms: 未预期异常，按原逻辑降级", exc_info=True)
         return False
     value = obj.get("grading") if isinstance(obj, dict) else None
     return isinstance(value, str) and value.strip() in SCHEMA["properties"]["grading"]["enum"]

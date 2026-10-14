@@ -51,6 +51,7 @@ def _to_float(value: Any) -> float | None:
     try:
         return float(value)
     except (TypeError, ValueError):
+        logger.warning("_to_float: 未预期异常，按原逻辑降级", exc_info=True)
         return None
 
 

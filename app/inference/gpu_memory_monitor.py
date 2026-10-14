@@ -94,6 +94,7 @@ def _query_nvidia_smi(gpu_id: int = 0) -> dict[str, float] | None:
             data["temperature_celsius"] = float(parts[3].strip())
         return data
     except (subprocess.TimeoutExpired, FileNotFoundError, ValueError):
+        logger.warning("_query_nvidia_smi: 未预期异常，按原逻辑降级", exc_info=True)
         return None
 
 
@@ -284,6 +285,7 @@ class GPUMemoryMonitor:
             else:
                 collector.set_gpu_overheat_duration(device, 0.0)
         except Exception:
+            logger.warning("GPUMemoryMonitor._publish_metrics: 未预期异常，按原逻辑降级", exc_info=True)
             pass
 
     async def monitor_during_load_test(

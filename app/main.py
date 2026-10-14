@@ -75,6 +75,7 @@ def _detect_worker_count() -> int:
     try:
         return int(os.environ.get("WEB_CONCURRENCY", "1") or "1")
     except ValueError:
+        logger.warning("_detect_worker_count: 未预期异常，按原逻辑降级", exc_info=True)
         return 1
 
 
@@ -470,6 +471,7 @@ async def lifespan(app: FastAPI):
                                 return v
                     return fallback_version
                 except Exception:
+                    logger.warning("lifespan._kb_version_resolver: 未预期异常，按原逻辑降级", exc_info=True)
                     return fallback_version
 
             knowledge_agent = KnowledgeAgentImpl(

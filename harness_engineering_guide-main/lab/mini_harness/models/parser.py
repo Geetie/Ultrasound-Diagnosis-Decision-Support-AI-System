@@ -1,8 +1,11 @@
 """Parser for API responses: extracts text, tool calls, and thinking blocks into structured content."""
 
 import json
+import logging
 from dataclasses import dataclass
 from typing import List, Optional, Union
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -56,6 +59,7 @@ class ResponseParser:
                     try:
                         input_data = json.loads(input_data)
                     except Exception:
+                        logger.warning("ResponseParser.parse_response: 未预期异常，按原逻辑降级", exc_info=True)
                         input_data = {}
                 content_blocks.append(
                     ToolUseBlock(

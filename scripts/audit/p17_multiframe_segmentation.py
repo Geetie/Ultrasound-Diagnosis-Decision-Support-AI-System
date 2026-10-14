@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import pathlib
 import sys
@@ -24,6 +25,8 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
 from _audit_common import UAI, check, http, login, pw, save_ctx, summary
 from p11_rag_evidence import make_camus_dicoms, upload_dicom
+
+logger = logging.getLogger(__name__)
 
 
 def main() -> int:
@@ -52,6 +55,7 @@ def main() -> int:
                 img_ids.append(iid)
             check(f"上传 {os.path.basename(p)}", bool(iid), f"http={code}")
     except Exception as exc:
+        logger.warning("main: 未预期异常，按原逻辑降级", exc_info=True)
         check("CAMUS 帧转换/上传", False, f"{type(exc).__name__}: {exc}")
 
     if len(img_ids) < 2:

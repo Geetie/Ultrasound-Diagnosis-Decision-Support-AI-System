@@ -109,6 +109,7 @@ def _accepts_kwarg(func: Callable[..., Any], name: str) -> bool:
     try:
         params = inspect.signature(func).parameters
     except (TypeError, ValueError):
+        logger.warning("_accepts_kwarg: 未预期异常，按原逻辑降级", exc_info=True)
         return False
     if name in params:
         return True
@@ -1039,6 +1040,7 @@ class RAGSpecialistAgent(SpecialistAgent):
                 if isinstance(organ_value, Organ):
                     organ_name = organ_value.value
             except NotImplementedError:
+                logger.warning("RAGSpecialistAgent._load_default_prompt: 未预期异常，按原逻辑降级", exc_info=True)
                 organ_name = None
         # 3) 类名启发式
         if organ_name is None:

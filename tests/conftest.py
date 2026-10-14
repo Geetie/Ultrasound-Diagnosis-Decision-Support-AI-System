@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import subprocess
 import sys
@@ -30,6 +31,8 @@ import httpx
 import pytest
 
 from app.config.redis import RedisPool
+
+logger = logging.getLogger(__name__)
 
 
 @pytest.fixture(autouse=True)
@@ -155,6 +158,7 @@ def _wait_for_health(url: str, timeout: float = _SERVICE_START_TIMEOUT) -> bool:
                 if resp.status_code == 200:
                     return True
         except Exception:
+            logger.warning("_wait_for_health: 未预期异常，按原逻辑降级", exc_info=True)
             pass
         time.sleep(3.0)
     return False
@@ -166,6 +170,7 @@ def _is_service_running(url: str) -> bool:
             resp = client.get(f"{url}/health")
             return resp.status_code == 200
     except Exception:
+        logger.warning("_is_service_running: 未预期异常，按原逻辑降级", exc_info=True)
         return False
 
 
@@ -177,6 +182,7 @@ def _is_docker_available() -> bool:
         )
         return result.returncode == 0
     except Exception:
+        logger.warning("_is_docker_available: 未预期异常，按原逻辑降级", exc_info=True)
         return False
 
 
@@ -234,6 +240,7 @@ def llama_cpp_service():
         process.terminate()
         process.wait(timeout=15)
     except Exception:
+        logger.warning("llama_cpp_service: 未预期异常，按原逻辑降级", exc_info=True)
         process.kill()
         process.wait(timeout=5)
 
@@ -405,6 +412,7 @@ def _start_vllm_native(base_url: str):
         process.terminate()
         process.wait(timeout=15)
     except Exception:
+        logger.warning("_start_vllm_native: 未预期异常，按原逻辑降级", exc_info=True)
         process.kill()
         process.wait(timeout=5)
 

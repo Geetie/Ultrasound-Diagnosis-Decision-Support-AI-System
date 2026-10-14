@@ -1,5 +1,9 @@
+import logging
+
 import httpx
 import pytest
+
+logger = logging.getLogger(__name__)
 
 SG_BASE_URL = "http://localhost:9001"
 
@@ -11,6 +15,7 @@ def sg_available():
             resp = client.get("/health")
             return resp.status_code in (200, 503)
     except (httpx.ConnectError, httpx.TimeoutException, Exception):
+        logger.warning("sg_available: 未预期异常，按原逻辑降级", exc_info=True)
         return False
 
 

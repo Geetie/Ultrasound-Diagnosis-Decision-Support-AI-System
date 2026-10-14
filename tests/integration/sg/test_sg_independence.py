@@ -16,11 +16,14 @@
 4. 使用docker-compose start恢复api容器
 """
 
+import logging
 import subprocess
 import time
 
 import httpx
 import pytest
+
+logger = logging.getLogger(__name__)
 
 SG_BASE_URL = "http://localhost:9001"
 MAIN_SERVICE_URL = "http://localhost:8000"
@@ -38,6 +41,7 @@ def is_docker_available() -> bool:
         )
         return result.returncode == 0
     except (subprocess.TimeoutExpired, FileNotFoundError):
+        logger.warning("is_docker_available: 未预期异常，按原逻辑降级", exc_info=True)
         return False
 
 
@@ -54,6 +58,7 @@ def get_container_status(container_name: str) -> str | None:
             return result.stdout.strip()
         return None
     except (subprocess.TimeoutExpired, FileNotFoundError):
+        logger.warning("get_container_status: 未预期异常，按原逻辑降级", exc_info=True)
         return None
 
 
@@ -68,6 +73,7 @@ def stop_service_container(service_name: str) -> bool:
         )
         return result.returncode == 0
     except (subprocess.TimeoutExpired, FileNotFoundError):
+        logger.warning("stop_service_container: 未预期异常，按原逻辑降级", exc_info=True)
         return False
 
 
@@ -82,6 +88,7 @@ def start_service_container(service_name: str) -> bool:
         )
         return result.returncode == 0
     except (subprocess.TimeoutExpired, FileNotFoundError):
+        logger.warning("start_service_container: 未预期异常，按原逻辑降级", exc_info=True)
         return False
 
 
@@ -95,6 +102,7 @@ def wait_for_health(url: str, timeout: int = 30) -> bool:
                 if resp.status_code in (200, 503):
                     return True
         except (httpx.ConnectError, httpx.TimeoutException):
+            logger.warning("wait_for_health: 未预期异常，按原逻辑降级", exc_info=True)
             pass
         time.sleep(1)
     return False
@@ -351,6 +359,7 @@ class TestSGContainerIsolation:
                     f"SG容器应配置restart=always，实际: {restart_policy}"
                 )
         except (subprocess.TimeoutExpired, FileNotFoundError):
+            logger.warning("TestSGContainerIsolation.test_sg_container_has_restart_always: 未预期异常，按原逻辑降级", exc_info=True)
             pytest.skip("无法检查容器重启策略")
 
     def test_sg_container_oom_score_adj_configured(self):
@@ -371,6 +380,7 @@ class TestSGContainerIsolation:
                     f"SG容器应配置oom_score_adj=-1000（禁止OOM Killer杀死），实际: {oom_score}"
                 )
         except (subprocess.TimeoutExpired, FileNotFoundError):
+            logger.warning("TestSGContainerIsolation.test_sg_container_oom_score_adj_configured: 未预期异常，按原逻辑降级", exc_info=True)
             pytest.skip("无法检查OOM配置")
 
     def test_sg_container_independent_network(self):
@@ -399,4 +409,5 @@ class TestSGContainerIsolation:
                     f"SG应连接到ultrasound-network，实际网络: {sg_networks}"
                 )
         except (subprocess.TimeoutExpired, FileNotFoundError):
+            logger.warning("TestSGContainerIsolation.test_sg_container_independent_network: 未预期异常，按原逻辑降级", exc_info=True)
             pytest.skip("无法检查容器网络配置")

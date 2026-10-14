@@ -86,6 +86,7 @@ def extract_frame_from_dataset(dataset: Any, frame_index: int | None = None) -> 
     try:
         n_frames = int(getattr(dataset, "NumberOfFrames", 1) or 1)
     except (TypeError, ValueError):
+        logger.warning("extract_frame_from_dataset: 未预期异常，按原逻辑降级", exc_info=True)
         n_frames = 1
 
     idx = (n_frames // 2) if frame_index is None else frame_index

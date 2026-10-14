@@ -25,11 +25,14 @@ import argparse
 import ast
 import contextlib
 import json
+import logging
 import re
 import sys
 import urllib.request
 from collections import defaultdict
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 FRONTEND_SRC = Path(__file__).resolve().parent.parent / "frontend" / "src"
 DEFAULT_API_BASE = "http://127.0.0.1:18000"
@@ -142,6 +145,7 @@ def main() -> int:
     # 交付门禁要在本机跑，所以先把 stdout 切到 UTF-8（errors=replace 兜底）。
     # 老Python / stdout 已重定向时没有 reconfigure，忽略即可
     with contextlib.suppress(AttributeError, ValueError):
+        logger.warning("main: 未预期异常，按原逻辑降级", exc_info=True)
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
     ap = argparse.ArgumentParser(description="前后端 API 契约对账")

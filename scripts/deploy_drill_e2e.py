@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import pathlib
 import sys
@@ -21,6 +22,8 @@ import time
 import urllib.error
 import urllib.request
 import uuid
+
+logger = logging.getLogger(__name__)
 
 API = "http://127.0.0.1:18000"
 SRC = pathlib.Path(os.path.expanduser("~/uai/src"))
@@ -50,12 +53,15 @@ def _req(path, data=None, token=None, method=None, timeout=60.0, ctype="applicat
             try:
                 return resp.status, json.loads(raw)
             except json.JSONDecodeError:
+                logger.warning("_req: 未预期异常，按原逻辑降级", exc_info=True)
                 return resp.status, {"raw": raw[:200]}
     except urllib.error.HTTPError as e:
+        logger.warning("_req: 未预期异常，按原逻辑降级", exc_info=True)
         raw = e.read().decode("utf-8", "replace")
         try:
             return e.code, json.loads(raw)
         except json.JSONDecodeError:
+            logger.warning("_req: 未预期异常，按原逻辑降级", exc_info=True)
             return e.code, {"raw": raw[:200]}
 
 
@@ -79,10 +85,12 @@ def _upload_dicom(path: pathlib.Path, session_id: str, token: str):
         with urllib.request.urlopen(r, timeout=120) as resp:
             return resp.status, json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as e:
+        logger.warning("_upload_dicom: 未预期异常，按原逻辑降级", exc_info=True)
         raw = e.read().decode("utf-8", "replace")
         try:
             return e.code, json.loads(raw)
         except json.JSONDecodeError:
+            logger.warning("_upload_dicom: 未预期异常，按原逻辑降级", exc_info=True)
             return e.code, {"raw": raw[:300]}
 
 

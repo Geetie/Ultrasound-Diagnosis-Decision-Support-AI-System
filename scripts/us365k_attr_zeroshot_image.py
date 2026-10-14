@@ -6,6 +6,7 @@
 """
 from __future__ import annotations
 
+import logging
 import os
 
 os.environ["HF_HUB_OFFLINE"] = "1"
@@ -21,6 +22,8 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from PIL import Image
+
+logger = logging.getLogger(__name__)
 
 M = Path("/mnt/ee16/home/student03/uai/models")
 US = Path("/mnt/ee16/home/student03/uai/data/us365k")
@@ -137,6 +140,7 @@ def main() -> int:
                         try:
                             batch.append(preprocess(Image.open(p).convert("RGB")))
                         except Exception:
+                            logger.warning("main: 未预期异常，按原逻辑降级", exc_info=True)
                             batch.append(torch.zeros(3, 224, 224))
                     x = torch.stack(batch).to(device, dtype=torch.float16)
                     with torch.autocast("cuda", dtype=torch.float16):

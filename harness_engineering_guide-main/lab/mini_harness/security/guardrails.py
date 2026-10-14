@@ -1,7 +1,10 @@
 """Command guardrails for dangerous command detection."""
 
+import logging
 import shlex
 from typing import Dict, List, Optional, Set
+
+logger = logging.getLogger(__name__)
 
 
 class DangerousCommandDetector:
@@ -44,6 +47,7 @@ class DangerousCommandDetector:
             tokens = shlex.split(command)
         except ValueError:
             # If command can't be parsed, consider it suspicious
+            logger.warning("DangerousCommandDetector.detect: 未预期异常，按原逻辑降级", exc_info=True)
             return True
 
         if not tokens:
@@ -93,6 +97,7 @@ class DangerousCommandDetector:
                     piped_commands.append(cmd)
             except ValueError:
                 # Skip segments that can't be parsed
+                logger.warning("DangerousCommandDetector._extract_piped_commands: 未预期异常，按原逻辑降级", exc_info=True)
                 continue
 
         return piped_commands
@@ -109,6 +114,7 @@ class DangerousCommandDetector:
         try:
             tokens = shlex.split(command)
         except ValueError:
+            logger.warning("DangerousCommandDetector.get_reason: 未预期异常，按原逻辑降级", exc_info=True)
             return "Command cannot be safely parsed"
 
         if not tokens:

@@ -4,9 +4,12 @@ mini_harness/memory/storage.py - Memory storage layer
 
 import asyncio
 import json
+import logging
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
+
+logger = logging.getLogger(__name__)
 
 
 class MemoryEntry:
@@ -80,6 +83,7 @@ tags: {json.dumps(self.tags)}
                     try:
                         expiry = datetime.fromisoformat(str(expiry_raw))
                     except (ValueError, TypeError):
+                        logger.warning("MemoryEntry.from_markdown: 未预期异常，按原逻辑降级", exc_info=True)
                         expiry = None
 
             entry = cls(
@@ -101,6 +105,7 @@ tags: {json.dumps(self.tags)}
                 elif created_at_raw:
                     entry.created_at = datetime.fromisoformat(str(created_at_raw))
             except (ValueError, TypeError):
+                logger.warning("MemoryEntry.from_markdown: 未预期异常，按原逻辑降级", exc_info=True)
                 entry.created_at = datetime.now()
 
             try:
@@ -110,6 +115,7 @@ tags: {json.dumps(self.tags)}
                 elif modified_raw:
                     entry.last_modified = datetime.fromisoformat(str(modified_raw))
             except (ValueError, TypeError):
+                logger.warning("MemoryEntry.from_markdown: 未预期异常，按原逻辑降级", exc_info=True)
                 entry.last_modified = datetime.now()
 
             entry.modified_by = metadata.get("modified_by", "unknown") if metadata else "unknown"

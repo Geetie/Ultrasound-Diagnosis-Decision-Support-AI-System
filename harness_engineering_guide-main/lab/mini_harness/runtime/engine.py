@@ -3,6 +3,7 @@ mini_harness/runtime/engine.py
 智能体循环实现
 """
 
+import logging
 import uuid
 from typing import AsyncIterator, Optional
 
@@ -24,6 +25,8 @@ from mini_harness.runtime.models import (
     ToolResultBlock,
     ToolUseBlock,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class RuntimeEngine:
@@ -149,6 +152,7 @@ class RuntimeEngine:
             # 向后兼容：若工具直接返回字符串，按成功处理
             return ToolResultBlock(tool_use_id=tool_use.id, content=str(result), is_error=False)
         except Exception as e:
+            logger.warning("RuntimeEngine._execute_tool: 未预期异常，按原逻辑降级", exc_info=True)
             return ToolResultBlock(
                 tool_use_id=tool_use.id, content=str(e), is_error=True, error_type=type(e).__name__
             )

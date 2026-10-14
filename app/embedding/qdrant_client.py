@@ -38,6 +38,7 @@ try:
 
     _QDRANT_AVAILABLE = True
 except ImportError:
+    logger.warning("<module>: 未预期异常，按原逻辑降级", exc_info=True)
     AsyncQdrantClient = None  # type: ignore[assignment,misc]
     qmodels = None  # type: ignore[assignment]
     UnexpectedResponse = Exception  # type: ignore[assignment,misc]
@@ -176,6 +177,7 @@ class QdrantVectorIndex(VectorIndexClient):
             except AttributeError:
                 # qdrant-client >= 1.19 起枚举成员改为全大写
                 # （COSINE / EUCLID / DOT），早期版本为首字母大写。
+                logger.warning("QdrantVectorIndex.create_collection: 未预期异常，按原逻辑降级", exc_info=True)
                 distance_enum = getattr(qmodels.Distance, distance_name.upper())
             await client.create_collection(
                 collection_name=collection_name,

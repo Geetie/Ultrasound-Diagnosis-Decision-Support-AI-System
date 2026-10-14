@@ -291,6 +291,7 @@ class NumericalValidityDetector(BaseDetector):
                         weight=self.config.strategy_weights.numerical_validity,
                     ))
             except ValueError:
+                logger.warning("NumericalValidityDetector._check_lvef: 未预期异常，按原逻辑降级", exc_info=True)
                 pass
 
     def _check_nodule_size(self, text: str, range_config, issues: list[DetectionIssue]):
@@ -312,6 +313,7 @@ class NumericalValidityDetector(BaseDetector):
                         weight=self.config.strategy_weights.numerical_validity,
                     ))
             except ValueError:
+                logger.warning("NumericalValidityDetector._check_nodule_size: 未预期异常，按原逻辑降级", exc_info=True)
                 pass
 
 

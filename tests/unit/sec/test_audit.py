@@ -1,6 +1,7 @@
 import asyncio
 import hashlib
 import json
+import logging
 import time
 from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
@@ -17,6 +18,8 @@ from app.security.three_layer_desensitization import (
     DesensitizationLayer,
     ThreeLayerDesensitizationManager,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class TestAuditChainIntegrity:
@@ -1448,6 +1451,7 @@ class TestConfigUsedInConnections:
                 try:
                     asyncio.run(RedisPool.get_client())
                 except Exception:
+                    logger.warning("TestConfigUsedInConnections.test_redis_client_uses_max_connections: 未预期异常，按原逻辑降级", exc_info=True)
                     pass
                 if mock_from_url.called:
                     call_kwargs = mock_from_url.call_args[1]

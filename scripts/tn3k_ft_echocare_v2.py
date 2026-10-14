@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import csv
 import json
+import logging
 import time
 from pathlib import Path
 
@@ -16,6 +17,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from PIL import Image
 from sklearn.metrics import accuracy_score, balanced_accuracy_score, f1_score, roc_auc_score, roc_curve
+
+logger = logging.getLogger(__name__)
 
 DATA = Path("/mnt/ee16/home/student03/uai/data/tn3k_dataset")
 ECHOCARE_PT = Path("/mnt/ee16/home/student03/uai/models/echocare/model.pt")
@@ -37,6 +40,7 @@ def load_image(path, size=256):
     try:
         img = Image.open(path).convert("RGB").resize((size, size))
     except Exception:
+        logger.warning("load_image: 未预期异常，按原逻辑降级", exc_info=True)
         return None
     arr = torch.from_numpy(np.asarray(img).copy()).permute(2, 0, 1).float() / 255.0
     return arr

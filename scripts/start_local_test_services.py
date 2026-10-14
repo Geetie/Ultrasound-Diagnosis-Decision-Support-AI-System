@@ -28,6 +28,7 @@
 """
 
 import argparse
+import logging
 import os
 import signal
 import subprocess
@@ -35,6 +36,8 @@ import sys
 import time
 
 import httpx
+
+logger = logging.getLogger(__name__)
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MODELS_DIR = os.path.join(PROJECT_ROOT, "models")
@@ -73,6 +76,7 @@ def wait_for_service(url: str, timeout: float = 300.0, interval: float = 3.0) ->
                 if resp.status_code == 200:
                     return True
         except Exception:
+            logger.warning("wait_for_service: 未预期异常，按原逻辑降级", exc_info=True)
             pass
         elapsed = time.monotonic() - start
         if int(elapsed) % 15 == 0 and elapsed > 5:
@@ -95,6 +99,7 @@ def start_llama_cpp(args) -> subprocess.Popen | None:
                 print(f"[llama.cpp] Already running at {base_url}")
                 return None
     except Exception:
+        logger.warning("start_llama_cpp: 未预期异常，按原逻辑降级", exc_info=True)
         pass
 
     cmd = [
@@ -134,6 +139,7 @@ def start_vllm_docker(args) -> bool:
                 print(f"[vLLM] Already running at {base_url}")
                 return True
     except Exception:
+        logger.warning("start_vllm_docker: 未预期异常，按原逻辑降级", exc_info=True)
         pass
 
     subprocess.run(
@@ -227,6 +233,7 @@ def main():
                 p.terminate()
                 p.wait(timeout=15)
             except Exception:
+                logger.warning("main.cleanup: 未预期异常，按原逻辑降级", exc_info=True)
                 p.kill()
         if vllm_docker:
             print(f"  Removing Docker container {VLLM_CONTAINER_NAME}...")
@@ -299,6 +306,7 @@ def main():
             for _, p in processes:
                 p.wait()
         except KeyboardInterrupt:
+            logger.warning("main: 未预期异常，按原逻辑降级", exc_info=True)
             cleanup()
     else:
         print("\nSome services failed to start. Cleaning up...")

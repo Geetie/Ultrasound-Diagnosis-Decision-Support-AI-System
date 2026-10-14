@@ -17,6 +17,7 @@ HTTP 200 全通 ≠ 前端能跑——历史上就出过三处 404（前端注�
 from __future__ import annotations
 
 import json
+import logging
 import mimetypes
 import os
 import pathlib
@@ -25,6 +26,8 @@ import time
 import urllib.error
 import urllib.request
 import uuid
+
+logger = logging.getLogger(__name__)
 
 API = os.environ.get("DRILL_API", "http://127.0.0.1:18000")
 BASE = f"{API}/api/v1"          # ← 前端 apiClient 的 baseURL
@@ -59,12 +62,15 @@ def call(path: str, data=None, token=None, method=None, timeout=90):
             raw = resp.read().decode("utf-8")
             return resp.status, (json.loads(raw) if raw else {})
     except urllib.error.HTTPError as e:
+        logger.warning("call: 未预期异常，按原逻辑降级", exc_info=True)
         raw = e.read().decode("utf-8", "replace")
         try:
             return e.code, json.loads(raw)
         except json.JSONDecodeError:
+            logger.warning("call: 未预期异常，按原逻辑降级", exc_info=True)
             return e.code, {"raw": raw[:300]}
     except Exception as e:
+        logger.warning("call: 未预期异常，按原逻辑降级", exc_info=True)
         return 0, {"error": f"{type(e).__name__}: {e}"}
 
 
@@ -87,10 +93,12 @@ def upload_dicom(path: pathlib.Path, session_id: str, token: str):
         with urllib.request.urlopen(req, timeout=180) as resp:
             return resp.status, json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as e:
+        logger.warning("upload_dicom: 未预期异常，按原逻辑降级", exc_info=True)
         raw = e.read().decode("utf-8", "replace")
         try:
             return e.code, json.loads(raw)
         except json.JSONDecodeError:
+            logger.warning("upload_dicom: 未预期异常，按原逻辑降级", exc_info=True)
             return e.code, {"raw": raw[:300]}
 
 

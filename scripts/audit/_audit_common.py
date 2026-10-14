@@ -9,11 +9,14 @@
 from __future__ import annotations
 
 import json
+import logging
 import pathlib
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
+
+logger = logging.getLogger(__name__)
 
 BASE = "http://127.0.0.1:18000"
 UAI = pathlib.Path.home() / "uai"
@@ -58,12 +61,15 @@ def http(
                 return r.status, json.loads(raw)
             return r.status, {"raw": raw[:200]}
     except urllib.error.HTTPError as exc:
+        logger.warning("http: 未预期异常，按原逻辑降级", exc_info=True)
         raw = exc.read().decode("utf-8", "replace")
         try:
             return exc.code, json.loads(raw)
         except json.JSONDecodeError:
+            logger.warning("http: 未预期异常，按原逻辑降级", exc_info=True)
             return exc.code, {"raw": raw[:200]}
     except Exception as exc:  # 连接失败等
+        logger.warning("http: 未预期异常，按原逻辑降级", exc_info=True)
         return -1, {"error": f"{type(exc).__name__}: {exc}"}
 
 

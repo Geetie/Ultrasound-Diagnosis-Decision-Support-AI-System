@@ -107,12 +107,14 @@ def reset_rate_limit_buckets():
         from app.config.rate_limit import _buckets
         _buckets.clear()
     except ImportError:
+        logger.warning("reset_rate_limit_buckets: 未预期异常，按原逻辑降级", exc_info=True)
         pass
     yield
     try:
         from app.config.rate_limit import _buckets
         _buckets.clear()
     except ImportError:
+        logger.warning("reset_rate_limit_buckets: 未预期异常，按原逻辑降级", exc_info=True)
         pass
 
 

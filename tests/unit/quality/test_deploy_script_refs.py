@@ -16,8 +16,11 @@
 """
 from __future__ import annotations
 
+import logging
 import re
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 SCRIPTS_DIR = Path(__file__).resolve().parents[3] / "scripts"
 
@@ -34,6 +37,7 @@ def _referenced_scripts() -> set[str]:
         try:
             text = sh.read_text(encoding="utf-8", errors="replace")
         except OSError:
+            logger.warning("_referenced_scripts: 未预期异常，按原逻辑降级", exc_info=True)
             continue
         for m in _REF_RE.finditer(text):
             refs.add(m.group(1))

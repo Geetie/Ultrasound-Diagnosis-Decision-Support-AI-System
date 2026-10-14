@@ -94,6 +94,7 @@ def reset_sg_singletons():
         SafetyGatewayDesensitizationEngine._instance = None
         logger.info("Reset SafetyGatewayDesensitizationEngine._instance to None")
     except (ImportError, AttributeError):
+        logger.warning("reset_sg_singletons: 未预期异常，按原逻辑降级", exc_info=True)
         pass
 
 

@@ -1,5 +1,8 @@
+import logging
 import re
 import threading
+
+logger = logging.getLogger(__name__)
 
 _GRADING_PATTERNS: dict[str, list[re.Pattern]] = {
     # 2026-09-29 真机 780 例评测：61 例提取失败的实际输出形态——
@@ -141,6 +144,7 @@ def _sync_lvef_thresholds_from_config() -> None:
             with _lvef_cache_lock:
                 _lvef_cache = new_table
     except Exception:
+        logger.warning("_sync_lvef_thresholds_from_config: 未预期异常，按原逻辑降级", exc_info=True)
         with _lvef_cache_lock:
             _lvef_cache = list(_LVEF_TO_GRADING_DEFAULTS)
 
@@ -188,6 +192,7 @@ def _map_lvef_to_grading(lvef_str: str) -> str:
     try:
         lvef = float(lvef_str)
     except (ValueError, TypeError):
+        logger.warning("_map_lvef_to_grading: 未预期异常，按原逻辑降级", exc_info=True)
         return lvef_str
     for threshold, label in _get_lvef_grading_table():
         if lvef >= threshold:

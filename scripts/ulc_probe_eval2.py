@@ -1,3 +1,4 @@
+import logging
 import os
 
 os.environ["HF_HUB_OFFLINE"] = "1"
@@ -29,6 +30,8 @@ refs.mkdir(parents=True, exist_ok=True)
 (refs / "main").write_text("offline", encoding="utf-8")
 
 import open_clip
+
+logger = logging.getLogger(__name__)
 
 model, _, preprocess = open_clip.create_model_and_transforms(
     "hf-hub:microsoft/BiomedCLIP-PubMedBERT_256-vit_base_patch16_224",
@@ -68,6 +71,7 @@ def extract(rows, subdir, tag):
             img = Image.open(DATA / subdir / name).convert("RGB")
             x = preprocess(img)
         except Exception:
+            logger.warning("extract: 未预期异常，按原逻辑降级", exc_info=True)
             skipped += 1
             continue
         batch.append(x)

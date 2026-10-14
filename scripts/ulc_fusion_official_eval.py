@@ -3,6 +3,7 @@
 结论预置：官方 checkpoint 的 graph 分支未训练（alpha=0.05 初始值、
 convs 权重缺失）——本实验实证"拼装后 I2T vs 纯文本塔"差异。
 """
+import logging
 import os
 
 os.environ["HF_HUB_OFFLINE"] = "1"
@@ -112,6 +113,8 @@ print(f"graphs built, missing annotations: {graph_miss}", flush=True)
 
 import dgl
 
+logger = logging.getLogger(__name__)
+
 t0 = time.time()
 with torch.no_grad():
     txt_plain, txt_fused = [], []
@@ -131,6 +134,7 @@ with torch.no_grad():
         try:
             img = preprocess(Image.open(p).convert("RGB"))
         except Exception:
+            logger.warning("<module>: 未预期异常，按原逻辑降级", exc_info=True)
             img = torch.zeros(3, 224, 224)
         img_feats.append(
             F.normalize(model.visual(img.unsqueeze(0)), dim=-1).cpu().numpy()[0]

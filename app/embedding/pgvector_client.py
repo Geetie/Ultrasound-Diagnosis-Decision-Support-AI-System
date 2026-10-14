@@ -37,6 +37,7 @@ try:
 
     _PGVECTOR_AVAILABLE = True
 except ImportError:
+    logger.warning("<module>: 未预期异常，按原逻辑降级", exc_info=True)
     asyncpg = None  # type: ignore[assignment]
     register_vector = None  # type: ignore[assignment]
     _PGVECTOR_AVAILABLE = False

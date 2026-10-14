@@ -1,9 +1,12 @@
+import logging
 import threading
 from unittest.mock import MagicMock
 
 import pytest
 
 from safety_gateway.registry import SGComponentRegistry, sg_registry
+
+logger = logging.getLogger(__name__)
 
 
 class TestSGComponentRegistry:
@@ -113,6 +116,7 @@ class TestRegistryConcurrency:
                     try:
                         registry.get(f"comp_{i}")
                     except KeyError:
+                        logger.warning("TestRegistryConcurrency.test_concurrent_register_and_get.get_worker: 未预期异常，按原逻辑降级", exc_info=True)
                         pass
             except Exception as e:
                 errors.append(e)

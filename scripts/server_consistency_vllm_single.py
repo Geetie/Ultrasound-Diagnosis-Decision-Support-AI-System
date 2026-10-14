@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import logging
 import time
 from collections import Counter
 from pathlib import Path
@@ -16,6 +17,8 @@ from app.inference.grading_schema import (
     extract_guided_grading,
     grading_json_schema,
 )
+
+logger = logging.getLogger(__name__)
 
 
 async def run_all(args):
@@ -69,6 +72,7 @@ async def run_all(args):
                 expected = str(case.get("expected_grading", "")).strip()
                 row = {"case_id": case["case_id"], "organ": organ, "expected": expected, "got": got, "match": got == expected, "latency_ms": latency}
             except Exception as exc:
+                logger.warning("run_all.run_case: 未预期异常，按原逻辑降级", exc_info=True)
                 row = {"case_id": case["case_id"], "organ": organ, "got": "", "match": False, "error": type(exc).__name__ + ": " + str(exc)[:120]}
             results.append(row)
             async with lock:

@@ -13,6 +13,7 @@ autouse fixture `mock_hsm_redis_operations`，会把 `PersistenceManager.safe_ru
 6. `cleanup_redis_keys` 走 pipeline 批量删除（不逐条往返）。
 """
 import asyncio
+import logging
 import sys
 import threading
 from unittest.mock import MagicMock
@@ -20,6 +21,8 @@ from unittest.mock import MagicMock
 import pytest
 
 from app.security.hsm.persistence_manager import PersistenceManager
+
+logger = logging.getLogger(__name__)
 
 
 class _FakePipeline:
@@ -126,6 +129,7 @@ def _deterministic_scheduler(monkeypatch):
         try:
             running_loop = asyncio.get_running_loop()
         except RuntimeError:
+            logger.warning("_deterministic_scheduler._schedule: 未预期异常，按原逻辑降级", exc_info=True)
             running_loop = None
 
         if running_loop is not None:
