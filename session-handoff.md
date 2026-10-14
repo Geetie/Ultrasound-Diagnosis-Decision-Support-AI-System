@@ -5,12 +5,25 @@
 
 ## Last Updated
 
-2026-10-14（分支 `main`；**A.62 批 2（守卫硬化）已交付** —— 用户指令「全删旧任务列表、继续下一批」）。
+2026-10-14（分支 `main`；**A.62 批 1 尾段已交付** —— 补齐批 1 第 3 项"只落了一半"的口径工作；批 2 / 批 3 第一段 / 批 4 亦已交付）。
 
 - **批 2-A 证据链（CRAG 路径）**：成因 `app/fusion/crag.py:450-458`（CRAG 新块并入落库证据）＋ `crag.py:546-554` 写的 `crag_evidence_chunks` **全仓无消费者**、`_build_specialist_context`（`563-570`）也没把 `clinical_context` 传给 reinvoke → 新块**从未进 prompt 却进了 knowledge_ids**。已补 CRAG 留痕、p30 新判定 `CRAG_SUPPLEMENT`（反证腿 9 条）、修 `--all` 假 PASS。真机 n=5：甲状腺 2/2 `PREFIX_TRUNCATED`、心脏 3/3 `CRAG_SUPPLEMENT`（模型未见 4~5 块）。**修法 A/B 待 00 号拍板**；拍板前 `knowledge_ids` 不是「结论依据」的完整凭据。
 - **批 2-B 静默收敛三段**：observability 32→0 / rag+fusion 16→0 / security+services+safety_gateway+edge+integrations 37→0；全仓 **348→263 处**（基线两段更新）。
 - **批 2-C p20 G5.4**：到达后等渲染稳定（计数连续两次一致）+ 逐帧扫 + 只重试一次；真机 **3 连跑全 31/0**（见 16 号 A.62.8）。
 - **批 2-D**：全量偶发**已复现并修掉** —— `sec` 密钥版本用例在全量顺序下 `DID NOT RAISE RuntimeError`，根因是「旧密钥记录存在且可解 → 兼容解密返回」这条正常契约分支被别处 leak 的 Redis mock 触发，而用例假设「版本+999 必然查不到旧密钥」→ 代码改为**显式抛约定异常** + 用例拆两条顺序无关；全量 `pytest tests/unit`（独占）**0 failed / 6602 passed**。
+
+- **批 1 尾段（口径 C）**：批 1 第 3 项交付时口径 C **只是个名字**（`--answer-mode` 只认 `raw`/`reasoning`，代码里没有该模式；A.62.2 里那句"数字已给出"属无证据断言，已就地更正）。本轮实现 `scripts/langfuse/answer_modes.py` + `--answer-mode derived_stripped`，并把结论正文的机器字段标记抽成 app 侧 SSOT（`app/inference/grading_definitions.FIELD_MARKERS_*`，分级抽取与评测口径共用）。**三口径同切片（n=40）实测：A 0.0906 / B 0.1258 / C 0.0836**，口径 C 重复跑一次**逐样本零差异**（判官无噪声）。**结论：口径之间只值 ~0.03 → 不要切 `--judge-mode gate`**（切换判据四条见其 help）。详见 16 号 A.62.14。
+
+### A.62 批 1 尾段（L2 三口径）复跑入口
+
+- **三口径跑齐**（服务器，判官 8006；⚠️ fish 不支持 `VAR=x cmd`，必须 `env`）：
+  `cd ~/uai/src && env PYTHONPATH=/mnt/ee16/home/student03/uai/src ~/uai/venv/bin/python scripts/langfuse/judge_eval_set.py --eval-set ~/uai/data/eval/double_engine_eval_set.jsonl --report ~/uai/reports/langfuse_eval_judge_a62_derived_stripped.json --judge-url http://127.0.0.1:8006 --model Qwen3-8B --limit 40 --answer-mode derived_stripped`
+  把 `--answer-mode` 换成 `raw` / `reasoning` 即另两个口径。**三份报告必须同一 `eval_set_sha256` + 同一 `limit` 才可比**（报告里已写进这两个字段）。
+- **看什么**：`mode_coverage.applied` = 该口径**真的改写过**多少条 —— 口径 B 在 12/169 条上是退化成"判全文"的（旧英文降级串 5 + markdown 4 + `**分级:**` 加粗 3），那不是 bug 是锚点缺失，但**必须有数**，否则"口径 B 的分数"其实是口径 A 的。
+- **守卫**：`pytest tests/unit/quality/test_answer_modes.py`（SSOT 同步腿 / 真机四形态腿 / 反证腿）、
+  `pytest tests/unit/quality/test_eval_gate_layers.py`（切换判据必须明说四条）。
+- **⚠️ 一个度量陷阱**：口径 B 与 C 的名次**会随聚合方式翻转**（逐样本平均 B>A>C，池化支持率 A>B>C）
+  → 比较时必须指定同一聚合口径，不能混着看。
 
 ### A.62 批 3 第一段（评测资产）复跑入口
 

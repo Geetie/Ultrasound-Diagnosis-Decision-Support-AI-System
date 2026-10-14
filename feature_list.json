@@ -209,10 +209,10 @@
     {
       "id": "faithfulness-gate",
       "name": "faithfulness 门控（官方 RAGAS 口径 ≥95%）",
-      "description": "生成侧溯源约束 v2 + 双轨口径（官方/宽松）；判官 Qwen3-8B GPU ｜A.61 续做：L2 判官机制已接入（RAGAS 官方 prompt + 独立判官 8006，见 `eval-set-l2-judge`）；本条的**实质阻塞**是口径决策（结论里的系统派生分级/总分是否计入 faithfulness，同一批样本 0.0798 vs 0.1891）与 `knowledge_ids` 与生成上下文是否一致（证据链完整性）。 ｜A.62 批 1 新增实测：补全上下文**不改变** faithfulness（记录版 vs 模型所见版 = 0.0 vs 0.0，2/2）⇒ 本条的实质阻塞是**口径**（结论=决策+依据，派生字段是否计入），备选口径 A/B/C 数字见 16 号 A.61.7 与 A.62.2。",
+      "description": "生成侧溯源约束 v2 + 双轨口径（官方/宽松）；判官 Qwen3-8B GPU ｜A.61 续做：L2 判官机制已接入（RAGAS 官方 prompt + 独立判官 8006，见 `eval-set-l2-judge`）；本条的**实质阻塞**是口径决策与 `knowledge_ids` 与生成上下文是否一致（证据链完整性）。 ｜A.62 批 1 新增实测：补全上下文**不改变** faithfulness（记录版 vs 模型所见版 = 0.0 vs 0.0，2/2）。 ｜**A.62.14 更新：三个口径全部落地并实测**（n=40 同切片、判官逐样本零噪声）：A 判全文 0.0906 / B 只判「理由:」后 0.1258 / C 剔除派生字段 0.0836 —— 口径之间只差 ~0.03、离门限 0.95 差约 7 倍；未支持断言绝大多数是「右叶低回声结节/边界清」这类**影像所见**（来自影像与临床文本，指南块推不出）→ 阻塞性质从「口径未拍板」收敛为**指标语义**问题（判「能否由知识库推出」 vs 结论=影像所见+指南决策），须先定 19 号门限口径。",
       "status": "blocked",
       "gate": "≥95%",
-      "result": "官方 68.96% / 宽松 72.8%；主因 context Top-5 缺依据（语料覆盖）",
+      "result": "官方 68.96% / 宽松 72.8%；主因 context Top-5 缺依据（语料覆盖）。**A.62.14 三口径实测 0.0836~0.1258（n=40）**：建议**不切 `--judge-mode gate`** —— 现状切了只会永远红；切换判据四条已写进 `eval_gate.py --judge-mode` help 并有守卫钉住。",
       "dependencies": [
         "kb-v13",
         "thyroid-registry-data"
@@ -936,9 +936,9 @@
     {
       "id": "eval-set-l2-judge",
       "name": "评测集 L2 忠实度判官（RAGAS 官方口径，复用既有资产）+ 台账更正",
-      "description": "19 号门控的 L2 层（faithfulness ≥0.95 / 答案相关性 ≥0.90）。A.61 首版曾写「本仓库没有 RAGAS 判官脚本」——**该结论是错的**：`scripts/prompts/ragas_faithfulness.py`（官方 prompt 原文，Apache-2.0）与 `scripts/t1_eval_faithfulness.py` 一直在仓库里，错因是一次漏掉 `scripts/**` 的 grep 被当成硬结论写进台账（已更正）。本轮：①采集器补检索上下文（`diagnosis_results.knowledge_ids` → `knowledge_chunks.content`，最多 5 块/块 ≤600 字；实测 148/148 条有上下文）；②新增 `scripts/langfuse/judge_eval_set.py`，**复用**官方 prompt 与既有渲染/JSON 容错/判分（不自造第二套口径），判官走**独立实例 8006（Qwen3-8B）**；③门控支持**部分**判官报告（缺 `answer_relevance` 记 `metrics_not_measured`，不按 0 判红）与 `--judge-mode advisory|gate`（默认 advisory：照常测量并**原样写 ok=false**，但不决定退出码）；④判官调用显式给 max_tokens（Qwen3 先吐 <think> → 复用不带 max_tokens 的 _chat 会截断，实测 13/24 假失败）。",
+      "description": "19 号门控的 L2 层（faithfulness ≥0.95 / 答案相关性 ≥0.90）。A.61 首版曾写「本仓库没有 RAGAS 判官脚本」——**该结论是错的**：`scripts/prompts/ragas_faithfulness.py`（官方 prompt 原文，Apache-2.0）与 `scripts/t1_eval_faithfulness.py` 一直在仓库里，错因是一次漏掉 `scripts/**` 的 grep 被当成硬结论写进台账（已更正）。本轮：①采集器补检索上下文（`diagnosis_results.knowledge_ids` → `knowledge_chunks.content`，最多 5 块/块 ≤600 字；实测 148/148 条有上下文）；②新增 `scripts/langfuse/judge_eval_set.py`，**复用**官方 prompt 与既有渲染/JSON 容错/判分（不自造第二套口径），判官走**独立实例 8006（Qwen3-8B）**；③门控支持**部分**判官报告（缺 `answer_relevance` 记 `metrics_not_measured`，不按 0 判红）与 `--judge-mode advisory|gate`（默认 advisory：照常测量并**原样写 ok=false**，但不决定退出码）；④判官调用显式给 max_tokens（Qwen3 先吐 <think> → 复用不带 max_tokens 的 _chat 会截断，实测 13/24 假失败）。⑤**A.62.14**：`--answer-mode` 增加第三种口径 `derived_stripped`（剔除派生字段；实现 `scripts/langfuse/answer_modes.py`，标记取自 app 侧 SSOT `grading_definitions.FIELD_MARKERS_*`，非词表枚举）；报告新增 `mode_coverage`（该口径**实际生效**条数）与 `eval_set_sha256`/`limit`/`since`（数字必须能追到「哪份样本集、哪个切片」）。",
       "status": "done",
-      "result": "真机 n=12 近端样本（判官 8006 Qwen3-8B，失败 0）：口径 A（判结论全文）faithfulness **0.0798**；口径 B（只判「理由:」后叙述，排除系统派生的分级/总分）**0.1891**。两个必须先解决的真问题已登记：①**口径未拍板**（派生决策是否计入，需 00 号决定）；②**`knowledge_ids` 是否等于生成时的检索上下文**（B 口径下「实性特征被赋予 3 分」这类评分规则被判不支持，而它应当在 TI-RADS 指南块里 → 检索未召回 or 证据链只记了部分）。因此 L2 机制齐备但数值**暂不作为门禁依据**（报告里 enforcement=advisory，口径/证据链解决后 `--judge-mode gate` 一行切换）。守卫 8 例（含 advisory 记 ok=false 但不判红、gate 模式判红、缺口径字段记 not_measured）。",
+      "result": "真机 n=12 近端样本（判官 8006 Qwen3-8B，失败 0）：口径 A（判结论全文）faithfulness **0.0798**；口径 B（只判「理由:」后叙述，排除系统派生的分级/总分）**0.1891**。两个必须先解决的真问题已登记：①**口径未拍板**（派生决策是否计入，需 00 号决定）；②**`knowledge_ids` 是否等于生成时的检索上下文**（B 口径下「实性特征被赋予 3 分」这类评分规则被判不支持，而它应当在 TI-RADS 指南块里 → 检索未召回 or 证据链只记了部分）。因此 L2 机制齐备但数值**暂不作为门禁依据**（报告里 enforcement=advisory，口径/证据链解决后 `--judge-mode gate` 一行切换）。守卫 8 例（含 advisory 记 ok=false 但不判红、gate 模式判红、缺口径字段记 not_measured）。 **A.62.14 三口径一次跑齐（n=40 同切片，样本集 sha256 `576e8ec63785…`）**：A **0.0906** / B **0.1258** / C **0.0836**；口径 C 重复跑一次**逐样本零差异**（判官无噪声）。顺带查实：口径 B 在 **12/169** 条上静默退化成「判全文」（旧英文降级串 5 + markdown 4 + `**分级:**` 加粗 3）→ 现以 `mode_coverage.applied` 如实报数（B 157/169、C 164/169）。**结论：口径之间只值 ~0.03，建议不切 gate**（缺口在「影像所见不在知识库块里」这一指标语义）。新增守卫 49 例（`test_answer_modes.py`：SSOT 同步腿 / 真机四形态腿 / 反证腿）+ 1 例切换判据明说话。",
       "dependencies": [
         "langfuse-eval-pipeline"
       ],
@@ -947,14 +947,14 @@
     {
       "id": "a62-batch1-evidence-and-cardiac",
       "name": "批 1（价值/风险最高）：证据链核实 + 心脏腿「无 LVEF」可行动提示 + L2 口径三选一",
-      "description": "① **核实检索证据链**：`diagnosis_results.knowledge_ids` 记的块是否就是**当时真正喂给模型**的上下文（L2 判官在口径 B 下判「实性特征被赋予 3 分」这类 TI-RADS 规则\"上下文不支持\"，而它们本应在指南块里）→ 新增真机探针 `scripts/audit/p30_evidence_chain.py`，判定「只记部分 / 顺序不同 / 未落库」三者之一并带反证腿。② **心脏腿「无 LVEF」策略**：现正文「LVEF: 无法计算 分级: 无法判断」没告诉医生下一步 → 改为可行动指引（补测/上传带测量的影像/只能人工判读），保留 needs_review 与 trace 留痕；涉及医学口径的改动单独标注「待 00 号拍板」。③ **L2 口径三选一给 00 号**：口径 A（结论全文 0.0798）/ 口径 B（只判「理由:」后叙述 0.1891）/ 口径 C（剔除系统派生的分级·总分后再判）三种数字并列，一页纸落 16 号附录。",
+      "description": "① **核实检索证据链**：`diagnosis_results.knowledge_ids` 记的块是否就是**当时真正喂给模型**的上下文（L2 判官在口径 B 下判「实性特征被赋予 3 分」这类 TI-RADS 规则\"上下文不支持\"，而它们本应在指南块里）→ 新增真机探针 `scripts/audit/p30_evidence_chain.py`，判定「只记部分 / 顺序不同 / 未落库」三者之一并带反证腿。② **心脏腿「无 LVEF」策略**：现正文「LVEF: 无法计算 分级: 无法判断」没告诉医生下一步 → 改为可行动指引（补测/上传带测量的影像/只能人工判读），保留 needs_review 与 trace 留痕；涉及医学口径的改动单独标注「待 00 号拍板」。③ **L2 口径三选一给 00 号**：口径 A（结论全文）/ 口径 B（只判「理由:」后叙述）/ 口径 C（剔除系统派生的分级·总分后再判）三种数字并列，一页纸落 16 号附录。**⚠️ 交付时口径 C 只是个名字（`--answer-mode` 只认 raw/reasoning，代码里没有该模式），已由 A.62.14 补齐实现与实测。**",
       "status": "done",
-      "result": "①**证据链**：新增生产侧 env 留痕（`UAI_EVIDENCE_CHAIN_DEBUG=1` → `base._log_evidence_chain` 打「prompt 里的块」与「落库的块」）+ 探针 `scripts/audit/p30_evidence_chain.py`（7 条反证腿）。真机 n=7：**甲状腺 5/5 = PREFIX_TRUNCATED**（prompt 5 块、落库 3 块 = **前 3 条**、顺序一致 → 「忠实但截断」）；**心脏 2/2 = MISMATCH**（落库的 `dialogue_cardiac_外科_0028#0000` 不在任何 prompt 留痕里 → 该路径证据拼接不完全走 `_parse_response`，嫌疑 CRAG 三段拼接/融合选链）。②**L2 口径对照**：同一结论用「落库 3 块」与「模型所见 5 块」各判一次 RAGAS faithfulness → **0.0 vs 0.0（2/2）** ⇒ L2 低分不是「记少了」的伪影，是**口径**问题（系统派生决策不计入知识支持）。③**心脏腿文案**：收进 `readable.py::cardiac_lvef_unparseable_text()`，给出可行动指引（补填 `LVEF 55%` 后重发 / 无测量则人工判读），保留 needs_review 与 trace；并**决定不做**「数值抽取读临床文本」——实测 18 条心脏样本 14 条降级、其中文本含 LVEF = **0 条**（零受益）。真机：p27 thyroid 4/4、cardiac 4/4；本机 agt 514 passed、新探针守卫 11 passed、两棘轮绿。",
+      "result": "①**证据链**：新增生产侧 env 留痕（`UAI_EVIDENCE_CHAIN_DEBUG=1` → `base._log_evidence_chain` 打「prompt 里的块」与「落库的块」）+ 探针 `scripts/audit/p30_evidence_chain.py`（7 条反证腿）。真机 n=7：**甲状腺 5/5 = PREFIX_TRUNCATED**（prompt 5 块、落库 3 块 = **前 3 条**、顺序一致 → 「忠实但截断」）；**心脏 2/2 = MISMATCH**（落库的 `dialogue_cardiac_外科_0028#0000` 不在任何 prompt 留痕里 → 该路径证据拼接不完全走 `_parse_response`，嫌疑 CRAG 三段拼接/融合选链）。②**L2 口径对照**：同一结论用「落库 3 块」与「模型所见 5 块」各判一次 RAGAS faithfulness → **0.0 vs 0.0（2/2）** ⇒ L2 低分不是「记少了」的伪影，是**口径**问题（系统派生决策不计入知识支持）。③**心脏腿文案**：收进 `readable.py::cardiac_lvef_unparseable_text()`，给出可行动指引（补填 `LVEF 55%` 后重发 / 无测量则人工判读），保留 needs_review 与 trace；并**决定不做**「数值抽取读临床文本」——实测 18 条心脏样本 14 条降级、其中文本含 LVEF = **0 条**（零受益）。真机：p27 thyroid 4/4、cardiac 4/4；本机 agt 514 passed、新探针守卫 11 passed、两棘轮绿。**④批 1 尾段（2026-10-14 补齐）：③里的口径 C 当时并未实现**（台账里那句「数字已给出」属无证据断言，已就地更正）→ 本轮实现 `scripts/langfuse/answer_modes.py`（标记取自 app 侧 SSOT）+ `--answer-mode derived_stripped`；三口径同切片（n=40）实测 **A 0.0906 / B 0.1258 / C 0.0836**，判官重复运行**逐样本零差异**；**结论：口径之间只值 ~0.03 → 建议不切 gate**（缺口在指标语义）。守卫 49 例。详见 16 号 A.62.14。",
       "dependencies": [
         "langfuse-eval-pipeline",
         "eval-set-l2-judge"
       ],
-      "evidence": "16 号 A.62（A.62.1~A.62.5）；scripts/audit/p30_evidence_chain.py；tests/unit/quality/test_evidence_chain_probe.py；app/agents/specialist/base.py（_log_evidence_chain）；app/agents/specialist/readable.py（cardiac_lvef_unparseable_text）；reports/evidence_chain.json；~/uai/logs/api.log（evidence_chain 留痕）"
+      "evidence": "16 号 A.62（A.62.1~A.62.5）与 A.62.14；scripts/audit/p30_evidence_chain.py；tests/unit/quality/test_evidence_chain_probe.py；app/agents/specialist/base.py（_log_evidence_chain）；app/agents/specialist/readable.py（cardiac_lvef_unparseable_text）；scripts/langfuse/answer_modes.py + tests/unit/quality/test_answer_modes.py（49 例）；reports/evidence_chain.json；~/uai/reports/langfuse_eval_judge_a62_{raw,reasoning,derived_stripped,derived_stripped_rep2}.json；~/uai/logs/api.log（evidence_chain 留痕）"
     },
     {
       "id": "a62-batch2-guard-hardening",

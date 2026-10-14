@@ -173,6 +173,22 @@ def test_缺评测集返回2(monkeypatch, tmp_path):
     assert code == 2
 
 
+def test_gate切换判据必须是明说的四条() -> None:
+    """`--judge-mode gate` 的开启条件必须是**明说判据**，不是"感觉可以了"（21 号批 1 要求）。
+
+    A.62 批 1 尾段的教训：台账里写着"第三种口径"，代码里根本没有该模式；口径没拍板就把
+    L2 挂上退出码＝红灯噪声。故把切换条件钉在脚本里（口径拍板 / n ≥ 30 / 门限语义 /
+    证据链落地），并连三口径实测数字一起写在同一处 —— 谁想切，先看见代价。
+    """
+    src = _GATE.read_text(encoding="utf-8")
+    block = src[src.index('"--judge-mode"') : src.index('"--enforce-since"')]
+    for must in ("拍板", "≥ 30", "门限", "证据链", "advisory", "gate"):
+        assert must in block, f"`--judge-mode` 的切换判据缺「{must}」——开启条件必须是明说的"
+    assert "A=判全文" in block and "C=剔除派生字段" in block, (
+        "三口径实测数字必须写在切换判据旁边（否则口径拍板又变成靠感觉）"
+    )
+
+
 def test_可指定斩断点_纳入旧样本即判红(monkeypatch, tmp_path):
     """生产复跑要能传本次部署时间戳；把旧样本纳入近端就该判红（口径可指定、有效）。"""
     rows = [_row(_OLD, "[thyroid] 旧格式"), _row(_NEW, "甲状腺 · TR3 — 分级: TR3 总分: 4")]
