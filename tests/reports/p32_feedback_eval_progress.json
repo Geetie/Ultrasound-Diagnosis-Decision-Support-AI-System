@@ -1,0 +1,86 @@
+{
+  "probe": "p32_feedback_eval_progress",
+  "base": "http://127.0.0.1:8000",
+  "base_url_ok": true,
+  "checks": [
+    {
+      "name": "G1.1 未登录直连 /ui/feedback → 出现登录表单",
+      "ok": true,
+      "detail": "loginForm=1"
+    },
+    {
+      "name": "G1.2 未登录时**不渲染**进度区块（没数据也不假装有）",
+      "ok": true,
+      "detail": "region=0"
+    },
+    {
+      "name": "G2.1 GET /api/v1/eval-set/stats 带 token → 200",
+      "ok": true,
+      "detail": "http=200"
+    },
+    {
+      "name": "G2.2 报告已生成（available=true）",
+      "ok": true,
+      "detail": "available=true reason=-"
+    },
+    {
+      "name": "G3.1 反馈页渲染出「评测集进度」区块",
+      "ok": true,
+      "detail": "region=1"
+    },
+    {
+      "name": "G3.2 区块标题为「评测集进度（双引擎）」",
+      "ok": true,
+      "detail": "text=评测集进度（双引擎） 样本（去重后）：168 / 700 24% 医生标注坏例（含正确口径）：0 / 50 0% 判读总"
+    },
+    {
+      "name": "G4.1 样本行数字 = 后端（去重后/目标）",
+      "ok": true,
+      "detail": "期望「样本（去重后）：168 / 700」"
+    },
+    {
+      "name": "G4.2 医生标注坏例行数字 = 后端",
+      "ok": true,
+      "detail": "期望「医生标注坏例（含正确口径）：0 / 50」"
+    },
+    {
+      "name": "G4.3 判读总数/无法去重/无影像跳过 = 后端",
+      "ok": true,
+      "detail": "期望「判读总数 307 · 无法去重 0 · 无影像跳过 746」"
+    },
+    {
+      "name": "G4.4 不同患者数 = 后端（A.62 批 3 新上屏）",
+      "ok": true,
+      "detail": "期望「不同患者 12 人」"
+    },
+    {
+      "name": "G4.5 去重口径与后端一致（patient_image/image_only/no_basis）",
+      "ok": true,
+      "detail": "期望「patient_image:307」"
+    },
+    {
+      "name": "G4.6 无缺患者 ID → 界面不应出现降级告警",
+      "ok": true,
+      "detail": "patient_id_missing=0"
+    },
+    {
+      "name": "G5.1 反馈页请求面无 5xx",
+      "ok": true,
+      "detail": "5xx=[]"
+    },
+    {
+      "name": "G5.2 页面确实调用了 /api/v1/eval-set/stats 且 200",
+      "ok": true,
+      "detail": "reqs=[200]"
+    },
+    {
+      "name": "G6.1 区块截图已留存（证据）",
+      "ok": true,
+      "detail": "C:\\Windows\\TEMP\\uai_p32\\feedback_eval_progress.png (20290B)"
+    }
+  ],
+  "passed": 15,
+  "failed": 0,
+  "wall_s": 8.5,
+  "evidence": "C:\\Windows\\TEMP\\uai_p32"
+}

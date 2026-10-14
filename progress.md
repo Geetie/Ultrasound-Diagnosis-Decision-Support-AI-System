@@ -532,6 +532,7 @@ refresh_token 撤族「该撤没撤」留痕、emergency_signing fail-closed 留
 | `scripts/langfuse/docker-compose.yml` | A.61 Langfuse 自托管栈（关键约束：**`REDIS_CONNECTION_STRING` 必须设**（镜像不读 `REDIS_URL`）+ **worker 必须用 `langfuse-worker:3` 镜像**（与 web 不同镜像）；摄取成功判据 = worker 日志 `otel-ingestion-queue executor started` + `traces` 增长） |
 | `scripts/langfuse/collect_eval_set.py` | A.61 评测集采集（业务库来源：`diagnosis_results` + `feedback_records`（=正确口径）+ `dicom_images`；真机 168 条 / `skipped_no_image` 显式计数；退出码 0/1/2）。**A.62 批 3 修**：去重口径 = 同患者同影像（患者取自 `DiagnosisSession`，三级回退），并输出 `patient_count`/`patient_id_missing`/`dedup_reason` |
 | `tests/unit/quality/test_collect_eval_set_keys.py` | A.62 批 3 去重口径守卫 **7 例**（三态键 / 同患者多影像不合并 / 同影像必合并 / 患者 ID 不同必分开 / 源码必须保留会话级回退） |
+| `scripts/audit/p32_feedback_eval_progress.mjs` | A.62 批 3 **浏览器前后端联调**（页面文本逐项对照 `/api/v1/eval-set/stats` 当场返回，**不硬编码数字**；真机 PASS=15/FAIL=0；证据 `tests/reports/p32_feedback_eval_progress.{json,png}`） |
 | `scripts/langfuse/eval_gate.py` | A.61 门控两层（`enforced` 判红 / `informational` 仅告知 + L2 `advisory`/`gate` 双模）+ `make eval-gate` |
 | `scripts/audit/p30_evidence_chain.py` | A.62 证据链核对（读生产侧留痕 `evidence_chain` + DB，7 条反证腿；n=7 判定分布 `{PREFIX_TRUNCATED:5, MISMATCH:2}`） |
 | `UAI_EVIDENCE_CHAIN_DEBUG=1`（`app/agents/specialist/base.py`） | A.62 证据链留痕开关：打「prompt 里的块」与「落库的块」（生产侧唯一可用的核对手段：判读走 Redis 队列 → worker 进程） |

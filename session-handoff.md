@@ -22,6 +22,11 @@
   `patient_count` / `patient_id_missing` / `dedup_reason`；反馈页「评测集进度」区块底部显示
   「不同患者 N 人 · 去重口径 …」。
 - **医生标注配合清单**：21 号「批 3」节末尾附件（一页纸）；进度可在反馈页对照。
+- **浏览器联调（必跑，别只信 curl）**：`ssh -N -L 8000:127.0.0.1:18000 student03@…` 起隧道 →
+  `UAI_BASE_URL=http://127.0.0.1:8000 UAI_DOCTOR_USER=smoke-doctor UAI_DOCTOR_PASSWORD=$(cat 口令) \
+  node scripts/audit/p32_feedback_eval_progress.mjs --out <目录>` —— **页面数字逐项 = 当场 API 返回**
+  （不硬编码），真机 `PASS=15/FAIL=0`；退出码 2 = 登录或前端不可达。改前端后**必跑**：
+  单测用假数据、curl 看 JSON，**都证明不了浏览器里的数字对不对**。
 - ⚠️ **别被"样本数"骗**：168 条里 152 条来自同一演练患者（`DRILL-PATIENT-001`），
   独立病例只有 12 个 —— 「700 例」的瓶颈是**临床使用**，跑探针涨不了独立病例。
 
