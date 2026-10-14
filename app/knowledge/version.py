@@ -182,5 +182,13 @@ def _parse_simple_version(version_str: str) -> tuple[int, int] | None:
         minor = int(parts[1]) if len(parts) > 1 else 0
         return (major, minor)
     except (ValueError, IndexError):
-        logger.warning("_parse_simple_version: 未预期异常，按原逻辑降级", exc_info=True)
+        # A.62 批 2-E 真机复核：这里**不是**异常路径而是正常控制流 —— 调用方
+        # `parse_model_version` 就是靠「本函数返回 None」退到正则兜底（配置里的模型版本
+        # 常带 `thyroid_v1.0.0` 这类前缀）。全仓加固时按通用形态升成了 warning，实测
+        # 真机一次 p27 回归（甲状腺+心脏两腿）就刷 **23 条** → 属 plan 里点名的
+        # 「循环内失败不得刷屏」，降为 debug 留痕（守卫同样认 `logger.*` 证据）。
+        logger.debug(
+            "_parse_simple_version: 版本串非纯数字形态，退到调用方正则兜底",
+            value=version_str,
+        )
         return None
