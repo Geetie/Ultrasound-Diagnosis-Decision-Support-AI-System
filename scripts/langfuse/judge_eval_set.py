@@ -30,6 +30,7 @@ Apache-2.0，摘自 ragas 官方仓库），渲染/容错/数值启发式**直�
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 import time
@@ -37,9 +38,12 @@ from pathlib import Path
 
 # 复用既有判官实现（同目录兄弟脚本）——`scripts/` 加到 sys.path 才能 import
 _SCRIPTS_DIR = Path(__file__).resolve().parents[1]
-if str(_SCRIPTS_DIR) not in sys.path:
-    sys.path.insert(0, str(_SCRIPTS_DIR))
+_HERE = Path(__file__).resolve().parent
+for _p in (str(_SCRIPTS_DIR), str(_HERE)):
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
 
+from answer_modes import ANSWER_MODES, answer_of  # noqa: E402  (需先改 sys.path)
 from t1_eval_faithfulness import (  # noqa: E402  (需先改 sys.path)
     _extract_json,
     _filter_meta_statements,
@@ -71,32 +75,21 @@ def _judge_chat(url: str, model: str, messages: list[dict], max_tokens: int = _M
     return data["choices"][0]["message"]["content"]
 
 
-def _answer_of(item: dict, mode: str) -> str:
-    """取"被判的答案"。
-
-    `raw`：结论全文。
-    `reasoning`：只用**临床理由/叙述**部分 —— 结论形如
-        「甲状腺 · TR3 — 分级: TR3 总分: 3 置信度: 0.85 理由: 实性(3) + 低回声(2) …」，
-    其中「分级/总分/置信度」是**系统派生出的决策**（一个具体结节的分类），检索到的
-    指南块里**不会有**这句话；RAGAS faithfulness 判的是"答案能否由上下文推出"，
-    把派生决策一起判会**必然**得低分（这是口径问题，不是幻觉证据）。
-    """
-    text = (item.get("conclusion") or "").strip()
-    if mode == "raw":
-        return text
-    for marker in ("理由:", "理由："):
-        if marker in text:
-            return text.split(marker, 1)[1].strip() or text
-    return text
-
-
 def _faithfulness_of(item: dict, judge_url: str, model: str, answer_mode: str = "raw") -> dict:
-    """单条样本的 faithfulness（RAGAS 官方两阶段；无断言时官方记 1.0）。"""
+    """单条样本的 faithfulness（RAGAS 官方两阶段；无断言时官方记 1.0）。
+
+    口径（判什么）由 :mod:`answer_modes` 单一事实源决定；这里额外报告该口径是否
+    **真的改写过答案**（``mode_applied``）—— 口径静默退化成"判全文"必须可见。
+    """
     question = (item.get("clinical_text") or "").strip() or "（无临床文本；按影像判读）"
-    answer = _answer_of(item, answer_mode)
+    answer, applied = answer_of(item, answer_mode)
     context = "\n\n".join(item.get("context") or [])
     if not answer or not context:
-        return {"score": None, "reason": "缺答案或缺检索上下文"}
+        return {
+            "score": None,
+            "reason": "缺答案或缺检索上下文",
+            "mode_applied": applied,
+        }
 
     # ① 答案 → 原子断言
     raw = _judge_chat(
@@ -153,6 +146,7 @@ def _faithfulness_of(item: dict, judge_url: str, model: str, answer_mode: str = 
         "supported": supported,
         "unsupported_samples": unsupported[:3],
         "refusal": _is_refusal(answer),
+        "mode_applied": applied,
     }
 
 
@@ -170,10 +164,12 @@ def main() -> int:
     ap.add_argument("--since", default=None, help="只判 created_at >= 该时刻的样本（同门控口径）")
     ap.add_argument(
         "--answer-mode",
-        choices=("raw", "reasoning"),
+        choices=ANSWER_MODES,
         default="raw",
-        help="raw=判结论全文（口径 A）；reasoning=只判「理由:」之后的临床叙述（口径 B，"
-        "把系统派生的分级/总分/置信度排除在外 —— 见 _answer_of 的说明）",
+        help="口径 A=raw 判结论全文；口径 B=reasoning 只判「理由:」之后的临床叙述；"
+        "口径 C=derived_stripped 剔除派生决策字段（分级/总分/置信度）后判。"
+        "三者定义与生效条数见 `answer_modes.py`，报告里 `mode_coverage` 会说明本口径"
+        "实际改写了多少条（锚点缺失时该口径退化为判全文，必须可见）",
     )
     args = ap.parse_args()
 
@@ -219,6 +215,9 @@ def main() -> int:
               f"{' err=' + result['error'] if result.get('error') else ''}")
 
     mean = round(sum(scores) / len(scores), 4) if scores else None
+    # 口径生效条数：**必须随报告给出**。锚点/标记缺失时该口径会退化成"判全文"，
+    # 出数时若不写明，"口径 B 0.19" 可能其实是口径 A 的数字（A.62 批 1 的现场）。
+    mode_applied = sum(1 for x in per_sample if x.get("mode_applied") is True)
     report = {
         "generated_at": time.strftime("%Y-%m-%d %H:%M:%S"),
         "engine": "ragas_faithfulness(official prompts, scripts/prompts/ragas_faithfulness.py)",
@@ -226,7 +225,16 @@ def main() -> int:
         "model": args.model,
         "metric_scope": "faithfulness only（answer_relevancy 的官方 prompt 本仓库未收录 → null）",
         "answer_mode": args.answer_mode,
+        "mode_coverage": {
+            "applied": mode_applied,
+            "total": len(judgeable),
+            "note": "applied=该口径**真的改写过**答案的条数；其余条该口径退化为判全文",
+        },
         "eval_set": str(path),
+        # 口径红线（A.21）：任何数字必须能追到"哪份样本集、哪个切片"
+        "eval_set_sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+        "limit": args.limit,
+        "since": args.since,
         "n": len(judgeable),
         "skipped_no_context": skipped_no_context,
         "faithfulness": mean,
@@ -238,8 +246,9 @@ def main() -> int:
     rp = Path(args.report).expanduser()
     rp.parent.mkdir(parents=True, exist_ok=True)
     rp.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"== faithfulness（RAGAS 官方口径）：{mean}（n={len(scores)}，缺上下文跳过 "
-          f"{skipped_no_context}，失败 {report['failed']}）报告：{rp}")
+    print(f"== faithfulness（RAGAS 官方口径，{args.answer_mode}）：{mean}"
+          f"（n={len(scores)}，该口径生效 {mode_applied}/{len(judgeable)}，"
+          f"缺上下文跳过 {skipped_no_context}，失败 {report['failed']}）报告：{rp}")
     return 0
 
 

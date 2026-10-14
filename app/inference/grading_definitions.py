@@ -323,14 +323,40 @@ def _severest_in(text: str, organ: str) -> str | None:
     return best[1] if best else None
 
 
+# ----------------------------------------------------------------------
+# 结论正文的**机器字段标记**（单一事实源，2026-10-14）
+# ----------------------------------------------------------------------
+# 结论正文是一串「字段: 值」段。哪些字段是**系统派生出的决策**、哪些承载**依据/叙述**，
+# 是两处共用的知识，必须只声明一次：
+#   ① 分级抽取（本模块 :func:`extract_grading_severest`）→ 需要段边界；
+#   ② 评测侧「口径 C：剔除派生字段后再判忠实度」（`scripts/langfuse/answer_modes.py`）
+#      → 需要知道该剔哪些段。
+# 两处各写一套必然走散（A.62 批 1 的现场：台账写着"第三种口径"，代码里根本没有该模式）。
+#
+#: 段**起锚点**：这些字段本身就是系统派生出的决策（模型的"分级"结论）。
+FIELD_MARKERS_ANCHOR: tuple[str, ...] = ("分级", "grading")
+#: 段内**派生决策**字段：同样是系统算出来的，不含任何知识库依据。
+FIELD_MARKERS_INLINE: tuple[str, ...] = ("总分", "置信度", "score", "confidence")
+#: 段**分隔/叙述**字段：它们承载"依据"（理由、证据、鉴别诊断…），**不得**当派生决策剔除。
+FIELD_SEPARATORS: tuple[str, ...] = (
+    "理由",
+    "证据",
+    "鉴别",
+    "患者解释",
+    "建议",
+    "reason",
+    "evidence",
+    "differential",
+)
+
 # 显式分级段：`分级:` / `grading:` 之后到下一个字段名之前，是模型给出的**结论**。
 # 与"全文最严重"并存的原因见 `extract_grading_severest` 的 docstring（实测假高教训）。
 _EXPLICIT_GRADE_ANCHOR = re.compile(
-    r"(?:^|[\s（(【\[])(?:分级|grading)\s*[:：]\s*", re.IGNORECASE
+    r"(?:^|[\s（(【\[])(?:" + "|".join(FIELD_MARKERS_ANCHOR) + r")\s*[:：]\s*",
+    re.IGNORECASE,
 )
 _SEGMENT_STOP = re.compile(
-    r"(?:总分|置信度|理由|证据|鉴别|患者解释|建议|"
-    r"score|confidence|reason|evidence|differential)\s*[:：]",
+    r"(?:" + "|".join(FIELD_MARKERS_INLINE + FIELD_SEPARATORS) + r")\s*[:：]",
     re.IGNORECASE,
 )
 
