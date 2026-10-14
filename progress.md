@@ -1,6 +1,12 @@
 # progress.md — 当前状态（唯一「现在在哪」来源）
 
-**Last Updated**: 2026-10-14（**A.62 批 2 尾段 + 真机收尾**：后端静默**全仓归零 263 → 0**（134 文件一次清完，只加留痕不改行为）；服务器整树同步后复扫 **851 文件 / 0 静默**、p27 两腿 **4/0**；真机又抓到本批自身一个刷屏缺陷（`_parse_simple_version` 23 条 warning → 降 debug → 增量 0）。至此「零静默」存量后端/前端双清零；批 1 尾段（L2 三口径）、批 2 前四段、批 3 第一段、批 4 均已交付）
+**Last Updated**: 2026-10-15（**A.63 RAG / 模型三件可做项**：①图谱邻居扩展**裁决＝不启用**（先修「开了等于没开」的阈值吞邻居缺陷 + 成因可辨留痕；两态指标完全一致、适用面 0/136）②**answer_relevancy 落地**（官方 prompt 同 sha + 来源自证；真机 faithfulness 0.0906 / answer_relevance 0.3788，n=37）③**甲状腺跨来源评测**（TNSCUI 取不到 → 改 TN3K；AUC 0.4929，三口径分列）。选型与结果见 16 号 A.63、21 号「批 5」）
+**HEAD-A.63**: 分支 `main`（用户 2026-10-15：「RAG 方面的远期目标极多，还包括模型的处理」+「甲状腺将来也可能不商用了，非可商用公开集也可以用」+「继续聚焦两三项可做项进行开发」）：
+①**WP1 图谱扩展**：真缺陷＝`app/rag/service.py` 的 `min_score_threshold` 会把 `score=0.0` 的图谱邻居整批吞掉（开了等于没开）→ 只对 `retrieval_source=GRAPH` 豁免 + 留痕；`app/rag/retriever.py` 把「没边」与「邻居已被 top-k 覆盖」两种成因分开留痕（第一版混为一谈，真机第一跑就被引向错误方向）。**裁决数字**（`scripts/audit/p36_graph_expansion_ab.py`，136 条 golden 同进程开/关）：hit@1/5/10 = 0.9485/0.9853/0.9853、MRR 0.9635 **两腿完全一致**、新增块 0；**适用面＝带边种子 0/136**（命中「一篇一块」对话语料）；机制对照：多块文档种子 +1 邻居、单块种子 0 → **结论：保持默认关闭**（前提＝KB 要有长文档多块切分）。边投影现状 321 块/400 条、回填 `to_update=0`（我原先「存量库没边」的假设被实测推翻）。
+②**WP2 answer_relevancy**：官方 prompt 照抄（与 faithfulness **同 tree sha 298b6827…**，并用「同 sha 抓 faithfulness util 哈希一致」自证来源）；官方公式 `mean(cos(生成问题, 原始问题)) × int(not 全部 noncommittal)`，strictness=3。**真机第一跑只有 2/40 测到** —— 真因是判官先吐 `<think>` 把 256 token 吃光（缺 `/no_think`）→ 修后 **37/40**；faithfulness **0.0906**（与 A.62.14 逐位一致，口径自证）、**answer_relevance 0.3788**（生成问题数全为 3，5 条因官方归零规则为 0，区间 0.0000~0.6622）。门控两项并列 + `--skip-answer-relevancy`（与「报告为 null」分开说明）。
+③**WP3 跨来源评测**：计划的 TNSCUI **取不到**（Zenodo 该记录仅论文 PDF；API 搜索无数据集；`us_datasets/*.zip` 全是 4KB 占位）→ 脚本显式失败、改用 TN3K（614 张，冻结清单 sha256，许可按 14 号 NC、只评测不训练）；生产 8003 端点 **AUC 0.4929 [0.4438, 0.5402]**（敏感性 0.9068 / 特异性 0.0767，614/614 无失败）→ **与旧探针 0.6789 不一致，登记待查**；三口径分列＝开发集 0.8751 / AUL 公开集 0.8950 / TN3K 跨来源 **0.4929**。
+真机与门禁：p27 **4/0**（WP1 改动后）、p36 两态、p35 614 张、服务器扫描 851 文件 0 静默；本机 `tests/unit` 全量 **6693 passed / 0 failed**、quality 棘轮全绿。详见 16 号附录 A.63）
+**Last Updated（上一轮）**: 2026-10-14（**A.62 批 2 尾段 + 真机收尾**：后端静默**全仓归零 263 → 0**（134 文件一次清完，只加留痕不改行为）；服务器整树同步后复扫 **851 文件 / 0 静默**、p27 两腿 **4/0**；真机又抓到本批自身一个刷屏缺陷（`_parse_simple_version` 23 条 warning → 降 debug → 增量 0）。至此「零静默」存量后端/前端双清零；批 1 尾段（L2 三口径）、批 2 前四段、批 3 第一段、批 4 均已交付）
 **HEAD-A.62（批 1 尾段）**: 分支 `main`（补齐批 1 第 3 项"只交付了一半"的部分）：
 ①**口径 C 原先只是个名字**：A.62.2 写着「第三种（剔除派生字段）数字已在 A.61.7 与本节给出」，而 `--answer-mode` 只认 `raw`/`reasoning`、代码里**没有这个模式** → 本轮实现 `scripts/langfuse/answer_modes.py`（三口径单一事实源），并把结论正文的机器字段标记抽成 app 侧 SSOT（`grading_definitions.FIELD_MARKERS_*`，分级抽取与评测口径共用同一份）。
 ②**三口径同切片实测**（判官 8006 / Qwen3-8B，n=40，样本集 sha256 `576e8ec63785…`）：A 判全文 **0.0906** / B 只判「理由:」后 **0.1258** / C 剔除派生字段 **0.0836**；口径 C 重复跑一次**逐样本零差异**（判官无噪声）。
@@ -420,7 +426,17 @@ refresh_token 撤族「该撤没撤」留痕、emergency_signing fail-closed 留
 
 ## Recommended Next Step
 
-> **A.62 批 2 尾段（2026-10-14，本轮）**：后端静默 **263 → 0 处 / 0 文件**（134 文件 / +611 行，
+> **A.63（2026-10-15，本轮）RAG / 模型三件可做项**：
+> ① **图谱扩展裁决＝不启用**：接线缺陷（阈值吞 score=0 邻居）已修 + 留痕可辨成因；两态指标完全一致、
+> 适用面 **0/136**（命中「一篇一块」对话语料）→ 默认保持关闭；**要收益得先把长指南切成多块入库**。
+> ② **answer_relevancy 落地**：官方 prompt（同 sha + 来源自证）+ 官方公式；真机 **faithfulness 0.0906 /
+> answer_relevance 0.3788（n=37/40）**；修掉 `/no_think` 缺失导致的假「未测到」（2/40 → 37/40）。
+> ③ **跨来源评测**：TNSCUI 取不到 → 改 TN3K；**AUC 0.4929**（≈随机）；三口径分列 +
+> 「与旧探针 0.6789 不一致」**登记待查**。
+> **下一步候选**：① 查 TN3K 两侧口径差异（生产端点 vs 旧探针）；② 知识库长文档结构化切分（图谱扩展的前置）；
+> ③ 两项指标口径拍板（是否切 gate）；④ 评测集往 700 推（瓶颈仍是临床使用）。
+
+> **A.62 批 2 尾段（2026-10-14）**：后端静默 **263 → 0 处 / 0 文件**（134 文件 / +611 行，
 > 其中 265 行 `logger.*` 留痕；app 43 / tests 97 / scripts 与 lab 123），**只加留痕、零语义改动**；
 > 证据 = 全量 `pytest tests/unit -n 8 --dist=loadfile` **0 failed / 6673 passed / 4 skipped**、
 > `pytest tests/unit/quality` **209 passed**；ruff SIM105 基线 37 → 18；`silent_catch_baseline.json`
@@ -546,6 +562,9 @@ refresh_token 撤族「该撤没撤」留痕、emergency_signing fail-closed 留
 | 核心覆盖率 90% | 真机依赖 | SoftHSM 签名字节、真实 Redis 语义可测 | `coverage-core` |
 | ~~服务器代码与仓库同步（本批 134 文件）~~ | 已解（2026-10-14） | **已完成**（A.62.16）：`git archive` 整树铺开 + 抽检 sha256 一致；服务器复扫 **851 文件 / 0 静默**；顺带对账隔离 8 个仓库已删的陈旧 `.py`（`~/uai/_stale_20261014/`，**保留未删**，删除属破坏性操作 → 待用户确认）；`/tmp/_*` 归零 | `a62-batch2-guard-hardening` |
 | 服务器上的陈旧代码（`_stale_20261014/`） | 用户决策 | 8 个 `.py` 已在仓库中不存在（`app/api/v1/{device_repository,redis}.py`、`app/services/main.py`、4 个下划线助手脚本、`scripts/txt_debug.py`），已 mv 隔离且确认无人引用；**保留**是为了可回退 | `deploy-hygiene` |
+| TN3K 跨来源 AUC 与旧探针不一致（0.4929 生产端点 vs 0.6789 旧探针） | 本机可做（待查） | A.63.3 实测：同一资产、同一份 TN3K，生产 8003 `/v1/classify` 给 **0.4929**，而 `tests/reports/t2a_tn3k_generalization.json`（n=1228）记 0.6789 → 调用路径/资产口径不同。**本轮不取高者**；下一位先核对两侧加载的权重与预处理 | `a63-thyroid-cross-source-eval` |
+| 图谱扩展在现有 KB 上无适用面（0/136） | 数据/知识库 | 带边的块集中在长文档（指南 PDF），而 golden 命中的是「一篇一块」对话语料 → 要让它有意义，得先把长指南按结构切分成多块入库（**不是**打开开关就有的收益） | `a63-graph-expansion-verdict` |
+| answer_relevance 门控口径（0.3788 vs 门槛 0.90） | 00 号拍板 | 与 faithfulness 同源：结论里的影像所见不在知识库块里。机制已就绪（两项并列 + `--judge-mode gate`），**建议仍不切** | `a63-answer-relevancy-metric`、`faithfulness-gate` |
 | 硬规则 #11「全量清 `/tmp/_*`」在并行会话下会误伤 | 用户/项目组（口径） | 实测：清完 `/tmp` 后又出现 3 个**非本轮**脚本（`_bayi_sheet.sh` / `_srv_probe_bayi{,2}.sh`）→ 说明共享服务器上**有另一条工作线**，其探针被本轮全量清空删掉（不可恢复）。建议把规则改成「先看名字 + mtime，只删本次会话自己建的」 | `deploy-hygiene`、`AGENTS.md` 硬规则 #11 |
 | ~~ruff 棘轮 2 项红灯~~ | — | **已根治（A.52）**：修真 bug（`timings_dump.py` F821/I001）+ 棘轮改扫 `git ls-files '*.py'`（消除本地未跟踪探针造成的 ±15 漂移）+ 按新口径重定基线；9/9 绿 | `quality-debt` |
 | T2b 真机泛化 | 数据 | 真实临床切面验证集（CACTUS 为体模） | `t2b-plane-quality` |
@@ -577,6 +596,12 @@ refresh_token 撤族「该撤没撤」留痕、emergency_signing fail-closed 留
 | `scripts/audit/p32_feedback_eval_progress.mjs` | A.62 批 3 **浏览器前后端联调**（页面文本逐项对照 `/api/v1/eval-set/stats` 当场返回，**不硬编码数字**；真机 PASS=15/FAIL=0；证据 `tests/reports/p32_feedback_eval_progress.{json,png}`） |
 | `scripts/langfuse/eval_gate.py` | A.61 门控两层（`enforced` 判红 / `informational` 仅告知 + L2 `advisory`/`gate` 双模）+ `make eval-gate` |
 | `scripts/audit/p30_evidence_chain.py` | A.62 证据链核对（读生产侧留痕 `evidence_chain` + DB，7 条反证腿；n=7 判定分布 `{PREFIX_TRUNCATED:5, MISMATCH:2}`） |
+| `scripts/audit/p36_graph_expansion_ab.py` | **A.63 WP1** 图谱扩展开/关两态对比（同进程切换开关；含救援/稀释指标；库里没边时**显式失败**）。真机：两腿 hit@1/5/10=0.9485/0.9853/0.9853、MRR=0.9635 完全一致、新增块 0 → 判定 `NOT_APPLIED`（不启用）。报告 `reports/graph_expansion_ab.json` |
+| `tests/unit/rag/test_service_graph_threshold.py` | **A.63 WP1** 守卫：图谱来源即使 `score=0.0` 也必须活过 `min_score_threshold`（正腿）+ 普通低分照旧被剔（反腿）+ `min_score_filter_applied` 计数留痕 |
+| `scripts/prompts/ragas_answer_relevancy.py` | **A.63 WP2** RAGAS 官方 answer_relevancy prompt（同 faithfulness 的 tree sha 298b6827…，含来源/路径/sha/许可 + **来源自证**：同 sha 的 faithfulness util 与本地参考副本哈希一致 `255ebb33…`） |
+| `tests/unit/quality/test_answer_relevancy.py` | **A.63 WP2** 守卫 12 例：prompt 来源/原文、余弦纯函数、**官方「全 noncommittal 归零」腿**、没测到不当 0（判官结构/嵌入故障）、**prompt 必须带 `/no_think`**、门控两项并列与 `--skip-answer-relevancy` |
+| `scripts/audit/p35_thyroid_cross_source_eval.py` + `tests/reports/t2a_tn3k_cross_source_manifest.json` | **A.63 WP3** 甲状腺跨来源评测（复用 p29 请求/指标口径）+ TN3K 冻结清单（614 条 sha256，影像级、`cross_source_eval_only`）。真机 **AUC 0.4929 [0.4438,0.5402]**；`--dataset tnscui` 分支**显式失败**（该集在 Zenodo 实际不可得） |
+| `reports/langfuse_eval_judge_a63.json` | **A.63 WP2** 同切片（n=40, raw）两指标：faithfulness **0.0906** / answer_relevance **0.3788（n=37）**；含 `per_sample[*].answer_relevance`（生成问题样本、cosine_mean、是否全 noncommittal） |
 | `UAI_EVIDENCE_CHAIN_DEBUG=1`（`app/agents/specialist/base.py`） | A.62 证据链留痕开关：打「prompt 里的块」与「落库的块」（生产侧唯一可用的核对手段：判读走 Redis 队列 → worker 进程） |
 | `scripts/langfuse/judge_eval_set.py` | A.61.7 L2 忠实度判官（RAGAS 官方 prompt **复用**；口径 raw/reasoning；判官 8006；**仪器自检**：verdict 解析为空即报错而非给 0 分）+ `make eval-judge` |
 | `GET /api/v1/eval-set/stats`（`app/api/v1/eval_set.py`） | A.61 评测集进度只读端点（缺报告/损坏均 200 + 可读原因；匿名 401）+ 反馈页只读进度区块 |

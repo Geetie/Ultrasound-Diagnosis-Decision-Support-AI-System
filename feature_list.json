@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "project": "超声诊疗决策支持 AI 系统",
   "updated_at": "2026-10-14",
-  "head_commit": "8e78aae",
+  "head_commit": "aefb104",
   "branch": "main",
   "status_legend": {
     "done": "已交付且有证据（命令/报告/测试）",
@@ -989,6 +989,33 @@
         "a62-batch3-eval-assets"
       ],
       "evidence": "21 号「分批开发计划·批 4」与「三梯队现状总览」；progress.md `## Blockers`"
+    },
+    {
+      "id": "a63-graph-expansion-verdict",
+      "name": "图谱邻居扩展：先修「开了等于没开」，再用数字裁决 —— 结论不启用",
+      "description": "①接线缺陷（真缺陷）：图谱邻居以 score=0.0 追加在 top-k 之后，而 `app/rag/service.py` 的 min_score_threshold 按分数过滤 → 阈值>0 时邻居整批被丢掉（表现为「开了等于没开」且日志无痕）。修法：只对 retrieval_source=GRAPH 显式豁免 + 留痕 min_score_filter_applied。②留痕必须区分「种子块没有边」与「邻居已被 top-k 覆盖」两种成因（第一版混为一谈，真机第一跑就把排查引向 DB）。③裁决：p36 同进程开/关两态跑 136 条 golden，hit@1/5/10 与 MRR 完全一致、新增块 0；适用面单独量化＝带边种子 0/136（命中「一篇一块」对话语料，结构上没有邻接边）；机制对照证明功能没坏（多块文档种子 +1 邻居、单块种子 0）。结论：保持默认关闭；前提＝KB 里要有长文档多块切分。",
+      "status": "done",
+      "result": "边投影现状：1257 块中 321 块带边 / 400 条边（`kb_backfill_relations.py` 跑出 to_update=0，已完整 —— 我原先「存量库没边」的假设被实测推翻）。真机两态（`scripts/audit/p36_graph_expansion_ab.py`）：关 hit@1=0.9485 / hit@5=0.9853 / hit@10=0.9853 / MRR=0.9635；开完全一致、新增块 0、救援 0 → 判定 **NOT_APPLIED（不启用）**。机制对照：`pdf_thyroid_..._0008#0000` → 出参 2（多 1 条 graph）；`dialogue_内科_2553#0000` → 出参 1（no_edges_for_seeds）。守卫：`tests/unit/rag/test_service_graph_threshold.py`（正/反/留痕三腿）+ `test_retriever_graph_expansion.py` 两腿；p27 真机 4/0（改动后）。",
+      "dependencies": [],
+      "evidence": "16 号 A.63.1；scripts/audit/p36_graph_expansion_ab.py；app/rag/service.py（豁免+留痕）；app/rag/retriever.py（成因区分）；tests/unit/rag/test_service_graph_threshold.py；reports/graph_expansion_ab.json"
+    },
+    {
+      "id": "a63-answer-relevancy-metric",
+      "name": "answer_relevancy 指标落地（RAGAS 官方口径）+ 门控并列与开关",
+      "description": "报告与门控早就预留 answer_relevance（`_RELEVANCE_MIN=0.90`、advisory/gate 分派、metrics_not_measured），缺的只是「怎么算」。做法：新增 `scripts/prompts/ragas_answer_relevancy.py`（官方 prompt 照抄，与 faithfulness 同 tree sha 298b6827…，含来源自证）；`judge_eval_set.py` 实现官方公式 score = mean(cos(生成问题, 原始问题)) × int(not 全部 noncommittal)，strictness=3；解析失败/嵌入不可用一律 None + error（不当作 0 分）。真机第一跑只有 2/40 测到 —— 真因是判官先吐 <think> 把 256 token 吃光（漏 /no_think），修后 37/40。",
+      "status": "done",
+      "result": "真机（同评测集同切片 `--answer-mode raw --limit 40`）：faithfulness **0.0906**（与 A.62.14 逐位一致 → 口径自证）；**answer_relevance 0.3788（n=37）**，生成问题数全为 3、其中 5 条因「全 noncommittal」被官方公式归零、分数区间 0.0000~0.6622；未测到 3 条原因全是「缺 clinical_text」（不是判官/嵌入故障）。门控侧两项指标并列 + `--skip-answer-relevancy`（显式关闭，与「报告为 null」分开说明）。**建议仍不切 --judge-mode gate**（两指标均远低于 0.95/0.90，根因与 A.62.14 同源：影像所见不在知识库块里）。守卫：`tests/unit/quality/test_answer_relevancy.py` 12 例（来源/原文、余弦纯函数、官方归零腿、没测到不当 0、/no_think 必须在、门控并列与开关）。",
+      "dependencies": [],
+      "evidence": "16 号 A.63.2；scripts/prompts/ragas_answer_relevancy.py；scripts/langfuse/judge_eval_set.py；scripts/langfuse/eval_gate.py；tests/unit/quality/test_answer_relevancy.py；reports/langfuse_eval_judge_a63.json"
+    },
+    {
+      "id": "a63-thyroid-cross-source-eval",
+      "name": "甲状腺跨来源公开集评测（TNSCUI 不可得 → 改 TN3K）+ 三口径分列",
+      "description": "用户 2026-10-15 放宽「非可商用公开集也可用」。计划的 TNSCUI 经复核**取不到**（Zenodo 10.5281/zenodo.3715942 仅含论文 PDF；API 搜索无数据集记录；`data/us_datasets/*.zip` 全是 4KB 占位）→ 脚本对该分支显式失败，改用服务器已有 TN3K（614 张 + label4test.csv）。许可按 14 号台账 CC BY-NC（数据集 README 自称 mit，冲突 → 取更保守口径）：仅评测、不训练、不进注册申报；无 patient_id → 冻结清单标影像级。",
+      "status": "done",
+      "result": "冻结清单 `tests/reports/t2a_tn3k_cross_source_manifest.json`（614 条 sha256）。生产 8003 端点复跑（`scripts/audit/p35_thyroid_cross_source_eval.py`，复用 p29 指标口径）：**AUC(恶性 vs 良性) = 0.4929，95%CI [0.4438, 0.5402]**（近似随机）、敏感性@0.5 0.9068、特异性@0.5 0.0767、准确率 0.3893，614/614 全部成功分类。**与旧探针 0.6789（n=1228，tests/reports/t2a_tn3k_generalization.json）不一致 → 登记待查**（调用路径/资产口径不同，不取高者）。三口径分列（禁止合并引用）：开发集 0.8751 / 公开集 held-out(AUL) 0.8950 [0.8712,0.9168] / **跨来源(TN3K) 0.4929 [0.4438,0.5402]**。",
+      "dependencies": [],
+      "evidence": "16 号 A.63.3；14 号 §2.2（A.63 复核行）；scripts/audit/p35_thyroid_cross_source_eval.py；tests/reports/t2a_tn3k_cross_source_manifest.json；reports/t2a_tn3k_cross_source.json"
     },
     {
       "id": "evidence-chain-crag-path",

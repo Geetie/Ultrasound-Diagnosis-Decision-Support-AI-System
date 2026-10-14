@@ -5,7 +5,12 @@
 
 ## Last Updated
 
-2026-10-14（分支 `main`；**A.62 批 2 尾段已交付** —— 后端静默**全仓归零 263 → 0**（134 文件，只加留痕）；批 2 前四段 / 批 1 尾段 / 批 3 第一段 / 批 4 亦已交付）。
+2026-10-15（分支 `main`；**A.63 RAG / 模型三件可做项已交付** —— 图谱扩展裁决（不启用）、answer_relevancy 指标落地、甲状腺跨来源评测；上一轮 A.62 批 2 尾段亦已交付）。
+
+- **A.63① 图谱邻居扩展：修好接线 + 数字裁决**。真缺陷＝`app/rag/service.py` 的 `min_score_threshold` 把 `score=0.0` 的图谱邻居整批吞掉（**开了等于没开**）→ 只对 `retrieval_source=GRAPH` 豁免 + 留痕 `min_score_filter_applied`；`app/rag/retriever.py` 把「种子没边」与「邻居已被 top-k 覆盖」**分开留痕**（第一版混为一谈，真机第一跑就被引向错误方向）。**裁决**（`scripts/audit/p36_graph_expansion_ab.py`，136 条 golden 同进程开/关）：两腿 hit@1/5/10 = 0.9485/0.9853/0.9853、MRR 0.9635 **完全一致**、新增块 **0**；**适用面＝带边种子 0/136**（命中「一篇一块」对话语料）；机制对照：多块文档种子 +1 邻居、单块种子 0 → **结论：保持 `graph_query_enabled=False`**，前提是 KB 要有长文档多块切分。边投影其实已完整（321 块/400 条，`kb_backfill_relations.py` → `to_update=0`）。
+- **A.63② answer_relevancy 落地**：官方 prompt 照抄（`scripts/prompts/ragas_answer_relevancy.py`，与 faithfulness **同 tree sha 298b6827…**，并**来源自证**：同 sha 抓的 faithfulness util 与本地参考副本 sha256 一致）；官方公式 `mean(cos(生成问题, 原始问题)) × int(not 全部 noncommittal)`、strictness=3。**真机第一跑只有 2/40 测到**——真因是判官先吐 `<think>` 把 256 token 吃光（漏 `/no_think`）→ 修后 **37/40**。最终同切片：**faithfulness 0.0906**（与 A.62.14 逐位一致）/ **answer_relevance 0.3788**（生成问题数全为 3，5 条按官方规则归零，区间 0.0000~0.6622）。门控两项并列 + `--skip-answer-relevancy`。
+- **A.63③ 跨来源评测**：计划的 **TNSCUI 取不到**（Zenodo `10.5281/zenodo.3715942` 只有论文 PDF；API 搜索无数据集记录；`data/us_datasets/*.zip` 全是 4 KB 占位）→ 脚本 `--dataset tnscui` **显式失败**，改用 TN3K（614 张；冻结清单 `tests/reports/t2a_tn3k_cross_source_manifest.json`；许可按 14 号 NC、只评测不训练）。生产 8003 端点 **AUC 0.4929 [0.4438, 0.5402]**、sens@0.5 0.9068 / spec@0.5 0.0767、614/614 无失败 → **与旧探针 0.6789（n=1228）不一致，登记待查**。三口径分列＝开发集 0.8751 / AUL 公开集 0.8950 / TN3K 跨来源 **0.4929**。
+- **本机门禁**：`pytest tests/unit` 全量 **6693 passed / 0 failed / 4 skipped**；`tests/unit/rag + quality` 全绿（棘轮：新文件曾把 ruff `I001`/`E402` 顶上去、静默判据判过我新写的两处 `except` → 已就地修，**新代码同样要过零静默与 ruff**）。
 
 - **批 2-A 证据链（CRAG 路径）**：成因 `app/fusion/crag.py:450-458`（CRAG 新块并入落库证据）＋ `crag.py:546-554` 写的 `crag_evidence_chunks` **全仓无消费者**、`_build_specialist_context`（`563-570`）也没把 `clinical_context` 传给 reinvoke → 新块**从未进 prompt 却进了 knowledge_ids**。已补 CRAG 留痕、p30 新判定 `CRAG_SUPPLEMENT`（反证腿 9 条）、修 `--all` 假 PASS。真机 n=5：甲状腺 2/2 `PREFIX_TRUNCATED`、心脏 3/3 `CRAG_SUPPLEMENT`（模型未见 4~5 块）。**修法 A/B 待 00 号拍板**；拍板前 `knowledge_ids` 不是「结论依据」的完整凭据。
 - **批 2-B 静默收敛三段**：observability 32→0 / rag+fusion 16→0 / security+services+safety_gateway+edge+integrations 37→0；全仓 **348→263 处**（基线两段更新）。
@@ -16,6 +21,33 @@
 - **批 2-D**：全量偶发**已复现并修掉** —— `sec` 密钥版本用例在全量顺序下 `DID NOT RAISE RuntimeError`，根因是「旧密钥记录存在且可解 → 兼容解密返回」这条正常契约分支被别处 leak 的 Redis mock 触发，而用例假设「版本+999 必然查不到旧密钥」→ 代码改为**显式抛约定异常** + 用例拆两条顺序无关；全量 `pytest tests/unit`（独占）**0 failed / 6602 passed**。
 
 - **批 1 尾段（口径 C）**：批 1 第 3 项交付时口径 C **只是个名字**（`--answer-mode` 只认 `raw`/`reasoning`，代码里没有该模式；A.62.2 里那句"数字已给出"属无证据断言，已就地更正）。本轮实现 `scripts/langfuse/answer_modes.py` + `--answer-mode derived_stripped`，并把结论正文的机器字段标记抽成 app 侧 SSOT（`app/inference/grading_definitions.FIELD_MARKERS_*`，分级抽取与评测口径共用）。**三口径同切片（n=40）实测：A 0.0906 / B 0.1258 / C 0.0836**，口径 C 重复跑一次**逐样本零差异**（判官无噪声）。**结论：口径之间只值 ~0.03 → 不要切 `--judge-mode gate`**（切换判据四条见其 help）。详见 16 号 A.62.14。
+
+### A.63 复跑入口与踩坑（下一位直接用）
+
+- **图谱扩展开/关两态**（服务器，无需重启服务；脚本自己切换开关）：
+  `cd ~/uai/src && set -a && source ~/uai/.env && set +a && ~/uai/venv/bin/python scripts/audit/p36_graph_expansion_ab.py`
+  → 报告 `~/uai/reports/graph_expansion_ab.json`；退出码 0（GAIN/NO_GAIN）/1（REGRESSION）/2（前置缺失：
+  golden 缺失、**库里没边**）。看 `compare.rescue_count` 与 `leg_graph_on.neighbors_total`。
+  **想让图谱真有收益的前提**：知识库里得有长文档多块切分（当前对话语料一篇一块 → 适用面 0/136）。
+- **两项指标并列**（服务器，需判官 8006 + 嵌入 8004）：
+  `cd ~/uai/src && set -a && source ~/uai/.env && set +a && ~/uai/venv/bin/python scripts/langfuse/judge_eval_set.py --eval-set ~/uai/data/eval/double_engine_eval_set.jsonl --report ~/uai/reports/langfuse_eval_judge_a63.json --judge-url http://127.0.0.1:8006 --model Qwen3-8B --limit 40 --answer-mode raw`
+  → 报告顶层 `faithfulness` / `answer_relevance` 是**数字或 null**（门控按 float 读）；逐条明细在
+  `per_sample[*].answer_relevance`。再看 `eval_gate.py --judge-report <报告>`（两项并列；
+  `--skip-answer-relevancy` 是「本次不判」，与「报告为 null（未测到）」是两件事）。
+- **跨来源评测**（服务器，需 8003）：
+  `~/uai/venv/bin/python scripts/audit/p35_thyroid_cross_source_eval.py --dataset tn3k --data-dir ~/uai/data/tn3k_dataset --clip-url http://127.0.0.1:8003 --report ~/uai/reports/t2a_tn3k_cross_source.json`
+  清单在**仓库里** `tests/reports/t2a_tn3k_cross_source_manifest.json`（复跑会逐条校验 sha256，换集立刻失败）；
+  `--dataset tnscui` 会**显式失败**并说明该集在 Zenodo 实际不可得（别当脚本坏）。
+- **踩坑（A.63 新增，都会再犯）**：
+  ① **判官必须 `/no_think`**：漏了它，Qwen3-8B 先吐一整段 `<think>`，小 `max_tokens` 被吃光 →
+  表现为"解析不出 JSON"的**假未测到**（实测 40 条里 35 条）。
+  ② **"没测到"与"低分"必须分开**：第一版 answer_relevance 只有 2/40 测到、给 0.51，
+  若按 0 计会被读成"模型很差"；现在一律 `None + error`，门控记 `not_measured`。
+  ③ **脚本自举**：新脚本一律 `sys.path.insert(0, 仓库根)`，别指望外部 `PYTHONPATH`
+  （本轮 `kb_backfill_relations.py` 与 `judge_eval_set.py` 各踩一次 `No module named 'app'`）。
+  ④ **分次 `git add` 会造出「测试已提交、实现未提交」的中间态**：`6f13fd3` 里测试带着
+  「成因区分」用例进了仓库而实现没进 → 该提交上这条用例会红；已用 `aefb104` 补提交。
+  **跨文件改动一次 `git add` 到位，提交前跑一次触及包的测试。**
 
 ### A.62 批 1 尾段（L2 三口径）复跑入口
 
