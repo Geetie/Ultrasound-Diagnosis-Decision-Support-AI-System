@@ -503,7 +503,7 @@ refresh_token 撤族「该撤没撤」留痕、emergency_signing fail-closed 留
 | 阻塞项 | 类型 | 解除条件 | 影响 feature |
 |---|---|---|---|
 | faithfulness 95% 门控 | 口径/语料 | **A.61 更新：判官机制已接入**（RAGAS 官方 prompt + 独立判官 8006）；实质阻塞改为①**口径决策**（结论里的系统派生分级/总分是否计入 → 同一批样本 0.0798 vs 0.1891）②**`knowledge_ids` 与生成上下文是否一致**（证据链完整性） | `faithfulness-gate`、`eval-set-l2-judge` |
-| 评测集 `doctor_labeled ≥50` | 临床使用/运营 | 医生真实提交修正类反馈（`feedback_type='correction'`）；**代码侧已就绪**（采集器按 `request_id` 关联正确口径 + 进度条上屏），实测 0/50 | `langfuse-eval-pipeline` |
+| 评测集 `doctor_labeled ≥50` | 临床使用/运营 | 医生真实提交修正类反馈（`feedback_type='correction'`）。**A.62 批 3 更新**：通道原先**是断的**（前端自造 `request_id` + 会话丢失 → 提交必 404），本轮已修并**闭环实测 0 → 1/50**（探针提交，`source=doctor_correction`）；剩 49 例只欠医生本人使用 | `langfuse-eval-pipeline` |
 | 医生标注配合量 | 临床使用/产品 | **一页纸清单已就绪**（21 号批 3 附件）：每次 1~2 分钟、约 1~2 人小时可攒满 50 例；界面在反馈页「评测集进度」区块可对照进度 | `langfuse-eval-pipeline` |
 | 甲状腺注册数据 | 管理决策 + 授权 | 自有/合作医院或授权采购 | `thyroid-registry-data`、`nmpa-materials` |
 | 核心覆盖率 90% | 真机依赖 | SoftHSM 签名字节、真实 Redis 语义可测 | `coverage-core` |
@@ -532,6 +532,7 @@ refresh_token 撤族「该撤没撤」留痕、emergency_signing fail-closed 留
 | `scripts/langfuse/docker-compose.yml` | A.61 Langfuse 自托管栈（关键约束：**`REDIS_CONNECTION_STRING` 必须设**（镜像不读 `REDIS_URL`）+ **worker 必须用 `langfuse-worker:3` 镜像**（与 web 不同镜像）；摄取成功判据 = worker 日志 `otel-ingestion-queue executor started` + `traces` 增长） |
 | `scripts/langfuse/collect_eval_set.py` | A.61 评测集采集（业务库来源：`diagnosis_results` + `feedback_records`（=正确口径）+ `dicom_images`；真机 168 条 / `skipped_no_image` 显式计数；退出码 0/1/2）。**A.62 批 3 修**：去重口径 = 同患者同影像（患者取自 `DiagnosisSession`，三级回退），并输出 `patient_count`/`patient_id_missing`/`dedup_reason` |
 | `tests/unit/quality/test_collect_eval_set_keys.py` | A.62 批 3 去重口径守卫 **7 例**（三态键 / 同患者多影像不合并 / 同影像必合并 / 患者 ID 不同必分开 / 源码必须保留会话级回退） |
+| `scripts/audit/p33_doctor_actions.mjs` | A.62 批 3 **医生操作动作验证**（登录→建会话→上传真实影像→出结论→提交修正反馈；真机 13/0；抓到并修掉「反馈提交必 404」；含「反馈挂在本次判读上」的挂载正确性断言） |
 | `scripts/audit/p32_feedback_eval_progress.mjs` | A.62 批 3 **浏览器前后端联调**（页面文本逐项对照 `/api/v1/eval-set/stats` 当场返回，**不硬编码数字**；真机 PASS=15/FAIL=0；证据 `tests/reports/p32_feedback_eval_progress.{json,png}`） |
 | `scripts/langfuse/eval_gate.py` | A.61 门控两层（`enforced` 判红 / `informational` 仅告知 + L2 `advisory`/`gate` 双模）+ `make eval-gate` |
 | `scripts/audit/p30_evidence_chain.py` | A.62 证据链核对（读生产侧留痕 `evidence_chain` + DB，7 条反证腿；n=7 判定分布 `{PREFIX_TRUNCATED:5, MISMATCH:2}`） |

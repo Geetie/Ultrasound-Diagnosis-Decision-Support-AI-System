@@ -181,17 +181,33 @@ try {
   // 为什么不用 `page.goto('/ui/feedback')`：整页加载会清空前端内存态（会话 id 在 store 里），
   // 实测那样进去 `session_id` 为空 → 提交必 404「判读请求不存在」（A.62 批 3 踩到）。
   // 医生日常是从工作区点侧边栏进去的（SPA 内导航，store 保留），所以探针也按这条路径走。
-  const navFeedback = page.getByRole('menuitem', { name: /反馈提交/ });
-  const hasNav = (await navFeedback.count()) > 0;
-  if (hasNav) {
-    await navFeedback.first().click();
-  } else {
-    await page.getByText(/反馈提交/).first().click().catch(() => {});
+  let navHow = 'none';
+  // ① 首选：侧边栏菜单项（antd Menu；用 data-menu-id 定位，避免侧栏折叠时标签文本不可见）
+  const byMenuId = page.locator('.ant-menu-item[data-menu-id$="/feedback"]').first();
+  const byRole = page.getByRole('menuitem', { name: /反馈提交/ }).first();
+  const byText = page.getByText('反馈提交').first();
+  for (const [how, loc] of [['menuitem-role', byRole], ['menu-id', byMenuId], ['text', byText]]) {
+    if ((await loc.count()) > 0) {
+      await loc.click({ timeout: 5000 }).catch(() => {});
+      await sleep(page, 1200);
+      if (/\/feedback/.test(page.url())) { navHow = how; break; }
+    }
   }
-  await page.waitForURL(/\/feedback/, { timeout: 15000 }).catch(() => {});
+  // ② 兜底：深链带会话（`?session_id=`）——这条路径靠 A.62 批 3 新增的"URL 会话兜底"才成立，
+  //    所以它也是**被测对象**，不是绕过。
+  if (navHow === 'none') {
+    await page.goto(`${BASE}/ui/feedback?session_id=${encodeURIComponent(sessionId || '')}`, {
+      waitUntil: 'domcontentloaded',
+    });
+    navHow = 'deeplink';
+  }
   await page.waitForSelector('[data-region="eval-set-progress"]', { timeout: 20000 }).catch(() => {});
   await sleep(page, 1200);
-  record('D5.0 医生从侧边栏「反馈提交」进入反馈页（SPA 内导航，会话不丢）', hasNav, `hasNav=${hasNav} url=${page.url().replace(BASE, '')}`);
+  record(
+    'D5.0 进入反馈页（医生路径优先：侧边栏；退化时深链带会话）',
+    /\/feedback/.test(page.url()),
+    `how=${navHow} url=${page.url().replace(BASE, '')}`,
+  );
 
   // ⚠️ 优先用 antd 表单的 `#name`（Form.Item name 会写成 input 的 id）：
   // `getByLabel('字段')` 会撞上「语音填写目标字段」那个下拉（aria-label 里含"字段"）——

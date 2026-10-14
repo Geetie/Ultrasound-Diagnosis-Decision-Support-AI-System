@@ -21,6 +21,7 @@
 - **患者维度上屏**：`curl -s http://127.0.0.1:18000/api/v1/eval-set/stats`（带 token）应见
   `patient_count` / `patient_id_missing` / `dedup_reason`；反馈页「评测集进度」区块底部显示
   「不同患者 N 人 · 去重口径 …」。
+- **医生操作动作验证（改反馈/会话相关代码后必跑）**：`node scripts/audit/p33_doctor_actions.mjs --dicom <多帧样本> --organ 甲状腺`（本机经隧道）—— 走完整医生动作序列并断言「反馈挂在**本次判读**上」；真机 13/0。**它抓到过的真 bug**：前端自造 `request_id` + 会话丢失 → 提交必 404（评测集医生标注永远 0）。闭环复核：`collect_eval_set.py` 看 `医生标注坏例` 是否 +1，再用 `p32` 看界面数字。
 - **医生标注配合清单**：21 号「批 3」节末尾附件（一页纸）；进度可在反馈页对照。
 - **浏览器联调（必跑，别只信 curl）**：`ssh -N -L 8000:127.0.0.1:18000 student03@…` 起隧道 →
   `UAI_BASE_URL=http://127.0.0.1:8000 UAI_DOCTOR_USER=smoke-doctor UAI_DOCTOR_PASSWORD=$(cat 口令) \
