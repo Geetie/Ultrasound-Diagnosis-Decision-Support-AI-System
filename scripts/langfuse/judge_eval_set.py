@@ -72,6 +72,10 @@ _MAX_TOKENS = 2048
 #: bge-m3 嵌入服务默认地址（answer_relevancy 官方口径要用它算余弦）。
 _BGE_URL_DEFAULT = "http://127.0.0.1:8004"
 
+#: answer_relevancy 单次判官输出上限。输出很短（一个 JSON 对象），
+#: 但**必须留余量**：prompt 末尾虽已有 `/no_think`，判官偶发仍会先吐思考块（A.63 实测）。
+_AR_MAX_TOKENS = 512
+
 
 def _judge_chat(url: str, model: str, messages: list[dict], max_tokens: int = _MAX_TOKENS) -> str:
     """带 max_tokens 的判官调用（其余与 `t1_eval_faithfulness._chat` 同款：temperature=0）。"""
@@ -171,24 +175,26 @@ def _faithfulness_of(item: dict, judge_url: str, model: str, answer_mode: str = 
 
 
 def _render_answer_relevance_prompt(answer: str) -> str:
-    """官方 BasePrompt 渲染方式：instruction + 示例对 + 真实输入。"""
-    lines = [ANSWER_RELEVANCE_INSTRUCTION, ""]
-    for ex_answer, ex_question, ex_noncommittal in ANSWER_RELEVANCE_EXAMPLES:
-        lines += [
-            "示例：",
-            f"回答：{ex_answer}",
-            "输出："
-            + json.dumps(
-                {"question": ex_question, "noncommittal": ex_noncommittal},
-                ensure_ascii=False,
-            ),
-            "",
-        ]
-    lines += [
-        "现在处理下面这一条（只输出 JSON，不要解释）：",
-        f"回答：{answer}",
-    ]
-    return "\n".join(lines)
+    """官方 BasePrompt 渲染 + 本仓库判官的适配（写法对齐 `t1_eval_faithfulness`）。
+
+    官方用 instructor 强制输出结构；本地判官（8006，llama.cpp + Qwen3-8B GGUF）没有这层，
+    所以按仓库既有写法把「输出的 JSON 形状」写进 prompt，并**以 `/no_think` 收尾**。
+
+    ⚠️ A.63 实测教训：少了 `/no_think`，判官先吐一整段 `<think>`，256 token 被吃光 →
+    40 条里 **35 条**解析不出 JSON（表现为假"未测到"，不是判官坏）。
+    """
+    ex_answer, ex_question, ex_noncommittal = ANSWER_RELEVANCE_EXAMPLES[0]
+    return (
+        f"{ANSWER_RELEVANCE_INSTRUCTION}\n\n"
+        f"Example:\nAnswer: {ex_answer}\n"
+        "Output(JSON): "
+        + json.dumps(
+            {"question": ex_question, "noncommittal": ex_noncommittal},
+            ensure_ascii=False,
+        )
+        + f"\n\nAnswer: {answer}\n"
+        "Output(JSON only): /no_think"
+    )
 
 
 def _cosine(a: list[float], b: list[float]) -> float:
@@ -239,7 +245,7 @@ def _answer_relevancy_of(
             judge_url,
             model,
             [{"role": "user", "content": _render_answer_relevance_prompt(answer)}],
-            max_tokens=256,
+            max_tokens=_AR_MAX_TOKENS,
         )
         # ⚠️ `_extract_json` 的契约是**抛 ValueError**（不是返回 None）——
         # 单条坏回复不能让整样本失败：官方做法也只是"有多少问题用多少"。

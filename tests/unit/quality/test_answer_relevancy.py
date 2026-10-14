@@ -81,6 +81,9 @@ class TestScoring:
         assert "Generate a question for the given answer" in rendered
         assert "左叶低回声结节，边界清。" in rendered
         assert '"noncommittal"' in rendered  # 示例以官方 JSON 形态给出
+        # A.63 实测教训：少 `/no_think` 时判官先吐 <think> 把 token 吃光 →
+        # 40 条里 35 条解析不出 JSON（假"未测到"）。这条必须钉住。
+        assert "/no_think" in rendered
 
     def _patch(self, monkeypatch, judge, judge_returns, embed_returns):
         monkeypatch.setattr(judge, "_judge_chat", lambda *a, **k: judge_returns.pop(0))
