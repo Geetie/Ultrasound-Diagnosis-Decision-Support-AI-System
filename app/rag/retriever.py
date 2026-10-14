@@ -270,6 +270,9 @@ class Retriever:
             if c.chunk.chunk_id
         ]
         added: list[ScoredChunk] = []
+        fetched = 0
+        duplicates = 0
+        invalid = 0
         for seed_id in seeds:
             if len(added) >= self._graph_neighbor_limit:
                 break
@@ -283,10 +286,15 @@ class Retriever:
                     error_type=type(exc).__name__,
                 )
                 break
+            fetched += len(neighbors)
             for nb in neighbors:
                 if len(added) >= self._graph_neighbor_limit:
                     break
-                if not nb.chunk_id or nb.chunk_id in seen_ids:
+                if not nb.chunk_id:
+                    invalid += 1
+                    continue
+                if nb.chunk_id in seen_ids:
+                    duplicates += 1
                     continue
                 seen_ids.add(nb.chunk_id)
                 added.append(
@@ -302,17 +310,28 @@ class Retriever:
                 "graph_neighbors_appended",
                 seeds=len(seeds),
                 added=len(added),
+                fetched=fetched,
+                duplicates=duplicates,
             )
         else:
-            # A.63 批 WP1：门控开着却一条邻居都没加上时留痕。
-            # 典型成因：存量库从未跑过 `scripts/kb_backfill_relations.py`
-            # （边投影在 `knowledge_chunks.metadata.relations` 里，只有新建库由
-            # `app/knowledge/builder.py::_attach_relations` 写入）→ 开关打开也是空转。
-            # 没有这条留痕时，"开了但没用"在日志里完全不可见。
+            # A.63 批 WP1：门控开着却一条邻居都没加上时留痕，且**必须区分两种成因**
+            # （把它们混为一谈会误导排查方向 —— 实测真机第一跑就是这个坑）：
+            #   * no_edges_for_seeds：种子块自己没有 relations（存量库没回填，或
+            #     该文档只有一个 chunk）→ 跑 `scripts/kb_backfill_relations.py`；
+            #   * all_neighbors_already_retrieved：adapter 拿到了邻居，但它们**已经**
+            #     在本次 top-k 里（相邻块语义相近，常被一起检索到）→ 这是**正常结果**，
+            #     意味着"图谱扩展在本查询上没有新增信息"，不是故障。
             logger.info(
                 "graph_neighbors_empty",
                 seeds=len(seeds),
-                hint="检查 knowledge_chunks.metadata.relations 是否已回填",
+                fetched=fetched,
+                duplicates=duplicates,
+                invalid=invalid,
+                reason=(
+                    "no_edges_for_seeds"
+                    if fetched == 0
+                    else "all_neighbors_already_retrieved"
+                ),
             )
         return chunks + added
 
