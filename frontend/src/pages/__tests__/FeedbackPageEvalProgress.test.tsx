@@ -25,6 +25,9 @@ function statsBody(overrides: Record<string, unknown> = {}) {
       deduped: 100,
       undedupable: 3,
       skipped_no_image: 17,
+      patient_count: 12,
+      patient_id_missing: 0,
+      dedup_reason: { patient_image: 120 },
       doctor_labeled: 5,
       targets: { total: 700, doctor_labeled: 50 },
       progress: { samples: 100 / 700, doctor_labeled: 0.1 },
@@ -49,6 +52,9 @@ describe('FeedbackPage · 评测集进度区块（只读）', () => {
     });
     expect(screen.getByText(/医生标注坏例（含正确口径）：5 \/ 50/)).toBeInTheDocument();
     expect(screen.getByText(/判读总数 120 · 无法去重 3/)).toBeInTheDocument();
+    // A.62 批 3：患者维度上屏 —— 「700 例」的真实刻度是不同患者数
+    expect(screen.getByText(/不同患者 12 人/)).toBeInTheDocument();
+    expect(screen.getByText(/patient_image:120/)).toBeInTheDocument();
   });
 
   it('尚未采集（available=false）：给可读原因，不显示假的 0/700 进度条', async () => {

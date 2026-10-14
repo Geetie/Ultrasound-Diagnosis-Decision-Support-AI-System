@@ -62,6 +62,9 @@ def test_有报告时字段与进度透传(as_doctor, monkeypatch, tmp_path):
         "deduped": 100,
         "undedupable": 3,
         "skipped_no_image": 17,
+        "patient_count": 12,
+        "patient_id_missing": 0,
+        "dedup_reason": {"patient_image": 120},
         "doctor_labeled": 5,
         "dedup_basis": {"sop_instance_uid": 97, "none": 3},
         "targets": {"total": 700, "doctor_labeled": 50},
@@ -77,6 +80,10 @@ def test_有报告时字段与进度透传(as_doctor, monkeypatch, tmp_path):
     assert body["deduped"] == 100 and body["total"] == 120
     assert body["doctor_labeled"] == 5 and body["undedupable"] == 3
     assert body["skipped_no_image"] == 17  # 无影像的判读显式计数（不静默丢样本）
+    # A.62 批 3：患者维度必须透传 —— 「700 例」的真实刻度是不同患者数，不是样本条数
+    assert body["patient_count"] == 12
+    assert body["patient_id_missing"] == 0
+    assert body["dedup_reason"] == {"patient_image": 120}
     assert body["targets"] == {"total": 700, "doctor_labeled": 50}
     # 进度比例（界面进度条直接消费）
     assert body["progress"]["samples"] == pytest.approx(100 / 700, abs=1e-4)

@@ -46,6 +46,15 @@ class EvalSetStats(BaseModel):
     deduped: int = 0
     undedupable: int = 0
     skipped_no_image: int = Field(default=0, description="无影像的判读（纯文本腿）未入集的数量")
+    # A.62 批 3：**不同患者数**才是"700 例"的真实分母刻度（168 条可能只来自 12 位患者）。
+    # 只给聚合计数，仍不涉及任何患者标识 —— 不是 PHI。
+    patient_count: int = Field(default=0, description="不同患者数（样本数的真实刻度）")
+    patient_id_missing: int = Field(
+        default=0, description="取不到患者 ID 的判读数（>0 表示去重已降级为按影像）"
+    )
+    dedup_reason: dict[str, int] = Field(
+        default_factory=dict, description="去重口径分布：patient_image / image_only / no_basis"
+    )
     doctor_labeled: int = 0
     targets: dict[str, int] = Field(default_factory=dict)
     progress: dict[str, float] = Field(default_factory=dict)
@@ -94,6 +103,9 @@ def read_stats() -> EvalSetStats:
             deduped=deduped,
             undedupable=int(data.get("undedupable") or 0),
             skipped_no_image=int(data.get("skipped_no_image") or 0),
+            patient_count=int(data.get("patient_count") or 0),
+            patient_id_missing=int(data.get("patient_id_missing") or 0),
+            dedup_reason=data.get("dedup_reason") or {},
             doctor_labeled=doctor_labeled,
             targets=targets,
             progress={

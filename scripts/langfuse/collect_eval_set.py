@@ -13,7 +13,7 @@
 | 输出 | 同上，`findings` JSONB 里的 `fusion_result.content` | 结论正文；`confidence` |
 | 正确口径 | `feedback_records`（`FeedbackRecord`） | `feedback_type='correction'` → `content.{field,original_value,corrected_value,reason}` |
 | **检索上下文** | `knowledge_chunks`（`KnowledgeChunkModel`） | 按 `diagnosis_results.knowledge_ids` 取 chunk 正文（**L2 忠实度判官的必要输入**） |
-| 去重键 | `dicom_images`（`DicomImage`） | `sop_instance_uid` → `image_id` → `storage_path` |
+| 去重键 | `DiagnosisSession.patient_id` + `dicom_images`（`DicomImage`） | 患者 ID（会话为准，回退影像） + `sop_instance_uid` → `image_id` → `storage_path`；口径 = **同患者同影像** |
 
 去重键 = `(patient_id, 影像标识)`：**同一患者的同一张影像只入集一次**（多帧/多次判读
 不算新样本）。影像标识缺失者**显式计入 `undedupable`**（不静默丢弃、也不假装去重过）。
@@ -60,6 +60,25 @@ def _conclusion_of(findings: object) -> str:
     return rec if isinstance(rec, str) else ""
 
 
+def _dedup_key(patient_id: str, basis_value: str, request_id: str) -> tuple[str, str]:
+    """去重键（**纯函数**，便于单测）：口径 = 同患者同影像。
+
+    | 输入 | 键 | reason |
+    |---|---|---|
+    | 有患者 ID + 有影像标识 | `患者|影像标识` | `patient_image` |
+    | 无患者 ID + 有影像标识 | `img:影像标识` | `image_only`（**降级**：同一患者的多张影像不再合并，计数偏大） |
+    | 无影像标识 | `req:request_id` | `no_basis`（退化到请求级，调用方计入 `undedupable`） |
+
+    为什么要显式返回 `reason`：A.61 版只判断"键长什么样"，于是「`patient_id` 恒为空」这个
+    真 bug 被"看起来有键"掩盖了（2026-10-14 复核才暴露，见 16 号 A.62.11）。
+    """
+    if basis_value:
+        if patient_id:
+            return f"{patient_id}|{basis_value}", "patient_image"
+        return f"img:{basis_value}", "image_only"
+    return f"req:{request_id}", "no_basis"
+
+
 def _image_basis(image_row: object) -> tuple[str, str]:
     """返回 (影像标识, 依据名)。优先级：SOPInstanceUID > image_id > storage_path。"""
     for attr, name in (
@@ -79,6 +98,7 @@ async def _collect(args) -> tuple[list[dict], dict]:
     from app.config.database import AsyncSessionLocal
     from app.models.database import (
         DiagnosisResult,
+        DiagnosisSession,
         DicomImage,
         FeedbackRecord,
         KnowledgeChunkModel,
@@ -88,6 +108,8 @@ async def _collect(args) -> tuple[list[dict], dict]:
     dedup_basis = defaultdict(int)
     undedupable = 0
     skipped_no_image = 0
+    patient_id_missing = 0
+    dedup_reason: dict[str, int] = defaultdict(int)
 
     async with AsyncSessionLocal() as session:
         # ① 修正反馈：request_id → 正确口径（可能多条，全部保留）
@@ -117,6 +139,20 @@ async def _collect(args) -> tuple[list[dict], dict]:
         image_basis: dict[str, tuple[str, str]] = {
             str(r.image_id): _image_basis(r) for r in img_rows
         }
+        # ②a 会话 → 患者：**`DiagnosisResult` 没有 `patient_id` 列**（患者在 `DiagnosisSession` 上）。
+        # A.61 版只读 `patient_context.patient_id`（探针数据里为空）→ `patient_id` 恒空 →
+        # 去重退化成「按影像」而不是设计口径「同患者同影像」（2026-10-14 复核发现，见 16 号 A.62.11）。
+        sess_rows = (
+            await session.execute(
+                select(DiagnosisSession.session_id, DiagnosisSession.patient_id)
+            )
+        ).all()
+        session_patient: dict[str, str] = {
+            str(sid): str(pid or "") for sid, pid in sess_rows
+        }
+        image_patient: dict[str, str] = {
+            str(r.image_id): str(getattr(r, "patient_id", "") or "") for r in img_rows
+        }
 
         # ②b 检索块：chunk_id → 正文（L2 忠实度判官的输入；KB 规模 ~1.3k 块，直接全量取）
         chunk_rows = (
@@ -133,29 +169,36 @@ async def _collect(args) -> tuple[list[dict], dict]:
         res_rows = (await session.execute(stmt)).scalars().all()
 
         for r in res_rows:
-            patient_id = ""
             ctx = getattr(r, "patient_context", None)
+            patient_id = ""
             if isinstance(ctx, dict):
                 patient_id = str(ctx.get("patient_id") or "")
             basis_name = "none"
             basis_value = ""
+            basis_image = ""
             for iid in getattr(r, "image_ids", None) or []:
                 ident, basis = image_basis.get(str(iid), ("", "none"))
                 if ident:
-                    basis_name, basis_value = basis, ident
+                    basis_name, basis_value, basis_image = basis, ident, str(iid)
                     break
+            # 患者 ID 三级回退：判读自带的患者上下文 → **会话**（权威）→ 影像记录
+            if not patient_id:
+                patient_id = session_patient.get(str(getattr(r, "session_id", "")), "")
+            if not patient_id and basis_image:
+                patient_id = image_patient.get(basis_image, "")
+            if not patient_id:
+                patient_id_missing += 1
             # 「双引擎」评测样本必须有影像：无影像的判读（纯文本腿）**不进评测集**，
             # 但必须**显式计数**（静默丢样本与静默失败同罪）。
             if not getattr(r, "image_ids", None):
                 skipped_no_image += 1
                 continue
-            if basis_value:
-                dedup_key = f"{patient_id}|{basis_value}" if patient_id else f"img:{basis_value}"
-            else:
+            dedup_key, reason = _dedup_key(patient_id, basis_value, str(r.request_id))
+            dedup_reason[reason] += 1
+            if reason == "no_basis":
                 # 有影像但取不到稳定标识（sop/image_id/storage_path 全空）—— 退化到请求级，
                 # 显式计入 undedupable（说明这批数据没法按"同患者同影像"去重）
                 undedupable += 1
-                dedup_key = f"req:{r.request_id}"
             dedup_basis[basis_name] += 1
 
             corrections_for = corrections.get(str(r.request_id), [])
@@ -204,6 +247,11 @@ async def _collect(args) -> tuple[list[dict], dict]:
         "undedupable": undedupable,
         "skipped_no_image": skipped_no_image,
         "context_present": sum(1 for x in deduped if x["context"]),
+        # 资产质量指标：**不同患者数**决定「700 例」到底代表多少独立病例；
+        # `patient_id_missing` 是口径告警（>0 说明去重退化成"按影像"，计数会偏大）
+        "patient_count": len({x["patient_id"] for x in deduped if x["patient_id"]}),
+        "patient_id_missing": patient_id_missing,
+        "dedup_reason": dict(dedup_reason),
         "doctor_labeled": sum(1 for x in deduped if x["corrections"]),
         "dedup_basis": dict(dedup_basis),
         "targets": {
@@ -254,6 +302,12 @@ def main() -> int:
     print(f"评测集：{stats['deduped']} 条（原始判读 {stats['total']}，"
           f"无影像跳过 {stats['skipped_no_image']}，有影像但无稳定标识 {stats['undedupable']}，"
           f"含检索上下文 {stats['context_present']}）→ {out}")
+    print(f"资产质量：不同患者 {stats['patient_count']} 人 · "
+          f"去重口径 {stats['dedup_reason']}"
+          f"（`image_only`>0 表示患者 ID 缺失、去重已降级为按影像）")
+    if stats["patient_id_missing"]:
+        print(f"  ⚠️ {stats['patient_id_missing']} 条判读取不到患者 ID —— 已按会话/影像回退，"
+              "仍缺的会体现在 `image_only` 计数里（口径告警，不是静默）")
     print(f"进度：样本 {stats['deduped']}/{t_total}（{stats['deduped'] / t_total:.1%}）·"
           f" 医生标注坏例 {stats['doctor_labeled']}/{t_doc}"
           f"（{stats['doctor_labeled'] / t_doc:.1%}）")

@@ -21,6 +21,9 @@ interface EvalSetStats {
   deduped: number;
   undedupable: number;
   skipped_no_image: number;
+  patient_count: number;
+  patient_id_missing: number;
+  dedup_reason: Record<string, number>;
   doctor_labeled: number;
   targets: Record<string, number>;
   progress: Record<string, number>;
@@ -307,6 +310,19 @@ export default function FeedbackPage() {
                 判读总数 {evalStats.total} · 无法去重 {evalStats.undedupable} · 无影像跳过{' '}
                 {evalStats.skipped_no_image}
                 {evalStats.generated_at ? ` · 采集于 ${evalStats.generated_at}` : ''}
+              </Text>
+              {/* A.62 批 3：**不同患者数**才是「700 例」的真实刻度 —— 样本数可以靠跑探针涨，
+                  独立病例涨不了；顺便把"去重是否已降级为按影像"摆到台面上（不藏）。 */}
+              <Text style={{ color: tokens.color.text.secondary, fontSize: 12 }}>
+                不同患者 {evalStats.patient_count} 人
+                {evalStats.dedup_reason && Object.keys(evalStats.dedup_reason).length > 0
+                  ? ` · 去重口径 ${Object.entries(evalStats.dedup_reason)
+                      .map(([k, v]) => `${k}:${v}`)
+                      .join(' ')}`
+                  : ''}
+                {evalStats.patient_id_missing > 0
+                  ? `（${evalStats.patient_id_missing} 条缺患者 ID，去重已降级为按影像）`
+                  : ''}
               </Text>
             </div>
           )}

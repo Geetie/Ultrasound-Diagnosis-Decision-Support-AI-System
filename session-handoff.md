@@ -12,6 +12,19 @@
 - **批 2-C p20 G5.4**：到达后等渲染稳定（计数连续两次一致）+ 逐帧扫 + 只重试一次；真机 **3 连跑全 31/0**（见 16 号 A.62.8）。
 - **批 2-D**：全量偶发**已复现并修掉** —— `sec` 密钥版本用例在全量顺序下 `DID NOT RAISE RuntimeError`，根因是「旧密钥记录存在且可解 → 兼容解密返回」这条正常契约分支被别处 leak 的 Redis mock 触发，而用例假设「版本+999 必然查不到旧密钥」→ 代码改为**显式抛约定异常** + 用例拆两条顺序无关；全量 `pytest tests/unit`（独占）**0 failed / 6602 passed**。
 
+### A.62 批 3 第一段（评测资产）复跑入口
+
+- **去重口径**（服务器）：`python scripts/langfuse/collect_eval_set.py` —— 输出末两行会打印
+  `不同患者 N 人` 与 `去重口径 {...}`；**`image_only > 0` 就是去重已降级为按影像**（口径告警）。
+  守卫：`pytest tests/unit/quality/test_collect_eval_set_keys.py`（7 例，含"源码必须保留会话级回退"）。
+  真机 2026-10-14：168 条 / 12 位患者 / `patient_image` 307/307。
+- **患者维度上屏**：`curl -s http://127.0.0.1:18000/api/v1/eval-set/stats`（带 token）应见
+  `patient_count` / `patient_id_missing` / `dedup_reason`；反馈页「评测集进度」区块底部显示
+  「不同患者 N 人 · 去重口径 …」。
+- **医生标注配合清单**：21 号「批 3」节末尾附件（一页纸）；进度可在反馈页对照。
+- ⚠️ **别被"样本数"骗**：168 条里 152 条来自同一演练患者（`DRILL-PATIENT-001`），
+  独立病例只有 12 个 —— 「700 例」的瓶颈是**临床使用**，跑探针涨不了独立病例。
+
 ### A.62 批 2 复跑入口（下一位直接用）
 
 - 证据链：服务带 `UAI_EVIDENCE_CHAIN_DEBUG=1` 起 → 跑判读 → `python scripts/audit/p30_evidence_chain.py --all`（读 `~/uai/logs/api.log` 的 `evidence_chain` 与 `crag_evidence_merge` 两族留痕 + DB → 输出分布，任何非 `PREFIX_TRUNCATED` 即判红）。
