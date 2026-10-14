@@ -641,7 +641,10 @@ class FeedbackContent(BaseModel):
 
 
 class FeedbackSubmission(BaseModel):
-    request_id: str
+    #: 判读请求 id。**可以留空**：留空（或给了一个不是判读 id 的值）时，服务端按 `session_id`
+    #: 关联该会话**最近一次判读** —— 反馈必须挂在真实判读上，否则评测集的「正确口径」无从关联。
+    #: 响应里的 `request_id` 始终是**实际挂载**的那个 id（客户端可据此显示/核对）。
+    request_id: str = ""
     session_id: str
     feedback_type: FeedbackType
     feedback_level: FeedbackLevel

@@ -3,9 +3,16 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const postMock = vi.fn();
+// A.62 批 3 补：本页在 A.61 起还会 `get('/eval-set/stats')` 拉评测集进度。
+// 只 mock post、不 mock get → `apiClient.get` 是 undefined，组件一挂载就抛错（整文件 4 条全红）。
+// 教训：**改一个页面就要把该页面的所有测试文件都跑一遍**，只跑新增的那一个会漏掉这种"新依赖打穿老用例"。
+const getMock = vi.fn();
 
 vi.mock('@/services/api', () => ({
-  default: { post: (...args: unknown[]) => postMock(...args) },
+  default: {
+    post: (...args: unknown[]) => postMock(...args),
+    get: (...args: unknown[]) => getMock(...args),
+  },
 }));
 
 // 语音听写组件在 jsdom 下无法真实录音：这里替身只负责把文本回调出来，
@@ -24,6 +31,9 @@ describe('FeedbackPage 语音输入（T-GB-FE-05）', () => {
   beforeEach(() => {
     postMock.mockReset();
     postMock.mockResolvedValue({ data: { ok: true } });
+    getMock.mockReset();
+    // 进度区块对本文件是"背景信息"：让它走"尚未采集"分支即可（专测在 FeedbackPageEvalProgress.test.tsx）
+    getMock.mockResolvedValue({ data: { available: false, reason: '尚未采集（测试替身）' } });
   });
 
   it('语音转写落到所选字段且文本可继续编辑', async () => {
@@ -73,6 +83,10 @@ describe('FeedbackPage 语音输入（T-GB-FE-05）', () => {
       feedback_type: 'correction',
       content: expect.objectContaining({ field: 'boundary', reason: '与图像不符' }),
     });
+    // A.62 批 3 契约：**不许自造判读 id** —— 留空表示"按本会话关联最近一次判读"
+    // （服务端要求 request_id 必须是真实判读 id；自造 `fb_…` 会让医生提交必得 404）
+    expect(payload.request_id).toBe('');
+    expect(payload.request_id).not.toMatch(/^fb_/);
   });
 
   it('渲染语音填写区块（医生可先选字段再口述）', () => {

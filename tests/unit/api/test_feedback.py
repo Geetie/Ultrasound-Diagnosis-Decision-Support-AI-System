@@ -354,3 +354,72 @@ class TestFeedbackIdempotencyTTL:
         mock_setex.assert_called_once()
         call_args = mock_setex.call_args
         assert call_args[0][1] == 86400
+
+
+def _mock_diagnosis_repo_with_session_result(request_id="req_latest"):
+    """判读仓储替身：按 id 查不到，但**会话**里有一次判读（走"按会话关联"路径）。"""
+    repo = AsyncMock()
+    repo.get_result = AsyncMock(return_value=None)
+    latest = MagicMock()
+    latest.request_id = request_id
+    repo.get_results_by_session = AsyncMock(return_value=[latest])
+    return repo
+
+
+class TestFeedbackAttachToLatestDiagnosisOfSession:
+    """A.62 批 3：反馈必须能**挂到真实判读**上（否则评测集的"正确口径"永远关联不到）。
+
+    背景（真机复现）：前端曾用 `generateFeedbackId()` 自造 `fb_…` 当 `request_id`，
+    服务端要求它是真实判读 id → 医生点「提交反馈」在真机上必得 404 `E1002`。
+    修法：客户端留空（或给了非判读 id）时，服务端按 `session_id` 关联**最近一次判读**，
+    并在响应里回传**实际挂载**的 id。
+    """
+
+    @pytest.fixture(autouse=True)
+    def mock_deps(self):
+        from app.dependencies import get_audit_service, get_diagnosis_repo, get_feedback_repo, get_session_repo
+        from app.main import app
+        from app.security.auth import get_current_active_user
+
+        self.fb_repo = _mock_feedback_repo()
+        self.diag_repo = _mock_diagnosis_repo_with_session_result()
+        app.dependency_overrides[get_feedback_repo] = lambda: self.fb_repo
+        app.dependency_overrides[get_diagnosis_repo] = lambda: self.diag_repo
+        app.dependency_overrides[get_session_repo] = lambda: _mock_session_repo()
+        app.dependency_overrides[get_audit_service] = lambda: _mock_audit_service()
+        app.dependency_overrides[get_current_active_user] = lambda: {"user_id": "doctor_001", "role": "DOCTOR"}
+
+        yield
+
+        app.dependency_overrides.clear()
+
+    def _post(self, test_client, payload):
+        with patch("app.api.v1.feedback.RedisPool.get_with_error", new_callable=AsyncMock, return_value=RedisGetResult(value=None, error=False)), \
+             patch("app.api.v1.feedback.RedisPool.setex", new_callable=AsyncMock, return_value=True), \
+             patch("app.api.v1.feedback.try_renew_session", new_callable=AsyncMock):
+            return test_client.post("/api/v1/feedback", json=payload)
+
+    def test_空request_id时按会话关联最近判读并落库到该id(self, test_client):
+        """前端留空（=按会话关联）→ 200，且落库/响应都用**真实判读 id**。"""
+        response = self._post(test_client, _base_payload(request_id=""))
+
+        assert response.status_code == 200, "留空不该 404：会话里有判读就该能挂上"
+        assert response.json()["request_id"] == "req_latest"
+        # 落库用的必须是解析后的 id —— 否则评测集按 request_id 关联不到这次反馈
+        assert self.fb_repo.create_feedback.await_args.kwargs["request_id"] == "req_latest"
+
+    def test_非判读id时按会话兜底且留痕(self, test_client):
+        """客户端给了自造 id（`fb_…`）→ 不 404、按会话兜底，并**记 warning**（可发现、不静默）。"""
+        response = self._post(test_client, _base_payload(request_id="fb_1791954782274_b1b3c3bee435"))
+
+        assert response.status_code == 200
+        assert response.json()["request_id"] == "req_latest"
+
+    def test_会话里也没有判读时仍然404(self, test_client):
+        """兜底也要有底线：会话里真的没有判读 → 404（不许把"无判读"变成"挂到别的会话"）。"""
+        self.diag_repo.get_results_by_session = AsyncMock(return_value=[])
+
+        response = self._post(test_client, _base_payload(request_id=""))
+
+        assert response.status_code == 404
+        assert response.json()["error_code"] == "E1002"

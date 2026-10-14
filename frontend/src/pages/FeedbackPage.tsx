@@ -5,7 +5,6 @@ import apiClient from '@/services/api';
 import { useSessionStore } from '@/stores/sessionStore';
 import { tokens } from '@/styles/tokens';
 import { useTouchAdaptation } from '@/hooks/useTouchAdaptation';
-import { generateFeedbackId } from '@/utils/idGenerator';
 import { getApiErrorMessage } from '@/utils/apiError';
 import VoiceDictationButton from '@/components/voice/VoiceDictationButton';
 import { reportWarn } from '@/utils/errorReport';
@@ -102,7 +101,11 @@ export default function FeedbackPage() {
     setLoading(true);
     try {
       const payload: FeedbackRequest = {
-        request_id: generateFeedbackId(),
+        // A.62 批 3（医生视角联调踩到）：**不再自造 id**。
+        // 原先用 `generateFeedbackId()`（`fb_…`）填 request_id，而服务端要求它必须是**真实判读 id**
+        // → 真机上医生一点「提交反馈」就拿 404 `E1002 判读请求不存在`（实测复现）。留空即表示
+        // 「按本会话关联最近一次判读」，服务端会在响应里回传**实际挂载**的 id，下面如实显示给医生。
+        request_id: '',
         session_id: sessionId || '',
         feedback_type: values.feedback_type,
         feedback_level: values.feedback_level,
@@ -113,11 +116,19 @@ export default function FeedbackPage() {
           reason: values.reason,
         },
       };
-      await apiClient.post('/feedback', payload);
-      message.success('反馈提交成功');
+      const resp = await apiClient.post<{ request_id?: string }>('/feedback', payload);
+      const attached = resp.data?.request_id;
+      // 把「挂到哪一次判读」显示出来：医生能核对，评测集的"正确口径"也才有据可查
+      message.success(attached ? `反馈提交成功（已关联判读 ${attached}）` : '反馈提交成功');
       form.resetFields();
     } catch (err) {
-      message.error(getApiErrorMessage(err, '反馈提交失败'));
+      const raw = getApiErrorMessage(err, '反馈提交失败');
+      // 会话里还没有判读结果时，给可行动的指引，而不是丢一个后端错误串
+      message.error(
+        raw.includes('判读请求不存在')
+          ? '本会话还没有判读结果，请先完成一次判读（上传影像并出结论）再提交反馈'
+          : `反馈提交失败：${raw}`,
+      );
     } finally {
       setLoading(false);
     }
