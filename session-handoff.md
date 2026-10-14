@@ -5,10 +5,11 @@
 
 ## Last Updated
 
-2026-10-14（分支 `main`；**A.62 批 1 尾段已交付** —— 补齐批 1 第 3 项"只落了一半"的口径工作；批 2 / 批 3 第一段 / 批 4 亦已交付）。
+2026-10-14（分支 `main`；**A.62 批 2 尾段已交付** —— 后端静默**全仓归零 263 → 0**（134 文件，只加留痕）；批 2 前四段 / 批 1 尾段 / 批 3 第一段 / 批 4 亦已交付）。
 
 - **批 2-A 证据链（CRAG 路径）**：成因 `app/fusion/crag.py:450-458`（CRAG 新块并入落库证据）＋ `crag.py:546-554` 写的 `crag_evidence_chunks` **全仓无消费者**、`_build_specialist_context`（`563-570`）也没把 `clinical_context` 传给 reinvoke → 新块**从未进 prompt 却进了 knowledge_ids**。已补 CRAG 留痕、p30 新判定 `CRAG_SUPPLEMENT`（反证腿 9 条）、修 `--all` 假 PASS。真机 n=5：甲状腺 2/2 `PREFIX_TRUNCATED`、心脏 3/3 `CRAG_SUPPLEMENT`（模型未见 4~5 块）。**修法 A/B 待 00 号拍板**；拍板前 `knowledge_ids` 不是「结论依据」的完整凭据。
 - **批 2-B 静默收敛三段**：observability 32→0 / rag+fusion 16→0 / security+services+safety_gateway+edge+integrations 37→0；全仓 **348→263 处**（基线两段更新）。
+- **批 2-E 静默全仓归零**：剩余 263 处**一次清完**（判据即施工图，不另立清单）→ **0 处 / 0 文件**；134 文件 / +611 行（265 行 `logger.*` 留痕 + `import logging`/模块 logger），`silent_catch_baseline.json` 的 `counts` 清空。**只加留痕、零语义改动**：`pytest tests/unit -n 8 --dist=loadfile`（独占）**0 failed / 6673 passed / 4 skipped**；`pytest tests/unit/quality` **209 passed**；ruff SIM105 基线 37→18。详见 16 号 A.62.15。**注意**：基线清空后**未登记=0**，新代码想静默只能在 `except` 同行写 `# silent-ok: 理由`。
 - **批 2-C p20 G5.4**：到达后等渲染稳定（计数连续两次一致）+ 逐帧扫 + 只重试一次；真机 **3 连跑全 31/0**（见 16 号 A.62.8）。
 - **批 2-D**：全量偶发**已复现并修掉** —— `sec` 密钥版本用例在全量顺序下 `DID NOT RAISE RuntimeError`，根因是「旧密钥记录存在且可解 → 兼容解密返回」这条正常契约分支被别处 leak 的 Redis mock 触发，而用例假设「版本+999 必然查不到旧密钥」→ 代码改为**显式抛约定异常** + 用例拆两条顺序无关；全量 `pytest tests/unit`（独占）**0 failed / 6602 passed**。
 
@@ -48,7 +49,7 @@
 ### A.62 批 2 复跑入口（下一位直接用）
 
 - 证据链：服务带 `UAI_EVIDENCE_CHAIN_DEBUG=1` 起 → 跑判读 → `python scripts/audit/p30_evidence_chain.py --all`（读 `~/uai/logs/api.log` 的 `evidence_chain` 与 `crag_evidence_merge` 两族留痕 + DB → 输出分布，任何非 `PREFIX_TRUNCATED` 即判红）。
-- 静默棘轮：`python tests/unit/quality/test_no_silent_catch.py` 会对不上就打印实测计数 → 把 `counts` 写回 `tests/unit/quality/silent_catch_baseline.json`（**只许下调**）。
+- 静默棘轮：`python tests/unit/quality/test_no_silent_catch.py` 会打印实测计数（**当前应为 `counts: {}` = 0 处 / 0 文件**）；若将来又出现，先问「该不该静默」——正当理由写 `# silent-ok: 理由`（**必须写在 `except` 同行**，与前端规则不同），否则把 `counts` 写回 `tests/unit/quality/silent_catch_baseline.json`（**只许下调**；基线清空后未登记文件默认 0）。
 - p20 真机：本机 `$env:UAI_DOCTOR_USER='smoke-doctor'` + `UAI_DOCTOR_PASSWORD`（服务器 `~/uai/.smoke_pw`）+ `UAI_BASE_URL=http://127.0.0.1:8000`（隧道）→ `node scripts/audit/p20_frontend_boundary.mjs --dicom <多帧.dcm>`；多帧样本可现生成：`python scripts/camus_frame_to_dicom.py --out /tmp/w.dcm --count 7 --multiframe`。
 
 2026-10-13（分支 `main`；**A.62 三梯队现状总览 + 分批计划 + 批 1 交付**——用户拍板：三梯队全量现状 + 完整计划、**价值/风险优先**、一次给全分 4 批、外部依赖写「前置条件 + 建议方案 + 现在就能做的准备」、**写人话**。
