@@ -99,6 +99,11 @@ refresh_token 撤族「该撤没撤」留痕、emergency_signing fail-closed 留
 
 ### What 已完成（有证据，详见 `feature_list.json` 与 16 号附录 A）
 
+- **后端静默全仓归零（2026-10-14，A.62 批 2-E / A.62.15）**：静默 `except` 从 A.58 登记的
+  428 处一路收敛到 **0 处 / 0 文件**（本段 263 → 0，134 文件 / +611 行，265 行 `logger.*` 留痕）；
+  **只加留痕、不改返回值与控制流**，证据 = 全量 `pytest tests/unit` **0 failed / 6673 passed / 4 skipped**
+  + `pytest tests/unit/quality` **209 passed**；附带 ruff SIM105 基线 37 → 18；前端另在 A.60 已清零（44 → 0）。
+
 - **Langfuse 摄取打通 + 评测集采集/门控/进度上屏（2026-10-13，A.61）**：
   ①**摄取根因 #3 = 两处**：`REDIS_CONNECTION_STRING` 漏设（镜像只读它，不读 `REDIS_URL`）+
   **worker 服务用了 web 镜像**（"worker"容器实跑 `node ./web/server.js` → 没有消费者；
@@ -415,6 +420,13 @@ refresh_token 撤族「该撤没撤」留痕、emergency_signing fail-closed 留
 
 ## Recommended Next Step
 
+> **A.62 批 2 尾段（2026-10-14，本轮）**：后端静默 **263 → 0 处 / 0 文件**（134 文件 / +611 行，
+> 其中 265 行 `logger.*` 留痕；app 43 / tests 97 / scripts 与 lab 123），**只加留痕、零语义改动**；
+> 证据 = 全量 `pytest tests/unit -n 8 --dist=loadfile` **0 failed / 6673 passed / 4 skipped**、
+> `pytest tests/unit/quality` **209 passed**；ruff SIM105 基线 37 → 18；`silent_catch_baseline.json`
+> 的 `counts` 清空（**未登记 = 0**，新代码要静默只能写 `# silent-ok: 理由`）。详见 16 号 A.62.15。
+> **本轮遗留（都要批准）**：服务器整树同步这 134 个文件 + 远端 `/tmp/_*` 清理 / GPU 进程核对。
+
 > **A.62 批 1 尾段（2026-10-14，补齐批 1 第 3 项漏交付的一半）**：
 > ① **口径 C 落地**：`scripts/langfuse/answer_modes.py`（派生字段标记来自 app 侧 SSOT，**不是**词表枚举）
 > + `--answer-mode derived_stripped` + 报告 `mode_coverage`（该口径实际生效条数）。
@@ -422,8 +434,9 @@ refresh_token 撤族「该撤没撤」留痕、emergency_signing fail-closed 留
 > ③ **给 00 号一页纸**：口径只值 ~0.03 → **不要切 gate**；要么改指标语义（并同步 19 号门限口径），
 > 要么改用「知识引用正确率」顶替，要么保持 advisory 作趋势指标。切换判据四条在 `eval_gate.py` help。
 > **下一步候选**：① CRAG 证据链修法 A/B 拍板（21 号 4.2）；② L2 指标语义拍板（4.1）；
-> ③ 静默剩余 **263 处**按链路继续收敛（只加留痕、基线下调）；④ 评测集往 700 推
-> （瓶颈是**临床使用**：169 条里 152 条同一演练患者、独立病例仅 12）。
+> ③ 服务器整树同步本批 **134 文件**（`c808c78`，必须 `git archive` 铺开，别按文件 scp）；
+> ④ 评测集往 700 推（瓶颈是**临床使用**：169 条里 152 条同一演练患者、独立病例仅 12）。
+> **（原候选③「静默剩余 263 处」已在 A.62.15 完成**：后端静默全仓归零 263 → 0，只加留痕、零语义改动。）
 
 > **A.62 批 1 结果（2026-10-13，价值/风险优先）**：
 > ① **证据链**：甲状腺腿 5/5「看 5 记 3、前 3 条一致」（`PREFIX_TRUNCATED`，忠实但截断）；
@@ -529,6 +542,7 @@ refresh_token 撤族「该撤没撤」留痕、emergency_signing fail-closed 留
 | 医生标注配合量 | 临床使用/产品 | **一页纸清单已就绪**（21 号批 3 附件）：每次 1~2 分钟、约 1~2 人小时可攒满 50 例；界面在反馈页「评测集进度」区块可对照进度 | `langfuse-eval-pipeline` |
 | 甲状腺注册数据 | 管理决策 + 授权 | 自有/合作医院或授权采购 | `thyroid-registry-data`、`nmpa-materials` |
 | 核心覆盖率 90% | 真机依赖 | SoftHSM 签名字节、真实 Redis 语义可测 | `coverage-core` |
+| 服务器代码与仓库同步（本批 134 文件） | 本机可做（**需批准**） | 现 HEAD `c808c78`：批 2-E 的改动**全是插桩但散了 134 个文件** → 必须整树 `git archive` 铺开（按文件 scp 必漏，硬规则 #7）；台账提交 `109d6f6`；远端写操作需批准 | `a62-batch2-guard-hardening` |
 | ~~ruff 棘轮 2 项红灯~~ | — | **已根治（A.52）**：修真 bug（`timings_dump.py` F821/I001）+ 棘轮改扫 `git ls-files '*.py'`（消除本地未跟踪探针造成的 ±15 漂移）+ 按新口径重定基线；9/9 绿 | `quality-debt` |
 | T2b 真机泛化 | 数据 | 真实临床切面验证集（CACTUS 为体模） | `t2b-plane-quality` |
 
@@ -562,8 +576,8 @@ refresh_token 撤族「该撤没撤」留痕、emergency_signing fail-closed 留
 | `UAI_EVIDENCE_CHAIN_DEBUG=1`（`app/agents/specialist/base.py`） | A.62 证据链留痕开关：打「prompt 里的块」与「落库的块」（生产侧唯一可用的核对手段：判读走 Redis 队列 → worker 进程） |
 | `scripts/langfuse/judge_eval_set.py` | A.61.7 L2 忠实度判官（RAGAS 官方 prompt **复用**；口径 raw/reasoning；判官 8006；**仪器自检**：verdict 解析为空即报错而非给 0 分）+ `make eval-judge` |
 | `GET /api/v1/eval-set/stats`（`app/api/v1/eval_set.py`） | A.61 评测集进度只读端点（缺报告/损坏均 200 + 可读原因；匿名 401）+ 反馈页只读进度区块 |
-| `npm run lint:silent-catch`（`frontend/eslint-rules/`） | A.58 前端静默 catch 棘轮（155 文件扫描；10 文件/44 处 ≤ 基线；独立 config，**不动** `--max-warnings 1` 预算） |
-| `pytest tests/unit/quality/test_no_silent_catch.py` | A.58 后端静默 except 棘轮（`ast` 全仓 193 文件；基线 428 处只许下调；7 主路径零容忍；`contextlib.suppress` 后门一并判） |
+| `npm run lint:silent-catch`（`frontend/eslint-rules/`） | A.58 前端静默 catch 棘轮（155 文件扫描；独立 config，**不动** `--max-warnings 1` 预算）；**A.60 已清零**（44 处 → 0 文件/0 处） |
+| `pytest tests/unit/quality/test_no_silent_catch.py` | A.58 后端静默 except 棘轮（`ast` 全仓；基线只许下调；7 主路径零容忍；`contextlib.suppress` 后门一并判）；**A.62 批 2 已全仓归零**：428 → 348 → 263 → **0 处 / 0 文件**（基线 `counts` 清空 = 未登记默认 0，新代码要静默必须写 `# silent-ok: 理由`）；重算 `python tests/unit/quality/test_no_silent_catch.py` |
 | `scripts/deploy_frontend.sh` | A.52 前端产物清空式部署（防陈旧 chunk 堆积） |
 | `scripts/audit/p15_retrieval_parity.py` | A.51 检索口径（服务腿 vs eval，真机可复跑） |
 | `scripts/audit/p16_list_endpoints.py` | A.51 设备/患者列表端点（14 项判定） |
