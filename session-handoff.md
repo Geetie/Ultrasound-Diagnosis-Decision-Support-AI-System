@@ -10,6 +10,7 @@
 - **批 2-A 证据链（CRAG 路径）**：成因 `app/fusion/crag.py:450-458`（CRAG 新块并入落库证据）＋ `crag.py:546-554` 写的 `crag_evidence_chunks` **全仓无消费者**、`_build_specialist_context`（`563-570`）也没把 `clinical_context` 传给 reinvoke → 新块**从未进 prompt 却进了 knowledge_ids**。已补 CRAG 留痕、p30 新判定 `CRAG_SUPPLEMENT`（反证腿 9 条）、修 `--all` 假 PASS。真机 n=5：甲状腺 2/2 `PREFIX_TRUNCATED`、心脏 3/3 `CRAG_SUPPLEMENT`（模型未见 4~5 块）。**修法 A/B 待 00 号拍板**；拍板前 `knowledge_ids` 不是「结论依据」的完整凭据。
 - **批 2-B 静默收敛三段**：observability 32→0 / rag+fusion 16→0 / security+services+safety_gateway+edge+integrations 37→0；全仓 **348→263 处**（基线两段更新）。
 - **批 2-E 静默全仓归零**：剩余 263 处**一次清完**（判据即施工图，不另立清单）→ **0 处 / 0 文件**；134 文件 / +611 行（265 行 `logger.*` 留痕 + `import logging`/模块 logger），`silent_catch_baseline.json` 的 `counts` 清空。**只加留痕、零语义改动**：`pytest tests/unit -n 8 --dist=loadfile`（独占）**0 failed / 6673 passed / 4 skipped**；`pytest tests/unit/quality` **209 passed**；ruff SIM105 基线 37→18。详见 16 号 A.62.15。**注意**：基线清空后**未登记=0**，新代码想静默只能在 `except` 同行写 `# silent-ok: 理由`。
+- **批 2-E 真机收尾（A.62.16）**：①`git archive` **整树同步**（抽检 `app/knowledge/version.py` sha256 一致）+ 主服务按 PID 重启（health/ui 200）；②**`tar -xf` 是覆盖不是同步** —— 对账出服务器上有 **8 个仓库已删的 `.py`**，服务器侧原有的 **7 处静默全来自它们**（差点误判成"同步后还有静默"）→ 非破坏隔离到 `~/uai/_stale_20261014/` + 冷启验证；③**真机抓到本批自身一个真缺陷**：正常兜底路径被升成 warning 会**刷屏**（一次 p27 回归 23 条全来自 `_parse_simple_version`，而它失败是设计内探测）→ 降 `logger.debug` 写明理由，复跑增量 **0**；④p27 甲状腺/心脏两腿各 **PASS=4 FAIL=0**（修复前后两轮）；⑤服务器复扫 **851 文件 / silent_total=0**；`/tmp/_*` 32 → 0。
 - **批 2-C p20 G5.4**：到达后等渲染稳定（计数连续两次一致）+ 逐帧扫 + 只重试一次；真机 **3 连跑全 31/0**（见 16 号 A.62.8）。
 - **批 2-D**：全量偶发**已复现并修掉** —— `sec` 密钥版本用例在全量顺序下 `DID NOT RAISE RuntimeError`，根因是「旧密钥记录存在且可解 → 兼容解密返回」这条正常契约分支被别处 leak 的 Redis mock 触发，而用例假设「版本+999 必然查不到旧密钥」→ 代码改为**显式抛约定异常** + 用例拆两条顺序无关；全量 `pytest tests/unit`（独占）**0 failed / 6602 passed**。
 
@@ -664,7 +665,8 @@ X/Y 帧」）；③设备/患者列表端点（p16 14/14，零 api_key）；④f
 | faithfulness 95% 门控口径 | 项目组 | **A.62.14 三口径已算齐**（n=40 同切片、判官逐样本零噪声：A 0.0906 / B 0.1258 / C 0.0836）→ 待决的是**指标语义**（L2 判「能否由知识库推出」，而结论=影像所见+指南决策）；**建议不切 gate**，切换判据四条见 `eval_gate.py --judge-mode` help |
 | 甲状腺注册数据 | 管理决策 + 授权 | 无商用公开集，须自有/合作医院 |
 | 核心覆盖率 90% | 真机依赖 | SoftHSM / 真实 Redis 语义 |
-| 服务器代码与仓库同步 | 本机可做（**需批准**） | 现 HEAD `c808c78`（**批 2-E：134 文件 / 263 处留痕插桩，必须整树同步**，按文件 scp 必漏）+ 台账 `109d6f6`。上一轮遗留：旧 HEAD 的整树归档已在服务器 `/tmp/_head_b1tail.tar`（`cd ~/uai/src && tar -xf /tmp/_head_b1tail.tar` 只是旧态，本轮要重打归档铺开） |
+| ~~服务器代码与仓库同步~~ | 已解（2026-10-14） | **已完成（A.62.16）**：`git archive` 整树铺开 + 抽检 sha256 一致（`app/knowledge/version.py`）；服务器上以守卫判据复扫 **851 文件 / silent_total=0**；`/tmp/_*` 归零；**注意**：上一轮那个 `/tmp/_head_b1tail.tar` 是旧 HEAD 的归档，本轮已重打并清理 |
+| 服务器上的陈旧代码（先隔离后确认） | 用户决策 | 8 个 `.py` 在仓库中已不存在，仍留在服务器 `~/uai/src`（`tar -xf` 不删文件）→ 已 `mv ~/uai/_stale_20261014/`（**保留未删**，可回退），精确 grep 确认无人引用 + 冷启通过；要彻底删除需用户批准 |
 | t2a 独立验证集数据 | 项目组 / 数据方 | 现 AUC 0.8751 属开发集内部验证；方案已备（21 号 §阶段三-A），缺**独立集数据** |
 | Langfuse 评测管理 ≥700 例采集 | 环境 + 排期 | 机制已就绪，瓶颈是**临床使用**：169 条里 152 条同一演练患者、独立病例仅 12 |
 | SG 禁忌提示中文化 | 本机可做（可回归） | A.58.10① 登记的那串 `[cardiac] LVEF=unknown, severity=normal`。**A.62.14 抽查（未做真机复核）**：`safety_gateway` 侧禁忌文案全中文、`app/**` 并不消费 `contraindication_matches`，且 A.59 已把该串归因到**专科正文**并修掉 → 本行**疑为陈旧**；下一位若要做，先跑一次心脏真机判读确认告警文案再决定动手 |
@@ -680,27 +682,25 @@ X/Y 帧」）；③设备/患者列表端点（p16 14/14，零 api_key）；④f
 ## Next Session
 
 1. 读 `progress.md` → 执行 `Recommended Next Step`（① CRAG 证据链修法 A/B 拍板；② L2 指标语义拍板；
-   ③ 评测集靠临床使用往 700 推；④ 服务器整树同步本批 134 文件）。
+   ③ 评测集靠临床使用往 700 推；④ 是否删除服务器 `~/uai/_stale_20261014/`）。
 2. 若触服务器：加载 SKILL `remote-gpu-server-devtest`，先读「铁律（先读）」5 条。
-3. **本轮遗留两件必须先做**（都是审批/环境问题，不是没做完）：
-   - **服务器整树同步未完成（本批尤其要紧）**：`c808c78` 改了 **134 个文件**、全是插桩，
-     只有整树 `git archive` 铺开才保证与 HEAD 一致；`ssh …` → 铺归档（**远端写操作需要用户批准**）。
-     上一轮留在服务器 `/tmp/_head_b1tail.tar` 的归档是**旧 HEAD**，别拿它当本轮同步。
-   - **服务器 `/tmp/_*` 探针未清**：上一轮留下 `/tmp/_shape.py`、`/tmp/_mode_cov.py`、
-     `/tmp/_judge_analysis.py`、`/tmp/_diff_c.py`、`/tmp/_judge_a62.sh`（同样卡在远端写审批）；
-     下一位用 `ls /tmp/_*.py /tmp/_*.sh | wc -l` 核到 0。
+3. **本轮遗留一件（等用户定）**：
+   - **服务器上的陈旧代码**：8 个在仓库中已不存在的 `.py` 已隔离到 `~/uai/_stale_20261014/`
+     （`app/api/v1/{device_repository,redis}.py`、`app/services/main.py`、4 个下划线助手脚本、`scripts/txt_debug.py`）；
+     确认无人引用、冷启通过。**保留未删**是为了可回退，彻底删除属破坏性操作 → 需用户批准。
+   - （上一轮的整树同步与 `/tmp` 清理**本轮已完成**，见 `## Blockers` 与 A.62.16。）
 4. 收尾按 `AGENTS.md` 的 `End of Session` 走。**注意**：`validate-harness.mjs` 本机不存在，
    以 `bash init.sh`（Git Bash）替代；若哪天脚本回来了再补跑正式审计。
 
-## Restart Markers（A.62 批 2-E，本轮）
+## Restart Markers（A.62 批 2-E 含真机收尾，本轮）
 
 - [x] 后端静默**全仓归零**：`python tests/unit/quality/test_no_silent_catch.py` → `counts {}`（0 处 / 0 文件）。
 - [x] **零语义改动的证据**：`pytest tests/unit -n 8 --dist=loadfile --timeout=300` → **0 failed / 6673 passed / 4 skipped**；`pytest tests/unit/quality` → **209 passed**（含 ruff 棘轮 SIM105 37→18）。
-- [x] 台账已回写：`16` 号附录 **A.62.15** / `21` 号（三处状态 + 批 2 表 + 占位符 `{CONC}`）/ `progress.md` / `session-handoff.md` / `feature_list.json`（`head_commit` = `c808c78`）。
-- [x] 提交：`c808c78`（代码 134 文件）+ `109d6f6`（台账）。
+- [x] 真机：整树同步 + 服务器复扫 **851 文件 / 0 静默**；p27 甲状腺/心脏两腿各 **4/0**；刷屏缺陷修复后留痕增量 **0**；`/tmp/_*` 32 → 0。
+- [x] 台账已回写：`16` 号附录 **A.62.15 / A.62.16** / `21` 号（三处状态 + 批 2 表 + 占位符 `{CONC}`）/ `progress.md` / `session-handoff.md` / `feature_list.json`（`head_commit` = `8e78aae`）。
+- [x] 提交：`c808c78`（代码 134 文件）+ `109d6f6`（台账）+ `d36e307`（head_commit/状态补齐）+ `8e78aae`（刷屏修复）。
 - [-] harness 正式审计：`validate-harness.mjs` 本机仍不存在（以 `pytest tests/unit/quality` 209 passed 替代，**不写作"审计满分"**）。
-- [ ] 服务器整树同步本批 134 文件（`git archive` 铺开）—— **需用户批准**，见 `## Next Session` 第 3 条。
-- [ ] 远程 `/tmp/_*` 清理 + GPU 进程清单核对 —— **需用户批准**。
+- [ ] 服务器 `~/uai/_stale_20261014/`（8 个陈旧 `.py`）是否删除 —— 破坏性操作，等用户定。
 
 ## Restart Markers（上一轮 A.62 批 1 尾段）
 
