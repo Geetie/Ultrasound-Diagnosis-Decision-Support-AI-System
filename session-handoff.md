@@ -5,7 +5,23 @@
 
 ## Last Updated
 
-2026-10-15（分支 `main`；**A.63 RAG / 模型三件可做项已交付** —— 图谱扩展裁决（不启用）、answer_relevancy 指标落地、甲状腺跨来源评测；上一轮 A.62 批 2 尾段亦已交付）。
+2026-10-15（分支 `main`；**A.64 已交付** —— ①TN3K 那对不一致数字判定完毕（旧值作废）②知识库结构体检 + 图谱扩边量化（两项改动被数据否掉，不切生产）③一页纸（两项口径 + 两件数据）。上一轮 A.63 三件可做项亦已交付）。
+
+- **A.64 WP1 TN3K 口径判定**：旧报告 `tests/reports/t2a_tn3k_generalization.json`（AUC 0.6789 / n=1228）是**孤儿产物** —— 全仓**无生成脚本**（schema `malignancy_auc`/`acc_at_0.5` 唯一）、`n=1228` 与 TN3K 官方 test **614** 张不符；资产只有一条链（`models/t2a_v2/t2a_finetune.pt` sha256 `7a5849d5…` + `t2a_probe_lr.joblib` `40bfa6b4…`；回退路径不存在，8003 的 `T2A_*` env 与启动日志三处互证）。真机同尺子复跑：正向 **0.4929 [0.4438,0.5402]**、**标签反向腿 0.5071**、**Youden 最佳阈值 0.799 → sens 0.2331 / spec 0.8254（和 1.06）** → 判定 **`ORPHAN_UNREPRODUCIBLE`**。处置：旧 json 加 `_status: VOIDED` + `_voided_reason` + `_replacement`（原字段保留）；16 号 A.63.3 就地改为「已判定：见 A.64.1」。附带登记：t2a 有**四条链四套 AUC 实现** → 新探针一律只用 p29 的秩和（守卫 `test_t2a_metric_single_source.py`）。
+- **A.64 WP2 知识库结构与图谱扩边（两项都否掉，有数）**：`p38` 结构体检＝**1257 块 / 1057 文档、单块文档 936（88.5%）**、token 中位 **146**（<256 占 68.8%）、带边块 321（25.5%）、`section_path` 非空 100% → 诊断 `MAJORITY_SINGLE_CHUNK_DOCS`：**overlap 类切分改造对 88.5% 的文档零影响 → 不做**。`p38 --coverage` 量化跨文档同章节边：适用面可达 **136/136（100%）**、种子 408/408，但**候选池 51262 条 = 每种子 125.6** 而检索器只取 5 → **`SUPERNODE_RISK`**（灌噪声）→ 按预注册判据（指标不得回退无法保证）**不建 rc、不切生产**。前置条件：**先做邻居排序（相似度选 top-k）**；语料侧根治仍是长文档结构化入库（外部）。
+- **A.64 WP3 一页纸**：两项指标口径（0.0906 / 0.3788 vs 门限 0.95/0.90 → 建议仍不切 gate，三条可选语义方案）、t2a 三口径引用规则（对外只引公开集下界）、评测集 700 例 / 医生标注 50 例成本（1~2 人小时）、甲状腺数据（NC 集可用于研发；注册仍需自有数据；TNSCUI 实际不可得）。见 16 号 A.64.3。
+
+### A.64 复跑入口与踩坑
+
+- **WP1 口径对照**（服务器，需 8003）：`~/uai/venv/bin/python scripts/audit/p37_t2a_tn3k_parity.py --report ~/uai/reports/t2a_tn3k_parity.json`
+  → 退出码 0（判定已给，含 `ORPHAN_UNREPRODUCIBLE`）/ 1（若判成标签反向，属真缺陷）/ 2（数据或服务缺失）。
+- **WP2 结构体检**（服务器，只需 DB）：`~/uai/venv/bin/python scripts/audit/p38_kb_structure_health.py --kb-version kb_v1.3.0`
+- **WP2 扩边量化**（服务器，需检索器+DB）：`... scripts/audit/p38_kb_structure_health.py --coverage`
+  （报告 `reports/kb_graph_coverage.json`；`candidates_per_seed` ≥20 → `SUPERNODE_RISK`，别急着落库）
+- **踩坑（A.64 新增）**：
+  ① **`$HOME` 在 PowerShell 内联 ssh 里会被撕成 `\C:\Users\...`**（本轮又踩两次）→ **任何远端命令都落脚本再 `scp`**；
+  ② **数据先量化再动手**：这轮两个改动（切分 overlap、跨文档同章节边）都是"直觉合理、数据否掉"，直接开工就是白干 + 灌噪声；
+  ③ **数字必须先能复跑才进台账**：旧 0.6789 之所以害人就是没有生成脚本 → 本轮量化写成 `p38 --coverage`（可复跑）而非临时脚本。
 
 - **A.63① 图谱邻居扩展：修好接线 + 数字裁决**。真缺陷＝`app/rag/service.py` 的 `min_score_threshold` 把 `score=0.0` 的图谱邻居整批吞掉（**开了等于没开**）→ 只对 `retrieval_source=GRAPH` 豁免 + 留痕 `min_score_filter_applied`；`app/rag/retriever.py` 把「种子没边」与「邻居已被 top-k 覆盖」**分开留痕**（第一版混为一谈，真机第一跑就被引向错误方向）。**裁决**（`scripts/audit/p36_graph_expansion_ab.py`，136 条 golden 同进程开/关）：两腿 hit@1/5/10 = 0.9485/0.9853/0.9853、MRR 0.9635 **完全一致**、新增块 **0**；**适用面＝带边种子 0/136**（命中「一篇一块」对话语料）；机制对照：多块文档种子 +1 邻居、单块种子 0 → **结论：保持 `graph_query_enabled=False`**，前提是 KB 要有长文档多块切分。边投影其实已完整（321 块/400 条，`kb_backfill_relations.py` → `to_update=0`）。
 - **A.63② answer_relevancy 落地**：官方 prompt 照抄（`scripts/prompts/ragas_answer_relevancy.py`，与 faithfulness **同 tree sha 298b6827…**，并**来源自证**：同 sha 抓的 faithfulness util 与本地参考副本 sha256 一致）；官方公式 `mean(cos(生成问题, 原始问题)) × int(not 全部 noncommittal)`、strictness=3。**真机第一跑只有 2/40 测到**——真因是判官先吐 `<think>` 把 256 token 吃光（漏 `/no_think`）→ 修后 **37/40**。最终同切片：**faithfulness 0.0906**（与 A.62.14 逐位一致）/ **answer_relevance 0.3788**（生成问题数全为 3，5 条按官方规则归零，区间 0.0000~0.6622）。门控两项并列 + `--skip-answer-relevancy`。

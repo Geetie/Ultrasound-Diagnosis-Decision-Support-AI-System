@@ -1013,9 +1013,31 @@
       "name": "甲状腺跨来源公开集评测（TNSCUI 不可得 → 改 TN3K）+ 三口径分列",
       "description": "用户 2026-10-15 放宽「非可商用公开集也可用」。计划的 TNSCUI 经复核**取不到**（Zenodo 10.5281/zenodo.3715942 仅含论文 PDF；API 搜索无数据集记录；`data/us_datasets/*.zip` 全是 4KB 占位）→ 脚本对该分支显式失败，改用服务器已有 TN3K（614 张 + label4test.csv）。许可按 14 号台账 CC BY-NC（数据集 README 自称 mit，冲突 → 取更保守口径）：仅评测、不训练、不进注册申报；无 patient_id → 冻结清单标影像级。",
       "status": "done",
-      "result": "冻结清单 `tests/reports/t2a_tn3k_cross_source_manifest.json`（614 条 sha256）。生产 8003 端点复跑（`scripts/audit/p35_thyroid_cross_source_eval.py`，复用 p29 指标口径）：**AUC(恶性 vs 良性) = 0.4929，95%CI [0.4438, 0.5402]**（近似随机）、敏感性@0.5 0.9068、特异性@0.5 0.0767、准确率 0.3893，614/614 全部成功分类。**与旧探针 0.6789（n=1228，tests/reports/t2a_tn3k_generalization.json）不一致 → 登记待查**（调用路径/资产口径不同，不取高者）。三口径分列（禁止合并引用）：开发集 0.8751 / 公开集 held-out(AUL) 0.8950 [0.8712,0.9168] / **跨来源(TN3K) 0.4929 [0.4438,0.5402]**。",
+      "result": "冻结清单 `tests/reports/t2a_tn3k_cross_source_manifest.json`（614 条 sha256）。生产 8003 端点复跑（`scripts/audit/p35_thyroid_cross_source_eval.py`，复用 p29 指标口径）：**AUC(恶性 vs 良性) = 0.4929，95%CI [0.4438, 0.5402]**（近似随机）、敏感性@0.5 0.9068、特异性@0.5 0.0767、准确率 0.3893，614/614 全部成功分类。**与旧探针 0.6789（n=1228）的不一致已判定（A.64.1）**：旧报告是**孤儿产物**（全仓无生成脚本、schema 唯一、n 与 TN3K 官方 test 614 张不符）→ 真机同尺子复跑 + **标签反向腿 0.5071** + **Youden 腿（最佳阈值下 sens+spec 仅 1.06）** 两条排除腿 → 判定 `ORPHAN_UNREPRODUCIBLE`，**该数字已就地作废**（文件头 `_status: VOIDED` + 指向替代证据）。三口径分列（禁止合并引用）：开发集 0.8751 / 公开集 held-out(AUL) 0.8950 [0.8712,0.9168] / **跨来源(TN3K) 0.4929 [0.4438,0.5402]**。",
       "dependencies": [],
-      "evidence": "16 号 A.63.3；14 号 §2.2（A.63 复核行）；scripts/audit/p35_thyroid_cross_source_eval.py；tests/reports/t2a_tn3k_cross_source_manifest.json；reports/t2a_tn3k_cross_source.json"
+      "evidence": "16 号 A.63.3 与 A.64.1（判定）；14 号 §2.2（A.63/A.64 复核行）；scripts/audit/p35_thyroid_cross_source_eval.py；tests/reports/t2a_tn3k_cross_source_manifest.json；reports/t2a_tn3k_cross_source.json；reports/t2a_tn3k_parity.json"
+    },
+    {
+      "id": "a64-tn3k-parity",
+      "name": "TN3K 口径对照判定：旧 0.6789 是孤儿产物 → 作废，钉住唯一可复现读数",
+      "description": "A.63.3 登记「生产端点 0.4929 vs 旧报告 0.6789（n=1228）不一致」。本轮先查来源：**全仓无任何脚本能生成该旧报告**（schema `malignancy_auc`/`acc_at_0.5` 全仓唯一；`tn3k_generalization` 仅被只读引用；n=1228 与 TN3K 官方 test 614 张不符，「1228」在文档里只是 tn3k_lfs_fix 的文件计数）；资产只有一条链（`models/t2a_v2/t2a_finetune.pt` sha256 7a5849d5… + `t2a_probe_lr.joblib` 40bfa6b4…；回退路径 src/reports/t2a_finetune.pt 在服务器上不存在，8003 env 与启动日志三处互证；`t2a_tn3k_adapt.pt` 只在备份目录且无代码加载）。再同尺子复跑 + 两条排除腿（标签反向、Youden 最优阈值）。",
+      "status": "done",
+      "result": "真机（`scripts/audit/p37_t2a_tn3k_parity.py`，TN3K 614 张，3.5s，0 失败）：正向 **AUC 0.4929 [0.4438,0.5402]**（与 A.63.3 逐位一致）、**标签反向腿 0.5071**、**Youden 最佳阈值 0.799 → 敏感性 0.2331 / 特异性 0.8254（和仅 1.06）** → 判定 **`ORPHAN_UNREPRODUCIBLE`**：旧 0.6789 既不等于正向也不等于反向、n 也不符 → **作废**。处置：`tests/reports/t2a_tn3k_generalization.json` 加 `_status: VOIDED` + `_voided_reason` + `_replacement`（原字段保留可追溯）；16 号 A.63.3 就地改为「已判定：见 A.64.1」。附带登记结构性隐患：仓库里 t2a 有**四条链、四套 AUC 实现**（roc_auc_score ×2 / 自写 _auc / p29 秩和）→ 新探针一律只用 p29 的秩和实现，并有守卫 `tests/unit/quality/test_t2a_metric_single_source.py`（同尺子 + 四选一判定 + Youden 腿）。",
+      "dependencies": [
+        "a63-thyroid-cross-source-eval"
+      ],
+      "evidence": "16 号 A.64.1；scripts/audit/p37_t2a_tn3k_parity.py；tests/unit/quality/test_t2a_metric_single_source.py；tests/reports/t2a_tn3k_generalization.json（_status: VOIDED）；reports/t2a_tn3k_parity.json"
+    },
+    {
+      "id": "a64-kb-structure-verdict",
+      "name": "知识库结构体检 + 图谱扩边量化：两项直觉改动都被数据否掉（不切生产）",
+      "description": "A.63 的图谱 `NOT_APPLIED`（适用面 0/136）根因是「边只连同文档相邻块 + 命中的是一篇一块语料」。动手前先量：新增 `scripts/audit/p38_kb_structure_health.py`（结构体检，只读 SQL）+ `--coverage`（跨文档同章节边的候选池量化，需要检索器）。预注册判据：①适用面 >20% ②检索指标不得回退；两条都满足才建 rc 版本并决定切生产。",
+      "status": "done",
+      "result": "**结构体检（kb_v1.3.0）**：1257 块 / **1057 文档，其中单块文档 936 = 88.5%**（2-3 块 116、4+ 块 5、最多 24 块）；token min 37 / p25 126 / **中位 146** / p75 391 / max 764，**<256 占 68.8%**（`DEFAULT_MIN_TOKENS=256` 只在同文档内合并 → 短文档压不下去）；带边块 321（25.5%）/ 400 条边；`section_path` 非空 100% → 诊断 `MAJORITY_SINGLE_CHUNK_DOCS`：**overlap 类切分改造对 936 个单块文档零影响 → 不做**。**扩边量化**：跨文档同章节边（group=organ+section_path）预测适用面 **136/136（100%）**、种子 **408/408** 有邻居，但**候选池 51262 条 = 每种子 125.6 个**，而检索器一次只取 5 条 → 判定 **`SUPERNODE_RISK`**：直接落库等于灌噪声。按预注册判据（②无法保证）→ **不建 rc、不切生产**。前置条件登记：要落地必须先做「邻居排序（按相似度选 top-k，可复用 bge-m3/reranker）」；语料侧根治仍是长文档结构化入库（≥150 份语料，外部）。",
+      "dependencies": [
+        "a63-graph-expansion-verdict"
+      ],
+      "evidence": "16 号 A.64.2；scripts/audit/p38_kb_structure_health.py（结构体检 + --coverage）；reports/kb_structure_health.json；reports/kb_graph_coverage.json"
     },
     {
       "id": "evidence-chain-crag-path",
