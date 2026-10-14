@@ -502,6 +502,11 @@ refresh_token 撤族「该撤没撤」留痕、emergency_signing fail-closed 留
 
 | 阻塞项 | 类型 | 解除条件 | 影响 feature |
 |---|---|---|---|
+| L2 口径拍板（派生决策是否计入） | 00 号拍板 | 实测同一批 12 条：判全文 0.0798 / 只判临床叙述 0.1891；备选=剔除派生字段 + 派生决策单独做「可复算」校验；机制已就绪（`--judge-mode gate` 一行切换），现以 advisory 呈现且报告保留 `ok=false`。**成本**：一次口径决策（21 号 4.1） | `faithfulness-gate`、`eval-set-l2-judge` |
+| CRAG 证据链修法选型 | 00 号/技术负责 | 心脏 3/3 样本「落库含模型未见块」；建议 A（补齐记录）+ B（如实标注）同做；改动点已定位，探针带反证腿可直接进 CI（21 号 4.2） | `a62-batch2-guard-hardening` |
+| t2a 独立验证数据 | 数据方（注册中心/合作医院） | 现只有公开集**下界**；需患者级可切分数据；冻结清单机制已就位，独立集冻结脚本本批补齐（21 号 4.3/4.6） | `thyroid-registry-data` |
+| UDT 词表医生勾选 | 医生时间 | vocab_v2 ~1650 条；建议按高频词先勾 300 条起步；未勾选在系统内显式标注（21 号 4.5） | `udt-phase1` |
+| 心脏腿「无 LVEF」策略 | 临床/00 号 | 已改可行动提示；是否允许推算 LVEF 属医学口径（未擅自改）；技术通道可行（测量值可入库）（21 号 4.7） | `a62-batch1-evidence-and-cardiac` |
 | faithfulness 95% 门控 | 口径/语料 | **A.61 更新：判官机制已接入**（RAGAS 官方 prompt + 独立判官 8006）；实质阻塞改为①**口径决策**（结论里的系统派生分级/总分是否计入 → 同一批样本 0.0798 vs 0.1891）②**`knowledge_ids` 与生成上下文是否一致**（证据链完整性） | `faithfulness-gate`、`eval-set-l2-judge` |
 | 评测集 `doctor_labeled ≥50` | 临床使用/运营 | 医生真实提交修正类反馈（`feedback_type='correction'`）。**A.62 批 3 更新**：通道原先**是断的**（前端自造 `request_id` + 会话丢失 → 提交必 404），本轮已修并**闭环实测 0 → 1/50**（探针提交，`source=doctor_correction`）；剩 49 例只欠医生本人使用 | `langfuse-eval-pipeline` |
 | 医生标注配合量 | 临床使用/产品 | **一页纸清单已就绪**（21 号批 3 附件）：每次 1~2 分钟、约 1~2 人小时可攒满 50 例；界面在反馈页「评测集进度」区块可对照进度 | `langfuse-eval-pipeline` |
@@ -532,6 +537,7 @@ refresh_token 撤族「该撤没撤」留痕、emergency_signing fail-closed 留
 | `scripts/langfuse/docker-compose.yml` | A.61 Langfuse 自托管栈（关键约束：**`REDIS_CONNECTION_STRING` 必须设**（镜像不读 `REDIS_URL`）+ **worker 必须用 `langfuse-worker:3` 镜像**（与 web 不同镜像）；摄取成功判据 = worker 日志 `otel-ingestion-queue executor started` + `traces` 增长） |
 | `scripts/langfuse/collect_eval_set.py` | A.61 评测集采集（业务库来源：`diagnosis_results` + `feedback_records`（=正确口径）+ `dicom_images`；真机 168 条 / `skipped_no_image` 显式计数；退出码 0/1/2）。**A.62 批 3 修**：去重口径 = 同患者同影像（患者取自 `DiagnosisSession`，三级回退），并输出 `patient_count`/`patient_id_missing`/`dedup_reason` |
 | `tests/unit/quality/test_collect_eval_set_keys.py` | A.62 批 3 去重口径守卫 **7 例**（三态键 / 同患者多影像不合并 / 同影像必合并 / 患者 ID 不同必分开 / 源码必须保留会话级回退） |
+| `scripts/audit/p34_freeze_independent_manifest.py` | A.62 批 4 **独立验证集冻结/校验**（患者级切分 + 逐条 sha256 + 与开发集零交集断言 + 缺患者 ID 直接报错；`freeze`/`verify` 两子命令，退出码 0/1/2；独立数据一到即可套用；守卫 11 例） |
 | `scripts/audit/p33_doctor_actions.mjs` | A.62 批 3 **医生操作动作验证**（登录→建会话→上传真实影像→出结论→提交修正反馈；真机 13/0；抓到并修掉「反馈提交必 404」；含「反馈挂在本次判读上」的挂载正确性断言） |
 | `scripts/audit/p32_feedback_eval_progress.mjs` | A.62 批 3 **浏览器前后端联调**（页面文本逐项对照 `/api/v1/eval-set/stats` 当场返回，**不硬编码数字**；真机 PASS=15/FAIL=0；证据 `tests/reports/p32_feedback_eval_progress.{json,png}`） |
 | `scripts/langfuse/eval_gate.py` | A.61 门控两层（`enforced` 判红 / `informational` 仅告知 + L2 `advisory`/`gate` 双模）+ `make eval-gate` |
