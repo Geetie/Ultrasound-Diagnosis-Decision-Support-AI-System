@@ -1,4 +1,9 @@
 {
+  "_status": "VOIDED —— 本文件的数字自 2026-10-15 起**不得再引用**",
+  "_voided_by": "A.64 WP1（探针 scripts/audit/p37_t2a_tn3k_parity.py）",
+  "_voided_reason": "全仓无任何脚本能生成本文件：其 schema（malignancy_auc / acc_at_0.5）全仓唯一，其余脚本用 auc / mal_vs_rest_auc / test_auc；n=1228（=614×2）与 TN3K 官方 test 的 614 张对不上（1228 在文档里只是 tn3k_lfs_fix 修好的文件计数）。真机同尺子重跑（TN3K 614 张，生产 8003 端点）得 AUC 0.4929，标签反向腿 0.5071 —— 旧值 0.6789 既不等于正向也不等于反向，判定 ORPHAN_UNREPRODUCIBLE。",
+  "_replacement": "reports/t2a_tn3k_cross_source.json（AUC 0.4929 / 95%CI [0.4438,0.5402] / n=614）与 reports/t2a_tn3k_parity.json（判定与标签反向腿）",
+  "_kept_for_history": "以下原始字段原样保留，仅为可追溯；引用它会得到**不可复现**的数字。",
   "dataset": "TN3K test (cross-dataset)",
   "n": 1228,
   "label_dist": {
