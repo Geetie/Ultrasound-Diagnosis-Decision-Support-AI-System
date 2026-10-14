@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -26,6 +26,7 @@ vi.mock('@/components/voice/VoiceDictationButton', () => ({
 }));
 
 import FeedbackPage from '../FeedbackPage';
+import { useSessionStore } from '@/stores/sessionStore';
 
 describe('FeedbackPage 语音输入（T-GB-FE-05）', () => {
   beforeEach(() => {
@@ -34,6 +35,29 @@ describe('FeedbackPage 语音输入（T-GB-FE-05）', () => {
     getMock.mockReset();
     // 进度区块对本文件是"背景信息"：让它走"尚未采集"分支即可（专测在 FeedbackPageEvalProgress.test.tsx）
     getMock.mockResolvedValue({ data: { available: false, reason: '尚未采集（测试替身）' } });
+    // 会话状态每个用例各自决定（默认无会话）
+    useSessionStore.setState({ sessionId: null });
+  });
+
+  it('没有会话时不发请求，并给可读提示（不让医生拿到 404 错误码）', async () => {
+    const user = userEvent.setup();
+    render(<FeedbackPage />);
+
+    await user.type(screen.getByPlaceholderText('输入相关字段名称'), 'boundary');
+    await user.type(screen.getByPlaceholderText('AI输出的原始内容'), '边界清晰');
+    await user.type(screen.getByPlaceholderText('修正后的正确内容'), '边界不清');
+    await user.type(screen.getByPlaceholderText('说明修正原因'), '与图像不符');
+    await user.click(screen.getByRole('button', { name: /提交反馈/ }));
+
+    // 关键：**不发请求**（发出去只会拿到 404「判读请求不存在」，医生看不懂）
+    await waitFor(() => expect(screen.getByText(/未关联会话/)).toBeInTheDocument());
+    expect(postMock).not.toHaveBeenCalled();
+    // 让 antd message 的调度先落地再收尾：否则 React 会在测试环境销毁后继续调度
+    // → `ReferenceError: window is not defined`（unhandled error 会把 vitest 退出码变成 1，
+    //   看起来像用例挂了，其实是环境时序噪声）
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
   });
 
   it('语音转写落到所选字段且文本可继续编辑', async () => {
@@ -67,6 +91,8 @@ describe('FeedbackPage 语音输入（T-GB-FE-05）', () => {
 
   it('提交反馈时带上 L2/L3 级别与内容', async () => {
     const user = userEvent.setup();
+    // A.62 批 3：反馈必须挂在会话上（无会话不发请求）→ 先放一个会话进 store
+    useSessionStore.setState({ sessionId: 'sess_test_1' });
     render(<FeedbackPage />);
 
     await user.type(screen.getByPlaceholderText('输入相关字段名称'), 'boundary');
@@ -87,6 +113,7 @@ describe('FeedbackPage 语音输入（T-GB-FE-05）', () => {
     // （服务端要求 request_id 必须是真实判读 id；自造 `fb_…` 会让医生提交必得 404）
     expect(payload.request_id).toBe('');
     expect(payload.request_id).not.toMatch(/^fb_/);
+    expect(payload.session_id).toBe('sess_test_1');
   });
 
   it('渲染语音填写区块（医生可先选字段再口述）', () => {

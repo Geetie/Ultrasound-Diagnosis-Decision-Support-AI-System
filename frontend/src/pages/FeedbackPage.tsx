@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Card, Form, Input, Button, Typography, Radio, message, Select, Space, Progress } from 'antd';
 import { SendOutlined } from '@ant-design/icons';
 import apiClient from '@/services/api';
@@ -59,7 +59,16 @@ export default function FeedbackPage() {
   const [loading, setLoading] = useState(false);
   const [dictationTarget, setDictationTarget] = useState<DictationTarget>('reason');
   const [form] = Form.useForm<FeedbackFormValues>();
-  const sessionId = useSessionStore((s) => s.sessionId);
+  const storeSessionId = useSessionStore((s) => s.sessionId);
+  // A.62 批 3：会话 id 两级取 —— ① store（医生从工作区点侧边栏「反馈提交」进来时在）
+  // ② URL 的 `?session_id=`（整页刷新/深链进来时 URL 才有）。
+  // 为什么要兜底：反馈**必须挂在会话的判读上**，会话丢了就必然提交失败；
+  // 而"整页加载后 store 清空"是真实场景（医生刷新页面、或从别处带链接进来）。
+  const urlSessionId = useMemo(
+    () => new URLSearchParams(window.location.search).get('session_id'),
+    [],
+  );
+  const sessionId = storeSessionId || urlSessionId;
   const touch = useTouchAdaptation();
   // A.61：评测集进度（只读）。医生看不到「还有多少没采」就只能靠口口相传 —— 进度必须上屏。
   const [evalStats, setEvalStats] = useState<EvalSetStats | null>(null);
@@ -98,6 +107,12 @@ export default function FeedbackPage() {
   );
 
   const handleSubmit = async (values: FeedbackFormValues) => {
+    // 没有会话就没有判读可挂 —— 直接说清并**不发请求**（发出去只会拿到 404「判读请求不存在」，
+    // 医生看到的是一个莫名其妙的错误码；这是 A.62 批 3 真机联调踩到的形态）。
+    if (!sessionId) {
+      message.error('未关联会话：请从左侧「反馈提交」进入，或先在会话中完成一次判读');
+      return;
+    }
     setLoading(true);
     try {
       const payload: FeedbackRequest = {

@@ -177,10 +177,21 @@ try {
     `request_id=${lastDiagnosisRequestId || '未抓到'}`,
   );
 
-  // ============ D5 进反馈页，填写修正类反馈 ============
-  await page.goto(`${BASE}/ui/feedback`, { waitUntil: 'domcontentloaded' });
+  // ============ D5 进反馈页（**走医生真实路径：点侧边栏「反馈提交」**） ============
+  // 为什么不用 `page.goto('/ui/feedback')`：整页加载会清空前端内存态（会话 id 在 store 里），
+  // 实测那样进去 `session_id` 为空 → 提交必 404「判读请求不存在」（A.62 批 3 踩到）。
+  // 医生日常是从工作区点侧边栏进去的（SPA 内导航，store 保留），所以探针也按这条路径走。
+  const navFeedback = page.getByRole('menuitem', { name: /反馈提交/ });
+  const hasNav = (await navFeedback.count()) > 0;
+  if (hasNav) {
+    await navFeedback.first().click();
+  } else {
+    await page.getByText(/反馈提交/).first().click().catch(() => {});
+  }
+  await page.waitForURL(/\/feedback/, { timeout: 15000 }).catch(() => {});
   await page.waitForSelector('[data-region="eval-set-progress"]', { timeout: 20000 }).catch(() => {});
   await sleep(page, 1200);
+  record('D5.0 医生从侧边栏「反馈提交」进入反馈页（SPA 内导航，会话不丢）', hasNav, `hasNav=${hasNav} url=${page.url().replace(BASE, '')}`);
 
   // ⚠️ 优先用 antd 表单的 `#name`（Form.Item name 会写成 input 的 id）：
   // `getByLabel('字段')` 会撞上「语音填写目标字段」那个下拉（aria-label 里含"字段"）——
@@ -216,13 +227,15 @@ try {
   );
   record('D6.2 医生看到「反馈提交成功」提示', successMsg, successMsg ? '已提示' : '未出现成功提示（提交未生效）');
 
-  // ============ D7 服务端确实落库（反馈真的写进去了） ============
-  const list = await api('GET', `/api/v1/feedback?session_id=${encodeURIComponent(sessionId || '')}`, null, token);
-  const n = Array.isArray(list.json) ? list.json.length : (list.json?.items?.length ?? null);
+  // ============ D7 挂载正确性：反馈必须落在**本次判读**上 ============
+  // 这一条是「医生标注通道」的命门：评测集按 `request_id` 把医生修正关联为「正确口径」，
+  // 若反馈挂到了别的判读（或没挂上），进度条永远涨不上去，而且**不会报错**。
+  let attachedId = null;
+  try { attachedId = JSON.parse(fb.body || '{}').request_id || null; } catch {}
   record(
-    'D7 服务端可查回该会话的反馈（落库证据）',
-    list.status === 200 && (n === null || n >= 1),
-    `http=${list.status} n=${n ?? '-'}`,
+    'D7 反馈挂在**本次判读**上（响应 request_id == 抓到的判读 id）',
+    Boolean(attachedId) && attachedId === lastDiagnosisRequestId,
+    `响应=${attachedId || '-'} 本次判读=${lastDiagnosisRequestId || '-'}`,
   );
 
   await page.screenshot({ path: path.join(OUT, 'doctor_feedback.png'), fullPage: true }).catch(() => {});
