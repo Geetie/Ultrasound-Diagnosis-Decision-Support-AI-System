@@ -9,8 +9,8 @@
 
 - **批 2-A 证据链（CRAG 路径）**：成因 `app/fusion/crag.py:450-458`（CRAG 新块并入落库证据）＋ `crag.py:546-554` 写的 `crag_evidence_chunks` **全仓无消费者**、`_build_specialist_context`（`563-570`）也没把 `clinical_context` 传给 reinvoke → 新块**从未进 prompt 却进了 knowledge_ids**。已补 CRAG 留痕、p30 新判定 `CRAG_SUPPLEMENT`（反证腿 9 条）、修 `--all` 假 PASS。真机 n=5：甲状腺 2/2 `PREFIX_TRUNCATED`、心脏 3/3 `CRAG_SUPPLEMENT`（模型未见 4~5 块）。**修法 A/B 待 00 号拍板**；拍板前 `knowledge_ids` 不是「结论依据」的完整凭据。
 - **批 2-B 静默收敛三段**：observability 32→0 / rag+fusion 16→0 / security+services+safety_gateway+edge+integrations 37→0；全仓 **348→263 处**（基线两段更新）。
-- **批 2-C p20 G5.4**：到达后等渲染稳定 + 逐帧扫 + 只重试一次（真机 3 连跑见 16 号 A.62.8）。
-- **批 2-D**：全量 unit ×2 = 3841 passed，未复现偶发。
+- **批 2-C p20 G5.4**：到达后等渲染稳定（计数连续两次一致）+ 逐帧扫 + 只重试一次；真机 **3 连跑全 31/0**（见 16 号 A.62.8）。
+- **批 2-D**：全量偶发**已复现并修掉** —— `sec` 密钥版本用例在全量顺序下 `DID NOT RAISE RuntimeError`，根因是「旧密钥记录存在且可解 → 兼容解密返回」这条正常契约分支被别处 leak 的 Redis mock 触发，而用例假设「版本+999 必然查不到旧密钥」→ 代码改为**显式抛约定异常** + 用例拆两条顺序无关；全量 `pytest tests/unit`（独占）**0 failed / 6602 passed**。
 
 ### A.62 批 2 复跑入口（下一位直接用）
 
