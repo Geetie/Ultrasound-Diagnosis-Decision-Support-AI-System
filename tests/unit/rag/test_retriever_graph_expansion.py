@@ -134,3 +134,83 @@ async def test_adapter_exception_degrades_to_original(monkeypatch):
     chunks = [_scored("kb_v1.0.0:d1#0001")]
     result = await retriever._expand_graph_neighbors(chunks)
     assert result == chunks
+
+
+@pytest.mark.asyncio
+async def test_enabled_but_no_edges_is_traced(monkeypatch):
+    """A.63 WP1：门控开着却一条邻居都没有 → 必须留痕，且成因要写对。
+
+    成因一：种子块自己没有 relations（存量库没回填 / 单 chunk 文档）
+    → `reason=no_edges_for_seeds`，排查方向是回填脚本。
+    """
+    from app.rag import retriever as retriever_module
+
+    fake_logger = MagicMock()
+    monkeypatch.setattr(retriever_module, "logger", fake_logger)
+    monkeypatch.setattr(settings, "graph_query_enabled", True)
+    adapter = MagicMock(name="GraphAdapter")
+    adapter.query_neighbors = AsyncMock(return_value=[])
+    retriever = _make_retriever(adapter)
+    chunks = [_scored("kb_v1.0.0:d1#0001")]
+
+    result = await retriever._expand_graph_neighbors(chunks)
+
+    assert result == chunks
+    payload = next(
+        c.kwargs
+        for c in fake_logger.info.call_args_list
+        if c.args and c.args[0] == "graph_neighbors_empty"
+    )
+    assert payload["seeds"] == 1
+    assert payload["reason"] == "no_edges_for_seeds"
+
+
+@pytest.mark.asyncio
+async def test_neighbors_already_retrieved_is_not_reported_as_missing_edges(monkeypatch):
+    """A.63 WP1 真机第一跑就踩到的坑：邻居**全都被 top-k 覆盖**时，
+
+    绝不能报成"没回填"（那是错误归因，会把排查引向 DB 而真因是"本查询无新增信息"）。
+    相邻块语义相近，常与种子一起被检索到 —— 这是正常结果，不是故障。
+    """
+    from app.rag import retriever as retriever_module
+
+    fake_logger = MagicMock()
+    monkeypatch.setattr(retriever_module, "logger", fake_logger)
+    monkeypatch.setattr(settings, "graph_query_enabled", True)
+    adapter = MagicMock(name="GraphAdapter")
+    # 邻居就是已在结果里的块（真实形态：next_section 指向的相邻块也被检索到）
+    adapter.query_neighbors = AsyncMock(
+        return_value=[_make_chunk("kb_v1.0.0:d1#0001")]
+    )
+    retriever = _make_retriever(adapter)
+    chunks = [_scored("kb_v1.0.0:d1#0001")]
+
+    result = await retriever._expand_graph_neighbors(chunks)
+
+    assert result == chunks  # 没有新增
+    payload = next(
+        c.kwargs
+        for c in fake_logger.info.call_args_list
+        if c.args and c.args[0] == "graph_neighbors_empty"
+    )
+    assert payload["reason"] == "all_neighbors_already_retrieved"
+    assert payload["fetched"] == 1
+    assert payload["duplicates"] == 1
+
+
+@pytest.mark.asyncio
+async def test_gate_off_produces_no_empty_trace(monkeypatch):
+    """反腿：门控关闭时不产生"空转"留痕（否则日志会把默认态说成异常）。"""
+    from app.rag import retriever as retriever_module
+
+    fake_logger = MagicMock()
+    monkeypatch.setattr(retriever_module, "logger", fake_logger)
+    monkeypatch.setattr(settings, "graph_query_enabled", False)
+    adapter = MagicMock(name="GraphAdapter")
+    adapter.query_neighbors = AsyncMock(return_value=[])
+    retriever = _make_retriever(adapter)
+
+    await retriever._expand_graph_neighbors([_scored("kb_v1.0.0:d1#0001")])
+
+    events = [c.args[0] for c in fake_logger.info.call_args_list if c.args]
+    assert "graph_neighbors_empty" not in events

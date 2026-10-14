@@ -1,0 +1,3696 @@
+{
+  "_note": "A.63 WP3 甲状腺跨来源公开集冻结清单：相对路径 + 标签 + sha256；复跑前逐条校验，防换集刷分",
+  "dataset": "TN3K (test split, 官方划分)",
+  "license": "CC BY-NC 3.0（14 号台账）；数据集 README 写 license: mit —— 按更保守口径使用",
+  "split_level": "image",
+  "split_level_note": "TN3K 无 patient_id → 只能到影像级；不得称为患者级独立验证",
+  "usage": "cross_source_eval_only（仅评测，不训练；不进注册申报）",
+  "training_overlap": "生产资产 t2a_v2（models/t2a_v2/t2a_finetune.pt + t2a_probe_lr.joblib）是否曾见过 TN3K 无代码留证（t2a_tn3k_adapt.pt 是另一份适配产物）→ 记为跨来源，不得称为独立验证",
+  "count": 614,
+  "items": [
+    {
+      "path": "test-image/0000.jpg",
+      "label": "Benign",
+      "sha256": "beb56443d0847f23e55b0698a67441f784a045b70d34a74ff283bbe50d10fbd5",
+      "bytes": 39388
+    },
+    {
+      "path": "test-image/0001.jpg",
+      "label": "Benign",
+      "sha256": "a0950c58fe11f098c97e36fd058148648ceb2fece3e6758bcb7acb55afd02b1e",
+      "bytes": 112961
+    },
+    {
+      "path": "test-image/0002.jpg",
+      "label": "Benign",
+      "sha256": "983d930f72a14e1874f8d2ff891708c860c719b5335cb38813820492c1106e74",
+      "bytes": 60107
+    },
+    {
+      "path": "test-image/0003.jpg",
+      "label": "Benign",
+      "sha256": "572655a5fd72b64e2a84e965a1247701bb111adfd3338356fbdbcd0918bdf778",
+      "bytes": 60328
+    },
+    {
+      "path": "test-image/0004.jpg",
+      "label": "Benign",
+      "sha256": "17be1320f3209f4d5c9ffdb9c111ebc69fa3e6c5c286337a8e456d28d7c9d511",
+      "bytes": 51948
+    },
+    {
+      "path": "test-image/0005.jpg",
+      "label": "Benign",
+      "sha256": "670cfa9fc81328762f4e148748d9261dfdc1e455ad46ea203b9c4d1defc6cdd7",
+      "bytes": 30951
+    },
+    {
+      "path": "test-image/0006.jpg",
+      "label": "Benign",
+      "sha256": "790c88f69d1c597ced164d82dd9b5d5c65b5b2a6ccdfc9647b7851e50875eca3",
+      "bytes": 43622
+    },
+    {
+      "path": "test-image/0007.jpg",
+      "label": "Benign",
+      "sha256": "f50992f6dc835b699b5b6f60d9fec353d3dbf9c8a94a6a3bf019b191eb6408b5",
+      "bytes": 52777
+    },
+    {
+      "path": "test-image/0008.jpg",
+      "label": "Benign",
+      "sha256": "04c00a5741e4480ea758ccf8d1f1aa8816465147c1b6ca139709deca6c6b3eec",
+      "bytes": 14971
+    },
+    {
+      "path": "test-image/0009.jpg",
+      "label": "Benign",
+      "sha256": "6c97c8b8e207b2e79df726845c842ea76b6d2dd13a3cc1b4b7f7e7b0b589ba50",
+      "bytes": 40507
+    },
+    {
+      "path": "test-image/0010.jpg",
+      "label": "Benign",
+      "sha256": "00050deb2bcd13fdd70cc3a5ae8dc592d0fd46aa69f8fdc5509fe3448c8abf6f",
+      "bytes": 59111
+    },
+    {
+      "path": "test-image/0011.jpg",
+      "label": "Benign",
+      "sha256": "32ce12da81f9c2c58a0c83dc7869c90b20ba314b2bd4cc66a68c0e13f0deed6c",
+      "bytes": 53342
+    },
+    {
+      "path": "test-image/0012.jpg",
+      "label": "Benign",
+      "sha256": "5d6ea9ebfada64b0ec1045ba93bd28d1f7f200ac2d51bb6086d47f41f49fd725",
+      "bytes": 55795
+    },
+    {
+      "path": "test-image/0013.jpg",
+      "label": "Benign",
+      "sha256": "d705ffbe95d4d56b66c93ec9f2c645cb8ebc4f4d482665980110c2c4a3589439",
+      "bytes": 47010
+    },
+    {
+      "path": "test-image/0014.jpg",
+      "label": "Benign",
+      "sha256": "342888f395dfb6b01d41b8ee0727ff8a560b4235ca714df61c30a388c835041b",
+      "bytes": 45529
+    },
+    {
+      "path": "test-image/0015.jpg",
+      "label": "Benign",
+      "sha256": "d700fdfeff93405c15ba3f071a796286a96eea21d97615973c19e7a2f5162012",
+      "bytes": 45073
+    },
+    {
+      "path": "test-image/0016.jpg",
+      "label": "Benign",
+      "sha256": "395e3f86725e9497185eebdb2c00602dfa30ec099fdbdd69d7f1dd6017e8c8f4",
+      "bytes": 45790
+    },
+    {
+      "path": "test-image/0017.jpg",
+      "label": "Benign",
+      "sha256": "15546c90c67127948ab893382da97e22b42dfca22a8b21ed216d7bd86b194bc1",
+      "bytes": 48788
+    },
+    {
+      "path": "test-image/0018.jpg",
+      "label": "Benign",
+      "sha256": "8af546f682d99b9a017e0edd05856a85997ab6b48aa461a16dc030a4faed960a",
+      "bytes": 46167
+    },
+    {
+      "path": "test-image/0019.jpg",
+      "label": "Benign",
+      "sha256": "eff237afce4687ea41a82d3af9fb287ee3c82c980cb577509989afde4b91354c",
+      "bytes": 40416
+    },
+    {
+      "path": "test-image/0020.jpg",
+      "label": "Benign",
+      "sha256": "819d502309e26aebf9d2c3e242ae846e72d29591ec89c57f587688a2338f992f",
+      "bytes": 27034
+    },
+    {
+      "path": "test-image/0021.jpg",
+      "label": "Benign",
+      "sha256": "bf7f45bdeb6e9749601a98f1cbebda504991b6c17621f9cb368ba424ba29e3a1",
+      "bytes": 93186
+    },
+    {
+      "path": "test-image/0022.jpg",
+      "label": "Benign",
+      "sha256": "676b2adb72bf655e56ed9d76a24925003275410f06da158a20f09cfaf8a1053e",
+      "bytes": 37093
+    },
+    {
+      "path": "test-image/0023.jpg",
+      "label": "Benign",
+      "sha256": "bf89dff7d2612244bf858e8a6067720c7dbd872a5aee0364ac4528a2e89dd4db",
+      "bytes": 45304
+    },
+    {
+      "path": "test-image/0024.jpg",
+      "label": "Benign",
+      "sha256": "378e1b0216f5c8d1cdebadb718815eeecf12063eb197c0624a7fde1bd32514f5",
+      "bytes": 53438
+    },
+    {
+      "path": "test-image/0025.jpg",
+      "label": "Benign",
+      "sha256": "83a85aa4b220a8aca0f2296b6f71e49f4874a7bc766222acde86b811d9e07337",
+      "bytes": 68523
+    },
+    {
+      "path": "test-image/0026.jpg",
+      "label": "Benign",
+      "sha256": "d881acc15b064f89b7cf6660ba69d025cd98e1a23b05fa71a7559c76adb25ba7",
+      "bytes": 44452
+    },
+    {
+      "path": "test-image/0027.jpg",
+      "label": "Benign",
+      "sha256": "05c120980a8cfbd1f6b8769ab672ac9449873bbf0bf833d3ce90cc35c9f1f1d9",
+      "bytes": 53760
+    },
+    {
+      "path": "test-image/0028.jpg",
+      "label": "Benign",
+      "sha256": "fc57ac4116f56091594b3ab5c429560e428289311583f407c3d5b7b5c7d15473",
+      "bytes": 44511
+    },
+    {
+      "path": "test-image/0029.jpg",
+      "label": "Benign",
+      "sha256": "9502019a30a0ea99acfd3878997964b5f245fa12629e6c17dda339a241b5f481",
+      "bytes": 37958
+    },
+    {
+      "path": "test-image/0030.jpg",
+      "label": "Benign",
+      "sha256": "860caf42ceaaa28563cd74b44a0c03a2d389af14e0abaa891c3fe189a71f61f5",
+      "bytes": 50021
+    },
+    {
+      "path": "test-image/0031.jpg",
+      "label": "Benign",
+      "sha256": "117ea5b1884038ccbd803cd4d21dbda1357de1127f4d58d58dbea6f2c00f5429",
+      "bytes": 50151
+    },
+    {
+      "path": "test-image/0032.jpg",
+      "label": "Benign",
+      "sha256": "3bb6e625933f232cea622c959f8a8fa91c763c1de3916c4e8b6a2c416c8a36b0",
+      "bytes": 44170
+    },
+    {
+      "path": "test-image/0033.jpg",
+      "label": "Benign",
+      "sha256": "274ac9534e70ed3e93e0dba9b1018db1a1dc621be692a1e55b1d24f0c920402d",
+      "bytes": 43776
+    },
+    {
+      "path": "test-image/0034.jpg",
+      "label": "Benign",
+      "sha256": "e1547f1b5ea96410b7e2e2b0b38efdffb2e4097ad4d76ed6f307845541fbbef6",
+      "bytes": 46972
+    },
+    {
+      "path": "test-image/0035.jpg",
+      "label": "Benign",
+      "sha256": "aa9cc2c7b3900b5ae2b1807109d7484b483ccaf250353df34d73906406f1cf91",
+      "bytes": 46579
+    },
+    {
+      "path": "test-image/0036.jpg",
+      "label": "Benign",
+      "sha256": "feaa677a8f0ba2798bc5bf688917289a7007d39312445d92e66ad5cb9f387104",
+      "bytes": 41989
+    },
+    {
+      "path": "test-image/0037.jpg",
+      "label": "Benign",
+      "sha256": "121c0ca90e2898887b349b309fbdc5ab6779c95160ba50e76b87b128c7fe5c92",
+      "bytes": 49904
+    },
+    {
+      "path": "test-image/0038.jpg",
+      "label": "Benign",
+      "sha256": "c79b1638e57f9337ef7f06cb3205e8b2adaa6eec7115fe6284045a4f05527109",
+      "bytes": 171935
+    },
+    {
+      "path": "test-image/0039.jpg",
+      "label": "Benign",
+      "sha256": "441404b2b3fca1f0303ba7a570b8f9b0d00489ae31e7d8da84328b6aaaad8fe2",
+      "bytes": 52637
+    },
+    {
+      "path": "test-image/0040.jpg",
+      "label": "Benign",
+      "sha256": "dcd4022598d21171e42e1d7c9a4ebf29ee9cc968a095a3dc3ba1cc839dfd243b",
+      "bytes": 45794
+    },
+    {
+      "path": "test-image/0041.jpg",
+      "label": "Benign",
+      "sha256": "bafee4a63aba3b8ff121b9647acf2a1747c162d55112098fff113cde69b2997e",
+      "bytes": 48215
+    },
+    {
+      "path": "test-image/0042.jpg",
+      "label": "Benign",
+      "sha256": "d8c291bf39807f3626a5039bfc76bbb9d16c18ff605f5be2f28ab9a31d96ebbc",
+      "bytes": 65971
+    },
+    {
+      "path": "test-image/0043.jpg",
+      "label": "Benign",
+      "sha256": "c0802375a5e90d8cd294bf47db563928739c2b55d391c5257e60c9fb2ba8daee",
+      "bytes": 52737
+    },
+    {
+      "path": "test-image/0044.jpg",
+      "label": "Benign",
+      "sha256": "b05e15614706e6b4b47b2238603bbb73ef0aae0807f0107de1a17f6d32768966",
+      "bytes": 94371
+    },
+    {
+      "path": "test-image/0045.jpg",
+      "label": "Benign",
+      "sha256": "8010a3604f457973795a9b6e6cf3095ac05a798f7a2c03e09f7a96f032796c2a",
+      "bytes": 53946
+    },
+    {
+      "path": "test-image/0046.jpg",
+      "label": "Benign",
+      "sha256": "199bd5f9d42aaceb1cfccee4b84f74290c0d489fa545d8ab872e794a893f04af",
+      "bytes": 53183
+    },
+    {
+      "path": "test-image/0047.jpg",
+      "label": "Benign",
+      "sha256": "7e90a11c3525ea4d2f1b1e4ea38b130563da5427c12148a70afee20e530b34cc",
+      "bytes": 35659
+    },
+    {
+      "path": "test-image/0048.jpg",
+      "label": "Benign",
+      "sha256": "5e9fe7f9f6fae37661c71269500f6b3f34c0f3e647269148af06c989949b38a2",
+      "bytes": 46543
+    },
+    {
+      "path": "test-image/0049.jpg",
+      "label": "Benign",
+      "sha256": "83569eea980c45463099bd42679aa2dc8a1edbe1a43d2310ad03d288fedfa5c0",
+      "bytes": 39214
+    },
+    {
+      "path": "test-image/0050.jpg",
+      "label": "Benign",
+      "sha256": "846b92d0bea9a45a15107bb836dfcde1a0a10439df1bb5e2fcd42f476af36209",
+      "bytes": 25857
+    },
+    {
+      "path": "test-image/0051.jpg",
+      "label": "Benign",
+      "sha256": "e49120895c0f409c471c15f5f52ecd1c57aafb5ed243d0e5e99e303c2cbcae48",
+      "bytes": 30105
+    },
+    {
+      "path": "test-image/0052.jpg",
+      "label": "Benign",
+      "sha256": "649a4bd2e4c01031e5a7545a0b85de2ff02bdf21576690747e44ffee85e6f170",
+      "bytes": 37342
+    },
+    {
+      "path": "test-image/0053.jpg",
+      "label": "Benign",
+      "sha256": "56c6c1a9fe6e2904801b21c9a2b5a58ff21021627a0cbef64add78e8473217d1",
+      "bytes": 36982
+    },
+    {
+      "path": "test-image/0054.jpg",
+      "label": "Benign",
+      "sha256": "a82d7fa83a86a567f4c0a7f07a99f2f4ef470e0d745c5cd160d70c151cbd55b9",
+      "bytes": 188092
+    },
+    {
+      "path": "test-image/0055.jpg",
+      "label": "Benign",
+      "sha256": "1eab7e1a6ca32d550f1b4b6807f576dc773111f0f86a5a12f9fe30808decb61e",
+      "bytes": 187981
+    },
+    {
+      "path": "test-image/0056.jpg",
+      "label": "Benign",
+      "sha256": "63b751ae2fe2e79170147d0ae59dfdc719b256055912eb7c54993b823640cce7",
+      "bytes": 94239
+    },
+    {
+      "path": "test-image/0057.jpg",
+      "label": "Benign",
+      "sha256": "0020856d776243b296114509390e3d44c099bdf3e9ca5873825b6e7e5326929f",
+      "bytes": 41350
+    },
+    {
+      "path": "test-image/0058.jpg",
+      "label": "Benign",
+      "sha256": "82d782c1f5466b9f282da6d45e2f8bce8a7d49428280977f2ca434e0ac482cdd",
+      "bytes": 99689
+    },
+    {
+      "path": "test-image/0059.jpg",
+      "label": "Benign",
+      "sha256": "3d9b018f42ac090e1af7582444f65d13fdffa746fa86911023f2a6146475f466",
+      "bytes": 48683
+    },
+    {
+      "path": "test-image/0060.jpg",
+      "label": "Benign",
+      "sha256": "68ee5f74b2f4362fa02ba9bf8014942844dac037325ccfd6ba095d5b109fac67",
+      "bytes": 55911
+    },
+    {
+      "path": "test-image/0061.jpg",
+      "label": "Benign",
+      "sha256": "b3bffcce76833e67918848c70e8c9c9732073dc8a9c7b54c2bdd7b97b47299f3",
+      "bytes": 98755
+    },
+    {
+      "path": "test-image/0062.jpg",
+      "label": "Benign",
+      "sha256": "109d85b57be56db312a5b1326ca7ea2fc2fa6b9f5e764e64ab329e4589439842",
+      "bytes": 135045
+    },
+    {
+      "path": "test-image/0063.jpg",
+      "label": "Benign",
+      "sha256": "4626bd49f7fd1e77fd6dceed7bd0d9e565746b53cecab00dae028045078e3e4b",
+      "bytes": 45938
+    },
+    {
+      "path": "test-image/0064.jpg",
+      "label": "Benign",
+      "sha256": "6f8d3791a6b2cde4e52a47634b19799cb81152508ae0febb869b3d09b3085039",
+      "bytes": 34100
+    },
+    {
+      "path": "test-image/0065.jpg",
+      "label": "Benign",
+      "sha256": "e3c0dd453fdf67aa317efda577d692b871a0f41873fd6ad171c173fd8de2ac10",
+      "bytes": 51700
+    },
+    {
+      "path": "test-image/0066.jpg",
+      "label": "Benign",
+      "sha256": "d6d6098fc5070013b843bfe2e4099ed50ac9d2bfc27e5ce469668468e4c78f7b",
+      "bytes": 41009
+    },
+    {
+      "path": "test-image/0067.jpg",
+      "label": "Benign",
+      "sha256": "e42b5d3cb8c665a3a9e58e9d234da26b13fc30feeaaf9eb0548c4fec15d4299b",
+      "bytes": 58485
+    },
+    {
+      "path": "test-image/0068.jpg",
+      "label": "Benign",
+      "sha256": "35491fa14d8c9159a1a9291332dde6aca01feaf3f11a8a2a98b544012e789173",
+      "bytes": 61793
+    },
+    {
+      "path": "test-image/0069.jpg",
+      "label": "Benign",
+      "sha256": "f649ca39bb1a092eadcdf8828bd0dd3b80ab645f5237ee8b01f8b4eb027dd694",
+      "bytes": 41468
+    },
+    {
+      "path": "test-image/0070.jpg",
+      "label": "Benign",
+      "sha256": "c6e32e7ec13b0a209a5355b3cb6449f076d101d71bfa6b2d8686a1885a2a5110",
+      "bytes": 34901
+    },
+    {
+      "path": "test-image/0071.jpg",
+      "label": "Benign",
+      "sha256": "51dfd394d1763113c61df9504d043acc7d7472063b0dfa1b8a62aaaaf2176e32",
+      "bytes": 58327
+    },
+    {
+      "path": "test-image/0072.jpg",
+      "label": "Benign",
+      "sha256": "085411efc5074ae5ef4aca9fe0294d6154ad64a08d85afc19d7952c55bbe0c1a",
+      "bytes": 26151
+    },
+    {
+      "path": "test-image/0073.jpg",
+      "label": "Benign",
+      "sha256": "87632413ae91902361f5ff084376097a7cf6a20c1fd927fdf31ae0a7853d54fe",
+      "bytes": 54123
+    },
+    {
+      "path": "test-image/0074.jpg",
+      "label": "Benign",
+      "sha256": "d0135f05ba2769e9b3ecd4974e659c44f32e116d61b9882f2049af760e6a2394",
+      "bytes": 47017
+    },
+    {
+      "path": "test-image/0075.jpg",
+      "label": "Benign",
+      "sha256": "75cba02b7f7aaf4dafd16b2e58483da2a8b115f619c400f69ee8e1f24ecd2f80",
+      "bytes": 63835
+    },
+    {
+      "path": "test-image/0076.jpg",
+      "label": "Benign",
+      "sha256": "e2928485acb5fc4281aad195e2e7387428ee0b76c27d5b3b9d99ce888031b618",
+      "bytes": 60813
+    },
+    {
+      "path": "test-image/0077.jpg",
+      "label": "Benign",
+      "sha256": "36c31266c47c8bbeebaef25818d154446a39a7d7440d0ec3c87cb13919708728",
+      "bytes": 32544
+    },
+    {
+      "path": "test-image/0078.jpg",
+      "label": "Benign",
+      "sha256": "3d0b9ddeb333ac557b558456a9486c05fb1978f87d4bda7279a1fb7aab54bea0",
+      "bytes": 44511
+    },
+    {
+      "path": "test-image/0079.jpg",
+      "label": "Benign",
+      "sha256": "ad7a4a5f3bb704bb4804fda8e1f3ed51c4dd9a4ce2d1877213c9a1107bdb942b",
+      "bytes": 36019
+    },
+    {
+      "path": "test-image/0080.jpg",
+      "label": "Benign",
+      "sha256": "a89771543c0a8084705f3673345a3be62c09c476f8bbee222f995c84e822a232",
+      "bytes": 50045
+    },
+    {
+      "path": "test-image/0081.jpg",
+      "label": "Benign",
+      "sha256": "a24dbeb0087f22b7de857175fba060f16d4a08ad4250c7826e5f65fec6e29fad",
+      "bytes": 59648
+    },
+    {
+      "path": "test-image/0082.jpg",
+      "label": "Benign",
+      "sha256": "e4d9757747ee70a9a64b7aa7a33b29c8a8cdc60110cbb23dd2c12d51ba904233",
+      "bytes": 59008
+    },
+    {
+      "path": "test-image/0083.jpg",
+      "label": "Benign",
+      "sha256": "9070dace494a5502cf368fd03ddec2654408ac30a359a3e505e45928064c49e2",
+      "bytes": 55428
+    },
+    {
+      "path": "test-image/0084.jpg",
+      "label": "Benign",
+      "sha256": "783ea8be7481f9ddde2ec182b232b1a0d4215fc0110fdc5144a731e7635c4152",
+      "bytes": 42920
+    },
+    {
+      "path": "test-image/0085.jpg",
+      "label": "Benign",
+      "sha256": "cb5bd99fa3aea9b910f8bc4a6a9153467af79caec1857cac3d3d303275cc4d31",
+      "bytes": 119890
+    },
+    {
+      "path": "test-image/0086.jpg",
+      "label": "Benign",
+      "sha256": "16a748d676f1dcffeb666cc1b415c52b058bc9f998938745dd3429e52eb5dfdf",
+      "bytes": 111951
+    },
+    {
+      "path": "test-image/0087.jpg",
+      "label": "Benign",
+      "sha256": "896de9bf40bcea77c75579956795eabb5eef191ed9f147c25ebd1745bbf78fad",
+      "bytes": 17679
+    },
+    {
+      "path": "test-image/0088.jpg",
+      "label": "Benign",
+      "sha256": "e5e1c64d6898669267ba760c1b63b2ce7ec7f526a58ce7c430d70b10d0f99c71",
+      "bytes": 47957
+    },
+    {
+      "path": "test-image/0089.jpg",
+      "label": "Benign",
+      "sha256": "80b9ccd9594d1e16feb8350290c6d77a9af9f774e891b0b11a25c5b0dad88a3b",
+      "bytes": 34357
+    },
+    {
+      "path": "test-image/0090.jpg",
+      "label": "Benign",
+      "sha256": "61eb4a2b3a6ecbdc78e08e9b21f6f26aa44936a2c3106c736fb8ed4e2f38c179",
+      "bytes": 57271
+    },
+    {
+      "path": "test-image/0091.jpg",
+      "label": "Benign",
+      "sha256": "28e78137073194663483cf34a17bf32107e82124d5cb93c2ae753bf2d6b65849",
+      "bytes": 33827
+    },
+    {
+      "path": "test-image/0092.jpg",
+      "label": "Benign",
+      "sha256": "b7316c0bf23e65cfbf52832eaf34c52e1b5428dae876558e2a24a608f18111b9",
+      "bytes": 48966
+    },
+    {
+      "path": "test-image/0093.jpg",
+      "label": "Benign",
+      "sha256": "9b830a372eff06522b8ea5ae57f552fbe92af41baa43682181375da4064c6e12",
+      "bytes": 45545
+    },
+    {
+      "path": "test-image/0094.jpg",
+      "label": "Benign",
+      "sha256": "32885935a709a2535ff3aa497f62a509e4b8cdfbe119853143b6f4852fac80a8",
+      "bytes": 45870
+    },
+    {
+      "path": "test-image/0095.jpg",
+      "label": "Benign",
+      "sha256": "4045aa387ef1d7f48e2e818cf763d7302b9f0b6ff52409af071c30f9fb3204b0",
+      "bytes": 40331
+    },
+    {
+      "path": "test-image/0096.jpg",
+      "label": "Benign",
+      "sha256": "d944050b88f7fd3004eb1a5d8eae63ac19529a4a01c04bd9891c4ffa346cb5e1",
+      "bytes": 41697
+    },
+    {
+      "path": "test-image/0097.jpg",
+      "label": "Benign",
+      "sha256": "55a05e01d4cae63671926b87ee32c5384aad87286c2b8b9c2b1a517fd2fb1fa8",
+      "bytes": 57308
+    },
+    {
+      "path": "test-image/0098.jpg",
+      "label": "Benign",
+      "sha256": "7a26de2ddfdc12585c94761a1698b875fd9a5aa7fa38329473c7bc61cd51b60b",
+      "bytes": 53906
+    },
+    {
+      "path": "test-image/0099.jpg",
+      "label": "Benign",
+      "sha256": "06eb5532cb4798c6f9e6038842ed3d3328589b984e1338c14f13cfc6ab618a3a",
+      "bytes": 45382
+    },
+    {
+      "path": "test-image/0100.jpg",
+      "label": "Benign",
+      "sha256": "3a9fbef38a10a82004dcb0bbdad1f27073112e93c9cd2b406897483dbe4053d3",
+      "bytes": 47876
+    },
+    {
+      "path": "test-image/0101.jpg",
+      "label": "Benign",
+      "sha256": "2463abf183c425b6f067c0d48383517867ef56520359621e26982de295c1b237",
+      "bytes": 48934
+    },
+    {
+      "path": "test-image/0102.jpg",
+      "label": "Benign",
+      "sha256": "1c0c6fee211296ae3353707a5e6c117a2eb696bc4efd62343ed99caaccfd02d1",
+      "bytes": 48083
+    },
+    {
+      "path": "test-image/0103.jpg",
+      "label": "Benign",
+      "sha256": "3232d9808389f38e650e5f300067db1ea434178280e730f8d758a7fd1b48c4a8",
+      "bytes": 98240
+    },
+    {
+      "path": "test-image/0104.jpg",
+      "label": "Benign",
+      "sha256": "40870fd61b78eded89d28f5db82c99fc2fe09258b713d6087119e2123e3243d9",
+      "bytes": 109086
+    },
+    {
+      "path": "test-image/0105.jpg",
+      "label": "Benign",
+      "sha256": "02f63ad4633ebb309419650b39d810b41bfdbecd42a4d60a28df7c740a23539f",
+      "bytes": 43273
+    },
+    {
+      "path": "test-image/0106.jpg",
+      "label": "Benign",
+      "sha256": "4f470fdebbf97ded2a931fceae054dff52612bdb6bc474cd7ba4e237833ed8f9",
+      "bytes": 35357
+    },
+    {
+      "path": "test-image/0107.jpg",
+      "label": "Benign",
+      "sha256": "339568ef6e569e8a768338ecce9af4ccbeb1a5f1bb2a6f7a2d1c33ba5a1fce17",
+      "bytes": 64212
+    },
+    {
+      "path": "test-image/0108.jpg",
+      "label": "Benign",
+      "sha256": "9b69b6988d1e9ae288f482f8f73e730a1cf010652d848624f8e4d3781e63cf6f",
+      "bytes": 25767
+    },
+    {
+      "path": "test-image/0109.jpg",
+      "label": "Benign",
+      "sha256": "3e8efbb2a4f50b9028d69608e523da1420a9b16b111d4f302748f468d03c3fc4",
+      "bytes": 25383
+    },
+    {
+      "path": "test-image/0110.jpg",
+      "label": "Benign",
+      "sha256": "25903d40a06c362774f6454de16b94ab15d33cfeca71f8ed6da5c945cb11270b",
+      "bytes": 56405
+    },
+    {
+      "path": "test-image/0111.jpg",
+      "label": "Benign",
+      "sha256": "a912ca17d20ec3882d7f02d2330cc7711140c69cc05ca09358c15bcac6ca53fd",
+      "bytes": 55069
+    },
+    {
+      "path": "test-image/0112.jpg",
+      "label": "Benign",
+      "sha256": "87c770e174abd400c756c2d6d60bd2c07e631087c9f7b36b0bdf5698079cfc27",
+      "bytes": 53229
+    },
+    {
+      "path": "test-image/0113.jpg",
+      "label": "Benign",
+      "sha256": "771b628837feb5dd72b34a5fbd35a3469560ed308020d737cd784ff679cc341f",
+      "bytes": 44361
+    },
+    {
+      "path": "test-image/0114.jpg",
+      "label": "Benign",
+      "sha256": "3d63d6a613bab2b58f0fe7dbdbf8240a58c86755168d3ee845d73fa880ae2e5c",
+      "bytes": 60648
+    },
+    {
+      "path": "test-image/0115.jpg",
+      "label": "Benign",
+      "sha256": "4da5a683f969d895bc6c1c50b1ca1b382859c5e963c9cf906baef447a8a839d4",
+      "bytes": 55807
+    },
+    {
+      "path": "test-image/0116.jpg",
+      "label": "Benign",
+      "sha256": "fc5bc31f1cefdb6e3c2da832c00bb0a5a619c32b2d4ec93bcd8a30bdbe07e9dc",
+      "bytes": 56219
+    },
+    {
+      "path": "test-image/0117.jpg",
+      "label": "Benign",
+      "sha256": "28d11b71994c05c31cc7538a1594712d8534ed010b3e5b7eb78e2a7194e039fb",
+      "bytes": 50676
+    },
+    {
+      "path": "test-image/0118.jpg",
+      "label": "Benign",
+      "sha256": "6d9211c9bfcb18db797dd2ea16a4b32dc3fb69433014e3a2284286625cda1964",
+      "bytes": 60251
+    },
+    {
+      "path": "test-image/0119.jpg",
+      "label": "Benign",
+      "sha256": "2b5ba7c4542206bfaa555e9ef795344edb66b218635a1c5fe9ffaa6cd5dcbb25",
+      "bytes": 41312
+    },
+    {
+      "path": "test-image/0120.jpg",
+      "label": "Benign",
+      "sha256": "7e604f9d190b065a5dcf6ac664245d51fb35b26ae7484c61dc7c9da1c4ad6301",
+      "bytes": 46783
+    },
+    {
+      "path": "test-image/0121.jpg",
+      "label": "Benign",
+      "sha256": "2fbd476d6ad756c867dc6e8f29abfa5454c14a574d97f002b518496135475a03",
+      "bytes": 72049
+    },
+    {
+      "path": "test-image/0122.jpg",
+      "label": "Benign",
+      "sha256": "b5ebbec0b3463a3f52a2f425e3553d61ce4e5aa23315d0e28065bc6bcca86f4e",
+      "bytes": 39405
+    },
+    {
+      "path": "test-image/0123.jpg",
+      "label": "Benign",
+      "sha256": "2121d540ab2c5fbcda9f971d4730726bb230cbb05136692b353390ad85759a91",
+      "bytes": 40804
+    },
+    {
+      "path": "test-image/0124.jpg",
+      "label": "Benign",
+      "sha256": "ded758160e3ccade0d323a49cef9dc38a7e7b4df89c66edc5354e31117ba6438",
+      "bytes": 46830
+    },
+    {
+      "path": "test-image/0125.jpg",
+      "label": "Benign",
+      "sha256": "785ed7fb5ad177192facafabb5e8b3c2993249d55a041759dbfaeaaf2d9861b6",
+      "bytes": 44087
+    },
+    {
+      "path": "test-image/0126.jpg",
+      "label": "Benign",
+      "sha256": "52085733fa86a597c4189b204629bff9d070908d23708f6d7e7f7e5dd5b6f828",
+      "bytes": 42092
+    },
+    {
+      "path": "test-image/0127.jpg",
+      "label": "Benign",
+      "sha256": "85ddc123e390e4573e303bb3ff0a9140418e07a51bd5c0f2ded50cfc34d93882",
+      "bytes": 48334
+    },
+    {
+      "path": "test-image/0128.jpg",
+      "label": "Benign",
+      "sha256": "20af3da30e0ec540561715a1e5dd0d37e6ebd93f33bb31fcb63fcb86019d7e08",
+      "bytes": 45926
+    },
+    {
+      "path": "test-image/0129.jpg",
+      "label": "Benign",
+      "sha256": "86c4c21061a955acab3774f0ad291fc77298a947abee71f9d69c028aa31f097e",
+      "bytes": 49491
+    },
+    {
+      "path": "test-image/0130.jpg",
+      "label": "Benign",
+      "sha256": "f9896c878335af688a708a391ca7154813587e6f9c910b1203d6cc9f8c585811",
+      "bytes": 44344
+    },
+    {
+      "path": "test-image/0131.jpg",
+      "label": "Benign",
+      "sha256": "0ddb08b40451bb53a0c1f7968571f7277156f52f5e124f9105ac9c3250eda0b0",
+      "bytes": 145019
+    },
+    {
+      "path": "test-image/0132.jpg",
+      "label": "Benign",
+      "sha256": "9a37284d9bc151c8e4b08e60e2cd0a70f27e8fe058a432315a69ee3a3420defb",
+      "bytes": 28528
+    },
+    {
+      "path": "test-image/0133.jpg",
+      "label": "Benign",
+      "sha256": "f53a7a52ed8c5774bc6c0578dff8d7dc4536e98fe468f849fa522aaab4cba89a",
+      "bytes": 52223
+    },
+    {
+      "path": "test-image/0134.jpg",
+      "label": "Benign",
+      "sha256": "88d54d82f78e7b15b292ac1f409f3107133af64573086c1445adee10a05f3866",
+      "bytes": 50689
+    },
+    {
+      "path": "test-image/0135.jpg",
+      "label": "Benign",
+      "sha256": "b5f03c65a1b185e84116a7875d3d5276c8256ff10ddedc438f65d79b74e30150",
+      "bytes": 101728
+    },
+    {
+      "path": "test-image/0136.jpg",
+      "label": "Benign",
+      "sha256": "5db08479e319bc9181041e577b7852634d034d507c7a732c371a577be3fc4e1f",
+      "bytes": 54583
+    },
+    {
+      "path": "test-image/0137.jpg",
+      "label": "Benign",
+      "sha256": "e2cee77f6b9756fabb53fb62ec4c435390af91254bf79297f4a983c012b7d83a",
+      "bytes": 44999
+    },
+    {
+      "path": "test-image/0138.jpg",
+      "label": "Benign",
+      "sha256": "ebf1e2d91b528c64abe245b1f9dfd4002a5534f18abe15b84bec45b9ed90c1f1",
+      "bytes": 90408
+    },
+    {
+      "path": "test-image/0139.jpg",
+      "label": "Benign",
+      "sha256": "f09e88ae167d11461efdf512389744fe010e07dd72f632a78adbc0f970ef92ba",
+      "bytes": 42848
+    },
+    {
+      "path": "test-image/0140.jpg",
+      "label": "Benign",
+      "sha256": "0d6ed37f913386a8562941e0373990d9bc796c41a32ef7800359ac6287876912",
+      "bytes": 46237
+    },
+    {
+      "path": "test-image/0141.jpg",
+      "label": "Benign",
+      "sha256": "b85d9eef472ea86eb1c2199523994e64da9f9a0234a8215b864926f921e132ce",
+      "bytes": 41984
+    },
+    {
+      "path": "test-image/0142.jpg",
+      "label": "Benign",
+      "sha256": "54e626cfafb491c23a1f8f8b8943850946a793a8299711d54deedab25292fffe",
+      "bytes": 41199
+    },
+    {
+      "path": "test-image/0143.jpg",
+      "label": "Benign",
+      "sha256": "8f83fdb5be963eaefb65c95c0759ba531e83857e649e764b78f346ac40d9744b",
+      "bytes": 106568
+    },
+    {
+      "path": "test-image/0144.jpg",
+      "label": "Benign",
+      "sha256": "a1063f6c92e694280f8316e00dbd511dbdc4be83c7564c267815c059e8f61fc6",
+      "bytes": 47877
+    },
+    {
+      "path": "test-image/0145.jpg",
+      "label": "Benign",
+      "sha256": "d2eb6fad4d5cb7aa7cb1cd227e9e62b5cd4a92188539fa6973ec821c2697e15e",
+      "bytes": 70898
+    },
+    {
+      "path": "test-image/0146.jpg",
+      "label": "Benign",
+      "sha256": "2c2f39ca507f2b29394298e8c421a41c315fb02fa5608dffa231ea19a11dd71d",
+      "bytes": 142498
+    },
+    {
+      "path": "test-image/0147.jpg",
+      "label": "Benign",
+      "sha256": "9bf1a40b9e11c7f5d23f9434cb10cf570219dd4c53a09b525df6fbe4e3cf2386",
+      "bytes": 68580
+    },
+    {
+      "path": "test-image/0148.jpg",
+      "label": "Benign",
+      "sha256": "91fc3278c4a64bf0c726454ee9096489a1ba3eabc7f4087488761c104b5b85a6",
+      "bytes": 100970
+    },
+    {
+      "path": "test-image/0149.jpg",
+      "label": "Benign",
+      "sha256": "caf2eebc3f3460ee9d74296e59276dd700bbde523527f9521e1a558d85237c02",
+      "bytes": 42220
+    },
+    {
+      "path": "test-image/0150.jpg",
+      "label": "Benign",
+      "sha256": "0d2cff14b2aa84a035119c6c2538c6b3a997575ff4e0a8636e608e7c8bcbd2b2",
+      "bytes": 33529
+    },
+    {
+      "path": "test-image/0151.jpg",
+      "label": "Benign",
+      "sha256": "44c435a132504e28232571022ff0cf11259920806a4030215e974940a06e3913",
+      "bytes": 38947
+    },
+    {
+      "path": "test-image/0152.jpg",
+      "label": "Benign",
+      "sha256": "e7b47781ca7cb595a575a3498fceb01c4acc979cf3d9bf0e40966494120bf50b",
+      "bytes": 76241
+    },
+    {
+      "path": "test-image/0153.jpg",
+      "label": "Benign",
+      "sha256": "ab1273bc7992c70b374ea030bcf74a14a62a5f8e2727d7210af58e193f58f074",
+      "bytes": 101028
+    },
+    {
+      "path": "test-image/0154.jpg",
+      "label": "Benign",
+      "sha256": "3d14f83de6314e6b0d65dfcf3650031d77ea46913ea707892b3df8d8f099ba03",
+      "bytes": 36948
+    },
+    {
+      "path": "test-image/0155.jpg",
+      "label": "Benign",
+      "sha256": "c52f6d9a5dad618d2b82cd6f6021ddd5423aacb200b4461a3162d6d598652dc2",
+      "bytes": 124359
+    },
+    {
+      "path": "test-image/0156.jpg",
+      "label": "Benign",
+      "sha256": "fcf215131d4ac91f9e83bc1990ec76bbe60707adbed16dc4c482d4c057a75d93",
+      "bytes": 138579
+    },
+    {
+      "path": "test-image/0157.jpg",
+      "label": "Benign",
+      "sha256": "8d8a902171b5b0734b523ec0b988aa855bb74eea6b3ac0a455bc0d5987723470",
+      "bytes": 36744
+    },
+    {
+      "path": "test-image/0158.jpg",
+      "label": "Benign",
+      "sha256": "5dee272b3ba18a6442039bdcbed61eee8767dae1fc18fbf5026fe5d49ad3b858",
+      "bytes": 106251
+    },
+    {
+      "path": "test-image/0159.jpg",
+      "label": "Benign",
+      "sha256": "a75592e27c4db8b3835276bcfa531f84adeae6469d2fe1dbee661e16807e7a00",
+      "bytes": 90779
+    },
+    {
+      "path": "test-image/0160.jpg",
+      "label": "Benign",
+      "sha256": "643979a3b7cc5a20611764a923408459b51851585cdbd9dfb5eb52555e920ad4",
+      "bytes": 44720
+    },
+    {
+      "path": "test-image/0161.jpg",
+      "label": "Benign",
+      "sha256": "eac07f59f86c2a7a187918f43c4a4ac0e38e2a6e89a3fa38f61e38739aadb567",
+      "bytes": 117918
+    },
+    {
+      "path": "test-image/0162.jpg",
+      "label": "Benign",
+      "sha256": "05ed40bace37d44e4eb19d324cdbfbf45a6c25cf3042e5a487cd689cf476f082",
+      "bytes": 112106
+    },
+    {
+      "path": "test-image/0163.jpg",
+      "label": "Benign",
+      "sha256": "a5a77893f23298123574d08e425e6ec6a9c0b10a272a12763fad34e6cd23a794",
+      "bytes": 108999
+    },
+    {
+      "path": "test-image/0164.jpg",
+      "label": "Benign",
+      "sha256": "60d7287e2b98e662c71c0c9825112b8d6e236cc70d9a90cff0bd55b5ef7afdc1",
+      "bytes": 38917
+    },
+    {
+      "path": "test-image/0165.jpg",
+      "label": "Benign",
+      "sha256": "0b885d254d609805acd3436e81cdfef47b66f9f91258feab8a31b6aa57c6d8db",
+      "bytes": 52335
+    },
+    {
+      "path": "test-image/0166.jpg",
+      "label": "Benign",
+      "sha256": "2b99c588b84d4942c8df9f4ca5171447aea6f8e127edde8561ffe78d9eedaea2",
+      "bytes": 37670
+    },
+    {
+      "path": "test-image/0167.jpg",
+      "label": "Benign",
+      "sha256": "4497ab3d98611ae73b35d3905cbd513b9216a990dfc27d5a2f93a595b06a29dc",
+      "bytes": 53452
+    },
+    {
+      "path": "test-image/0168.jpg",
+      "label": "Benign",
+      "sha256": "c2a18bb40f0857fc045a77e3a56126359f914521d36b19942f6e17f93631a5c0",
+      "bytes": 121264
+    },
+    {
+      "path": "test-image/0169.jpg",
+      "label": "Benign",
+      "sha256": "383c68d85094f189fb31053a17c24aa76d4a781f34f2f6f9c9e892577e03e896",
+      "bytes": 34196
+    },
+    {
+      "path": "test-image/0170.jpg",
+      "label": "Benign",
+      "sha256": "1911007cec341d6e0e81cd731ca5929dc7e0ef49533145bda4fa40d31549a3e8",
+      "bytes": 35500
+    },
+    {
+      "path": "test-image/0171.jpg",
+      "label": "Benign",
+      "sha256": "33804d452e1fceb8f92a5298e368a036feff8a96d78d5f4eb2178e484537f453",
+      "bytes": 37673
+    },
+    {
+      "path": "test-image/0172.jpg",
+      "label": "Benign",
+      "sha256": "b2ca27bbc8870c8eb1a5eae42300c5e8fcbf3b7ff533b77a2d50b65c3d615323",
+      "bytes": 38795
+    },
+    {
+      "path": "test-image/0173.jpg",
+      "label": "Benign",
+      "sha256": "faee17534396bee68add099ff37d992d4e1f45d42c9a6443a9d2a1cc26431e79",
+      "bytes": 31266
+    },
+    {
+      "path": "test-image/0174.jpg",
+      "label": "Benign",
+      "sha256": "9c2cf056922873ce5a3e55332bcf13c1d8ebffeccd2942fbb02d6d4cd8ea8b93",
+      "bytes": 28503
+    },
+    {
+      "path": "test-image/0175.jpg",
+      "label": "Benign",
+      "sha256": "aaae51b0e527cd580e5c2d9c83a52435c1cfcf53869209baca0e714e40fb5765",
+      "bytes": 54474
+    },
+    {
+      "path": "test-image/0176.jpg",
+      "label": "Benign",
+      "sha256": "965b556472bc5b05a2f8543aba9091999289f621f6f55e75e5382f8ed13b2a5e",
+      "bytes": 71002
+    },
+    {
+      "path": "test-image/0177.jpg",
+      "label": "Benign",
+      "sha256": "ce7ac88b3a57f2cc30e93f34d2b3758115e38eb145b8055bdff78b176f21fc53",
+      "bytes": 99396
+    },
+    {
+      "path": "test-image/0178.jpg",
+      "label": "Benign",
+      "sha256": "5a9871054a00bd2d78365d44bcba4161b49b657922efb7a1a79d247545cae3ad",
+      "bytes": 50197
+    },
+    {
+      "path": "test-image/0179.jpg",
+      "label": "Benign",
+      "sha256": "d6b592db8fd01514b4ed2dda3dce34ccc0f7c20d43dcc9fcc719ee43cd1cc7f4",
+      "bytes": 52837
+    },
+    {
+      "path": "test-image/0180.jpg",
+      "label": "Benign",
+      "sha256": "96bee9b53a5f1943ef7987bc2a2752d7ef079044cd994bda874587a2f372c36f",
+      "bytes": 45103
+    },
+    {
+      "path": "test-image/0181.jpg",
+      "label": "Benign",
+      "sha256": "f18e2069c975e7b7d42b482ba235332d36cfcf0928d86c5fb21f5ac9e109e55c",
+      "bytes": 40949
+    },
+    {
+      "path": "test-image/0182.jpg",
+      "label": "Benign",
+      "sha256": "77f73f2b0a3bbdd33f117261b0c8cdba32aacb36834a82bd6e057dabee48d496",
+      "bytes": 54397
+    },
+    {
+      "path": "test-image/0183.jpg",
+      "label": "Benign",
+      "sha256": "ce676ace2d99ffaad9f7c1ba7a552e817c9cbd5311bd62fb3078136106011e31",
+      "bytes": 60920
+    },
+    {
+      "path": "test-image/0184.jpg",
+      "label": "Benign",
+      "sha256": "1f6010be3602e7c6d57f1f78316f1e4e353ab80618a4b46a111435506b53075c",
+      "bytes": 58778
+    },
+    {
+      "path": "test-image/0185.jpg",
+      "label": "Benign",
+      "sha256": "7653f2518d928405d5795c85aa0c69e4efe04f93902b264252ec79e9f9afc4b1",
+      "bytes": 44507
+    },
+    {
+      "path": "test-image/0186.jpg",
+      "label": "Benign",
+      "sha256": "0c4606ab6edf4c237e94c25c689c6d7ad4ebb8f4d57a77cc03cc223c8922b69a",
+      "bytes": 53674
+    },
+    {
+      "path": "test-image/0187.jpg",
+      "label": "Benign",
+      "sha256": "38ec72c35fed6c0d87f12951fd656a6ce71fc8ed52484c08196c813f399f7771",
+      "bytes": 108655
+    },
+    {
+      "path": "test-image/0188.jpg",
+      "label": "Benign",
+      "sha256": "3fdcb07ff573ae5934289b5eeec49a068db5b6e1c9a13554941fb58397aaf847",
+      "bytes": 93826
+    },
+    {
+      "path": "test-image/0189.jpg",
+      "label": "Benign",
+      "sha256": "df77e6f536f53948c5943d3c8111147b4bf0f72e1b44697ec7787616050cbf46",
+      "bytes": 47871
+    },
+    {
+      "path": "test-image/0190.jpg",
+      "label": "Benign",
+      "sha256": "cb19097064b851ce769576705e5999a7505d44d360624bf710ec8e2488f818d4",
+      "bytes": 47336
+    },
+    {
+      "path": "test-image/0191.jpg",
+      "label": "Benign",
+      "sha256": "92771cd4e1500822e8fe4eebd2bacf3a181a730a1f2e26d2e163bcd367a4c352",
+      "bytes": 48904
+    },
+    {
+      "path": "test-image/0192.jpg",
+      "label": "Benign",
+      "sha256": "97a9c953fd80765a563abc3b702880d336de405770083d62273fb9f2e39991fc",
+      "bytes": 46800
+    },
+    {
+      "path": "test-image/0193.jpg",
+      "label": "Benign",
+      "sha256": "54bcc6ce2a5825f251d09dac9324724a7c5cff21812e8f52e4e406e48c777b3a",
+      "bytes": 47657
+    },
+    {
+      "path": "test-image/0194.jpg",
+      "label": "Benign",
+      "sha256": "a6b5996dae1df85b40fe5c069c3368a859c20dc320f26d293e324b1608f06426",
+      "bytes": 48364
+    },
+    {
+      "path": "test-image/0195.jpg",
+      "label": "Benign",
+      "sha256": "be81b2b4d50791a5d854a3d4908170df6d0f014da3587b139854375efdc33056",
+      "bytes": 51094
+    },
+    {
+      "path": "test-image/0196.jpg",
+      "label": "Benign",
+      "sha256": "8bddb848a45e58aa48665f85f96f01b130238f64391dde0be8e6ff69cb256c56",
+      "bytes": 49081
+    },
+    {
+      "path": "test-image/0197.jpg",
+      "label": "Benign",
+      "sha256": "203e21db29b2710032794b72165cf91f2ece02aeb9facce6523f70953c14f9f6",
+      "bytes": 55597
+    },
+    {
+      "path": "test-image/0198.jpg",
+      "label": "Benign",
+      "sha256": "8eacc3cd5035084fb83a3a849441d2ede4cf7e9728ec6aa4cf6ce755f35754a3",
+      "bytes": 42801
+    },
+    {
+      "path": "test-image/0199.jpg",
+      "label": "Benign",
+      "sha256": "4911d7d40e76507306327a601ff6f359049f80ed148c8b022e3633c7395cdf44",
+      "bytes": 78176
+    },
+    {
+      "path": "test-image/0200.jpg",
+      "label": "Benign",
+      "sha256": "38c4608ccb29cd782c82c358765f88adf3964bf4b25cf904b36f0eece845e134",
+      "bytes": 42273
+    },
+    {
+      "path": "test-image/0201.jpg",
+      "label": "Benign",
+      "sha256": "a3901a9224f8ad62ec9b139395cac876b96af8515b67724a67589f8e8a6c7c2a",
+      "bytes": 118453
+    },
+    {
+      "path": "test-image/0202.jpg",
+      "label": "Benign",
+      "sha256": "7b0156287b37c0078dc284590b6cd33ec1c9d01ef3f0c82c774e17b65422cb54",
+      "bytes": 130526
+    },
+    {
+      "path": "test-image/0203.jpg",
+      "label": "Benign",
+      "sha256": "7840b2038a5c0052de630dfab11715a01d19147aa18a3f6fb41c510886c5162b",
+      "bytes": 48485
+    },
+    {
+      "path": "test-image/0204.jpg",
+      "label": "Benign",
+      "sha256": "f6bb855813e04ca0ce0aeb3dd917b16788f73e00be95e196672bb581d0389d78",
+      "bytes": 29793
+    },
+    {
+      "path": "test-image/0205.jpg",
+      "label": "Benign",
+      "sha256": "1e3b9cfd9ea0996c8acf819c3d3d4af5f569e063ad01f40729d502c06bda07dc",
+      "bytes": 45170
+    },
+    {
+      "path": "test-image/0206.jpg",
+      "label": "Benign",
+      "sha256": "343f9f2941ecdeaf0a20716401b02207ef4ec0aa9bf8d58ab63fcb6580b23048",
+      "bytes": 31958
+    },
+    {
+      "path": "test-image/0207.jpg",
+      "label": "Benign",
+      "sha256": "bfdaa2aad9f67f8adafb18a3ae7013261cba99bdad448cb3fcc7f32bbfea0226",
+      "bytes": 32455
+    },
+    {
+      "path": "test-image/0208.jpg",
+      "label": "Benign",
+      "sha256": "c23395ec786dce55e84f160f5275d8e32f8a115d8d85725a1b9132350c1979b6",
+      "bytes": 107946
+    },
+    {
+      "path": "test-image/0209.jpg",
+      "label": "Benign",
+      "sha256": "5d7919080184cd5e3e2d7cad36d9ed27c90100f7410c74c1bb35d2818d394dff",
+      "bytes": 118087
+    },
+    {
+      "path": "test-image/0210.jpg",
+      "label": "Benign",
+      "sha256": "8d0b3c1f53de6032bfa0cede31dd2859ca549e3d6d0e803c2cd0f03fa189a829",
+      "bytes": 70059
+    },
+    {
+      "path": "test-image/0211.jpg",
+      "label": "Benign",
+      "sha256": "063f099f9c74c24da651c0042bd5c65c1f613974ce029b87cc5cd98ac2aa654a",
+      "bytes": 43743
+    },
+    {
+      "path": "test-image/0212.jpg",
+      "label": "Benign",
+      "sha256": "1a9a8bad4b022a99a095dbaa0891b63d018e5cb4af3de46ea4c16ce3fb01a25b",
+      "bytes": 47699
+    },
+    {
+      "path": "test-image/0213.jpg",
+      "label": "Benign",
+      "sha256": "f83208a3a6bf6359eee178a6c7a953b94ebe09cfd2f856041ab19d4ea296251f",
+      "bytes": 53111
+    },
+    {
+      "path": "test-image/0214.jpg",
+      "label": "Benign",
+      "sha256": "83b19f7b7e4702b4c06082e1fdc30a59306e3da32625d8501ce327f9f6827b50",
+      "bytes": 40250
+    },
+    {
+      "path": "test-image/0215.jpg",
+      "label": "Benign",
+      "sha256": "478a05737b2e7327cb5e582a67e99eeceb2dce7781c80f537524fc8090aa365e",
+      "bytes": 47999
+    },
+    {
+      "path": "test-image/0216.jpg",
+      "label": "Benign",
+      "sha256": "c3eca6d09daad7a6a6574de1d3a3babbacef57dcbafb8e4bf1b3d194c3b6565e",
+      "bytes": 80548
+    },
+    {
+      "path": "test-image/0217.jpg",
+      "label": "Benign",
+      "sha256": "1cabec6ae8d9026df44c4d16e7665ba7df0282090bd5971401d1a2e8316a2304",
+      "bytes": 33457
+    },
+    {
+      "path": "test-image/0218.jpg",
+      "label": "Benign",
+      "sha256": "06ace033b209038dca2637783eb30bb30f40394026a4a120ce036e52d1212189",
+      "bytes": 40231
+    },
+    {
+      "path": "test-image/0219.jpg",
+      "label": "Benign",
+      "sha256": "9e6da628a562ef244daa13c0663ea27becc8b2fac43c88e8ca0cf87c969f9f66",
+      "bytes": 45904
+    },
+    {
+      "path": "test-image/0220.jpg",
+      "label": "Benign",
+      "sha256": "4e0675619eeae87b1dc688267b15c441aa2e7ee4dd49d957e1bf62134c11af9b",
+      "bytes": 50399
+    },
+    {
+      "path": "test-image/0221.jpg",
+      "label": "Benign",
+      "sha256": "2caa293e758302c1896570574e8fb5114cac7158089ba5f5c8baf14a94841029",
+      "bytes": 63565
+    },
+    {
+      "path": "test-image/0222.jpg",
+      "label": "Benign",
+      "sha256": "89e52a05d281f9147dedbfd9b3651f817282274842cf085a2f56f5c878d9ab93",
+      "bytes": 60979
+    },
+    {
+      "path": "test-image/0223.jpg",
+      "label": "Benign",
+      "sha256": "0027b8f79be1ca3869a918eea254ab8090c39ba85bb7b40749d2ca30343e83ef",
+      "bytes": 60645
+    },
+    {
+      "path": "test-image/0224.jpg",
+      "label": "Benign",
+      "sha256": "c7b8d8e85a0729f406f30abd30b820ced33357cf98346067a33ed40214976b81",
+      "bytes": 46248
+    },
+    {
+      "path": "test-image/0225.jpg",
+      "label": "Benign",
+      "sha256": "cc7f53479fb289ab03a6838fb4fa683209e17258325c6f5caac7b7bb72838024",
+      "bytes": 62871
+    },
+    {
+      "path": "test-image/0226.jpg",
+      "label": "Benign",
+      "sha256": "3270c4416edb2ccc566a64a726f57d294d5b77e1a0d4e099aaf9a15205a9790c",
+      "bytes": 31210
+    },
+    {
+      "path": "test-image/0227.jpg",
+      "label": "Benign",
+      "sha256": "b3d6b4a56c16a98a4ced3dcb00d5ba2d73f4c4f665a78e88fea418e5c2d18c04",
+      "bytes": 159524
+    },
+    {
+      "path": "test-image/0228.jpg",
+      "label": "Benign",
+      "sha256": "3be6b1ed64be901ed53e777259d06b6e477b66b21779714b19d242fee74c37e6",
+      "bytes": 96703
+    },
+    {
+      "path": "test-image/0229.jpg",
+      "label": "Benign",
+      "sha256": "bdead3ec0ba1fb0f116eb83ed1e67dbcfa97650026c186a0281cb7d076932941",
+      "bytes": 47911
+    },
+    {
+      "path": "test-image/0230.jpg",
+      "label": "Benign",
+      "sha256": "6e44886b25f5d15814bd3ffdb12c0d07423e1686c24391fa47e6dd15ad272997",
+      "bytes": 51285
+    },
+    {
+      "path": "test-image/0231.jpg",
+      "label": "Benign",
+      "sha256": "72d73f313a8c7430bf35aba29b5f18e58061d8c97a6e08973320954fc09f3803",
+      "bytes": 132713
+    },
+    {
+      "path": "test-image/0232.jpg",
+      "label": "Benign",
+      "sha256": "67e66bdb04d82b8dfb3a81bb29778ce2ec98791adfcff2b4662ccd59c5ddf994",
+      "bytes": 45882
+    },
+    {
+      "path": "test-image/0233.jpg",
+      "label": "Benign",
+      "sha256": "712fdf76025a9d4b4db9f39f12e95a123bd2a4f58702590e73ec8a6eecc04f9e",
+      "bytes": 51478
+    },
+    {
+      "path": "test-image/0234.jpg",
+      "label": "Benign",
+      "sha256": "1197d5c656eef3da35e0f0da3948182aad8a238f6ade7c80bd34f3764dd4ed01",
+      "bytes": 52369
+    },
+    {
+      "path": "test-image/0235.jpg",
+      "label": "Benign",
+      "sha256": "dd1e71b9d6c9eafbbf90794839b2a32d3dc25ada8991bd6e211d22370766ac21",
+      "bytes": 56965
+    },
+    {
+      "path": "test-image/0236.jpg",
+      "label": "Benign",
+      "sha256": "0db2371e69c149f3f3cbd2f6ccb5cb068fa86e1c3de25524cc6fccdcd21cb2ec",
+      "bytes": 108826
+    },
+    {
+      "path": "test-image/0237.jpg",
+      "label": "Benign",
+      "sha256": "8fb7eee8594f4e331001f802c0f721adbdbee5fdbe4a6ed1b8f1f639b305f1dc",
+      "bytes": 129028
+    },
+    {
+      "path": "test-image/0238.jpg",
+      "label": "Benign",
+      "sha256": "300955b45395319ed8a0f489ca01bdccbb6e5576ed6f9323389bc528de52c960",
+      "bytes": 78821
+    },
+    {
+      "path": "test-image/0239.jpg",
+      "label": "Benign",
+      "sha256": "1266dfa05fa5392f6c8a28e6c1a04ccf204998fce282d8e27a0ed882288192cd",
+      "bytes": 98346
+    },
+    {
+      "path": "test-image/0240.jpg",
+      "label": "Benign",
+      "sha256": "be597137ba95de76daaa14b04a2d6997644881c8d20c6043efb9d1bef088a579",
+      "bytes": 93640
+    },
+    {
+      "path": "test-image/0241.jpg",
+      "label": "Benign",
+      "sha256": "1a5bb47ed8b959fdddbe487130b9807111f4a9aa85aa7efd8f4f0c9d657984fb",
+      "bytes": 44017
+    },
+    {
+      "path": "test-image/0242.jpg",
+      "label": "Benign",
+      "sha256": "6733852ca0bd3cc30cd46a5218db19a8101c4d4f201180274daa262affcf00e4",
+      "bytes": 43287
+    },
+    {
+      "path": "test-image/0243.jpg",
+      "label": "Benign",
+      "sha256": "19e36bde0a09f4f0ad2cf1086890868c862206835f069b883e0f1a568f047280",
+      "bytes": 46979
+    },
+    {
+      "path": "test-image/0244.jpg",
+      "label": "Benign",
+      "sha256": "e61895a07516cd4efcf3a89cddb8888e59c51899872e8fb8cca52ae1f96d4ddc",
+      "bytes": 41635
+    },
+    {
+      "path": "test-image/0245.jpg",
+      "label": "Benign",
+      "sha256": "2de5b44d71845287425082c1b0c51c91adf07c3a10758a96e241a359ca11b329",
+      "bytes": 41964
+    },
+    {
+      "path": "test-image/0246.jpg",
+      "label": "Benign",
+      "sha256": "17cae9989ef86aa4f1069c3a974d456673d5b984aa9d5622f4b8bb234f016a82",
+      "bytes": 44978
+    },
+    {
+      "path": "test-image/0247.jpg",
+      "label": "Benign",
+      "sha256": "735fdbbd3337577ff1360c50b47c521b1af079670c71c5893358b136a74afe72",
+      "bytes": 45256
+    },
+    {
+      "path": "test-image/0248.jpg",
+      "label": "Benign",
+      "sha256": "a24f33ce744415b22681bd6f72b171d4990bed9698096d57c1f04fdfc6c1ba79",
+      "bytes": 36968
+    },
+    {
+      "path": "test-image/0249.jpg",
+      "label": "Benign",
+      "sha256": "71eaa8f372b04c6e8d28ce9ac80b1f721b71d49ae91445b38f3778e81a2de045",
+      "bytes": 91779
+    },
+    {
+      "path": "test-image/0250.jpg",
+      "label": "Benign",
+      "sha256": "f17ab445492ee924e6600e69c6f686ac6e1701f26800b40621f5a26f4e76c3f0",
+      "bytes": 42053
+    },
+    {
+      "path": "test-image/0251.jpg",
+      "label": "Benign",
+      "sha256": "41ee33ac11c9248e96fe70139fc974d46fa139919cde7eddd865517d59560eeb",
+      "bytes": 38238
+    },
+    {
+      "path": "test-image/0252.jpg",
+      "label": "Benign",
+      "sha256": "21606c38eb1266aa293aa658ac40b45569075e6c3b1af98bb405cfd55a68c941",
+      "bytes": 64774
+    },
+    {
+      "path": "test-image/0253.jpg",
+      "label": "Benign",
+      "sha256": "95474522215b5d20aaef55dca22f2b71e2062af58f0e5545bc8feccc8c2fa877",
+      "bytes": 55995
+    },
+    {
+      "path": "test-image/0254.jpg",
+      "label": "Benign",
+      "sha256": "941017d92c99198eb0f3c9c9f904e56573842edf25a03be8bfbb7ce8344ac919",
+      "bytes": 50396
+    },
+    {
+      "path": "test-image/0255.jpg",
+      "label": "Benign",
+      "sha256": "f676f0c0f01ff794554ee0f6816a502bea98d9d8a68fcfde5bcdc00ff8f07d3a",
+      "bytes": 42084
+    },
+    {
+      "path": "test-image/0256.jpg",
+      "label": "Benign",
+      "sha256": "167fcbe589afb232b2c31ff67bee3550e89091438d92072fca8159d8b24fdfe6",
+      "bytes": 60731
+    },
+    {
+      "path": "test-image/0257.jpg",
+      "label": "Benign",
+      "sha256": "7fe01a3a5660423d65ad4787da3aafdff5926289037e1995a4cca14f0cd132a5",
+      "bytes": 57993
+    },
+    {
+      "path": "test-image/0258.jpg",
+      "label": "Benign",
+      "sha256": "3826becc9c61835a818cd7be3718da75bd869e4d4325e54eb09d14fba6ac7c39",
+      "bytes": 51706
+    },
+    {
+      "path": "test-image/0259.jpg",
+      "label": "Benign",
+      "sha256": "d2c56dad6c7bf6990759e72872e7769318f6e66f6244ad3ce82c58da872e59e6",
+      "bytes": 40206
+    },
+    {
+      "path": "test-image/0260.jpg",
+      "label": "Benign",
+      "sha256": "9b2aacc599abc8dd943709fefb55603b6694c3d88d4cfd7706b043d5a242fa47",
+      "bytes": 44243
+    },
+    {
+      "path": "test-image/0261.jpg",
+      "label": "Benign",
+      "sha256": "5ac1f774c1eff9cff48510428ccbb2da351126340cae3e15e592e6ce58bbe010",
+      "bytes": 76281
+    },
+    {
+      "path": "test-image/0262.jpg",
+      "label": "Benign",
+      "sha256": "5a9df7b638c65c65e5f55fe531523115b288342808587a4f2a0901053c533d8f",
+      "bytes": 92552
+    },
+    {
+      "path": "test-image/0263.jpg",
+      "label": "Benign",
+      "sha256": "ac666189c08f6a81dbc4307265f28caec671b40c26b8b1e6fcea3c57e3170291",
+      "bytes": 94193
+    },
+    {
+      "path": "test-image/0264.jpg",
+      "label": "Benign",
+      "sha256": "6e1b75403f0ee5a14549b17805daec9a6ac61d25230b309efbadc4c2d621d24d",
+      "bytes": 43201
+    },
+    {
+      "path": "test-image/0265.jpg",
+      "label": "Benign",
+      "sha256": "768b38ae011de2e0087ec21f3e394d630eef0a9d31b7252dac861e3201124098",
+      "bytes": 44296
+    },
+    {
+      "path": "test-image/0266.jpg",
+      "label": "Benign",
+      "sha256": "dc1d7c48821e4e2f5d0e7cdd9d7ec8255134b4673a05836962799cc4029992ef",
+      "bytes": 88545
+    },
+    {
+      "path": "test-image/0267.jpg",
+      "label": "Benign",
+      "sha256": "b616f8b62a6c7c995ebdf0bb8701ec9d6ec2016ce068d24df0c2da4915fa1e49",
+      "bytes": 49331
+    },
+    {
+      "path": "test-image/0268.jpg",
+      "label": "Benign",
+      "sha256": "e7cae0d9f93e74099a4e038e370246701b7c8120b4dc97b4f52eb678b66ef55b",
+      "bytes": 52627
+    },
+    {
+      "path": "test-image/0269.jpg",
+      "label": "Benign",
+      "sha256": "36d530a7410b5da77df2fcbed866089fa340d6a973612386315d55bd4832b8dc",
+      "bytes": 57725
+    },
+    {
+      "path": "test-image/0270.jpg",
+      "label": "Benign",
+      "sha256": "3024cb8b718662caebe67614eca1a8efb8dda824f0c06afa6cb815b334b69040",
+      "bytes": 49243
+    },
+    {
+      "path": "test-image/0271.jpg",
+      "label": "Benign",
+      "sha256": "39f62a43e05de3acb15d7e81bcb9d94f45fd991825cb47d318611daf7388bf3e",
+      "bytes": 52910
+    },
+    {
+      "path": "test-image/0272.jpg",
+      "label": "Benign",
+      "sha256": "ace9867745b24238169e795b8e9f31824acdc91dca354e58a8b4e3baf8866aba",
+      "bytes": 79144
+    },
+    {
+      "path": "test-image/0273.jpg",
+      "label": "Benign",
+      "sha256": "6e33c2d02ce6b0acd6a9980543de145493b2e612691e40de2eae6362c22b4272",
+      "bytes": 151523
+    },
+    {
+      "path": "test-image/0274.jpg",
+      "label": "Benign",
+      "sha256": "b317baaa86461da848f8b12ff9e5931a8726217737b99fe950c5846f388539d5",
+      "bytes": 40412
+    },
+    {
+      "path": "test-image/0275.jpg",
+      "label": "Benign",
+      "sha256": "3282157d716789480704e5ce8a03a730ed99011574eda60a1f8abc4d5fe7e83f",
+      "bytes": 46673
+    },
+    {
+      "path": "test-image/0276.jpg",
+      "label": "Benign",
+      "sha256": "e008bd24b0b2251990edbe1e5260bf881d700f7d0a5de28eeb0f3e159b0516b8",
+      "bytes": 51262
+    },
+    {
+      "path": "test-image/0277.jpg",
+      "label": "Benign",
+      "sha256": "53af54d5c10a3063dd63565385c95322da6575bda7fa0b66b4240ec551442fda",
+      "bytes": 35725
+    },
+    {
+      "path": "test-image/0278.jpg",
+      "label": "Benign",
+      "sha256": "a88c1461d114eb0060320ff8bf72772747d94d91f1d01b57dd667c5daa6dfe4b",
+      "bytes": 32440
+    },
+    {
+      "path": "test-image/0279.jpg",
+      "label": "Benign",
+      "sha256": "4715bf8cc9e179fe9c2c18c54030ef9fd34af155c6a85a9fdd8e2ccaa1c4741c",
+      "bytes": 40158
+    },
+    {
+      "path": "test-image/0280.jpg",
+      "label": "Benign",
+      "sha256": "620d3c20959c01dfb97d1ced50de9737a5c83f7dd5ffae49d4623c0ebf2fee5e",
+      "bytes": 41802
+    },
+    {
+      "path": "test-image/0281.jpg",
+      "label": "Benign",
+      "sha256": "63ac2e75bb215ab458ec0aa8b36846aa33e10d5d5c0c89d8127f7c5807cd37c2",
+      "bytes": 44578
+    },
+    {
+      "path": "test-image/0282.jpg",
+      "label": "Benign",
+      "sha256": "6d3b01bd373e62d865a44de6dd894804bcc2890bfb75b98f1f70d9e44dbff578",
+      "bytes": 46485
+    },
+    {
+      "path": "test-image/0283.jpg",
+      "label": "Benign",
+      "sha256": "e3daec3e4179be5a8b0a9c1616bdd9b01c7e2d8c32a6f55b6a3222cbb65294a7",
+      "bytes": 47734
+    },
+    {
+      "path": "test-image/0284.jpg",
+      "label": "Benign",
+      "sha256": "76492ff0942d29d2a6c5451690607f6192bb120a92f2a9a01d8cb4b9056fdb48",
+      "bytes": 54710
+    },
+    {
+      "path": "test-image/0285.jpg",
+      "label": "Benign",
+      "sha256": "5973b4a95e1d38641af43409574264645c40d94a144919a3da59babfefcc2245",
+      "bytes": 59687
+    },
+    {
+      "path": "test-image/0286.jpg",
+      "label": "Benign",
+      "sha256": "8f8813dd2b69fb1e380933925cfa0832770169ed2113a36195f392b0ce552cbb",
+      "bytes": 52736
+    },
+    {
+      "path": "test-image/0287.jpg",
+      "label": "Benign",
+      "sha256": "36dab572a9cb170dcd96ae825dd291e3110e8ba6dd469db1fe56aa26dfe0cfff",
+      "bytes": 51749
+    },
+    {
+      "path": "test-image/0288.jpg",
+      "label": "Benign",
+      "sha256": "1867cd823afd3d7f6ba447330ef4059094fb90d6353328cae3072da891ed71db",
+      "bytes": 41738
+    },
+    {
+      "path": "test-image/0289.jpg",
+      "label": "Benign",
+      "sha256": "4ae3a128cca5115a81c71885d37374dc3ea737e938bcedb2cb1cc76ef4056a7f",
+      "bytes": 47993
+    },
+    {
+      "path": "test-image/0290.jpg",
+      "label": "Benign",
+      "sha256": "81de21badaf72c342ffdd6eb606a739d89fdf7cf4d48aa684328f9142ded1880",
+      "bytes": 35899
+    },
+    {
+      "path": "test-image/0291.jpg",
+      "label": "Benign",
+      "sha256": "d4ad1990ee3ec8fe9c17e13d1c2d0d91740a335e76f921f0207fe31c2a242d0b",
+      "bytes": 36382
+    },
+    {
+      "path": "test-image/0292.jpg",
+      "label": "Benign",
+      "sha256": "9ed642b34b7fae2206bd627d0304fffc67f187b69a139efed038add88204d2d1",
+      "bytes": 98681
+    },
+    {
+      "path": "test-image/0293.jpg",
+      "label": "Benign",
+      "sha256": "6e2cd58194490d350346dde5a93c5461bf4beb8c1f66ad20a1b61c6534443e77",
+      "bytes": 53804
+    },
+    {
+      "path": "test-image/0294.jpg",
+      "label": "Benign",
+      "sha256": "ca282223c8ca89f7894140d85c74bec7a49ffe92c94ade76706b602a38a94436",
+      "bytes": 85129
+    },
+    {
+      "path": "test-image/0295.jpg",
+      "label": "Benign",
+      "sha256": "f09203e38b21f294a42e762d9b6bc7455ecfeb453a075ab7a1323e97aaeb54cf",
+      "bytes": 154658
+    },
+    {
+      "path": "test-image/0296.jpg",
+      "label": "Benign",
+      "sha256": "0f97a3d33afffea0ee3a307d5fac97102783f121860fc2f75fe6af86edabeef8",
+      "bytes": 44575
+    },
+    {
+      "path": "test-image/0297.jpg",
+      "label": "Benign",
+      "sha256": "8901ece155ba99bf15d5f96de2cb5cdee76a15caa75773381cbb608152ff9293",
+      "bytes": 38431
+    },
+    {
+      "path": "test-image/0298.jpg",
+      "label": "Benign",
+      "sha256": "bf0372a91ad3851b6456bd59e0488846500cfecc791a11517822dbcab58ee06e",
+      "bytes": 37643
+    },
+    {
+      "path": "test-image/0299.jpg",
+      "label": "Benign",
+      "sha256": "26c66145c6323e4c53b9a485e1dffe2495f024ec23cbbbbc90bfcb4c4f51295c",
+      "bytes": 72573
+    },
+    {
+      "path": "test-image/0300.jpg",
+      "label": "Benign",
+      "sha256": "1e03d66b33bbd21f7e37a25d7d92a8df0849c30988bb0dca6969f4c0fcb28cdb",
+      "bytes": 61786
+    },
+    {
+      "path": "test-image/0301.jpg",
+      "label": "Benign",
+      "sha256": "718e75c78d3215bcd5ffdf36032c4295cd565b9792a04a2fe95bf9e386a782a9",
+      "bytes": 132529
+    },
+    {
+      "path": "test-image/0302.jpg",
+      "label": "Benign",
+      "sha256": "9e32d91215127f611bf6f5587daa2eff1f830374adeefcdf681084ad9e6637d0",
+      "bytes": 56484
+    },
+    {
+      "path": "test-image/0303.jpg",
+      "label": "Benign",
+      "sha256": "d967666391eae8846769870c1ecafd4afab6b54244318bec53dd236f04deb155",
+      "bytes": 50605
+    },
+    {
+      "path": "test-image/0304.jpg",
+      "label": "Benign",
+      "sha256": "213334eee7e11c8e4d8f7c4ba57f3e42177bb5669411964fbf30dec72bae985e",
+      "bytes": 50865
+    },
+    {
+      "path": "test-image/0305.jpg",
+      "label": "Benign",
+      "sha256": "3a1ecfb694dcc52a474bc22cc0c8b70c692141bbf1c442940b01da64f7be863a",
+      "bytes": 56859
+    },
+    {
+      "path": "test-image/0306.jpg",
+      "label": "Benign",
+      "sha256": "0f9ae6c6b82ede4c8b2d26b7f91632e1c4c451493a62c50577443612255bfe4e",
+      "bytes": 175425
+    },
+    {
+      "path": "test-image/0307.jpg",
+      "label": "Benign",
+      "sha256": "1e6ad5f66acc68ee214b518a504a3aba6a3590f39e5aa399123a1e3fb38a78ce",
+      "bytes": 131898
+    },
+    {
+      "path": "test-image/0308.jpg",
+      "label": "Benign",
+      "sha256": "e33fecff00085931aedd56f54d2b9ecf5d0f212e94bba3237d6c2406408a9b84",
+      "bytes": 43917
+    },
+    {
+      "path": "test-image/0309.jpg",
+      "label": "Benign",
+      "sha256": "5599a9c36a9ddeee42fbabd25808d5f0aa387750e8d46c51d4897f54261f1598",
+      "bytes": 59703
+    },
+    {
+      "path": "test-image/0310.jpg",
+      "label": "Benign",
+      "sha256": "3fa86ed75bb2da1e0bb1ac2a5dda3b9cdc8ae341e38c4d97c04e18badc2b7ffd",
+      "bytes": 61950
+    },
+    {
+      "path": "test-image/0311.jpg",
+      "label": "Benign",
+      "sha256": "e7f460e8f751ed504c45a8567a2f94d9fe16211fc2955620eafb3a128300eda1",
+      "bytes": 61191
+    },
+    {
+      "path": "test-image/0312.jpg",
+      "label": "Benign",
+      "sha256": "466ce9ac548c0453a552f56c58be70564413af2d855e8e0760d72be1baafbbd2",
+      "bytes": 141957
+    },
+    {
+      "path": "test-image/0313.jpg",
+      "label": "Benign",
+      "sha256": "6734b930946b0c1646f0cec0904827c50d031b307083520612323d2e8c6eb0e4",
+      "bytes": 58843
+    },
+    {
+      "path": "test-image/0314.jpg",
+      "label": "Benign",
+      "sha256": "c97a8408bd16f2aa05a1ca99340ed84904ad2e77f68c1d8553307e16e06cb904",
+      "bytes": 38370
+    },
+    {
+      "path": "test-image/0315.jpg",
+      "label": "Benign",
+      "sha256": "4bbb2033531c026eaef090416c98aead47b3fce8f11a0061353b4b9d5dfdcaf9",
+      "bytes": 47760
+    },
+    {
+      "path": "test-image/0316.jpg",
+      "label": "Benign",
+      "sha256": "37eb2684aa62fb3f6da40648684d425e1fd835ede62d2ede8af606867a119167",
+      "bytes": 51010
+    },
+    {
+      "path": "test-image/0317.jpg",
+      "label": "Benign",
+      "sha256": "e12a4dced70c6ee7d3d1aeab35e9c4c4cfbc4ad9dc1b94a73ee62e5b4d852843",
+      "bytes": 78880
+    },
+    {
+      "path": "test-image/0318.jpg",
+      "label": "Benign",
+      "sha256": "a08f135b2dcda65d874b6ba8ac1305d071000571a0b90cf61b4e2dcffd146012",
+      "bytes": 85273
+    },
+    {
+      "path": "test-image/0319.jpg",
+      "label": "Benign",
+      "sha256": "bb8761a92b2260344639fa02402f0c075edb6e8eca15330003d7d1931c12aab1",
+      "bytes": 49444
+    },
+    {
+      "path": "test-image/0320.jpg",
+      "label": "Benign",
+      "sha256": "1717b38f931a4c9a118ee9871cffb4ae892588bcd8bbd87a8384d26d4ec94641",
+      "bytes": 61784
+    },
+    {
+      "path": "test-image/0321.jpg",
+      "label": "Benign",
+      "sha256": "f62b2fb5d75883d5a59dd56a0bada56f1661d29b8309a552660c13d2f0ea7705",
+      "bytes": 114844
+    },
+    {
+      "path": "test-image/0322.jpg",
+      "label": "Benign",
+      "sha256": "fd35aff02af265f4df0e90ea7f5ba1bcd9cae6e1250de4e388bb3adcd8a5fad5",
+      "bytes": 110566
+    },
+    {
+      "path": "test-image/0323.jpg",
+      "label": "Benign",
+      "sha256": "c3601423323f86f425cb08d7a5e2243c54378f74baf1b365239171ac97729583",
+      "bytes": 132807
+    },
+    {
+      "path": "test-image/0324.jpg",
+      "label": "Benign",
+      "sha256": "22340dafbbc33363ceca62d3e3e57c9fd71f51f769911f0a96a38c618bbbe51b",
+      "bytes": 140832
+    },
+    {
+      "path": "test-image/0325.jpg",
+      "label": "Benign",
+      "sha256": "07b16caae3c136fde3b9c93690eb3c3c582d7892f898b4ef6a469d062cc31885",
+      "bytes": 43386
+    },
+    {
+      "path": "test-image/0326.jpg",
+      "label": "Benign",
+      "sha256": "6a376ea111f879b99e0fca0e76d2dcc59b65e2654c1ffd109474b156519a4e90",
+      "bytes": 56798
+    },
+    {
+      "path": "test-image/0327.jpg",
+      "label": "Benign",
+      "sha256": "d4be3736a268907fa3ef22cbdeaab46bfb95476a03d2d5df6ced536bceec33b2",
+      "bytes": 30963
+    },
+    {
+      "path": "test-image/0328.jpg",
+      "label": "Benign",
+      "sha256": "d741ed02805c79a2736e087b68fc13c53ad8e6ec70ce7d9e9e436d927e869a18",
+      "bytes": 57778
+    },
+    {
+      "path": "test-image/0329.jpg",
+      "label": "Benign",
+      "sha256": "d129a1cb0380a04b2fc237f3002652ec0f67d8cba8862c94eef1456ab207a3a3",
+      "bytes": 96808
+    },
+    {
+      "path": "test-image/0330.jpg",
+      "label": "Benign",
+      "sha256": "c477f8c8557aedfcd846542343102a93101e4636673774f89957697e42a97f3b",
+      "bytes": 96526
+    },
+    {
+      "path": "test-image/0331.jpg",
+      "label": "Benign",
+      "sha256": "158184cdcd60c4d48ca9d39fef953f9daf31b0c2e2cfbb02e93461a6f1aae79f",
+      "bytes": 50635
+    },
+    {
+      "path": "test-image/0332.jpg",
+      "label": "Benign",
+      "sha256": "a84e78f65b9111ba6be1c4aefefa7ef9200644a8f63e15e04b25e796a3a95422",
+      "bytes": 52236
+    },
+    {
+      "path": "test-image/0333.jpg",
+      "label": "Benign",
+      "sha256": "c50d401bfcab39d6b5b518facfedb722d64f1c861a1184abd3e4684f2a44e1e8",
+      "bytes": 58080
+    },
+    {
+      "path": "test-image/0334.jpg",
+      "label": "Benign",
+      "sha256": "bb778c70a347456efdfbd73b44e9555e3f9407847be9009e4404b987705f6aff",
+      "bytes": 51802
+    },
+    {
+      "path": "test-image/0335.jpg",
+      "label": "Benign",
+      "sha256": "bbac92ced6546e65e830287bebba2679c0292022f0264590dd26cdb9a720f2aa",
+      "bytes": 57337
+    },
+    {
+      "path": "test-image/0336.jpg",
+      "label": "Benign",
+      "sha256": "1001613f31ff0c664c1c3de2ea15bc248f6743c3c1d5a1a153a3a474c476b679",
+      "bytes": 36011
+    },
+    {
+      "path": "test-image/0337.jpg",
+      "label": "Benign",
+      "sha256": "3797d45ba8f12c54a3969aee146fc762554c2df4baca2cb60a925e21abb4945d",
+      "bytes": 36643
+    },
+    {
+      "path": "test-image/0338.jpg",
+      "label": "Benign",
+      "sha256": "ba8fe7abee9d6a821516c7e76e84c961b551b6fa8746d4bc5f83ecd107c3503d",
+      "bytes": 46371
+    },
+    {
+      "path": "test-image/0339.jpg",
+      "label": "Benign",
+      "sha256": "9847c5683dd2d4c7eb554a8995cd98386279aed128b51575726cfb210d20b3cf",
+      "bytes": 44314
+    },
+    {
+      "path": "test-image/0340.jpg",
+      "label": "Benign",
+      "sha256": "938af8dd224f90b4d57ab67a574bfd7799810cfb44941df6a4a9fa8d08e3058f",
+      "bytes": 90677
+    },
+    {
+      "path": "test-image/0341.jpg",
+      "label": "Benign",
+      "sha256": "9e7dc6bcbf069f5cef7182202eca920fe06998952262d8b52ee5b003482d9772",
+      "bytes": 85864
+    },
+    {
+      "path": "test-image/0342.jpg",
+      "label": "Benign",
+      "sha256": "a070ce72cdfd467172500502076b0a076f7366152dd40adca5a69ff99064744b",
+      "bytes": 49390
+    },
+    {
+      "path": "test-image/0343.jpg",
+      "label": "Benign",
+      "sha256": "432378bba54f3e96513c78d9643424ace0e6566e43509b4f5ead687728913ad6",
+      "bytes": 42802
+    },
+    {
+      "path": "test-image/0344.jpg",
+      "label": "Benign",
+      "sha256": "2960482f91c391cc6a001ad7d9c8703f417c217900b319adf6bc1860ddbf7976",
+      "bytes": 47919
+    },
+    {
+      "path": "test-image/0345.jpg",
+      "label": "Benign",
+      "sha256": "9aa8a43ce5b9f1d673e8216f0f6b3c0000b48617e02b826df84b17ca94604394",
+      "bytes": 64013
+    },
+    {
+      "path": "test-image/0346.jpg",
+      "label": "Benign",
+      "sha256": "b0e2804d9f4375e6733bffa3a1aba9d3879ec1c2995ee9889d9130f7f88e24e7",
+      "bytes": 92871
+    },
+    {
+      "path": "test-image/0347.jpg",
+      "label": "Benign",
+      "sha256": "1c2a8094443da9900593fe92bbcc1aa278519ddff9660b598ce44b7105ca0403",
+      "bytes": 36674
+    },
+    {
+      "path": "test-image/0348.jpg",
+      "label": "Benign",
+      "sha256": "188978a16f727526711cc238e4ddb61f7594e508b84b6b4b26ab8c40fa411031",
+      "bytes": 89485
+    },
+    {
+      "path": "test-image/0349.jpg",
+      "label": "Benign",
+      "sha256": "bc74799c2aecd7d7c00068cd5f5762405bad77e8586a509d3ee644ecff5c33af",
+      "bytes": 85453
+    },
+    {
+      "path": "test-image/0350.jpg",
+      "label": "Benign",
+      "sha256": "130ef86cb6ae218dc79004b1256d771f351c48faca2f98b8e23acc5f23327493",
+      "bytes": 41909
+    },
+    {
+      "path": "test-image/0351.jpg",
+      "label": "Benign",
+      "sha256": "93c72fd086548e08df7cbaa7a9db9809561adfdc5d21e81b53f8a6c0d0e2b16f",
+      "bytes": 40643
+    },
+    {
+      "path": "test-image/0352.jpg",
+      "label": "Benign",
+      "sha256": "c4ada86e2f5584f90485ca6e4f5649d4652f52bd8bbb3b877b34cca3fa30079c",
+      "bytes": 47303
+    },
+    {
+      "path": "test-image/0353.jpg",
+      "label": "Benign",
+      "sha256": "d6c363eb56cf50b761b9e17fc4908d992aeef589683f67518d428736bda6974e",
+      "bytes": 45284
+    },
+    {
+      "path": "test-image/0354.jpg",
+      "label": "Benign",
+      "sha256": "6615bc2608997c8bc92e137c6d8cd3deaa5b97334313ea66a25ac86fa6108407",
+      "bytes": 50170
+    },
+    {
+      "path": "test-image/0355.jpg",
+      "label": "Benign",
+      "sha256": "343c46214e61f1134106ddb6bcf35fe1e934bf029655540ca0121ccc44ee033b",
+      "bytes": 50635
+    },
+    {
+      "path": "test-image/0356.jpg",
+      "label": "Benign",
+      "sha256": "4067eb231913c180b38d63904c6976524ae81816f0415d052bbecdf6bb213b22",
+      "bytes": 41594
+    },
+    {
+      "path": "test-image/0357.jpg",
+      "label": "Benign",
+      "sha256": "81abd9b01382c283d4480eb064f33ffb285cb9bbd250c3b591d0e56cca125f5d",
+      "bytes": 44070
+    },
+    {
+      "path": "test-image/0358.jpg",
+      "label": "Benign",
+      "sha256": "f9a8da439657174b065a2c40e749857266012f375c38a01ff1a2615bb57605d8",
+      "bytes": 32459
+    },
+    {
+      "path": "test-image/0359.jpg",
+      "label": "Benign",
+      "sha256": "45c1838320111a4b3d42f9dd1a8671eac29351ced09c56f75be9c6372d854f58",
+      "bytes": 34124
+    },
+    {
+      "path": "test-image/0360.jpg",
+      "label": "Benign",
+      "sha256": "2771ce90faa95d868865eaa11f7d07d00fd4d7a37686e5a1cb71240b5ef59eaf",
+      "bytes": 90446
+    },
+    {
+      "path": "test-image/0361.jpg",
+      "label": "Benign",
+      "sha256": "2f7d1f76a9a737f2414c0bb345f069433a6a6d2dd2a1f12841297b22c6954ab3",
+      "bytes": 52410
+    },
+    {
+      "path": "test-image/0362.jpg",
+      "label": "Benign",
+      "sha256": "c37f19a7e6ded31b809d997d6c431e9bdb14c391e51cb00bd4877207e9be7afc",
+      "bytes": 51950
+    },
+    {
+      "path": "test-image/0363.jpg",
+      "label": "Benign",
+      "sha256": "28f01a2a465ed8959bf5c401f8f5300cf696d83df5af03747c2f71f0971e612d",
+      "bytes": 143230
+    },
+    {
+      "path": "test-image/0364.jpg",
+      "label": "Benign",
+      "sha256": "9e9e762ff346f6eab2e90a8f94f07962a2a948b0059734c38c9d9b9f3a25d919",
+      "bytes": 50000
+    },
+    {
+      "path": "test-image/0365.jpg",
+      "label": "Benign",
+      "sha256": "a3047716219a81b34cfe8fb72d2852c81d12afe39d7b813521bb77a0183eaee1",
+      "bytes": 27845
+    },
+    {
+      "path": "test-image/0366.jpg",
+      "label": "Benign",
+      "sha256": "b6c7ff1f36087b87d968454b51543308ec4b817f5a2f1c5ee53e921b1db4aaf1",
+      "bytes": 38547
+    },
+    {
+      "path": "test-image/0367.jpg",
+      "label": "Benign",
+      "sha256": "6fc175e8f2c8689b46f437d870d4fa676d930b5f94c4023a06292dee60cc6a00",
+      "bytes": 47338
+    },
+    {
+      "path": "test-image/0368.jpg",
+      "label": "Benign",
+      "sha256": "e965d38817ddac48457cf5caa5c688017e9538cc65dc47180559d3e2ebd6cf45",
+      "bytes": 49903
+    },
+    {
+      "path": "test-image/0369.jpg",
+      "label": "Benign",
+      "sha256": "6926d21a95ce27b9f6c0b5a81d8a3217088a36abc12cf6f18a7ce4586799e584",
+      "bytes": 64800
+    },
+    {
+      "path": "test-image/0370.jpg",
+      "label": "Benign",
+      "sha256": "712a94d76c9798604be2b5eb67f07125bc328e3936d090c878d7b40db51e85c7",
+      "bytes": 62108
+    },
+    {
+      "path": "test-image/0371.jpg",
+      "label": "Benign",
+      "sha256": "15260a45a4bea1a732a006a43a71a082fec92a7c33b5e04c2ae494922e88b4d5",
+      "bytes": 61534
+    },
+    {
+      "path": "test-image/0372.jpg",
+      "label": "Benign",
+      "sha256": "6f3f4a865111c14bbecc959744a87dad6417f4858747d066713024944dc223fe",
+      "bytes": 37093
+    },
+    {
+      "path": "test-image/0373.jpg",
+      "label": "Benign",
+      "sha256": "9b2b6d3696543a4d98339db18d9d9b08ab6f87000308af027abd755a78fb965d",
+      "bytes": 52214
+    },
+    {
+      "path": "test-image/0374.jpg",
+      "label": "Benign",
+      "sha256": "8bfa7821769e72c30025bd64f0ab67676fe111b9445abcaaa967df32f01a1aa6",
+      "bytes": 47009
+    },
+    {
+      "path": "test-image/0375.jpg",
+      "label": "Benign",
+      "sha256": "40dee91c00e1d330f0899005e4462377a67b8c31cc8dbc01cc3dc110780b2ad7",
+      "bytes": 52274
+    },
+    {
+      "path": "test-image/0376.jpg",
+      "label": "Benign",
+      "sha256": "9208774bd81d620eb1c53d4bdb99b6f03c36138c45daba1604a084fbc5e0e465",
+      "bytes": 48058
+    },
+    {
+      "path": "test-image/0377.jpg",
+      "label": "Benign",
+      "sha256": "01583ecbea6d26961683d8dc34b5bc8a5649cd537f02b164508d6bac6b0e04d6",
+      "bytes": 43300
+    },
+    {
+      "path": "test-image/0378.jpg",
+      "label": "Malignant",
+      "sha256": "d77ab727116160453d30681bd5433082e7f0228805b52cf005a03855be777250",
+      "bytes": 49490
+    },
+    {
+      "path": "test-image/0379.jpg",
+      "label": "Malignant",
+      "sha256": "d9a2e3c099095c8331839494e2fb61d0bc163d8ba75faace66556f2c0aadc70a",
+      "bytes": 60878
+    },
+    {
+      "path": "test-image/0380.jpg",
+      "label": "Malignant",
+      "sha256": "7814c4bf87c94c45678a247d28e7c986714888e7eee65a9ff444a505dea9b195",
+      "bytes": 58008
+    },
+    {
+      "path": "test-image/0381.jpg",
+      "label": "Malignant",
+      "sha256": "12f713a74b64c6e874db7b49423c5b12e4b6729eaa6e129ec14ad750b48e5992",
+      "bytes": 54285
+    },
+    {
+      "path": "test-image/0382.jpg",
+      "label": "Malignant",
+      "sha256": "783725c9f5b97966a8ad61e22f0df618137c700d745eed6fa4af8ab6f3112fa4",
+      "bytes": 50706
+    },
+    {
+      "path": "test-image/0383.jpg",
+      "label": "Malignant",
+      "sha256": "f93e04ceb6e72e98ee7f91a9c30cfa426b9c3120faf3c7536d0d6806998a06eb",
+      "bytes": 88322
+    },
+    {
+      "path": "test-image/0384.jpg",
+      "label": "Malignant",
+      "sha256": "84bc7496e664f2c275a1d083ac58430b17ab4c4db6330186e9d35105c635e2f0",
+      "bytes": 48719
+    },
+    {
+      "path": "test-image/0385.jpg",
+      "label": "Malignant",
+      "sha256": "1b49c9488c00b9845af3295ceb2afffdacf787f94ba2c44d4a6617e6c9dada3c",
+      "bytes": 191942
+    },
+    {
+      "path": "test-image/0386.jpg",
+      "label": "Malignant",
+      "sha256": "1c49fa0da3c2ed40a391d31341ec188d50b93591f665abc9f39ac5bdaf3b10a7",
+      "bytes": 227525
+    },
+    {
+      "path": "test-image/0387.jpg",
+      "label": "Malignant",
+      "sha256": "aad3b30b4cbc24805c52d9a72ce4efff015f29fc726c3a43b2e381079a2602e0",
+      "bytes": 117271
+    },
+    {
+      "path": "test-image/0388.jpg",
+      "label": "Malignant",
+      "sha256": "8096fc3581944262c16fa3385d880214fc921d9b6e87c52363edcbb7ba3bb435",
+      "bytes": 54122
+    },
+    {
+      "path": "test-image/0389.jpg",
+      "label": "Malignant",
+      "sha256": "5c3bea85d78d9cfa529ba7d5ee4446ec1420b12803d512907f8ad88340b70c1e",
+      "bytes": 49131
+    },
+    {
+      "path": "test-image/0390.jpg",
+      "label": "Malignant",
+      "sha256": "91c8c9d3d5625a3b44ab64918e55ab4715a6cd27b8ed4858da1fe42ea24c08c3",
+      "bytes": 48893
+    },
+    {
+      "path": "test-image/0391.jpg",
+      "label": "Malignant",
+      "sha256": "858e51d7268529c81736053328deaf9e7f0f38ac560705cd0d49195f349d0302",
+      "bytes": 97934
+    },
+    {
+      "path": "test-image/0392.jpg",
+      "label": "Malignant",
+      "sha256": "6a94de552161df95452b5e293f253ae14c26fd3bdafd6ed2410dd56719562eab",
+      "bytes": 94432
+    },
+    {
+      "path": "test-image/0393.jpg",
+      "label": "Malignant",
+      "sha256": "3c8ee90ad5e88c0edaba459f197754aceec814a635f89e966f8b5626e3868547",
+      "bytes": 44189
+    },
+    {
+      "path": "test-image/0394.jpg",
+      "label": "Malignant",
+      "sha256": "3de88e4a923f429743833fe512c6c7b9f3b1ac1ecad4559d3e6c1afa014a936f",
+      "bytes": 44743
+    },
+    {
+      "path": "test-image/0395.jpg",
+      "label": "Malignant",
+      "sha256": "be9ce3525c165b1edbce01a15b9d57fa7be1717cae7d8468d8ff8fcac7b3a985",
+      "bytes": 49887
+    },
+    {
+      "path": "test-image/0396.jpg",
+      "label": "Malignant",
+      "sha256": "2341f4e3680340f96f76f0c7222cf0b5203913bea31d9ef8edde4ccdb2f1bee2",
+      "bytes": 64389
+    },
+    {
+      "path": "test-image/0397.jpg",
+      "label": "Malignant",
+      "sha256": "2c82cca1f91de8c7675f42e46e685dc0fc5637f7c3a7b271d01658dcb0a48090",
+      "bytes": 109740
+    },
+    {
+      "path": "test-image/0398.jpg",
+      "label": "Malignant",
+      "sha256": "d2818ad6833ac5e42aabc135eda74db063bd89302716ff1fd179e522435f6060",
+      "bytes": 108683
+    },
+    {
+      "path": "test-image/0399.jpg",
+      "label": "Malignant",
+      "sha256": "d9952e85389bd306d2a3ec1342d9cab1742e8535990b39a366fdf15a11e911b1",
+      "bytes": 46126
+    },
+    {
+      "path": "test-image/0400.jpg",
+      "label": "Malignant",
+      "sha256": "3e2c178e669e6ceff5d4603875c1a9fd96c915f1a071eff8ec47ea7d0dce99fc",
+      "bytes": 144557
+    },
+    {
+      "path": "test-image/0401.jpg",
+      "label": "Malignant",
+      "sha256": "ca98a6e4e7369eca09e698c9150266007fd413c47825af3d6ecb27c2b6378cc3",
+      "bytes": 59873
+    },
+    {
+      "path": "test-image/0402.jpg",
+      "label": "Malignant",
+      "sha256": "e14e30f01398d08f7bf504dfbccbe5b54a8885379f0e038bad92baffbb49205d",
+      "bytes": 36699
+    },
+    {
+      "path": "test-image/0403.jpg",
+      "label": "Malignant",
+      "sha256": "3f1c2a97d55bfa9ac2cf2b9b8fa4d08199ac2d2b75de529c33f283f949446b6d",
+      "bytes": 47038
+    },
+    {
+      "path": "test-image/0404.jpg",
+      "label": "Malignant",
+      "sha256": "9915cd0e979df0be0754a8357deadce0bff2691a41ba0cc0b20ab430d5e04d24",
+      "bytes": 54503
+    },
+    {
+      "path": "test-image/0405.jpg",
+      "label": "Malignant",
+      "sha256": "425b0362713cd52a3e19e3178252f11044ffef72168057368b8a5d86df11e25a",
+      "bytes": 57876
+    },
+    {
+      "path": "test-image/0406.jpg",
+      "label": "Malignant",
+      "sha256": "0bb0413f42e88d3c32b323c4222b551d319fccebdd2ebc7e208a456c868a4d8c",
+      "bytes": 62793
+    },
+    {
+      "path": "test-image/0407.jpg",
+      "label": "Malignant",
+      "sha256": "f36f4641aca2f23e1cd9967f8f10a93938dba9025dc3e0bbada28761a7a7d57f",
+      "bytes": 50696
+    },
+    {
+      "path": "test-image/0408.jpg",
+      "label": "Malignant",
+      "sha256": "aa3efdf58ec787776526699c7e66a957e34d094e3e14e8faac059917ca8f96c3",
+      "bytes": 163594
+    },
+    {
+      "path": "test-image/0409.jpg",
+      "label": "Malignant",
+      "sha256": "f771174d2397e6e1acc53c2dbcca60422496bfe9a88059c8284534ada46eed8f",
+      "bytes": 38116
+    },
+    {
+      "path": "test-image/0410.jpg",
+      "label": "Malignant",
+      "sha256": "c03016e2f153c5f1cf7e4462a52230e58d85502e7cdd47000e76e7d0905aaa0c",
+      "bytes": 54253
+    },
+    {
+      "path": "test-image/0411.jpg",
+      "label": "Malignant",
+      "sha256": "8238bab463a76cb4a95ddbe016f92e2c8108b65b063c76bad510e80558cd29d1",
+      "bytes": 119080
+    },
+    {
+      "path": "test-image/0412.jpg",
+      "label": "Malignant",
+      "sha256": "822472932f2c1d3977c30d408777a3673e15483635dbda00cecb627e57db22f5",
+      "bytes": 128600
+    },
+    {
+      "path": "test-image/0413.jpg",
+      "label": "Malignant",
+      "sha256": "e7c919983a1661f0bd513cda63926c83056e5f07c165fd9341d24ba24518690b",
+      "bytes": 84159
+    },
+    {
+      "path": "test-image/0414.jpg",
+      "label": "Malignant",
+      "sha256": "4585012821a7ce0836cb38c43fc0f3048471e0ced76bcca578a8123918887281",
+      "bytes": 108052
+    },
+    {
+      "path": "test-image/0415.jpg",
+      "label": "Malignant",
+      "sha256": "d6d24e18ae2e28d2e98222fda9b50390e8fdb5fce7364018e5a025e884a8532e",
+      "bytes": 149014
+    },
+    {
+      "path": "test-image/0416.jpg",
+      "label": "Malignant",
+      "sha256": "de740ce791bbaa4bca4f8704503d4f86f218cc5c00b83df2b98b8e1e23c4c2b3",
+      "bytes": 51490
+    },
+    {
+      "path": "test-image/0417.jpg",
+      "label": "Malignant",
+      "sha256": "4e30f87b44de15aa612ea9bb86fe3d2063f9f0a2db3bf1b10770619105e60f62",
+      "bytes": 153080
+    },
+    {
+      "path": "test-image/0418.jpg",
+      "label": "Malignant",
+      "sha256": "42b7f7f7dbceb18d41fe1402ab4f2b13e6d4779e09df2264ee6a7c1444283732",
+      "bytes": 36965
+    },
+    {
+      "path": "test-image/0419.jpg",
+      "label": "Malignant",
+      "sha256": "11ab1909d627ae575bdd5581b142e9dbd2a0c513c3b2a30ecbaa7dffc9b53e6f",
+      "bytes": 31396
+    },
+    {
+      "path": "test-image/0420.jpg",
+      "label": "Malignant",
+      "sha256": "c3f8f4961484134f02264b918d4ae25e71e9477eac9ab4bb630d4e38777e1405",
+      "bytes": 43170
+    },
+    {
+      "path": "test-image/0421.jpg",
+      "label": "Malignant",
+      "sha256": "4e59a05732f573e2888cd17d2c4d1b09ca78c3ab760693a1540aea93da33bdf6",
+      "bytes": 44203
+    },
+    {
+      "path": "test-image/0422.jpg",
+      "label": "Malignant",
+      "sha256": "b18f29b009658dee9e1e8a0b32609a6a1f232e8a3cc1b03dd5e9c4c110474582",
+      "bytes": 48591
+    },
+    {
+      "path": "test-image/0423.jpg",
+      "label": "Malignant",
+      "sha256": "059553e6865adb18208e35510af9f1e84d1093c631bae6cd8794c9d97190a803",
+      "bytes": 51352
+    },
+    {
+      "path": "test-image/0424.jpg",
+      "label": "Malignant",
+      "sha256": "265e49dcf991577e7e982daadce5ae2ea3512248109dace16b0904b0f14ff748",
+      "bytes": 124573
+    },
+    {
+      "path": "test-image/0425.jpg",
+      "label": "Malignant",
+      "sha256": "b07da07c6ea57b65f2a5009bdfbecac9537df837250b44fb13fc1b725cb16943",
+      "bytes": 134116
+    },
+    {
+      "path": "test-image/0426.jpg",
+      "label": "Malignant",
+      "sha256": "6de7b9fb09a6948f9d18ad21a6671b11da9e18da923f02523b2f5ae6ca787f74",
+      "bytes": 28107
+    },
+    {
+      "path": "test-image/0427.jpg",
+      "label": "Malignant",
+      "sha256": "a596457c37cb4d4ed6dc17b9f89bbca2aeaf96dad66807252debb0ba7eaef5d4",
+      "bytes": 59127
+    },
+    {
+      "path": "test-image/0428.jpg",
+      "label": "Malignant",
+      "sha256": "ba8cc1f480c099ee232cd788872fe4173701157a8ecfe3b4793aa45f5bd768e6",
+      "bytes": 33300
+    },
+    {
+      "path": "test-image/0429.jpg",
+      "label": "Malignant",
+      "sha256": "c991b10e100982b00f131905f5c713c1cb0b7abdf42730411c7a7e529d04601f",
+      "bytes": 26501
+    },
+    {
+      "path": "test-image/0430.jpg",
+      "label": "Malignant",
+      "sha256": "21c2e0879f574ec5d75b566d4590446e495b3a363f80f6d467a33bdd6f6f476a",
+      "bytes": 51772
+    },
+    {
+      "path": "test-image/0431.jpg",
+      "label": "Malignant",
+      "sha256": "2fc5bbc4e7f194b081153fbaeb6fbbc9aa568604af9040247d440966062d3613",
+      "bytes": 46075
+    },
+    {
+      "path": "test-image/0432.jpg",
+      "label": "Malignant",
+      "sha256": "6690b38decb104166b0be1d404d978b43f6f183d7b42394288670c4f94b7966e",
+      "bytes": 47213
+    },
+    {
+      "path": "test-image/0433.jpg",
+      "label": "Malignant",
+      "sha256": "519a822bc7bfdb08593214b60a96ca479b208d5290532ada9ead372f047719a4",
+      "bytes": 46052
+    },
+    {
+      "path": "test-image/0434.jpg",
+      "label": "Malignant",
+      "sha256": "b5fbf51217f5c7bad1d71efe88006cf7594042f2113aabe5d3f82611ab9ee15a",
+      "bytes": 50131
+    },
+    {
+      "path": "test-image/0435.jpg",
+      "label": "Malignant",
+      "sha256": "871032d44e8d573fbf6eb707dfacbf983523b3c716399d5e6622d098dc64dc62",
+      "bytes": 58503
+    },
+    {
+      "path": "test-image/0436.jpg",
+      "label": "Malignant",
+      "sha256": "5969c17a84c343620a2867873ab6bb00b10a54a22328e6a5ff95691609b7ea09",
+      "bytes": 52510
+    },
+    {
+      "path": "test-image/0437.jpg",
+      "label": "Malignant",
+      "sha256": "cb114c5c0e634e0f8bcfee25d066925c13d7a4109af1d492935c06def9da65ff",
+      "bytes": 60023
+    },
+    {
+      "path": "test-image/0438.jpg",
+      "label": "Malignant",
+      "sha256": "19e6ceda0dde00fdf6592208c70855f3265dad552be2952f33ba6f1860bccc1d",
+      "bytes": 38768
+    },
+    {
+      "path": "test-image/0439.jpg",
+      "label": "Malignant",
+      "sha256": "61784886e8e0b14cabe80a0e850796dff447668f3e8afeddb27459c57c69980a",
+      "bytes": 58627
+    },
+    {
+      "path": "test-image/0440.jpg",
+      "label": "Malignant",
+      "sha256": "9e9d5d1d9d233dc072f4e403e600459289621c3c493b5ce20deb91cb266c861d",
+      "bytes": 39662
+    },
+    {
+      "path": "test-image/0441.jpg",
+      "label": "Malignant",
+      "sha256": "eb6fa00f864f9836642011ad819f4233bd42b68a14f21e47a970650f1574421a",
+      "bytes": 41392
+    },
+    {
+      "path": "test-image/0442.jpg",
+      "label": "Malignant",
+      "sha256": "4d65233ff7cf3a659f6b99f16cf14bee3c6a9f65a3c5b3113a2409b2bfc97349",
+      "bytes": 64761
+    },
+    {
+      "path": "test-image/0443.jpg",
+      "label": "Malignant",
+      "sha256": "64aade39ac9e3cc7e78964f6d50240b0b04764dd4218b5f3dcc0aa4334c76347",
+      "bytes": 85640
+    },
+    {
+      "path": "test-image/0444.jpg",
+      "label": "Malignant",
+      "sha256": "69a42a47d06f0e27de4cb1bddf9eb0c780d9d33c6d8d4772840088b2548f426c",
+      "bytes": 63818
+    },
+    {
+      "path": "test-image/0445.jpg",
+      "label": "Malignant",
+      "sha256": "899757ad452e76ee8ec0b6b4a73c25783f27087eacd5be3abfe5d2cfe7d442f9",
+      "bytes": 35860
+    },
+    {
+      "path": "test-image/0446.jpg",
+      "label": "Malignant",
+      "sha256": "903878dae195186c7ce796bab19ed0741a0075e1123b017dd9cb68bd4f850ccb",
+      "bytes": 38671
+    },
+    {
+      "path": "test-image/0447.jpg",
+      "label": "Malignant",
+      "sha256": "71ab17c7d62d4bed067d5dd1a10f40075acbf5e73a0ad404d67770d3709431a6",
+      "bytes": 38240
+    },
+    {
+      "path": "test-image/0448.jpg",
+      "label": "Malignant",
+      "sha256": "ec68fb8032367275cee852a226151a4703645b20b1e231080eed079a9e663639",
+      "bytes": 60159
+    },
+    {
+      "path": "test-image/0449.jpg",
+      "label": "Malignant",
+      "sha256": "e73b5cca544db4f7bb84b040f04a209651d66cf78596710ced763901cdb2fe9f",
+      "bytes": 60966
+    },
+    {
+      "path": "test-image/0450.jpg",
+      "label": "Malignant",
+      "sha256": "e8b7b92ac3b800c445a0e133484d45f4f3105a2e66d15e9a86a28e063cd5a6ac",
+      "bytes": 125079
+    },
+    {
+      "path": "test-image/0451.jpg",
+      "label": "Malignant",
+      "sha256": "b5016eca5958ea88da64a35476ee0194c3f5cdfb7395faba784cf92669f640c0",
+      "bytes": 52950
+    },
+    {
+      "path": "test-image/0452.jpg",
+      "label": "Malignant",
+      "sha256": "fd5db549650e750ba35b2ce7ff8eba53e3ee91e1d0667e689498f0ab0ae9abc0",
+      "bytes": 46159
+    },
+    {
+      "path": "test-image/0453.jpg",
+      "label": "Malignant",
+      "sha256": "9ed2ba86b74ac166d4d8c07cac4665eb53fc3b3746317e098cbf319cfbbb7cb3",
+      "bytes": 32899
+    },
+    {
+      "path": "test-image/0454.jpg",
+      "label": "Malignant",
+      "sha256": "7ea8d29b1c761ed22e8eaca12b9981d7c922a3a2ee6ae698e28daa8433aff82b",
+      "bytes": 48401
+    },
+    {
+      "path": "test-image/0455.jpg",
+      "label": "Malignant",
+      "sha256": "018745cc6c488199558dc03f03aa46318da3ff4ea63f86dede405fdfe043a33c",
+      "bytes": 83423
+    },
+    {
+      "path": "test-image/0456.jpg",
+      "label": "Malignant",
+      "sha256": "4985a669c2675c39c8e290f3ad9aec35654b7223e19019a333ebe75f6d077a01",
+      "bytes": 47580
+    },
+    {
+      "path": "test-image/0457.jpg",
+      "label": "Malignant",
+      "sha256": "4db7a6fb0e8b81a87053e6dfa92b0f3e48dfc3e937d3be69e9c72543f8df68c1",
+      "bytes": 50402
+    },
+    {
+      "path": "test-image/0458.jpg",
+      "label": "Malignant",
+      "sha256": "4374323f40e1c044447e28eb078a41a10b180e96e236c700c2ffab55a03ef08b",
+      "bytes": 49526
+    },
+    {
+      "path": "test-image/0459.jpg",
+      "label": "Malignant",
+      "sha256": "bf167237dbc711036ec131b398a41bb2a9ccc2cfbdd3ecc845bfe26e8d3e9718",
+      "bytes": 49820
+    },
+    {
+      "path": "test-image/0460.jpg",
+      "label": "Malignant",
+      "sha256": "1c7fa219e75a07eed579d7f2a856f8b1cd857ba1ddb2e180aa12e1c769feb259",
+      "bytes": 49786
+    },
+    {
+      "path": "test-image/0461.jpg",
+      "label": "Malignant",
+      "sha256": "cb08bd5e8a953e87f751e95618bad8b056d4b0e6ae29ff06ca24b26513b03895",
+      "bytes": 37586
+    },
+    {
+      "path": "test-image/0462.jpg",
+      "label": "Malignant",
+      "sha256": "4d00cca96b18c8667b9468fd0204ecc0d905844f0c78413881869cd55a553181",
+      "bytes": 40302
+    },
+    {
+      "path": "test-image/0463.jpg",
+      "label": "Malignant",
+      "sha256": "fe6e8d61d4cc648b007c708e0eef9e9f7ae9d5752f2a4684c51977588d538b38",
+      "bytes": 42741
+    },
+    {
+      "path": "test-image/0464.jpg",
+      "label": "Malignant",
+      "sha256": "542d1c4dcd587a73cfca9b12e339b121314b8e08d23681f2bbbebbe9bfce91af",
+      "bytes": 37994
+    },
+    {
+      "path": "test-image/0465.jpg",
+      "label": "Malignant",
+      "sha256": "306a85e27ddd8035d3ccca7c49ba5532c6d18cd227186fee7d8cd060ca32c1d5",
+      "bytes": 48078
+    },
+    {
+      "path": "test-image/0466.jpg",
+      "label": "Malignant",
+      "sha256": "959aa695c23a7b79c961827c83fab41d99a48b593e152402633ef37d9282a2ac",
+      "bytes": 40129
+    },
+    {
+      "path": "test-image/0467.jpg",
+      "label": "Malignant",
+      "sha256": "26559f76c8445b78d6cb0f7a2beed53a0ea69e7f6ebf760ba60b84e02e9e759d",
+      "bytes": 44599
+    },
+    {
+      "path": "test-image/0468.jpg",
+      "label": "Malignant",
+      "sha256": "570d705eed9713d3564499561e3416a59902aa5a42596beb759f2be44223a21e",
+      "bytes": 46583
+    },
+    {
+      "path": "test-image/0469.jpg",
+      "label": "Malignant",
+      "sha256": "9024d2f5f5618684d5a4980d7f338b3aed5d300a4c3d8661c34d5d1015ffe6b1",
+      "bytes": 40794
+    },
+    {
+      "path": "test-image/0470.jpg",
+      "label": "Malignant",
+      "sha256": "8da34ac30a1ab60299aaa63e3be7cecb0cdf28f8b74df24aae9dd612d11c1f61",
+      "bytes": 39778
+    },
+    {
+      "path": "test-image/0471.jpg",
+      "label": "Malignant",
+      "sha256": "8b91cbf1e5f5cb63556bde87c1ec3b335c3f3e197bfe6619754cbfb014416a78",
+      "bytes": 50860
+    },
+    {
+      "path": "test-image/0472.jpg",
+      "label": "Malignant",
+      "sha256": "45c7558a9790e6420500dcf7ba10d528dc686e2dbb533f41bff2a3693f686567",
+      "bytes": 44997
+    },
+    {
+      "path": "test-image/0473.jpg",
+      "label": "Malignant",
+      "sha256": "332ed15c2c69e55566548eb88727e0840aae49669135868d3cce16e405eb4d4c",
+      "bytes": 30368
+    },
+    {
+      "path": "test-image/0474.jpg",
+      "label": "Malignant",
+      "sha256": "f75bf0b55699989e8122f1ad060ff9c25181cfabe3575281df58b299940f87a2",
+      "bytes": 32580
+    },
+    {
+      "path": "test-image/0475.jpg",
+      "label": "Malignant",
+      "sha256": "ae22710a247e56d1cfdcee257fd0853498b1cdf21648e7b38c281d6bc68e69c1",
+      "bytes": 48352
+    },
+    {
+      "path": "test-image/0476.jpg",
+      "label": "Malignant",
+      "sha256": "209615aa19b76b95f9a49d39109d42becbad24a72d99ed5147e3e75ce790ff26",
+      "bytes": 51817
+    },
+    {
+      "path": "test-image/0477.jpg",
+      "label": "Malignant",
+      "sha256": "df6c7fec328b00626131e348d8d58bfea6656584f977913d3ba2d2ebe220128c",
+      "bytes": 61066
+    },
+    {
+      "path": "test-image/0478.jpg",
+      "label": "Malignant",
+      "sha256": "b4666b512e0a4da52d98cd366bb6b3c8aa8777684206ad3882c4b3a00ffe5211",
+      "bytes": 54455
+    },
+    {
+      "path": "test-image/0479.jpg",
+      "label": "Malignant",
+      "sha256": "2adb95d21f7df6ce01f30731d8e15f3ecb5e6fed5e37b7785c0b7073a3cc54a0",
+      "bytes": 38312
+    },
+    {
+      "path": "test-image/0480.jpg",
+      "label": "Malignant",
+      "sha256": "b766979540ef26422172ad6621505a145fde7114fce393c020f5363e247ec32e",
+      "bytes": 50380
+    },
+    {
+      "path": "test-image/0481.jpg",
+      "label": "Malignant",
+      "sha256": "81e4b3b445beceee33b08f7ec864bc7759c9344dfbc4773c8f76f7d5dd55c3eb",
+      "bytes": 46370
+    },
+    {
+      "path": "test-image/0482.jpg",
+      "label": "Malignant",
+      "sha256": "df28f3cbc0807739b7cbaae2f66898fec2a18115b04ba24c7606c2d4ae257140",
+      "bytes": 52047
+    },
+    {
+      "path": "test-image/0483.jpg",
+      "label": "Malignant",
+      "sha256": "23076ee25ed152ebf9b11ecc4598de8b767e7bce712e296ddaaa725a05575593",
+      "bytes": 49008
+    },
+    {
+      "path": "test-image/0484.jpg",
+      "label": "Malignant",
+      "sha256": "76b1ce9c8d9a1d74ec4b4511c900ab5927b88857aad7ece79cc7fc94fc1851cd",
+      "bytes": 37584
+    },
+    {
+      "path": "test-image/0485.jpg",
+      "label": "Malignant",
+      "sha256": "41a5219450d0916dbe60492164ce91fcda210612bf3846c164542f2ad2dcd024",
+      "bytes": 64517
+    },
+    {
+      "path": "test-image/0486.jpg",
+      "label": "Malignant",
+      "sha256": "072ad5135535e250cefc6b5f9a2e5523b3aac262572d1b57ae1d439743f0b97d",
+      "bytes": 63878
+    },
+    {
+      "path": "test-image/0487.jpg",
+      "label": "Malignant",
+      "sha256": "63e063897da215cbc8b779aef647e92c9e186695f7ceba5d69455ac7b13b434e",
+      "bytes": 63335
+    },
+    {
+      "path": "test-image/0488.jpg",
+      "label": "Malignant",
+      "sha256": "18fc526146e8630fbd878eb24a26838e7079aa66aecffbb8101f649963b2488c",
+      "bytes": 37217
+    },
+    {
+      "path": "test-image/0489.jpg",
+      "label": "Malignant",
+      "sha256": "f199a3d3cdc50e851232f7d5ae31b917109bf9fe91cee006bbaf337bb0824850",
+      "bytes": 40599
+    },
+    {
+      "path": "test-image/0490.jpg",
+      "label": "Malignant",
+      "sha256": "de4161032d3402bf90407668c88761dd626a3309a948ebe4a04c4f280cdabeff",
+      "bytes": 44965
+    },
+    {
+      "path": "test-image/0491.jpg",
+      "label": "Malignant",
+      "sha256": "990a7c879bfd3da84d0a7fa4d9b12a7e30f1d60121138ca3100713b129482216",
+      "bytes": 40222
+    },
+    {
+      "path": "test-image/0492.jpg",
+      "label": "Malignant",
+      "sha256": "fe09daffbb49df7099dd792a55543e06abf9ec29263e4c3118272d2e500c614f",
+      "bytes": 51515
+    },
+    {
+      "path": "test-image/0493.jpg",
+      "label": "Malignant",
+      "sha256": "92187e18986cb4c8d2bad7ab0cf33f98431ee9bf474ae00f866b6d8bde7c3b38",
+      "bytes": 54288
+    },
+    {
+      "path": "test-image/0494.jpg",
+      "label": "Malignant",
+      "sha256": "33cc3af8cd8f918c218adbaaf2a29523b0a5ff13c202f33ea0adaadd2ea6b59a",
+      "bytes": 123085
+    },
+    {
+      "path": "test-image/0495.jpg",
+      "label": "Malignant",
+      "sha256": "a4eefd78b49d7d50b7931c77c8f9ad021f592c2b60a461703d9ac87d4ce8e060",
+      "bytes": 108588
+    },
+    {
+      "path": "test-image/0496.jpg",
+      "label": "Malignant",
+      "sha256": "54c9239055d4a3693f357db73406b760c542e9f4067e2fc7478a39fa6cf4abb8",
+      "bytes": 51508
+    },
+    {
+      "path": "test-image/0497.jpg",
+      "label": "Malignant",
+      "sha256": "18bcb1151572be220ecda7940b107dd10bb963ab873a0cc1307c68430e8daf71",
+      "bytes": 86942
+    },
+    {
+      "path": "test-image/0498.jpg",
+      "label": "Malignant",
+      "sha256": "5153b550482b5a8df51f8b7874234d77a285d3259db435e920d482743d6ca527",
+      "bytes": 51832
+    },
+    {
+      "path": "test-image/0499.jpg",
+      "label": "Malignant",
+      "sha256": "752fae838c712341cf1425465dfc35510ef40815e23f4be1f65a01935412cf8d",
+      "bytes": 57539
+    },
+    {
+      "path": "test-image/0500.jpg",
+      "label": "Malignant",
+      "sha256": "a862ff3404001f1ed3aed579684b0d500ee9e4fd50ddb3c51f8c4993c939b272",
+      "bytes": 47204
+    },
+    {
+      "path": "test-image/0501.jpg",
+      "label": "Malignant",
+      "sha256": "13a7611cd668b34a433c79710c0bbcb76bc856b4d852924f4a6e388d2cfa4782",
+      "bytes": 50115
+    },
+    {
+      "path": "test-image/0502.jpg",
+      "label": "Malignant",
+      "sha256": "f167d3563abcb80c9a9792bad1e1167dca0e9a39a743b927264d38b9e51aa5d0",
+      "bytes": 57755
+    },
+    {
+      "path": "test-image/0503.jpg",
+      "label": "Malignant",
+      "sha256": "97a53a401c675d937a01ebd682ae1ee3b4147cc69429be37bb32a928e858cb73",
+      "bytes": 86631
+    },
+    {
+      "path": "test-image/0504.jpg",
+      "label": "Malignant",
+      "sha256": "cf70320ef6016d39ded71625a2a18ce1df6cf06cdab08baa010db66255ee7199",
+      "bytes": 59864
+    },
+    {
+      "path": "test-image/0505.jpg",
+      "label": "Malignant",
+      "sha256": "e964684cf5966089c14d58c68fc88101701d2e1791cad97ce264de414ae35fb2",
+      "bytes": 64470
+    },
+    {
+      "path": "test-image/0506.jpg",
+      "label": "Malignant",
+      "sha256": "912e833299fce43f57d36cffe84f159a2b35b63206d95d507385783a9eb1f313",
+      "bytes": 61672
+    },
+    {
+      "path": "test-image/0507.jpg",
+      "label": "Malignant",
+      "sha256": "9f9903856cf0f838b1b911958499d5b3833a0a24f841699d0e55488b95998423",
+      "bytes": 46527
+    },
+    {
+      "path": "test-image/0508.jpg",
+      "label": "Malignant",
+      "sha256": "0d81974db049ac79d0632d1ce2c30e72c75374078932d5c6c886e1c48d13b659",
+      "bytes": 50605
+    },
+    {
+      "path": "test-image/0509.jpg",
+      "label": "Malignant",
+      "sha256": "f6c052bfc9f037ffbaa08756574d39ad00a88c9e0fd2951d73148db55eb7b63a",
+      "bytes": 49535
+    },
+    {
+      "path": "test-image/0510.jpg",
+      "label": "Malignant",
+      "sha256": "6fcfde967ebc930d7bdc4f983dd3e8df9b16d941c7f3b498ede43d787fef4817",
+      "bytes": 41179
+    },
+    {
+      "path": "test-image/0511.jpg",
+      "label": "Malignant",
+      "sha256": "66b42dd960c09b9b12be0ca69b4cc6f3573f41ddc697eb39e6ef5831ac466951",
+      "bytes": 46741
+    },
+    {
+      "path": "test-image/0512.jpg",
+      "label": "Malignant",
+      "sha256": "9c23f8a9834e95127571eeff9f3ca081fd759bf1adba75cd40a14b9a3d4b3e8e",
+      "bytes": 47602
+    },
+    {
+      "path": "test-image/0513.jpg",
+      "label": "Malignant",
+      "sha256": "a5ed0dd6d2181809abe92e6dcffc6c9a6a967c9361a2ad3df4b64245574455d1",
+      "bytes": 44615
+    },
+    {
+      "path": "test-image/0514.jpg",
+      "label": "Malignant",
+      "sha256": "93a8eef9eed8e820c05d481f05ba4632f4c05c17433e4bf9c6d961d67cbc0fc7",
+      "bytes": 44247
+    },
+    {
+      "path": "test-image/0515.jpg",
+      "label": "Malignant",
+      "sha256": "e611c80493432fdfaca1560b90ed79160bf6c369b7d8f8ad25b9b4395cd13514",
+      "bytes": 44873
+    },
+    {
+      "path": "test-image/0516.jpg",
+      "label": "Malignant",
+      "sha256": "94df74e53c98d81dd2ff74548da23926587e099954082c608dab9b70026283e4",
+      "bytes": 30163
+    },
+    {
+      "path": "test-image/0517.jpg",
+      "label": "Malignant",
+      "sha256": "f1ab7b42e5251db9894e30a10b054ea5c077b5f9406d296e90d772ff2a596bd6",
+      "bytes": 29412
+    },
+    {
+      "path": "test-image/0518.jpg",
+      "label": "Malignant",
+      "sha256": "ae4b68a9f7ddcd7a0fa152f70bdb188bc0610fc953008af8c260f27c2a880f4b",
+      "bytes": 38624
+    },
+    {
+      "path": "test-image/0519.jpg",
+      "label": "Malignant",
+      "sha256": "36cf5c414b22469bfbd2fcb31a1d77325518a2367f084043e9092498db289051",
+      "bytes": 60640
+    },
+    {
+      "path": "test-image/0520.jpg",
+      "label": "Malignant",
+      "sha256": "7f0778297acdaae31f9e62262a0b974a9196e7e6dadc8a534d4a4e55ffef0bad",
+      "bytes": 49707
+    },
+    {
+      "path": "test-image/0521.jpg",
+      "label": "Malignant",
+      "sha256": "73606d0f4c9ca165015e2637d49c7c4543d62c5da09e9065b91677311a0b2773",
+      "bytes": 69184
+    },
+    {
+      "path": "test-image/0522.jpg",
+      "label": "Malignant",
+      "sha256": "df500e3b49611c2d8ba3702d18b29df6bc9a854b32f4881ffdcd0689469862ed",
+      "bytes": 35393
+    },
+    {
+      "path": "test-image/0523.jpg",
+      "label": "Malignant",
+      "sha256": "65ec82113cd8585e4768b4fa3fffa379af3e87db4fe9e18408519fc4da8dac48",
+      "bytes": 50041
+    },
+    {
+      "path": "test-image/0524.jpg",
+      "label": "Malignant",
+      "sha256": "e382b064c63efd3cf03bf7b46b5c9fcae04362ebc82ba65f736f82cbaf0de60d",
+      "bytes": 47291
+    },
+    {
+      "path": "test-image/0525.jpg",
+      "label": "Malignant",
+      "sha256": "5259cac6428831aaefce9875a677238a5d2f2f5e5a5e0f6ae1986d48d2dfdb25",
+      "bytes": 30549
+    },
+    {
+      "path": "test-image/0526.jpg",
+      "label": "Malignant",
+      "sha256": "d9870032b2d5bfa177d63058c892f07d67a14d943aa7e5c00cd73212beeeef91",
+      "bytes": 31844
+    },
+    {
+      "path": "test-image/0527.jpg",
+      "label": "Malignant",
+      "sha256": "3d10ffbd81dfdde4f48147ac601946400409b7f4ad9037e8bb582a610deb92cb",
+      "bytes": 44353
+    },
+    {
+      "path": "test-image/0528.jpg",
+      "label": "Malignant",
+      "sha256": "c15548a9545b3d7a9c8b4f95986952d9e52ad2e2fe339f3199e41826cc52b30d",
+      "bytes": 40845
+    },
+    {
+      "path": "test-image/0529.jpg",
+      "label": "Malignant",
+      "sha256": "f886c1b87d7aa0c1fb5d187ea1084ba473fdb539c5c0b2c1183edf2dafc6a95b",
+      "bytes": 92986
+    },
+    {
+      "path": "test-image/0530.jpg",
+      "label": "Malignant",
+      "sha256": "176ac0f5d4a8db0b30f4f2432f7df579004f5158d9d39b9fe49823b553295b9b",
+      "bytes": 42018
+    },
+    {
+      "path": "test-image/0531.jpg",
+      "label": "Malignant",
+      "sha256": "d874004fa04e2faa278adf5fbb8c24acaf7ecef6b3b51a33bc54404f89b75ce0",
+      "bytes": 44389
+    },
+    {
+      "path": "test-image/0532.jpg",
+      "label": "Malignant",
+      "sha256": "ab53c9e7932a913f1f0c9c7df36b2100ae60fb61228426ebc3d34d261ef913ca",
+      "bytes": 47723
+    },
+    {
+      "path": "test-image/0533.jpg",
+      "label": "Malignant",
+      "sha256": "0615d72340c50463a01b36d80dcdebde1904562c463d1f1128917e5e0cf704d5",
+      "bytes": 50033
+    },
+    {
+      "path": "test-image/0534.jpg",
+      "label": "Malignant",
+      "sha256": "2bf26c140bdb929118f66fec0011eac49cc389110ea85814c6a590a1971c13f2",
+      "bytes": 101223
+    },
+    {
+      "path": "test-image/0535.jpg",
+      "label": "Malignant",
+      "sha256": "1be75406bf1afe65885ca912b9dd12bdd49d50beff3571403240f7eddfef1648",
+      "bytes": 64514
+    },
+    {
+      "path": "test-image/0536.jpg",
+      "label": "Malignant",
+      "sha256": "55e29e70ca03ffa9c9e2afbd9cb6f9f6f0f5042adf4db3f3699469672182b801",
+      "bytes": 65601
+    },
+    {
+      "path": "test-image/0537.jpg",
+      "label": "Malignant",
+      "sha256": "ac2efe303880ca4e6b427c12579320fe13cc4aab98290b2bb14d15fff3d96cf9",
+      "bytes": 58287
+    },
+    {
+      "path": "test-image/0538.jpg",
+      "label": "Malignant",
+      "sha256": "86ec09b0f2fa38347856ef4e24310e073816384fe13bf1a0b7fa58331eb8b86a",
+      "bytes": 60332
+    },
+    {
+      "path": "test-image/0539.jpg",
+      "label": "Malignant",
+      "sha256": "bd37df047af069595e2356097575768273d4ca77150ef105cab1d20442cb7f40",
+      "bytes": 82106
+    },
+    {
+      "path": "test-image/0540.jpg",
+      "label": "Malignant",
+      "sha256": "6f29ac94f4541800abb82c0eea8774a2afb2785f00eefafaef4cfc5cd7933537",
+      "bytes": 74877
+    },
+    {
+      "path": "test-image/0541.jpg",
+      "label": "Malignant",
+      "sha256": "dc10c91735129893d06c12d2f185b4122282e033b4bb228b86c43adcae962a8a",
+      "bytes": 48340
+    },
+    {
+      "path": "test-image/0542.jpg",
+      "label": "Malignant",
+      "sha256": "8f07beb5b7780f428e6a67df091f22e1c7e47e45c2edb5fa3d5062038bb12bbf",
+      "bytes": 46217
+    },
+    {
+      "path": "test-image/0543.jpg",
+      "label": "Malignant",
+      "sha256": "41efdc7eeb3720c5700ef94010b2c884ecdfe7b0e1aec0215414ca5194d7a8fa",
+      "bytes": 29430
+    },
+    {
+      "path": "test-image/0544.jpg",
+      "label": "Malignant",
+      "sha256": "b98b61a7b9aedbeba412e1be5038fd56af98d2fdc28b4760aab4e327dc518089",
+      "bytes": 50828
+    },
+    {
+      "path": "test-image/0545.jpg",
+      "label": "Malignant",
+      "sha256": "bd13645be3268210dc1cfaf04e5262c1facd70087ebb640a676c8e6d92232666",
+      "bytes": 33278
+    },
+    {
+      "path": "test-image/0546.jpg",
+      "label": "Malignant",
+      "sha256": "c26ee05626b01f81ee9282e482268b8c81927eb6d3333355de0b710e3bc1177a",
+      "bytes": 69217
+    },
+    {
+      "path": "test-image/0547.jpg",
+      "label": "Malignant",
+      "sha256": "cf65b708702770c804443cee33502a648639e91ede313e8bb76f23511e5e3462",
+      "bytes": 120537
+    },
+    {
+      "path": "test-image/0548.jpg",
+      "label": "Malignant",
+      "sha256": "136b1d71099b643fa6847818728d5f54f0faa9446c33faf2568d41fee2e10e68",
+      "bytes": 43124
+    },
+    {
+      "path": "test-image/0549.jpg",
+      "label": "Malignant",
+      "sha256": "cb6ee1600870a86eaf31b2bef41881743442aa5e1a9d61faa75333d6e34be392",
+      "bytes": 46514
+    },
+    {
+      "path": "test-image/0550.jpg",
+      "label": "Malignant",
+      "sha256": "6944921685b90313ac549c0c18d026d2a86e8dd5e5db12a9543c301561ac7f7a",
+      "bytes": 47703
+    },
+    {
+      "path": "test-image/0551.jpg",
+      "label": "Malignant",
+      "sha256": "ea564705e29abe7e6c11852579a30da3e8b681242660068a0747db8056a3ba8f",
+      "bytes": 39790
+    },
+    {
+      "path": "test-image/0552.jpg",
+      "label": "Malignant",
+      "sha256": "82f4dafd951a2fda10ad525cb9cec7805d039a26887829f2562aaaa444bc3e18",
+      "bytes": 57737
+    },
+    {
+      "path": "test-image/0553.jpg",
+      "label": "Malignant",
+      "sha256": "1063637f63dff4b37ff4f7d643a2e7e1e0e4adbecc8a4e698e067ee16cafb0ba",
+      "bytes": 37565
+    },
+    {
+      "path": "test-image/0554.jpg",
+      "label": "Malignant",
+      "sha256": "f4e812a1f942a75f9b7ebe1555c36e6a3c1935a5c10b06e4a44fc0f1a4fc9f4d",
+      "bytes": 39791
+    },
+    {
+      "path": "test-image/0555.jpg",
+      "label": "Malignant",
+      "sha256": "c3123b7233db00ff38dc58dc88de1ddef903d4f152cc8b825ff5a0466ac5f3bd",
+      "bytes": 81100
+    },
+    {
+      "path": "test-image/0556.jpg",
+      "label": "Malignant",
+      "sha256": "78db889714361c332b71728666acd1b4c20ef65e8914123b6fc00a5dd46f181e",
+      "bytes": 33436
+    },
+    {
+      "path": "test-image/0557.jpg",
+      "label": "Malignant",
+      "sha256": "afa302c3100d5001851bb1df1e72ba94f3617e35e3ff41f0b18db19bc1635af0",
+      "bytes": 34001
+    },
+    {
+      "path": "test-image/0558.jpg",
+      "label": "Malignant",
+      "sha256": "b767d04b4fb496185986b03f559721aabbaf821276359af70e9387f7a18fa3d2",
+      "bytes": 56110
+    },
+    {
+      "path": "test-image/0559.jpg",
+      "label": "Malignant",
+      "sha256": "07a47c0183cd1b8203852cc909bfffec0cbc2210702dd5f5969c08798441233a",
+      "bytes": 48428
+    },
+    {
+      "path": "test-image/0560.jpg",
+      "label": "Malignant",
+      "sha256": "a8529fe1fbcdbe892e36dc868acdd3e8447e38a558d6d98486ff9bf541405e92",
+      "bytes": 53521
+    },
+    {
+      "path": "test-image/0561.jpg",
+      "label": "Malignant",
+      "sha256": "1e1a780628220ebe64c263ddc433f25095fb876f2f40eb4372942e8b6f9a8ef2",
+      "bytes": 120011
+    },
+    {
+      "path": "test-image/0562.jpg",
+      "label": "Malignant",
+      "sha256": "3a39bdf3c55dd709e0c04e75d2773d05c4a186bdaf801d28830d45a481cfef29",
+      "bytes": 154695
+    },
+    {
+      "path": "test-image/0563.jpg",
+      "label": "Malignant",
+      "sha256": "75ea1d55e7f6849e54f21870138edddbc8911c9c7ddb6afa471325d5a4f01f46",
+      "bytes": 69266
+    },
+    {
+      "path": "test-image/0564.jpg",
+      "label": "Malignant",
+      "sha256": "d10eff78699adfd2809c6033b3536b511e95b5e45b743c948e28047a8fad319b",
+      "bytes": 128128
+    },
+    {
+      "path": "test-image/0565.jpg",
+      "label": "Malignant",
+      "sha256": "7d02daed1d6a23d39b658ccfd7eaa0dfb49d1747bd0c44d03c548b09413ecefe",
+      "bytes": 38557
+    },
+    {
+      "path": "test-image/0566.jpg",
+      "label": "Malignant",
+      "sha256": "729ee3fc368104242967e85b3e61ee8507b7d34eff17488eb5fb1ae8004e2a69",
+      "bytes": 38930
+    },
+    {
+      "path": "test-image/0567.jpg",
+      "label": "Malignant",
+      "sha256": "1b8847b5a8d60e0d50eb2ff2a6d9acce81c11f80f395b9cbde0be6910e7db38b",
+      "bytes": 42686
+    },
+    {
+      "path": "test-image/0568.jpg",
+      "label": "Malignant",
+      "sha256": "fbe62b5b405aef4eebd29cb6c4562302a3975a035a18413c28fc94a1e9f06b07",
+      "bytes": 35160
+    },
+    {
+      "path": "test-image/0569.jpg",
+      "label": "Malignant",
+      "sha256": "cea5d97a9b92e1ce626eb6a5ff5e30c02dc31344bc740958cf78f9d171c7acb2",
+      "bytes": 60974
+    },
+    {
+      "path": "test-image/0570.jpg",
+      "label": "Malignant",
+      "sha256": "8e889d7407f1ca04813604f5f76605c5b3c581cc95df25bd763a52329cc38c2d",
+      "bytes": 33572
+    },
+    {
+      "path": "test-image/0571.jpg",
+      "label": "Malignant",
+      "sha256": "f3f2f4d50fc20c07737afa4442d9335902d608af19c94f15b248d9091649242d",
+      "bytes": 39686
+    },
+    {
+      "path": "test-image/0572.jpg",
+      "label": "Malignant",
+      "sha256": "0e0001893fa70740f7d94158b62461c9534e6b2ee2bfe76015950067e70cd199",
+      "bytes": 43050
+    },
+    {
+      "path": "test-image/0573.jpg",
+      "label": "Malignant",
+      "sha256": "1e8f09cc13921e4cb2224f58c93ebbfe1f36d6393a559c8a29a9dc6ca451a668",
+      "bytes": 43677
+    },
+    {
+      "path": "test-image/0574.jpg",
+      "label": "Malignant",
+      "sha256": "0064c888b21edf7ee810b31fa57de85931386d1cccff422f52780b50df9d3378",
+      "bytes": 98961
+    },
+    {
+      "path": "test-image/0575.jpg",
+      "label": "Malignant",
+      "sha256": "cc72016857cfe4c66dfde434600af068cf6def2d3d01f4ec273281e5f2fe4cd8",
+      "bytes": 136419
+    },
+    {
+      "path": "test-image/0576.jpg",
+      "label": "Malignant",
+      "sha256": "19e2070af1f1dadb794a1d989e3dba4a4014dbd11c95262e7433bd183ec246b8",
+      "bytes": 48546
+    },
+    {
+      "path": "test-image/0577.jpg",
+      "label": "Malignant",
+      "sha256": "97c00e80632816c5314eec80dd0c125ad8f320115fcc04c8c02cc445fd56333b",
+      "bytes": 130521
+    },
+    {
+      "path": "test-image/0578.jpg",
+      "label": "Malignant",
+      "sha256": "8332e7f5d72e749fcdb794a0aa4469ad0e568c7f205f24f4d0991bc3c15e9867",
+      "bytes": 109850
+    },
+    {
+      "path": "test-image/0579.jpg",
+      "label": "Malignant",
+      "sha256": "7f67c7fcfb9ce4b1c3f05df6f86fef64eb2f4c523bb705f8e8904b9eccc8acff",
+      "bytes": 52348
+    },
+    {
+      "path": "test-image/0580.jpg",
+      "label": "Malignant",
+      "sha256": "d0051f2eb1a2b3068653967ab3b70163857123201e0c0436ee6a1bd584c8a701",
+      "bytes": 29158
+    },
+    {
+      "path": "test-image/0581.jpg",
+      "label": "Malignant",
+      "sha256": "f307eb236f7fb083e26b63018e76286f30fccfe071dbd8ca892df6020814e761",
+      "bytes": 48045
+    },
+    {
+      "path": "test-image/0582.jpg",
+      "label": "Malignant",
+      "sha256": "9b6bfede0cf09b35fc7e28074b3af361150f470a2ac6d2c0709930b28a670cfe",
+      "bytes": 107192
+    },
+    {
+      "path": "test-image/0583.jpg",
+      "label": "Malignant",
+      "sha256": "bf932fde1f9f348cd60d8f36461ce3c191368959761a4f9e3cd342d4d3765889",
+      "bytes": 125910
+    },
+    {
+      "path": "test-image/0584.jpg",
+      "label": "Malignant",
+      "sha256": "7f7900b5d7a0aaf3296d45c7dc5a4962d084e33ae945828f8ec153fe33dd6003",
+      "bytes": 34006
+    },
+    {
+      "path": "test-image/0585.jpg",
+      "label": "Malignant",
+      "sha256": "3aaafb36cb94f056d2976026fff12ff3590fce3f6c9bd6a379da697522c6703f",
+      "bytes": 34778
+    },
+    {
+      "path": "test-image/0586.jpg",
+      "label": "Malignant",
+      "sha256": "cf50f7a957fbecad530f6793891a68f31cd531931a0812463b0aaece437d6d49",
+      "bytes": 49006
+    },
+    {
+      "path": "test-image/0587.jpg",
+      "label": "Malignant",
+      "sha256": "abb76b20c6fd7f12826d2d44421a0d4069b165bacdbd76e34c386c1fcf96d524",
+      "bytes": 63961
+    },
+    {
+      "path": "test-image/0588.jpg",
+      "label": "Malignant",
+      "sha256": "546b640b4452d952bff1c20c5be3622e9a85c89142edefe556a2599f4a473a00",
+      "bytes": 37947
+    },
+    {
+      "path": "test-image/0589.jpg",
+      "label": "Malignant",
+      "sha256": "b92093e27fc769ab084327ad0b59531132dade2aba9d390d0dce70e4e580325b",
+      "bytes": 64254
+    },
+    {
+      "path": "test-image/0590.jpg",
+      "label": "Malignant",
+      "sha256": "f03c8e281e346080eb38a87f8b8495a84045a2142700f6178c8d9ec85d87bc43",
+      "bytes": 60150
+    },
+    {
+      "path": "test-image/0591.jpg",
+      "label": "Malignant",
+      "sha256": "cc6c276f11310b5a0870db336dcd3349d93059c46456f7e32df37e00557c0f6b",
+      "bytes": 53687
+    },
+    {
+      "path": "test-image/0592.jpg",
+      "label": "Malignant",
+      "sha256": "700b3f985f6222f8cf175e6a208f4404b1dd1428277764b5ff1ce1a2a1f6643b",
+      "bytes": 114605
+    },
+    {
+      "path": "test-image/0593.jpg",
+      "label": "Malignant",
+      "sha256": "dda510c98eac49f7d7c8d45d64df4c7ed3396167b2cfc6f2b87b8531b75fb27b",
+      "bytes": 126957
+    },
+    {
+      "path": "test-image/0594.jpg",
+      "label": "Malignant",
+      "sha256": "fb589fcc435312ec668506c505e9b819391c8ea8b80f3c821754f5e181ebb272",
+      "bytes": 38144
+    },
+    {
+      "path": "test-image/0595.jpg",
+      "label": "Malignant",
+      "sha256": "2f1fb4e66b52a08f6bf79213f6dec972873368bfcd745ff9b48ea56913b3e047",
+      "bytes": 56675
+    },
+    {
+      "path": "test-image/0596.jpg",
+      "label": "Malignant",
+      "sha256": "60771a692393d835fb5538552774c5cc713f54b526c0d687f366272e07b02ead",
+      "bytes": 49878
+    },
+    {
+      "path": "test-image/0597.jpg",
+      "label": "Malignant",
+      "sha256": "8d7166e410b61acae1cc192d174ebe48914981b3d6eb5e10f3ce0df7c96b3aa6",
+      "bytes": 48796
+    },
+    {
+      "path": "test-image/0598.jpg",
+      "label": "Malignant",
+      "sha256": "288291d6d91ed7758117207d84361870cb5df55c1c7416f7b84b825c6ca2532a",
+      "bytes": 53741
+    },
+    {
+      "path": "test-image/0599.jpg",
+      "label": "Malignant",
+      "sha256": "19b1014a2134e4048fb053bd86f274c994b3ebcb656bb6cf0b987d6be82c589a",
+      "bytes": 27766
+    },
+    {
+      "path": "test-image/0600.jpg",
+      "label": "Malignant",
+      "sha256": "45be98c2c5a53184f84a0ca6940d2f318bd7e2fed7e090f0f2c1e20c01e959d9",
+      "bytes": 48978
+    },
+    {
+      "path": "test-image/0601.jpg",
+      "label": "Malignant",
+      "sha256": "005fd341fd2ec23e21e9c85ab2f4f26088c21aae97c94a3c79b3c2f206ea9855",
+      "bytes": 56868
+    },
+    {
+      "path": "test-image/0602.jpg",
+      "label": "Malignant",
+      "sha256": "c5f140a7a1e041b4cb354e4cb9bc32f970723e865919073e8a958615876a45d2",
+      "bytes": 97939
+    },
+    {
+      "path": "test-image/0603.jpg",
+      "label": "Malignant",
+      "sha256": "13526ec549f64f2d002d2e3b492db7dc1d03740db13d50fb45933d19b7458191",
+      "bytes": 44057
+    },
+    {
+      "path": "test-image/0604.jpg",
+      "label": "Malignant",
+      "sha256": "f909c7bf1af8c75ea3839be9c18750012b14474bd42bbcd0a3d966cd0afc925b",
+      "bytes": 56513
+    },
+    {
+      "path": "test-image/0605.jpg",
+      "label": "Malignant",
+      "sha256": "936ade12d11c40ed3dff908e0e58b86a84b9931d9110861e8530cd8298275b71",
+      "bytes": 79076
+    },
+    {
+      "path": "test-image/0606.jpg",
+      "label": "Malignant",
+      "sha256": "3223bb51f4d355d7bd7069895b6e80be5f116962d03970e1d2a04712f9bd10cd",
+      "bytes": 39141
+    },
+    {
+      "path": "test-image/0607.jpg",
+      "label": "Malignant",
+      "sha256": "eb9c4e38fc2edee1173a4b07bf2eee26918708664dda23e949e2bb477e8d00be",
+      "bytes": 48961
+    },
+    {
+      "path": "test-image/0608.jpg",
+      "label": "Malignant",
+      "sha256": "2d74d3f5d44ef5f379c1fbe2f9386c3cc8d9f3fe20a9e5bdd72675c7f19a1579",
+      "bytes": 42128
+    },
+    {
+      "path": "test-image/0609.jpg",
+      "label": "Malignant",
+      "sha256": "9e0c3e7d993874a1b282385a75b624c46ff8cfca64d23a7e24c987897cea079e",
+      "bytes": 53318
+    },
+    {
+      "path": "test-image/0610.jpg",
+      "label": "Malignant",
+      "sha256": "98d1f14ba0a6a3688055fb5419aa29139eec33dc806bd9fff9968f9a64385b3f",
+      "bytes": 51585
+    },
+    {
+      "path": "test-image/0611.jpg",
+      "label": "Malignant",
+      "sha256": "626cdc5c0526e042dd0be18c0ebe6c600f7b6fe59cf78ed27d3ff602eb30d90a",
+      "bytes": 52832
+    },
+    {
+      "path": "test-image/0612.jpg",
+      "label": "Malignant",
+      "sha256": "96df2e7828938fe980c4c5e64450b48b80256290fd3e5b65ce992c1f965a6f2a",
+      "bytes": 104690
+    },
+    {
+      "path": "test-image/0613.jpg",
+      "label": "Malignant",
+      "sha256": "2185d8cab98fb22cf91a6aab69694ae9991c3097dd0cd159b02d8c0e51724878",
+      "bytes": 55039
+    }
+  ]
+}

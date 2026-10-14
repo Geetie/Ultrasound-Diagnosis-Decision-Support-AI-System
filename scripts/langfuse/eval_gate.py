@@ -130,6 +130,15 @@ def main() -> int:
     ap.add_argument("--min-summary-rate", type=float, default=0.95)
     ap.add_argument("--max-degraded-rate", type=float, default=0.10)
     ap.add_argument("--min-complete-rate", type=float, default=0.95)
+    ap.add_argument(
+        "--skip-answer-relevancy",
+        action="store_true",
+        help=(
+            "显式不判「答案相关性」（A.63 批 WP2 起该指标可测）。"
+            "置位后该指标记 metrics_not_measured（**不按 0 判红**），"
+            "与「判官报告里为 null（未测到）」在输出上分开说明"
+        ),
+    )
     args = ap.parse_args()
 
     path = Path(args.eval_set).expanduser()
@@ -218,6 +227,10 @@ def main() -> int:
         data = json.loads(jp.read_text(encoding="utf-8"))
         raw_faith = data.get("faithfulness")
         raw_rel = data.get("answer_relevance")
+        if args.skip_answer_relevancy:
+            # 显式关闭：与"报告里为 null（未测到）"要能区分开（否则排查时会把
+            # "本次没让它判"读成"判官/嵌入坏了"）。
+            raw_rel = None
         not_measured = [
             k
             for k, v in (("faithfulness", raw_faith), ("answer_relevance", raw_rel))
@@ -255,7 +268,12 @@ def main() -> int:
                 (f"L2 答案相关性 ≥ {_RELEVANCE_MIN}", rel >= _RELEVANCE_MIN, f"{rel}")
             )
         if not_measured:
-            print(f"  （L2 未测指标：{not_measured} —— 官方 prompt 未收录，**不按 0 判红**）")
+            why = (
+                "本跑显式关闭（--skip-answer-relevancy）"
+                if args.skip_answer_relevancy
+                else "判官报告里该指标为 null（未测到：判官结构解析不出 / 嵌入服务不可用）"
+            )
+            print(f"  （L2 未测指标：{not_measured} —— {why}，**不按 0 判红**）")
         if args.judge_mode == "advisory":
             judge["enforcement"] = "advisory"
             judge["advisory_note"] = (

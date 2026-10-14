@@ -303,6 +303,17 @@ class Retriever:
                 seeds=len(seeds),
                 added=len(added),
             )
+        else:
+            # A.63 批 WP1：门控开着却一条邻居都没加上时留痕。
+            # 典型成因：存量库从未跑过 `scripts/kb_backfill_relations.py`
+            # （边投影在 `knowledge_chunks.metadata.relations` 里，只有新建库由
+            # `app/knowledge/builder.py::_attach_relations` 写入）→ 开关打开也是空转。
+            # 没有这条留痕时，"开了但没用"在日志里完全不可见。
+            logger.info(
+                "graph_neighbors_empty",
+                seeds=len(seeds),
+                hint="检查 knowledge_chunks.metadata.relations 是否已回填",
+            )
         return chunks + added
 
     # ------------------------------------------------------------------

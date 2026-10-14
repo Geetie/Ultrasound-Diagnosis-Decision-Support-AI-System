@@ -388,6 +388,11 @@ class Settings(BaseSettings):
     # 边数据由 builder 写入 metadata.relations（存量库用
     # scripts/kb_backfill_relations.py 回填）。默认关闭；置 True 后
     # 检索器自动追加 depth-1 图谱邻居（retrieval_source=graph）。
+    # 生效方式：环境变量 GRAPH_QUERY_ENABLED=true（启动时读取，改完须重启主服务）。
+    # A.63 批 WP1 补充：邻居以 score=0.0 追加，`RAGServiceImpl` 的
+    # min_score_threshold 过滤对 graph 来源**显式豁免**（app/rag/service.py），
+    # 否则开了也会被整批丢掉；空转/豁免/剔除均有留痕
+    # （graph_neighbors_appended / graph_neighbors_empty / min_score_filter_applied）。
     graph_query_enabled: bool = False
     rag_rrf_k: int = 60
 

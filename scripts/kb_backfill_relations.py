@@ -5,19 +5,27 @@
 只操作 metadata JSONB，不动向量——无需重灌 vector_index。
 
 用法（服务器）:
-    PYTHONPATH=$HOME/uai/src ~/uai/venv/bin/python \
-        scripts/kb_backfill_relations.py --kb-version kb_v1.3.0 [--dry-run]
+    ~/uai/venv/bin/python scripts/kb_backfill_relations.py \
+        --kb-version kb_v1.3.0 [--dry-run]
 
 幂等：metadata 已含 relations 的块跳过。
+
+（A.63 WP1：补仓库根自举 —— 原先必须外部带 PYTHONPATH，否则报
+`ModuleNotFoundError: No module named 'app'`；与同目录其它脚本的自举写法对齐。）
 """
 from __future__ import annotations
 
 import argparse
 import asyncio
 import json
+import pathlib
 import sys
 
 from sqlalchemy import text
+
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 
 async def backfill(kb_version: str, dry_run: bool = False) -> int:

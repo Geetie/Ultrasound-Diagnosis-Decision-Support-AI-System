@@ -14,10 +14,14 @@ Apache-2.0，摘自 ragas 官方仓库），渲染/容错/数值启发式**直�
 `_render_nli_prompt` / `_extract_json` / `_filter_meta_statements`）—— 不重写、不自造，
 避免"两套判官口径"。
 
-关于 **答案相关性（answer_relevance ≥0.90）**：RAGAS 官方 `answer_relevancy` 的 prompt
-**本仓库未收录**（`scripts/prompts/` 只有 faithfulness 一份），所以本脚本**不算相关性**，
-报告里如实写 `answer_relevance: null`；门控据此记 `not_measured`（**不按 0 判红**）。
-要补这一层，先抄官方 prompt 再实现，别自造。
+关于 **答案相关性（answer_relevance ≥0.90）**：A.63 批 WP2 起**已实现**，口径同样照抄官方
+（`scripts/prompts/ragas_answer_relevancy.py`，与 faithfulness 同一 tree sha）：
+判官从被评答案生成 `strictness` 个问题（默认 3）+ 每问的 `noncommittal` 标记，
+再用 bge-m3 嵌入算「生成问题 ↔ 原始问题」余弦均值，
+**若生成的问题全部被判为 noncommittal，分数直接归零**（官方 metric.py 的
+`score = cosine_sim.mean() * int(not all_noncommittal)`）。
+缺嵌入服务 / 判官没给出问题 / 结构解析不出来 → 一律 `None` + `error`（**不当作 0 分**），
+门控据此记 `not_measured`。
 
 用法（服务器，需判官服务就绪）：
     PYTHONPATH=~/uai/src python scripts/langfuse/judge_eval_set.py \
@@ -32,18 +36,26 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import sys
 import time
 from pathlib import Path
 
 # 复用既有判官实现（同目录兄弟脚本）——`scripts/` 加到 sys.path 才能 import
+_ROOT = Path(__file__).resolve().parents[2]  # 仓库根：answer_modes 会 import app.*
 _SCRIPTS_DIR = Path(__file__).resolve().parents[1]
 _HERE = Path(__file__).resolve().parent
-for _p in (str(_SCRIPTS_DIR), str(_HERE)):
+for _p in (str(_ROOT), str(_SCRIPTS_DIR), str(_HERE)):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
 from answer_modes import ANSWER_MODES, answer_of  # noqa: E402  (需先改 sys.path)
+from prompts.ragas_answer_relevancy import (  # noqa: E402  (需先改 sys.path)
+    ANSWER_RELEVANCE_EXAMPLES,
+    ANSWER_RELEVANCE_INSTRUCTION,
+    ANSWER_RELEVANCE_MAX_STRICTNESS,
+    ANSWER_RELEVANCE_STRICTNESS,
+)
 from t1_eval_faithfulness import (  # noqa: E402  (需先改 sys.path)
     _extract_json,
     _filter_meta_statements,
@@ -56,6 +68,9 @@ from t1_eval_faithfulness import (  # noqa: E402  (需先改 sys.path)
 #: 而判官（Qwen3-8B）会先吐 `<think>` 再吐 JSON —— 实测 24 条里 **13 条**因输出被截断
 #: 而 `_extract_json` 报 "no JSON"（假失败：JSON 明明在，只是没有闭合括号）。
 _MAX_TOKENS = 2048
+
+#: bge-m3 嵌入服务默认地址（answer_relevancy 官方口径要用它算余弦）。
+_BGE_URL_DEFAULT = "http://127.0.0.1:8004"
 
 
 def _judge_chat(url: str, model: str, messages: list[dict], max_tokens: int = _MAX_TOKENS) -> str:
@@ -150,6 +165,145 @@ def _faithfulness_of(item: dict, judge_url: str, model: str, answer_mode: str = 
     }
 
 
+# ----------------------------------------------------------------------
+# answer_relevancy（RAGAS 官方口径；A.63 批 WP2 起实现）
+# ----------------------------------------------------------------------
+
+
+def _render_answer_relevance_prompt(answer: str) -> str:
+    """官方 BasePrompt 渲染方式：instruction + 示例对 + 真实输入。"""
+    lines = [ANSWER_RELEVANCE_INSTRUCTION, ""]
+    for ex_answer, ex_question, ex_noncommittal in ANSWER_RELEVANCE_EXAMPLES:
+        lines += [
+            "示例：",
+            f"回答：{ex_answer}",
+            "输出："
+            + json.dumps(
+                {"question": ex_question, "noncommittal": ex_noncommittal},
+                ensure_ascii=False,
+            ),
+            "",
+        ]
+    lines += [
+        "现在处理下面这一条（只输出 JSON，不要解释）：",
+        f"回答：{answer}",
+    ]
+    return "\n".join(lines)
+
+
+def _cosine(a: list[float], b: list[float]) -> float:
+    """标准余弦相似度（纯 Python，便于单测；零范数/长度不符 → 0.0）。"""
+    if not a or not b or len(a) != len(b):
+        return 0.0
+    dot = sum(x * y for x, y in zip(a, b, strict=True))
+    na = math.sqrt(sum(x * x for x in a))
+    nb = math.sqrt(sum(y * y for y in b))
+    if na == 0.0 or nb == 0.0:
+        return 0.0
+    return dot / (na * nb)
+
+
+def _answer_relevancy_of(
+    item: dict,
+    judge_url: str,
+    model: str,
+    answer_mode: str = "raw",
+    strictness: int = ANSWER_RELEVANCE_STRICTNESS,
+    bge_url: str = _BGE_URL_DEFAULT,
+) -> dict:
+    """单条样本的 answer_relevancy。
+
+    官方公式（metric.py `AnswerRelevancy.ascore`，逐字对齐）：
+        score = mean(cos(生成问题, 原始问题)) × int(not 全部 noncommittal)
+
+    三条"不当作 0 分"的纪律：
+    * 判官没给出问题（解析不出结构）→ ``error``；
+    * 嵌入服务不可用 → ``error``；
+    * 缺答案或缺原始问题 → ``reason``。
+    """
+    answer, applied = answer_of(item, answer_mode)
+    question = (item.get("clinical_text") or "").strip()
+    if not answer or not question:
+        return {
+            "score": None,
+            "reason": "缺答案或缺原始问题（clinical_text）",
+            "mode_applied": applied,
+        }
+
+    n = max(1, min(int(strictness), ANSWER_RELEVANCE_MAX_STRICTNESS))
+    generated: list[str] = []
+    noncommittal: list[int] = []
+    parse_failures = 0
+    for _ in range(n):
+        raw = _judge_chat(
+            judge_url,
+            model,
+            [{"role": "user", "content": _render_answer_relevance_prompt(answer)}],
+            max_tokens=256,
+        )
+        # ⚠️ `_extract_json` 的契约是**抛 ValueError**（不是返回 None）——
+        # 单条坏回复不能让整样本失败：官方做法也只是"有多少问题用多少"。
+        try:
+            data = _extract_json(raw)
+        except ValueError:
+            parse_failures += 1
+            continue
+        parsed = data if isinstance(data, dict) else {}
+        q = str(parsed.get("question") or "").strip()
+        if not q:
+            parse_failures += 1
+            continue
+        generated.append(q)
+        try:
+            noncommittal.append(int(parsed.get("noncommittal") or 0))
+        except (TypeError, ValueError):
+            # 判官的 noncommittal 非法（如返回 "maybe"）：按官方缺省 0 处理，
+            # 但**必须计数**（静默吞掉会掩盖判官结构漂移）。
+            parse_failures += 1
+            noncommittal.append(0)
+
+    if not generated:
+        return {
+            "score": None,
+            "error": (
+                "answer_relevancy_parse_empty（判官未给出可解析的问题 → 不当作 0 分）"
+            ),
+            "strictness": n,
+            "parse_failures": parse_failures,
+            "mode_applied": applied,
+        }
+
+    try:
+        from t1_eval_retrieval import embed_texts
+
+        vecs = embed_texts([question, *generated], bge_url)
+    except Exception as exc:
+        embedding_failure = f"{type(exc).__name__}: {exc}"
+        return {
+            "score": None,
+            "error": f"嵌入服务不可用（{embedding_failure}）→ 不当作 0 分",
+            "generated_questions": len(generated),
+            "strictness": n,
+            "mode_applied": applied,
+        }
+
+    sims = [_cosine(vecs[0], v) for v in vecs[1:]]
+    cosine_mean = sum(sims) / len(sims) if sims else 0.0
+    all_noncommittal = (
+        len(noncommittal) == len(generated) and all(f == 1 for f in noncommittal)
+    )
+    score = cosine_mean * (0.0 if all_noncommittal else 1.0)
+    return {
+        "score": round(score, 4),
+        "generated_questions": len(generated),
+        "strictness": n,
+        "cosine_mean": round(cosine_mean, 4),
+        "all_noncommittal": all_noncommittal,
+        "questions_sample": generated[:3],
+        "mode_applied": applied,
+    }
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument(
@@ -170,6 +324,23 @@ def main() -> int:
         "口径 C=derived_stripped 剔除派生决策字段（分级/总分/置信度）后判。"
         "三者定义与生效条数见 `answer_modes.py`，报告里 `mode_coverage` 会说明本口径"
         "实际改写了多少条（锚点缺失时该口径退化为判全文，必须可见）",
+    )
+    ap.add_argument(
+        "--bge-url",
+        default=_BGE_URL_DEFAULT,
+        help="answer_relevancy 算余弦用的嵌入服务（bge-m3，默认 8004）",
+    )
+    ap.add_argument(
+        "--strictness",
+        type=int,
+        default=ANSWER_RELEVANCE_STRICTNESS,
+        help=f"每个样本生成几个问题（官方默认 {ANSWER_RELEVANCE_STRICTNESS}，"
+        f"本仓库上限 {ANSWER_RELEVANCE_MAX_STRICTNESS}）",
+    )
+    ap.add_argument(
+        "--skip-answer-relevancy",
+        action="store_true",
+        help="只判 faithfulness（报告里 answer_relevance 记 null → 门控记 not_measured，不判红）",
     )
     args = ap.parse_args()
 
@@ -197,6 +368,7 @@ def main() -> int:
 
     per_sample: list[dict] = []
     scores: list[float] = []
+    relevancy_scores: list[float] = []
     t0 = time.time()
     for i, item in enumerate(judgeable, 1):
         try:
@@ -206,25 +378,62 @@ def main() -> int:
             # （棘轮 `test_no_silent_catch` 只认 except 体内的留痕/raise/error=，光赋值不给过）
             print(f"  [{i}/{len(judgeable)}] 判官失败：{type(exc).__name__}: {exc}")
             result = {"score": None, "error": f"{type(exc).__name__}: {exc}"}
+        if args.skip_answer_relevancy:
+            relevancy = {"score": None, "reason": "本跑显式关闭（--skip-answer-relevancy）"}
+        else:
+            try:
+                relevancy = _answer_relevancy_of(
+                    item,
+                    args.judge_url,
+                    args.model,
+                    args.answer_mode,
+                    strictness=args.strictness,
+                    bge_url=args.bge_url,
+                )
+            except Exception as exc:
+                print(f"  [{i}/{len(judgeable)}] 相关性判官失败：{type(exc).__name__}: {exc}")
+                relevancy = {
+                    "score": None,
+                    "error": f"{type(exc).__name__}: {exc}",
+                }
         result["request_id"] = item.get("request_id")
         result["organ"] = item.get("organ")
+        result["answer_relevance"] = relevancy
         per_sample.append(result)
         if result.get("score") is not None:
             scores.append(float(result["score"]))
+        if relevancy.get("score") is not None:
+            relevancy_scores.append(float(relevancy["score"]))
         print(f"  [{i}/{len(judgeable)}] {item.get('organ')} score={result.get('score')}"
+              f" relevance={relevancy.get('score')}"
               f"{' err=' + result['error'] if result.get('error') else ''}")
 
     mean = round(sum(scores) / len(scores), 4) if scores else None
+    rel_mean = (
+        round(sum(relevancy_scores) / len(relevancy_scores), 4)
+        if relevancy_scores
+        else None
+    )
     # 口径生效条数：**必须随报告给出**。锚点/标记缺失时该口径会退化成"判全文"，
     # 出数时若不写明，"口径 B 0.19" 可能其实是口径 A 的数字（A.62 批 1 的现场）。
     mode_applied = sum(1 for x in per_sample if x.get("mode_applied") is True)
+    rel_not_measured = len(judgeable) - len(relevancy_scores)
     report = {
         "generated_at": time.strftime("%Y-%m-%d %H:%M:%S"),
-        "engine": "ragas_faithfulness(official prompts, scripts/prompts/ragas_faithfulness.py)",
+        "engine": (
+            "ragas faithfulness + answer_relevancy"
+            "（官方 prompt 照抄：scripts/prompts/ragas_faithfulness.py、"
+            "scripts/prompts/ragas_answer_relevancy.py）"
+        ),
         "judge_url": args.judge_url,
         "model": args.model,
-        "metric_scope": "faithfulness only（answer_relevancy 的官方 prompt 本仓库未收录 → null）",
+        "metric_scope": (
+            "faithfulness + answer_relevance（后者口径：官方 strictness 次生成问题 × "
+            "bge-m3 余弦均值，全 noncommittal 归零）"
+        ),
         "answer_mode": args.answer_mode,
+        "strictness": args.strictness,
+        "bge_url": args.bge_url,
         "mode_coverage": {
             "applied": mode_applied,
             "total": len(judgeable),
@@ -238,7 +447,10 @@ def main() -> int:
         "n": len(judgeable),
         "skipped_no_context": skipped_no_context,
         "faithfulness": mean,
-        "answer_relevance": None,
+        # ⚠️ 门控（eval_gate.py）按 `float(answer_relevance)` 读，**必须是数字或 null**；
+        # 逐条明细在 per_sample[*].answer_relevance。
+        "answer_relevance": rel_mean,
+        "answer_relevance_not_measured": rel_not_measured,
         "failed": sum(1 for x in per_sample if x.get("score") is None),
         "wall_s": round(time.time() - t0, 1),
         "per_sample": per_sample,
@@ -248,7 +460,10 @@ def main() -> int:
     rp.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"== faithfulness（RAGAS 官方口径，{args.answer_mode}）：{mean}"
           f"（n={len(scores)}，该口径生效 {mode_applied}/{len(judgeable)}，"
-          f"缺上下文跳过 {skipped_no_context}，失败 {report['failed']}）报告：{rp}")
+          f"缺上下文跳过 {skipped_no_context}，失败 {report['failed']}）")
+    print(f"== answer_relevance（官方口径，strictness={args.strictness}）：{rel_mean}"
+          f"（n={len(relevancy_scores)}，未测到 {rel_not_measured}/{len(judgeable)}）"
+          f"报告：{rp}")
     return 0
 
 

@@ -279,12 +279,38 @@ class RAGServiceImpl(RAGService):
             )
 
         # Apply min_score_threshold filter as the last step.
+        #
+        # A.63 批 WP1：**只对图谱来源显式豁免**。图谱邻居扩展
+        # （`Retriever._expand_graph_neighbors`，`app/rag/retriever.py:247-306`）以
+        # `score=0.0` + `retrieval_source=GRAPH` 追加：它承载的是"结构化补充证据"，
+        # 不是"按相似度入选"，若一并按阈值过滤，开启图谱后邻居会被整批丢掉
+        # （表现为"开了等于没开"，且日志里看不出原因）。
+        # 这里不整体放宽阈值、也不给邻居伪造分数，只在过滤条件上排除图谱来源；
+        # 剔除条数与豁免条数都留痕（固定事件名，便于探针/守卫读取）。
         if request.min_score_threshold > 0:
-            result.chunks = [
-                sc for sc in result.chunks
-                if (sc.rerank_score if sc.rerank_score is not None else sc.score)
-                >= request.min_score_threshold
-            ]
+            kept: list[ScoredChunk] = []
+            dropped_normal = 0
+            graph_exempt = 0
+            for sc in result.chunks:
+                if sc.retrieval_source == RetrievalMethod.GRAPH:
+                    kept.append(sc)
+                    graph_exempt += 1
+                    continue
+                score = sc.rerank_score if sc.rerank_score is not None else sc.score
+                if score >= request.min_score_threshold:
+                    kept.append(sc)
+                else:
+                    dropped_normal += 1
+            result.chunks = kept
+            if graph_exempt or dropped_normal:
+                logger.info(
+                    "min_score_filter_applied",
+                    request_id=request.request_id,
+                    threshold=request.min_score_threshold,
+                    graph_exempt=graph_exempt,
+                    dropped=dropped_normal,
+                    kept=len(kept),
+                )
 
         # Stage 5: 写缓存。缓存"阈值过滤后的最终结果"是安全的——min_score_threshold
         # 已包含在缓存键中，不同阈值不会互相污染。
