@@ -1,0 +1,3634 @@
+{
+  "synthetic": true,
+  "usage": "expansion_ablation_only",
+  "builder": "p41_build_hard_query_set.py",
+  "warning": "自造难集：仅用于'图谱扩边是否有用'的对照裁决，**不并入正式指标与门限**",
+  "kb_version": "kb_v1.3.0",
+  "rule_checks": {
+    "max_char_overlap": 0.6,
+    "length_range": [
+      8,
+      60
+    ],
+    "dedupe": "exact_text"
+  },
+  "sets": {
+    "crossdoc": {
+      "n": 200,
+      "rejected": {
+        "overlap_too_high": 11
+      },
+      "queries": [
+        {
+          "query_id": "hard-xd-0001",
+          "query_text": "先天性心脏病怎么救治是好",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0005",
+          "source_doc_of_query": "dialogue_cardiac_外科_0001",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.25,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0002",
+          "query_text": "心脏病急性心肌梗塞需要放支架吗？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0005",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1875,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0003",
+          "query_text": "先天性心脏病的分类有哪些？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0006",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.4615,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0004",
+          "query_text": "先天性心脏病能医医疗较好吗？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0008",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.4286,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0005",
+          "query_text": "先天性心脏病的治疗是什么？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0009",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.4615,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0006",
+          "query_text": "先天性心脏病应该注意哪些？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0010",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.4615,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0007",
+          "query_text": "先天性心脏病能医治的好吗？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0011",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.4615,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0008",
+          "query_text": "先天性心脏病严重型能医治的好吗？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0012",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.375,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0009",
+          "query_text": "先天性心脏病能否自行缓解？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0013",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.4615,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0010",
+          "query_text": "先天性心脏病该会有什么？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0014",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.5,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0011",
+          "query_text": "先天性心脏病一般做什么手术？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0016",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.4286,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0012",
+          "query_text": "先天性心脏病可以做手术吗？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0021",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.4615,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0013",
+          "query_text": "先天性心脏病室间隔缺损怎么治疗？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0022",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.375,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0014",
+          "query_text": "先天性心脏病要怎么医治是好",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0023",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.4615,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0015",
+          "query_text": "先天性心脏病室间隔缺损要怎么处理",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0024",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.375,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0016",
+          "query_text": "先天性心脏病室间隔缺损如何救治的好",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0025",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.3529,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0017",
+          "query_text": "先天性心脏病室间隔缺损有生命危险吗？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0026",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.3333,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0018",
+          "query_text": "先天性心脏病平时要吃什么好",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0027",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.4615,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0019",
+          "query_text": "先天性心脏病室间隔缺损能顺产吗",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0029",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.4,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0020",
+          "query_text": "先天性心脏病室间如何治疗？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0030",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.4615,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0021",
+          "query_text": "先天性心脏病室间隔缺损能治吗",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0031",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.4286,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0022",
+          "query_text": "先天性心脏病要注意些什么",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0032",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.5,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0023",
+          "query_text": "什么原因导致心脏病？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0033",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.3,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0024",
+          "query_text": "什么原因引起的小儿先天性心脏病？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0034",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.375,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0025",
+          "query_text": "有先天性心脏病甲亢能生吗？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0035",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.4615,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0026",
+          "query_text": "先天性心脏病室间隔缺损什么时候手术？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0036",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.3333,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0027",
+          "query_text": "先天性心脏病能治疗好吗",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0037",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.5455,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0028",
+          "query_text": "先天性心脏病已经做完手术怎么检查？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0038",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.3529,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0029",
+          "query_text": "先天性心脏病什么时候手术？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0039",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.4615,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0030",
+          "query_text": "先天性心脏病怎样治疗可好",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0041",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.5833,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0031",
+          "query_text": "先天性心脏病室间隔缺损能做手术吗？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0042",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.3529,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0032",
+          "query_text": "先天性心脏病的治疗方式什么",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0043",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.4615,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0033",
+          "query_text": "先天性心脏病的存活率高吗？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0044",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.4615,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0034",
+          "query_text": "先天性心脏病治疗要多久",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0045",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.5455,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0035",
+          "query_text": "先天性心脏病只有手术吗？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0046",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.5,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0036",
+          "query_text": "先天性心脏病现在可以做手术吗？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0047",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.4,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0037",
+          "query_text": "先天性心脏病室间隔缺损怎么治妥当？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0048",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.3529,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0038",
+          "query_text": "先天性心脏病要注意哪些好",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0050",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.5,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0039",
+          "query_text": "先天性心脏病能活多久的好",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0051",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.5,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0040",
+          "query_text": "脑血栓跟心脏病的治疗方法是什么？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0053",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1875,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0041",
+          "query_text": "新生儿先天性心脏病什么时候治疗",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0057",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.4,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0042",
+          "query_text": "如何治疗新生儿先天性心脏病",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0058",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.4615,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0043",
+          "query_text": "3个月大婴儿先天性心脏病可以开胸么",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0059",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.3529,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0044",
+          "query_text": "新生儿先天性心脏病症状有哪些",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0060",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.4286,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0045",
+          "query_text": "婴儿先天性心脏病怎么治疗比较好",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0062",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.5333,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0046",
+          "query_text": "新生儿先天性心脏病有哪些症状",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0063",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.4286,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0047",
+          "query_text": "新生儿先天性心脏病的表现是什么",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0064",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.4,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0048",
+          "query_text": "小婴儿得了先天性心脏病怎么办",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0065",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.5714,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0049",
+          "query_text": "吃什么能让婴儿先天性心脏病好转",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0067",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.4,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0050",
+          "query_text": "小婴儿先天性心脏病的症状有哪些",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0069",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.4,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0051",
+          "query_text": "心脏主动脉硬化心脏变大怎么治恰当",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0071",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.125,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0052",
+          "query_text": "冠心病动脉硬化能治吗",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0072",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0053",
+          "query_text": "心脏主动脉硬化如何诊治能好",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0073",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1538,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0054",
+          "query_text": "发现脑梗塞心血管有些问题怎么办",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0077",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1333,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0055",
+          "query_text": "胆结石突发有心脏病如何手术",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0079",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.2308,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0056",
+          "query_text": "有心脏刺痛的毛病怎么回事",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0092",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.25,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0057",
+          "query_text": "平时心脏刺痛怎么回事",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0093",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.2,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0058",
+          "query_text": "新生儿得先天性心脏病有什么症状",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0096",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.4,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0059",
+          "query_text": "新生儿有先天性心脏病要怎么办",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0098",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.4286,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0060",
+          "query_text": "先天性心脏病什么时候做手术好？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0108",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.4,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0061",
+          "query_text": "心脏导管未闭和疝气手术能同时做吗？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0115",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1176,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0062",
+          "query_text": "进行性骨干发育不良心脏？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0116",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1667,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0063",
+          "query_text": "窦性心律心电图特点是什么",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0132",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1667,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0064",
+          "query_text": "心脏房颤引起的脑梗塞怎么治妥当",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0143",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1333,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0065",
+          "query_text": "心肌梗死支架手术后心脏还会有破裂风险吗？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0144",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0066",
+          "query_text": "胆固醇偏高， 心血管细要怎么调养",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0155",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.125,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0067",
+          "query_text": "心脏瓣膜病通过采用什么的治疗方式效果好",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0168",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1053,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0068",
+          "query_text": "左胸口里面痛， 难道是心脏病么？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0173",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1875,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0069",
+          "query_text": "先天性心脏病术后复查",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0175",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.6,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0070",
+          "query_text": "治疗先天心脏病需要多少钱？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0176",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.2308,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0071",
+          "query_text": "出现小脑萎缩还有先天心脏病要怎么治疗？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0182",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1579,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0072",
+          "query_text": "脑梗塞、冠心病该如何治疗？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0183",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.0769,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0073",
+          "query_text": "小孩摔跤会引起心脏瓣膜病吗？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0185",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1429,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0074",
+          "query_text": "风湿性心脏瓣膜病一定要手术吗？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0187",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.2,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0075",
+          "query_text": "心脏瓣膜病主动脉狭窄怎么治疗合适？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0188",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1176,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0076",
+          "query_text": "风湿性心脏病引起的脑梗塞出多久做换辨手术",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0189",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.2,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0077",
+          "query_text": "风湿性心脏瓣膜病能够如何检查呢",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0192",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.2,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0078",
+          "query_text": "轻度心脏瓣膜病需要做手术吗？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0193",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1429,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0079",
+          "query_text": "高血压， 脑梗塞和心脏不好该怎么办?",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0196",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1111,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0080",
+          "query_text": "预防心脏性猝死该怎么做",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0200",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1818,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0081",
+          "query_text": "为什么做完心脏支架手术后出现脑梗塞",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0208",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1176,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0082",
+          "query_text": "补脑液心脏病半边偏瘫能吃吗？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0209",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.2143,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0083",
+          "query_text": "心脏瓣膜病修复为什么会咳嗽呢",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0213",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1429,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0084",
+          "query_text": "心脏瓣膜病应该如何聪慧解决疗？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0214",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1333,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0085",
+          "query_text": "心脏瓣膜病修复[REDACTED]个月咳嗽怎么办",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0216",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.4167,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0086",
+          "query_text": "心脏瓣膜病应该怎么治疗？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0217",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1667,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0087",
+          "query_text": "心脏性猝死指的是什么",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0226",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.2,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0088",
+          "query_text": "先天性心脏病的治疗怎么办？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0235",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.4615,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0089",
+          "query_text": "孩子总喘大气是心脏病吗？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0236",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.25,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0090",
+          "query_text": "二尖瓣少量返流是心脏病吗?",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0238",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.2308,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0091",
+          "query_text": "治疗先天心脏病需要多少费用？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0239",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.2143,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0092",
+          "query_text": "先天性心脏病可以用什么方法治疗？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0241",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.375,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0093",
+          "query_text": "新生儿患有心脏病该如何治",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0242",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.25,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0094",
+          "query_text": "心脏有杂音就是心脏病吗",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0243",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.2727,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0095",
+          "query_text": "小孩先天性心脏病手术后怎么促进孩子恢复",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0247",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.3158,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0096",
+          "query_text": "新生儿有先天性心脏病怎样救治",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0259",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.5,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0097",
+          "query_text": "心脏病是会遗传的吗",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0260",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.3333,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0098",
+          "query_text": "新生儿心脏病怎样治效果快",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0261",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.3333,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0099",
+          "query_text": "新生儿先天性心脏病怎样救治",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0262",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.5385,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0100",
+          "query_text": "先天性心脏病是怎么治更有效",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0263",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.4615,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0101",
+          "query_text": "心脏瓣膜病洗了冷水澡后不舒服怎么治？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0265",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1111,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0102",
+          "query_text": "哮喘冠心病脑梗高血压能吃咳喘药吗？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0270",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.0588,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0103",
+          "query_text": "心脏房颤引起的脑梗怎么办？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0271",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1538,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0104",
+          "query_text": "冠心病脑梗吃什么药比较好？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0276",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1538,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0105",
+          "query_text": "心脏病半边偏瘫怎么办",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0289",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.3,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0106",
+          "query_text": "脑梗心脏病如何收拾可以好一点",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0300",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.2143,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0107",
+          "query_text": "老年退行性心脏瓣膜病怎麼治療？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0301",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.2,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0108",
+          "query_text": "心脏瓣膜病严重不严重啊？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0302",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1667,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0109",
+          "query_text": "我的心脏瓣膜病还能否医治？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0303",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1538,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0110",
+          "query_text": "心脏瓣膜病的后期保养方法是怎么样的？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0305",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1111,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0111",
+          "query_text": "小脑萎缩先天心脏病怎么办？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0306",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.3846,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0112",
+          "query_text": "哮喘冠心病脑梗高血压怎么治疗",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0311",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1429,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0113",
+          "query_text": "高血压而且心律不齐会中风吗？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0317",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1429,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0114",
+          "query_text": "心脏病引起的脑梗怎么治疗好",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0318",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.2308,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0115",
+          "query_text": "脑梗塞会引起心脏供血不足吗？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0320",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1429,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0116",
+          "query_text": "心脏放支架后能否使用磁性功能床吗？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0321",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1176,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0117",
+          "query_text": "我妈是脑梗现在手麻心悸该怎么治疗？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0329",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1176,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0118",
+          "query_text": "心脏病中风能吃什么药",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0335",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.3,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0119",
+          "query_text": "乳腺癌救治后检查这样心脏检查什么情况",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0349",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1111,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0120",
+          "query_text": "前列腺肿瘤， 肺积水， 冠心病如何治疗",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0352",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1053,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0121",
+          "query_text": "冠心病与脑中风前兆?",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0366",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0122",
+          "query_text": "心脏骤停引起的脑损伤怎样苏醒？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0368",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1333,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0123",
+          "query_text": "脑梗塞能否引起冠心病?",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0388",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.0909,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0124",
+          "query_text": "心脏起搏器治疗脑梗塞吗?",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0424",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1667,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0125",
+          "query_text": "心脏供血不足脑梗塞咋办?",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0427",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1667,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0126",
+          "query_text": "脑干脑梗加心脏病怎么治",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0441",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.4545,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0127",
+          "query_text": "心脏瓣膜病， 特别难受咋办？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0468",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1429,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0128",
+          "query_text": "引来心律失常的原因是什么",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0474",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.0833,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0129",
+          "query_text": "心脏瓣膜病症状有哪些？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0479",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1818,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0130",
+          "query_text": "心脏瓣膜病置换手术后吃什么？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0492",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1429,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0131",
+          "query_text": "心脏主动脉夹层瘤怎么治疗？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0494",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1538,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0132",
+          "query_text": "心脏瓣膜病的并发症有什么？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0498",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1538,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0133",
+          "query_text": "早搏， 心悸， 室性早搏1849次/24小时应该",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0500",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.0833,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0134",
+          "query_text": "心脏病室性早搏要注意什么？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0502",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.2308,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0135",
+          "query_text": "心脏室性早搏胸闷气短该如何是好",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0514",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1333,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0136",
+          "query_text": "心脏主动脉夹层是多少救治几率？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0530",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1333,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0137",
+          "query_text": "心脏主动脉夹层瘤是多少生存率？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0531",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1333,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0138",
+          "query_text": "室性早搏心律不齐再次复发了怎么办",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0534",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.125,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0139",
+          "query_text": "窦性心律频发性室性早搏该怎么办",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0537",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1333,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0140",
+          "query_text": "得心脏瓣膜病的一般症状",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0544",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1818,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0141",
+          "query_text": "窦性心律不齐需要做心电图",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0547",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1667,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0142",
+          "query_text": "脑供血不足会不会是心脏病引起的？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0569",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1875,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0143",
+          "query_text": "心脏瓣膜病什么原因引起的？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0577",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1538,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0144",
+          "query_text": "窦性心律， 室性早搏该求治疗？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0591",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1333,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0145",
+          "query_text": "心脏瓣膜病吃什么好？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0594",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.2,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0146",
+          "query_text": "心脏瓣膜病吃什么药？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0600",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.2,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0147",
+          "query_text": "心脏瓣膜病要做手术吗？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0602",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1818,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0148",
+          "query_text": "心脏瓣膜病的治疗困难吗？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0603",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1667,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0149",
+          "query_text": "面肌痉挛对心脏会有影响吗？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0605",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1538,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0150",
+          "query_text": "治疗心脏瓣膜病哪家医院水平高？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0607",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1333,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0151",
+          "query_text": "查出室性早搏和窦性心律不齐怎么治疗？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0615",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1111,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0152",
+          "query_text": "风湿性心脏瓣膜病并发症是什么？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0623",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.2,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0153",
+          "query_text": "心脏主动脉夹层手术后遗症有哪些？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0648",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.125,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0154",
+          "query_text": "心脏瓣膜病严重吗？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0649",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.2222,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0155",
+          "query_text": "心脏病会猝死吗？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0661",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.375,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0156",
+          "query_text": "心脏瓣膜病， 特别难受咋子办？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0665",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1333,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0157",
+          "query_text": "胸痹是心脏病吗？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0698",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.375,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0158",
+          "query_text": "室性早搏没有心脏病怎么治疗？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0702",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.3571,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0159",
+          "query_text": "漏斗胸压迫心脏怎么办？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0704",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1818,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0160",
+          "query_text": "心脏动脉导管未闭正常吗？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0706",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1667,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0161",
+          "query_text": "胸痹是冠心病吗？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0708",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.125,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0162",
+          "query_text": "心脏瓣膜病手术风险有多高？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0718",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1538,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0163",
+          "query_text": "心脏瓣膜病要注意什么？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0722",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.2727,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0164",
+          "query_text": "心脏主动脉夹层破裂是怎么回事",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0735",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1429,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0165",
+          "query_text": "窦性心律频发室性早搏怎么回事",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0745",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1429,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0166",
+          "query_text": "胸痹心痛病是心脏病吗",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0746",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.3,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0167",
+          "query_text": "心脏主动脉夹层严重吗",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0748",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.2,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0168",
+          "query_text": "血压高多发腔隙性脑梗塞窦性心律过缓怎么办",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0749",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0169",
+          "query_text": "同时患有心脏瓣膜病丙肝肝硬化胆囊结石怎么办？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0761",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.0909,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0170",
+          "query_text": "心脏瓣膜病内科治疗方法有什么？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0762",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1333,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0171",
+          "query_text": "不太严重的心脏瓣膜病吃什么药好?",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0764",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.125,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0172",
+          "query_text": "请问如何治疗心脏病",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0769",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.3333,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0173",
+          "query_text": "针对心脏病有什么方法治疗？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0770",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.2308,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0174",
+          "query_text": "对于什么是冠心病",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0797",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.125,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0175",
+          "query_text": "关于冠心病有哪些症状",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0798",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0176",
+          "query_text": "想了解心脏供血不足有什么方法治疗？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0801",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1176,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0177",
+          "query_text": "想知道心脏病要怎么处理好？ ？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0809",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.2,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0178",
+          "query_text": "想知道心律不齐怎么处理好？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0811",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1538,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0179",
+          "query_text": "想了解小儿先天性心脏病有什么方法治疗？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0815",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.3158,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0180",
+          "query_text": "心脏右侧痛怎么处理",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0836",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.2222,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0181",
+          "query_text": "请问心脏异常如何治疗",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0840",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.2,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0182",
+          "query_text": "乳糜胸肺气泡心律不齐怎么治疗",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0854",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1429,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0183",
+          "query_text": "心脏主动脉夹层瘤难治吗？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0859",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1667,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0184",
+          "query_text": "漏斗胸胸闷有时候心脏压的不舒服咋办",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0861",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1176,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0185",
+          "query_text": "心脏肾肝衰竭怎么治疗",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0864",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.2,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0186",
+          "query_text": "心脏病脑梗萎缩大便失禁怎么办",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0867",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.2143,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0187",
+          "query_text": "请问心脏瓣膜病一定要手术吗？",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0870",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1429,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0188",
+          "query_text": "心脏瓣膜病是啥意思",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0883",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.2222,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0189",
+          "query_text": "心脏瓣膜病在饮食上要注意哪些",
+          "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+          "source_doc_of_query": "dialogue_cardiac_外科_0892",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.2143,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0190",
+          "query_text": "肝癌晚期的症状都会有哪些",
+          "gold_source_doc_id": "dialogue_liver_肿瘤科_0002",
+          "source_doc_of_query": "dialogue_liver_肿瘤科_0001",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.25,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0191",
+          "query_text": "肝癌胆管癌晚期能做手术吗",
+          "gold_source_doc_id": "dialogue_liver_肿瘤科_0001",
+          "source_doc_of_query": "dialogue_liver_肿瘤科_0002",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.25,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0192",
+          "query_text": "肝癌腹水应该怎么治疗会好些",
+          "gold_source_doc_id": "dialogue_liver_肿瘤科_0001",
+          "source_doc_of_query": "dialogue_liver_肿瘤科_0003",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1538,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0193",
+          "query_text": "肝癌晚期死前的症状有什么",
+          "gold_source_doc_id": "dialogue_liver_肿瘤科_0001",
+          "source_doc_of_query": "dialogue_liver_肿瘤科_0004",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.3333,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0194",
+          "query_text": "肝脏血管瘤怎么办好点",
+          "gold_source_doc_id": "dialogue_liver_肿瘤科_0001",
+          "source_doc_of_query": "dialogue_liver_肿瘤科_0005",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.3,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0195",
+          "query_text": "肝癌要做哪些检查？",
+          "gold_source_doc_id": "dialogue_liver_肿瘤科_0001",
+          "source_doc_of_query": "dialogue_liver_肿瘤科_0006",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.2222,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0196",
+          "query_text": "肝癌如何才能检查出来？",
+          "gold_source_doc_id": "dialogue_liver_肿瘤科_0001",
+          "source_doc_of_query": "dialogue_liver_肿瘤科_0007",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.1818,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0197",
+          "query_text": "肝癌肿瘤晚期了怎么办",
+          "gold_source_doc_id": "dialogue_liver_肿瘤科_0001",
+          "source_doc_of_query": "dialogue_liver_肿瘤科_0008",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.3,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0198",
+          "query_text": "肝癌腹水了怎么办",
+          "gold_source_doc_id": "dialogue_liver_肿瘤科_0001",
+          "source_doc_of_query": "dialogue_liver_肿瘤科_0010",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.25,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0199",
+          "query_text": "胃癌和肝癌哪个更可怕",
+          "gold_source_doc_id": "dialogue_liver_肿瘤科_0001",
+          "source_doc_of_query": "dialogue_liver_肿瘤科_0020",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.2,
+          "checked": true
+        },
+        {
+          "query_id": "hard-xd-0200",
+          "query_text": "肝癌晚期痰多危险吗",
+          "gold_source_doc_id": "dialogue_liver_肿瘤科_0001",
+          "source_doc_of_query": "dialogue_liver_肿瘤科_0021",
+          "requires_cross_doc": true,
+          "overlap_ratio": 0.4444,
+          "checked": true
+        }
+      ]
+    }
+  },
+  "generated_at": "2026-10-15 14:10:15",
+  "wall_s": 0.2,
+  "set_name": "crossdoc",
+  "queries": [
+    {
+      "query_id": "hard-xd-0001",
+      "query_text": "先天性心脏病怎么救治是好",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0005",
+      "source_doc_of_query": "dialogue_cardiac_外科_0001",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.25,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0002",
+      "query_text": "心脏病急性心肌梗塞需要放支架吗？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0005",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1875,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0003",
+      "query_text": "先天性心脏病的分类有哪些？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0006",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.4615,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0004",
+      "query_text": "先天性心脏病能医医疗较好吗？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0008",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.4286,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0005",
+      "query_text": "先天性心脏病的治疗是什么？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0009",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.4615,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0006",
+      "query_text": "先天性心脏病应该注意哪些？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0010",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.4615,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0007",
+      "query_text": "先天性心脏病能医治的好吗？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0011",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.4615,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0008",
+      "query_text": "先天性心脏病严重型能医治的好吗？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0012",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.375,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0009",
+      "query_text": "先天性心脏病能否自行缓解？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0013",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.4615,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0010",
+      "query_text": "先天性心脏病该会有什么？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0014",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.5,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0011",
+      "query_text": "先天性心脏病一般做什么手术？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0016",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.4286,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0012",
+      "query_text": "先天性心脏病可以做手术吗？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0021",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.4615,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0013",
+      "query_text": "先天性心脏病室间隔缺损怎么治疗？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0022",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.375,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0014",
+      "query_text": "先天性心脏病要怎么医治是好",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0023",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.4615,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0015",
+      "query_text": "先天性心脏病室间隔缺损要怎么处理",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0024",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.375,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0016",
+      "query_text": "先天性心脏病室间隔缺损如何救治的好",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0025",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.3529,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0017",
+      "query_text": "先天性心脏病室间隔缺损有生命危险吗？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0026",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.3333,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0018",
+      "query_text": "先天性心脏病平时要吃什么好",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0027",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.4615,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0019",
+      "query_text": "先天性心脏病室间隔缺损能顺产吗",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0029",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.4,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0020",
+      "query_text": "先天性心脏病室间如何治疗？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0030",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.4615,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0021",
+      "query_text": "先天性心脏病室间隔缺损能治吗",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0031",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.4286,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0022",
+      "query_text": "先天性心脏病要注意些什么",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0032",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.5,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0023",
+      "query_text": "什么原因导致心脏病？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0033",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.3,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0024",
+      "query_text": "什么原因引起的小儿先天性心脏病？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0034",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.375,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0025",
+      "query_text": "有先天性心脏病甲亢能生吗？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0035",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.4615,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0026",
+      "query_text": "先天性心脏病室间隔缺损什么时候手术？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0036",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.3333,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0027",
+      "query_text": "先天性心脏病能治疗好吗",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0037",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.5455,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0028",
+      "query_text": "先天性心脏病已经做完手术怎么检查？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0038",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.3529,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0029",
+      "query_text": "先天性心脏病什么时候手术？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0039",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.4615,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0030",
+      "query_text": "先天性心脏病怎样治疗可好",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0041",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.5833,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0031",
+      "query_text": "先天性心脏病室间隔缺损能做手术吗？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0042",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.3529,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0032",
+      "query_text": "先天性心脏病的治疗方式什么",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0043",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.4615,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0033",
+      "query_text": "先天性心脏病的存活率高吗？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0044",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.4615,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0034",
+      "query_text": "先天性心脏病治疗要多久",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0045",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.5455,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0035",
+      "query_text": "先天性心脏病只有手术吗？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0046",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.5,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0036",
+      "query_text": "先天性心脏病现在可以做手术吗？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0047",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.4,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0037",
+      "query_text": "先天性心脏病室间隔缺损怎么治妥当？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0048",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.3529,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0038",
+      "query_text": "先天性心脏病要注意哪些好",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0050",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.5,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0039",
+      "query_text": "先天性心脏病能活多久的好",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0051",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.5,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0040",
+      "query_text": "脑血栓跟心脏病的治疗方法是什么？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0053",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1875,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0041",
+      "query_text": "新生儿先天性心脏病什么时候治疗",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0057",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.4,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0042",
+      "query_text": "如何治疗新生儿先天性心脏病",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0058",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.4615,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0043",
+      "query_text": "3个月大婴儿先天性心脏病可以开胸么",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0059",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.3529,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0044",
+      "query_text": "新生儿先天性心脏病症状有哪些",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0060",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.4286,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0045",
+      "query_text": "婴儿先天性心脏病怎么治疗比较好",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0062",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.5333,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0046",
+      "query_text": "新生儿先天性心脏病有哪些症状",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0063",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.4286,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0047",
+      "query_text": "新生儿先天性心脏病的表现是什么",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0064",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.4,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0048",
+      "query_text": "小婴儿得了先天性心脏病怎么办",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0065",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.5714,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0049",
+      "query_text": "吃什么能让婴儿先天性心脏病好转",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0067",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.4,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0050",
+      "query_text": "小婴儿先天性心脏病的症状有哪些",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0069",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.4,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0051",
+      "query_text": "心脏主动脉硬化心脏变大怎么治恰当",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0071",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.125,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0052",
+      "query_text": "冠心病动脉硬化能治吗",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0072",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0053",
+      "query_text": "心脏主动脉硬化如何诊治能好",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0073",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1538,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0054",
+      "query_text": "发现脑梗塞心血管有些问题怎么办",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0077",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1333,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0055",
+      "query_text": "胆结石突发有心脏病如何手术",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0079",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.2308,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0056",
+      "query_text": "有心脏刺痛的毛病怎么回事",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0092",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.25,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0057",
+      "query_text": "平时心脏刺痛怎么回事",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0093",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.2,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0058",
+      "query_text": "新生儿得先天性心脏病有什么症状",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0096",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.4,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0059",
+      "query_text": "新生儿有先天性心脏病要怎么办",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0098",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.4286,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0060",
+      "query_text": "先天性心脏病什么时候做手术好？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0108",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.4,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0061",
+      "query_text": "心脏导管未闭和疝气手术能同时做吗？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0115",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1176,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0062",
+      "query_text": "进行性骨干发育不良心脏？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0116",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1667,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0063",
+      "query_text": "窦性心律心电图特点是什么",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0132",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1667,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0064",
+      "query_text": "心脏房颤引起的脑梗塞怎么治妥当",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0143",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1333,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0065",
+      "query_text": "心肌梗死支架手术后心脏还会有破裂风险吗？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0144",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0066",
+      "query_text": "胆固醇偏高， 心血管细要怎么调养",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0155",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.125,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0067",
+      "query_text": "心脏瓣膜病通过采用什么的治疗方式效果好",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0168",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1053,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0068",
+      "query_text": "左胸口里面痛， 难道是心脏病么？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0173",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1875,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0069",
+      "query_text": "先天性心脏病术后复查",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0175",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.6,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0070",
+      "query_text": "治疗先天心脏病需要多少钱？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0176",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.2308,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0071",
+      "query_text": "出现小脑萎缩还有先天心脏病要怎么治疗？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0182",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1579,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0072",
+      "query_text": "脑梗塞、冠心病该如何治疗？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0183",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.0769,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0073",
+      "query_text": "小孩摔跤会引起心脏瓣膜病吗？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0185",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1429,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0074",
+      "query_text": "风湿性心脏瓣膜病一定要手术吗？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0187",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.2,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0075",
+      "query_text": "心脏瓣膜病主动脉狭窄怎么治疗合适？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0188",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1176,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0076",
+      "query_text": "风湿性心脏病引起的脑梗塞出多久做换辨手术",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0189",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.2,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0077",
+      "query_text": "风湿性心脏瓣膜病能够如何检查呢",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0192",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.2,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0078",
+      "query_text": "轻度心脏瓣膜病需要做手术吗？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0193",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1429,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0079",
+      "query_text": "高血压， 脑梗塞和心脏不好该怎么办?",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0196",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1111,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0080",
+      "query_text": "预防心脏性猝死该怎么做",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0200",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1818,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0081",
+      "query_text": "为什么做完心脏支架手术后出现脑梗塞",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0208",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1176,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0082",
+      "query_text": "补脑液心脏病半边偏瘫能吃吗？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0209",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.2143,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0083",
+      "query_text": "心脏瓣膜病修复为什么会咳嗽呢",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0213",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1429,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0084",
+      "query_text": "心脏瓣膜病应该如何聪慧解决疗？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0214",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1333,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0085",
+      "query_text": "心脏瓣膜病修复[REDACTED]个月咳嗽怎么办",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0216",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.4167,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0086",
+      "query_text": "心脏瓣膜病应该怎么治疗？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0217",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1667,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0087",
+      "query_text": "心脏性猝死指的是什么",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0226",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.2,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0088",
+      "query_text": "先天性心脏病的治疗怎么办？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0235",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.4615,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0089",
+      "query_text": "孩子总喘大气是心脏病吗？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0236",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.25,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0090",
+      "query_text": "二尖瓣少量返流是心脏病吗?",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0238",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.2308,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0091",
+      "query_text": "治疗先天心脏病需要多少费用？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0239",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.2143,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0092",
+      "query_text": "先天性心脏病可以用什么方法治疗？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0241",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.375,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0093",
+      "query_text": "新生儿患有心脏病该如何治",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0242",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.25,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0094",
+      "query_text": "心脏有杂音就是心脏病吗",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0243",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.2727,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0095",
+      "query_text": "小孩先天性心脏病手术后怎么促进孩子恢复",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0247",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.3158,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0096",
+      "query_text": "新生儿有先天性心脏病怎样救治",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0259",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.5,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0097",
+      "query_text": "心脏病是会遗传的吗",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0260",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.3333,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0098",
+      "query_text": "新生儿心脏病怎样治效果快",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0261",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.3333,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0099",
+      "query_text": "新生儿先天性心脏病怎样救治",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0262",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.5385,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0100",
+      "query_text": "先天性心脏病是怎么治更有效",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0263",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.4615,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0101",
+      "query_text": "心脏瓣膜病洗了冷水澡后不舒服怎么治？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0265",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1111,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0102",
+      "query_text": "哮喘冠心病脑梗高血压能吃咳喘药吗？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0270",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.0588,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0103",
+      "query_text": "心脏房颤引起的脑梗怎么办？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0271",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1538,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0104",
+      "query_text": "冠心病脑梗吃什么药比较好？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0276",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1538,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0105",
+      "query_text": "心脏病半边偏瘫怎么办",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0289",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.3,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0106",
+      "query_text": "脑梗心脏病如何收拾可以好一点",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0300",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.2143,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0107",
+      "query_text": "老年退行性心脏瓣膜病怎麼治療？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0301",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.2,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0108",
+      "query_text": "心脏瓣膜病严重不严重啊？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0302",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1667,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0109",
+      "query_text": "我的心脏瓣膜病还能否医治？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0303",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1538,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0110",
+      "query_text": "心脏瓣膜病的后期保养方法是怎么样的？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0305",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1111,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0111",
+      "query_text": "小脑萎缩先天心脏病怎么办？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0306",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.3846,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0112",
+      "query_text": "哮喘冠心病脑梗高血压怎么治疗",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0311",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1429,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0113",
+      "query_text": "高血压而且心律不齐会中风吗？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0317",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1429,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0114",
+      "query_text": "心脏病引起的脑梗怎么治疗好",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0318",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.2308,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0115",
+      "query_text": "脑梗塞会引起心脏供血不足吗？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0320",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1429,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0116",
+      "query_text": "心脏放支架后能否使用磁性功能床吗？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0321",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1176,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0117",
+      "query_text": "我妈是脑梗现在手麻心悸该怎么治疗？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0329",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1176,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0118",
+      "query_text": "心脏病中风能吃什么药",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0335",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.3,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0119",
+      "query_text": "乳腺癌救治后检查这样心脏检查什么情况",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0349",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1111,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0120",
+      "query_text": "前列腺肿瘤， 肺积水， 冠心病如何治疗",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0352",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1053,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0121",
+      "query_text": "冠心病与脑中风前兆?",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0366",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0122",
+      "query_text": "心脏骤停引起的脑损伤怎样苏醒？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0368",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1333,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0123",
+      "query_text": "脑梗塞能否引起冠心病?",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0388",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.0909,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0124",
+      "query_text": "心脏起搏器治疗脑梗塞吗?",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0424",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1667,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0125",
+      "query_text": "心脏供血不足脑梗塞咋办?",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0427",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1667,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0126",
+      "query_text": "脑干脑梗加心脏病怎么治",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0441",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.4545,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0127",
+      "query_text": "心脏瓣膜病， 特别难受咋办？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0468",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1429,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0128",
+      "query_text": "引来心律失常的原因是什么",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0474",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.0833,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0129",
+      "query_text": "心脏瓣膜病症状有哪些？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0479",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1818,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0130",
+      "query_text": "心脏瓣膜病置换手术后吃什么？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0492",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1429,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0131",
+      "query_text": "心脏主动脉夹层瘤怎么治疗？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0494",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1538,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0132",
+      "query_text": "心脏瓣膜病的并发症有什么？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0498",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1538,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0133",
+      "query_text": "早搏， 心悸， 室性早搏1849次/24小时应该",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0500",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.0833,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0134",
+      "query_text": "心脏病室性早搏要注意什么？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0502",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.2308,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0135",
+      "query_text": "心脏室性早搏胸闷气短该如何是好",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0514",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1333,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0136",
+      "query_text": "心脏主动脉夹层是多少救治几率？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0530",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1333,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0137",
+      "query_text": "心脏主动脉夹层瘤是多少生存率？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0531",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1333,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0138",
+      "query_text": "室性早搏心律不齐再次复发了怎么办",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0534",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.125,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0139",
+      "query_text": "窦性心律频发性室性早搏该怎么办",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0537",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1333,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0140",
+      "query_text": "得心脏瓣膜病的一般症状",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0544",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1818,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0141",
+      "query_text": "窦性心律不齐需要做心电图",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0547",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1667,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0142",
+      "query_text": "脑供血不足会不会是心脏病引起的？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0569",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1875,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0143",
+      "query_text": "心脏瓣膜病什么原因引起的？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0577",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1538,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0144",
+      "query_text": "窦性心律， 室性早搏该求治疗？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0591",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1333,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0145",
+      "query_text": "心脏瓣膜病吃什么好？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0594",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.2,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0146",
+      "query_text": "心脏瓣膜病吃什么药？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0600",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.2,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0147",
+      "query_text": "心脏瓣膜病要做手术吗？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0602",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1818,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0148",
+      "query_text": "心脏瓣膜病的治疗困难吗？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0603",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1667,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0149",
+      "query_text": "面肌痉挛对心脏会有影响吗？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0605",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1538,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0150",
+      "query_text": "治疗心脏瓣膜病哪家医院水平高？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0607",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1333,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0151",
+      "query_text": "查出室性早搏和窦性心律不齐怎么治疗？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0615",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1111,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0152",
+      "query_text": "风湿性心脏瓣膜病并发症是什么？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0623",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.2,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0153",
+      "query_text": "心脏主动脉夹层手术后遗症有哪些？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0648",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.125,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0154",
+      "query_text": "心脏瓣膜病严重吗？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0649",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.2222,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0155",
+      "query_text": "心脏病会猝死吗？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0661",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.375,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0156",
+      "query_text": "心脏瓣膜病， 特别难受咋子办？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0665",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1333,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0157",
+      "query_text": "胸痹是心脏病吗？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0698",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.375,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0158",
+      "query_text": "室性早搏没有心脏病怎么治疗？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0702",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.3571,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0159",
+      "query_text": "漏斗胸压迫心脏怎么办？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0704",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1818,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0160",
+      "query_text": "心脏动脉导管未闭正常吗？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0706",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1667,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0161",
+      "query_text": "胸痹是冠心病吗？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0708",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.125,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0162",
+      "query_text": "心脏瓣膜病手术风险有多高？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0718",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1538,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0163",
+      "query_text": "心脏瓣膜病要注意什么？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0722",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.2727,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0164",
+      "query_text": "心脏主动脉夹层破裂是怎么回事",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0735",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1429,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0165",
+      "query_text": "窦性心律频发室性早搏怎么回事",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0745",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1429,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0166",
+      "query_text": "胸痹心痛病是心脏病吗",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0746",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.3,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0167",
+      "query_text": "心脏主动脉夹层严重吗",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0748",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.2,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0168",
+      "query_text": "血压高多发腔隙性脑梗塞窦性心律过缓怎么办",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0749",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0169",
+      "query_text": "同时患有心脏瓣膜病丙肝肝硬化胆囊结石怎么办？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0761",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.0909,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0170",
+      "query_text": "心脏瓣膜病内科治疗方法有什么？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0762",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1333,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0171",
+      "query_text": "不太严重的心脏瓣膜病吃什么药好?",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0764",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.125,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0172",
+      "query_text": "请问如何治疗心脏病",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0769",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.3333,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0173",
+      "query_text": "针对心脏病有什么方法治疗？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0770",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.2308,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0174",
+      "query_text": "对于什么是冠心病",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0797",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.125,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0175",
+      "query_text": "关于冠心病有哪些症状",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0798",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0176",
+      "query_text": "想了解心脏供血不足有什么方法治疗？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0801",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1176,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0177",
+      "query_text": "想知道心脏病要怎么处理好？ ？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0809",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.2,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0178",
+      "query_text": "想知道心律不齐怎么处理好？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0811",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1538,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0179",
+      "query_text": "想了解小儿先天性心脏病有什么方法治疗？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0815",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.3158,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0180",
+      "query_text": "心脏右侧痛怎么处理",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0836",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.2222,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0181",
+      "query_text": "请问心脏异常如何治疗",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0840",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.2,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0182",
+      "query_text": "乳糜胸肺气泡心律不齐怎么治疗",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0854",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1429,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0183",
+      "query_text": "心脏主动脉夹层瘤难治吗？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0859",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1667,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0184",
+      "query_text": "漏斗胸胸闷有时候心脏压的不舒服咋办",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0861",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1176,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0185",
+      "query_text": "心脏肾肝衰竭怎么治疗",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0864",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.2,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0186",
+      "query_text": "心脏病脑梗萎缩大便失禁怎么办",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0867",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.2143,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0187",
+      "query_text": "请问心脏瓣膜病一定要手术吗？",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0870",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1429,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0188",
+      "query_text": "心脏瓣膜病是啥意思",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0883",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.2222,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0189",
+      "query_text": "心脏瓣膜病在饮食上要注意哪些",
+      "gold_source_doc_id": "dialogue_cardiac_外科_0001",
+      "source_doc_of_query": "dialogue_cardiac_外科_0892",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.2143,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0190",
+      "query_text": "肝癌晚期的症状都会有哪些",
+      "gold_source_doc_id": "dialogue_liver_肿瘤科_0002",
+      "source_doc_of_query": "dialogue_liver_肿瘤科_0001",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.25,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0191",
+      "query_text": "肝癌胆管癌晚期能做手术吗",
+      "gold_source_doc_id": "dialogue_liver_肿瘤科_0001",
+      "source_doc_of_query": "dialogue_liver_肿瘤科_0002",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.25,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0192",
+      "query_text": "肝癌腹水应该怎么治疗会好些",
+      "gold_source_doc_id": "dialogue_liver_肿瘤科_0001",
+      "source_doc_of_query": "dialogue_liver_肿瘤科_0003",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1538,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0193",
+      "query_text": "肝癌晚期死前的症状有什么",
+      "gold_source_doc_id": "dialogue_liver_肿瘤科_0001",
+      "source_doc_of_query": "dialogue_liver_肿瘤科_0004",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.3333,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0194",
+      "query_text": "肝脏血管瘤怎么办好点",
+      "gold_source_doc_id": "dialogue_liver_肿瘤科_0001",
+      "source_doc_of_query": "dialogue_liver_肿瘤科_0005",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.3,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0195",
+      "query_text": "肝癌要做哪些检查？",
+      "gold_source_doc_id": "dialogue_liver_肿瘤科_0001",
+      "source_doc_of_query": "dialogue_liver_肿瘤科_0006",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.2222,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0196",
+      "query_text": "肝癌如何才能检查出来？",
+      "gold_source_doc_id": "dialogue_liver_肿瘤科_0001",
+      "source_doc_of_query": "dialogue_liver_肿瘤科_0007",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.1818,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0197",
+      "query_text": "肝癌肿瘤晚期了怎么办",
+      "gold_source_doc_id": "dialogue_liver_肿瘤科_0001",
+      "source_doc_of_query": "dialogue_liver_肿瘤科_0008",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.3,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0198",
+      "query_text": "肝癌腹水了怎么办",
+      "gold_source_doc_id": "dialogue_liver_肿瘤科_0001",
+      "source_doc_of_query": "dialogue_liver_肿瘤科_0010",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.25,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0199",
+      "query_text": "胃癌和肝癌哪个更可怕",
+      "gold_source_doc_id": "dialogue_liver_肿瘤科_0001",
+      "source_doc_of_query": "dialogue_liver_肿瘤科_0020",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.2,
+      "checked": true
+    },
+    {
+      "query_id": "hard-xd-0200",
+      "query_text": "肝癌晚期痰多危险吗",
+      "gold_source_doc_id": "dialogue_liver_肿瘤科_0001",
+      "source_doc_of_query": "dialogue_liver_肿瘤科_0021",
+      "requires_cross_doc": true,
+      "overlap_ratio": 0.4444,
+      "checked": true
+    }
+  ],
+  "n": 200,
+  "rejected": {
+    "overlap_too_high": 11
+  }
+}

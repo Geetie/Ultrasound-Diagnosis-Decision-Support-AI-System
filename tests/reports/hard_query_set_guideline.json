@@ -1,0 +1,756 @@
+{
+  "synthetic": true,
+  "usage": "expansion_ablation_only",
+  "builder": "p41_build_hard_query_set.py",
+  "warning": "自造难集：仅用于'图谱扩边是否有用'的对照裁决，**不并入正式指标与门限**",
+  "kb_version": "kb_v1.3.0",
+  "rule_checks": {
+    "max_char_overlap": 0.6,
+    "length_range": [
+      8,
+      60
+    ],
+    "dedupe": "exact_text"
+  },
+  "sets": {
+    "guideline": {
+      "n": 40,
+      "rejected": {
+        "overlap_too_high": 2,
+        "too_short_source": 1
+      },
+      "queries": [
+        {
+          "query_id": "hard-gl-0001",
+          "query_text": "如何建立具有中国人群特异性的超声心动图正常参考值？",
+          "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0001",
+          "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0001#0000",
+          "requires_cross_doc": false,
+          "overlap_ratio": 0.44,
+          "checked": true
+        },
+        {
+          "query_id": "hard-gl-0002",
+          "query_text": "如何调整探头位置和角度以获得左心室最大长轴内径切面？",
+          "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0002",
+          "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0002#0000",
+          "requires_cross_doc": false,
+          "overlap_ratio": 0.4231,
+          "checked": true
+        },
+        {
+          "query_id": "hard-gl-0003",
+          "query_text": "主动脉内径测量为何采用回声前缘到回声前缘的方法？",
+          "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0003",
+          "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0003#0000",
+          "requires_cross_doc": false,
+          "overlap_ratio": 0.3333,
+          "checked": true
+        },
+        {
+          "query_id": "hard-gl-0004",
+          "query_text": "如何确定左心房及左心室的测量时相和切面？",
+          "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0004",
+          "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0004#0000",
+          "requires_cross_doc": false,
+          "overlap_ratio": 0.35,
+          "checked": true
+        },
+        {
+          "query_id": "hard-gl-0005",
+          "query_text": "如何正确测量右心房长径和横径？",
+          "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0004",
+          "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0004#0001",
+          "requires_cross_doc": false,
+          "overlap_ratio": 0.4667,
+          "checked": true
+        },
+        {
+          "query_id": "hard-gl-0006",
+          "query_text": "在胸骨旁左心室长轴切面测量左心室后壁厚度时，应注意哪些测量要点？",
+          "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0004",
+          "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0004#0002",
+          "requires_cross_doc": false,
+          "overlap_ratio": 0.375,
+          "checked": true
+        },
+        {
+          "query_id": "hard-gl-0007",
+          "query_text": "如何正确获取胸骨旁主动脉短轴切面的图像？",
+          "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0005",
+          "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0005#0000",
+          "requires_cross_doc": false,
+          "overlap_ratio": 0.5,
+          "checked": true
+        },
+        {
+          "query_id": "hard-gl-0008",
+          "query_text": "如何正确测量心尖四腔切面收缩末期右心房的长径和横径？",
+          "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0006",
+          "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0006#0000",
+          "requires_cross_doc": false,
+          "overlap_ratio": 0.2308,
+          "checked": true
+        },
+        {
+          "query_id": "hard-gl-0009",
+          "query_text": "在胸骨上窝主动脉弓长轴切面中如何准确识别升主动脉、无名动脉及左右颈总动脉？",
+          "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0006",
+          "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0006#0001",
+          "requires_cross_doc": false,
+          "overlap_ratio": 0.3243,
+          "checked": true
+        },
+        {
+          "query_id": "hard-gl-0010",
+          "query_text": "右心室流出道内径和肺动脉瓣环内径测量有何临床意义？",
+          "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0007",
+          "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0007#0000",
+          "requires_cross_doc": false,
+          "overlap_ratio": 0.32,
+          "checked": true
+        },
+        {
+          "query_id": "hard-gl-0011",
+          "query_text": "如何判断超声心动图测量值的异常程度？",
+          "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0007",
+          "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0007#0001",
+          "requires_cross_doc": false,
+          "overlap_ratio": 0.3889,
+          "checked": true
+        },
+        {
+          "query_id": "hard-gl-0012",
+          "query_text": "如何确定超声心动图参数的临界值以反映疾病严重程度？",
+          "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0007",
+          "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0007#0002",
+          "requires_cross_doc": false,
+          "overlap_ratio": 0.28,
+          "checked": true
+        },
+        {
+          "query_id": "hard-gl-0013",
+          "query_text": "不同性别在不同年龄组的心率是否存在显著差异？",
+          "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0009",
+          "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0009#0000",
+          "requires_cross_doc": false,
+          "overlap_ratio": 0.1364,
+          "checked": true
+        },
+        {
+          "query_id": "hard-gl-0014",
+          "query_text": "不同年龄段男性身高、体重和BMI的变化是否存在显著差异？",
+          "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0010",
+          "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0010#0000",
+          "requires_cross_doc": false,
+          "overlap_ratio": 0.1071,
+          "checked": true
+        },
+        {
+          "query_id": "hard-gl-0015",
+          "query_text": "不同年龄段女性的舒张压和心率是否有显著差异？",
+          "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0010",
+          "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0010#0001",
+          "requires_cross_doc": false,
+          "overlap_ratio": 0.0909,
+          "checked": true
+        },
+        {
+          "query_id": "hard-gl-0016",
+          "query_text": "左心室测量中为何女性的射血分数普遍高于男性？",
+          "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0011",
+          "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0011#0000",
+          "requires_cross_doc": false,
+          "overlap_ratio": 0.2273,
+          "checked": true
+        },
+        {
+          "query_id": "hard-gl-0017",
+          "query_text": "如何准确测量左心室质量以评估心血管事件风险？",
+          "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0012",
+          "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0012#0000",
+          "requires_cross_doc": false,
+          "overlap_ratio": 0.2273,
+          "checked": true
+        },
+        {
+          "query_id": "hard-gl-0018",
+          "query_text": "不同年龄段男性左心房面积的正常范围是多少？",
+          "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0013",
+          "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0013#0000",
+          "requires_cross_doc": false,
+          "overlap_ratio": 0.2381,
+          "checked": true
+        },
+        {
+          "query_id": "hard-gl-0019",
+          "query_text": "左心房前后径的正常范围是多少？",
+          "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0013",
+          "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0013#0001",
+          "requires_cross_doc": false,
+          "overlap_ratio": 0.4,
+          "checked": true
+        },
+        {
+          "query_id": "hard-gl-0020",
+          "query_text": "不同年龄段患者的左室射血速度（LVOT）正常范围有何差异？",
+          "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0014",
+          "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0014#0000",
+          "requires_cross_doc": false,
+          "overlap_ratio": 0.1379,
+          "checked": true
+        },
+        {
+          "query_id": "hard-gl-0021",
+          "query_text": "不同年龄段患者的左室射血分数（LVEF）正常范围有何差异？",
+          "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0014",
+          "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0014#0001",
+          "requires_cross_doc": false,
+          "overlap_ratio": 0.1379,
+          "checked": true
+        },
+        {
+          "query_id": "hard-gl-0022",
+          "query_text": "不同性别和年龄组的左心室质量最大值有何差异？",
+          "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0015",
+          "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0015#0000",
+          "requires_cross_doc": false,
+          "overlap_ratio": 0.2273,
+          "checked": true
+        },
+        {
+          "query_id": "hard-gl-0023",
+          "query_text": "如何评估右心室功能及右心房扩大对心脏疾病的意义？",
+          "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0015",
+          "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0015#0001",
+          "requires_cross_doc": false,
+          "overlap_ratio": 0.2083,
+          "checked": true
+        },
+        {
+          "query_id": "hard-gl-0024",
+          "query_text": "如何准确测量右心室大小以减少个体间差异？",
+          "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0016",
+          "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0016#0000",
+          "requires_cross_doc": false,
+          "overlap_ratio": 0.35,
+          "checked": true
+        },
+        {
+          "query_id": "hard-gl-0025",
+          "query_text": "不同年龄段的右心房前后径正常范围有何差异？",
+          "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0017",
+          "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0017#0000",
+          "requires_cross_doc": false,
+          "overlap_ratio": 0.1429,
+          "checked": true
+        },
+        {
+          "query_id": "hard-gl-0026",
+          "query_text": "不同年龄段女性右心房和右心室的测量值范围有何差异？",
+          "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0017",
+          "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0017#0001",
+          "requires_cross_doc": false,
+          "overlap_ratio": 0.12,
+          "checked": true
+        },
+        {
+          "query_id": "hard-gl-0027",
+          "query_text": "右心室基底横径的测量方法和临床意义是什么？",
+          "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0017",
+          "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0017#0002",
+          "requires_cross_doc": false,
+          "overlap_ratio": 0.3333,
+          "checked": true
+        },
+        {
+          "query_id": "hard-gl-0028",
+          "query_text": "如何准确测量主动脉瓣环以指导TAVI或TAVR手术？",
+          "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0018",
+          "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0018#0000",
+          "requires_cross_doc": false,
+          "overlap_ratio": 0.2692,
+          "checked": true
+        },
+        {
+          "query_id": "hard-gl-0029",
+          "query_text": "主动脉测量应在哪一时期进行？",
+          "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0019",
+          "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0019#0000",
+          "requires_cross_doc": false,
+          "overlap_ratio": 0.2143,
+          "checked": true
+        },
+        {
+          "query_id": "hard-gl-0030",
+          "query_text": "不同年龄段患者主动脉各段直径的正常范围有何差异？",
+          "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0020",
+          "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0020#0000",
+          "requires_cross_doc": false,
+          "overlap_ratio": 0.125,
+          "checked": true
+        },
+        {
+          "query_id": "hard-gl-0031",
+          "query_text": "不同年龄段女性的左心室后壁厚度（LPA）正常范围是多少？",
+          "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0020",
+          "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0020#0001",
+          "requires_cross_doc": false,
+          "overlap_ratio": 0.1071,
+          "checked": true
+        },
+        {
+          "query_id": "hard-gl-0032",
+          "query_text": "不同测量方法对主动脉内径测量结果的影响是什么？",
+          "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0021",
+          "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0021#0000",
+          "requires_cross_doc": false,
+          "overlap_ratio": 0.2174,
+          "checked": true
+        },
+        {
+          "query_id": "hard-gl-0033",
+          "query_text": "男性和女性在E峰速度、A峰速度及E/A比值方面有何性别差异？",
+          "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0022",
+          "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0022#0000",
+          "requires_cross_doc": false,
+          "overlap_ratio": 0.1667,
+          "checked": true
+        },
+        {
+          "query_id": "hard-gl-0034",
+          "query_text": "男性和女性在三尖瓣E-tv峰速度和E/A-tv比值上是否存在显著差异？",
+          "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0022",
+          "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0022#0001",
+          "requires_cross_doc": false,
+          "overlap_ratio": 0.1714,
+          "checked": true
+        },
+        {
+          "query_id": "hard-gl-0035",
+          "query_text": "不同年龄段患者的Ems和Ams值是否有显著差异？",
+          "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0023",
+          "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0023#0000",
+          "requires_cross_doc": false,
+          "overlap_ratio": 0.0833,
+          "checked": true
+        },
+        {
+          "query_id": "hard-gl-0036",
+          "query_text": "不同年龄段患者的E峰和A峰速度及参数差异是否有临床意义？",
+          "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0023",
+          "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0023#0001",
+          "requires_cross_doc": false,
+          "overlap_ratio": 0.1071,
+          "checked": true
+        },
+        {
+          "query_id": "hard-gl-0037",
+          "query_text": "不同年龄段男性和女性的LVOT-v、AV-v、RVOT-v、PV-v的正常范围有何差异？",
+          "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0024",
+          "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0024#0000",
+          "requires_cross_doc": false,
+          "overlap_ratio": 0.1364,
+          "checked": true
+        },
+        {
+          "query_id": "hard-gl-0038",
+          "query_text": "不同年龄段的患者，其E-A-tv值的正常范围有何差异？",
+          "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0025",
+          "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0025#0000",
+          "requires_cross_doc": false,
+          "overlap_ratio": 0.1481,
+          "checked": true
+        },
+        {
+          "query_id": "hard-gl-0039",
+          "query_text": "不同年龄段的患者，其E-A比值的正常范围有何差异？",
+          "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0025",
+          "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0025#0001",
+          "requires_cross_doc": false,
+          "overlap_ratio": 0.08,
+          "checked": true
+        },
+        {
+          "query_id": "hard-gl-0040",
+          "query_text": "不同性别和年龄组的E/e'比值有何变化？",
+          "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0026",
+          "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0026#0000",
+          "requires_cross_doc": false,
+          "overlap_ratio": 0.35,
+          "checked": true
+        }
+      ]
+    }
+  },
+  "generated_at": "2026-10-15 14:13:15",
+  "wall_s": 10.6,
+  "set_name": "guideline",
+  "queries": [
+    {
+      "query_id": "hard-gl-0001",
+      "query_text": "如何建立具有中国人群特异性的超声心动图正常参考值？",
+      "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0001",
+      "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0001#0000",
+      "requires_cross_doc": false,
+      "overlap_ratio": 0.44,
+      "checked": true
+    },
+    {
+      "query_id": "hard-gl-0002",
+      "query_text": "如何调整探头位置和角度以获得左心室最大长轴内径切面？",
+      "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0002",
+      "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0002#0000",
+      "requires_cross_doc": false,
+      "overlap_ratio": 0.4231,
+      "checked": true
+    },
+    {
+      "query_id": "hard-gl-0003",
+      "query_text": "主动脉内径测量为何采用回声前缘到回声前缘的方法？",
+      "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0003",
+      "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0003#0000",
+      "requires_cross_doc": false,
+      "overlap_ratio": 0.3333,
+      "checked": true
+    },
+    {
+      "query_id": "hard-gl-0004",
+      "query_text": "如何确定左心房及左心室的测量时相和切面？",
+      "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0004",
+      "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0004#0000",
+      "requires_cross_doc": false,
+      "overlap_ratio": 0.35,
+      "checked": true
+    },
+    {
+      "query_id": "hard-gl-0005",
+      "query_text": "如何正确测量右心房长径和横径？",
+      "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0004",
+      "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0004#0001",
+      "requires_cross_doc": false,
+      "overlap_ratio": 0.4667,
+      "checked": true
+    },
+    {
+      "query_id": "hard-gl-0006",
+      "query_text": "在胸骨旁左心室长轴切面测量左心室后壁厚度时，应注意哪些测量要点？",
+      "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0004",
+      "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0004#0002",
+      "requires_cross_doc": false,
+      "overlap_ratio": 0.375,
+      "checked": true
+    },
+    {
+      "query_id": "hard-gl-0007",
+      "query_text": "如何正确获取胸骨旁主动脉短轴切面的图像？",
+      "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0005",
+      "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0005#0000",
+      "requires_cross_doc": false,
+      "overlap_ratio": 0.5,
+      "checked": true
+    },
+    {
+      "query_id": "hard-gl-0008",
+      "query_text": "如何正确测量心尖四腔切面收缩末期右心房的长径和横径？",
+      "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0006",
+      "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0006#0000",
+      "requires_cross_doc": false,
+      "overlap_ratio": 0.2308,
+      "checked": true
+    },
+    {
+      "query_id": "hard-gl-0009",
+      "query_text": "在胸骨上窝主动脉弓长轴切面中如何准确识别升主动脉、无名动脉及左右颈总动脉？",
+      "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0006",
+      "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0006#0001",
+      "requires_cross_doc": false,
+      "overlap_ratio": 0.3243,
+      "checked": true
+    },
+    {
+      "query_id": "hard-gl-0010",
+      "query_text": "右心室流出道内径和肺动脉瓣环内径测量有何临床意义？",
+      "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0007",
+      "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0007#0000",
+      "requires_cross_doc": false,
+      "overlap_ratio": 0.32,
+      "checked": true
+    },
+    {
+      "query_id": "hard-gl-0011",
+      "query_text": "如何判断超声心动图测量值的异常程度？",
+      "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0007",
+      "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0007#0001",
+      "requires_cross_doc": false,
+      "overlap_ratio": 0.3889,
+      "checked": true
+    },
+    {
+      "query_id": "hard-gl-0012",
+      "query_text": "如何确定超声心动图参数的临界值以反映疾病严重程度？",
+      "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0007",
+      "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0007#0002",
+      "requires_cross_doc": false,
+      "overlap_ratio": 0.28,
+      "checked": true
+    },
+    {
+      "query_id": "hard-gl-0013",
+      "query_text": "不同性别在不同年龄组的心率是否存在显著差异？",
+      "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0009",
+      "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0009#0000",
+      "requires_cross_doc": false,
+      "overlap_ratio": 0.1364,
+      "checked": true
+    },
+    {
+      "query_id": "hard-gl-0014",
+      "query_text": "不同年龄段男性身高、体重和BMI的变化是否存在显著差异？",
+      "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0010",
+      "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0010#0000",
+      "requires_cross_doc": false,
+      "overlap_ratio": 0.1071,
+      "checked": true
+    },
+    {
+      "query_id": "hard-gl-0015",
+      "query_text": "不同年龄段女性的舒张压和心率是否有显著差异？",
+      "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0010",
+      "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0010#0001",
+      "requires_cross_doc": false,
+      "overlap_ratio": 0.0909,
+      "checked": true
+    },
+    {
+      "query_id": "hard-gl-0016",
+      "query_text": "左心室测量中为何女性的射血分数普遍高于男性？",
+      "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0011",
+      "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0011#0000",
+      "requires_cross_doc": false,
+      "overlap_ratio": 0.2273,
+      "checked": true
+    },
+    {
+      "query_id": "hard-gl-0017",
+      "query_text": "如何准确测量左心室质量以评估心血管事件风险？",
+      "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0012",
+      "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0012#0000",
+      "requires_cross_doc": false,
+      "overlap_ratio": 0.2273,
+      "checked": true
+    },
+    {
+      "query_id": "hard-gl-0018",
+      "query_text": "不同年龄段男性左心房面积的正常范围是多少？",
+      "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0013",
+      "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0013#0000",
+      "requires_cross_doc": false,
+      "overlap_ratio": 0.2381,
+      "checked": true
+    },
+    {
+      "query_id": "hard-gl-0019",
+      "query_text": "左心房前后径的正常范围是多少？",
+      "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0013",
+      "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0013#0001",
+      "requires_cross_doc": false,
+      "overlap_ratio": 0.4,
+      "checked": true
+    },
+    {
+      "query_id": "hard-gl-0020",
+      "query_text": "不同年龄段患者的左室射血速度（LVOT）正常范围有何差异？",
+      "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0014",
+      "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0014#0000",
+      "requires_cross_doc": false,
+      "overlap_ratio": 0.1379,
+      "checked": true
+    },
+    {
+      "query_id": "hard-gl-0021",
+      "query_text": "不同年龄段患者的左室射血分数（LVEF）正常范围有何差异？",
+      "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0014",
+      "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0014#0001",
+      "requires_cross_doc": false,
+      "overlap_ratio": 0.1379,
+      "checked": true
+    },
+    {
+      "query_id": "hard-gl-0022",
+      "query_text": "不同性别和年龄组的左心室质量最大值有何差异？",
+      "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0015",
+      "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0015#0000",
+      "requires_cross_doc": false,
+      "overlap_ratio": 0.2273,
+      "checked": true
+    },
+    {
+      "query_id": "hard-gl-0023",
+      "query_text": "如何评估右心室功能及右心房扩大对心脏疾病的意义？",
+      "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0015",
+      "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0015#0001",
+      "requires_cross_doc": false,
+      "overlap_ratio": 0.2083,
+      "checked": true
+    },
+    {
+      "query_id": "hard-gl-0024",
+      "query_text": "如何准确测量右心室大小以减少个体间差异？",
+      "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0016",
+      "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0016#0000",
+      "requires_cross_doc": false,
+      "overlap_ratio": 0.35,
+      "checked": true
+    },
+    {
+      "query_id": "hard-gl-0025",
+      "query_text": "不同年龄段的右心房前后径正常范围有何差异？",
+      "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0017",
+      "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0017#0000",
+      "requires_cross_doc": false,
+      "overlap_ratio": 0.1429,
+      "checked": true
+    },
+    {
+      "query_id": "hard-gl-0026",
+      "query_text": "不同年龄段女性右心房和右心室的测量值范围有何差异？",
+      "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0017",
+      "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0017#0001",
+      "requires_cross_doc": false,
+      "overlap_ratio": 0.12,
+      "checked": true
+    },
+    {
+      "query_id": "hard-gl-0027",
+      "query_text": "右心室基底横径的测量方法和临床意义是什么？",
+      "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0017",
+      "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0017#0002",
+      "requires_cross_doc": false,
+      "overlap_ratio": 0.3333,
+      "checked": true
+    },
+    {
+      "query_id": "hard-gl-0028",
+      "query_text": "如何准确测量主动脉瓣环以指导TAVI或TAVR手术？",
+      "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0018",
+      "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0018#0000",
+      "requires_cross_doc": false,
+      "overlap_ratio": 0.2692,
+      "checked": true
+    },
+    {
+      "query_id": "hard-gl-0029",
+      "query_text": "主动脉测量应在哪一时期进行？",
+      "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0019",
+      "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0019#0000",
+      "requires_cross_doc": false,
+      "overlap_ratio": 0.2143,
+      "checked": true
+    },
+    {
+      "query_id": "hard-gl-0030",
+      "query_text": "不同年龄段患者主动脉各段直径的正常范围有何差异？",
+      "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0020",
+      "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0020#0000",
+      "requires_cross_doc": false,
+      "overlap_ratio": 0.125,
+      "checked": true
+    },
+    {
+      "query_id": "hard-gl-0031",
+      "query_text": "不同年龄段女性的左心室后壁厚度（LPA）正常范围是多少？",
+      "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0020",
+      "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0020#0001",
+      "requires_cross_doc": false,
+      "overlap_ratio": 0.1071,
+      "checked": true
+    },
+    {
+      "query_id": "hard-gl-0032",
+      "query_text": "不同测量方法对主动脉内径测量结果的影响是什么？",
+      "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0021",
+      "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0021#0000",
+      "requires_cross_doc": false,
+      "overlap_ratio": 0.2174,
+      "checked": true
+    },
+    {
+      "query_id": "hard-gl-0033",
+      "query_text": "男性和女性在E峰速度、A峰速度及E/A比值方面有何性别差异？",
+      "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0022",
+      "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0022#0000",
+      "requires_cross_doc": false,
+      "overlap_ratio": 0.1667,
+      "checked": true
+    },
+    {
+      "query_id": "hard-gl-0034",
+      "query_text": "男性和女性在三尖瓣E-tv峰速度和E/A-tv比值上是否存在显著差异？",
+      "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0022",
+      "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0022#0001",
+      "requires_cross_doc": false,
+      "overlap_ratio": 0.1714,
+      "checked": true
+    },
+    {
+      "query_id": "hard-gl-0035",
+      "query_text": "不同年龄段患者的Ems和Ams值是否有显著差异？",
+      "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0023",
+      "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0023#0000",
+      "requires_cross_doc": false,
+      "overlap_ratio": 0.0833,
+      "checked": true
+    },
+    {
+      "query_id": "hard-gl-0036",
+      "query_text": "不同年龄段患者的E峰和A峰速度及参数差异是否有临床意义？",
+      "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0023",
+      "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0023#0001",
+      "requires_cross_doc": false,
+      "overlap_ratio": 0.1071,
+      "checked": true
+    },
+    {
+      "query_id": "hard-gl-0037",
+      "query_text": "不同年龄段男性和女性的LVOT-v、AV-v、RVOT-v、PV-v的正常范围有何差异？",
+      "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0024",
+      "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0024#0000",
+      "requires_cross_doc": false,
+      "overlap_ratio": 0.1364,
+      "checked": true
+    },
+    {
+      "query_id": "hard-gl-0038",
+      "query_text": "不同年龄段的患者，其E-A-tv值的正常范围有何差异？",
+      "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0025",
+      "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0025#0000",
+      "requires_cross_doc": false,
+      "overlap_ratio": 0.1481,
+      "checked": true
+    },
+    {
+      "query_id": "hard-gl-0039",
+      "query_text": "不同年龄段的患者，其E-A比值的正常范围有何差异？",
+      "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0025",
+      "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0025#0001",
+      "requires_cross_doc": false,
+      "overlap_ratio": 0.08,
+      "checked": true
+    },
+    {
+      "query_id": "hard-gl-0040",
+      "query_text": "不同性别和年龄组的E/e'比值有何变化？",
+      "gold_source_doc_id": "pdf_cardiac_cardiac_echo_measurement_2016_0026",
+      "source_chunk_id": "kb_v1.3.0:pdf_cardiac_cardiac_echo_measurement_2016_0026#0000",
+      "requires_cross_doc": false,
+      "overlap_ratio": 0.35,
+      "checked": true
+    }
+  ],
+  "n": 40,
+  "rejected": {
+    "overlap_too_high": 2,
+    "too_short_source": 1
+  }
+}

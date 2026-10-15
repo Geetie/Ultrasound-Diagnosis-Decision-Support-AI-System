@@ -5,7 +5,29 @@
 
 ## Last Updated
 
-2026-10-15（分支 `main`；**A.65 已交付** —— 图谱「扩边 + 邻居排序」离线仿真：**零召回增益 → 不落库、不动生产**（`NO_GO_NO_RECALL_GAIN`）。上一轮 A.64 两项技术欠账清账亦已交付）。
+2026-10-15（分支 `main`；**A.66 已交付** —— ①确诊评测仪器饱和（p40）②自造两类难集（p41）③难集复评：**扩边真有召回增益，但当前排序转不成收益 → `NO_GO`**（p42）④长文档家底量化：**257 篇指南/规范文档（434 块）已在库、边覆盖完整 → 阻塞点不是语料**。上一轮 A.65 离线仿真判定亦已交付）。
+
+- **A.66①仪器确诊（p40）**：136 条 golden 分层 **top-1 = 129 / top-3 = 4 / top-10 = 1 / miss = 2**（累计 hit@10 **0.9853**）→ `SATURATED`；最弱科室 **肿瘤科 hit@3 0.9333（n=45）**；根因＝golden 的 query **全取自对话语料**（`t1b_build_qa_golden.py` 只吃 `dialogue_docs.jsonl`）→ 从未考过"找指南知识/跨文档邻居"。顺手修掉我自己的判定 bug：把"第 4~10 名"那层占比当累计 hit@10（已抽成 `instrument_verdict()` + 守卫）。
+- **A.66②自造难集（p41，产物带 `synthetic: true` + `usage: expansion_ablation_only`）**：**crossdoc 200 条**（同 `(organ, section_path)` 组取 A 的问句、gold = B 另一篇文档；规则校验丢 11 条重叠过高）+ **guideline 40 条**（走 8006 Qwen3-8B 生成，丢 2 条重叠 + 1 条源文过短）。构造期两个真事实：**KB 内容已脱敏**（1257 块里含 `患者提问` 的 = 0，该词变成 `[REDACTED]：` → 问句必须回未脱敏源 `~/uai/data/kb_sources/dialogue_docs.jsonl`）；**8002 是 Qwen2.5-7B 且 `/v1/chat/completions` 404**（改用判官 8006）。
+- **A.66③难集复评（p42；前置成立性 + 与 p39 同源三臂/P0P1P2）**：
+  | 集 | 难集成立 | hit@5 baseline / 任取 / 排序 | 池子召回 | 裁决 |
+  |---|---|---|---|---|
+  | crossdoc（200） | ✅ gold 不在 top-10 占 **0.955** | **0.015 / 0.0192 / 0.015** | **0.045 → 0.195** | **`NO_GO`**（P0✅ P1✅ **P2❌**） |
+  | guideline（40） | ❌ 只 0.10 | 0.85 / 0.18 / 0.85 | 0.90 → 1.00 | `NO_GO_INSTRUMENT_NOT_READY`（不出结论） |
+  **这改写了 A.65**：扩边**确实有召回价值**（+15pp），但"用 query 相似度排序"这个假设是错的 → **真问题是换选择器信号**（结构/角色，或交给真 reranker）。另：指南检索**不弱**（baseline 0.85），推翻我的猜测。
+- **A.66④长文档家底（只读分组统计）**：1057 文档＝**指南/规范类 257 篇（434 块）** + 对话类 800 篇（823 块）；**多块文档 121 篇、其中 120 篇是指南/规范类**（2~10 块，均 400~520 tok）；**多块但零边 = 0** → **长文档不缺、边也不缺**；A.64/A.65 里"前置＝语料先有长文档"的说法**就地收窄**为"缺的是邻居选择器"。附带登记：`source_doc_id` 粒度两语料不一致（指南类出现按块形如 `..._0001`）。
+
+### A.66 复跑入口与踩坑
+
+- **①难度体检**（服务器，需 8004+DB）：`~/uai/venv/bin/python scripts/audit/p40_golden_difficulty_profile.py`
+- **②造难集**：`... scripts/audit/p41_build_hard_query_set.py --mode crossdoc`（确定性，0.2s）
+  ／ `--mode guideline --gen-url http://127.0.0.1:8006 --gen-model Qwen3-8B`（**别用 8002**：它是 Qwen2.5-7B 且 chat 端点 404）
+- **③复评**：`... scripts/audit/p42_reeval_expansion_on_hard_set.py --set crossdoc`（退出码 1 = 仪器不成立）
+- **踩坑**：
+  1. **仪器饱和会给出完全错误的结论**：同一件事（扩边）在饱和集上"零增益"、在真难集上"+15pp" → **先确认仪器能不能测**；
+  2. **正则口径会随脱敏漂移**：`患者提问` → `[REDACTED]`（KB 0 命中）→ 问句类一律回**未脱敏源**；
+  3. **端口/模型别靠记忆**：探测一次（`/v1/models` + 一次真实调用）比改三次代码便宜；
+  4. **`source_doc_id` 粒度不一致**（对话按篇、指南出现按块）→ 跨语料做"文档级"统计必须写明。
 
 - **A.65 WP1（本轮唯一开发项）图谱扩边 + 邻居排序：先仿真、后否决**。探针 `scripts/audit/p39_graph_neighbor_ranking_sim.py`（**离线不写库**；复用 `t1_eval_retrieval.{embed_texts,cosine_topk}` 与 `gate2_bge_top10.doc_level_hit_at_k`，一把尺子）。136 条 golden、同一候选池（跨文档同章节，与 `p38 --coverage` 同口径）三臂对照：
   | 臂 | hit@5 |

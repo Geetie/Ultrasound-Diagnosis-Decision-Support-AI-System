@@ -1051,6 +1051,28 @@
       "evidence": "16 号 A.65.1；scripts/audit/p39_graph_neighbor_ranking_sim.py；tests/unit/quality/test_graph_neighbor_ranking_sim.py（三态判据 + 占位块检测）；reports/graph_neighbor_ranking.json"
     },
     {
+      "id": "a66-eval-instrument-hard-set",
+      "name": "评测仪器确诊饱和 + 自造两类难集 + 扩边复评：扩边真有召回增益，但当前排序转不成收益",
+      "description": "A.65 的裁决被「仪器饱和」卡住（hit@5 天花板 0.9853）。本批先诊断仪器（p40 难度分层），再造两类难集（p41：crossdoc 跨文档依赖型 / guideline 指南型，均 synthetic+usage=expansion_ablation_only），最后在难集上按与 p39 同源的协议复评（p42：前置成立性校验 + 三臂 + P0/P1/P2 三态判据）。",
+      "status": "done",
+      "result": "①**仪器确诊 `SATURATED`**（p40，136 条）：**top-1 = 129**、top-3 = 4、top-10 = 1、miss = 2（累计 hit@10 **0.9853**）；最弱科室 **肿瘤科 hit@3 0.9333（n=45）**；根因＝query 全取自对话语料（`t1b_build_qa_golden.py` 数据源只有 `dialogue_docs.jsonl`）→ 从未考过「找指南知识」与「跨文档邻居」。②**难集造出**：crossdoc **200 条**（同 (organ,section_path) 组取 A 问句、gold=B；规则校验丢 11 条重叠过高）、guideline **40 条**（Qwen3-8B@8006 生成，丢 2+1 条）。③**复评裁决**：crossdoc（n=200，gold 不在 top-10 占 **0.955**，难集成立）→ hit@5 baseline **0.015** / 任取 **0.0192** / 排序 **0.015**、**池子召回 0.045 → 0.195（+15pp）** → **`NO_GO`**（P0 ✅ 增益、P1 ✅ 不退化、**P2 ❌ 排序不优于任取**）；guideline（gold 不在 top-10 只 0.10，难集不成立）→ **`NO_GO_INSTRUMENT_NOT_READY`**（按预注册判据**不出结论**，baseline hit@5 0.85 说明指南检索不弱）。**这改写了 A.65 的结论**：扩边确实有召回价值，但「用 query 相似度排序」这个假设是错的 → 真问题是**换选择器信号**（结构/角色或真 reranker）。构造期另踩两坑：KB 内容已脱敏（`患者提问`→`[REDACTED]`，0 命中，问句须回未脱敏源）、8002 是 Qwen2.5-7B 且 chat 端点 404。",
+      "dependencies": [
+        "a65-graph-expansion-ranking-verdict"
+      ],
+      "evidence": "16 号 A.66.1 / A.66.2 / A.66.5；scripts/audit/p40_golden_difficulty_profile.py；scripts/audit/p41_build_hard_query_set.py；scripts/audit/p42_reeval_expansion_on_hard_set.py；tests/unit/quality/test_golden_difficulty_profile.py；tests/unit/quality/test_hard_query_set_rules.py；tests/reports/hard_query_set_{crossdoc,guideline}.json（synthetic）；reports/golden_difficulty_profile.json；reports/p42_reeval_{crossdoc,guideline}.json"
+    },
+    {
+      "id": "a66-longdoc-inventory",
+      "name": "长文档家底量化：257 篇指南/规范文档（434 块）已在库、边覆盖完整 → 阻塞点不是语料",
+      "description": "针对 A.64/A.65 反复出现的「前置＝语料先有长文档」判断，本批做一次家底量化（只读、按 source_doc_id 分组）：指南/规范类文档数、块数、多块文档的边覆盖、token 分布。",
+      "status": "done",
+      "result": "kb_v1.3.0 = **1057 文档**：指南/规范类 **257 篇（434 块）**、对话类 800 篇（823 块）；**多块文档 121 篇，其中 120 篇是指南/规范类**（每篇 2~10 块、均 400~520 token，正落在 chunker 目标区间）；**多块但零边的文档 = 0**（边覆盖完整，带边块 321 / 400 条边）。样例：`norm2018_s01`（10 块全带边）、`pdf_thyroid_*` / `pdf_cardiac_*` / `pdf_liver_*` 各 2~3 块。**结论：长文档不缺、边也不缺** → A.64/A.65 里「前置＝语料先有长文档」的说法**就地收窄**：真正缺的是把「同章节」结构信号变成相关性的**邻居选择器**（见 a66-eval-instrument-hard-set ③）；语料增量（≥150 份）仍是外部项，但**不再是这条路的阻塞点**。附带登记：`source_doc_id` 粒度在两语料上不一致（对话类按篇、指南类出现按块形如 `..._0001`），跨语料做「文档级」统计时必须写明。",
+      "dependencies": [
+        "a64-kb-structure-verdict"
+      ],
+      "evidence": "16 号 A.66.3；reports/kb_structure_health.json（A.64 结构体检）；kb_v1.3.0 只读分组统计（本轮）"
+    },
+    {
       "id": "evidence-chain-crag-path",
       "name": "证据链在 CRAG/降级路径上不一致（落库有、prompt 留痕无）——待查",
       "description": "A.62 批 1 真机实测：心脏腿 2/2 出现「数据库 `knowledge_ids` 里有块不在任何 `_build_prompt` 留痕中」（如 `dialogue_cardiac_外科_0028#0000`），而甲状腺腿 5/5 都是「落库 = prompt 前 3 条」的正常形态。嫌疑点：①CRAG 恢复的 `old+new+reinvoked` 三段证据拼接（`app/fusion/crag.py:600-620`）；②融合层 `final_response` 选择口径（`app/fusion/service.py:190,289-303`）；③某个分支在 `_post_process` 之外设置 evidence。要查清「这条块是谁、在哪一步写进 `final_response.evidence_chunk_ids`」，并决定「留痕是否要覆盖全部写证据的路径」（当前只覆盖 `_build_prompt`/`_post_process`）。",
