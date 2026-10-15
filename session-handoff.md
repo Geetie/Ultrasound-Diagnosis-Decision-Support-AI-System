@@ -5,7 +5,18 @@
 
 ## Last Updated
 
-2026-10-15（分支 `main`；**A.64 已交付** —— ①TN3K 那对不一致数字判定完毕（旧值作废）②知识库结构体检 + 图谱扩边量化（两项改动被数据否掉，不切生产）③一页纸（两项口径 + 两件数据）。上一轮 A.63 三件可做项亦已交付）。
+2026-10-15（分支 `main`；**A.65 已交付** —— 图谱「扩边 + 邻居排序」离线仿真：**零召回增益 → 不落库、不动生产**（`NO_GO_NO_RECALL_GAIN`）。上一轮 A.64 两项技术欠账清账亦已交付）。
+
+- **A.65 WP1（本轮唯一开发项）图谱扩边 + 邻居排序：先仿真、后否决**。探针 `scripts/audit/p39_graph_neighbor_ranking_sim.py`（**离线不写库**；复用 `t1_eval_retrieval.{embed_texts,cosine_topk}` 与 `gate2_bge_top10.doc_level_hit_at_k`，一把尺子）。136 条 golden、同一候选池（跨文档同章节，与 `p38 --coverage` 同口径）三臂对照：
+  | 臂 | hit@5 |
+  |---|---|
+  | baseline（现状 top-5，不扩边） | **0.9853**（与 p36/p15 逐位一致 → 口径自证） |
+  | 任取 5（同池随机，20 次采样均值） | **0.0963** |
+  | 按 query 余弦重排取 5（模拟生产 rerank） | **0.9853** |
+  池子召回：现状 top-10 **0.9853** → 扩边后 **0.9853**（**零增益**）→ 判定 **`NO_GO_NO_RECALL_GAIN`**（P0 零增益 False；P1 不退化 True；P2 排序有效 True）→ **不建 rc、不写边、`graph_query_enabled` 维持 False**。
+- **两条硬结论（都可复跑）**：①**裸扩边（不排序）会把 hit@5 从 0.9853 稀释到 0.0963** —— 独立验证 A.64 的 `SUPERNODE_RISK`；②跨文档同章节边**零召回收益**（现状 top-10 已含 gold 98.53%，天花板只剩 1.47pp）→ **真正的前置条件不是排序，而是语料先有可分的长文档**（与 A.64.2 的结论互相印证）。
+- **判据本身修过一次（值得记）**：首跑只写了 P1/P2 → 报告给出 **虚假 `GO`**，而同一份报告里池子召回明明是零增益 → 当场补 **P0（扩边必须真把 gold 拉进池子）**，并把首跑真实数字写成守卫回归锚点。**"不退化"不等于"有价值"。**
+- **踩坑（会害死探针）**：`Retriever(session_factory=None)` 时每个命中都是 `_placeholder_chunk`（`app/rag/retriever.py:624`：`content="[placeholder]"`、**`source_doc_id=chunk_id`**）→ 按来源/内容的统计**静默全 0**（首跑 hit@5 = 0.0/0.0/0.0）。修法：探针一律传真实 `AsyncSessionLocal`、`source_doc_id` 从 DB 解析、并新增 `count_placeholder_chunks()` + **占位块占多数即响亮失败**（退出码 2，不产出报告）。
 
 - **A.64 WP1 TN3K 口径判定**：旧报告 `tests/reports/t2a_tn3k_generalization.json`（AUC 0.6789 / n=1228）是**孤儿产物** —— 全仓**无生成脚本**（schema `malignancy_auc`/`acc_at_0.5` 唯一）、`n=1228` 与 TN3K 官方 test **614** 张不符；资产只有一条链（`models/t2a_v2/t2a_finetune.pt` sha256 `7a5849d5…` + `t2a_probe_lr.joblib` `40bfa6b4…`；回退路径不存在，8003 的 `T2A_*` env 与启动日志三处互证）。真机同尺子复跑：正向 **0.4929 [0.4438,0.5402]**、**标签反向腿 0.5071**、**Youden 最佳阈值 0.799 → sens 0.2331 / spec 0.8254（和 1.06）** → 判定 **`ORPHAN_UNREPRODUCIBLE`**。处置：旧 json 加 `_status: VOIDED` + `_voided_reason` + `_replacement`（原字段保留）；16 号 A.63.3 就地改为「已判定：见 A.64.1」。附带登记：t2a 有**四条链四套 AUC 实现** → 新探针一律只用 p29 的秩和（守卫 `test_t2a_metric_single_source.py`）。
 - **A.64 WP2 知识库结构与图谱扩边（两项都否掉，有数）**：`p38` 结构体检＝**1257 块 / 1057 文档、单块文档 936（88.5%）**、token 中位 **146**（<256 占 68.8%）、带边块 321（25.5%）、`section_path` 非空 100% → 诊断 `MAJORITY_SINGLE_CHUNK_DOCS`：**overlap 类切分改造对 88.5% 的文档零影响 → 不做**。`p38 --coverage` 量化跨文档同章节边：适用面可达 **136/136（100%）**、种子 408/408，但**候选池 51262 条 = 每种子 125.6** 而检索器只取 5 → **`SUPERNODE_RISK`**（灌噪声）→ 按预注册判据（指标不得回退无法保证）**不建 rc、不切生产**。前置条件：**先做邻居排序（相似度选 top-k）**；语料侧根治仍是长文档结构化入库（外部）。

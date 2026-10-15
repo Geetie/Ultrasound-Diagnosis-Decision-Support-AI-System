@@ -1040,6 +1040,17 @@
       "evidence": "16 号 A.64.2；scripts/audit/p38_kb_structure_health.py（结构体检 + --coverage）；reports/kb_structure_health.json；reports/kb_graph_coverage.json"
     },
     {
+      "id": "a65-graph-expansion-ranking-verdict",
+      "name": "图谱「扩边 + 邻居排序」离线仿真：零召回增益 → 不落库、不动生产",
+      "description": "A.64.2 把图谱扩展的唯一前置条件登记为「邻居排序」（跨文档同章节边每种子 125.6 个候选、检索器只取 5）。本轮先离线量化「排序能不能救」：新增 `scripts/audit/p39_graph_neighbor_ranking_sim.py`（不写库；复用 t1_eval_retrieval.embed_texts/cosine_topk 与 gate2_bge_top10.doc_level_hit_at_k）。三条预注册判据：P0 扩边须真带来召回增益（≥+0.02）/ P1 排序后不退化 / P2 排序须显著优于任取。",
+      "status": "done",
+      "result": "真机（136 条 golden，同一候选池，30s）：hit@5 = baseline **0.9853**（与 p36/p15 逐位一致）/ 任取 5 **0.0963** / 按余弦重排 **0.9853**；池子召回 现状 top-10 **0.9853** → 扩边后 **0.9853**（零增益）→ 判定 **`NO_GO_NO_RECALL_GAIN`**（P0 False、P1/P2 True）→ **不建 rc、不写边、`graph_query_enabled` 维持 False**。两条硬结论：①**裸扩边（不排序）会把 hit@5 从 0.9853 稀释到 0.0963**（独立验证 A.64 的 SUPERNODE_RISK）；②跨文档同章节边零召回增益（现状 top-10 已含 gold 98.53%，天花板仅剩 1.47pp）→ 前置条件不止排序，**语料得先有可分的长文档**。局限：本 golden 已饱和，只能证「排序必要」，不能证「扩边无害/有益」，要真评估需更难的查询集。**判据自修**：首跑只有 P1/P2 → 给出虚假 `GO`（池子召回明明零增益）→ 补 P0 并把首跑真实数字写成守卫回归锚点。",
+      "dependencies": [
+        "a64-kb-structure-verdict"
+      ],
+      "evidence": "16 号 A.65.1；scripts/audit/p39_graph_neighbor_ranking_sim.py；tests/unit/quality/test_graph_neighbor_ranking_sim.py（三态判据 + 占位块检测）；reports/graph_neighbor_ranking.json"
+    },
+    {
       "id": "evidence-chain-crag-path",
       "name": "证据链在 CRAG/降级路径上不一致（落库有、prompt 留痕无）——待查",
       "description": "A.62 批 1 真机实测：心脏腿 2/2 出现「数据库 `knowledge_ids` 里有块不在任何 `_build_prompt` 留痕中」（如 `dialogue_cardiac_外科_0028#0000`），而甲状腺腿 5/5 都是「落库 = prompt 前 3 条」的正常形态。嫌疑点：①CRAG 恢复的 `old+new+reinvoked` 三段证据拼接（`app/fusion/crag.py:600-620`）；②融合层 `final_response` 选择口径（`app/fusion/service.py:190,289-303`）；③某个分支在 `_post_process` 之外设置 evidence。要查清「这条块是谁、在哪一步写进 `final_response.evidence_chunk_ids`」，并决定「留痕是否要覆盖全部写证据的路径」（当前只覆盖 `_build_prompt`/`_post_process`）。",
