@@ -1,0 +1,102 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "一次问诊从提交到出结论，中间经过哪些步骤",
+    "locale": "zh-CN",
+    "output": "system-map/one-visit-flow.html",
+    "quality_profile": "standard",
+    "views": [
+      {
+        "id": "happy",
+        "label": "顺利走完的主路",
+        "focus": ["submit", "auth", "limit", "leg_text", "merge", "spec", "selfcheck", "archive", "render"],
+        "note": "六步：提交 检查 找资料 挑五段 做判断 自检 存档 显示。"
+      },
+      {
+        "id": "three-legs",
+        "label": "找资料为什么是三条路",
+        "focus": ["limit", "leg_text", "leg_kw", "leg_img", "merge"],
+        "note": "三条路同时跑，谁有结果都算候选；第三条现在没有数据，会自动跳过。"
+      },
+      {
+        "id": "failure",
+        "label": "出错时怎么办",
+        "focus": ["limit", "merge", "selfcheck", "degrade", "render"],
+        "note": "任何一步出错都不许安静跳过，必须留记录并给医生一句实话。"
+      }
+    ]
+  },
+  "lanes": [
+    { "id": "doctor", "label": "医生端" },
+    { "id": "entry", "label": "入口与检查" },
+    { "id": "leg_text", "label": "第一条路 文字相似" },
+    { "id": "leg_kw", "label": "第二条路 关键词" },
+    { "id": "leg_img", "label": "第三条路 影像相似" },
+    { "id": "judge", "label": "判断与自检" },
+    { "id": "ops", "label": "存档与出错分支", "variant": "exception" }
+  ],
+  "phases": [
+    { "id": "p_submit", "label": "提交", "fromCol": 0, "toCol": 0 },
+    { "id": "p_check", "label": "检查", "fromCol": 1, "toCol": 1 },
+    { "id": "p_find", "label": "找资料", "fromCol": 2, "toCol": 2, "variant": "emphasis" },
+    { "id": "p_merge", "label": "合并候选", "fromCol": 3, "toCol": 3 },
+    { "id": "p_think", "label": "做判断", "fromCol": 4, "toCol": 4, "variant": "emphasis" },
+    { "id": "p_done", "label": "自检与出结论", "fromCol": 5, "toCol": 5 }
+  ],
+  "groups": [
+    { "id": "three_legs", "label": "三条路同时跑", "lane": "leg_text", "fromCol": 2, "toCol": 2 },
+    { "id": "fallback", "label": "出错就降级 但必须留记录", "lane": "ops", "fromCol": 3, "toCol": 4, "variant": "security" }
+  ],
+  "mainPath": ["submit", "auth", "limit", "leg_text", "merge", "spec", "selfcheck", "archive", "render"],
+  "nodes": [
+    { "id": "submit", "lane": "doctor", "col": 0, "type": "frontend", "label": "提交问题与影像", "sublabel": "医生点的第一步" },
+    { "id": "auth", "lane": "entry", "col": 1, "type": "security", "label": "登录与权限", "sublabel": "谁能看什么" },
+    { "id": "limit", "lane": "entry", "col": 2, "type": "backend", "label": "编号与限流", "sublabel": "防重复 防刷" },
+    { "id": "leg_text", "lane": "leg_text", "col": 2, "width": 132, "type": "backend", "label": "文字相似找段落", "sublabel": "主力路" },
+    { "id": "leg_kw", "lane": "leg_kw", "col": 2, "type": "backend", "label": "按关键词找", "sublabel": "补位路" },
+    { "id": "leg_img", "lane": "leg_img", "col": 2, "width": 124, "type": "backend", "label": "影像找相似", "sublabel": "库里没数据 会自动跳过" },
+    { "id": "merge", "lane": "judge", "col": 3, "width": 124, "type": "backend", "label": "合并并挑五段", "sublabel": "按相关程度排" },
+    { "id": "spec", "lane": "judge", "col": 4, "type": "backend", "label": "专科做判断", "sublabel": "甲状腺 心脏 肝脏" },
+    { "id": "selfcheck", "lane": "judge", "col": 5, "type": "security", "label": "逐条核对依据", "sublabel": "说法能不能在资料里找到" },
+    { "id": "archive", "lane": "ops", "col": 5, "type": "database", "label": "写入存档", "sublabel": "用了哪几段都记下" },
+    { "id": "render", "lane": "doctor", "col": 5, "type": "frontend", "label": "页面显示结论", "sublabel": "带依据与把握程度" },
+    { "id": "degrade", "lane": "ops", "col": 3, "type": "security", "label": "出错就降级", "sublabel": "给医生一句实话 并留记录" }
+  ],
+  "edges": [
+    { "from": "submit", "to": "auth", "label": "提交", "variant": "emphasis" },
+    { "from": "auth", "to": "limit", "label": "通过", "variant": "emphasis" },
+    { "from": "limit", "to": "leg_text", "label": "开始找资料", "variant": "emphasis" },
+    { "from": "limit", "to": "leg_kw", "variant": "dashed", "label": "同时" },
+    { "from": "limit", "to": "leg_img", "variant": "dashed", "label": "同时" },
+    { "from": "leg_text", "to": "merge", "label": "候选段落" },
+    { "from": "leg_kw", "to": "merge" },
+    { "from": "leg_img", "to": "merge", "variant": "dashed" },
+    { "from": "merge", "to": "spec", "label": "交出五段资料", "variant": "emphasis" },
+    { "from": "spec", "to": "selfcheck", "label": "判断加依据", "variant": "emphasis" },
+    { "from": "selfcheck", "to": "archive", "label": "通过就存档" },
+    { "from": "archive", "to": "render", "label": "结论回到页面" },
+    { "from": "limit", "to": "degrade", "label": "任一步出错", "variant": "security", "role": "error" },
+    { "from": "degrade", "to": "render", "label": "降级提示", "variant": "security", "role": "error" }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "主路六步 每一步都能查出问题",
+      "items": [
+        "提交 检查 找资料 挑五段 做判断 自检 存档 显示",
+        "每一步都留时间 错误 与用了哪些资料",
+        "医生看到的结论后面附依据 不是只给一句话"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "出错不装好",
+      "items": [
+        "任何一步失败 都会走降级分支 并写进记录",
+        "降级不是假结论 而是明确告诉医生哪一步没做成",
+        "第三条检索路没有数据时会自动跳过 但日志里写明原因"
+      ]
+    }
+  ]
+}

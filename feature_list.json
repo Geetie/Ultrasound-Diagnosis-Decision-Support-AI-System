@@ -1055,7 +1055,7 @@
       "name": "评测仪器确诊饱和 + 自造两类难集 + 扩边复评：扩边真有召回增益，但当前排序转不成收益",
       "description": "A.65 的裁决被「仪器饱和」卡住（hit@5 天花板 0.9853）。本批先诊断仪器（p40 难度分层），再造两类难集（p41：crossdoc 跨文档依赖型 / guideline 指南型，均 synthetic+usage=expansion_ablation_only），最后在难集上按与 p39 同源的协议复评（p42：前置成立性校验 + 三臂 + P0/P1/P2 三态判据）。",
       "status": "done",
-      "result": "①**仪器确诊 `SATURATED`**（p40，136 条）：**top-1 = 129**、top-3 = 4、top-10 = 1、miss = 2（累计 hit@10 **0.9853**）；最弱科室 **肿瘤科 hit@3 0.9333（n=45）**；根因＝query 全取自对话语料（`t1b_build_qa_golden.py` 数据源只有 `dialogue_docs.jsonl`）→ 从未考过「找指南知识」与「跨文档邻居」。②**难集造出**：crossdoc **200 条**（同 (organ,section_path) 组取 A 问句、gold=B；规则校验丢 11 条重叠过高）、guideline **40 条**（Qwen3-8B@8006 生成，丢 2+1 条）。③**复评裁决**：crossdoc（n=200，gold 不在 top-10 占 **0.955**，难集成立）→ hit@5 baseline **0.015** / 任取 **0.0192** / 排序 **0.015**、**池子召回 0.045 → 0.195（+15pp）** → **`NO_GO`**（P0 ✅ 增益、P1 ✅ 不退化、**P2 ❌ 排序不优于任取**）；guideline（gold 不在 top-10 只 0.10，难集不成立）→ **`NO_GO_INSTRUMENT_NOT_READY`**（按预注册判据**不出结论**，baseline hit@5 0.85 说明指南检索不弱）。**这改写了 A.65 的结论**：扩边确实有召回价值，但「用 query 相似度排序」这个假设是错的 → 真问题是**换选择器信号**（结构/角色或真 reranker）。构造期另踩两坑：KB 内容已脱敏（`患者提问`→`[REDACTED]`，0 命中，问句须回未脱敏源）、8002 是 Qwen2.5-7B 且 chat 端点 404。",
+      "result": "①**仪器确诊 `SATURATED`**（p40，136 条）：**top-1 = 129**、top-3 = 4、top-10 = 1、miss = 2（累计 hit@10 **0.9853**）；最弱科室 **肿瘤科 hit@3 0.9333（n=45）**；根因＝query 全取自对话语料（`t1b_build_qa_golden.py` 数据源只有 `dialogue_docs.jsonl`）→ 从未考过「找指南知识」与「跨文档邻居」。②**难集造出**：crossdoc **200 条**（同 (organ,section_path) 组取 A 问句、gold=B；规则校验丢 11 条重叠过高）、guideline **40 条**（Qwen3-8B@8006 生成，丢 2+1 条）。③**复评裁决**：crossdoc（n=200，gold 不在 top-10 占 **0.955**，难集成立）→ hit@5 baseline **0.015** / 任取 **0.0192** / 排序 **0.015**、**池子召回 0.045 → 0.195（+15pp）** → **`NO_GO`**（P0 ✅ 增益、P1 ✅ 不退化、**P2 ❌ 排序不优于任取**）；guideline（gold 不在 top-10 只 0.10，难集不成立）→ **`NO_GO_INSTRUMENT_NOT_READY`**（按预注册判据**不出结论**，baseline hit@5 0.85 说明指南检索不弱）。**这改写了 A.65 的结论**：扩边确实有召回价值，但「用 query 相似度排序」这个假设是错的 → 真问题是**换选择器信号**（结构/角色或真 reranker）。构造期另踩两坑：KB 内容已脱敏（`患者提问`→`[REDACTED]`，0 命中，问句须回未脱敏源）、8002 是 Qwen2.5-7B 且 chat 端点 404。**【A.68.2 更正（2026-10-20）】本条的 gold 是「弱 gold」**：`p43` 量化显示 `(organ, section_path)` 精确分组只有 **13 个**，但每组**平均 80.6 篇、最大 200 篇**（对话语料同科室的 section_path 完全相同）→ 「gold = 同组另一篇」等于**随机挑一个兄弟文档**。因此「池子召回 0.045→0.195（+15pp）」只能说明**多捞到兄弟文档**，**不能**说明捞到正确答案；`NO_GO` 的结论不变，但**不得再用这 +15pp 论证「扩边有价值」**。",
       "dependencies": [
         "a65-graph-expansion-ranking-verdict"
       ],
@@ -1087,8 +1087,8 @@
       "id": "r1-image-leg-explicit",
       "name": "图像检索腿：把「空转」变成显式能力（能力自检 + 三选一决策）",
       "description": "现状：`rag_use_multimodal=True`（默认开）、`rag_image_collection='ultrasound_chunks'`，但 Qdrant 只有 `ultrasound_knowledge_chunks`（1257 点 / 1024 维），ULC 服务报 512 维 → 集合不存在且维度不匹配，`_safe_image` 走 `image_collection_not_found_skipping` 返回空；日志只有 info 级。做法：①`/api/v1/health/deps` 与启动日志报 image_leg 能力（collection_exists/collection_dim/clip_dim/ready），缺失升 warning + 计数；②三选一（A 建 512 维独立集合灌数据 / B 显式关闭 / C 默认关按需开）；③守卫「空腿不得拉低 RRF 名次」；④真机带图请求留痕。判据：能力可见、不再静默；走 A 则 image_hits>0 且 gate2/p15 文本指标不回退。",
-      "status": "planned",
-      "result": "待开工（建议第一个做，0.5 天，纯配置与观测，不动数据）",
+      "status": "done",
+      "result": "**已按用户拍板的方案 C 交付（A.68.1）**：`rag_use_multimodal` 默认 True→**False**；新增 `app/rag/image_leg.py`（`classify_image_leg()` 纯函数四态判定 + `probe_image_leg()` 2 秒超时探测 + `warn_once()` 去重告警）；`retriever` 两处「集合不存在」由 info 升**一次性 warning** 并给修复提示；`/api/v1/health` 的 `services.image_leg` 暴露能力块（不参与 all_healthy）。真机：按 PID 重启（old 851449 → new 3983054，6 秒 health=200），health 返回 `enabled=false / collection=ultrasound_chunks / collection_exists=false / image_dim=512 / ready=false` + 人话原因 → 同时证实「默认已关」与「集合确实不存在」。守卫 `tests/unit/rag/test_image_leg_availability.py` 9 例（三态分开/维度不匹配/默认必须 False/health 必须暴露/retriever 不得再打旧 info）。",
       "dependencies": [],
       "evidence": "21 号「批 9（A.67）」；16 号 A.63/A.64/A.65/A.66；app/rag/retriever.py（_safe_image）；app/config/settings.py（rag_image_collection）"
     },
@@ -1107,8 +1107,8 @@
       "id": "r3-hard-set-expand",
       "name": "评测仪器：难集扩充（放宽分组粒度 + 换形态）+ 人工抽检 + 转正流程",
       "description": "现状：原 golden 饱和（129/136 命中 top-1，累计 hit@10 0.9853）；自造 crossdoc 200 / guideline 40 均标 synthetic；crossdoc 仅 13 个同章节跨文档分组（样本少），guideline 集不难（baseline 0.85）。做法：①分组粒度放宽为 organ + section_path 前缀；②guideline 集改为「跨块/跨文档才答得全」的形态；③每集抽 20 条人工核对（问句像人问的、gold 唯一）→ 通过率 ≥80% 才可用；④转正需项目组同意，未转正仍只用于对照；⑤把 gold_not_in_top10_ratio 与 pool_recall 纳入趋势看板。",
-      "status": "planned",
-      "result": "待开工（1 天，无外部依赖；是 R2/R4 的判定前提）",
+      "status": "in_progress",
+      "result": "**第一步（分组量化）已完成，且否掉了原方案（A.68.2）**：新增 `scripts/audit/p43_hard_set_grouping_quant.py`（只读，判据跑前写死：可构造对数 ≥3× 且组内 ≤30 篇）。真机 0.2s 结果：`exact`（现状）**13 组 / 均 80.6 篇 / 最大 200 篇**、`prefix2` 与 exact **完全等价**（对话语料 section_path 只有两段）、`prefix1` 更糟（均 95.3 / 最大 400）→ 三种粒度全判 `AMBIGUOUS_GOLD_RISK`。**结论：放宽分组无效；且现状 13 个组本身就是巨组 → 按 (organ, section_path) 取「另一篇」当 gold ＝ 随机兄弟文档（弱 gold）**。这连带更正 A.66：crossdoc 难集测出的「池子召回 0.045→0.195」只证明「多捞到兄弟文档」，**不能**证明「捞到正确答案」→ **R2 暂停**（在弱 gold 上比选择器没有意义）。**下一步（R3 真内容）**：用更细章节信号造 ≤5 篇/组的小组（来源①`pdf_*` 深层 section_path ②同器官主题聚类 ③人工抽检确认组内另一篇确实能答该问句）；抽检通过率 ≥80% 才算可用。",
       "dependencies": [
         "a66-eval-instrument-hard-set"
       ],

@@ -363,7 +363,12 @@ class Settings(BaseSettings):
     rag_use_query_enhancement: bool = True
     rag_use_reranking: bool = True
     rag_use_bm25_fallback: bool = True
-    rag_use_multimodal: bool = True
+    # A.68 / R1（用户 2026-10-20 拍板「选 C 按需开」）：图像检索腿**默认关闭**。
+    # 原因：`rag_image_collection` 指向的集合在真机不存在（Qdrant 只有
+    # `ultrasound_knowledge_chunks`，1024 维），而 ULC 服务报 512 维 —— 开着也是零贡献，
+    # 且只留 info 日志（生产上看不见）。能力状态见 `/api/v1/health` 的 `image_leg` 块；
+    # 真要启用需先建好 512 维集合，再把本开关置 True（并在请求里带 image_data）。
+    rag_use_multimodal: bool = False
     rag_use_llm_enhancement: bool = False
     rag_collection: str = 'knowledge_chunks'
     rag_image_collection: str = 'ultrasound_chunks'

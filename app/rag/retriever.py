@@ -37,6 +37,7 @@ from app.embedding.protocols import (
 )
 from app.knowledge.protocols import KnowledgeChunk
 from app.rag.bm25_fallback import BM25Index
+from app.rag.image_leg import warn_once
 from app.rag.protocols import (
     RetrievalMethod,
     RetrievalRequest,
@@ -416,9 +417,13 @@ class Retriever:
             )
         except VectorIndexError as exc:
             if _is_collection_not_found(exc):
-                logger.info(
-                    "image_collection_not_found_skipping",
+                # A.68 / R1：集合缺失是**配置缺陷**，不是正常路径 → warning（仅一次），
+                # 否则"开了但一直空转"会安静地持续下去（A.63 图谱边被静默吞掉的同族问题）。
+                warn_once(
+                    f"image_collection_missing:{settings.rag_image_collection}",
+                    "image_leg_collection_missing",
                     collection=settings.rag_image_collection,
+                    hint="建好该集合（512 维）并把 rag_use_multimodal 置 True，否则这条腿零贡献",
                 )
                 return []
             logger.warning(
@@ -429,9 +434,11 @@ class Retriever:
             return []
         except Exception as exc:
             if _is_collection_not_found(exc):
-                logger.info(
-                    "image_collection_not_found_skipping",
+                warn_once(
+                    f"image_collection_missing:{settings.rag_image_collection}",
+                    "image_leg_collection_missing",
                     collection=settings.rag_image_collection,
+                    hint="建好该集合（512 维）并把 rag_use_multimodal 置 True，否则这条腿零贡献",
                 )
                 return []
             logger.warning(

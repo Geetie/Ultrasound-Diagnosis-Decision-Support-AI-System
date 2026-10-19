@@ -76,10 +76,18 @@ async def health_check():
     from app.rag.cache import get_retrieval_cache
 
     cache = get_retrieval_cache()
+
+    # A.68 / R1：图像检索腿的**能力状态**必须可见（不参与 all_healthy —— 它关着不影响正确性，
+    # 但"开着却空转"必须能被一眼看出来：集合不存在 / 维度不匹配 / 开关关闭）。
+    from app.rag.image_leg import probe_image_leg
+
+    image_leg = await probe_image_leg()
+
     services = {
         "redis": "healthy" if redis_healthy else "unhealthy",
         "database": "healthy" if db_healthy else "unhealthy",
         "hsm": hsm_status,
+        "image_leg": image_leg,
         # 仅作信息展示，不参与 all_healthy：缓存不可用时检索仍正确，只是变慢
         "retrieval_cache": (
             cache.health() if cache is not None else {"status": "disabled"}

@@ -5,6 +5,22 @@
 
 ## Last Updated
 
+2026-10-20（分支 `main`；**A.68 已交付第一段** —— R1 图像腿改为「默认关 + 能力可见」并真机验证；R3 第一步分组量化**否掉了原方案**并更正 A.66 的归因（gold 是弱 gold）→ **R2 暂停**。上一轮 A.66/A.67 亦已交付）。
+
+- **A.68.1 R1（方案 C，已完成）**：`rag_use_multimodal` 默认 **True→False**；新增 `app/rag/image_leg.py`（`classify_image_leg` 四态纯函数 + `probe_image_leg` 2 秒超时探测 + `warn_once` 去重）；`retriever` 两处「集合不存在」**info→一次性 warning**；`/api/v1/health` 暴露 `services.image_leg`。真机重启（851449→3983054，6 秒 health=200）返回 `enabled=false / collection_exists=false / image_dim=512 / ready=false` → 同时证实"默认已关"与"集合确实不存在"。守卫 `tests/unit/rag/test_image_leg_availability.py` 9 例。
+- **A.68.2 R3 第一步（分组量化，结论反直觉）**：`scripts/audit/p43_hard_set_grouping_quant.py`（只读，判据跑前写死）真机 0.2s → `exact` **13 组 / 均 80.6 篇 / 最大 200 篇**、`prefix2` 与 exact **完全等价**（对话语料 section_path 只有两段）、`prefix1` 更糟（均 95.3 / 最大 400）→ 三档全判 `AMBIGUOUS_GOLD_RISK`。
+  **两个后果**：①**放宽分组无效**，原计划作废；②**A.66 的 crossdoc 难集是弱 gold**（gold = 同章节随机兄弟文档）→ 当时"+15pp 池子召回"只证明多捞到兄弟文档，**不能**证明捞到正确答案 → **R2 暂停**（在弱 gold 上比选择器没有意义）。
+- **R3 下一步**：用更细章节信号造 **≤5 篇/组**的小组（①`pdf_*` 深层 section_path ②同器官主题聚类 ③人工抽检"组内另一篇确实能答该问句"），抽检 ≥80% 才可用；未通过之前不得用于任何 GO/NO-GO。
+
+### A.68 复跑入口
+
+- **R1 能力探测**（服务器，需 Qdrant）：`PYTHONPATH=~/uai/src ~/uai/venv/bin/python -c "import asyncio;from app.rag.image_leg import probe_image_leg;print(asyncio.run(probe_image_leg()))"`
+  或直接看 `curl -s http://127.0.0.1:18000/api/v1/health | python3 -m json.tool | grep -A8 image_leg`
+- **R3 分组量化**（服务器，只需 DB + 对话源）：`~/uai/venv/bin/python scripts/audit/p43_hard_set_grouping_quant.py --kb-version kb_v1.3.0`
+  → 报告 `~/uai/reports/hard_set_grouping_quant.json`；任一粒度判 `AMBIGUOUS_GOLD_RISK` 就别拿它造题。
+
+### A.66 交接（上一轮）
+
 2026-10-15（分支 `main`；**A.66 已交付** —— ①确诊评测仪器饱和（p40）②自造两类难集（p41）③难集复评：**扩边真有召回增益，但当前排序转不成收益 → `NO_GO`**（p42）④长文档家底量化：**257 篇指南/规范文档（434 块）已在库、边覆盖完整 → 阻塞点不是语料**。上一轮 A.65 离线仿真判定亦已交付）。
 
 - **A.66①仪器确诊（p40）**：136 条 golden 分层 **top-1 = 129 / top-3 = 4 / top-10 = 1 / miss = 2**（累计 hit@10 **0.9853**）→ `SATURATED`；最弱科室 **肿瘤科 hit@3 0.9333（n=45）**；根因＝golden 的 query **全取自对话语料**（`t1b_build_qa_golden.py` 只吃 `dialogue_docs.jsonl`）→ 从未考过"找指南知识/跨文档邻居"。顺手修掉我自己的判定 bug：把"第 4~10 名"那层占比当累计 hit@10（已抽成 `instrument_verdict()` + 守卫）。

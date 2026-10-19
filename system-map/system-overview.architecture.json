@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "超声诊断系统在线部分由哪些东西组成",
+    "locale": "zh-CN",
+    "output": "system-map/system-overview.html",
+    "quality_profile": "standard",
+    "viewBox": [1400, 720],
+    "views": [
+      {
+        "id": "one-visit",
+        "label": "一次问诊走哪条路",
+        "focus": ["doctor", "browser", "gateway", "retriever", "specialist", "selfcheck", "safety"],
+        "note": "从医生提交到结论回到页面，主路只有一条。"
+      },
+      {
+        "id": "models",
+        "label": "五个模型服务各管什么",
+        "focus": ["retriever", "emb", "rerank", "cls", "llm", "judge"],
+        "note": "都在本机不同端口，互相独立，坏一个只影响它那一步。"
+      },
+      {
+        "id": "stores",
+        "label": "数据存在哪",
+        "focus": ["qdrant", "pg", "archive", "metrics", "langfuse"],
+        "note": "向量库管找相似，业务库管记录与关系，另外两处只做留痕。"
+      }
+    ]
+  },
+  "components": [
+    { "id": "doctor", "type": "external", "label": "医生", "sublabel": "用浏览器的人", "pos": [30, 318], "size": [112, 64] },
+    { "id": "browser", "type": "frontend", "label": "浏览器页面", "sublabel": "上传影像 看结论", "pos": [186, 318], "size": [136, 64] },
+    { "id": "gateway", "type": "backend", "label": "后端主程序", "sublabel": "认证 限流 编号", "pos": [368, 318], "size": [152, 64] },
+    { "id": "retriever", "type": "backend", "label": "找资料这一步", "sublabel": "几条路一起找", "pos": [566, 318], "size": [152, 64] },
+    { "id": "specialist", "type": "backend", "label": "专科判断", "sublabel": "甲状腺 心脏 肝脏", "pos": [764, 318], "size": [152, 64] },
+    { "id": "selfcheck", "type": "backend", "label": "自检与合并", "sublabel": "依据够不够", "pos": [962, 318], "size": [152, 64] },
+    { "id": "safety", "type": "security", "label": "安全检查", "sublabel": "禁忌 隐私 越界", "pos": [1160, 318], "size": [152, 64] },
+    { "id": "archive", "type": "database", "label": "存档与留痕", "sublabel": "每次结论都可追", "pos": [1160, 456], "size": [152, 64] },
+    { "id": "qdrant", "type": "database", "label": "向量库", "sublabel": "1257 段 可搜相似", "pos": [566, 118], "size": [152, 64] },
+    { "id": "pg", "type": "database", "label": "业务数据库", "sublabel": "段落 关系 结论", "pos": [1160, 118], "size": [152, 64] },
+    { "id": "metrics", "type": "external", "label": "指标与告警", "sublabel": "延迟 错误 显存", "pos": [368, 118], "size": [152, 64] },
+    { "id": "langfuse", "type": "external", "label": "调用链记录", "sublabel": "每次调用可回看", "pos": [764, 118], "size": [152, 64] },
+    { "id": "emb", "type": "cloud", "label": "文字转向量", "sublabel": "端口 8004", "pos": [368, 596], "size": [136, 62] },
+    { "id": "rerank", "type": "cloud", "label": "候选再排序", "sublabel": "端口 8005", "pos": [520, 596], "size": [136, 62] },
+    { "id": "cls", "type": "cloud", "label": "影像判断与转向量", "sublabel": "端口 8003", "pos": [672, 596], "size": [156, 62] },
+    { "id": "llm", "type": "cloud", "label": "写结论的大模型", "sublabel": "端口 8002", "pos": [844, 596], "size": [146, 62] },
+    { "id": "judge", "type": "cloud", "label": "打分用的模型", "sublabel": "端口 8006", "pos": [1006, 596], "size": [140, 62] }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "医生这一侧", "wraps": ["doctor", "browser"], "pad": 16 },
+    { "kind": "security-group", "label": "后端主程序", "wraps": ["gateway", "retriever", "specialist", "selfcheck", "safety", "archive"], "pad": 16 },
+    { "kind": "region", "label": "五个模型服务 各自独立", "wraps": ["emb", "rerank", "cls", "llm", "judge"], "pad": 14 },
+    { "kind": "security-group", "label": "数据与留痕", "wraps": ["qdrant", "pg", "metrics", "langfuse"], "pad": 14 }
+  ],
+  "connections": [
+    { "from": "doctor", "to": "browser", "label": "提问并上传", "variant": "emphasis", "labelAt": [164, 404] },
+    { "from": "browser", "to": "gateway", "label": "提交", "variant": "emphasis", "labelAt": [345, 404] },
+    { "from": "gateway", "to": "retriever", "label": "去找资料", "variant": "emphasis", "labelAt": [543, 404] },
+    { "from": "retriever", "to": "qdrant", "label": "找最像段落", "variant": "emphasis" },
+    { "from": "retriever", "to": "emb", "label": "问题变数字", "fromSide": "bottom", "toSide": "top" },
+    { "from": "retriever", "to": "rerank", "label": "候选再排序", "fromSide": "bottom", "toSide": "top" },
+    { "from": "retriever", "to": "cls", "label": "影像变数字", "fromSide": "bottom", "toSide": "top" },
+    { "from": "retriever", "to": "specialist", "label": "交出五段", "variant": "emphasis", "labelAt": [741, 404] },
+    { "from": "specialist", "to": "llm", "label": "照着资料写", "fromSide": "bottom", "toSide": "top" },
+    { "from": "specialist", "to": "langfuse", "label": "记录调用" },
+    { "from": "specialist", "to": "selfcheck", "label": "判断加依据", "variant": "emphasis", "labelAt": [939, 404] },
+    { "from": "selfcheck", "to": "judge", "label": "逐条核对", "fromSide": "bottom", "toSide": "top" },
+    { "from": "selfcheck", "to": "safety", "label": "去安全检查", "variant": "emphasis", "labelAt": [1137, 404] },
+    { "from": "gateway", "to": "metrics", "label": "上报延迟", "labelAt": [444, 212] },
+    { "from": "safety", "to": "archive", "label": "写入存档", "fromSide": "bottom", "toSide": "top", "labelAt": [1243, 414] },
+    { "from": "archive", "to": "pg", "label": "存成可追", "fromSide": "right", "toSide": "right", "via": [[1344, 488], [1344, 150]], "labelAt": [1344, 300] },
+    { "from": "safety", "to": "browser", "label": "结论回页面", "variant": "emphasis", "fromSide": "right", "toSide": "bottom", "via": [[1352, 350], [1352, 560], [254, 560]], "labelAt": [700, 548] }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "找资料有三条路",
+      "items": [
+        "第一条 把问题变成数字 再找最像的段落 现在是主力",
+        "第二条 按关键词找 只在文字相似不准时补位",
+        "第三条 用影像找相似影像 库里目前没有影像数据 会自动跳过且不算错"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "有两道独立检查",
+      "items": [
+        "第一道 自检 看结论里每条说法能不能在参考资料里找到依据",
+        "第二道 安全检查 看禁忌 过敏 隐私 越界 前者可以降级 后者不许放过",
+        "任何一道不通过 都会降级返回并留下记录"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "这张图只画在线部分",
+      "items": [
+        "离线那一半是 语料清洗 切块 入库 建关系 冻结名单 评测 见另一张图",
+        "线上只读已经建好的库 不改数据",
+        "数据库里现有 1257 段 其中 321 段之间有相邻关系"
+      ]
+    }
+  ]
+}
