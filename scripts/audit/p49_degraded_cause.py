@@ -163,11 +163,18 @@ async def _collect_records() -> list[dict]:
     return items
 
 
-def _scan_logs(log_dir: pathlib.Path, max_bytes: int) -> tuple[list[str], list[str]]:
-    """读日志文件（每个最多读末尾 max_bytes），返回 (行, 文件清单)。"""
+def _scan_logs(
+    log_dir: pathlib.Path, max_bytes: int
+) -> tuple[list[str], list[str], list[str]]:
+    """读日志文件（每个最多读末尾 max_bytes），返回 (行, 已读文件, 读失败文件)。
+
+    读失败**必须留痕**（零静默纪律）：权限/文件被截断/编码异常都可能发生，
+    静默跳过会让"日志里没有这个错误"变成假结论。
+    """
     files = sorted(log_dir.glob("*.log"))
     lines: list[str] = []
     used: list[str] = []
+    skipped: list[str] = []
     for path in files:
         try:
             size = path.stat().st_size
@@ -175,11 +182,12 @@ def _scan_logs(log_dir: pathlib.Path, max_bytes: int) -> tuple[list[str], list[s
                 if max_bytes and size > max_bytes:
                     fh.seek(size - max_bytes)
                 data = fh.read()
-        except OSError:
+        except OSError as exc:  # silent-ok: 读失败已记入 skipped，并在报告 unreadable_files 列出
+            skipped.append(f"{path.name}:{type(exc).__name__}")
             continue
         used.append(path.name)
         lines.extend(data.decode("utf-8", errors="replace").splitlines())
-    return lines, used
+    return lines, used, skipped
 
 
 def main() -> int:
@@ -198,7 +206,7 @@ def main() -> int:
         return 2
 
     records = summarize_records(items)
-    lines, used = _scan_logs(pathlib.Path(args.log_dir).expanduser(), args.max_bytes)
+    lines, used, skipped = _scan_logs(pathlib.Path(args.log_dir).expanduser(), args.max_bytes)
     logs = summarize_logs(lines)
 
     report = {
@@ -206,7 +214,12 @@ def main() -> int:
         "readonly": True,
         "generated_at": __import__("time").strftime("%Y-%m-%d %H:%M:%S"),
         "records": records,
-        "logs": {**logs, "files": used, "lines_scanned": len(lines)},
+        "logs": {
+            **logs,
+            "files": used,
+            "lines_scanned": len(lines),
+            "unreadable_files": skipped,
+        },
         "samples": items[:5],
     }
     out = pathlib.Path(args.report).expanduser()
