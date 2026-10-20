@@ -67,7 +67,7 @@ def parse_structured_json(text: str) -> dict | None:
         return None
     try:
         data = json.loads(t[start : end + 1])
-    except json.JSONDecodeError:
+    except json.JSONDecodeError:  # silent-ok: 非 JSON 不是异常，返回 None 由调用方判"抽不出"
         return None
     return data if isinstance(data, dict) else None
 
