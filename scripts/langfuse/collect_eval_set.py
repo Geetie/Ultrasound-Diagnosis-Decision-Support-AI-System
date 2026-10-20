@@ -108,6 +108,8 @@ async def _collect(args) -> tuple[list[dict], dict]:
     dedup_basis = defaultdict(int)
     undedupable = 0
     skipped_no_image = 0
+    skipped_prompt_echo = 0
+    prompt_echo_reasons: dict[str, int] = defaultdict(int)
     patient_id_missing = 0
     dedup_reason: dict[str, int] = defaultdict(int)
 
@@ -201,6 +203,18 @@ async def _collect(args) -> tuple[list[dict], dict]:
                 undedupable += 1
             dedup_basis[basis_name] += 1
 
+            # A.70 / R17：**脏输出不进评测集** —— 结论若是"复述提示词示例"（假 chunk ID /
+            # 假病人 / 重复 `# 输出`），入库只会污染评测（真机：169 条里 155 条是这种）。
+            # 与 app/agents 的拦截用**同一个守卫**，避免"生产拦一套、采集留一套"。
+            from app.inference.output_guard import detect_prompt_echo
+
+            conclusion = _conclusion_of(getattr(r, "findings", None))
+            echo_reason = detect_prompt_echo(conclusion)
+            if echo_reason:
+                skipped_prompt_echo += 1
+                prompt_echo_reasons[echo_reason] = prompt_echo_reasons.get(echo_reason, 0) + 1
+                continue
+
             corrections_for = corrections.get(str(r.request_id), [])
             # 检索上下文（判官输入）：按 knowledge_ids 顺序取，最多 N 块、每块截断
             ctx_ids = [str(cid) for cid in (getattr(r, "knowledge_ids", None) or [])]
@@ -217,7 +231,7 @@ async def _collect(args) -> tuple[list[dict], dict]:
                     "session_id": str(r.session_id),
                     "organ": str(getattr(r, "organ", "") or ""),
                     "clinical_text": str(getattr(r, "clinical_text", "") or ""),
-                    "conclusion": _conclusion_of(getattr(r, "findings", None)),
+                    "conclusion": conclusion,
                     "confidence": float(getattr(r, "confidence", 0.0) or 0.0),
                     "status": str(getattr(r, "status", "") or ""),
                     "context_ids": ctx_ids[:_MAX_CONTEXT_CHUNKS],
@@ -246,6 +260,9 @@ async def _collect(args) -> tuple[list[dict], dict]:
         "deduped": len(deduped),
         "undedupable": undedupable,
         "skipped_no_image": skipped_no_image,
+        # A.70：脏输出（复述提示词示例）被拒收的条数 —— 静默丢样本与静默失败同罪，必须计数
+        "skipped_prompt_echo": skipped_prompt_echo,
+        "prompt_echo_reasons": dict(prompt_echo_reasons),
         "context_present": sum(1 for x in deduped if x["context"]),
         # 资产质量指标：**不同患者数**决定「700 例」到底代表多少独立病例；
         # `patient_id_missing` 是口径告警（>0 说明去重退化成"按影像"，计数会偏大）
@@ -301,6 +318,8 @@ def main() -> int:
     t_total, t_doc = stats["targets"]["total"], stats["targets"]["doctor_labeled"]
     print(f"评测集：{stats['deduped']} 条（原始判读 {stats['total']}，"
           f"无影像跳过 {stats['skipped_no_image']}，有影像但无稳定标识 {stats['undedupable']}，"
+          f"**脏输出拒收 {stats['skipped_prompt_echo']}**"
+          f"{'（' + str(stats['prompt_echo_reasons']) + '）' if stats['prompt_echo_reasons'] else ''}，"
           f"含检索上下文 {stats['context_present']}）→ {out}")
     print(f"资产质量：不同患者 {stats['patient_count']} 人 · "
           f"去重口径 {stats['dedup_reason']}"
