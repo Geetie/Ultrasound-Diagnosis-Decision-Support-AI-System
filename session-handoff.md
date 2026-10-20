@@ -12,6 +12,27 @@
   **两个后果**：①**放宽分组无效**，原计划作废；②**A.66 的 crossdoc 难集是弱 gold**（gold = 同章节随机兄弟文档）→ 当时"+15pp 池子召回"只证明多捞到兄弟文档，**不能**证明捞到正确答案 → **R2 暂停**（在弱 gold 上比选择器没有意义）。
 - **R3 下一步**：用更细章节信号造 **≤5 篇/组**的小组（①`pdf_*` 深层 section_path ②同器官主题聚类 ③人工抽检"组内另一篇确实能答该问句"），抽检 ≥80% 才可用；未通过之前不得用于任何 GO/NO-GO。
 
+### A.69（R17 忠实度）交接 —— **有一项未跑完，下一个人接着做**
+
+- **已完成**：`p44`（A 口径：断言分 knowledge/image/advice；`--statements-lang zh|auto`；`--answer-mode`）
+  + `p45`（人工核对表 + 2-gram 重合率自动分流）。真机数字：auto 英文断言 **0.1021**、
+  **强制中文 0.1993**（跨语言错配约减半）；中文下 **影像所见占 90.9%**、知识断言仅 5.8%
+  （21/40 条为空，A 口径 0.0175 不可当门控）。
+- **核对表**：`tests/reports/faithfulness_review_20261020.md`（入仓）。**38 条不支持断言里 12 条是
+  系统派生字段**（`分级=…`/`总分=…`/`置信度=…`）—— 应直接跳过；剩下 26 条才需要人判断。
+- **未完成（重要）**：`--answer-mode derived_stripped`（口径 C，剥掉派生字段）的对照。
+  代码已接好、守卫已加，但**服务器 22 端口当时不可达**（ssh timeout）没跑成。
+  复跑命令：
+  ```
+  ~/uai/venv/bin/python scripts/audit/p44_faithfulness_caliber_a.py --limit 40 \
+    --statements-lang zh --answer-mode derived_stripped --samples-in-report 40 \
+    --report ~/uai/reports/faithfulness_caliber_a_zh_derived.json
+  ~/uai/venv/bin/python scripts/audit/p45_unsupported_review.py \
+    --report ~/uai/reports/faithfulness_caliber_a_zh_derived.json
+  ```
+  **判据**：口径 C 下原口径分数应显著高于 0.1993（因为 12/38 派生字段被剥掉）；
+  若仍低 → 问题在"资料没覆盖"或"判官偏严"，用 p45 的三类占比判断。
+
 ### A.68 复跑入口
 
 - **R1 能力探测**（服务器，需 Qdrant）：`PYTHONPATH=~/uai/src ~/uai/venv/bin/python -c "import asyncio;from app.rag.image_leg import probe_image_leg;print(asyncio.run(probe_image_leg()))"`

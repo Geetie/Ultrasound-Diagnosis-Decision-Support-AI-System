@@ -94,6 +94,18 @@ def test_statement_prompt_enforces_chinese_without_rewriting_official_prompt():
     assert stripped == auto
 
 
+def test_answer_mode_is_wired_and_reported():
+    """口径（raw / derived_stripped）必须能切换并写进报告。
+
+    A.69 实测：raw 时被判"不支持"的断言里混着 `分级=TR1`/`总分=0`/`置信度=0.0`
+    这类**系统派生字段**（本来就不该被资料支持）→ 必须能切到 derived_stripped 对照。
+    """
+    src = (_AUDIT / "p44_faithfulness_caliber_a.py").read_text(encoding="utf-8")
+    assert "from answer_modes import ANSWER_MODES, answer_of" in src
+    assert '"answer_mode": args.answer_mode' in src
+    assert "answer_of(item, answer_mode)" in src
+
+
 def test_report_carries_both_calibers_and_rules():
     src = (_AUDIT / "p44_faithfulness_caliber_a.py").read_text(encoding="utf-8")
     assert "faithfulness_original_caliber" in src

@@ -41,6 +41,7 @@ for _p in (str(ROOT), str(_SCRIPTS), str(_LANGFUSE)):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
+from answer_modes import ANSWER_MODES, answer_of  # noqa: E402
 from judge_eval_set import _judge_chat  # noqa: E402
 from t1_eval_faithfulness import (  # noqa: E402
     _extract_json,
@@ -215,9 +216,21 @@ def _statement_prompt(item_question: str, answer: str, lang: str = "zh") -> str:
     return base.replace("Output(JSON only): /no_think", f"{hint}\nOutput(JSON only): /no_think")
 
 
-def _sample_of(item: dict, judge_url: str, model: str, statements_lang: str = "zh") -> dict:
-    """单条样本：生成断言 → 分桶 → 一次 NLI → 汇总。"""
-    answer = (item.get("conclusion") or "").strip()
+def _sample_of(
+    item: dict,
+    judge_url: str,
+    model: str,
+    statements_lang: str = "zh",
+    answer_mode: str = "raw",
+) -> dict:
+    """单条样本：取答案（按口径）→ 生成断言 → 分桶 → 一次 NLI → 汇总。
+
+    ⚠️ **A.69 实测**：默认 `raw` 时，被判"不支持"的知识断言里混着大量
+    **系统派生字段**（`分级=TR1` / `总分=0` / `置信度=0.0`）—— 它们由系统算出，
+    本来就不可能出现在检索资料里。仓库里早有 `derived_stripped`（口径 C）专门剥掉这些，
+    所以「口径」这一维必须一起对照，否则会把"派生字段"错记成"知识断言不支持"。
+    """
+    answer, mode_applied = answer_of(item, answer_mode)
     # 与 `judge_eval_set._faithfulness_of` 逐字一致（否则两口径不可比）
     question = (item.get("clinical_text") or "").strip() or "（无临床文本；按影像判读）"
     context = _context_text(item)
@@ -244,6 +257,8 @@ def _sample_of(item: dict, judge_url: str, model: str, statements_lang: str = "z
             "buckets": aggregate([]),
             "faith_all": 1.0,
             "faith_knowledge": None,
+            "answer_mode": answer_mode,
+            "mode_applied": mode_applied,
             "notes": "拒答或无断言：按官方口径总分 1.0；A 口径无可评断言",
         }
 
@@ -273,6 +288,8 @@ def _sample_of(item: dict, judge_url: str, model: str, statements_lang: str = "z
         "faith_all": agg["all"]["faith"],
         "faith_knowledge": agg["knowledge"]["faith"],
         "n_statements": len(statements),
+        "answer_mode": answer_mode,
+        "mode_applied": mode_applied,
         "detail": detail,
     }
 
@@ -300,6 +317,12 @@ def main() -> int:
         default="zh",
         help="断言输出语言：zh=要求中文（默认，修跨语言错配）；auto=官方原样（英文 prompt）",
     )
+    ap.add_argument(
+        "--answer-mode",
+        choices=ANSWER_MODES,
+        default="raw",
+        help="判什么：raw=结论全文；derived_stripped=剔除分级/总分/置信度等系统派生字段（口径 C）",
+    )
     args = ap.parse_args()
 
     path = pathlib.Path(args.eval_set).expanduser()
@@ -320,7 +343,9 @@ def main() -> int:
     bucket_totals = {b: {"n": 0, "supported": 0} for b in BUCKETS}
     for i, item in enumerate(judgeable, 1):
         try:
-            res = _sample_of(item, args.judge_url, args.model, args.statements_lang)
+            res = _sample_of(
+                item, args.judge_url, args.model, args.statements_lang, args.answer_mode
+            )
         except Exception as exc:
             print(f"  [{i}/{len(judgeable)}] 判官失败：{type(exc).__name__}: {exc}")
             res = {"error": f"{type(exc).__name__}: {exc}"}
@@ -357,6 +382,8 @@ def main() -> int:
         "judge_url": args.judge_url,
         "model": args.model,
         "statements_lang": args.statements_lang,
+        "answer_mode": args.answer_mode,
+        "mode_applied": sum(1 for x in per_sample if x.get("mode_applied") is True),
         "n": len(per_sample),
         "faithfulness_original_caliber": _mean(faith_all_scores),
         "faithfulness_caliber_a": _mean(faith_k_scores),
