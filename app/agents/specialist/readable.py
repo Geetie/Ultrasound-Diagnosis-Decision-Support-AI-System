@@ -124,6 +124,19 @@ def parse_failed_text(organ: Organ | str, exc_type: str) -> str:
     return f"{organ_cn(organ)}：判读结果无法解析（{exc_type}），{_HANDOFF_ADVICE}"
 
 
+def prompt_echo_text(organ: Organ | str) -> str:
+    """模型复述了提示词示例 → 可读降级（A.70 / R17）。
+
+    为什么单独一条文案：这是**输出格式异常**，不是"服务不可用"也不是"解析不了"，
+    医生看到的原因不该混在一起（否则工程侧排障时会先怀疑模型挂了）。
+    技术细节（命中的是占位 ID 还是重复标题）只进 ``reasoning_trace`` 与日志。
+    """
+    return (
+        f"{organ_cn(organ)}：本次判读输出格式异常（模型复述了示例内容），"
+        f"已拦截并转人工复核，{_HANDOFF_ADVICE}"
+    )
+
+
 def specialist_unavailable_text(organ: Organ | str) -> str:
     """调度层拿不到专科实现 / 专科抛错 → 可读降级。"""
     return f"{organ_cn(organ)}：专科判读不可用，{_HANDOFF_ADVICE}"

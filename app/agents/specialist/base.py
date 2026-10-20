@@ -59,6 +59,7 @@ from app.agents.specialist.readable import (
     evidence_insufficient_text,
     llm_unavailable_text,
     parse_failed_text,
+    prompt_echo_text,
 )
 from app.agents.specialist.solicitation import (
     HANDOFF_TEXT,
@@ -66,6 +67,7 @@ from app.agents.specialist.solicitation import (
     is_system_handoff_text,
 )
 from app.inference.grading_schema import grading_gbnf, grading_json_schema
+from app.inference.output_guard import detect_prompt_echo
 from app.inference.protocols import InferenceEngine, InferenceRequest, InferenceResponse
 from app.knowledge.clinical_actions import actions_for
 from app.knowledge.cross_modality import hints_for
@@ -385,6 +387,34 @@ class RAGSpecialistAgent(SpecialistAgent):
         trace.append(f"llm_text_len: {len(llm_text)}")
         if llm_response.finish_reason:
             trace.append(f"finish_reason: {llm_response.finish_reason}")
+
+        # 4b) 输出守卫（A.70 / R17）：模型复述提示词示例 → **拒收并降级**
+        #
+        # 真机证据：评测集 98.7%（155/169）的结论是模板照抄（`chunk_a1b2`/`PATIENT_001`/
+        # 重复 `# 输出` 块）。这类输出若入库：医生看到模板文字、评测被污染、引用全是假的。
+        # 这里只"拦住 + 留痕 + 转人工"，不改 prompt、不改任何阈值。
+        echo_reason = detect_prompt_echo(llm_text)
+        if echo_reason:
+            logger.warning(
+                "specialist_output_prompt_echo_rejected",
+                organ=organ.value,
+                request_id=context.request_id,
+                reason=echo_reason,
+                text_len=len(llm_text),
+            )
+            trace.append(f"prompt_echo_rejected: {echo_reason}")
+            response = AgentResponse(
+                agent_name=self._agent_name(),
+                organ=organ,
+                content=prompt_echo_text(organ),
+                confidence=0.0,
+                evidence_chunk_ids=[c.chunk_id for c in chunks],
+                reasoning_trace=trace,
+                latency_ms=(time.monotonic() - start) * 1000.0,
+                needs_review=True,
+            )
+            self._post_process(context, response)
+            return response
 
         # 5) 器官级解析
         try:

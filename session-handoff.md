@@ -20,6 +20,12 @@
 - 根因：`app/agents/prompts/{thyroid,cardiac,liver}.md` 的示例答案含这些占位符，小模型整段复述（缺陷**未修**）。
 - **后果**：A.62/A.63/A.69 的 faithfulness 0.0906 / answer_relevance 0.3788 / A 口径 0.1993·0.1645
   都是在脏样本上算的 → **不得再用来讨论门限**；重建干净样本后必须重测。
+- **已完成（A.70.2）**："输出校验拒收"已上线 —— `app/inference/output_guard.py::detect_prompt_echo`
+  （三规则）+ `specialist/base.py` **解析前 4b 步**拒收（`confidence=0`、`needs_review=True`、
+  trace `prompt_echo_rejected:<原因>`）+ `readable.prompt_echo_text()` 可读文案。守卫 9 例。
+  真机：重启 3983054→811236（6s health=200）；**生产守卫回放 169 条历史结论 → 158 条被拒收（93.5%）**。
+- **仍未做**：①prompt 示例本身未改（A/C 待拍板）②历史 155 条脏记录未清理
+  ③"格式正常但引用编造"不在拦截范围（需引用核对，`p46` 已能算）。
 - **下一步建议**：先做"输出校验拒收"（结论命中 `chunk_a1b2`/`PATIENT_` 即降级并记可见错误，不改 prompt），
   再评估「示例脱敏」或「结构化 JSON 输出」。细节与三选一见 16 号 A.70.1。
 

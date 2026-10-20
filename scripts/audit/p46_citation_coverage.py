@@ -31,6 +31,9 @@ import pathlib
 import re
 import sys
 
+#: 仓库根（`--simulate-guard` 要 import 生产守卫 `app.inference.output_guard`）
+ROOT = pathlib.Path(__file__).resolve().parents[2]
+
 #: 结论里的句子边界（中文句号/问号/叹号/分号/换行）
 _SENT_SPLIT = re.compile(r"[。！？；\n]+")
 
@@ -186,6 +189,12 @@ def main() -> int:
     ap.add_argument("--limit", type=int, default=40)
     ap.add_argument("--samples", type=int, default=5, help="报告里保留多少条明细")
     ap.add_argument("--diagnose", action="store_true", help="打印样本字段名与一条结论原文")
+    ap.add_argument(
+        "--simulate-guard",
+        action="store_true",
+        help="用**生产守卫**（app.inference.output_guard.detect_prompt_echo）回放这批样本，"
+        "统计会被拒收多少条（验证拦截规则与真实脏样本是否对得上）",
+    )
     args = ap.parse_args()
 
     path = pathlib.Path(args.eval_set).expanduser()
@@ -197,6 +206,27 @@ def main() -> int:
     if not items:
         print("[FATAL] 没有带结论的样本")
         return 2
+
+    if args.simulate_guard:
+        # 用**生产守卫**（同一条规则）回放，避免"探针一套、生产一套"
+        sys.path.insert(0, str(ROOT))
+        from app.inference.output_guard import detect_prompt_echo
+
+        reasons: dict[str, int] = {}
+        rejected = 0
+        total = len(rows)
+        for r in rows:
+            text = r.get("conclusion") or ""
+            if not text.strip():
+                continue
+            reason = detect_prompt_echo(text)
+            if reason:
+                rejected += 1
+                reasons[reason] = reasons.get(reason, 0) + 1
+        print(f"生产守卫回放：{rejected}/{total} 条会被拒收（{rejected / total:.1%}）")
+        for k, v in sorted(reasons.items(), key=lambda kv: -kv[1]):
+            print(f"  {k}: {v}")
+        return 0
 
     if args.diagnose:
         print("样本字段：", sorted(items[0].keys()))
