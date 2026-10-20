@@ -41,6 +41,7 @@
 """
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import inspect
 import os
@@ -358,10 +359,36 @@ class RAGSpecialistAgent(SpecialistAgent):
         prompt = self._build_prompt(context, chunks, trace)
 
         # 4) LLM 调用（异常时不抛，降级为 confidence=0.0）
-        try:
-            llm_response = await self._call_llm_response(context, prompt)
-            llm_text = llm_response.text or ""
-        except Exception as exc:
+        #
+        # A.74：**有界重试一次**。真机 411 条里有 5 条带图请求死在 `llm_unavailable`，
+        # 而这类失败多数是瞬时（vLLM 抖动/连接被重置）—— 一次 0.5s 退避重试的代价
+        # 远小于"整条判读作废"。仍失败才降级，且重试次数进 trace（可见、不静默）。
+        llm_text = ""
+        last_exc: Exception | None = None
+        for attempt in range(2):
+            try:
+                llm_response = await self._call_llm_response(context, prompt)
+                llm_text = llm_response.text or ""
+                if attempt:
+                    trace.append(f"llm_retry: recovered(attempt={attempt + 1})")
+                break
+            except Exception as exc:
+                last_exc = exc
+                logger.warning(
+                    "specialist_llm_attempt_failed",
+                    organ=organ.value,
+                    request_id=context.request_id,
+                    attempt=attempt + 1,
+                    error=str(exc)[:160],
+                    error_type=type(exc).__name__,
+                )
+                if attempt == 0:
+                    trace.append("llm_retry: 1")
+                    await asyncio.sleep(0.5)
+                    continue
+
+        if not llm_text and last_exc is not None:
+            exc = last_exc
             logger.warning(
                 "specialist_llm_failed",
                 organ=organ.value,
