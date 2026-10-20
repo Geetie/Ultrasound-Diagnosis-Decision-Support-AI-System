@@ -67,6 +67,18 @@ def summarize(items: list[dict]) -> dict:
     reasons: dict[str, int] = {}
     by_organ: dict[str, dict] = {}
     by_month: dict[str, dict] = {}
+    # 降级也按月份/器官计数：42% 的请求根本没产出结论（比回显更影响可用性），
+    # 需要能看出"是某个时段坏的"还是"一直坏"。
+    degraded_by_month: dict[str, int] = {}
+    degraded_by_organ: dict[str, int] = {}
+    for x in items:
+        if x.get("degraded"):
+            degraded_by_month[str(x.get("month") or "(未知)")] = (
+                degraded_by_month.get(str(x.get("month") or "(未知)"), 0) + 1
+            )
+            degraded_by_organ[str(x.get("organ") or "(未知)")] = (
+                degraded_by_organ.get(str(x.get("organ") or "(未知)"), 0) + 1
+            )
     for x in items:
         if x.get("degraded"):
             continue
@@ -95,6 +107,8 @@ def summarize(items: list[dict]) -> dict:
         "reasons": reasons,
         "by_organ": dict(sorted(by_organ.items(), key=lambda kv: -kv[1]["dirty"])),
         "by_month": dict(sorted(by_month.items())),
+        "degraded_by_month": dict(sorted(degraded_by_month.items())),
+        "degraded_by_organ": dict(sorted(degraded_by_organ.items(), key=lambda kv: -kv[1])),
     }
 
 
@@ -182,6 +196,10 @@ def main() -> int:
         print(f"   {organ:<10} 脏 {slot['dirty']}/{slot['total']}（{slot['dirty_rate']}）")
     if summary["reasons"]:
         print(f"   原因分布：{summary['reasons']}")
+    if summary["degraded_by_month"]:
+        print(f"   降级按月份：{summary['degraded_by_month']}")
+    if summary["degraded_by_organ"]:
+        print(f"   降级按器官：{summary['degraded_by_organ']}")
 
     if args.quarantine:
         qp = pathlib.Path(args.quarantine).expanduser()

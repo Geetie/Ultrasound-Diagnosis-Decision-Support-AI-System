@@ -51,6 +51,23 @@ def test_summarize_all_degraded_has_no_share():
     assert out["clean_share"] is None
 
 
+def test_degraded_breakdown_is_reported_separately():
+    """降级要能按时间/器官看（42% 的请求没结论，比回显更影响可用性）。"""
+    p47 = _load()
+    items = [
+        {"organ": "thyroid", "month": "2026-09", "reason": None, "degraded": True},
+        {"organ": "thyroid", "month": "2026-09", "reason": None, "degraded": True},
+        {"organ": "cardiac", "month": "2026-10", "reason": None, "degraded": True},
+        {"organ": "thyroid", "month": "2026-10", "reason": "placeholder_chunk_id", "degraded": False},
+    ]
+    out = p47.summarize(items)
+    assert out["degraded_by_month"] == {"2026-09": 2, "2026-10": 1}
+    assert out["degraded_by_organ"] == {"thyroid": 2, "cardiac": 1}
+    # 降级不进"按月份脏率"的分母（真结论才进）→ 2026-09 只有降级，故整月不出现
+    assert "2026-09" not in out["by_month"]
+    assert out["by_month"]["2026-10"]["total"] == 1
+
+
 def test_script_is_readonly_and_reuses_production_guard():
     src = _SRC.read_text(encoding="utf-8")
     assert "from app.inference.output_guard import detect_prompt_echo" in src
