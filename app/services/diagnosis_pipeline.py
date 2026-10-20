@@ -66,6 +66,7 @@ from app.repositories.dicom_image_repository import DicomImageRepository
 from app.security.three_layer_desensitization import (
     get_three_layer_desensitization_manager,
 )
+from app.services.degraded_texts import pipeline_failed_text
 from app.services.inflight_diagnosis import get_inflight_registry
 from app.services.rollout_router import (
     RolloutDecision,
@@ -499,7 +500,18 @@ async def run_diagnosis_pipeline(request_id: str) -> bool:
                     request_id=request_id,
                     status="failed",
                     confidence=0.0,
-                    findings={"error": str(exc), "error_type": type(exc).__name__},
+                    # A.73：**失败也必须留下可读正文**。历史上有 18 条只写了
+                    # `{"error": ...}`，`_conclusion_of()` 取不到 content → 报告是空白，
+                    # 医生看到"什么都没有"却不知道为什么（比"说一句实话"更糟）。
+                    findings={
+                        "fusion_result": {
+                            "content": pipeline_failed_text(type(exc).__name__),
+                            "degraded": True,
+                            "error_type": type(exc).__name__,
+                        },
+                        "error": str(exc),
+                        "error_type": type(exc).__name__,
+                    },
                 )
                 await _commit_if_possible(db)
         except Exception as exc:

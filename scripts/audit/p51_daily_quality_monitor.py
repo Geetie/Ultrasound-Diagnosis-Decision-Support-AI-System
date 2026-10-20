@@ -140,9 +140,15 @@ async def _collect(days: int) -> list[dict]:
         text = _conclusion_of(findings)
         dq = (findings or {}).get("data_quality") if isinstance(findings, dict) else None
         echo = (dq or {}).get("prompt_echo") if isinstance(dq, dict) else None
+        # A.73：清扫器写的"可读失败说明"（degraded=True）不能算干净结论
+        kind = degraded_kind(text)
+        if kind == "not_degraded" and isinstance(findings, dict):
+            fr = findings.get("fusion_result")
+            if isinstance(fr, dict) and fr.get("degraded") is True:
+                kind = "degraded_readable"
         items.append(
             {
-                "kind": degraded_kind(text),
+                "kind": kind,
                 "echo": echo or (detect_prompt_echo(text) if text.strip() else None),
             }
         )

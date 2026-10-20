@@ -32,11 +32,19 @@ from p49_degraded_cause import degraded_kind  # noqa: E402
 _UNPARSEABLE = ("grade_unparseable", "lvef_unparseable")
 
 
-def usable(conclusion: str) -> bool:
-    """是否能算一条"完整结论"。纯函数（守卫钉住）。"""
+def usable(conclusion: str, findings: object = None) -> bool:
+    """是否能算一条"完整结论"。纯函数（守卫钉住）。
+
+    ⚠️ A.73：清扫器给卡死请求写的是**可读的失败说明**（`fusion_result.degraded=True`），
+    文字上像结论、但不是。只看文本会把它算成"可用" → 必须看 findings 的 degraded 标记。
+    """
     text = (conclusion or "").strip()
     if not text:
         return False
+    if isinstance(findings, dict):
+        fr = findings.get("fusion_result")
+        if isinstance(fr, dict) and fr.get("degraded") is True:
+            return False
     return degraded_kind(text) == "not_degraded"
 
 
@@ -86,7 +94,7 @@ async def _snapshot(days_focus: int) -> dict:
 
         for (rid, organ, created, ctext, imgs, pctx, findings, conf) in rows:
             text = _conclusion_of(findings)
-            kind = "usable" if usable(text) else degraded_kind(text)
+            kind = "usable" if usable(text, findings) else degraded_kind(text)
             kinds[kind] += 1
             slot = by_organ[str(organ or "")]
             slot["total"] += 1
@@ -106,6 +114,8 @@ async def _snapshot(days_focus: int) -> dict:
                 image_ids_all.extend([str(i) for i in imgs])
                 shape["with_image"] += 1
                 shape["usable_with_image"] += 1 if kind == "usable" else 0
+                shape.setdefault("image_kinds", {})
+                shape["image_kinds"][kind] = shape["image_kinds"].get(kind, 0) + 1
             else:
                 shape["without_image"] += 1
                 shape["usable_without_image"] += 1 if kind == "usable" else 0
@@ -236,6 +246,7 @@ def main() -> int:
         f"不带图 {sh['without_image']} 条（可用 {sh['usable_without_image']}）；"
         f"文本长度 {sh['text_len']}"
     )
+    print(f"   带图请求种类：{sh.get('image_kinds', {})}")
 
     img = snap["images"]
     print(f"\n== 2) 影像：被引用 {img['referenced_unique']} 个唯一 ID，"
