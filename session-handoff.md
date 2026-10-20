@@ -20,9 +20,13 @@
   （21/40 条为空，A 口径 0.0175 不可当门控）。
 - **核对表**：`tests/reports/faithfulness_review_20261020.md`（入仓）。**38 条不支持断言里 12 条是
   系统派生字段**（`分级=…`/`总分=…`/`置信度=…`）—— 应直接跳过；剩下 26 条才需要人判断。
-- **未完成（重要）**：`--answer-mode derived_stripped`（口径 C，剥掉派生字段）的对照。
-  代码已接好、守卫已加，但**服务器 22 端口当时不可达**（ssh timeout）没跑成。
-  复跑命令：
+- **已完成（2026-10-20 补跑）**：`--answer-mode derived_stripped`（口径 C，剥掉派生字段）对照 ——
+  **原口径 0.1645 / A 口径 0.1157（31/40 条有知识断言）**；对比 raw+中文的 0.1993 / 0.0175
+  → 剥派生字段使 A 口径 **升 6.6 倍**，但整体原口径微降（影像所见占 76~91%、支持率仅 17%，**结构性上限**）。
+  口径 C 下 60 条「不支持」= 资料没覆盖 40% + 推理型 55% + 判官偏严 5% → **判官不是主因**。
+  核对表已换成口径 C 版本：`tests/reports/faithfulness_review_20261020.md`。
+
+- **复跑命令（口径 C 对照，已跑过，留作复核）**：
   ```
   ~/uai/venv/bin/python scripts/audit/p44_faithfulness_caliber_a.py --limit 40 \
     --statements-lang zh --answer-mode derived_stripped --samples-in-report 40 \
