@@ -130,7 +130,14 @@ async def _run(apply: bool, unmark: bool, limit: int) -> dict:
     for request_id, findings, _created in rows:
         stats["scanned"] += 1
         text = _conclusion_of(findings)
-        if not text.strip() or is_degraded(text):
+        if not text.strip():
+            stats["degraded_skipped"] += 1
+            continue
+        # ⚠️ 顺序很重要：**先判回显，再判降级**。
+        # A.70.9 实测：`grade_unparseable: … ; manual review required` 既是"解析失败"又含
+        # 占位符正文；若先按降级跳过，这批脏记录就会漏标（首版漏了 52 条）。
+        echo_hit = detect_prompt_echo(text)
+        if not echo_hit and is_degraded(text):
             stats["degraded_skipped"] += 1
             continue
 
@@ -141,7 +148,7 @@ async def _run(apply: bool, unmark: bool, limit: int) -> dict:
                 pending.append((str(request_id), new_findings))
             continue
 
-        reason = detect_prompt_echo(text)
+        reason = echo_hit
         if not reason:
             stats["clean_skipped"] += 1
             continue
