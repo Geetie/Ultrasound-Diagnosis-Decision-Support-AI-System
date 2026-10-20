@@ -10,98 +10,332 @@
       {
         "id": "normal",
         "label": "正常一次检索",
-        "focus": ["q", "cache", "enhance", "emb", "qdrant", "bm25", "rrf", "rerank", "thr", "out"],
+        "focus": [
+          "q",
+          "cache",
+          "enhance",
+          "emb",
+          "qdrant",
+          "rrf",
+          "rerank",
+          "thr",
+          "out"
+        ],
         "note": "查缓存 改写问题 三路同时找 合成一列 重排 丢低分 交五段。"
       },
       {
         "id": "models",
         "label": "每一步用了哪个模型",
-        "focus": ["enhance", "emb", "bm25", "ulc", "rerank", "thr"],
+        "focus": [
+          "enhance",
+          "emb",
+          "bm25",
+          "ulc",
+          "rerank",
+          "thr"
+        ],
         "note": "问题改写 文本变数字 关键词 影像变数字 重排 打分过滤。"
       },
       {
         "id": "weak",
         "label": "结果太少时怎么补",
-        "focus": ["rerank", "fallback", "thr", "out"],
+        "focus": [
+          "rerank",
+          "fallback",
+          "thr",
+          "out"
+        ],
         "note": "重排后结果不够 就退回关键词检索 再过滤一次。"
       }
     ]
   },
   "lanes": [
-    { "id": "entry", "label": "问题进来" },
-    { "id": "cache", "label": "缓存与问题改写" },
-    { "id": "dense", "label": "第一路 文字相似" },
-    { "id": "kw", "label": "第二路 关键词" },
-    { "id": "img", "label": "第三路 影像相似" },
-    { "id": "fuse", "label": "合并与重排" },
-    { "id": "weak", "label": "兜底与过滤" },
-    { "id": "out", "label": "交给生成" }
+    {
+      "id": "entry",
+      "label": "问题与交付"
+    },
+    {
+      "id": "prep",
+      "label": "缓存 改写 过滤"
+    },
+    {
+      "id": "legs",
+      "label": "三条路一起找"
+    },
+    {
+      "id": "fuse",
+      "label": "合并与重排"
+    }
   ],
   "phases": [
-    { "id": "s0", "label": "第一步 查缓存", "fromCol": 0, "toCol": 1 },
-    { "id": "s1", "label": "第二步 改写问题", "fromCol": 2, "toCol": 2, "variant": "emphasis" },
-    { "id": "s2", "label": "第三步 三路同时找", "fromCol": 3, "toCol": 3, "variant": "emphasis" },
-    { "id": "s3", "label": "第四步 合并重排", "fromCol": 4, "toCol": 4 },
-    { "id": "s4", "label": "第五步 过滤与兜底", "fromCol": 5, "toCol": 5, "variant": "security" }
+    {
+      "id": "s0",
+      "label": "查缓存",
+      "fromCol": 0,
+      "toCol": 1
+    },
+    {
+      "id": "s1",
+      "label": "改写问题",
+      "fromCol": 2,
+      "toCol": 2,
+      "variant": "emphasis"
+    },
+    {
+      "id": "s2",
+      "label": "三路同时找",
+      "fromCol": 3,
+      "toCol": 4,
+      "variant": "emphasis"
+    },
+    {
+      "id": "s3",
+      "label": "过滤与交付",
+      "fromCol": 5,
+      "toCol": 5,
+      "variant": "security"
+    }
   ],
-  "mainPath": ["q", "cache", "enhance", "emb", "qdrant", "rrf", "rerank", "fallback", "thr", "out"],
+  "mainPath": [
+    "q",
+    "cache",
+    "enhance",
+    "emb",
+    "qdrant",
+    "rrf",
+    "rerank",
+    "thr",
+    "out"
+  ],
   "nodes": [
-    { "id": "q", "lane": "entry", "col": 0, "width": 116, "type": "frontend", "label": "问题与影像", "sublabel": "医生输入" },
-    { "id": "cache", "lane": "cache", "col": 1, "width": 124, "type": "database", "label": "先查缓存", "sublabel": "Redis 1 小时 内存 5 分钟" },
-    { "id": "enhance", "lane": "cache", "col": 2, "width": 124, "type": "backend", "label": "改写问题", "sublabel": "同义词扩展 可选大模型改写" },
-    { "id": "emb", "lane": "dense", "col": 2, "width": 116, "type": "cloud", "label": "问题变数字", "sublabel": "bge-m3 医学版 1024 维" },
-    { "id": "qdrant", "lane": "dense", "col": 3, "width": 116, "type": "database", "label": "找最近段落", "sublabel": "向量库 1257 段 余弦距离" },
-    { "id": "bm25", "lane": "kw", "col": 2, "width": 112, "type": "backend", "label": "按关键词找", "sublabel": "BM25 两字窗口 不分词" },
-    { "id": "ulc", "lane": "img", "col": 2, "width": 120, "type": "cloud", "label": "影像找相似", "sublabel": "超声专用 512 维 库里暂无数据" },
-    { "id": "rrf", "lane": "fuse", "col": 3, "width": 116, "type": "backend", "label": "三路合成一列", "sublabel": "RRF 倒数排名融合 k 为 60" },
-    { "id": "rerank", "lane": "fuse", "col": 4, "width": 150, "type": "cloud", "label": "按相关重排", "sublabel": "bge 重排 超时 5 秒退简易算法" },
-    { "id": "fallback", "lane": "weak", "col": 4, "width": 120, "type": "backend", "label": "结果太少就补", "sublabel": "最高分低于 0.3 或不足 3 条" },
-    { "id": "thr", "lane": "weak", "col": 5, "width": 120, "type": "security", "label": "丢掉低分", "sublabel": "低于 0.5 不要 图谱邻居例外" },
-    { "id": "out", "lane": "out", "col": 5, "width": 116, "type": "frontend", "label": "交五段资料", "sublabel": "给专科智能体" }
+    {
+      "id": "q",
+      "lane": "entry",
+      "col": 0,
+      "width": 190,
+      "type": "frontend",
+      "label": "问题与影像",
+      "sublabel": "医生输入"
+    },
+    {
+      "id": "out",
+      "lane": "entry",
+      "col": 5,
+      "width": 190,
+      "type": "frontend",
+      "label": "交五段资料",
+      "sublabel": "给专科智能体"
+    },
+    {
+      "id": "cache",
+      "lane": "prep",
+      "col": 1,
+      "width": 190,
+      "type": "database",
+      "label": "先查缓存",
+      "sublabel": "上一小时问过的直接给"
+    },
+    {
+      "id": "enhance",
+      "lane": "prep",
+      "col": 2,
+      "width": 190,
+      "type": "backend",
+      "label": "改写问题",
+      "sublabel": "同义词扩展 可选大模型改"
+    },
+    {
+      "id": "fallback",
+      "lane": "prep",
+      "col": 4,
+      "width": 190,
+      "type": "backend",
+      "label": "结果太少就补",
+      "sublabel": "最高分低于 0.3 或不足 3 条"
+    },
+    {
+      "id": "thr",
+      "lane": "prep",
+      "col": 5,
+      "width": 190,
+      "type": "security",
+      "label": "丢掉低分",
+      "sublabel": "低于 0.5 不要 图谱例外"
+    },
+    {
+      "id": "emb",
+      "lane": "legs",
+      "col": 2,
+      "width": 190,
+      "type": "cloud",
+      "label": "第一条 问题变数字",
+      "sublabel": "bge-m3 医学版 1024 维"
+    },
+    {
+      "id": "bm25",
+      "lane": "legs",
+      "col": 3,
+      "width": 190,
+      "type": "backend",
+      "label": "第二条 关键词",
+      "sublabel": "两字窗口 不分词"
+    },
+    {
+      "id": "ulc",
+      "lane": "legs",
+      "col": 4,
+      "width": 190,
+      "type": "cloud",
+      "label": "第三条 影像找相似",
+      "sublabel": "超声专用 512 维 暂无数据"
+    },
+    {
+      "id": "qdrant",
+      "lane": "fuse",
+      "col": 3,
+      "width": 190,
+      "type": "database",
+      "label": "找最近段落",
+      "sublabel": "向量库 1257 段 余弦"
+    },
+    {
+      "id": "rrf",
+      "lane": "fuse",
+      "col": 4,
+      "width": 190,
+      "type": "backend",
+      "label": "三路合成一列",
+      "sublabel": "倒数排名融合 k 为 60"
+    },
+    {
+      "id": "rerank",
+      "lane": "fuse",
+      "col": 5,
+      "width": 190,
+      "type": "cloud",
+      "label": "按相关重排",
+      "sublabel": "bge 重排 超时 5 秒退简易"
+    }
   ],
   "edges": [
-    { "from": "q", "to": "cache", "label": "第一步", "variant": "emphasis" },
-    { "from": "cache", "to": "enhance", "label": "没命中", "variant": "emphasis" },
-    { "from": "enhance", "to": "emb", "label": "文字", "variant": "emphasis" },
-    { "from": "emb", "to": "qdrant", "label": "向量", "variant": "emphasis" },
-    { "from": "enhance", "to": "bm25", "label": "关键词", "variant": "dashed" },
-    { "from": "enhance", "to": "ulc", "label": "影像", "variant": "dashed" },
-    { "from": "qdrant", "to": "rrf", "label": "候选", "variant": "emphasis" },
-    { "from": "bm25", "to": "rrf", "label": "候选", "variant": "dashed" },
-    { "from": "ulc", "to": "rrf", "label": "可能为空", "variant": "dashed" },
-    { "from": "rrf", "to": "rerank", "label": "合成后重排", "variant": "emphasis" },
-    { "from": "rerank", "to": "fallback", "label": "太少则补", "variant": "security" },
-    { "from": "fallback", "to": "thr", "label": "再过滤", "variant": "emphasis" },
-    { "from": "thr", "to": "out", "label": "剩五段", "variant": "emphasis" }
+    {
+      "from": "q",
+      "to": "cache",
+      "label": "第一步",
+      "variant": "emphasis"
+    },
+    {
+      "from": "cache",
+      "to": "enhance",
+      "label": "没命中",
+      "variant": "emphasis"
+    },
+    {
+      "from": "cache",
+      "to": "out",
+      "label": "命中就直接给",
+      "variant": "dashed"
+    },
+    {
+      "from": "enhance",
+      "to": "emb",
+      "label": "文字",
+      "variant": "emphasis"
+    },
+    {
+      "from": "emb",
+      "to": "qdrant",
+      "label": "向量",
+      "variant": "emphasis"
+    },
+    {
+      "from": "enhance",
+      "to": "bm25",
+      "label": "关键词",
+      "variant": "dashed"
+    },
+    {
+      "from": "enhance",
+      "to": "ulc",
+      "label": "影像",
+      "variant": "dashed"
+    },
+    {
+      "from": "qdrant",
+      "to": "rrf",
+      "label": "候选",
+      "variant": "emphasis"
+    },
+    {
+      "from": "bm25",
+      "to": "rrf",
+      "label": "候选",
+      "variant": "dashed"
+    },
+    {
+      "from": "ulc",
+      "to": "rrf",
+      "label": "可能为空",
+      "variant": "dashed"
+    },
+    {
+      "from": "rrf",
+      "to": "rerank",
+      "label": "合成后重排",
+      "variant": "emphasis"
+    },
+    {
+      "from": "rerank",
+      "to": "thr",
+      "label": "够多就直接过滤"
+    },
+    {
+      "from": "rerank",
+      "to": "fallback",
+      "label": "太少则补",
+      "variant": "security"
+    },
+    {
+      "from": "fallback",
+      "to": "thr",
+      "label": "再过滤",
+      "variant": "emphasis"
+    },
+    {
+      "from": "thr",
+      "to": "out",
+      "label": "剩五段",
+      "variant": "emphasis"
+    }
   ],
   "cards": [
     {
       "dot": "cyan",
-      "title": "用到的模型 与当初为什么这么选",
+      "title": "用了哪些模型",
       "items": [
-        "文字变数字 用 bge-m3 医学版 1024 维 中文医学语料上稳 单条 10 毫秒级",
-        "关键词那一路不用分词库 改成两字窗口 少一个依赖 也方便测",
-        "重排用 bge 重排模型 排不动时退回简易相似度 保证不卡住",
-        "影像那一路本来是超声专用模型 512 维 但库里没有影像数据 现在等于空跑"
+        "文字变数字 bge-m3 医学版 1024 维",
+        "关键词那路两字窗口 不装分词库",
+        "重排 bge 排不动就退简易算法",
+        "影像那路 512 维 现在没数据"
       ]
     },
     {
       "dot": "rose",
       "title": "三个关键参数",
       "items": [
-        "融合参数 60 越大越看名次 不看分数 免得两路分数不可比",
-        "进上下文的只有五段 多了反而干扰生成",
-        "分数低于 0.5 丢掉 但图谱来的邻居例外 否则开了也等于没开"
+        "融合 60 看名次不看分数",
+        "进上下文只五段 多了干扰生成",
+        "低于 0.5 丢掉 图谱邻居例外"
       ]
     },
     {
       "dot": "emerald",
-      "title": "每一步坏了会怎样",
+      "title": "坏了会怎样",
       "items": [
-        "缓存坏了 当作没缓存 继续走真检索",
-        "文字那一路坏了 只剩关键词那一路 结果会变差但不会断",
-        "重排服务超时 五秒后退回简易算法 并留下记录",
-        "任何一步失败都写日志 不允许安静跳过"
+        "缓存坏了 当没缓存 照常检索",
+        "文字路坏了 还剩关键词那路",
+        "重排超时 五秒后退简易算法",
+        "任何一步失败都写日志"
       ]
     }
   ]

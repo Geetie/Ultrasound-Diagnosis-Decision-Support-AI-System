@@ -5130,7 +5130,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
     <!-- Main Diagram -->
     <div class="diagram-container" data-detail-level="read"
          data-preset-badge-editorial-plate="ARCHIFY / 图版 04">
-      <svg viewBox="0 0 976 900" role="img" lang="zh-CN" aria-labelledby="archify-diagram-title archify-diagram-description" data-preset="classic" data-quality-profile="standard">
+      <svg viewBox="0 0 1418 652" role="img" lang="zh-CN" aria-labelledby="archify-diagram-title archify-diagram-description" data-preset="classic" data-quality-profile="standard">
         <title id="archify-diagram-title">知识库怎么建起来 又怎么验收</title>
         <desc id="archify-diagram-description">由 Archify 生成的工作流图。</desc>
         <!-- Definitions -->
@@ -5156,233 +5156,226 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         <rect width="100%" height="100%" fill="url(#grid)" />
 
         <!-- Swimlanes -->
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-0" x="40" y="52" width="891" height="104" rx="10" class="c-lane" stroke-width="1"/>
-        <text x="54" y="74" class="t-dim" font-size="10" font-weight="600">01 / 原始材料</text>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-0" x="40" y="52" width="1362" height="104" rx="10" class="c-lane" stroke-width="1"/>
+        <text x="54" y="74" class="t-dim" font-size="10" font-weight="600">01 / 取料 清洗 切块</text>
 
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-1" x="40" y="176" width="891" height="104" rx="10" class="c-lane" stroke-width="1"/>
-        <text x="54" y="198" class="t-dim" font-size="10" font-weight="600">02 / 清洗与切块</text>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-1" x="40" y="176" width="1362" height="104" rx="10" class="c-lane" stroke-width="1"/>
+        <text x="54" y="198" class="t-dim" font-size="10" font-weight="600">02 / 入库与记指纹</text>
 
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-2" x="40" y="300" width="891" height="104" rx="10" class="c-lane" stroke-width="1"/>
-        <text x="54" y="322" class="t-dim" font-size="10" font-weight="600">03 / 入库</text>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-2" x="40" y="300" width="1362" height="104" rx="10" class="c-lane" stroke-width="1"/>
+        <text x="54" y="322" class="t-dim" font-size="10" font-weight="600">03 / 出两套题</text>
 
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-3" x="40" y="424" width="891" height="104" rx="10" class="c-lane" stroke-width="1"/>
-        <text x="54" y="446" class="t-dim" font-size="10" font-weight="600">04 / 出题与评测</text>
-
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-4" x="40" y="548" width="891" height="104" rx="10" class="c-lane" stroke-width="1"/>
-        <text x="54" y="570" class="t-dim" font-size="10" font-weight="600">05 / 自造难题这一路</text>
-
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-5" x="40" y="672" width="891" height="104" rx="10" class="c-lane" stroke-width="1"/>
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="exception-lane" data-composition-frame-id="lane-5-exception" x="46" y="678" width="879" height="92" rx="8" class="c-security-group" stroke-width="1"/>
-        <text x="54" y="694" class="t-security" font-size="10" font-weight="600">EX / 上线或回滚</text>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-3" x="40" y="424" width="1362" height="104" rx="10" class="c-lane" stroke-width="1"/>
+        <text x="54" y="446" class="t-dim" font-size="10" font-weight="600">04 / 评测与上线</text>
 
         <!-- Phase headers -->
-        <line x1="64" y1="35" x2="156" y2="35" class="a-default" stroke-width="1.1"/>
-        <rect x="64" y="27" width="92" height="16" rx="4" class="c-mask"/>
-        <text x="110" y="39" class="t-muted" font-size="8" font-weight="600" text-anchor="middle">取料</text>
-        <line x1="184" y1="35" x2="276" y2="35" class="a-default" stroke-width="1.1"/>
-        <rect x="184" y="27" width="92" height="16" rx="4" class="c-mask"/>
-        <text x="230" y="39" class="t-muted" font-size="8" font-weight="600" text-anchor="middle">清洗</text>
-        <line x1="364" y1="35" x2="456" y2="35" class="a-emphasis" stroke-width="1.1"/>
-        <rect x="364" y="27" width="92" height="16" rx="4" class="c-mask"/>
-        <text x="410" y="39" class="t-backend" font-size="8" font-weight="600" text-anchor="middle">切块打标签</text>
-        <line x1="495" y1="35" x2="587" y2="35" class="a-default" stroke-width="1.1"/>
-        <rect x="495" y="27" width="92" height="16" rx="4" class="c-mask"/>
-        <text x="541" y="39" class="t-muted" font-size="8" font-weight="600" text-anchor="middle">入库</text>
-        <line x1="657.8" y1="35" x2="749.8" y2="35" class="a-default" stroke-width="1.1"/>
-        <rect x="657.8" y="27" width="92" height="16" rx="4" class="c-mask"/>
-        <text x="703.8" y="39" class="t-muted" font-size="8" font-weight="600" text-anchor="middle">出题与冻结</text>
-        <line x1="818.5999999999999" y1="35" x2="910.5999999999999" y2="35" class="a-security" stroke-width="1.1"/>
-        <rect x="818.5999999999999" y="27" width="92" height="16" rx="4" class="c-mask"/>
-        <text x="864.5999999999999" y="39" class="t-security" font-size="8" font-weight="600" text-anchor="middle">评测与上线</text>
+        <line x1="97" y1="35" x2="189" y2="35" class="a-default" stroke-width="1.1"/>
+        <rect x="97" y="27" width="92" height="16" rx="4" class="c-mask"/>
+        <text x="143" y="39" class="t-muted" font-size="8" font-weight="600" text-anchor="middle">取料</text>
+        <line x1="325" y1="35" x2="417" y2="35" class="a-default" stroke-width="1.1"/>
+        <rect x="325" y="27" width="92" height="16" rx="4" class="c-mask"/>
+        <text x="371" y="39" class="t-muted" font-size="8" font-weight="600" text-anchor="middle">去隐私</text>
+        <line x1="581" y1="35" x2="673" y2="35" class="a-emphasis" stroke-width="1.1"/>
+        <rect x="581" y="27" width="92" height="16" rx="4" class="c-mask"/>
+        <text x="627" y="39" class="t-backend" font-size="8" font-weight="600" text-anchor="middle">切块打标签</text>
+        <line x1="779" y1="35" x2="871" y2="35" class="a-default" stroke-width="1.1"/>
+        <rect x="779" y="27" width="92" height="16" rx="4" class="c-mask"/>
+        <text x="825" y="39" class="t-muted" font-size="8" font-weight="600" text-anchor="middle">入库</text>
+        <line x1="1015.8" y1="35" x2="1107.8" y2="35" class="a-default" stroke-width="1.1"/>
+        <rect x="1015.8" y="27" width="92" height="16" rx="4" class="c-mask"/>
+        <text x="1061.8" y="39" class="t-muted" font-size="8" font-weight="600" text-anchor="middle">出题与冻结</text>
+        <line x1="1252.6" y1="35" x2="1344.6" y2="35" class="a-security" stroke-width="1.1"/>
+        <rect x="1252.6" y="27" width="92" height="16" rx="4" class="c-mask"/>
+        <text x="1298.6" y="39" class="t-security" font-size="8" font-weight="600" text-anchor="middle">评测与上线</text>
 
         <!-- Workflow groups -->
 
 
         <!-- Edge paths -->
-        <path data-edge-from="chunk" data-edge-to="rec" data-edge-label="存段落" data-edge-key="0" data-composition-points="410,269;410,290;329,290;329,367;345,367" d="M 410 269 L 410 290 L 329 290 L 329 367 L 345 367" class="a-dashed" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
-        <path data-edge-from="chunk" data-edge-to="vec" data-edge-label="算数字" data-edge-key="1" data-composition-points="472,243;541,243;541,341" d="M 472 243 L 541 243 L 541 341" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="docs" data-edge-to="mask" data-edge-label="取料" data-edge-key="2" data-composition-points="172,119;230,119;230,217" d="M 172 119 L 230 119 L 230 217" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="freeze" data-edge-to="run" data-edge-label="同一批题" data-edge-key="3" data-composition-points="761.8,367;864.5999999999999,367;864.5999999999999,465" d="M 761.8 367 L 864.5999999999999 367 L 864.5999999999999 465" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="golden" data-edge-to="run" data-edge-label="考题一" data-edge-key="4" data-composition-points="759.8,491;806.5999999999999,491" d="M 759.8 491 L 806.5999999999999 491" class="a-dashed" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
-        <path data-edge-from="hardset" data-edge-to="run" data-edge-label="考题二" data-edge-key="5" data-composition-points="759.8,615;864.5999999999999,615;864.5999999999999,517" d="M 759.8 615 L 864.5999999999999 615 L 864.5999999999999 517" class="a-dashed" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
-        <path data-edge-from="mask" data-edge-to="chunk" data-edge-label="切块打标签" data-edge-key="6" data-composition-points="282,243;348,243" d="M 282 243 L 348 243" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="run" data-edge-to="release" data-edge-label="看判据" data-edge-key="7" data-composition-points="922.5999999999999,491;957.4,491;957.4,739;922.5999999999999,739" d="M 922.5999999999999 491 L 957.4 491 L 957.4 739 L 922.5999999999999 739" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="vec" data-edge-to="freeze" data-edge-label="记指纹" data-edge-key="8" data-composition-points="599,367;645.8,367" d="M 599 367 L 645.8 367" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="chunk" data-edge-to="rec" data-edge-label="存段落" data-edge-key="0" data-composition-points="722,119;738,119;738,166;627,166;627,217" d="M 722 119 L 738 119 L 738 166 L 627 166 L 627 217" class="a-dashed" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
+        <path data-edge-from="chunk" data-edge-to="vec" data-edge-label="算数字" data-edge-key="1" data-composition-points="722,119;825,119;825,217" d="M 722 119 L 825 119 L 825 217" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="docs" data-edge-to="mask" data-edge-label="取料" data-edge-key="2" data-composition-points="238,119;276,119" d="M 238 119 L 276 119" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="freeze" data-edge-to="run" data-edge-label="同一批题" data-edge-key="3" data-composition-points="1156.8,243;1172.8,243;1172.8,544;1061.8,544;1061.8,517" d="M 1156.8 243 L 1172.8 243 L 1172.8 544 L 1061.8 544 L 1061.8 517" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="golden" data-edge-to="run" data-edge-label="考题二" data-edge-key="4" data-composition-points="1156.8,367;1172.8,367;1172.8,414;1061.8,414;1061.8,465" d="M 1156.8 367 L 1172.8 367 L 1172.8 414 L 1061.8 414 L 1061.8 465" class="a-dashed" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
+        <path data-edge-from="hardset" data-edge-to="run" data-edge-label="考题一" data-edge-key="5" data-composition-points="825,393;825,491;966.8,491" d="M 825 393 L 825 491 L 966.8 491" class="a-dashed" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
+        <path data-edge-from="mask" data-edge-to="chunk" data-edge-label="切块打标签" data-edge-key="6" data-composition-points="466,119;532,119" d="M 466 119 L 532 119" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="run" data-edge-to="release" data-edge-label="看判据" data-edge-key="7" data-composition-points="1156.8,491;1172.8,491;1172.8,544;1298.6,544;1298.6,517" d="M 1156.8 491 L 1172.8 491 L 1172.8 544 L 1298.6 544 L 1298.6 517" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="vec" data-edge-to="freeze" data-edge-label="记指纹" data-edge-key="8" data-composition-points="920,243;966.8,243" d="M 920 243 L 966.8 243" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
 
         <!-- Nodes -->
-        <g id="node-docs" data-node-id="docs" data-node-label="两份原材料" tabindex="0" role="button" aria-label="聚焦两份原材料，问答对话 与 指南原文, 原始材料 › 取料" aria-pressed="false" data-node-kind="external" data-node-sublabel="问答对话 与 指南原文" data-node-context="原始材料 › 取料">
-          <title>两份原材料 · 问答对话 与 指南原文 · 原始材料 › 取料</title>
-          <rect x="48" y="93" width="124" height="52" rx="6" class="c-mask"/>
-          <rect x="48" y="93" width="124" height="52" rx="6" class="c-external" stroke-width="1.5"/>
+        <g id="node-docs" data-node-id="docs" data-node-label="两份原材料" tabindex="0" role="button" aria-label="聚焦两份原材料，问答对话 与 指南原文, 取料 清洗 切块 › 取料" aria-pressed="false" data-node-kind="external" data-node-sublabel="问答对话 与 指南原文" data-node-context="取料 清洗 切块 › 取料">
+          <title>两份原材料 · 问答对话 与 指南原文 · 取料 清洗 切块 › 取料</title>
+          <rect x="48" y="93" width="190" height="52" rx="6" class="c-mask"/>
+          <rect x="48" y="93" width="190" height="52" rx="6" class="c-external" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="external" class="semantic-sigil s-external" transform="translate(54 99) scale(0.6875)">
             <rect x="2.5" y="5" width="8.5" height="8" rx="1.5"/>
             <path d="M8 2.5h5.5V8M13.5 2.5 7.5 8.5"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="110" y="114" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">两份原材料</text>
-          <text data-detail="context" x="110" y="131" class="t-muted" font-size="8" text-anchor="middle">问答对话 与 指南原文</text>
+          <text data-node-label="" data-detail-anchor="" x="143" y="114" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">两份原材料</text>
+          <text data-detail="context" x="143" y="131" class="t-muted" font-size="8" text-anchor="middle">问答对话 与 指南原文</text>
         </g>
 
-        <g id="node-mask" data-node-id="mask" data-node-label="去隐私" tabindex="0" role="button" aria-label="聚焦去隐私，姓名 编号打码, 清洗与切块 › 清洗" aria-pressed="false" data-node-kind="security" data-node-sublabel="姓名 编号打码" data-node-context="清洗与切块 › 清洗">
-          <title>去隐私 · 姓名 编号打码 · 清洗与切块 › 清洗</title>
-          <rect x="178" y="217" width="104" height="52" rx="6" class="c-mask"/>
-          <rect x="178" y="217" width="104" height="52" rx="6" class="c-security" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(184 223) scale(0.6875)">
+        <g id="node-mask" data-node-id="mask" data-node-label="去隐私" tabindex="0" role="button" aria-label="聚焦去隐私，姓名 编号打码, 取料 清洗 切块 › 去隐私" aria-pressed="false" data-node-kind="security" data-node-sublabel="姓名 编号打码" data-node-context="取料 清洗 切块 › 去隐私">
+          <title>去隐私 · 姓名 编号打码 · 取料 清洗 切块 › 去隐私</title>
+          <rect x="276" y="93" width="190" height="52" rx="6" class="c-mask"/>
+          <rect x="276" y="93" width="190" height="52" rx="6" class="c-security" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(282 99) scale(0.6875)">
             <path d="M8 2.2 13 4v3.5c0 3.1-1.8 5.4-5 6.5-3.2-1.1-5-3.4-5-6.5V4Z"/>
             <path d="m5.8 8 1.5 1.5 3-3"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="230" y="238" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">去隐私</text>
-          <text data-detail="context" x="230" y="255" class="t-muted" font-size="8" text-anchor="middle">姓名 编号打码</text>
+          <text data-node-label="" data-detail-anchor="" x="371" y="114" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">去隐私</text>
+          <text data-detail="context" x="371" y="131" class="t-muted" font-size="8" text-anchor="middle">姓名 编号打码</text>
         </g>
 
-        <g id="node-chunk" data-node-id="chunk" data-node-label="切块并打标签" tabindex="0" role="button" aria-label="聚焦切块并打标签，器官 章节 来源, 清洗与切块 › 切块打标签" aria-pressed="false" data-node-kind="backend" data-node-sublabel="器官 章节 来源" data-node-context="清洗与切块 › 切块打标签">
-          <title>切块并打标签 · 器官 章节 来源 · 清洗与切块 › 切块打标签</title>
-          <rect x="348" y="217" width="124" height="52" rx="6" class="c-mask"/>
-          <rect x="348" y="217" width="124" height="52" rx="6" class="c-backend" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(354 223) scale(0.6875)">
+        <g id="node-chunk" data-node-id="chunk" data-node-label="切块并打标签" tabindex="0" role="button" aria-label="聚焦切块并打标签，器官 章节 来源, 取料 清洗 切块 › 切块打标签" aria-pressed="false" data-node-kind="backend" data-node-sublabel="器官 章节 来源" data-node-context="取料 清洗 切块 › 切块打标签">
+          <title>切块并打标签 · 器官 章节 来源 · 取料 清洗 切块 › 切块打标签</title>
+          <rect x="532" y="93" width="190" height="52" rx="6" class="c-mask"/>
+          <rect x="532" y="93" width="190" height="52" rx="6" class="c-backend" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(538 99) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="410" y="238" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">切块并打标签</text>
-          <text data-detail="context" x="410" y="255" class="t-muted" font-size="8" text-anchor="middle">器官 章节 来源</text>
+          <text data-node-label="" data-detail-anchor="" x="627" y="114" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">切块并打标签</text>
+          <text data-detail="context" x="627" y="131" class="t-muted" font-size="8" text-anchor="middle">器官 章节 来源</text>
         </g>
 
-        <g id="node-rec" data-node-id="rec" data-node-label="段落与相邻关系入库" tabindex="0" role="button" aria-label="聚焦段落与相邻关系入库，321 段之间有边, 入库 › 切块打标签" aria-pressed="false" data-node-kind="database" data-node-sublabel="321 段之间有边" data-node-context="入库 › 切块打标签">
-          <title>段落与相邻关系入库 · 321 段之间有边 · 入库 › 切块打标签</title>
-          <rect x="345" y="341" width="130" height="52" rx="6" class="c-mask"/>
-          <rect x="345" y="341" width="130" height="52" rx="6" class="c-database" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(351 347) scale(0.6875)">
+        <g id="node-rec" data-node-id="rec" data-node-label="段落与相邻关系入库" tabindex="0" role="button" aria-label="聚焦段落与相邻关系入库，321 段之间有边, 入库与记指纹 › 切块打标签" aria-pressed="false" data-node-kind="database" data-node-sublabel="321 段之间有边" data-node-context="入库与记指纹 › 切块打标签">
+          <title>段落与相邻关系入库 · 321 段之间有边 · 入库与记指纹 › 切块打标签</title>
+          <rect x="532" y="217" width="190" height="52" rx="6" class="c-mask"/>
+          <rect x="532" y="217" width="190" height="52" rx="6" class="c-database" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(538 223) scale(0.6875)">
             <ellipse cx="8" cy="4" rx="5" ry="2"/>
             <path d="M3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4M3 8c0 1.1 2.2 2 5 2s5-.9 5-2"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="410" y="362" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">段落与相邻关系入库</text>
-          <text data-detail="context" x="410" y="379" class="t-muted" font-size="8" text-anchor="middle">321 段之间有边</text>
+          <text data-node-label="" data-detail-anchor="" x="627" y="238" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">段落与相邻关系入库</text>
+          <text data-detail="context" x="627" y="255" class="t-muted" font-size="8" text-anchor="middle">321 段之间有边</text>
         </g>
 
-        <g id="node-vec" data-node-id="vec" data-node-label="算成数字存向量库" tabindex="0" role="button" aria-label="聚焦算成数字存向量库，1257 段 可搜相似, 入库 › 入库" aria-pressed="false" data-node-kind="database" data-node-sublabel="1257 段 可搜相似" data-node-context="入库 › 入库">
-          <title>算成数字存向量库 · 1257 段 可搜相似 · 入库 › 入库</title>
-          <rect x="483" y="341" width="116" height="52" rx="6" class="c-mask"/>
-          <rect x="483" y="341" width="116" height="52" rx="6" class="c-database" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(489 347) scale(0.6875)">
+        <g id="node-vec" data-node-id="vec" data-node-label="算成数字存向量库" tabindex="0" role="button" aria-label="聚焦算成数字存向量库，1257 段 可搜相似, 入库与记指纹 › 入库" aria-pressed="false" data-node-kind="database" data-node-sublabel="1257 段 可搜相似" data-node-context="入库与记指纹 › 入库">
+          <title>算成数字存向量库 · 1257 段 可搜相似 · 入库与记指纹 › 入库</title>
+          <rect x="730" y="217" width="190" height="52" rx="6" class="c-mask"/>
+          <rect x="730" y="217" width="190" height="52" rx="6" class="c-database" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(736 223) scale(0.6875)">
             <ellipse cx="8" cy="4" rx="5" ry="2"/>
             <path d="M3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4M3 8c0 1.1 2.2 2 5 2s5-.9 5-2"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="541" y="362" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">算成数字存向量库</text>
-          <text data-detail="context" x="541" y="379" class="t-muted" font-size="8" text-anchor="middle">1257 段 可搜相似</text>
+          <text data-node-label="" data-detail-anchor="" x="825" y="238" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">算成数字存向量库</text>
+          <text data-detail="context" x="825" y="255" class="t-muted" font-size="8" text-anchor="middle">1257 段 可搜相似</text>
         </g>
 
-        <g id="node-freeze" data-node-id="freeze" data-node-label="记下每段指纹" tabindex="0" role="button" aria-label="聚焦记下每段指纹，以后能证明没换过, 入库 › 出题与冻结" aria-pressed="false" data-node-kind="backend" data-node-sublabel="以后能证明没换过" data-node-context="入库 › 出题与冻结">
-          <title>记下每段指纹 · 以后能证明没换过 · 入库 › 出题与冻结</title>
-          <rect x="645.8" y="341" width="116" height="52" rx="6" class="c-mask"/>
-          <rect x="645.8" y="341" width="116" height="52" rx="6" class="c-backend" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(651.8 347) scale(0.6875)">
+        <g id="node-freeze" data-node-id="freeze" data-node-label="记下每段指纹" tabindex="0" role="button" aria-label="聚焦记下每段指纹，以后能证明没换过, 入库与记指纹 › 出题与冻结" aria-pressed="false" data-node-kind="backend" data-node-sublabel="以后能证明没换过" data-node-context="入库与记指纹 › 出题与冻结">
+          <title>记下每段指纹 · 以后能证明没换过 · 入库与记指纹 › 出题与冻结</title>
+          <rect x="966.8" y="217" width="190" height="52" rx="6" class="c-mask"/>
+          <rect x="966.8" y="217" width="190" height="52" rx="6" class="c-backend" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(972.8 223) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="703.8" y="362" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">记下每段指纹</text>
-          <text data-detail="context" x="703.8" y="379" class="t-muted" font-size="8" text-anchor="middle">以后能证明没换过</text>
+          <text data-node-label="" data-detail-anchor="" x="1061.8" y="238" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">记下每段指纹</text>
+          <text data-detail="context" x="1061.8" y="255" class="t-muted" font-size="8" text-anchor="middle">以后能证明没换过</text>
         </g>
 
-        <g id="node-golden" data-node-id="golden" data-node-label="标准题 136 道" tabindex="0" role="button" aria-label="聚焦标准题 136 道，太容易 已饱和, 出题与评测 › 出题与冻结" aria-pressed="false" data-node-kind="external" data-node-sublabel="太容易 已饱和" data-node-context="出题与评测 › 出题与冻结">
-          <title>标准题 136 道 · 太容易 已饱和 · 出题与评测 › 出题与冻结</title>
-          <rect x="647.8" y="465" width="112" height="52" rx="6" class="c-mask"/>
-          <rect x="647.8" y="465" width="112" height="52" rx="6" class="c-external" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="external" class="semantic-sigil s-external" transform="translate(653.8 471) scale(0.6875)">
+        <g id="node-hardset" data-node-id="hardset" data-node-label="自造难题 240 道" tabindex="0" role="button" aria-label="聚焦自造难题 240 道，专门挑毛病, 出两套题 › 入库" aria-pressed="false" data-node-kind="external" data-node-sublabel="专门挑毛病" data-node-context="出两套题 › 入库">
+          <title>自造难题 240 道 · 专门挑毛病 · 出两套题 › 入库</title>
+          <rect x="730" y="341" width="190" height="52" rx="6" class="c-mask"/>
+          <rect x="730" y="341" width="190" height="52" rx="6" class="c-external" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="external" class="semantic-sigil s-external" transform="translate(736 347) scale(0.6875)">
             <rect x="2.5" y="5" width="8.5" height="8" rx="1.5"/>
             <path d="M8 2.5h5.5V8M13.5 2.5 7.5 8.5"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="703.8" y="486" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">标准题 136 道</text>
-          <text data-detail="context" x="703.8" y="503" class="t-muted" font-size="8" text-anchor="middle">太容易 已饱和</text>
+          <text data-node-label="" data-detail-anchor="" x="825" y="362" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">自造难题 240 道</text>
+          <text data-detail="context" x="825" y="379" class="t-muted" font-size="8" text-anchor="middle">专门挑毛病</text>
         </g>
 
-        <g id="node-run" data-node-id="run" data-node-label="跑评测并打分" tabindex="0" role="button" aria-label="聚焦跑评测并打分，找得回 说得住 才算好, 出题与评测 › 评测与上线" aria-pressed="false" data-node-kind="backend" data-node-sublabel="找得回 说得住 才算好" data-node-context="出题与评测 › 评测与上线">
-          <title>跑评测并打分 · 找得回 说得住 才算好 · 出题与评测 › 评测与上线</title>
-          <rect x="806.5999999999999" y="465" width="116" height="52" rx="6" class="c-mask"/>
-          <rect x="806.5999999999999" y="465" width="116" height="52" rx="6" class="c-backend" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(812.5999999999999 471) scale(0.6875)">
-            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
-          </g>
-          <text data-node-label="" data-detail-anchor="" x="864.5999999999999" y="486" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">跑评测并打分</text>
-          <text data-detail="context" x="864.5999999999999" y="503" class="t-muted" font-size="8" text-anchor="middle">找得回 说得住 才算好</text>
-        </g>
-
-        <g id="node-hardset" data-node-id="hardset" data-node-label="自造难题 240 道" tabindex="0" role="button" aria-label="聚焦自造难题 240 道，专门挑毛病, 自造难题这一路 › 出题与冻结" aria-pressed="false" data-node-kind="external" data-node-sublabel="专门挑毛病" data-node-context="自造难题这一路 › 出题与冻结">
-          <title>自造难题 240 道 · 专门挑毛病 · 自造难题这一路 › 出题与冻结</title>
-          <rect x="647.8" y="589" width="112" height="52" rx="6" class="c-mask"/>
-          <rect x="647.8" y="589" width="112" height="52" rx="6" class="c-external" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="external" class="semantic-sigil s-external" transform="translate(653.8 595) scale(0.6875)">
+        <g id="node-golden" data-node-id="golden" data-node-label="标准题 136 道" tabindex="0" role="button" aria-label="聚焦标准题 136 道，太容易 已饱和, 出两套题 › 出题与冻结" aria-pressed="false" data-node-kind="external" data-node-sublabel="太容易 已饱和" data-node-context="出两套题 › 出题与冻结">
+          <title>标准题 136 道 · 太容易 已饱和 · 出两套题 › 出题与冻结</title>
+          <rect x="966.8" y="341" width="190" height="52" rx="6" class="c-mask"/>
+          <rect x="966.8" y="341" width="190" height="52" rx="6" class="c-external" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="external" class="semantic-sigil s-external" transform="translate(972.8 347) scale(0.6875)">
             <rect x="2.5" y="5" width="8.5" height="8" rx="1.5"/>
             <path d="M8 2.5h5.5V8M13.5 2.5 7.5 8.5"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="703.8" y="610" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">自造难题 240 道</text>
-          <text data-detail="context" x="703.8" y="627" class="t-muted" font-size="8" text-anchor="middle">专门挑毛病</text>
+          <text data-node-label="" data-detail-anchor="" x="1061.8" y="362" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">标准题 136 道</text>
+          <text data-detail="context" x="1061.8" y="379" class="t-muted" font-size="8" text-anchor="middle">太容易 已饱和</text>
         </g>
 
-        <g id="node-release" data-node-id="release" data-node-label="达标上线 否则回滚" tabindex="0" role="button" aria-label="聚焦达标上线 否则回滚，判据先写死, 上线或回滚 › 评测与上线" aria-pressed="false" data-node-kind="security" data-node-sublabel="判据先写死" data-node-context="上线或回滚 › 评测与上线">
-          <title>达标上线 否则回滚 · 判据先写死 · 上线或回滚 › 评测与上线</title>
-          <rect x="806.5999999999999" y="713" width="116" height="52" rx="6" class="c-mask"/>
-          <rect x="806.5999999999999" y="713" width="116" height="52" rx="6" class="c-security" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(812.5999999999999 719) scale(0.6875)">
+        <g id="node-run" data-node-id="run" data-node-label="跑评测并打分" tabindex="0" role="button" aria-label="聚焦跑评测并打分，找得回 说得住 才算好, 评测与上线 › 出题与冻结" aria-pressed="false" data-node-kind="backend" data-node-sublabel="找得回 说得住 才算好" data-node-context="评测与上线 › 出题与冻结">
+          <title>跑评测并打分 · 找得回 说得住 才算好 · 评测与上线 › 出题与冻结</title>
+          <rect x="966.8" y="465" width="190" height="52" rx="6" class="c-mask"/>
+          <rect x="966.8" y="465" width="190" height="52" rx="6" class="c-backend" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(972.8 471) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="1061.8" y="486" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">跑评测并打分</text>
+          <text data-detail="context" x="1061.8" y="503" class="t-muted" font-size="8" text-anchor="middle">找得回 说得住 才算好</text>
+        </g>
+
+        <g id="node-release" data-node-id="release" data-node-label="达标上线 否则回滚" tabindex="0" role="button" aria-label="聚焦达标上线 否则回滚，判据先写死, 评测与上线 › 评测与上线" aria-pressed="false" data-node-kind="security" data-node-sublabel="判据先写死" data-node-context="评测与上线 › 评测与上线">
+          <title>达标上线 否则回滚 · 判据先写死 · 评测与上线 › 评测与上线</title>
+          <rect x="1203.6" y="465" width="190" height="52" rx="6" class="c-mask"/>
+          <rect x="1203.6" y="465" width="190" height="52" rx="6" class="c-security" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(1209.6 471) scale(0.6875)">
             <path d="M8 2.2 13 4v3.5c0 3.1-1.8 5.4-5 6.5-3.2-1.1-5-3.4-5-6.5V4Z"/>
             <path d="m5.8 8 1.5 1.5 3-3"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="864.5999999999999" y="734" class="t-primary" font-size="10.5" font-weight="600" text-anchor="middle">达标上线 否则回滚</text>
-          <text data-detail="context" x="864.5999999999999" y="751" class="t-muted" font-size="8" text-anchor="middle">判据先写死</text>
+          <text data-node-label="" data-detail-anchor="" x="1298.6" y="486" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">达标上线 否则回滚</text>
+          <text data-detail="context" x="1298.6" y="503" class="t-muted" font-size="8" text-anchor="middle">判据先写死</text>
         </g>
 
         <!-- Edge labels -->
         <g data-detail="context" data-edge-from="chunk" data-edge-to="rec" data-edge-label="存段落" data-edge-key="0">
-          <rect x="350.1" y="270" width="38.8" height="14" rx="3" class="c-mask"/>
-          <text x="369.5" y="280" class="t-database" font-size="8" text-anchor="middle">存段落</text>
+          <rect x="663.1" y="146" width="38.8" height="14" rx="3" class="c-mask"/>
+          <text x="682.5" y="156" class="t-database" font-size="8" text-anchor="middle">存段落</text>
         </g>
         <g data-detail="context" data-edge-from="chunk" data-edge-to="vec" data-edge-label="算数字" data-edge-key="1">
-          <rect x="487.1" y="223" width="38.8" height="14" rx="3" class="c-mask"/>
-          <text x="506.5" y="233" class="t-backend" font-size="8" text-anchor="middle">算数字</text>
+          <rect x="754.1" y="99" width="38.8" height="14" rx="3" class="c-mask"/>
+          <text x="773.5" y="109" class="t-backend" font-size="8" text-anchor="middle">算数字</text>
         </g>
         <g data-detail="context" data-edge-from="docs" data-edge-to="mask" data-edge-label="取料" data-edge-key="2">
-          <rect x="186" y="99" width="30" height="14" rx="3" class="c-mask"/>
-          <text x="201" y="109" class="t-backend" font-size="8" text-anchor="middle">取料</text>
+          <rect x="242" y="99" width="30" height="14" rx="3" class="c-mask"/>
+          <text x="257" y="109" class="t-backend" font-size="8" text-anchor="middle">取料</text>
         </g>
         <g data-detail="context" data-edge-from="freeze" data-edge-to="run" data-edge-label="同一批题" data-edge-key="3">
-          <rect x="788.9999999999999" y="347" width="48.4" height="14" rx="3" class="c-mask"/>
-          <text x="813.1999999999999" y="357" class="t-backend" font-size="8" text-anchor="middle">同一批题</text>
+          <rect x="1093.1" y="524" width="48.4" height="14" rx="3" class="c-mask"/>
+          <text x="1117.3" y="534" class="t-backend" font-size="8" text-anchor="middle">同一批题</text>
         </g>
-        <g data-detail="context" data-edge-from="golden" data-edge-to="run" data-edge-label="考题一" data-edge-key="4">
-          <rect x="763.8" y="471" width="38.8" height="14" rx="3" class="c-mask"/>
-          <text x="783.1999999999999" y="481" class="t-database" font-size="8" text-anchor="middle">考题一</text>
+        <g data-detail="context" data-edge-from="golden" data-edge-to="run" data-edge-label="考题二" data-edge-key="4">
+          <rect x="1097.8999999999999" y="394" width="38.8" height="14" rx="3" class="c-mask"/>
+          <text x="1117.3" y="404" class="t-database" font-size="8" text-anchor="middle">考题二</text>
         </g>
-        <g data-detail="context" data-edge-from="hardset" data-edge-to="run" data-edge-label="考题二" data-edge-key="5">
-          <rect x="792.8" y="595" width="38.8" height="14" rx="3" class="c-mask"/>
-          <text x="812.1999999999999" y="605" class="t-database" font-size="8" text-anchor="middle">考题二</text>
+        <g data-detail="context" data-edge-from="hardset" data-edge-to="run" data-edge-label="考题一" data-edge-key="5">
+          <rect x="876.5" y="471" width="38.8" height="14" rx="3" class="c-mask"/>
+          <text x="895.9" y="481" class="t-database" font-size="8" text-anchor="middle">考题一</text>
         </g>
         <g data-detail="context" data-edge-from="mask" data-edge-to="chunk" data-edge-label="切块打标签" data-edge-key="6">
-          <rect x="286" y="223" width="58" height="14" rx="3" class="c-mask"/>
-          <text x="315" y="233" class="t-backend" font-size="8" text-anchor="middle">切块打标签</text>
+          <rect x="470" y="99" width="58" height="14" rx="3" class="c-mask"/>
+          <text x="499" y="109" class="t-backend" font-size="8" text-anchor="middle">切块打标签</text>
         </g>
         <g data-detail="context" data-edge-from="run" data-edge-to="release" data-edge-label="看判据" data-edge-key="7">
-          <rect x="920.6" y="471" width="38.8" height="14" rx="3" class="c-mask"/>
-          <text x="940" y="481" class="t-backend" font-size="8" text-anchor="middle">看判据</text>
+          <rect x="1216.2999999999997" y="524" width="38.8" height="14" rx="3" class="c-mask"/>
+          <text x="1235.6999999999998" y="534" class="t-backend" font-size="8" text-anchor="middle">看判据</text>
         </g>
         <g data-detail="context" data-edge-from="vec" data-edge-to="freeze" data-edge-label="记指纹" data-edge-key="8">
-          <rect x="603" y="347" width="38.8" height="14" rx="3" class="c-mask"/>
-          <text x="622.4" y="357" class="t-backend" font-size="8" text-anchor="middle">记指纹</text>
+          <rect x="924" y="223" width="38.8" height="14" rx="3" class="c-mask"/>
+          <text x="943.4" y="233" class="t-backend" font-size="8" text-anchor="middle">记指纹</text>
         </g>
 
         <!-- Legend -->
         <g data-legend="" data-legend-bridge="">
-          <text x="20" y="800" class="t-primary" font-size="12" font-weight="650">图例</text>
-          <g data-legend-semantic-kind="backend" data-legend-kind="backend" data-legend-label="Agent 逻辑" data-legend-x="20" data-legend-baseline="820" data-legend-width="87">
-            <rect x="20" y="812" width="14" height="9" rx="2" class="c-backend" stroke-width="1"/>
-            <text x="42" y="820" class="t-muted" font-size="7.5" font-weight="500">Agent 逻辑</text>
+          <text x="20" y="552" class="t-primary" font-size="12" font-weight="650">图例</text>
+          <g data-legend-semantic-kind="backend" data-legend-kind="backend" data-legend-label="Agent 逻辑" data-legend-x="20" data-legend-baseline="572" data-legend-width="87">
+            <rect x="20" y="564" width="14" height="9" rx="2" class="c-backend" stroke-width="1"/>
+            <text x="42" y="572" class="t-muted" font-size="7.5" font-weight="500">Agent 逻辑</text>
           </g>
-          <g data-legend-semantic-kind="security" data-legend-kind="security" data-legend-label="策略" data-legend-x="114" data-legend-baseline="820" data-legend-width="61">
-            <rect x="114" y="812" width="14" height="9" rx="2" class="c-security" stroke-width="1"/>
-            <text x="136" y="820" class="t-muted" font-size="7.5" font-weight="500">策略</text>
+          <g data-legend-semantic-kind="security" data-legend-kind="security" data-legend-label="策略" data-legend-x="114" data-legend-baseline="572" data-legend-width="61">
+            <rect x="114" y="564" width="14" height="9" rx="2" class="c-security" stroke-width="1"/>
+            <text x="136" y="572" class="t-muted" font-size="7.5" font-weight="500">策略</text>
           </g>
-          <g data-legend-semantic-kind="database" data-legend-kind="database" data-legend-label="上下文 / 追踪" data-legend-x="182" data-legend-baseline="820" data-legend-width="100">
-            <rect x="182" y="812" width="14" height="9" rx="2" class="c-database" stroke-width="1"/>
-            <text x="204" y="820" class="t-muted" font-size="7.5" font-weight="500">上下文 / 追踪</text>
+          <g data-legend-semantic-kind="database" data-legend-kind="database" data-legend-label="上下文 / 追踪" data-legend-x="182" data-legend-baseline="572" data-legend-width="100">
+            <rect x="182" y="564" width="14" height="9" rx="2" class="c-database" stroke-width="1"/>
+            <text x="204" y="572" class="t-muted" font-size="7.5" font-weight="500">上下文 / 追踪</text>
           </g>
-          <g data-legend-semantic-kind="external" data-legend-kind="external" data-legend-label="外部系统" data-legend-x="289" data-legend-baseline="820" data-legend-width="78">
-            <rect x="289" y="812" width="14" height="9" rx="2" class="c-external" stroke-width="1"/>
-            <text x="311" y="820" class="t-muted" font-size="7.5" font-weight="500">外部系统</text>
+          <g data-legend-semantic-kind="external" data-legend-kind="external" data-legend-label="外部系统" data-legend-x="289" data-legend-baseline="572" data-legend-width="78">
+            <rect x="289" y="564" width="14" height="9" rx="2" class="c-external" stroke-width="1"/>
+            <text x="311" y="572" class="t-muted" font-size="7.5" font-weight="500">外部系统</text>
           </g>
         </g>
       </svg>
@@ -5577,8 +5570,8 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <h3>库里有两种东西</h3>
         </div>
         <ul>
-          <li>&bull; 一种是人问人答的对话 823 段 短 口语</li>
-          <li>&bull; 一种是指南与规范原文 434 段 长 有章节</li>
+          <li>&bull; 一种是人问人答的对话 800 段 短 口语</li>
+          <li>&bull; 一种是指南与规范原文 257 篇 长 有章节</li>
           <li>&bull; 两种都要脱敏后再切块 每块都标器官与章节</li>
         </ul>
       </div>

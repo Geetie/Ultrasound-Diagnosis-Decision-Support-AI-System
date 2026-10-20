@@ -22,16 +22,14 @@
     ]
   },
   "lanes": [
-    { "id": "corpus", "label": "原始材料" },
-    { "id": "clean", "label": "清洗与切块" },
-    { "id": "store", "label": "入库" },
-    { "id": "eval", "label": "出题与评测" },
-    { "id": "hard", "label": "自造难题这一路" },
-    { "id": "release", "label": "上线或回滚", "variant": "exception" }
+    { "id": "clean", "label": "取料 清洗 切块" },
+    { "id": "store", "label": "入库与记指纹" },
+    { "id": "papers", "label": "出两套题" },
+    { "id": "gate", "label": "评测与上线" }
   ],
   "phases": [
     { "id": "q_take", "label": "取料", "fromCol": 0, "toCol": 0 },
-    { "id": "q_clean", "label": "清洗", "fromCol": 1, "toCol": 1 },
+    { "id": "q_clean", "label": "去隐私", "fromCol": 1, "toCol": 1 },
     { "id": "q_cut", "label": "切块打标签", "fromCol": 2, "toCol": 2, "variant": "emphasis" },
     { "id": "q_store", "label": "入库", "fromCol": 3, "toCol": 3 },
     { "id": "q_pick", "label": "出题与冻结", "fromCol": 4, "toCol": 4 },
@@ -39,16 +37,16 @@
   ],
   "mainPath": ["docs", "mask", "chunk", "vec", "freeze", "run", "release"],
   "nodes": [
-    { "id": "docs", "lane": "corpus", "col": 0, "width": 124, "type": "external", "label": "两份原材料", "sublabel": "问答对话 与 指南原文" },
-    { "id": "mask", "lane": "clean", "col": 1, "width": 104, "type": "security", "label": "去隐私", "sublabel": "姓名 编号打码" },
-    { "id": "chunk", "lane": "clean", "col": 2, "width": 124, "type": "backend", "label": "切块并打标签", "sublabel": "器官 章节 来源" },
-    { "id": "vec", "lane": "store", "col": 3, "width": 116, "type": "database", "label": "算成数字存向量库", "sublabel": "1257 段 可搜相似" },
-    { "id": "rec", "lane": "store", "col": 2, "width": 130, "type": "database", "label": "段落与相邻关系入库", "sublabel": "321 段之间有边" },
-    { "id": "freeze", "lane": "store", "col": 4, "width": 116, "type": "backend", "label": "记下每段指纹", "sublabel": "以后能证明没换过" },
-    { "id": "golden", "lane": "eval", "col": 4, "width": 112, "type": "external", "label": "标准题 136 道", "sublabel": "太容易 已饱和" },
-    { "id": "hardset", "lane": "hard", "col": 4, "width": 112, "type": "external", "label": "自造难题 240 道", "sublabel": "专门挑毛病" },
-    { "id": "run", "lane": "eval", "col": 5, "width": 116, "type": "backend", "label": "跑评测并打分", "sublabel": "找得回 说得住 才算好" },
-    { "id": "release", "lane": "release", "col": 5, "width": 116, "type": "security", "label": "达标上线 否则回滚", "sublabel": "判据先写死" }
+    { "id": "docs", "lane": "clean", "col": 0, "width": 190, "type": "external", "label": "两份原材料", "sublabel": "问答对话 与 指南原文" },
+    { "id": "mask", "lane": "clean", "col": 1, "width": 190, "type": "security", "label": "去隐私", "sublabel": "姓名 编号打码" },
+    { "id": "chunk", "lane": "clean", "col": 2, "width": 190, "type": "backend", "label": "切块并打标签", "sublabel": "器官 章节 来源" },
+    { "id": "rec", "lane": "store", "col": 2, "width": 190, "type": "database", "label": "段落与相邻关系入库", "sublabel": "321 段之间有边" },
+    { "id": "vec", "lane": "store", "col": 3, "width": 190, "type": "database", "label": "算成数字存向量库", "sublabel": "1257 段 可搜相似" },
+    { "id": "freeze", "lane": "store", "col": 4, "width": 190, "type": "backend", "label": "记下每段指纹", "sublabel": "以后能证明没换过" },
+    { "id": "hardset", "lane": "papers", "col": 3, "width": 190, "type": "external", "label": "自造难题 240 道", "sublabel": "专门挑毛病" },
+    { "id": "golden", "lane": "papers", "col": 4, "width": 190, "type": "external", "label": "标准题 136 道", "sublabel": "太容易 已饱和" },
+    { "id": "run", "lane": "gate", "col": 4, "width": 190, "type": "backend", "label": "跑评测并打分", "sublabel": "找得回 说得住 才算好" },
+    { "id": "release", "lane": "gate", "col": 5, "width": 190, "type": "security", "label": "达标上线 否则回滚", "sublabel": "判据先写死" }
   ],
   "edges": [
     { "from": "docs", "to": "mask", "label": "取料", "variant": "emphasis" },
@@ -57,8 +55,8 @@
     { "from": "chunk", "to": "rec", "label": "存段落", "variant": "dashed" },
     { "from": "vec", "to": "freeze", "label": "记指纹", "variant": "emphasis" },
     { "from": "freeze", "to": "run", "label": "同一批题", "variant": "emphasis" },
-    { "from": "golden", "to": "run", "label": "考题一", "variant": "dashed" },
-    { "from": "hardset", "to": "run", "label": "考题二", "variant": "dashed" },
+    { "from": "hardset", "to": "run", "label": "考题一", "variant": "dashed" },
+    { "from": "golden", "to": "run", "label": "考题二", "variant": "dashed" },
     { "from": "run", "to": "release", "label": "看判据", "variant": "emphasis" }
   ],
   "cards": [
@@ -66,8 +64,8 @@
       "dot": "cyan",
       "title": "库里有两种东西",
       "items": [
-        "一种是人问人答的对话 823 段 短 口语",
-        "一种是指南与规范原文 434 段 长 有章节",
+        "一种是人问人答的对话 800 段 短 口语",
+        "一种是指南与规范原文 257 篇 长 有章节",
         "两种都要脱敏后再切块 每块都标器官与章节"
       ]
     },
