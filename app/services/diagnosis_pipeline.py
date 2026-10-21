@@ -333,6 +333,12 @@ async def run_diagnosis_pipeline(request_id: str) -> bool:
         segmentation = await _safe_nodule_contour(request)
         timings["segmentation.bypass_ms"] = (time.monotonic() - t) * 1000.0
 
+        # 1b) 相似病例旁路（A.82）：影像向量**独立输出**，不进 LLM 的知识上下文。
+        #     默认只查同一病人的历史影像（合规默认）；失败不影响主判读。
+        t = time.monotonic()
+        similar_cases = await _safe_similar_cases(request)
+        timings["similar_cases.bypass_ms"] = (time.monotonic() - t) * 1000.0
+
         # 2) 调度 (dispatcher.invoke)
         # T-GB-AGT-02：把路由判定的检索档位一并注入，使"标准/全量"
         # 真正作用于专科智能体的检索强度（此前判定结果只落库不生效）。
@@ -430,6 +436,7 @@ async def run_diagnosis_pipeline(request_id: str) -> bool:
             routing=routing_decision,
             rollout=rollout_decision,
             segmentation=segmentation,
+            similar_cases=similar_cases,
             # 传入起点，使落库 findings 里带上真实的 pipeline.total_ms
             # （否则该键只在写库后才出现在本地 timings 中，接口读不到，
             #  processing_time_ms 会静默回退到 mock 值）
@@ -934,6 +941,7 @@ async def _write_result_to_db(
     routing: RoutingDecision | None = None,
     rollout: RolloutDecision | None = None,
     segmentation: dict[str, Any] | None = None,
+    similar_cases: dict[str, Any] | None = None,
     t_start: float | None = None,
 ) -> bool:
     """根据 fusion_result + sg_result 决定 status / findings / confidence 并写 DB。
@@ -1005,6 +1013,10 @@ async def _write_result_to_db(
         "segmentation": segmentation
         if segmentation is not None
         else {"available": False, "reason": "not_run"},
+        # A.82 相似病例：**独立字段**，不混进 knowledge_ids / 不进 LLM 上下文
+        "similar_cases": similar_cases
+        if similar_cases is not None
+        else {"status": "not_run", "cases": []},
     }
 
     # 三层脱敏 L2（融合层）：对**即将持久化**的输出载荷再脱敏一次。
@@ -1331,6 +1343,79 @@ def _area_mm2_from_dicom(content: bytes, area_px: int) -> float | None:
     if ps is None or area_px <= 0:
         return None
     return round(area_px * ps[0] * ps[1], 3)
+
+
+async def _safe_similar_cases(request_row: Any) -> dict[str, Any]:
+    """相似病例旁路（A.82）：**独立输出**，不进 LLM 知识上下文，失败不影响主判读。
+
+    设计要点：
+    * 默认 `scope="self"` → 只查**同一病人**的历史影像（合规、无需额外授权）；
+    * 输出仅 `image_id / score / organ / date`，**不含 patient_id / session_id**；
+    * 任何异常 → `status="unavailable"`，主流程照常出结论。
+    """
+    from app.config.settings import settings
+
+    if not settings.similar_cases_enabled:
+        return {"status": "disabled", "cases": []}
+
+    session_id = str(getattr(request_row, "session_id", "") or "")
+    image_ids = [str(x) for x in (getattr(request_row, "image_ids", None) or [])]
+    if not image_ids:
+        return {"status": "skipped", "reason": "no_image_ids", "cases": []}
+
+    t = time.monotonic()
+    try:
+        from sqlalchemy import select
+
+        from app.models.database import DiagnosisSession
+        from app.services.dicom_storage import get_dicom_storage
+        from app.services.similar_cases import find_similar_cases
+
+        async with AsyncSessionLocal() as db:
+            patient_id = (
+                await db.scalar(
+                    select(DiagnosisSession.patient_id).where(
+                        DiagnosisSession.session_id == session_id
+                    )
+                )
+            )
+            repo = DicomImageRepository(db)
+            rows = await repo.filter_existing_in_session(session_id, image_ids[:1])
+            if not rows:
+                return {"status": "unavailable", "reason": "image_not_indexed", "cases": []}
+            storage_path = rows[0].storage_path
+            index_image_id = rows[0].image_id
+
+        storage = get_dicom_storage()
+        content = await storage.retrieve(storage_path)
+        if not content:
+            return {"status": "unavailable", "reason": "image_unreadable", "cases": []}
+
+        result = await find_similar_cases(
+            image_content=content,
+            patient_id=str(patient_id or "") or None,
+            organ=str(getattr(request_row, "organ", "") or "") or None,
+            scope=settings.similar_cases_scope,
+            top_k=settings.similar_cases_top_k,
+            exclude_image_id=str(index_image_id),
+        )
+        logger.info(
+            "similar_cases_done",
+            request_id=getattr(request_row, "request_id", ""),
+            scope=result.get("scope"),
+            status=result.get("status"),
+            count=len(result.get("cases") or []),
+            elapsed_ms=round((time.monotonic() - t) * 1000.0, 1),
+        )
+        return result
+    except Exception as exc:  # 参考信息，失败不阻断判读；但必须留痕
+        logger.warning(
+            "similar_cases_bypass_failed",
+            request_id=getattr(request_row, "request_id", ""),
+            error=str(exc)[:160],
+            error_type=type(exc).__name__,
+        )
+        return {"status": "unavailable", "reason": type(exc).__name__, "cases": []}
 
 
 async def _safe_nodule_contour(request_row: Any) -> dict[str, Any]:

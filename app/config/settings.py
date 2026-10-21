@@ -372,6 +372,15 @@ class Settings(BaseSettings):
     rag_use_llm_enhancement: bool = False
     rag_collection: str = 'knowledge_chunks'
     rag_image_collection: str = 'ultrasound_chunks'
+
+    # === A.82 相似病例通道（影像向量的正确用法：独立输出，不进知识上下文）===
+    # 为什么单独开一个开关：影像点不是知识块，硬塞进 LLM 上下文会被 `_wrap_search_results`
+    # 按 chunk_id 回填时丢弃（A.80 实测贡献恒为 0）。
+    similar_cases_enabled: bool = True
+    # 合规边界：`self` = **只查同一病人的历史影像**（默认，同一患者自己的资料，不构成跨病人披露）；
+    # `deidentified` = 跨病人比对，只返回脱敏字段 —— 属于数据使用决策，**必须显式配置**才生效。
+    similar_cases_scope: str = 'self'
+    similar_cases_top_k: int = 3
     # 实体近似匹配专用 collection（≤1 万向量），与主检索 collection 隔离。
     # 设计规格 §5.5 / 01-系统架构设计「Gate 0A 强制执行项」指定的名称。
     rag_entity_matching_collection: str = 'entity_matching'
