@@ -81,6 +81,24 @@ def _is_collection_not_found(exc: Exception) -> bool:
     return any(p.search(msg) for p in _NOT_FOUND_PATTERNS)
 
 
+def image_search_filter(organ: str | None, session_id: str | None) -> dict | None:
+    """影像腿的向量检索过滤条件（**病人隔离红线**）。纯函数（守卫钉住）。
+
+    规则：
+    * **有 session_id → 必须按 session 过滤**（影像属于某次检查会话；
+      跨会话召回等于看到别的病人的影像）；
+    * 有 organ 再叠加；
+    * 两者都没有 → 返回 None；调用方（`_safe_image`）在无 session 时**不应发请求**，
+      本函数不替它"放开全库"。
+    """
+    flt: dict = {}
+    if session_id:
+        flt["session_id"] = session_id
+    if organ:
+        flt["organ"] = organ
+    return flt or None
+
+
 class _Hit:
     """Internal lightweight hit type used during RRF fusion."""
 
@@ -389,6 +407,14 @@ class Retriever:
     async def _safe_image(self, request: RetrievalRequest) -> list[_Hit]:
         if self._clip is None or request.image_data is None:
             return []
+        # A.78 病人隔离：没有 session 就**不发检索请求**（宁可这条腿空，也不跨病人搜）。
+        if not request.session_id:
+            warn_once(
+                "image_leg_no_session",
+                "image_leg_skipped_no_session",
+                hint="影像检索必须带 session_id 才能限定病人范围；无 session 时该腿直接跳过",
+            )
+            return []
         try:
             resp = await self._clip.embed_image(
                 ImageEmbeddingRequest(
@@ -413,7 +439,10 @@ class Retriever:
                 collection=settings.rag_image_collection,
                 query_vector=query_vector,
                 top_k=request.top_k,
-                filter={"organ": request.organ} if request.organ else None,
+                # A.78 病人隔离：影像腿**必须**按 session 过滤。
+                # 旧实现只按 organ 过滤 —— 一旦影像向量库灌入多病人数据，
+                # 一次请求就会召回**别的病人**的影像（这是数据泄露，不是精度问题）。
+                filter=image_search_filter(request.organ, request.session_id),
             )
         except VectorIndexError as exc:
             if _is_collection_not_found(exc):

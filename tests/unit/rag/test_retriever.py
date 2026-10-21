@@ -497,6 +497,8 @@ class TestImageLeg:
             image_data=b"\x00\x01\x02",
             image_format="dicom",
             top_k=5,
+            # A.78 病人隔离：影像腿要求 session（无 session 时拒绝检索，防跨病人召回）
+            session_id="sess-test-1",
         )
         result = await r.retrieve(req, enhanced_query="x")
         assert result.has_results is True
@@ -505,6 +507,22 @@ class TestImageLeg:
         clip.embed_image.assert_awaited_once()
         # vector_client.search was called twice (text + image)
         assert vc.search.await_count == 2
+
+    async def test_image_leg_skipped_without_session(self):
+        """A.78：没有 session 时**不发影像检索**（否则等于全库跨病人搜）。"""
+        vc = _make_mock_vector_client()
+        vc.search = AsyncMock(return_value=[_make_search_result("c1", 0.8)])
+        r = Retriever(
+            vector_client=vc,
+            embedding_service=_make_mock_embedding(),
+            ultrasound_clip=_make_mock_clip(),
+        )
+        req = RetrievalRequest(
+            query="x", image_data=b"\x00\x01\x02", image_format="dicom", top_k=5
+        )
+        await r.retrieve(req, enhanced_query="x")
+        # 只应有文本那一次检索
+        assert vc.search.await_count == 1
 
     async def test_image_skipped_when_no_image_data(self):
         vc = _make_mock_vector_client()

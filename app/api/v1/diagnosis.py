@@ -249,6 +249,27 @@ async def submit_diagnosis_request(
     consent_record = await consent_repo.get_latest_consent(session.patient_id)
     check_consent_status(consent_record, session.patient_id)
 
+    # === A.78 病人隔离（提交侧）===
+    # 原实现把 `request.image_ids` **原样落库**、不校验归属：调用方可以传别的 session/病人的影像 ID。
+    # 管线侧虽然会用 `filter_existing_in_session` 兜住（读图不会跨病人），但：
+    #   ① 库里会留下跨 session 的脏 image_ids；② 请求会静默退化成 `image_not_indexed`；
+    #   ③ 一旦影像向量腿建好，历史脏 ID 会被继续沿用。
+    # 所以在**入口**就显式拒绝（400），而不是让它一路静默降级。
+    if request.image_ids:
+        from app.repositories.dicom_image_repository import DicomImageRepository
+
+        missing = await DicomImageRepository(diagnosis_repo.db).missing_from_session(
+            request.session_id, list(request.image_ids)
+        )
+        if missing:
+            raise BadRequestException(
+                error_message=(
+                    f"以下影像不属于本次检查会话：{', '.join(missing[:3])}"
+                    f"{' 等' if len(missing) > 3 else ''}；"
+                    "请确认影像已上传到同一会话后再提交"
+                ),
+            )
+
     # === 准入控制（第二梯队② 生产容量验收，2026-10-12）===
     # 放在**建行之前**：队列过深时立刻 503 + Retry-After，绝不落一条永远等不到
     # worker 的 processing 行（那种"静默排队"既骗医生又污染数据）。
