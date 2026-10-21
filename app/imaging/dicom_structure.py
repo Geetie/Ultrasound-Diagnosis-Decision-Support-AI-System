@@ -88,7 +88,7 @@ def structure_of(ds: Any) -> dict:
     frames_raw = getattr(ds, "NumberOfFrames", 1)
     try:
         frames = max(1, int(frames_raw))
-    except (TypeError, ValueError):
+    except (TypeError, ValueError):  # silent-ok: 非法帧数按单帧，结果已写入返回值的 frames
         frames = 1
     regions = getattr(ds, "SequenceOfUltrasoundRegions", None)
     has_regions = bool(regions) if regions is not None else False
