@@ -90,9 +90,14 @@ def _install_stubs(monkeypatch, rows, probs_by_frame, frames_total):
 
 class TestBestFrameSelection:
     async def test_single_multiframe_picks_best_of_three(self, monkeypatch):
-        """单张 9 帧影像 → 评估 mid(4)/2/6 三帧，取 mean_prob 最高者。"""
+        """单张 9 帧影像 → 评估 **首/中/末（0/4/8）** 三帧，取 mean_prob 最高者。
+
+        A.81 起帧策略统一到 `dicom_structure.frame_indices()`（首/中/末）：
+        旧策略是"中间帧 ±2"（2/4/6），只覆盖 cine loop 的中间一小段，
+        首尾（心脏舒张/收缩两端）永远选不到。
+        """
         rows = [_row("img_multi", 9)]
-        # 三帧概率：中间帧最低 → 应选到 ±2 的某一帧（这里第 2 个候选最高）
+        # 三帧概率：首帧最低 → 应选到中间帧（第 2 个候选）
         _install_stubs(monkeypatch, rows, {"seq": [0.30, 0.91, 0.55]}, frames_total=9)
 
         out = await dp._safe_nodule_contour(
@@ -103,7 +108,7 @@ class TestBestFrameSelection:
         assert out["selection_policy"] == "best_mean_prob"
         assert out["candidates_evaluated"] == 3
         assert len(out["frames_evaluated"]) == 3
-        assert out["frame_index"] == 2  # mid-2（9//2=4 → off=-2）
+        assert out["frame_index"] == 4  # 首/中/末 = 0/4/8，中间帧胜出
         assert out["mean_prob"] == 0.91
         assert out["total_frames"] == 9
 

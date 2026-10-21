@@ -39,6 +39,12 @@ from app.config.database import AsyncSessionLocal
 from app.config.redis import RedisPool
 from app.config.redis_keys import RedisKey
 from app.config.settings import settings
+from app.imaging.dicom_structure import (
+    frame_indices,
+    measurement_allowed,
+    segmentation_allowed,
+    structure_of,
+)
 from app.inference.nodule_segmentation import (
     NoduleSegmenter,
     SegmentationUnavailableError,
@@ -1245,6 +1251,29 @@ def _get_monitor_agent():
         return None
 
 
+def _structure_of_content(content: bytes) -> dict[str, Any]:
+    """读 DICOM 头部得到结构要素；**解析失败按"允许"处理但留痕**。
+
+    为什么不 fail-closed：解析失败可能只是 header 不完整（如导出工具生成的次要文件），
+    直接拒绝会让原本能出报告的案件变成静默跳过。真正的安全问题（无标定换算 mm）
+    由 `_pixel_spacing_from_dicom` 单独把住。
+    """
+    import io
+
+    try:
+        import pydicom
+
+        ds = pydicom.dcmread(io.BytesIO(content), stop_before_pixels=True, force=True)
+    except Exception as exc:
+        logger.warning(
+            "dicom_structure_parse_failed",
+            error=str(exc)[:160],
+            error_type=type(exc).__name__,
+        )
+        return {"sop_kind": "unknown", "frames": 1, "burned_in": False, "calibration": "unknown"}
+    return structure_of(ds)
+
+
 def _pixel_spacing_from_dicom(content: bytes) -> list[float] | None:
     """从 DICOM 字节读 PixelSpacing（行距, 列距，单位 mm）。
 
@@ -1263,6 +1292,19 @@ def _pixel_spacing_from_dicom(content: bytes) -> list[float] | None:
     except Exception as exc:
         logger.debug("nodule_pixel_spacing_parse_failed", error=str(exc),
                      error_type=type(exc).__name__)
+        return None
+
+    # A.81 安全闸：**没有超声区域校准就不换算物理单位**。
+    # A.80 实测本库 580 个文件 `SequenceOfUltrasoundRegions` 全为 0——
+    # 也就是说 PixelSpacing 里的值**没有区域校准支撑**，乘出来的 mm² 是"看起来准的假数"。
+    # 宁可只报像素面积，也不给医生一个无法辩护的物理尺寸。
+    structure = structure_of(ds)
+    if not measurement_allowed(str(structure.get("calibration") or "")):
+        logger.warning(
+            "nodule_pixel_spacing_uncalibrated",
+            calibration=structure.get("calibration"),
+            hint="缺 SequenceOfUltrasoundRegions → 不换算 mm²，报告只给像素面积",
+        )
         return None
 
     ps = getattr(ds, "PixelSpacing", None)
@@ -1340,11 +1382,12 @@ async def _safe_nodule_contour(request_row: Any) -> dict[str, Any]:
                     "requested_image_ids": image_ids[:5],
                 }
             # A.51 多帧分期③：候选帧集（≤3 帧，控制推理成本）。
-            # 旧实现固定取 rows[0] 且 extract_frame_from_bytes(None) 恒取中间帧——
-            # 多帧栈/多影像时无"择优帧"语义，报告与前端也没有帧归属。
-            # 新策略：
-            #   ①多张影像：每张取代表帧（中间帧），至多前 2 张；
-            #   ②单张多帧：中间帧 ±2 采样，至多 3 帧；
+            # A.81：帧选取口径统一到 `dicom_structure.frame_indices()`（**全系统唯一实现**）。
+            # 旧实现是"中间帧 ±2"，而建影像向量时用的是"首/中/末"——同一份 cine loop
+            # 在两条链路上取的不是同一批帧，属于口径漂移。
+            # 现策略：
+            #   ①多张影像：每张取代表帧（首/中/末中的中间帧），至多前 2 张；
+            #   ②单张多帧：`frame_indices(total)` 给出首/中/末，至多 3 帧；
             #   ③单帧影像：None（解码默认帧）。
             candidates: list[tuple[Any, int | None]] = []
             if len(rows) > 1:
@@ -1355,11 +1398,9 @@ async def _safe_nodule_contour(request_row: Any) -> dict[str, Any]:
                 r = rows[0]
                 fc = int(getattr(r, "frame_count", 1) or 1)
                 if fc > 1:
-                    mid = fc // 2
-                    for off in (0, -2, 2):
-                        idx = max(0, min(fc - 1, mid + off))
-                        if idx not in [c[1] for c in candidates]:
-                            candidates.append((r, idx))
+                    # A.81：用统一口径（首/中/末），与影像向量建库共用同一个函数
+                    for idx in frame_indices(fc):
+                        candidates.append((r, idx))
                 else:
                     candidates.append((r, None))
             candidates = candidates[:3]
@@ -1381,6 +1422,19 @@ async def _safe_nodule_contour(request_row: Any) -> dict[str, Any]:
                 if not content:
                     continue
                 content_cache[cand_row.image_id] = content
+            # A.81 结构准入：二次采集（屏幕截图）会把烧录标注/标尺当病灶，
+            # 必须先看结构再分割（A.80 实测：580 个文件里 67 个是二次采集）。
+            structure = _structure_of_content(content)
+            allowed, deny_reason = segmentation_allowed(structure)
+            if not allowed:
+                logger.info(
+                    "nodule_segmentation_skipped_by_structure",
+                    request_id=getattr(request_row, "request_id", ""),
+                    image_id=cand_row.image_id,
+                    reason=deny_reason,
+                    sop_kind=structure.get("sop_kind"),
+                )
+                continue
             frame = extract_frame_from_bytes(content, frame_index=cand_frame_index)
             result = await asyncio.to_thread(
                 NoduleSegmenter.get(organ_raw).infer,

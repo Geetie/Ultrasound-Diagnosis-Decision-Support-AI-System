@@ -65,15 +65,14 @@ def image_format_of(path: str) -> str:
 
 
 def frame_indices_for(total_frames: int) -> list[int]:
-    """多帧取哪几帧（纯函数，守卫钉住）。
+    """多帧取哪几帧 —— **委托给 `app.imaging.dicom_structure.frame_indices`**。
 
-    A.80 实测：580 个文件里 **71 个是 7 帧**（cine loop，占 12.2%）。
-    只取"中间帧"会丢掉首尾信息（心脏收缩/舒张两端差别最大），
-    取 **首/中/末** 三帧平均更稳；单帧仍只取一帧（不额外开销）。
+    为什么不在这里保留一份实现：A.81 发现建库脚本用"首/中/末"、诊断管线用"中间帧±2"，
+    同一份 cine loop 在两条链路上取的帧不同 —— 口径漂移。现在全系统只有一个实现。
     """
-    if total_frames <= 1:
-        return [0]
-    return sorted({0, total_frames // 2, total_frames - 1})
+    from app.imaging.dicom_structure import frame_indices
+
+    return frame_indices(total_frames)
 
 
 def needs_frame_conversion(path: str) -> bool:
