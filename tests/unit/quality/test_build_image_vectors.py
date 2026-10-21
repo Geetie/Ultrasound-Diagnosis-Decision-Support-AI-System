@@ -52,6 +52,18 @@ def test_image_format_is_derived_from_path():
     assert b.image_format_of("/a/b/noext") == "dicom"
 
 
+def test_multi_frame_picks_first_middle_last():
+    """A.80 实测：580 个文件里 71 个是 7 帧 cine loop → 取首/中/末三帧。
+
+    只取中间帧会丢掉首尾（心脏收缩/舒张两端差别最大）。
+    """
+    b = _load()
+    assert b.frame_indices_for(1) == [0]
+    assert b.frame_indices_for(7) == [0, 3, 6]
+    assert b.frame_indices_for(2) == [0, 1]
+    assert b.frame_indices_for(3) == [0, 1, 2]
+
+
 def test_builder_defaults_to_dry_run_and_is_idempotent_by_design():
     src = _SRC.read_text(encoding="utf-8")
     assert 'ap.add_argument("--apply", action="store_true"' in src

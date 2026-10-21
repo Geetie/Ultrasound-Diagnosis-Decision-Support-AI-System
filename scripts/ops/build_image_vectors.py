@@ -64,6 +64,18 @@ def image_format_of(path: str) -> str:
     return suffix or "dicom"
 
 
+def frame_indices_for(total_frames: int) -> list[int]:
+    """多帧取哪几帧（纯函数，守卫钉住）。
+
+    A.80 实测：580 个文件里 **71 个是 7 帧**（cine loop，占 12.2%）。
+    只取"中间帧"会丢掉首尾信息（心脏收缩/舒张两端差别最大），
+    取 **首/中/末** 三帧平均更稳；单帧仍只取一帧（不额外开销）。
+    """
+    if total_frames <= 1:
+        return [0]
+    return sorted({0, total_frames // 2, total_frames - 1})
+
+
 def needs_frame_conversion(path: str) -> bool:
     """是否要把 DICOM **渲染成 PNG 帧**再送嵌入。纯函数（守卫钉住）。
 
@@ -175,13 +187,13 @@ async def main() -> int:
     from app.embedding.qdrant_client import QdrantVectorIndex
     from app.embedding.ultrasound_clip import UltrasoundClipService
 
-    vector = QdrantVectorIndex(
+    index = QdrantVectorIndex(
         host=settings.qdrant_host,
         port=settings.qdrant_port,
         api_key=settings.qdrant_api_key or None,
     )
     clip = UltrasoundClipService(base_url=f"http://127.0.0.1:{settings.ultrasound_clip_port}")
-    await vector.create_collection(
+    await index.create_collection(
         collection=settings.rag_image_collection, dimension=IMAGE_DIM, distance="cosine"
     )
 
@@ -192,22 +204,49 @@ async def main() -> int:
             for row in chunk:
                 try:
                     raw = pathlib.Path(row["storage_path"]).read_bytes()
+                    vectors: list[list[float]] = []
                     if needs_frame_conversion(row["storage_path"]):
-                        # DICOM → PNG 中间帧（ULC 不吃 DICOM，会 500）
+                        # DICOM → PNG 帧（ULC 不吃 DICOM，会 500）
                         from app.imaging.dicom_pixels import extract_frame_from_bytes
 
-                        frame = extract_frame_from_bytes(raw)
-                        data, fmt = frame.png_bytes, "png"
-                    else:
-                        data, fmt = raw, image_format_of(row["storage_path"])
-                    resp = await clip.embed_image(
-                        ImageEmbeddingRequest(
-                            image_data=data,
-                            image_format=fmt,
-                            request_id=row["image_id"],
-                            session_id=row["session_id"],
+                        first = extract_frame_from_bytes(raw, None)
+                        for idx in frame_indices_for(first.total_frames):
+                            frame = extract_frame_from_bytes(raw, idx)
+                            r = await clip.embed_image(
+                                ImageEmbeddingRequest(
+                                    image_data=frame.png_bytes,
+                                    image_format="png",
+                                    request_id=f"{row['image_id']}#{idx}",
+                                    session_id=row["session_id"],
+                                )
+                            )
+                            if r.embeddings:
+                                vectors.append(list(r.embeddings[0]))
+                        # 多帧：逐维平均（等价于"整段 cine 的代表向量"）
+                        if not vectors:
+                            raise RuntimeError("no frame embedded")
+                        if len(vectors) == 1:
+                            emb = vectors[0]
+                        else:
+                            dim = len(vectors[0])
+                            emb = [
+                                sum(v[i] for v in vectors) / len(vectors) for i in range(dim)
+                            ]
+                        stats["multi_frame_files"] = stats.get("multi_frame_files", 0) + (
+                            1 if first.total_frames > 1 else 0
                         )
-                    )
+                    else:
+                        resp = await clip.embed_image(
+                            ImageEmbeddingRequest(
+                                image_data=raw,
+                                image_format=image_format_of(row["storage_path"]),
+                                request_id=row["image_id"],
+                                session_id=row["session_id"],
+                            )
+                        )
+                        if not resp.embeddings:
+                            raise RuntimeError("no embedding")
+                        emb = list(resp.embeddings[0])
                 except Exception as exc:  # 单张失败不阻断整批，但必须计数留痕
                     stats["failed"] += 1
                     if len(stats["failures"]) < 10:
@@ -215,24 +254,21 @@ async def main() -> int:
                             {"image_id": row["image_id"], "reason": f"{type(exc).__name__}: {exc}"[:120]}
                         )
                     continue
-                if not resp.embeddings:
-                    stats["failed"] += 1
-                    continue
                 stats["embedded"] += 1
                 records.append(
                     VectorRecord(
                         id=row["image_id"],
-                        vector=list(resp.embeddings[0]),
+                        vector=emb,
                         metadata=payload_for(row) or {},
                     )
                 )
             if records:
-                await vector.upsert(collection=settings.rag_image_collection, vectors=records)
+                await index.upsert(collection=settings.rag_image_collection, vectors=records)
                 stats["upserted"] += len(records)
             print(f"  进度 {min(start + args.batch, len(usable))}/{len(usable)}"
                   f"：已嵌入 {stats['embedded']}、已写入 {stats['upserted']}、失败 {stats['failed']}")
     finally:
-        for obj in (clip, vector):
+        for obj in (clip, index):
             closer = getattr(obj, "close", None)
             if closer is not None:
                 await closer()
