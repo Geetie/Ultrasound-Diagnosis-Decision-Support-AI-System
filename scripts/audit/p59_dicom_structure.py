@@ -36,7 +36,7 @@ def summarize_file(ds) -> dict:
     frames_raw = getattr(ds, "NumberOfFrames", 1)
     try:
         frames = int(frames_raw)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError):  # silent-ok: NumberOfFrames 非法即按单帧，已由 frames 体现
         frames = 1
     regions = getattr(ds, "SequenceOfUltrasoundRegions", None)
     return {
@@ -115,7 +115,7 @@ def main() -> int:
             continue
         try:
             ds = pydicom.dcmread(str(path), stop_before_pixels=True, force=True)
-        except Exception:
+        except Exception:  # silent-ok: 解析失败已计入 parse_fail 并在报告里输出
             parse_fail += 1
             continue
         info = summarize_file(ds)

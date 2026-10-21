@@ -247,7 +247,7 @@ async def main() -> int:
                         if not resp.embeddings:
                             raise RuntimeError("no embedding")
                         emb = list(resp.embeddings[0])
-                except Exception as exc:  # 单张失败不阻断整批，但必须计数留痕
+                except Exception as exc:  # silent-ok: 单张失败已计入 stats['failed'] 并写入 failures
                     stats["failed"] += 1
                     if len(stats["failures"]) < 10:
                         stats["failures"].append(
