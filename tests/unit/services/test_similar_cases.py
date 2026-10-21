@@ -85,11 +85,25 @@ def test_dedupe_keeps_distinct_exams_sorted_by_score():
     hits = [
         SimpleNamespace(score=0.7, metadata={"image_id": "img_20261001_a", "session_id": "s1"}),
         SimpleNamespace(score=0.9, metadata={"image_id": "img_20261005_b", "session_id": "s2"}),
-        SimpleNamespace(score=0.8, metadata={"image_id": "img_20261005_c", "session_id": "s2"}),
+        SimpleNamespace(score=0.8, metadata={"image_id": "img_20261005_c", "session_id": "s3"}),
     ]
     out = dedupe_by_exam(hits)
-    assert [h.metadata["session_id"] for h in out] == ["s2", "s1"]
+    # 不同日期 → 不同检查；10-05 的两条（不同 session）按日期合并为一条，取高分
+    assert len(out) == 2
     assert out[0].metadata["image_id"] == "img_20261005_b"
+    assert out[1].metadata["image_id"] == "img_20261001_a"
+
+
+def test_dedupe_groups_by_date_even_when_sessions_differ():
+    """真机：同一次检查被拆成多个 session（分数全同、同日）——按日期必须合并成 1 条。"""
+    from app.services.similar_cases import dedupe_by_exam
+
+    hits = [
+        SimpleNamespace(score=0.9759, metadata={"image_id": "img_20261009_a", "session_id": "s1"}),
+        SimpleNamespace(score=0.9759, metadata={"image_id": "img_20261009_b", "session_id": "s2"}),
+        SimpleNamespace(score=0.9759, metadata={"image_id": "img_20261009_c", "session_id": "s3"}),
+    ]
+    assert len(dedupe_by_exam(hits)) == 1
 
 
 def test_dedupe_falls_back_to_date_when_session_missing():

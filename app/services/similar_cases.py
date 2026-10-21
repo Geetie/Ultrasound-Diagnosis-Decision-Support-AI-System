@@ -183,19 +183,22 @@ CASE_DISCLAIMER = (
 
 
 def _exam_key(hit: Any) -> str:
-    """一次"检查"的归并键：优先 `session_id`，退化到日期，最后用 image_id。纯函数（守卫钉住）。
+    """一次"检查"的归并键：**优先按日期**，其次 `session_id`，最后 image_id。纯函数（守卫钉住）。
 
-    为什么需要：A.82 实测返回的 3 条相似度**完全相同（0.9759）且同日**——
-    它们是**同一次检查的多帧**，不是三次独立检查。不去重就会把"一次检查"说成"3 条历史"。
+    为什么日期优先（A.82 真机）：
+    * 首次按 `session_id` 去重后仍返回 3 条、分数完全相同（0.9759）、日期同为 2026-10-09 ——
+      说明数据里**一次检查被拆成了多个 session**（帧分别落在不同 session）；
+    * 医生记"一次检查"就是**一天**，按日期归并既符合临床习惯，也避免"把 1 次检查说成 3 条历史"。
+    代价：同一患者同日上下午两次检查会被合并（少见，且属"保守不夸大"，可接受）。
     """
     meta = getattr(hit, "metadata", None) or {}
-    session_id = str(meta.get("session_id") or "").strip()
-    if session_id:
-        return f"session:{session_id}"
     image_id = str(meta.get("image_id") or "")
     date = date_of(image_id, meta)
     if date:
         return f"date:{date}"
+    session_id = str(meta.get("session_id") or "").strip()
+    if session_id:
+        return f"session:{session_id}"
     return f"image:{image_id}"
 
 
