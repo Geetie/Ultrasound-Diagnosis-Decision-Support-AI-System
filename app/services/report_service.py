@@ -331,6 +331,29 @@ def _format_measurement(measurement: Any) -> str:
     return "；".join(parts)
 
 
+def _format_similar_cases(result: Any) -> str:
+    """相似病例摘要（A.82）——**参考信息**，无结果时返回空串（不写"未检出"）。
+
+    临床安全：相似度是**图像相似**，不是"同一个病"，报告里必须写明"参考"。
+    输出里**不得**出现 patient_id / session_id（上游已剔除，这里再兜一层）。
+    """
+    if not isinstance(result, Mapping) or not result:
+        return ""
+    if str(result.get("status") or "") != "ok":
+        return ""
+    cases = result.get("cases") or []
+    lines: list[str] = []
+    for case in cases:
+        if not isinstance(case, Mapping):
+            continue
+        date = str(case.get("date") or "日期未知")
+        score = case.get("score")
+        image_id = str(case.get("image_id") or "")
+        score_text = f"，相似度 {float(score):.3f}" if isinstance(score, (int, float)) else ""
+        lines.append(f"- {date}（编号 {image_id}{score_text}）")
+    return "\n".join(lines)
+
+
 def _format_nodule_segmentation(segmentation: Any) -> str:
     """分割旁路摘要（2026-10-03）。
 
@@ -478,6 +501,11 @@ def build_report_content(result: Any, session: Any = None) -> dict[str, Any]:
         "nodule_summary": _format_nodule_segmentation(
             findings_raw.get("segmentation")
         ),
+        # 相似病例（A.82）：**参考段**，只在有结果时追加（见 render_report）。
+        # 这里先做纯文本化，便于模板/导出复用；不含任何病患标识。
+        "similar_cases_text": _format_similar_cases(
+            findings_raw.get("similar_cases")
+        ),
         # M10 患者解释话术：**刻意不放进模板**——报告是医疗文书，面向患者的
         # 安抚性表述混入正文会改变文书性质；由医生按需追加（见 render_report）。
         "patient_explanation": _format_patient_explanation(
@@ -498,6 +526,12 @@ def build_report_content(result: Any, session: Any = None) -> dict[str, Any]:
 # M10：患者解释段标题。标注"非正式报告内容"，避免打印后与诊断意见混淆。
 PATIENT_EXPLANATION_HEADING = "患者解释（非正式报告内容，需医生确认后方可告知患者）"
 
+# A.82 相似病例段：标题与免责声明**同时**出现，避免被读成诊断依据。
+SIMILAR_CASES_HEADING = "本人历史影像（参考）"
+SIMILAR_CASES_DISCLAIMER = (
+    "以下为同一患者既往检查影像的相似度对照，仅供回顾参考，不构成诊断依据。"
+)
+
 # 话术缺失时的占位前缀（用于判断"是否有可追加的内容"）
 PATIENT_EXPLANATION_PLACEHOLDER_PREFIX = "（本次未生成"
 
@@ -515,6 +549,15 @@ def render_report(
     """
     organ = str(content.get("organ") or "") if isinstance(content, Mapping) else ""
     rendered = render_template(load_template(organ=organ), content)
+
+    # A.82 相似病例段：**始终**追加（有结果才出现），并固定标注"参考"
+    cases_text = content.get("similar_cases_text") if isinstance(content, Mapping) else ""
+    if cases_text:
+        rendered = (
+            f"{rendered}\n\n## {SIMILAR_CASES_HEADING}\n\n"
+            f"{SIMILAR_CASES_DISCLAIMER}\n\n{cases_text}\n"
+        )
+
     if not include_patient_explanation:
         return rendered
 

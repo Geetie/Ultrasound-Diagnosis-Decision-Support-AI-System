@@ -56,6 +56,7 @@ from app.services.multi_organ_orchestrator import (
 )
 from app.services.safety_gateway_client import safety_gateway_client
 from app.services.sg_output_data import build_sg_output_data, extract_findings_text
+from app.services.similar_cases import response_block as similar_cases_response_block
 
 router = APIRouter(tags=["diagnosis"])
 logger = structlog.get_logger()
@@ -657,6 +658,7 @@ async def get_diagnosis_result(
                 "pending": True,
             },
             nodule_segmentation={"available": False, "reason": "cancelled"},
+            similar_cases=similar_cases_response_block({"status": "cancelled"}),
             evidence=DiagnosisEvidence(knowledge_ids=None, content=None),
             quality_control=DiagnosisQualityControl(
                 confidence_score=None,
@@ -796,6 +798,11 @@ async def get_diagnosis_result(
             (diagnosis_payload or {}).get("segmentation")
             if isinstance((diagnosis_payload or {}).get("segmentation"), dict)
             else {"available": False, "reason": "not_run"}
+        ),
+        # 相似病例（A.82）：统一走 `response_block()` —— 强制带"参考"标注与免责声明，
+        # 避免某个分支漏标注；内部字段（patient_id/session_id）已在生成时剔除。
+        similar_cases=similar_cases_response_block(
+            (diagnosis_payload or {}).get("similar_cases")
         ),
         evidence=DiagnosisEvidence(
             knowledge_ids=result.knowledge_ids if hasattr(result, "knowledge_ids") and result.knowledge_ids else None,

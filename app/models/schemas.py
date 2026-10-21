@@ -444,6 +444,12 @@ class DiagnosisResult(BaseModel):
     # "未做分割：<原因>"，**不能**显示成"未检出结节"。
     nodule_segmentation: dict[str, Any] | None = None
 
+    # 相似病例（A.82）：**参考信息**，与"知识依据"分开。
+    # 只含 image_id / score / organ / date（**不含 patient_id/session_id**），
+    # 默认仅**同一病人**的历史影像。前端必须标注"参考"，不得当作诊断依据。
+    # 形态同样用 Dict 承载（会随检索策略演进），避免过早固化契约。
+    similar_cases: dict[str, Any] | None = None
+
 
 # ============== DICOM 相关模型 ==============
 class ReportUpdateRequest(BaseModel):

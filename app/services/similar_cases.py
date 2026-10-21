@@ -160,8 +160,7 @@ async def find_similar_cases(
         for obj in (clip, index):
             closer = getattr(obj, "close", None) if obj is not None else None
             if closer is not None:
-                # silent-ok: 关闭失败不影响已拿到的结果（连接由进程退出回收）
-                with contextlib.suppress(Exception):
+                with contextlib.suppress(Exception):  # silent-ok: 关闭失败不影响已拿到的结果
                     await closer()
 
     cases = [
@@ -170,6 +169,37 @@ async def find_similar_cases(
         if str((getattr(hit, "metadata", None) or {}).get("image_id") or "") != exclude_image_id
     ][:top_k]
     return {"status": "ok", "scope": scope, "cases": cases}
+
+
+#: 面向医生/前端的固定标注（**必须**随结果一起返回，避免被读成诊断依据）
+CASE_LABEL = "本人历史影像（参考）"
+CASE_DISCLAIMER = (
+    "以下为同一患者既往检查影像的相似度对照，仅供回顾参考，"
+    "不构成诊断依据，也不参与本次结论生成。"
+)
+
+
+def response_block(result: dict | None) -> dict:
+    """把内部结果转成**带标注**的对外块（纯函数，守卫钉住）。
+
+    为什么单独一层：前端拿到的必须是"参考"语义 + 不得含有病患标识。
+    直接在 API 里拼字符串会让标注在某个分支漏掉，这里统一出口。
+    """
+    data = result if isinstance(result, dict) else {}
+    status = str(data.get("status") or "not_run")
+    cases = list(data.get("cases") or []) if status == "ok" else []
+    block: dict = {
+        "label": CASE_LABEL,
+        "disclaimer": CASE_DISCLAIMER,
+        "status": status,
+        "count": len(cases),
+        "cases": cases,
+    }
+    if status != "ok" and data.get("reason"):
+        block["reason"] = str(data["reason"])
+    if data.get("scope"):
+        block["scope"] = str(data["scope"])
+    return block
 
 
 def summary_of(result: dict) -> dict:
