@@ -173,9 +173,14 @@ def is_prompt_echo(conclusion: str) -> bool:
     真实证据 ID 形如 `kb_v1.3.0:pdf_...#0000`。这类样本算进任何指标都是**脏样本**。
     """
     t = conclusion or ""
-    if any(p.search(t) for p in _ECHO_MARKERS):
+    if _ECHO_MARKERS[0].search(t):  # 假 chunk ID（chunk_a1b2）→ 铁证
         return True
-    return len(_ECHO_HEADER.findall(t)) >= 2
+    # ⚠️ A.77：`PATIENT_001` **单独出现不算回显**——它来自语料脱敏标记（KB 里 22 块含 `PATIENT_`），
+    # 模型在患者解释段落抄了出来；prompt 里没有这个串。只有当它同时伴随 `# 输出`/`chunk_` 才算回显。
+    headers = len(_ECHO_HEADER.findall(t))
+    if _ECHO_MARKERS[1].search(t) and (headers >= 1 or "chunk_" in t):
+        return True
+    return headers >= 2
 
 
 def main() -> int:

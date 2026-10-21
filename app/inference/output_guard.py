@@ -44,11 +44,31 @@ def detect_prompt_echo(text: str) -> str | None:
     t = text or ""
     if _PLACEHOLDER_CHUNK.search(t):
         return "placeholder_chunk_id"
-    if _PLACEHOLDER_PATIENT.search(t):
+
+    # ⚠️ A.77 更正：`PATIENT_001` **单独出现不算模板回显**。
+    # 真机证据：库里 22 个知识块含 `PATIENT_` 标记（对话语料脱敏时用 `PATIENT_001` 顶替患者称呼），
+    # 模型在"患者解释"段落会把它抄出来（如 `患者PATIENT_001: 解释: …`），
+    # 而三份 prompt 里**根本没有**这个串（`grep PATIENT_001 app/agents/prompts/*.md` = 0）。
+    # 首版规则把"只命中 PATIENT_"当回显 → 660 条已删记录里 **415 条是误判**（它们是有分级、
+    # 有鉴别诊断的真结论，只是引用了 `chunk_1` 这类假 ID）。
+    # 现在：PATIENT_ 仅在与"确凿回显特征"同时出现时才计入；单独出现交
+    # `detect_patient_token_leak()` 报**另一个缺陷**（语料脱敏标记外泄），不阻断输出。
+    headers = len(_OUTPUT_HEADER.findall(t))
+    if _PLACEHOLDER_PATIENT.search(t) and (headers >= 1 or "chunk_" in t):
         return "placeholder_patient_id"
-    if len(_OUTPUT_HEADER.findall(t)) >= _OUTPUT_HEADER_MIN:
+    if headers >= _OUTPUT_HEADER_MIN:
         return "repeated_output_header"
     return None
+
+
+def detect_patient_token_leak(text: str) -> bool:
+    """语料脱敏标记外泄：答案里出现 `PATIENT_001` 这类**语料占位符**（不是模板回显）。
+
+    单独成函数是因为**处置不同**：这类输出内容本身可用（有分级、有鉴别诊断），
+    只是把语料的脱敏标记抄进了患者解释 → 应当**清洗替换**（如替换为「患者」），
+    而不是像模板回显那样整条拒收。
+    """
+    return bool(_PLACEHOLDER_PATIENT.search(text or ""))
 
 
 def has_real_evidence_id(text: str, evidence_ids: list[str]) -> bool:

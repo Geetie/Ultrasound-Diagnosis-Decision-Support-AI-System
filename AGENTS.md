@@ -133,6 +133,9 @@ make test-perf                # 性能用例必须串行：-m perf -n0
 5. **判"回显"要排在判"降级"之前**：`grade_unparseable: …; manual review required` 既是解析失败又含占位符正文，
    首版按降级跳过 → 漏标 52 条（事后 dry-run 才发现）。
 6. **时区**：库里 `created_at` 是 aware(UTC)，`datetime.now()` 是 naive → 直接比较抛 `TypeError`；按行时区对齐。
+7. **单一标记不得定罪**：删/拒收前的判据必须有**两条以上独立证据**。A.77 教训：把"答案里出现 `PATIENT_001`"当模板回显铁证 →
+   **误删 415 条真结论**（它们有分级、有鉴别诊断，只是把语料脱敏标记抄进了患者解释；prompt 里根本没有该串，KB 里倒有 22 块）。
+   现在规则：`chunk_a1b2`/重复 `# 输出` 才算回显；`PATIENT_` 单独出现只算"语料标记外泄"，处置是**清洗**而非拒收。
 
 ## End of Session（收尾必做，保证可 restartable / clean）
 

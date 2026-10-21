@@ -6,7 +6,11 @@
 
 from __future__ import annotations
 
-from app.inference.output_guard import detect_prompt_echo, has_real_evidence_id
+from app.inference.output_guard import (
+    detect_patient_token_leak,
+    detect_prompt_echo,
+    has_real_evidence_id,
+)
 
 
 def test_placeholder_chunk_id_is_detected():
@@ -14,9 +18,28 @@ def test_placeholder_chunk_id_is_detected():
     assert detect_prompt_echo(text) == "placeholder_chunk_id"
 
 
-def test_placeholder_patient_id_is_detected():
+def test_patient_token_alone_is_leak_not_echo():
+    """A.77 更正：`PATIENT_001` 单独出现是**语料脱敏标记外泄**，不是模板回显。
+
+    真机：KB 里 22 个块含 `PATIENT_`（对话语料脱敏用它顶替患者称呼），
+    模型在患者解释段落抄了出来；三份 prompt 里没有这个串。
+    首版把它当回显 → 660 条已删记录里 415 条是误判。
+    """
     text = "患者PATIENT_001: 该结节为良性，无需进一步检查。"
+    assert detect_prompt_echo(text) is None
+    assert detect_patient_token_leak(text) is True
+
+
+def test_patient_token_with_echo_signals_is_echo():
+    """PATIENT_ 与确凿回显特征（`# 输出` / `chunk_`）同时出现时才计入回显。"""
+    text = "# 输出 分级: TR2 患者PATIENT_001: 该结节为良性"
     assert detect_prompt_echo(text) == "placeholder_patient_id"
+
+
+def test_patient_token_leak_helper_is_precise():
+    assert detect_patient_token_leak("见 PATIENT_007 医生") is True
+    assert detect_patient_token_leak("甲状腺结节 TR3") is False
+    assert detect_patient_token_leak("") is False
 
 
 def test_repeated_output_header_is_detected():
