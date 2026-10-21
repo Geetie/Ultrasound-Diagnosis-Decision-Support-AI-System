@@ -152,6 +152,32 @@ export interface DiagnosisResult {
    * 前端直到 2026-10-08 才第一次消费它（此前病灶标注全是设计稿写死的示意框）。
    */
   nodule_segmentation?: Record<string, unknown> | null;
+  /**
+   * 相似病例（A.82 后端挂入）：**参考信息**，与「知识依据」分开。
+   * 只含 image_id / score / organ / date —— **不含** patient_id / session_id。
+   * 后端固定带 `label` 与 `disclaimer`，前端必须原样展示（不得省略"参考"字样）。
+   */
+  similar_cases?: SimilarCasesBlock | null;
+}
+
+/** 相似病例块（A.82）。后端 `response_block()` 的输出形状。 */
+export interface SimilarCasesBlock {
+  /** 固定为「本人历史影像（参考）」——前端**不得**改写 */
+  label: string;
+  /** 免责声明：不得省略，不得折叠默认隐藏 */
+  disclaimer: string;
+  status: string;
+  count: number;
+  scope?: string;
+  reason?: string;
+  cases?: SimilarCase[];
+}
+
+export interface SimilarCase {
+  image_id: string;
+  score: number;
+  date?: string;
+  organ?: string;
 }
 
 /** 工作列表单行（后端 SessionListItem）。字段名与真机响应一致。 */

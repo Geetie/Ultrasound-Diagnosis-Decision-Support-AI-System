@@ -11,6 +11,7 @@ import { useProgressiveDiagnosis } from '@/hooks/useProgressiveDiagnosis';
 import { useTouchAdaptation } from '@/hooks/useTouchAdaptation';
 import DiagnosisConclusion from '@/components/diagnosis/DiagnosisConclusion';
 import EvidenceTrace from '@/components/diagnosis/EvidenceTrace';
+import SimilarCases from '@/components/diagnosis/SimilarCases';
 import { normalizeEvidence } from '@/components/diagnosis/evidence';
 import HallucinationWarning from '@/components/diagnosis/HallucinationWarning';
 import QualityControlBadge from '@/components/diagnosis/QualityControlBadge';
@@ -459,6 +460,10 @@ export default function DiagnosisPage() {
             crossModalityHints={result.cross_modality_hints ?? []}
           />
         </ProgressiveBlock>
+
+        {/* A.82 本人历史影像（参考）：独立一块，**不并进证据链**——
+            证据链是本次结论的依据，历史影像只是回顾参考，混在一起会被误读为"结论引用了它们" */}
+        <SimilarCases block={result.similar_cases} />
 
         {/* M11 科研指标：默认折叠（科研用途，展开会稀释临床结论） */}
         {result.research_metrics && (
