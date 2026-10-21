@@ -65,6 +65,45 @@ def test_public_case_tolerates_missing_metadata():
     assert out == {"score": 0.5}
 
 
+def test_dedupe_collapses_frames_of_same_exam():
+    """A.82 实测：3 条相似度完全相同且同日 → 是**同一次检查的多帧**，必须合并成 1 条。"""
+    from app.services.similar_cases import dedupe_by_exam
+
+    same_exam = [
+        SimpleNamespace(score=0.9759, metadata={"image_id": "img_20261009_a", "session_id": "s1"}),
+        SimpleNamespace(score=0.9759, metadata={"image_id": "img_20261009_b", "session_id": "s1"}),
+        SimpleNamespace(score=0.9700, metadata={"image_id": "img_20261009_c", "session_id": "s1"}),
+    ]
+    out = dedupe_by_exam(same_exam)
+    assert len(out) == 1
+    assert out[0].metadata["image_id"] == "img_20261009_a"  # 保留分数最高
+
+
+def test_dedupe_keeps_distinct_exams_sorted_by_score():
+    from app.services.similar_cases import dedupe_by_exam
+
+    hits = [
+        SimpleNamespace(score=0.7, metadata={"image_id": "img_20261001_a", "session_id": "s1"}),
+        SimpleNamespace(score=0.9, metadata={"image_id": "img_20261005_b", "session_id": "s2"}),
+        SimpleNamespace(score=0.8, metadata={"image_id": "img_20261005_c", "session_id": "s2"}),
+    ]
+    out = dedupe_by_exam(hits)
+    assert [h.metadata["session_id"] for h in out] == ["s2", "s1"]
+    assert out[0].metadata["image_id"] == "img_20261005_b"
+
+
+def test_dedupe_falls_back_to_date_when_session_missing():
+    """payload 没有 session_id 时，同一天的多张按"一次检查"合并（保守，不夸大历史次数）。"""
+    from app.services.similar_cases import dedupe_by_exam
+
+    hits = [
+        SimpleNamespace(score=0.6, metadata={"image_id": "img_20261009_a"}),
+        SimpleNamespace(score=0.5, metadata={"image_id": "img_20261009_b"}),
+        SimpleNamespace(score=0.4, metadata={"image_id": "img_20261001_c"}),
+    ]
+    assert len(dedupe_by_exam(hits)) == 2
+
+
 def test_summary_reports_count_only_when_ok():
     assert summary_of({"status": "ok", "scope": "self", "cases": [{"score": 0.9}]}) == {
         "status": "ok",

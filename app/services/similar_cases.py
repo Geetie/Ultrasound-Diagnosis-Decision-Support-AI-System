@@ -140,10 +140,12 @@ async def find_similar_cases(
             host=settings.qdrant_host, port=settings.qdrant_port,
             api_key=settings.qdrant_api_key or None,
         )
+        # 多取候选再按"检查"去重：同一次检查的多帧相似度几乎相同，
+        # 不去重会把"1 次检查"说成"3 条历史"（A.82 实测）。
         hits = await index.search(
             collection=settings.rag_image_collection,
             query_vector=list(resp.embeddings[0]),
-            top_k=top_k + 1,
+            top_k=max(top_k * 4, top_k + 4),
             filter=flt,
         )
     except Exception as exc:  # 相似病例是参考信息，失败绝不影响主判读
@@ -163,11 +165,12 @@ async def find_similar_cases(
                 with contextlib.suppress(Exception):  # silent-ok: 关闭失败不影响已拿到的结果
                     await closer()
 
-    cases = [
-        public_case(hit)
+    candidates = [
+        hit
         for hit in hits
         if str((getattr(hit, "metadata", None) or {}).get("image_id") or "") != exclude_image_id
-    ][:top_k]
+    ]
+    cases = [public_case(hit) for hit in dedupe_by_exam(candidates)][:top_k]
     return {"status": "ok", "scope": scope, "cases": cases}
 
 
@@ -177,6 +180,39 @@ CASE_DISCLAIMER = (
     "以下为同一患者既往检查影像的相似度对照，仅供回顾参考，"
     "不构成诊断依据，也不参与本次结论生成。"
 )
+
+
+def _exam_key(hit: Any) -> str:
+    """一次"检查"的归并键：优先 `session_id`，退化到日期，最后用 image_id。纯函数（守卫钉住）。
+
+    为什么需要：A.82 实测返回的 3 条相似度**完全相同（0.9759）且同日**——
+    它们是**同一次检查的多帧**，不是三次独立检查。不去重就会把"一次检查"说成"3 条历史"。
+    """
+    meta = getattr(hit, "metadata", None) or {}
+    session_id = str(meta.get("session_id") or "").strip()
+    if session_id:
+        return f"session:{session_id}"
+    image_id = str(meta.get("image_id") or "")
+    date = date_of(image_id, meta)
+    if date:
+        return f"date:{date}"
+    return f"image:{image_id}"
+
+
+def dedupe_by_exam(hits: list[Any]) -> list[Any]:
+    """按"检查"去重，同一检查保留相似度最高的一条，结果按相似度降序。纯函数（守卫钉住）。
+
+    输出仍是命中原对象（`session_id` 只用于归并，随后由 `public_case` 剔除，不外泄）。
+    """
+    best: dict[str, Any] = {}
+    for hit in hits or []:
+        key = _exam_key(hit)
+        current = best.get(key)
+        if current is None or float(getattr(hit, "score", 0.0) or 0.0) > float(
+            getattr(current, "score", 0.0) or 0.0
+        ):
+            best[key] = hit
+    return sorted(best.values(), key=lambda h: float(getattr(h, "score", 0.0) or 0.0), reverse=True)
 
 
 def response_block(result: dict | None) -> dict:
