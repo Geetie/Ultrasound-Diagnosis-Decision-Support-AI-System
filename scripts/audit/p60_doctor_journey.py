@@ -49,13 +49,13 @@ def _call(method: str, path: str, token: str | None = None, payload: dict | None
             body = resp.read().decode("utf-8", errors="replace")
             try:
                 return resp.status, json.loads(body)
-            except json.JSONDecodeError:
+            except json.JSONDecodeError:  # silent-ok: 非 JSON 正文原样返回给调用方判断
                 return resp.status, body
-    except urllib.error.HTTPError as exc:
+    except urllib.error.HTTPError as exc:  # silent-ok: 4xx/5xx 是走查要记录的结果，不抛
         body = exc.read().decode("utf-8", errors="replace")
         try:
             return exc.code, json.loads(body)
-        except json.JSONDecodeError:
+        except json.JSONDecodeError:  # silent-ok: 错误正文非 JSON 时原样返回
             return exc.code, body
 
 
@@ -80,7 +80,7 @@ def _upload(path: str, session_id: str, content: bytes, token: str) -> tuple[int
     try:
         with urllib.request.urlopen(req, timeout=120) as resp:
             return resp.status, json.loads(resp.read())
-    except urllib.error.HTTPError as exc:
+    except urllib.error.HTTPError as exc:  # silent-ok: 上传失败原因原样返回并打印
         return exc.code, exc.read().decode("utf-8", errors="replace")[:300]
 
 
