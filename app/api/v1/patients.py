@@ -138,6 +138,7 @@ def _segmentation_summary(findings) -> PatientHistorySegmentation | None:
         selection_policy=seg.get("selection_policy"),
         organ=seg.get("organ"),
         reason=seg.get("reason"),
+        reason_text=seg.get("reason_text"),
     )
 
 

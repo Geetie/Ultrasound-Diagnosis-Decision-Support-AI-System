@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Alert, Button, Card, Empty, Input, Segmented, Space, Spin, Tag, Typography } from 'antd';
 import { HistoryOutlined, SwapOutlined } from '@ant-design/icons';
 import { getApiErrorMessage } from '@/utils/apiError';
+import { segReasonLabel } from '@/utils/segReason';
 import { fetchPatientHistory } from '@/services/patientHistoryService';
 import { fetchDicomForDisplay } from '@/services/imagingService';
 import WorkspaceDicomLayer from '@/components/workspace/WorkspaceDicomLayer';
@@ -44,11 +45,15 @@ export function areaDeltaLabel(
   const a = left.segmentation?.area_mm2;
   const b = right.segmentation?.area_mm2;
   if (typeof a !== 'number' || typeof b !== 'number') {
-    if (!left.segmentation?.available && left.segmentation?.reason) {
-      return { text: `上次未做分割（${left.segmentation.reason}）`, color: tokens.color.text.secondary };
+    // A.86：优先用后端给的可读说明（reason_text），没有再退回原因码 ——
+    // 直接显示 `image_bytes_unavailable` 这种码，医生看不出下一步该做什么。
+    const leftWhy = segReasonLabel(left.segmentation?.reason, left.segmentation?.reason_text);
+    const rightWhy = segReasonLabel(right.segmentation?.reason, right.segmentation?.reason_text);
+    if (!left.segmentation?.available && leftWhy) {
+      return { text: `上次未做分割（${leftWhy}）`, color: tokens.color.text.secondary };
     }
-    if (!right.segmentation?.available && right.segmentation?.reason) {
-      return { text: `本次未做分割（${right.segmentation.reason}）`, color: tokens.color.text.secondary };
+    if (!right.segmentation?.available && rightWhy) {
+      return { text: `本次未做分割（${rightWhy}）`, color: tokens.color.text.secondary };
     }
     return { text: '面积不可比（有一侧无分割结果）', color: tokens.color.text.secondary };
   }
@@ -227,7 +232,7 @@ export default function PatientHistoryPage() {
               {typeof seg?.area_mm2 === 'number'
                 ? `${seg.area_mm2.toFixed(1)} mm²`
                 : seg && !seg.available
-                  ? `未做分割（${seg.reason ?? '未提供原因'}）`
+                  ? `未做分割（${segReasonLabel(seg.reason, seg.reason_text)}）`
                   : '—'}
             </Text>
             {seg?.frame_index != null && seg?.total_frames != null && (

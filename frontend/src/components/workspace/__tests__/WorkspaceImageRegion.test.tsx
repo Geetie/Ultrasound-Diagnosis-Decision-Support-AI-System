@@ -109,6 +109,32 @@ describe('WorkspaceImageRegion · 分割标注', () => {
     expect(screen.queryByLabelText('病灶分割标注')).toBeNull();
   });
 
+  it('A.86：后端给了 reason_text 就原样显示（不再由前端按 code 猜）', () => {
+    render(
+      <WorkspaceImageRegion
+        dicomImageId="dicomfile:0"
+        segmentation={{
+          available: false,
+          reason: 'secondary_capture_burned_in',
+          reasonText: '本次未做病灶勾画：该影像是屏幕截图（带烧录标注/标尺），如需要请上传设备原始 DICOM',
+        }}
+      />,
+    );
+    // 后端文案优先：显示"屏幕截图"，而不是本地映射的后半句
+    expect(screen.getByText(/屏幕截图/)).toBeInTheDocument();
+    expect(screen.getByText(/上传设备原始 DICOM/)).toBeInTheDocument();
+  });
+
+  it('A.86：没有 reason_text 时，截图原因也有可行动的本地兜底', () => {
+    render(
+      <WorkspaceImageRegion
+        dicomImageId="dicomfile:0"
+        segmentation={{ available: false, reason: 'secondary_capture_burned_in' }}
+      />,
+    );
+    expect(screen.getByText(/屏幕截图/)).toBeInTheDocument();
+  });
+
   it('未知原因原文透传，不静默吞掉', () => {
     render(
       <WorkspaceImageRegion

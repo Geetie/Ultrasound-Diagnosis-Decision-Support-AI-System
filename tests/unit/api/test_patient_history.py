@@ -67,6 +67,8 @@ class TestSchemaFieldSets:
             "selection_policy",
             "organ",
             "reason",
+            # A.86：新增医生可读说明（前端优先显示它，不再按 reason 码自己猜）
+            "reason_text",
         }
 
     def test_neighbour_class_untouched(self):

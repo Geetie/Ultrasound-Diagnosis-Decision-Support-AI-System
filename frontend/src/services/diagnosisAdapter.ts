@@ -40,6 +40,8 @@ export interface SegmentationView {
   available: boolean;
   /** available=false 时的降级原因（原文透传，渲染层映射成中文） */
   reason?: string;
+  /** A.86：后端给的**医生可读**说明（优先于 `reason` 的本地映射） */
+  reasonText?: string;
   /** 分割帧的像素尺寸 —— bbox 坐标系，也是 SVG overlay 的 viewBox */
   width?: number;
   height?: number;
@@ -80,6 +82,10 @@ function toSegmentationView(raw: unknown): SegmentationView | undefined {
   return {
     available: d.available === true,
     reason: typeof d.reason === 'string' ? d.reason : undefined,
+    // A.86：后端随 reason 一起给 `reason_text`（医生可读、可行动）。
+    // 前端**优先显示它**，不要自己按 code 再猜一遍 —— 猜错就会像
+    // "取不到影像" 那样把医生引到错误方向。
+    reasonText: typeof d.reason_text === 'string' ? d.reason_text : undefined,
     width,
     height,
     bbox,

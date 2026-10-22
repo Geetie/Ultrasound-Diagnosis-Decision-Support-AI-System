@@ -16,6 +16,8 @@ export interface PatientHistorySegmentation {
   organ?: string | null;
   /** available=false 时的原因（如 bypass_disabled）—— 必须显示，不能当成"没有病灶" */
   reason?: string | null;
+  /** A.86：后端给的医生可读说明（优先于 `reason` 的本地映射） */
+  reason_text?: string | null;
 }
 
 export interface PatientHistoryItem {

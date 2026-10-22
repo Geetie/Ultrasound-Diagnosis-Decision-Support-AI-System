@@ -1006,6 +1006,8 @@ class PatientHistorySegmentation(BaseModel):
     selection_policy: str | None = None
     organ: str | None = None
     reason: str | None = None
+    # A.86：医生可读说明（"这是截图，不做勾画" / "请联系技师重传"），前端优先显示它
+    reason_text: str | None = None
 
 
 class PatientHistoryItem(BaseModel):

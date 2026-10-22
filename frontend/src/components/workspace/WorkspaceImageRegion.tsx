@@ -30,14 +30,10 @@ import type { ReactNode } from 'react';
 import WorkspaceDicomLayer from './WorkspaceDicomLayer';
 import type { SegmentationView } from '@/services/diagnosisAdapter';
 import { formatLocalTimestamp } from '@/utils/datetime';
+import { segReasonLabel } from '@/utils/segReason';
 
-/** available=false 的降级原因 → 医生能看懂的一句话（未知原因原文透传）。 */
-const SEG_REASON_LABEL: Record<string, string> = {
-  not_enabled: '分割旁路未启用（管理员可在启动配置开启）',
-  no_image_ids: '本次判读未关联影像',
-  image_not_indexed: '影像索引缺失',
-  image_bytes_unavailable: '影像字节不可读',
-};
+/* A.86：原因文案的优先顺序抽到 `@/utils/segReason`（纯函数、可单测，
+   组件与历史对比页共用同一份兜底表，避免各写一套）。 */
 
 /**
  * A.51 帧级归属判定：分割结果是否属于"正在看的这一帧"。
@@ -258,7 +254,7 @@ export default function WorkspaceImageRegion({
           style={{ left: 24, bottom: 12, width: 560 }}
           data-region="segmentation-unavailable"
         >
-          未做分割：{SEG_REASON_LABEL[seg.reason ?? ''] ?? seg.reason ?? '原因未提供'}
+          未做分割：{segReasonLabel(seg.reason, seg.reasonText)}
           <span data-region="organ-consistency-hint">
             （若本次影像并非当前声明的检查部位，请回「新建会话」改选部位后重扫）
           </span>
