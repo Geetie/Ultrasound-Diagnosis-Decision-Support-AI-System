@@ -365,6 +365,11 @@ def _format_nodule_segmentation(segmentation: Any) -> str:
     if not isinstance(segmentation, Mapping) or not segmentation:
         return "（本次未执行影像分割）"
     if not segmentation.get("available"):
+        # A.86：优先用**可行动的中文说明**（后端给的 `reason_text`），
+        # 没有才退回原始 code —— 报告上写 `image_bytes_unavailable` 医生看不懂。
+        text = str(segmentation.get("reason_text") or "").strip()
+        if text:
+            return f"（{text}）"
         reason = str(segmentation.get("reason") or "未提供原因")
         return f"（未执行影像分割：{reason}）"
 

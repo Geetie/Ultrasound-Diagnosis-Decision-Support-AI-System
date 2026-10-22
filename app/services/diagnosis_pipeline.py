@@ -1263,6 +1263,36 @@ def _get_monitor_agent():
         return None
 
 
+#: 分割"未做"原因 → 医生可读中文（A.86）。
+#: 每条都要**可行动**：要么说明"不需要做"，要么说明"该找谁"。
+SEGMENTATION_REASON_TEXT: dict[str, str] = {
+    "secondary_capture_burned_in": (
+        "本次未做病灶勾画：该影像是屏幕截图（带烧录标注/标尺），"
+        "系统不对截图做自动勾画；如需要请上传设备原始 DICOM"
+    ),
+    "no_frames": "本次未做病灶勾画：影像不含有效帧，请重新上传含图像的 DICOM",
+    "image_bytes_unavailable": (
+        "本次未做病灶勾画：系统未取到影像文件，请联系技师重新上传"
+    ),
+    "no_candidate": "本次未做病灶勾画：没有可用影像，请确认本次检查是否已上传影像",
+    "image_not_indexed": (
+        "本次未做病灶勾画：影像未登记到本次检查，请确认上传是否成功"
+    ),
+}
+
+
+def segmentation_reason_text(reason: str | None) -> str:
+    """"未做分割"原因的中文说明。纯函数（守卫钉住）。
+
+    未知原因不臆造解释，统一回退到"未做病灶勾画（原因：<code>）"，
+    保证前端永远有可显示的字符串，而不会因为查不到映射显示空白。
+    """
+    code = str(reason or "").strip()
+    if not code:
+        return "本次未做病灶勾画"
+    return SEGMENTATION_REASON_TEXT.get(code, f"本次未做病灶勾画（原因：{code}）")
+
+
 def _structure_of_content(content: bytes) -> dict[str, Any]:
     """读 DICOM 头部得到结构要素；**解析失败按"允许"处理但留痕**。
 
@@ -1464,6 +1494,7 @@ async def _safe_nodule_contour(request_row: Any) -> dict[str, Any]:
                 return {
                     "available": False,
                     "reason": "image_not_indexed",
+                    "reason_text": segmentation_reason_text("image_not_indexed"),
                     "requested_image_ids": image_ids[:5],
                 }
             # A.51 多帧分期③：候选帧集（≤3 帧，控制推理成本）。
@@ -1500,11 +1531,16 @@ async def _safe_nodule_contour(request_row: Any) -> dict[str, Any]:
         evaluations: list[dict[str, Any]] = []
         best: dict[str, Any] | None = None
         content_cache: dict[str, bytes | None] = {}
+        # A.86：**每个候选为什么被跳过都要记下来**。
+        # 原实现用 `continue` 丢掉原因，最后统一报 `image_bytes_unavailable`——
+        # 真机后果：医生看到"未做（取不到影像）"，实际是"这是屏幕截图，本来就不该勾画"。
+        skips: list[dict[str, str]] = []
         for cand_row, cand_frame_index in candidates:
             content = content_cache.get(cand_row.image_id)
             if content is None:
                 content = await storage.retrieve(cand_row.storage_path)
                 if not content:
+                    skips.append({"image_id": cand_row.image_id, "reason": "image_bytes_unavailable"})
                     continue
                 content_cache[cand_row.image_id] = content
             # A.81 结构准入：二次采集（屏幕截图）会把烧录标注/标尺当病灶，
@@ -1519,6 +1555,7 @@ async def _safe_nodule_contour(request_row: Any) -> dict[str, Any]:
                     reason=deny_reason,
                     sop_kind=structure.get("sop_kind"),
                 )
+                skips.append({"image_id": cand_row.image_id, "reason": deny_reason})
                 continue
             frame = extract_frame_from_bytes(content, frame_index=cand_frame_index)
             result = await asyncio.to_thread(
@@ -1544,10 +1581,18 @@ async def _safe_nodule_contour(request_row: Any) -> dict[str, Any]:
                 }
 
         if best is None:
+            # A.86：用**真实跳过原因**作为 reason（首版一律报 image_bytes_unavailable，
+            # 把"这是截图不该勾画"说成"取不到影像"，医生据此会去找技师重传 —— 白跑一趟）。
+            reasons: dict[str, int] = {}
+            for skip in skips:
+                reasons[skip["reason"]] = reasons.get(skip["reason"], 0) + 1
+            primary = max(reasons.items(), key=lambda kv: kv[1])[0] if reasons else "no_candidate"
             return {
                 "available": False,
-                "reason": "image_bytes_unavailable",
+                "reason": primary,
+                "reason_text": segmentation_reason_text(primary),
                 "image_id": rows[0].image_id,
+                "skipped": skips[:5],
             }
 
         row = best["row"]
