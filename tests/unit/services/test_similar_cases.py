@@ -118,6 +118,23 @@ def test_dedupe_falls_back_to_date_when_session_missing():
     assert len(dedupe_by_exam(hits)) == 2
 
 
+def test_min_score_filters_weak_matches():
+    """A.82 实测：同病人 top1 有 0.4886 的"不可比"影像 → 低于下限应直接不展示。"""
+    from app.services.similar_cases import passes_min_score
+
+    assert passes_min_score(0.4886, 0.55) is False
+    assert passes_min_score(0.55, 0.55) is True   # 边界取等号
+    assert passes_min_score(0.9759, 0.55) is True
+    assert passes_min_score(None, 0.55) is False
+
+
+def test_default_min_score_is_documented_value():
+    from app.config.settings import Settings
+
+    # 暂定值：10 个病人实测 min 0.4886 / 其余 ≥0.63 → 0.55 既能挡住又不误伤
+    assert Settings().similar_cases_min_score == 0.55
+
+
 def test_summary_reports_count_only_when_ok():
     assert summary_of({"status": "ok", "scope": "self", "cases": [{"score": 0.9}]}) == {
         "status": "ok",

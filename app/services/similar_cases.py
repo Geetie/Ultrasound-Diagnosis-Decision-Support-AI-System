@@ -170,7 +170,13 @@ async def find_similar_cases(
         for hit in hits
         if str((getattr(hit, "metadata", None) or {}).get("image_id") or "") != exclude_image_id
     ]
-    cases = [public_case(hit) for hit in dedupe_by_exam(candidates)][:top_k]
+    # A.82：低于最低相似度的一律丢掉 —— 宁可"没有历史影像"，也不给医生看不相似的历史图。
+    # 暂定 0.55（10 个病人实测：0.4886 那条属"同病人但不可比"，其余 ≥0.63）。
+    cases = [
+        public_case(hit)
+        for hit in dedupe_by_exam(candidates)
+        if passes_min_score(getattr(hit, "score", None), settings.similar_cases_min_score)
+    ][:top_k]
     return {"status": "ok", "scope": scope, "cases": cases}
 
 
@@ -216,6 +222,17 @@ def dedupe_by_exam(hits: list[Any]) -> list[Any]:
         ):
             best[key] = hit
     return sorted(best.values(), key=lambda h: float(getattr(h, "score", 0.0) or 0.0), reverse=True)
+
+
+def passes_min_score(score: float | None, min_score: float) -> bool:
+    """相似度是否达到展示下限。纯函数（守卫钉住）。
+
+    语义：**低于下限就不展示**（宁可没有，也不给医生看不相似的历史图）。
+    边界取等号（>=），避免"刚好等于阈值"因浮点抖动而随机消失。
+    """
+    if score is None:
+        return False
+    return float(score) >= float(min_score)
 
 
 def response_block(result: dict | None) -> dict:

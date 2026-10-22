@@ -381,6 +381,11 @@ class Settings(BaseSettings):
     # `deidentified` = 跨病人比对，只返回脱敏字段 —— 属于数据使用决策，**必须显式配置**才生效。
     similar_cases_scope: str = 'self'
     similar_cases_top_k: int = 3
+    # 最低相似度：低于它就**不显示**（宁可没有，也不给医生看"不像的历史影像"）。
+    # A.82 实测 10 个病人：top1 分布 min 0.4886 / p50 0.9777 / max 1.0000 ——
+    # 0.49 那条是"同病人但不可比"的影像，0.55 能挡住它又不误伤（样本仅 6 条，
+    # 属**暂定值**，攒到 ≥30 条后需按分布重定）。
+    similar_cases_min_score: float = 0.55
     # 实体近似匹配专用 collection（≤1 万向量），与主检索 collection 隔离。
     # 设计规格 §5.5 / 01-系统架构设计「Gate 0A 强制执行项」指定的名称。
     rag_entity_matching_collection: str = 'entity_matching'
