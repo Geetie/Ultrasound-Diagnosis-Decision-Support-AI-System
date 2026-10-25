@@ -694,13 +694,56 @@ class CRAGHandler:
                     new_ids=[str(getattr(c, "chunk_id", "")) for c in new_evidence],
                     final_ids=final_evidence,
                 )
+                # A.95 Q11：把**三段来源**分别记进 trace，让"落库 evidence 包含
+                # 本次 prompt 里没有的块"成为可解释事实（详见 `_merge_evidence_three`
+                # docstring）。审计时按 `evidence_sources` 就能对上：
+                #   original_* = 首次生成时的 prompt 证据（本次重生成 prompt 里没有）
+                #   new_*      = 本次重生成 prompt 里补进来的
+                #   reinvoked_* = 重生成后 specialist 自己引用的
+                _orig_ids = [str(x) for x in (original.evidence_chunk_ids or [])]
+                _new_ids = [str(getattr(c, "chunk_id", "")) for c in new_evidence]
+                _reinv_ids = [
+                    str(x) for x in (new_response.evidence_chunk_ids or [])
+                ]
+                _final_set = set(final_evidence)
+                _only_from_original = [
+                    x for x in _orig_ids if x in _final_set and x not in set(_new_ids)
+                ]
+                evidence_sources_trace = (
+                    "evidence_sources: "
+                    f"original={len(_orig_ids)} "
+                    f"new={len(_new_ids)} "
+                    f"reinvoked={len(_reinv_ids)} "
+                    f"final={len(final_evidence)} "
+                    f"not_in_this_prompt={len(_only_from_original)}"
+                    + (
+                        f" [{','.join(_only_from_original[:3])}...]"
+                        if _only_from_original
+                        else ""
+                    )
+                )
+                if _only_from_original:
+                    logger.info(
+                        "crag_evidence_includes_first_prompt_only",
+                        request_id=request.request_id,
+                        count=len(_only_from_original),
+                        sample=_only_from_original[:3],
+                        hint=(
+                            "这些块来自**首次**生成时的 prompt，本次重生成的 prompt 里没有 —— "
+                            "是 _merge_evidence_three 第①步的有意合并，不是引用造假"
+                        ),
+                    )
                 final_response = AgentResponse(
                     agent_name=new_response.agent_name,
                     organ=new_response.organ,
                     content=new_response.content,
                     confidence=new_response.confidence,
                     evidence_chunk_ids=final_evidence,
-                    reasoning_trace=[*list(new_response.reasoning_trace or []), f"crag_reinvoked_with_{len(new_evidence)}_new_chunks"],
+                    reasoning_trace=[
+                        *list(new_response.reasoning_trace or []),
+                        f"crag_reinvoked_with_{len(new_evidence)}_new_chunks",
+                        evidence_sources_trace,
+                    ],
                     latency_ms=new_response.latency_ms,
                     needs_review=new_response.needs_review,
                     disease_code=new_response.disease_code,
@@ -878,21 +921,43 @@ class CRAGHandler:
 
         顺序：原 specialist evidence → 新 chunks → reinvoked response evidence
         （保持 specialist 输出优先）。
+
+        ## ⚠️ A.95 Q11：这里就是那个"证据链断点"的**根因**（有意设计，需可解释）
+
+        真机现象（A.62 批1 实测）：心脏腿 **2/2** 出现「数据库 `knowledge_ids` 里有块，
+        但不在任何 `_build_prompt` 留痕中」（如 `dialogue_cardiac_外科_0028#0000`）；
+        甲状腺腿 **5/5** 正常。
+
+        **根因在本函数第 ① 步**：`original.evidence_chunk_ids` 是**首次生成时**
+        specialist 引用的证据。而 CRAG 重新调用 specialist 时，它看到的 prompt 里是
+        `new_evidence`（补充检索的新块）——**不是** original 那一批。
+
+        于是 `final_evidence` 必然包含"重生成时 prompt 里没有的块"，
+        它们来自**第一次**的 prompt。**这不是 bug**（丢掉原证据会让结论依据残缺），
+        但留痕必须说清楚，否则任何审计都会把它当成"引用造假"。
+
+        为什么甲状腺腿没出现：它的结论没触发 CRAG 重生成
+        （`crag_recovered=False`），走原样返回路径，`final_evidence ==
+        original.evidence`，与 prompt 完全一致。
+
+        → 处置：**保留合并语义**，但调用方（`_build_new_response`）必须把三段来源
+        分别写进 `reasoning_trace`，让"落库 evidence ≠ 本次 prompt 所见"
+        成为**可解释事实**而不是疑点。见该函数的 `evidence_sources` 留痕。
         """
         merged: list[str] = []
         seen: set[str] = set()
-        # 1) 原 evidence
+        # ① 原 evidence（**首次 prompt 所见** —— 断点来源）
         for cid in (original.evidence_chunk_ids or []):
             if cid and cid not in seen:
                 seen.add(cid)
                 merged.append(cid)
-        # 2) 新 evidence chunks
+        # ② 新 evidence chunks（**本次重生成的 prompt 所见**）
         for chunk in new_evidence:
             cid = getattr(chunk, "chunk_id", None)
             if cid and cid not in seen:
                 seen.add(cid)
                 merged.append(cid)
-        # 3) reinvoked response 自身的 evidence（specialist 决策优先）
+        # ③ reinvoked response 自身的 evidence（specialist 决策优先）
         for cid in (reinvoked_response.evidence_chunk_ids or []):
             if cid and cid not in seen:
                 seen.add(cid)
