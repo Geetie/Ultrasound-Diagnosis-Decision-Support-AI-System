@@ -19,9 +19,97 @@ export interface DiagnosisRequest {
     age?: number;
     gender?: 'M' | 'F';
     relevant_history?: string;
+    /**
+     * 结构化患者条件，供安全网关**禁忌判定**使用（后端 `PatientContext.conditions`）。
+     *
+     * ⚠️ 必须发**规范码**（`pregnancy` / `contrast_allergy` / `anticoagulant_therapy`），
+     * 不是界面上显示的中文标签 —— SG 的 `_CONDITION_ALIASES` 只认码，
+     * 中文串永远不命中（= 勾了禁忌也不拦，反向 fail-open）。
+     * 码表唯一来源：`@/components/workspace/clinicalInfo` 的 `CONDITION_CODES`。
+     *
+     * ⚠️ 语义三态（`app/models/schemas.py:193-197`）：
+     *   · `undefined` → 不转发该键 → SG 保守判「缺数据即命中」→ 每次都要人工复核；
+     *   · `[]`        → 已确认无条件 → SG 正常评估 → 不命中；
+     *   · `['pregnancy']` → 按别名匹配。
+     * 前端的"一项都没勾"是医生的确认，**要送 `[]`**，不要留 undefined。
+     */
+    conditions?: string[];
   };
   retry?: boolean;
   idempotency_key?: string;
+}
+
+/**
+ * ===== 多器官联合诊断（T-GB-AGT-01，此前前端零调用）=====
+ *
+ * 后端：`POST /api/v1/diagnosis/multi-organ`（`app/api/v1/diagnosis.py:546`），
+ * 一次调用按会话 `target_organs` 串行跑完全部器官。会话部位数 ≥ 2 时才该走它。
+ */
+
+import type { OrganStatus } from './session';
+
+/** 单器官执行状态：**复用** `types/session.ts` 的 `OrganStatus`（同一后端枚举，不另立一份）。 */
+export type { OrganStatus };
+
+/** 单器官执行结果（后端 `OrganDiagnosisStatus`）。`reason` 是**可读失败原因**。 */
+export interface OrganDiagnosisStatus {
+  organ: string;
+  status: OrganStatus;
+  /** 该器官的 request_id —— 「单独重跑该器官」与报告入口靠它。 */
+  request_id?: string | null;
+  confidence: number;
+  elapsed_ms: number;
+  /** 失败/跳过的原因（后端原样给，例如总预算耗尽）。null = 正常完成。 */
+  reason?: string | null;
+}
+
+/**
+ * 跨器官融合块（A.88）。**`status` 三态必须区分显示**：
+ *   · `ok`                      → 确实做了冲突检测 + 一致性核对，可以报结果；
+ *   · `insufficient_responses`  → 有效结论不足 2 份，**前提不成立**（不是"无冲突"）；
+ *   · `unavailable`             → 融合引擎不可用，**没跑**（不是"没问题"）。
+ * 把后两种显示成"多部位一致"就是把"没跑"说成"没问题"。
+ */
+export interface CrossOrganBlock {
+  status: 'ok' | 'insufficient_responses' | 'unavailable' | string;
+  session_id?: string;
+  organ_count?: number;
+  organs?: string[];
+  /** 三态非 ok 时的机器可读原因（`need >= 2 organ conclusions, got N` / `fusion_engine_unavailable`）。 */
+  reason?: string;
+  conflict?: {
+    has_conflict: boolean;
+    conflict_types: string[];
+    resolution_suggestion: string;
+    detail?: string | null;
+  };
+  consistency?: {
+    is_consistent: boolean;
+    severity: string;
+    compared_with_prior: boolean;
+    compared_with_guidelines: boolean;
+    inconsistent_organ_pairs?: string[][];
+    detail?: string | null;
+  };
+  needs_review?: boolean;
+}
+
+/** 多器官联合诊断响应（后端 `MultiOrganDiagnosisResponse`）。 */
+export interface MultiOrganDiagnosisResponse {
+  session_id: string;
+  session_status: string;
+  organs: string[];
+  organ_statuses: Record<string, OrganStatus>;
+  organ_results: OrganDiagnosisStatus[];
+  completed_organs: string[];
+  failed_organs: string[];
+  skipped_organs: string[];
+  needs_review_organs: string[];
+  /** 部分完成：有器官没跑成。**不得**当作"全部完成"渲染。 */
+  partial: boolean;
+  total_ms: number;
+  /** 空对象 = 未执行（后端 `default_factory=dict`）。 */
+  cross_organ?: CrossOrganBlock | Record<string, never>;
 }
 
 export interface DiagnosisRequestResponse {

@@ -1,7 +1,6 @@
 import { Menu } from 'antd';
 import {
   ScanOutlined,
-  FileSearchOutlined,
   SafetyCertificateOutlined,
   SettingOutlined,
   BarChartOutlined,
@@ -18,7 +17,6 @@ interface SidebarProps {
 
 const menuItems = [
   { key: '/', icon: <ScanOutlined />, label: '检查主界面' },
-  { key: '/diagnosis', icon: <FileSearchOutlined />, label: '诊断结果' },
   { key: '/consent', icon: <AuditOutlined />, label: '知情同意' },
   { key: '/feedback', icon: <FormOutlined />, label: '反馈提交' },
   { key: '/session/new', icon: <SafetyCertificateOutlined />, label: '新建会话' },

@@ -2,8 +2,14 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   pollDiagnosisResult,
   requestDiagnosis,
+  requestMultiOrganDiagnosis,
 } from '@/services/diagnosisService';
-import type { DiagnosisResult } from '@/types/api';
+import type {
+  CrossOrganBlock,
+  DiagnosisResult,
+  MultiOrganDiagnosisResponse,
+  OrganDiagnosisStatus,
+} from '@/types/api';
 
 /**
  * 检查工作区的判读接线 —— 17-§5 裁定 4 的落地。
@@ -39,6 +45,35 @@ export interface WorkspaceFlow {
   progressChars: number;
   /** 安全预览（A.46）：已过段落级 SG 的文本尾部；SG 拒绝/无数据 = null。 */
   previewText: string | null;
+  /**
+   * 多器官联合诊断的汇总结果（会话 `target_organs` ≥ 2 时才有）。
+   *
+   * null = 本次不是多器官流程（或还没跑完）。**不能**把 null 当成"多部位没问题"——
+   * 它只说明"没走多器官端点"。`crossOrgan` 的三态才是诚实的口径。
+   */
+  multiOrgan: MultiOrganDiagnosisResponse | null;
+  /** 跨器官融合块。空对象/缺失 = 未执行；`status` 三态见 `CrossOrganBlock`。 */
+  crossOrgan: CrossOrganBlock | null;
+  /** 各器官执行结果（含失败器官的可读 `reason`）。空数组 = 未跑多器官。 */
+  organResults: OrganDiagnosisStatus[];
+  /**
+   * 发起**多器官**联合判读（会话含 ≥2 个目标部位时走这条）。
+   *
+   * 为什么必须存在：`POST /diagnosis/multi-organ` 是跨器官冲突检测与跨器官一致性
+   * 唯一能拿到 ≥2 份独立结论的真实入口，此前前端零调用 → 两条防线生产上从未被喂过。
+   */
+  startMultiOrgan: (input: {
+    sessionId: string;
+    organs: string[];
+    tier?: 'realtime' | 'standard' | 'full';
+  }) => Promise<void>;
+  /**
+   * 单独重跑某一个器官（多器官流程里失败/跳过的那些）。
+   *
+   * 实现方式：仍打多器官端点，但 `organs` 只传这一个 —— 后端按传入列表串行处理，
+   * 无需另开单器官端点（单器官端点不会回填 `organ_statuses`，状态会前后不一致）。
+   */
+  rerunOrgan: (organ: string) => Promise<void>;
   /** 发起判读（冻结后自动触发，不需要医生点按钮）。 */
   start: (input: {
     sessionId: string;
@@ -47,7 +82,19 @@ export interface WorkspaceFlow {
     tier?: 'realtime' | 'standard' | 'full';
     /** A.36 ⑤：临床信息进判读上下文（后端 DiagnosisRequest 现成字段）。 */
     clinicalText?: string;
-    patientContext?: { age?: number; gender?: 'M' | 'F' };
+    patientContext?: {
+      age?: number;
+      gender?: 'M' | 'F';
+      /**
+       * 安全网关禁忌条件，**规范码**（pregnancy / contrast_allergy /
+       * anticoagulant_therapy）。码表唯一来源：`clinicalInfo.CONDITION_CODES`。
+       *
+       * ⚠️ `[]` 与 `undefined` 语义相反（后端 `PatientContext.conditions` 约定）：
+       * `[]` = 已确认无条件 → SG 正常评估；`undefined` = 未提供 → SG 保守判命中
+       * → 恒需人工复核。调用方必须送 `[]`，见 `toConditionCodes()`。
+       */
+      conditions?: string[];
+    };
   }) => Promise<void>;
   /** 「确认结论」三选一等效里的点按钮那条（说「确认」/ 脚踏走各自的通道）。 */
   confirm: () => void;
@@ -66,6 +113,26 @@ export interface WorkspaceFlow {
 
 const P99_MS = 4800; // 14-文档 P99 基线；超时才提示，不常驻倒计时
 
+/**
+ * 按器官合并多器官结果：**新结果覆盖同器官旧结果**，其余保留原顺序。
+ *
+ * 为什么需要：单独重跑一个器官时，后端只返回被重跑部位的那一条；
+ * 直接替换整个数组会把其它部位的结果抹掉（界面会显示成"其它部位没跑"）。
+ */
+function mergeOrganResults(
+  prev: OrganDiagnosisStatus[],
+  next: OrganDiagnosisStatus[]
+): OrganDiagnosisStatus[] {
+  const byOrgan = new Map(prev.map((r) => [r.organ, r]));
+  for (const r of next) byOrgan.set(r.organ, r);
+  // 保持 prev 的顺序（= 会话 target_organs 顺序），新出现的器官追加在后
+  const order = [
+    ...prev.map((r) => r.organ),
+    ...next.map((r) => r.organ).filter((o) => !prev.some((p) => p.organ === o)),
+  ];
+  return order.map((organ) => byOrgan.get(organ)!).filter(Boolean);
+}
+
 export function useWorkspaceFlow(): WorkspaceFlow {
   const [phase, setPhase] = useState<FlowPhase>('idle');
   const [overtimeNote, setOvertimeNote] = useState<string | null>(null);
@@ -79,6 +146,10 @@ export function useWorkspaceFlow(): WorkspaceFlow {
   // 安全预览（A.46）：已过段落级 SG 的生成文本尾部；SG 拒绝 → null（临床红线：
   // 未过 SG 的原始输出不上屏）。结论出后归零。
   const [previewText, setPreviewText] = useState<string | null>(null);
+  // 多器官（T-GB-AGT-01）：汇总结果 / 跨器官块 / 各器官状态。null = 未走多器官。
+  const [multiOrgan, setMultiOrgan] = useState<MultiOrganDiagnosisResponse | null>(null);
+  const [crossOrgan, setCrossOrgan] = useState<CrossOrganBlock | null>(null);
+  const [organResults, setOrganResults] = useState<OrganDiagnosisStatus[]>([]);
 
   const startedAt = useRef<number>(0);
   const cancelPoll = useRef<{ cancel: () => void } | null>(null);
@@ -152,6 +223,117 @@ export function useWorkspaceFlow(): WorkspaceFlow {
     setAcknowledged(true);
   }, [phase]);
 
+  /**
+   * 宽泛地接收后端的 `cross_organ`：可能是块，也可能是空对象（未执行）。
+   * 空对象没有 `status` → 返回 null，**不要**合成一个 `ok`，那等于把"没跑"说成"没问题"。
+   */
+  const pickCrossOrgan = (raw: unknown): CrossOrganBlock | null => {
+    if (!raw || typeof raw !== 'object') return null;
+    const block = raw as CrossOrganBlock;
+    return typeof block.status === 'string' && block.status !== '' ? block : null;
+  };
+
+  /**
+   * 多器官联合判读（T-GB-AGT-01）。
+   *
+   * 与 `start()` 的差别：一次请求跑完会话全部目标器官，完成后**没有单个
+   * request_id**（每个器官各一个）—— 所以这里不设 `requestId`，报告入口改由
+   * 各器官的 `request_id` 提供（见 `organResults`）。
+   *
+   * ⚠️ 部分完成（`partial=true`）不是错误：后端明确「单器官失败不阻断其余器官」。
+   * 这里如实落 `multiOrgan` / `organResults`，由界面区分"完成/失败/跳过"，
+   * **绝不**把 partial 显示成全部完成。
+   */
+  const startMultiOrgan = useCallback<WorkspaceFlow['startMultiOrgan']>(async (input) => {
+    setPhase('analyzing');
+    setError(null);
+    setResult(null);
+    setMultiOrgan(null);
+    setCrossOrgan(null);
+    setOrganResults([]);
+    setAcknowledged(false);
+    setOvertimeNote(null);
+    setProgressChars(0);
+    setPreviewText(null);
+    startedAt.current = Date.now();
+
+    // 多器官不支持轮询中间进度（后端是同步串行返回），所以不接 pollDiagnosisResult。
+    cancelPoll.current?.cancel();
+    cancelPoll.current = null;
+
+    let resp: MultiOrganDiagnosisResponse;
+    try {
+      resp = await requestMultiOrganDiagnosis({
+        session_id: input.sessionId,
+        organs: input.organs,
+        response_tier: input.tier ?? 'standard',
+      });
+    } catch (e) {
+      // 零静默：技术细节进控制台，医生可见出口是 phase=error 的界面文案
+      console.error('[workspace-flow] 多器官判读请求失败', e);
+      setError((e as Error)?.message || '多部位判读请求失败');
+      setPhase('error');
+      return;
+    }
+
+    setMultiOrgan(resp);
+    setOrganResults(resp.organ_results ?? []);
+    setCrossOrgan(pickCrossOrgan(resp.cross_organ));
+    setPhase('concluded');
+
+    const spent = (Date.now() - startedAt.current) / 1000;
+    if (spent * 1000 > P99_MS) {
+      setOvertimeNote(`本次耗时 ${spent.toFixed(1)}s，已超基线 4.8s`);
+    }
+  }, []);
+
+  /**
+   * 单独重跑一个器官 —— 打多器官端点但只传这一个部位。
+   *
+   * 为什么复用多器官端点而不是 `/diagnosis/request`：只有前者会回写会话
+   * `organ_statuses` 并回填 `organ_results`；用单器官端点重跑会让部位状态条
+   * 与真实状态不一致（"已跑"和"没跑"同时存在）。
+   * 多器官结果里该器官成功后就把它从失败/跳过名单自然剔除（整体重新拉取）。
+   */
+  const rerunOrgan = useCallback<WorkspaceFlow['rerunOrgan']>(
+    async (organ) => {
+      const sid = multiOrgan?.session_id;
+      if (!sid) {
+        // 没有会话上下文就重跑不了 —— 说出来，不静默失败
+        console.error('[workspace-flow] 器官重跑缺少会话上下文', { organ });
+        setError('无法单独重跑该部位：缺少本次检查的会话标识');
+        return;
+      }
+      setPhase('analyzing');
+      setError(null);
+      startedAt.current = Date.now();
+      let resp: MultiOrganDiagnosisResponse;
+      try {
+        resp = await requestMultiOrganDiagnosis({ session_id: sid, organs: [organ] });
+      } catch (e) {
+        console.error('[workspace-flow] 单部位重跑失败', organ, e);
+        setError((e as Error)?.message || `「${organ}」重跑失败`);
+        setPhase('concluded'); // 回到结论态，旧结论仍可见，不把医生留在"分析中"
+        return;
+      }
+      // 用最新响应整体替换：只改被重跑的那个部位，其余保持不变（后端按 organs 串行）
+      setMultiOrgan((prev) =>
+        prev
+          ? {
+              ...prev,
+              organ_statuses: { ...prev.organ_statuses, ...(resp.organ_statuses ?? {}) },
+              organ_results: mergeOrganResults(prev.organ_results, resp.organ_results ?? []),
+              cross_organ: resp.cross_organ ?? prev.cross_organ,
+            }
+          : resp
+      );
+      setOrganResults((prev) => mergeOrganResults(prev, resp.organ_results ?? []));
+      setCrossOrgan(pickCrossOrgan(resp.cross_organ) ?? crossOrgan);
+      setPhase('concluded');
+    },
+    [multiOrgan?.session_id, crossOrgan]
+  );
+
   /** 接管已有 request_id —— 只轮询，不重新提交判读。 */
   const resume = useCallback<WorkspaceFlow['resume']>((requestId, tier) => {
     if (!requestId) return;
@@ -196,7 +378,12 @@ export function useWorkspaceFlow(): WorkspaceFlow {
     requestId,
     progressChars,
     previewText,
+    multiOrgan,
+    crossOrgan,
+    organResults,
     start,
+    startMultiOrgan,
+    rerunOrgan,
     resume,
     confirm,
     acknowledged,

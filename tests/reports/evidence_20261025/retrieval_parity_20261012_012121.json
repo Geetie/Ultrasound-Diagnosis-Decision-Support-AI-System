@@ -1,0 +1,121 @@
+{
+  "generated_at": "2026-10-12 01:21:21",
+  "golden": "/mnt/ee16/home/student03/uai/data/golden/kb_qa_golden_v1.json",
+  "n_queries": 136,
+  "kb_version_check": {
+    "env": "kb_v1.3.0",
+    "settings": "kb_v1.3.0",
+    "pg": {
+      "knowledge_chunks": [
+        [
+          "kb_v1.3.0",
+          1257
+        ],
+        [
+          "kb_v1.2.0",
+          1101
+        ],
+        [
+          "kb_v1.1.0",
+          856
+        ],
+        [
+          "kb_v1.0.2",
+          459
+        ],
+        [
+          "kb_v1.0.0",
+          433
+        ],
+        [
+          "kb_v1.0.1",
+          420
+        ]
+      ],
+      "vector_index": [
+        [
+          "kb_v1.2.0",
+          1101
+        ],
+        [
+          "kb_v1.1.0",
+          856
+        ],
+        [
+          "kb_v1.0.2",
+          459
+        ],
+        [
+          "kb_v1.0.0",
+          433
+        ],
+        [
+          "kb_v1.0.1",
+          420
+        ]
+      ]
+    },
+    "qdrant": {
+      "total": 1257,
+      "by_kb_version": [
+        [
+          "kb_v1.3.0",
+          1257
+        ]
+      ]
+    }
+  },
+  "eval_leg": {
+    "hit_at_1": 0.9485,
+    "hit_at_5": 0.9853,
+    "hit_at_10": 0.9853,
+    "mrr": 0.9635,
+    "corpus_chunks": 1257
+  },
+  "eval_kb_version": "kb_v1.3.0",
+  "gate2_reference_kb_v1_3_0": null,
+  "service_leg": {
+    "hit_at_1": 0.9485,
+    "hit_at_5": 0.9853,
+    "hit_at_10": 0.9853,
+    "mrr": 0.9635,
+    "miss_count": 2,
+    "miss_samples": [
+      {
+        "query": "甲状腺瘤患者怎么治较好。家人精神状态不是很好，脸色也总是白白的，让我很是担心呢，请问：甲状腺瘤患者怎么治较好",
+        "gold": "dialogue_肿瘤科_0020",
+        "top10_docs": [
+          "dialogue_肿瘤科_0110",
+          "dialogue_肿瘤科_0012",
+          "dialogue_肿瘤科_0015",
+          "dialogue_肿瘤科_0115",
+          "dialogue_肿瘤科_0047",
+          "dialogue_肿瘤科_0064",
+          "dialogue_肿瘤科_0068",
+          "dialogue_肿瘤科_0031",
+          "dialogue_肿瘤科_0099",
+          "dialogue_肿瘤科_0040"
+        ]
+      },
+      {
+        "query": "甲状腺瘤患者禁忌什么。家人精神状态不是很好，脸色也总是白白的，让我很是担心呢，请问：甲状腺瘤患者禁忌什么",
+        "gold": "dialogue_肿瘤科_0036",
+        "top10_docs": [
+          "dialogue_肿瘤科_0020",
+          "dialogue_外科_2156",
+          "dialogue_肿瘤科_0012",
+          "dialogue_肿瘤科_0097",
+          "dialogue_肿瘤科_0069",
+          "dialogue_肿瘤科_0068",
+          "dialogue_肿瘤科_0059",
+          "dialogue_肿瘤科_0115",
+          "dialogue_肿瘤科_0047",
+          "dialogue_肿瘤科_0083"
+        ]
+      }
+    ],
+    "retrieved_chunk_kb_versions": []
+  },
+  "diff_pp": 0.0,
+  "verdict": "PASS"
+}

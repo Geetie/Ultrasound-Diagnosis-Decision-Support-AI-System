@@ -156,14 +156,32 @@ class Settings(BaseSettings):
     rollout_compact_session_threshold: int = 10
     rollout_counter_ttl_seconds: int = 7 * 24 * 3600
 
-    deployment_profile: str = 'compact'
+    # === A.88 配置接线①：默认值必须等于**生产实际** ===
+    # 生产 .env 实测：DEPLOYMENT_PROFILE=full / INFERENCE_ENGINE=vllm /
+    # VLLM_DEFAULT_MODEL=Qwen2.5-7B-Instruct。此前这里的默认是
+    # compact + llama.cpp —— 任何人裸 `Settings()`（脚本、单测、新部署、
+    # `python -c` 探针）都拿到 **CPU 版** llama.cpp 引擎。
+    #
+    # 两个方向必须分清（AGENTS.md 硬规则 #4）：
+    #   · 本改动是让"代码默认"追上"生产 vLLM"，**不是**回切 llama.cpp；
+    #   · compact 档仍是一条**显式可选**的降级路径：下面
+    #     `validate_deployment_config` 的 compact→llama.cpp 覆盖逻辑
+    #     **一行未动**，`Settings(deployment_profile='compact')` 依旧得到
+    #     llama.cpp（保留档位链路验证用），但它不再是默认。
+    deployment_profile: str = 'full'
 
-    inference_engine: str = 'llama.cpp'
+    inference_engine: str = 'vllm'
     llama_cpp_host: str = 'localhost'
     llama_cpp_port: int = 8001
     llama_cpp_default_max_tokens: int = 1024
     vllm_host: str = 'localhost'
     vllm_port: int = 8002
+    # **故意留空，不硬编码生产模型名**（A.88，Lead 决定的取舍）：
+    # 写死 `Qwen2.5-7B-Instruct` 会让"用别的模型部署"的环境**静默连错模型**
+    # （vLLM 侧 model 字段与实际服务名不符），而错误的模型名不会在启动时暴露。
+    # 所以：默认空 + `vllm_require_model=True`，由 `inference_config_errors()`
+    # 在**启动期**给可读报错（见 app/main.py lifespan），生产以 .env 为准
+    # （生产 .env 实测为 Qwen2.5-7B-Instruct）。
     vllm_default_model: str = ''
     vllm_require_model: bool = True
     max_tokens: int = Field(default=2048, alias='inference_max_tokens')
@@ -325,6 +343,18 @@ class Settings(BaseSettings):
     multi_organ_default_response_tier: str = "standard"
     # 是否在器官开始/结束时推送 WS organ_switching 进度消息。
     multi_organ_progress_push_enabled: bool = True
+    # A.88 配置接线④：多器官会话的**并行 dispatch** 门控（`dispatch_all`）。
+    # **默认关**，而且是**故意**关的（不是"忘了开"），两个硬理由：
+    #   ① 显存：`dispatch_all` 是 asyncio.gather 真并发，同一时刻多个 specialist
+    #      各自打 vLLM；本机 48GB 上常驻组合已占 ≈45.4GB（SKILL 记录：8002 主生成
+    #      0.46 + 判官 0.36 + 嵌入 6.8 等）→ 并发峰值按专科数叠加，极易 OOM 并
+    #      连累整台机器的推理服务。
+    #   ② 语义：现有预算是"串行 + 单器官 30s + 全局 90s"，且并行只能覆盖
+    #      `dispatcher.invoke` 一段，**不含**每器官各自的融合 / SafetyGateway /
+    #      写终态（都在 diagnosis_pipeline）。直接替换会造出第二条不完整的判读链。
+    # 所以当前只交付"契约 + 门控 + dry-run 计划"；真机验证显存与端到端耗时后
+    # 再决定是否打开（打开方式：本键置 true + 显式调用 dispatch_organs_parallel）。
+    multi_organ_parallel_dispatch_enabled: bool = False
 
     minio_endpoint: str = "localhost:9000"
     minio_access_key: str = ""
@@ -434,6 +464,18 @@ class Settings(BaseSettings):
     # A.37 ③：默认开启 —— 分割量化特征必须在 dispatch 前产出才能经 imaging_metadata
     # 注入 LLM 上下文；关闭 = LLM 永远看不到影像信息（结论反向索要影像特征）
     nodule_contour_in_pipeline_enabled: bool = True
+    # A.88：T2a 影像分类**旁路**（辅助参考，只写 findings["t2a_classification"]，
+    # 不改结论 / confidence / status）。**默认关**的理由：这条链路（8003
+    # `/v1/classify`）此前只有离线审计脚本调过，生产侧从未真机联调；且
+    # AUC 0.8950 是**离线模型指标**，不是系统能力（《架构真相》§3.3）。
+    # 开启前须先在部署环境验证服务可达与输出契约。
+    t2a_classifier_in_pipeline_enabled: bool = False
+    # 旁路超时（秒）。超时按"能力不可用"降级并留真实原因，绝不阻断判读。
+    t2a_classifier_timeout_s: float = 10.0
+    # A.88：幻觉检测**旁路**开关（仅 FULL 档，管线自行决定是否真的跑）。
+    # **默认关**的理由：每次判读要多跑一次 LLM 或规则判定，直接把 P99 抬上去；
+    # 先按需开启、积累真机样本后再定默认。
+    hallucination_detection_in_pipeline: bool = False
     # AI 依赖的**硬离线**闸门（2026-10-04 真机事故驱动）：
     # open_clip / huggingface_hub 在装载模型时会向 huggingface.co 发 HEAD 探测
     # 权重；网络不可达时每次 5 次重试 ~14s，且这段是**同步**代码——跑在请求
@@ -622,6 +664,33 @@ class Settings(BaseSettings):
         """实际产出结论的生成模型标识（报告里单独一行，供溯源核对线上模型）。"""
         base = self.llm_model_version or self.vllm_default_model or "unknown"
         return f"{base}@{self.llm_model_revision}" if self.llm_model_revision else base
+
+    def inference_config_errors(self) -> list[str]:
+        """生成引擎配置的自洽性检查（**启动期**可读报错，不在第一次生成时才炸）。
+
+        为什么需要它（A.88）：``vllm_require_model=True`` 且模型名为空时，
+        ``VLLMEngine._build_payload``（``app/inference/vllm.py:155-164``）会在
+        **每一次** ``generate`` 抛 ``GENERATION_FAILED``。原实现下这个错误只在
+        医生点"开始判读"后出现，且被科室当成"AI 不可用"——真正原因是配置缺一项。
+        改在启动期暴露，并附上两条可执行的出路（配环境变量 / 退回 compact 档）。
+
+        Returns:
+            错误描述列表；空列表表示配置自洽。**只报告，不抛错**——调用方
+            （``app/main.py`` lifespan）决定是启动失败还是降级。
+        """
+        errors: list[str] = []
+        if (
+            self.inference_engine == "vllm"
+            and self.vllm_require_model
+            and not (self.vllm_default_model or "").strip()
+        ):
+            errors.append(
+                "INFERENCE_ENGINE=vllm 且 VLLM_REQUIRE_MODEL=true，但 "
+                "VLLM_DEFAULT_MODEL 为空：每次生成都会失败（vLLM 请求缺 model 字段）。"
+                "请设置 VLLM_DEFAULT_MODEL（生产 .env 为 Qwen2.5-7B-Instruct），"
+                "或显式 DEPLOYMENT_PROFILE=compact 走 llama.cpp 降级路径。"
+            )
+        return errors
 
     @field_validator("deployment_profile")
     @classmethod

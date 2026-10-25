@@ -69,7 +69,8 @@ RUFF_BASELINE = {
     "RUF012": 41,
     # 39 → 38（A.62 批 2-D）：`app/security/desensitization_restore.py` 的
     # "旧密钥不可用"分支补 `raise ... from e`，B904 减 1（成果要落基线，否则下次会被判"改进未记录"）
-    "B904": 38,
+    # 38 → 37（A.88）：本轮把 `api/v1/diagnosis.py` 的 raise 补上 `from exc`
+    "B904": 37,
     # 37 → 18（A.62 全仓零静默）：静默加固器把 `except: pass` 改成 `except: logger.warning(...)`
     # 后，SIM105（"该用 contextlib.suppress"）随之消失 19 处 —— 附带成果也要落基线，
     # 否则下次会被判「改进未记录」。**只许继续下调**。
@@ -78,9 +79,11 @@ RUFF_BASELINE = {
     "SIM117": 32,
     "RUF059": 30,
     "SIM102": 23,
-    "B007": 22,
+    # 22 → 21（A.88）：`fusion/crag.py` 的未使用循环变量改名/删除
+    "B007": 21,
     "SIM108": 13,
-    "B905": 12,
+    # 12 → 11（A.88）：`tn3k_seg_unet.py` 的 zip 补 `strict=`
+    "B905": 11,
     "E701": 12,
     "RUF046": 12,
     "B017": 11,
@@ -90,7 +93,8 @@ RUFF_BASELINE = {
     "UP009": 6,
     "SIM103": 5,
     "UP020": 5,
-    "RUF005": 4,
+    # 4 → 3（A.88）：`three_layer_desensitization.py` 的列表拼接改解包
+    "RUF005": 3,
     "SIM401": 4,
     "UP035": 4,
     "SIM110": 3,

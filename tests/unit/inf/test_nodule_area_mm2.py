@@ -1,9 +1,26 @@
 """结节分割旁路的 mm² 换算与报告摘要（临床安全语义）。
 
-钉死的两条规则：
+钉死的三条规则：
   1. **缺 PixelSpacing 就不换算 mm²**（返回 None，报告只报像素面积）——
      拿默认值猜物理尺寸是危险的：医生会以为那是真实病灶大小。
-  2. ``available=False`` 写**原因**，绝不含糊成"未检出"。
+  2. **A.81 安全闸（2026-10-21，本文件 2026-10-25 补齐）**：超声物理单位的
+     **唯一**合法依据是 DICOM 的 `SequenceOfUltrasoundRegions`。只有
+     `PixelSpacing` 而没有区域校准时（`calibration_status == "pixel_spacing_only"`），
+     **也不换算** —— 本库 580 个文件实测全部没有区域校准，`PixelSpacing` 有的是
+     标称值、有的与实际缩放不符，乘出来的 mm² 是"看起来很准的假数"。
+  3. ``available=False`` 写**原因**，绝不含糊成"未检出"。
+
+## 为什么本文件在 2026-10-25 被改写（真缺陷，不是风格调整）
+
+原用例（`d6a6cc9`，2026-10-04）断言"只要有 PixelSpacing 就换算 mm²"。
+10-21 的 `ec5063e` 加了 A.81 安全闸后，这条断言与**生产语义相反** ——
+于是 `test_reads_two_values` / `test_computes_mm2` / `test_rectilinear_spacing`
+三条**长期红灯**（每轮全量运行都失败），而全仓没人修它。
+
+后果不是"少绿一条"：一条长期红的用例会让**真正的回归被淹没**在既有红灯里
+（本项目的"零静默"原则同样适用于"零长期红灯"）。
+本文件按**当前生产语义**重写，并显式加上"必须有区域校准才换算"的腿 ——
+即：修完它以后，A.81 的闸门**有测试守着**，而不是只有代码里有。
 """
 from __future__ import annotations
 
@@ -21,8 +38,17 @@ from app.services.report_service import _format_nodule_segmentation
 pytestmark = [pytest.mark.track_inf]
 
 
-def _dicom(pixel_spacing=None) -> bytes:
+def _dicom(pixel_spacing=None, *, region_calibrated: bool = True) -> bytes:
+    """构造一份内存 DICOM。
+
+    Args:
+        pixel_spacing: `PixelSpacing` 值（行距, 列距）。
+        region_calibrated: 是否带 `SequenceOfUltrasoundRegions`。
+            **默认 True** —— 因为它是"允许换算 mm²"的唯一合法前提；
+            要测"没校准就不换算"时显式传 False。
+    """
     from pydicom.dataset import Dataset, FileMetaDataset
+    from pydicom.sequence import Sequence
     from pydicom.uid import ExplicitVRLittleEndian, generate_uid
 
     ds = Dataset()
@@ -45,6 +71,22 @@ def _dicom(pixel_spacing=None) -> bytes:
     ds.PixelData = np.zeros((8, 8), dtype=np.uint16).tobytes()
     if pixel_spacing is not None:
         ds.PixelSpacing = pixel_spacing
+    if region_calibrated:
+        # 区域校准的最小合法形态：一条 0x0001（区域=全部）的物理间距条目。
+        # 管线只判"是否存在该序列"（`structure_of` → `calibration_status`），
+        # 不解释每个字段，所以这里只需要一条结构合法的条目。
+        region = Dataset()
+        region.RegionSpatialFormat = 0x0001  # 2D region of interest
+        region.RegionDataType = 0x0001  # pixel array
+        region.RegionLocationMinX0 = 0
+        region.RegionLocationMinY0 = 0
+        region.RegionLocationMaxX1 = 7
+        region.RegionLocationMaxY1 = 7
+        region.PhysicalUnitsXDirection = 0x0003  # cm
+        region.PhysicalUnitsYDirection = 0x0003
+        region.PhysicalDeltaX = 0.02  # 0.02 cm = 0.2 mm
+        region.PhysicalDeltaY = 0.02
+        ds.SequenceOfUltrasoundRegions = Sequence([region])
     buf = io.BytesIO()
     ds.save_as(buf, enforce_file_format=True)
     return buf.getvalue()
@@ -69,6 +111,34 @@ class TestPixelSpacing:
 
     def test_empty_bytes_return_none(self):
         assert _pixel_spacing_from_dicom(b"") is None
+
+
+class TestRegionCalibrationGate:
+    """A.81 安全闸：**只有区域校准才允许换算物理单位**（本类是该闸门的测试）。"""
+
+    def test_pixel_spacing_without_region_is_not_used(self):
+        """有 PixelSpacing 但**没有区域校准** → 不换算（返回 None）。
+
+        这是 580 个真实文件的形态（`SequenceOfUltrasoundRegions` 全为 0）。
+        反证腿：去掉 `measurement_allowed` 判断，这条立刻红。
+        """
+        assert (
+            _pixel_spacing_from_dicom(
+                _dicom([0.2, 0.2], region_calibrated=False)
+            )
+            is None
+        )
+
+    def test_area_without_region_is_none(self):
+        """没校准 → 面积也不给 mm²（宁可少一个数，不可给错一个数）。"""
+        assert (
+            _area_mm2_from_dicom(_dicom([0.2, 0.2], region_calibrated=False), 1000)
+            is None
+        )
+
+    def test_region_calibrated_allows_conversion(self):
+        """有区域校准 → 正常换算（闸门不是"一律不给"）。"""
+        assert _pixel_spacing_from_dicom(_dicom([0.2, 0.2])) == [0.2, 0.2]
 
 
 class TestAreaMm2:

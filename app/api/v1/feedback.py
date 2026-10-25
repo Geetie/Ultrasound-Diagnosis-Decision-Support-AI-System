@@ -15,7 +15,7 @@ from app.models.schemas import (
     FeedbackType,
 )
 from app.repositories import DiagnosisRepository, FeedbackRepository, SessionRepository
-from app.security.auth import get_current_active_user
+from app.security.auth import PermissionChecker, get_current_active_user
 from app.services.audit_service import AuditService
 
 router = APIRouter(tags=["feedback"])
@@ -32,6 +32,9 @@ async def submit_feedback(
     session_repo: SessionRepository = Depends(get_session_repo),
     audit_service: AuditService = Depends(get_audit_service),
     current_user: dict | None = Depends(get_current_active_user),
+    # A.88 权限接线②：``submit_feedback`` 权限位（急诊医生不持有 —— 与既有语义一致）。
+    # 只插入依赖参数，函数体一行未改。
+    _perm: dict = Depends(PermissionChecker("submit_feedback")),
 ):
 
     if request.idempotency_key:

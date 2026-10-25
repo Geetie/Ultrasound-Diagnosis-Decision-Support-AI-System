@@ -92,9 +92,16 @@ class TestConfigDocConsistency:
             "item": "deployment_profile",
             "doc_value": "compact/full (00b §3)",
             "sg_code_value": "compact",
-            "main_code_value": "compact",
-            "severity": "OK",
-            "note": "一致",
+            "main_code_value": "full",
+            "severity": "P2",
+            "note": (
+                "A.88（2026-10-25）：主服务默认档位由 compact 改为 full，以对齐生产 "
+                ".env 实测值（DEPLOYMENT_PROFILE=full / INFERENCE_ENGINE=vllm）——"
+                "旧默认会让任何裸 Settings() 拿到 CPU 版 llama.cpp 引擎（硬规则 #4 "
+                "禁止把 llama.cpp 当主生成引擎，旧默认方向正好相反）。"
+                "SG 侧默认仍是 compact，本次未改（safety_gateway/** 不在本任务可改范围）；"
+                "SG 作为独立进程按自己的 .env 部署，属已知不一致，登记待处置。"
+            ),
         },
         {
             "item": "sg_p99_latency_critical_threshold_ms",
@@ -127,8 +134,14 @@ class TestConfigDocConsistency:
         assert settings.safety_gateway_p99_latency_critical_threshold_ms == 5.0
 
     def test_deployment_profile_default(self):
+        """A.88 口径变更：主服务默认 full（对齐生产 .env），SG 仍 compact。
+
+        旧断言钉的是 `compact`（代码默认 ≠ 生产实际）。同步理由见
+        CONFIG_MISMATCH_ITEMS 里 deployment_profile 条目；compact 仍是
+        显式可选降级路径（`Settings(deployment_profile='compact')` 照旧可用）。
+        """
         assert sg_settings.deployment_profile == "compact"
-        assert settings.deployment_profile == "compact"
+        assert settings.deployment_profile == "full"
 
     @pytest.mark.parametrize(
         "mismatch",

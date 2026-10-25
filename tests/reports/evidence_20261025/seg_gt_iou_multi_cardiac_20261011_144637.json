@@ -1,0 +1,3013 @@
+{
+  "mode": "multi_patient",
+  "label": "2",
+  "patients_requested": 500,
+  "patients_evaluated": 500,
+  "frames_per_patient": 5,
+  "iou_mean": 0.7388,
+  "iou_std_across_patients": 0.0758,
+  "iou_min_patient": 0.3636,
+  "patients_pass_0_6": 476,
+  "per_patient": [
+    {
+      "patient": "patient0001",
+      "frames": 5,
+      "iou_mean": 0.6007,
+      "iou_min": 0.5284
+    },
+    {
+      "patient": "patient0002",
+      "frames": 5,
+      "iou_mean": 0.6585,
+      "iou_min": 0.5925
+    },
+    {
+      "patient": "patient0003",
+      "frames": 5,
+      "iou_mean": 0.7466,
+      "iou_min": 0.7297
+    },
+    {
+      "patient": "patient0004",
+      "frames": 5,
+      "iou_mean": 0.6687,
+      "iou_min": 0.6248
+    },
+    {
+      "patient": "patient0005",
+      "frames": 5,
+      "iou_mean": 0.7542,
+      "iou_min": 0.7281
+    },
+    {
+      "patient": "patient0006",
+      "frames": 5,
+      "iou_mean": 0.7757,
+      "iou_min": 0.7517
+    },
+    {
+      "patient": "patient0007",
+      "frames": 5,
+      "iou_mean": 0.6806,
+      "iou_min": 0.5956
+    },
+    {
+      "patient": "patient0008",
+      "frames": 5,
+      "iou_mean": 0.5487,
+      "iou_min": 0.5439
+    },
+    {
+      "patient": "patient0009",
+      "frames": 5,
+      "iou_mean": 0.74,
+      "iou_min": 0.7214
+    },
+    {
+      "patient": "patient0010",
+      "frames": 5,
+      "iou_mean": 0.7345,
+      "iou_min": 0.705
+    },
+    {
+      "patient": "patient0011",
+      "frames": 5,
+      "iou_mean": 0.7192,
+      "iou_min": 0.6453
+    },
+    {
+      "patient": "patient0012",
+      "frames": 5,
+      "iou_mean": 0.8134,
+      "iou_min": 0.8051
+    },
+    {
+      "patient": "patient0013",
+      "frames": 5,
+      "iou_mean": 0.4442,
+      "iou_min": 0.433
+    },
+    {
+      "patient": "patient0014",
+      "frames": 5,
+      "iou_mean": 0.6864,
+      "iou_min": 0.6708
+    },
+    {
+      "patient": "patient0015",
+      "frames": 5,
+      "iou_mean": 0.721,
+      "iou_min": 0.7095
+    },
+    {
+      "patient": "patient0016",
+      "frames": 5,
+      "iou_mean": 0.683,
+      "iou_min": 0.6556
+    },
+    {
+      "patient": "patient0017",
+      "frames": 5,
+      "iou_mean": 0.747,
+      "iou_min": 0.7332
+    },
+    {
+      "patient": "patient0018",
+      "frames": 5,
+      "iou_mean": 0.7343,
+      "iou_min": 0.7126
+    },
+    {
+      "patient": "patient0019",
+      "frames": 5,
+      "iou_mean": 0.6665,
+      "iou_min": 0.6397
+    },
+    {
+      "patient": "patient0020",
+      "frames": 5,
+      "iou_mean": 0.7168,
+      "iou_min": 0.6916
+    },
+    {
+      "patient": "patient0021",
+      "frames": 5,
+      "iou_mean": 0.7064,
+      "iou_min": 0.684
+    },
+    {
+      "patient": "patient0022",
+      "frames": 5,
+      "iou_mean": 0.6958,
+      "iou_min": 0.6429
+    },
+    {
+      "patient": "patient0023",
+      "frames": 5,
+      "iou_mean": 0.6908,
+      "iou_min": 0.6463
+    },
+    {
+      "patient": "patient0024",
+      "frames": 5,
+      "iou_mean": 0.7446,
+      "iou_min": 0.7168
+    },
+    {
+      "patient": "patient0025",
+      "frames": 5,
+      "iou_mean": 0.6723,
+      "iou_min": 0.6147
+    },
+    {
+      "patient": "patient0026",
+      "frames": 5,
+      "iou_mean": 0.65,
+      "iou_min": 0.6346
+    },
+    {
+      "patient": "patient0027",
+      "frames": 5,
+      "iou_mean": 0.7391,
+      "iou_min": 0.7278
+    },
+    {
+      "patient": "patient0028",
+      "frames": 5,
+      "iou_mean": 0.6864,
+      "iou_min": 0.6688
+    },
+    {
+      "patient": "patient0029",
+      "frames": 5,
+      "iou_mean": 0.7099,
+      "iou_min": 0.649
+    },
+    {
+      "patient": "patient0030",
+      "frames": 5,
+      "iou_mean": 0.4876,
+      "iou_min": 0.407
+    },
+    {
+      "patient": "patient0031",
+      "frames": 5,
+      "iou_mean": 0.6758,
+      "iou_min": 0.6619
+    },
+    {
+      "patient": "patient0032",
+      "frames": 5,
+      "iou_mean": 0.6415,
+      "iou_min": 0.6118
+    },
+    {
+      "patient": "patient0033",
+      "frames": 5,
+      "iou_mean": 0.7176,
+      "iou_min": 0.6782
+    },
+    {
+      "patient": "patient0034",
+      "frames": 5,
+      "iou_mean": 0.7572,
+      "iou_min": 0.7523
+    },
+    {
+      "patient": "patient0035",
+      "frames": 5,
+      "iou_mean": 0.7546,
+      "iou_min": 0.6925
+    },
+    {
+      "patient": "patient0036",
+      "frames": 5,
+      "iou_mean": 0.77,
+      "iou_min": 0.7062
+    },
+    {
+      "patient": "patient0037",
+      "frames": 5,
+      "iou_mean": 0.6493,
+      "iou_min": 0.6293
+    },
+    {
+      "patient": "patient0038",
+      "frames": 5,
+      "iou_mean": 0.7252,
+      "iou_min": 0.7112
+    },
+    {
+      "patient": "patient0039",
+      "frames": 5,
+      "iou_mean": 0.5454,
+      "iou_min": 0.5386
+    },
+    {
+      "patient": "patient0040",
+      "frames": 5,
+      "iou_mean": 0.7521,
+      "iou_min": 0.7254
+    },
+    {
+      "patient": "patient0041",
+      "frames": 5,
+      "iou_mean": 0.6184,
+      "iou_min": 0.5714
+    },
+    {
+      "patient": "patient0042",
+      "frames": 5,
+      "iou_mean": 0.6055,
+      "iou_min": 0.5695
+    },
+    {
+      "patient": "patient0043",
+      "frames": 5,
+      "iou_mean": 0.6953,
+      "iou_min": 0.6686
+    },
+    {
+      "patient": "patient0044",
+      "frames": 5,
+      "iou_mean": 0.7927,
+      "iou_min": 0.761
+    },
+    {
+      "patient": "patient0045",
+      "frames": 5,
+      "iou_mean": 0.7628,
+      "iou_min": 0.7541
+    },
+    {
+      "patient": "patient0046",
+      "frames": 5,
+      "iou_mean": 0.684,
+      "iou_min": 0.675
+    },
+    {
+      "patient": "patient0047",
+      "frames": 5,
+      "iou_mean": 0.7435,
+      "iou_min": 0.7321
+    },
+    {
+      "patient": "patient0048",
+      "frames": 5,
+      "iou_mean": 0.6945,
+      "iou_min": 0.6769
+    },
+    {
+      "patient": "patient0049",
+      "frames": 5,
+      "iou_mean": 0.5295,
+      "iou_min": 0.4373
+    },
+    {
+      "patient": "patient0050",
+      "frames": 5,
+      "iou_mean": 0.7978,
+      "iou_min": 0.7872
+    },
+    {
+      "patient": "patient0051",
+      "frames": 5,
+      "iou_mean": 0.7572,
+      "iou_min": 0.7393
+    },
+    {
+      "patient": "patient0052",
+      "frames": 5,
+      "iou_mean": 0.6822,
+      "iou_min": 0.6738
+    },
+    {
+      "patient": "patient0053",
+      "frames": 5,
+      "iou_mean": 0.5082,
+      "iou_min": 0.4831
+    },
+    {
+      "patient": "patient0054",
+      "frames": 5,
+      "iou_mean": 0.7645,
+      "iou_min": 0.744
+    },
+    {
+      "patient": "patient0055",
+      "frames": 5,
+      "iou_mean": 0.7164,
+      "iou_min": 0.6952
+    },
+    {
+      "patient": "patient0056",
+      "frames": 5,
+      "iou_mean": 0.3636,
+      "iou_min": 0.3473
+    },
+    {
+      "patient": "patient0057",
+      "frames": 5,
+      "iou_mean": 0.5947,
+      "iou_min": 0.5719
+    },
+    {
+      "patient": "patient0058",
+      "frames": 5,
+      "iou_mean": 0.7621,
+      "iou_min": 0.7416
+    },
+    {
+      "patient": "patient0059",
+      "frames": 5,
+      "iou_mean": 0.6478,
+      "iou_min": 0.6008
+    },
+    {
+      "patient": "patient0060",
+      "frames": 5,
+      "iou_mean": 0.7147,
+      "iou_min": 0.6965
+    },
+    {
+      "patient": "patient0061",
+      "frames": 5,
+      "iou_mean": 0.7387,
+      "iou_min": 0.7126
+    },
+    {
+      "patient": "patient0062",
+      "frames": 5,
+      "iou_mean": 0.6719,
+      "iou_min": 0.6553
+    },
+    {
+      "patient": "patient0063",
+      "frames": 5,
+      "iou_mean": 0.7225,
+      "iou_min": 0.6814
+    },
+    {
+      "patient": "patient0064",
+      "frames": 5,
+      "iou_mean": 0.6577,
+      "iou_min": 0.5839
+    },
+    {
+      "patient": "patient0065",
+      "frames": 5,
+      "iou_mean": 0.7411,
+      "iou_min": 0.7284
+    },
+    {
+      "patient": "patient0066",
+      "frames": 5,
+      "iou_mean": 0.5052,
+      "iou_min": 0.4933
+    },
+    {
+      "patient": "patient0067",
+      "frames": 5,
+      "iou_mean": 0.7816,
+      "iou_min": 0.765
+    },
+    {
+      "patient": "patient0068",
+      "frames": 5,
+      "iou_mean": 0.7101,
+      "iou_min": 0.6758
+    },
+    {
+      "patient": "patient0069",
+      "frames": 5,
+      "iou_mean": 0.6997,
+      "iou_min": 0.6698
+    },
+    {
+      "patient": "patient0070",
+      "frames": 5,
+      "iou_mean": 0.7087,
+      "iou_min": 0.6729
+    },
+    {
+      "patient": "patient0071",
+      "frames": 5,
+      "iou_mean": 0.6648,
+      "iou_min": 0.6368
+    },
+    {
+      "patient": "patient0072",
+      "frames": 5,
+      "iou_mean": 0.5335,
+      "iou_min": 0.4895
+    },
+    {
+      "patient": "patient0073",
+      "frames": 5,
+      "iou_mean": 0.7189,
+      "iou_min": 0.648
+    },
+    {
+      "patient": "patient0074",
+      "frames": 5,
+      "iou_mean": 0.881,
+      "iou_min": 0.8686
+    },
+    {
+      "patient": "patient0075",
+      "frames": 5,
+      "iou_mean": 0.7128,
+      "iou_min": 0.7045
+    },
+    {
+      "patient": "patient0076",
+      "frames": 5,
+      "iou_mean": 0.5453,
+      "iou_min": 0.5132
+    },
+    {
+      "patient": "patient0077",
+      "frames": 5,
+      "iou_mean": 0.6597,
+      "iou_min": 0.6223
+    },
+    {
+      "patient": "patient0078",
+      "frames": 5,
+      "iou_mean": 0.692,
+      "iou_min": 0.654
+    },
+    {
+      "patient": "patient0079",
+      "frames": 5,
+      "iou_mean": 0.621,
+      "iou_min": 0.6098
+    },
+    {
+      "patient": "patient0080",
+      "frames": 5,
+      "iou_mean": 0.688,
+      "iou_min": 0.6743
+    },
+    {
+      "patient": "patient0081",
+      "frames": 5,
+      "iou_mean": 0.7398,
+      "iou_min": 0.7265
+    },
+    {
+      "patient": "patient0082",
+      "frames": 5,
+      "iou_mean": 0.7051,
+      "iou_min": 0.7018
+    },
+    {
+      "patient": "patient0083",
+      "frames": 5,
+      "iou_mean": 0.7363,
+      "iou_min": 0.7047
+    },
+    {
+      "patient": "patient0084",
+      "frames": 5,
+      "iou_mean": 0.6756,
+      "iou_min": 0.6158
+    },
+    {
+      "patient": "patient0085",
+      "frames": 5,
+      "iou_mean": 0.7003,
+      "iou_min": 0.644
+    },
+    {
+      "patient": "patient0086",
+      "frames": 5,
+      "iou_mean": 0.6799,
+      "iou_min": 0.6509
+    },
+    {
+      "patient": "patient0087",
+      "frames": 5,
+      "iou_mean": 0.7267,
+      "iou_min": 0.7123
+    },
+    {
+      "patient": "patient0088",
+      "frames": 5,
+      "iou_mean": 0.6214,
+      "iou_min": 0.5812
+    },
+    {
+      "patient": "patient0089",
+      "frames": 5,
+      "iou_mean": 0.6946,
+      "iou_min": 0.6594
+    },
+    {
+      "patient": "patient0090",
+      "frames": 5,
+      "iou_mean": 0.668,
+      "iou_min": 0.6363
+    },
+    {
+      "patient": "patient0091",
+      "frames": 5,
+      "iou_mean": 0.6916,
+      "iou_min": 0.6538
+    },
+    {
+      "patient": "patient0092",
+      "frames": 5,
+      "iou_mean": 0.7617,
+      "iou_min": 0.75
+    },
+    {
+      "patient": "patient0093",
+      "frames": 5,
+      "iou_mean": 0.7348,
+      "iou_min": 0.7277
+    },
+    {
+      "patient": "patient0094",
+      "frames": 5,
+      "iou_mean": 0.714,
+      "iou_min": 0.6951
+    },
+    {
+      "patient": "patient0095",
+      "frames": 5,
+      "iou_mean": 0.7562,
+      "iou_min": 0.7078
+    },
+    {
+      "patient": "patient0096",
+      "frames": 5,
+      "iou_mean": 0.6823,
+      "iou_min": 0.6653
+    },
+    {
+      "patient": "patient0097",
+      "frames": 5,
+      "iou_mean": 0.6301,
+      "iou_min": 0.5911
+    },
+    {
+      "patient": "patient0098",
+      "frames": 5,
+      "iou_mean": 0.726,
+      "iou_min": 0.7067
+    },
+    {
+      "patient": "patient0099",
+      "frames": 5,
+      "iou_mean": 0.702,
+      "iou_min": 0.6786
+    },
+    {
+      "patient": "patient0100",
+      "frames": 5,
+      "iou_mean": 0.7307,
+      "iou_min": 0.7046
+    },
+    {
+      "patient": "patient0101",
+      "frames": 5,
+      "iou_mean": 0.7478,
+      "iou_min": 0.7347
+    },
+    {
+      "patient": "patient0102",
+      "frames": 5,
+      "iou_mean": 0.7831,
+      "iou_min": 0.7601
+    },
+    {
+      "patient": "patient0103",
+      "frames": 5,
+      "iou_mean": 0.8092,
+      "iou_min": 0.7909
+    },
+    {
+      "patient": "patient0104",
+      "frames": 5,
+      "iou_mean": 0.7312,
+      "iou_min": 0.6759
+    },
+    {
+      "patient": "patient0105",
+      "frames": 5,
+      "iou_mean": 0.7318,
+      "iou_min": 0.7171
+    },
+    {
+      "patient": "patient0106",
+      "frames": 5,
+      "iou_mean": 0.4902,
+      "iou_min": 0.4657
+    },
+    {
+      "patient": "patient0107",
+      "frames": 5,
+      "iou_mean": 0.7604,
+      "iou_min": 0.7397
+    },
+    {
+      "patient": "patient0108",
+      "frames": 5,
+      "iou_mean": 0.805,
+      "iou_min": 0.7661
+    },
+    {
+      "patient": "patient0109",
+      "frames": 5,
+      "iou_mean": 0.7006,
+      "iou_min": 0.685
+    },
+    {
+      "patient": "patient0110",
+      "frames": 5,
+      "iou_mean": 0.7792,
+      "iou_min": 0.7683
+    },
+    {
+      "patient": "patient0111",
+      "frames": 5,
+      "iou_mean": 0.718,
+      "iou_min": 0.6856
+    },
+    {
+      "patient": "patient0112",
+      "frames": 5,
+      "iou_mean": 0.7514,
+      "iou_min": 0.7445
+    },
+    {
+      "patient": "patient0113",
+      "frames": 5,
+      "iou_mean": 0.6771,
+      "iou_min": 0.6671
+    },
+    {
+      "patient": "patient0114",
+      "frames": 5,
+      "iou_mean": 0.7087,
+      "iou_min": 0.6754
+    },
+    {
+      "patient": "patient0115",
+      "frames": 5,
+      "iou_mean": 0.6902,
+      "iou_min": 0.6696
+    },
+    {
+      "patient": "patient0116",
+      "frames": 5,
+      "iou_mean": 0.3887,
+      "iou_min": 0.3622
+    },
+    {
+      "patient": "patient0117",
+      "frames": 5,
+      "iou_mean": 0.7809,
+      "iou_min": 0.7599
+    },
+    {
+      "patient": "patient0118",
+      "frames": 5,
+      "iou_mean": 0.667,
+      "iou_min": 0.6277
+    },
+    {
+      "patient": "patient0119",
+      "frames": 5,
+      "iou_mean": 0.7647,
+      "iou_min": 0.735
+    },
+    {
+      "patient": "patient0120",
+      "frames": 5,
+      "iou_mean": 0.7033,
+      "iou_min": 0.6739
+    },
+    {
+      "patient": "patient0121",
+      "frames": 5,
+      "iou_mean": 0.8145,
+      "iou_min": 0.8005
+    },
+    {
+      "patient": "patient0122",
+      "frames": 5,
+      "iou_mean": 0.6986,
+      "iou_min": 0.6537
+    },
+    {
+      "patient": "patient0123",
+      "frames": 5,
+      "iou_mean": 0.7006,
+      "iou_min": 0.6312
+    },
+    {
+      "patient": "patient0124",
+      "frames": 5,
+      "iou_mean": 0.7592,
+      "iou_min": 0.7477
+    },
+    {
+      "patient": "patient0125",
+      "frames": 5,
+      "iou_mean": 0.7107,
+      "iou_min": 0.6691
+    },
+    {
+      "patient": "patient0126",
+      "frames": 5,
+      "iou_mean": 0.716,
+      "iou_min": 0.6564
+    },
+    {
+      "patient": "patient0127",
+      "frames": 5,
+      "iou_mean": 0.808,
+      "iou_min": 0.7781
+    },
+    {
+      "patient": "patient0128",
+      "frames": 5,
+      "iou_mean": 0.6539,
+      "iou_min": 0.629
+    },
+    {
+      "patient": "patient0129",
+      "frames": 5,
+      "iou_mean": 0.7581,
+      "iou_min": 0.7462
+    },
+    {
+      "patient": "patient0130",
+      "frames": 5,
+      "iou_mean": 0.7666,
+      "iou_min": 0.7192
+    },
+    {
+      "patient": "patient0131",
+      "frames": 5,
+      "iou_mean": 0.7494,
+      "iou_min": 0.7102
+    },
+    {
+      "patient": "patient0132",
+      "frames": 5,
+      "iou_mean": 0.6879,
+      "iou_min": 0.6325
+    },
+    {
+      "patient": "patient0133",
+      "frames": 5,
+      "iou_mean": 0.7689,
+      "iou_min": 0.7403
+    },
+    {
+      "patient": "patient0134",
+      "frames": 5,
+      "iou_mean": 0.7644,
+      "iou_min": 0.7469
+    },
+    {
+      "patient": "patient0135",
+      "frames": 5,
+      "iou_mean": 0.7075,
+      "iou_min": 0.6961
+    },
+    {
+      "patient": "patient0136",
+      "frames": 5,
+      "iou_mean": 0.8081,
+      "iou_min": 0.7735
+    },
+    {
+      "patient": "patient0137",
+      "frames": 5,
+      "iou_mean": 0.5982,
+      "iou_min": 0.5836
+    },
+    {
+      "patient": "patient0138",
+      "frames": 5,
+      "iou_mean": 0.7627,
+      "iou_min": 0.7568
+    },
+    {
+      "patient": "patient0139",
+      "frames": 5,
+      "iou_mean": 0.7766,
+      "iou_min": 0.7163
+    },
+    {
+      "patient": "patient0140",
+      "frames": 5,
+      "iou_mean": 0.7135,
+      "iou_min": 0.6995
+    },
+    {
+      "patient": "patient0141",
+      "frames": 5,
+      "iou_mean": 0.8425,
+      "iou_min": 0.8152
+    },
+    {
+      "patient": "patient0142",
+      "frames": 5,
+      "iou_mean": 0.8094,
+      "iou_min": 0.7989
+    },
+    {
+      "patient": "patient0143",
+      "frames": 5,
+      "iou_mean": 0.8607,
+      "iou_min": 0.8449
+    },
+    {
+      "patient": "patient0144",
+      "frames": 5,
+      "iou_mean": 0.8523,
+      "iou_min": 0.8306
+    },
+    {
+      "patient": "patient0145",
+      "frames": 5,
+      "iou_mean": 0.7297,
+      "iou_min": 0.6808
+    },
+    {
+      "patient": "patient0146",
+      "frames": 5,
+      "iou_mean": 0.722,
+      "iou_min": 0.7008
+    },
+    {
+      "patient": "patient0147",
+      "frames": 5,
+      "iou_mean": 0.6955,
+      "iou_min": 0.6681
+    },
+    {
+      "patient": "patient0148",
+      "frames": 5,
+      "iou_mean": 0.7336,
+      "iou_min": 0.7206
+    },
+    {
+      "patient": "patient0149",
+      "frames": 5,
+      "iou_mean": 0.7307,
+      "iou_min": 0.6994
+    },
+    {
+      "patient": "patient0150",
+      "frames": 5,
+      "iou_mean": 0.7296,
+      "iou_min": 0.6858
+    },
+    {
+      "patient": "patient0151",
+      "frames": 5,
+      "iou_mean": 0.7376,
+      "iou_min": 0.702
+    },
+    {
+      "patient": "patient0152",
+      "frames": 5,
+      "iou_mean": 0.7754,
+      "iou_min": 0.7679
+    },
+    {
+      "patient": "patient0153",
+      "frames": 5,
+      "iou_mean": 0.8401,
+      "iou_min": 0.7961
+    },
+    {
+      "patient": "patient0154",
+      "frames": 5,
+      "iou_mean": 0.772,
+      "iou_min": 0.737
+    },
+    {
+      "patient": "patient0155",
+      "frames": 5,
+      "iou_mean": 0.8201,
+      "iou_min": 0.7961
+    },
+    {
+      "patient": "patient0156",
+      "frames": 5,
+      "iou_mean": 0.6779,
+      "iou_min": 0.6547
+    },
+    {
+      "patient": "patient0157",
+      "frames": 5,
+      "iou_mean": 0.6539,
+      "iou_min": 0.6421
+    },
+    {
+      "patient": "patient0158",
+      "frames": 5,
+      "iou_mean": 0.7137,
+      "iou_min": 0.684
+    },
+    {
+      "patient": "patient0159",
+      "frames": 5,
+      "iou_mean": 0.7929,
+      "iou_min": 0.7514
+    },
+    {
+      "patient": "patient0160",
+      "frames": 5,
+      "iou_mean": 0.8131,
+      "iou_min": 0.7856
+    },
+    {
+      "patient": "patient0161",
+      "frames": 5,
+      "iou_mean": 0.7636,
+      "iou_min": 0.7407
+    },
+    {
+      "patient": "patient0162",
+      "frames": 5,
+      "iou_mean": 0.6963,
+      "iou_min": 0.6724
+    },
+    {
+      "patient": "patient0163",
+      "frames": 5,
+      "iou_mean": 0.7046,
+      "iou_min": 0.6633
+    },
+    {
+      "patient": "patient0164",
+      "frames": 5,
+      "iou_mean": 0.7768,
+      "iou_min": 0.7524
+    },
+    {
+      "patient": "patient0165",
+      "frames": 5,
+      "iou_mean": 0.6659,
+      "iou_min": 0.6364
+    },
+    {
+      "patient": "patient0166",
+      "frames": 5,
+      "iou_mean": 0.6354,
+      "iou_min": 0.5938
+    },
+    {
+      "patient": "patient0167",
+      "frames": 5,
+      "iou_mean": 0.7577,
+      "iou_min": 0.7113
+    },
+    {
+      "patient": "patient0168",
+      "frames": 5,
+      "iou_mean": 0.747,
+      "iou_min": 0.7354
+    },
+    {
+      "patient": "patient0169",
+      "frames": 5,
+      "iou_mean": 0.7226,
+      "iou_min": 0.6643
+    },
+    {
+      "patient": "patient0170",
+      "frames": 5,
+      "iou_mean": 0.697,
+      "iou_min": 0.6197
+    },
+    {
+      "patient": "patient0171",
+      "frames": 5,
+      "iou_mean": 0.7421,
+      "iou_min": 0.7056
+    },
+    {
+      "patient": "patient0172",
+      "frames": 5,
+      "iou_mean": 0.5951,
+      "iou_min": 0.5803
+    },
+    {
+      "patient": "patient0173",
+      "frames": 5,
+      "iou_mean": 0.6636,
+      "iou_min": 0.6549
+    },
+    {
+      "patient": "patient0174",
+      "frames": 5,
+      "iou_mean": 0.696,
+      "iou_min": 0.679
+    },
+    {
+      "patient": "patient0175",
+      "frames": 5,
+      "iou_mean": 0.5486,
+      "iou_min": 0.5279
+    },
+    {
+      "patient": "patient0176",
+      "frames": 5,
+      "iou_mean": 0.7051,
+      "iou_min": 0.6831
+    },
+    {
+      "patient": "patient0177",
+      "frames": 5,
+      "iou_mean": 0.6709,
+      "iou_min": 0.6579
+    },
+    {
+      "patient": "patient0178",
+      "frames": 5,
+      "iou_mean": 0.7474,
+      "iou_min": 0.7392
+    },
+    {
+      "patient": "patient0179",
+      "frames": 5,
+      "iou_mean": 0.7084,
+      "iou_min": 0.6879
+    },
+    {
+      "patient": "patient0180",
+      "frames": 5,
+      "iou_mean": 0.6591,
+      "iou_min": 0.5818
+    },
+    {
+      "patient": "patient0181",
+      "frames": 5,
+      "iou_mean": 0.6298,
+      "iou_min": 0.5872
+    },
+    {
+      "patient": "patient0182",
+      "frames": 5,
+      "iou_mean": 0.6875,
+      "iou_min": 0.6382
+    },
+    {
+      "patient": "patient0183",
+      "frames": 5,
+      "iou_mean": 0.8111,
+      "iou_min": 0.7949
+    },
+    {
+      "patient": "patient0184",
+      "frames": 5,
+      "iou_mean": 0.6655,
+      "iou_min": 0.6135
+    },
+    {
+      "patient": "patient0185",
+      "frames": 5,
+      "iou_mean": 0.7522,
+      "iou_min": 0.729
+    },
+    {
+      "patient": "patient0186",
+      "frames": 5,
+      "iou_mean": 0.7983,
+      "iou_min": 0.7775
+    },
+    {
+      "patient": "patient0187",
+      "frames": 5,
+      "iou_mean": 0.7861,
+      "iou_min": 0.7754
+    },
+    {
+      "patient": "patient0188",
+      "frames": 5,
+      "iou_mean": 0.6979,
+      "iou_min": 0.6312
+    },
+    {
+      "patient": "patient0189",
+      "frames": 5,
+      "iou_mean": 0.677,
+      "iou_min": 0.6684
+    },
+    {
+      "patient": "patient0190",
+      "frames": 5,
+      "iou_mean": 0.8268,
+      "iou_min": 0.8128
+    },
+    {
+      "patient": "patient0191",
+      "frames": 5,
+      "iou_mean": 0.8278,
+      "iou_min": 0.811
+    },
+    {
+      "patient": "patient0192",
+      "frames": 5,
+      "iou_mean": 0.7169,
+      "iou_min": 0.6647
+    },
+    {
+      "patient": "patient0193",
+      "frames": 5,
+      "iou_mean": 0.6817,
+      "iou_min": 0.6494
+    },
+    {
+      "patient": "patient0194",
+      "frames": 5,
+      "iou_mean": 0.7421,
+      "iou_min": 0.7347
+    },
+    {
+      "patient": "patient0195",
+      "frames": 5,
+      "iou_mean": 0.7486,
+      "iou_min": 0.7293
+    },
+    {
+      "patient": "patient0196",
+      "frames": 5,
+      "iou_mean": 0.7507,
+      "iou_min": 0.7359
+    },
+    {
+      "patient": "patient0197",
+      "frames": 5,
+      "iou_mean": 0.7372,
+      "iou_min": 0.7212
+    },
+    {
+      "patient": "patient0198",
+      "frames": 5,
+      "iou_mean": 0.7378,
+      "iou_min": 0.716
+    },
+    {
+      "patient": "patient0199",
+      "frames": 5,
+      "iou_mean": 0.7675,
+      "iou_min": 0.7479
+    },
+    {
+      "patient": "patient0200",
+      "frames": 5,
+      "iou_mean": 0.7857,
+      "iou_min": 0.7642
+    },
+    {
+      "patient": "patient0201",
+      "frames": 5,
+      "iou_mean": 0.7468,
+      "iou_min": 0.7328
+    },
+    {
+      "patient": "patient0202",
+      "frames": 5,
+      "iou_mean": 0.7848,
+      "iou_min": 0.7477
+    },
+    {
+      "patient": "patient0203",
+      "frames": 5,
+      "iou_mean": 0.7697,
+      "iou_min": 0.7473
+    },
+    {
+      "patient": "patient0204",
+      "frames": 5,
+      "iou_mean": 0.724,
+      "iou_min": 0.6953
+    },
+    {
+      "patient": "patient0205",
+      "frames": 5,
+      "iou_mean": 0.8074,
+      "iou_min": 0.7824
+    },
+    {
+      "patient": "patient0206",
+      "frames": 5,
+      "iou_mean": 0.7571,
+      "iou_min": 0.7492
+    },
+    {
+      "patient": "patient0207",
+      "frames": 5,
+      "iou_mean": 0.8473,
+      "iou_min": 0.8329
+    },
+    {
+      "patient": "patient0208",
+      "frames": 5,
+      "iou_mean": 0.7864,
+      "iou_min": 0.7538
+    },
+    {
+      "patient": "patient0209",
+      "frames": 5,
+      "iou_mean": 0.7884,
+      "iou_min": 0.7749
+    },
+    {
+      "patient": "patient0210",
+      "frames": 5,
+      "iou_mean": 0.7419,
+      "iou_min": 0.7181
+    },
+    {
+      "patient": "patient0211",
+      "frames": 5,
+      "iou_mean": 0.746,
+      "iou_min": 0.7234
+    },
+    {
+      "patient": "patient0212",
+      "frames": 5,
+      "iou_mean": 0.7703,
+      "iou_min": 0.7511
+    },
+    {
+      "patient": "patient0213",
+      "frames": 5,
+      "iou_mean": 0.7825,
+      "iou_min": 0.775
+    },
+    {
+      "patient": "patient0214",
+      "frames": 5,
+      "iou_mean": 0.7617,
+      "iou_min": 0.7467
+    },
+    {
+      "patient": "patient0215",
+      "frames": 5,
+      "iou_mean": 0.7307,
+      "iou_min": 0.7143
+    },
+    {
+      "patient": "patient0216",
+      "frames": 5,
+      "iou_mean": 0.7684,
+      "iou_min": 0.7487
+    },
+    {
+      "patient": "patient0217",
+      "frames": 5,
+      "iou_mean": 0.7665,
+      "iou_min": 0.7478
+    },
+    {
+      "patient": "patient0218",
+      "frames": 5,
+      "iou_mean": 0.7407,
+      "iou_min": 0.7209
+    },
+    {
+      "patient": "patient0219",
+      "frames": 5,
+      "iou_mean": 0.8402,
+      "iou_min": 0.8207
+    },
+    {
+      "patient": "patient0220",
+      "frames": 5,
+      "iou_mean": 0.8297,
+      "iou_min": 0.8125
+    },
+    {
+      "patient": "patient0221",
+      "frames": 5,
+      "iou_mean": 0.6027,
+      "iou_min": 0.5458
+    },
+    {
+      "patient": "patient0222",
+      "frames": 5,
+      "iou_mean": 0.6698,
+      "iou_min": 0.6607
+    },
+    {
+      "patient": "patient0223",
+      "frames": 5,
+      "iou_mean": 0.6826,
+      "iou_min": 0.6622
+    },
+    {
+      "patient": "patient0224",
+      "frames": 5,
+      "iou_mean": 0.7849,
+      "iou_min": 0.7521
+    },
+    {
+      "patient": "patient0225",
+      "frames": 5,
+      "iou_mean": 0.8001,
+      "iou_min": 0.7914
+    },
+    {
+      "patient": "patient0226",
+      "frames": 5,
+      "iou_mean": 0.8471,
+      "iou_min": 0.8388
+    },
+    {
+      "patient": "patient0227",
+      "frames": 5,
+      "iou_mean": 0.782,
+      "iou_min": 0.7538
+    },
+    {
+      "patient": "patient0228",
+      "frames": 5,
+      "iou_mean": 0.7699,
+      "iou_min": 0.7494
+    },
+    {
+      "patient": "patient0229",
+      "frames": 5,
+      "iou_mean": 0.7653,
+      "iou_min": 0.7485
+    },
+    {
+      "patient": "patient0230",
+      "frames": 5,
+      "iou_mean": 0.8299,
+      "iou_min": 0.7946
+    },
+    {
+      "patient": "patient0231",
+      "frames": 5,
+      "iou_mean": 0.7708,
+      "iou_min": 0.7489
+    },
+    {
+      "patient": "patient0232",
+      "frames": 5,
+      "iou_mean": 0.7348,
+      "iou_min": 0.7291
+    },
+    {
+      "patient": "patient0233",
+      "frames": 5,
+      "iou_mean": 0.7674,
+      "iou_min": 0.75
+    },
+    {
+      "patient": "patient0234",
+      "frames": 5,
+      "iou_mean": 0.7573,
+      "iou_min": 0.7302
+    },
+    {
+      "patient": "patient0235",
+      "frames": 5,
+      "iou_mean": 0.7289,
+      "iou_min": 0.7049
+    },
+    {
+      "patient": "patient0236",
+      "frames": 5,
+      "iou_mean": 0.7989,
+      "iou_min": 0.7787
+    },
+    {
+      "patient": "patient0237",
+      "frames": 5,
+      "iou_mean": 0.8649,
+      "iou_min": 0.8551
+    },
+    {
+      "patient": "patient0238",
+      "frames": 5,
+      "iou_mean": 0.8077,
+      "iou_min": 0.7977
+    },
+    {
+      "patient": "patient0239",
+      "frames": 5,
+      "iou_mean": 0.7849,
+      "iou_min": 0.766
+    },
+    {
+      "patient": "patient0240",
+      "frames": 5,
+      "iou_mean": 0.7928,
+      "iou_min": 0.7428
+    },
+    {
+      "patient": "patient0241",
+      "frames": 5,
+      "iou_mean": 0.7607,
+      "iou_min": 0.7393
+    },
+    {
+      "patient": "patient0242",
+      "frames": 5,
+      "iou_mean": 0.8248,
+      "iou_min": 0.795
+    },
+    {
+      "patient": "patient0243",
+      "frames": 5,
+      "iou_mean": 0.7271,
+      "iou_min": 0.7163
+    },
+    {
+      "patient": "patient0244",
+      "frames": 5,
+      "iou_mean": 0.8539,
+      "iou_min": 0.8449
+    },
+    {
+      "patient": "patient0245",
+      "frames": 5,
+      "iou_mean": 0.7403,
+      "iou_min": 0.7151
+    },
+    {
+      "patient": "patient0246",
+      "frames": 5,
+      "iou_mean": 0.7663,
+      "iou_min": 0.7182
+    },
+    {
+      "patient": "patient0247",
+      "frames": 5,
+      "iou_mean": 0.839,
+      "iou_min": 0.8161
+    },
+    {
+      "patient": "patient0248",
+      "frames": 5,
+      "iou_mean": 0.7286,
+      "iou_min": 0.7063
+    },
+    {
+      "patient": "patient0249",
+      "frames": 5,
+      "iou_mean": 0.8641,
+      "iou_min": 0.8479
+    },
+    {
+      "patient": "patient0250",
+      "frames": 5,
+      "iou_mean": 0.63,
+      "iou_min": 0.6131
+    },
+    {
+      "patient": "patient0251",
+      "frames": 5,
+      "iou_mean": 0.7719,
+      "iou_min": 0.7482
+    },
+    {
+      "patient": "patient0252",
+      "frames": 5,
+      "iou_mean": 0.7784,
+      "iou_min": 0.7739
+    },
+    {
+      "patient": "patient0253",
+      "frames": 5,
+      "iou_mean": 0.7436,
+      "iou_min": 0.717
+    },
+    {
+      "patient": "patient0254",
+      "frames": 5,
+      "iou_mean": 0.6292,
+      "iou_min": 0.533
+    },
+    {
+      "patient": "patient0255",
+      "frames": 5,
+      "iou_mean": 0.7173,
+      "iou_min": 0.6974
+    },
+    {
+      "patient": "patient0256",
+      "frames": 5,
+      "iou_mean": 0.8336,
+      "iou_min": 0.8211
+    },
+    {
+      "patient": "patient0257",
+      "frames": 5,
+      "iou_mean": 0.7843,
+      "iou_min": 0.7365
+    },
+    {
+      "patient": "patient0258",
+      "frames": 5,
+      "iou_mean": 0.8116,
+      "iou_min": 0.7831
+    },
+    {
+      "patient": "patient0259",
+      "frames": 5,
+      "iou_mean": 0.6666,
+      "iou_min": 0.6503
+    },
+    {
+      "patient": "patient0260",
+      "frames": 5,
+      "iou_mean": 0.8228,
+      "iou_min": 0.8034
+    },
+    {
+      "patient": "patient0261",
+      "frames": 5,
+      "iou_mean": 0.7674,
+      "iou_min": 0.7315
+    },
+    {
+      "patient": "patient0262",
+      "frames": 5,
+      "iou_mean": 0.7416,
+      "iou_min": 0.7214
+    },
+    {
+      "patient": "patient0263",
+      "frames": 5,
+      "iou_mean": 0.7828,
+      "iou_min": 0.7731
+    },
+    {
+      "patient": "patient0264",
+      "frames": 5,
+      "iou_mean": 0.7161,
+      "iou_min": 0.6927
+    },
+    {
+      "patient": "patient0265",
+      "frames": 5,
+      "iou_mean": 0.6457,
+      "iou_min": 0.596
+    },
+    {
+      "patient": "patient0266",
+      "frames": 5,
+      "iou_mean": 0.6764,
+      "iou_min": 0.6321
+    },
+    {
+      "patient": "patient0267",
+      "frames": 5,
+      "iou_mean": 0.8419,
+      "iou_min": 0.8281
+    },
+    {
+      "patient": "patient0268",
+      "frames": 5,
+      "iou_mean": 0.6591,
+      "iou_min": 0.6227
+    },
+    {
+      "patient": "patient0269",
+      "frames": 5,
+      "iou_mean": 0.7669,
+      "iou_min": 0.7512
+    },
+    {
+      "patient": "patient0270",
+      "frames": 5,
+      "iou_mean": 0.7961,
+      "iou_min": 0.7849
+    },
+    {
+      "patient": "patient0271",
+      "frames": 5,
+      "iou_mean": 0.8829,
+      "iou_min": 0.8658
+    },
+    {
+      "patient": "patient0272",
+      "frames": 5,
+      "iou_mean": 0.8566,
+      "iou_min": 0.8464
+    },
+    {
+      "patient": "patient0273",
+      "frames": 5,
+      "iou_mean": 0.6864,
+      "iou_min": 0.657
+    },
+    {
+      "patient": "patient0274",
+      "frames": 5,
+      "iou_mean": 0.7781,
+      "iou_min": 0.7409
+    },
+    {
+      "patient": "patient0275",
+      "frames": 5,
+      "iou_mean": 0.8181,
+      "iou_min": 0.8095
+    },
+    {
+      "patient": "patient0276",
+      "frames": 5,
+      "iou_mean": 0.5582,
+      "iou_min": 0.523
+    },
+    {
+      "patient": "patient0277",
+      "frames": 5,
+      "iou_mean": 0.7627,
+      "iou_min": 0.7221
+    },
+    {
+      "patient": "patient0278",
+      "frames": 5,
+      "iou_mean": 0.7876,
+      "iou_min": 0.7752
+    },
+    {
+      "patient": "patient0279",
+      "frames": 5,
+      "iou_mean": 0.8122,
+      "iou_min": 0.7532
+    },
+    {
+      "patient": "patient0280",
+      "frames": 5,
+      "iou_mean": 0.7562,
+      "iou_min": 0.7471
+    },
+    {
+      "patient": "patient0281",
+      "frames": 5,
+      "iou_mean": 0.6623,
+      "iou_min": 0.6341
+    },
+    {
+      "patient": "patient0282",
+      "frames": 5,
+      "iou_mean": 0.711,
+      "iou_min": 0.6863
+    },
+    {
+      "patient": "patient0283",
+      "frames": 5,
+      "iou_mean": 0.8576,
+      "iou_min": 0.8186
+    },
+    {
+      "patient": "patient0284",
+      "frames": 5,
+      "iou_mean": 0.6836,
+      "iou_min": 0.6698
+    },
+    {
+      "patient": "patient0285",
+      "frames": 5,
+      "iou_mean": 0.8623,
+      "iou_min": 0.8435
+    },
+    {
+      "patient": "patient0286",
+      "frames": 5,
+      "iou_mean": 0.7777,
+      "iou_min": 0.756
+    },
+    {
+      "patient": "patient0287",
+      "frames": 5,
+      "iou_mean": 0.8446,
+      "iou_min": 0.8301
+    },
+    {
+      "patient": "patient0288",
+      "frames": 5,
+      "iou_mean": 0.7211,
+      "iou_min": 0.6888
+    },
+    {
+      "patient": "patient0289",
+      "frames": 5,
+      "iou_mean": 0.8221,
+      "iou_min": 0.8109
+    },
+    {
+      "patient": "patient0290",
+      "frames": 5,
+      "iou_mean": 0.5513,
+      "iou_min": 0.533
+    },
+    {
+      "patient": "patient0291",
+      "frames": 5,
+      "iou_mean": 0.5971,
+      "iou_min": 0.5909
+    },
+    {
+      "patient": "patient0292",
+      "frames": 5,
+      "iou_mean": 0.7256,
+      "iou_min": 0.6963
+    },
+    {
+      "patient": "patient0293",
+      "frames": 5,
+      "iou_mean": 0.6686,
+      "iou_min": 0.6442
+    },
+    {
+      "patient": "patient0294",
+      "frames": 5,
+      "iou_mean": 0.7294,
+      "iou_min": 0.6828
+    },
+    {
+      "patient": "patient0295",
+      "frames": 5,
+      "iou_mean": 0.7145,
+      "iou_min": 0.6919
+    },
+    {
+      "patient": "patient0296",
+      "frames": 5,
+      "iou_mean": 0.5478,
+      "iou_min": 0.5342
+    },
+    {
+      "patient": "patient0297",
+      "frames": 5,
+      "iou_mean": 0.7228,
+      "iou_min": 0.6791
+    },
+    {
+      "patient": "patient0298",
+      "frames": 5,
+      "iou_mean": 0.7897,
+      "iou_min": 0.7826
+    },
+    {
+      "patient": "patient0299",
+      "frames": 5,
+      "iou_mean": 0.6225,
+      "iou_min": 0.5924
+    },
+    {
+      "patient": "patient0300",
+      "frames": 5,
+      "iou_mean": 0.789,
+      "iou_min": 0.7662
+    },
+    {
+      "patient": "patient0301",
+      "frames": 5,
+      "iou_mean": 0.706,
+      "iou_min": 0.6736
+    },
+    {
+      "patient": "patient0302",
+      "frames": 5,
+      "iou_mean": 0.6577,
+      "iou_min": 0.6491
+    },
+    {
+      "patient": "patient0303",
+      "frames": 5,
+      "iou_mean": 0.6685,
+      "iou_min": 0.6346
+    },
+    {
+      "patient": "patient0304",
+      "frames": 5,
+      "iou_mean": 0.7516,
+      "iou_min": 0.7048
+    },
+    {
+      "patient": "patient0305",
+      "frames": 5,
+      "iou_mean": 0.7185,
+      "iou_min": 0.6943
+    },
+    {
+      "patient": "patient0306",
+      "frames": 5,
+      "iou_mean": 0.6741,
+      "iou_min": 0.6573
+    },
+    {
+      "patient": "patient0307",
+      "frames": 5,
+      "iou_mean": 0.6727,
+      "iou_min": 0.6446
+    },
+    {
+      "patient": "patient0308",
+      "frames": 5,
+      "iou_mean": 0.6788,
+      "iou_min": 0.6512
+    },
+    {
+      "patient": "patient0309",
+      "frames": 5,
+      "iou_mean": 0.7962,
+      "iou_min": 0.7867
+    },
+    {
+      "patient": "patient0310",
+      "frames": 5,
+      "iou_mean": 0.8218,
+      "iou_min": 0.7896
+    },
+    {
+      "patient": "patient0311",
+      "frames": 5,
+      "iou_mean": 0.7958,
+      "iou_min": 0.7742
+    },
+    {
+      "patient": "patient0312",
+      "frames": 5,
+      "iou_mean": 0.7472,
+      "iou_min": 0.7267
+    },
+    {
+      "patient": "patient0313",
+      "frames": 5,
+      "iou_mean": 0.8474,
+      "iou_min": 0.8391
+    },
+    {
+      "patient": "patient0314",
+      "frames": 5,
+      "iou_mean": 0.78,
+      "iou_min": 0.749
+    },
+    {
+      "patient": "patient0315",
+      "frames": 5,
+      "iou_mean": 0.7047,
+      "iou_min": 0.6697
+    },
+    {
+      "patient": "patient0316",
+      "frames": 5,
+      "iou_mean": 0.8088,
+      "iou_min": 0.8004
+    },
+    {
+      "patient": "patient0317",
+      "frames": 5,
+      "iou_mean": 0.649,
+      "iou_min": 0.6037
+    },
+    {
+      "patient": "patient0318",
+      "frames": 5,
+      "iou_mean": 0.7516,
+      "iou_min": 0.7207
+    },
+    {
+      "patient": "patient0319",
+      "frames": 5,
+      "iou_mean": 0.6998,
+      "iou_min": 0.6387
+    },
+    {
+      "patient": "patient0320",
+      "frames": 5,
+      "iou_mean": 0.7943,
+      "iou_min": 0.7616
+    },
+    {
+      "patient": "patient0321",
+      "frames": 5,
+      "iou_mean": 0.8034,
+      "iou_min": 0.78
+    },
+    {
+      "patient": "patient0322",
+      "frames": 5,
+      "iou_mean": 0.8206,
+      "iou_min": 0.8052
+    },
+    {
+      "patient": "patient0323",
+      "frames": 5,
+      "iou_mean": 0.8806,
+      "iou_min": 0.8715
+    },
+    {
+      "patient": "patient0324",
+      "frames": 5,
+      "iou_mean": 0.7896,
+      "iou_min": 0.7695
+    },
+    {
+      "patient": "patient0325",
+      "frames": 5,
+      "iou_mean": 0.7519,
+      "iou_min": 0.7174
+    },
+    {
+      "patient": "patient0326",
+      "frames": 5,
+      "iou_mean": 0.5266,
+      "iou_min": 0.4796
+    },
+    {
+      "patient": "patient0327",
+      "frames": 5,
+      "iou_mean": 0.8198,
+      "iou_min": 0.8092
+    },
+    {
+      "patient": "patient0328",
+      "frames": 5,
+      "iou_mean": 0.6336,
+      "iou_min": 0.5927
+    },
+    {
+      "patient": "patient0329",
+      "frames": 5,
+      "iou_mean": 0.7208,
+      "iou_min": 0.6489
+    },
+    {
+      "patient": "patient0330",
+      "frames": 5,
+      "iou_mean": 0.6251,
+      "iou_min": 0.5711
+    },
+    {
+      "patient": "patient0331",
+      "frames": 5,
+      "iou_mean": 0.6952,
+      "iou_min": 0.6751
+    },
+    {
+      "patient": "patient0332",
+      "frames": 5,
+      "iou_mean": 0.7767,
+      "iou_min": 0.7591
+    },
+    {
+      "patient": "patient0333",
+      "frames": 5,
+      "iou_mean": 0.719,
+      "iou_min": 0.667
+    },
+    {
+      "patient": "patient0334",
+      "frames": 5,
+      "iou_mean": 0.7789,
+      "iou_min": 0.7583
+    },
+    {
+      "patient": "patient0335",
+      "frames": 5,
+      "iou_mean": 0.7824,
+      "iou_min": 0.7701
+    },
+    {
+      "patient": "patient0336",
+      "frames": 5,
+      "iou_mean": 0.8778,
+      "iou_min": 0.8725
+    },
+    {
+      "patient": "patient0337",
+      "frames": 5,
+      "iou_mean": 0.697,
+      "iou_min": 0.6155
+    },
+    {
+      "patient": "patient0338",
+      "frames": 5,
+      "iou_mean": 0.699,
+      "iou_min": 0.6725
+    },
+    {
+      "patient": "patient0339",
+      "frames": 5,
+      "iou_mean": 0.7673,
+      "iou_min": 0.7297
+    },
+    {
+      "patient": "patient0340",
+      "frames": 5,
+      "iou_mean": 0.815,
+      "iou_min": 0.7497
+    },
+    {
+      "patient": "patient0341",
+      "frames": 5,
+      "iou_mean": 0.7084,
+      "iou_min": 0.7031
+    },
+    {
+      "patient": "patient0342",
+      "frames": 5,
+      "iou_mean": 0.7863,
+      "iou_min": 0.7751
+    },
+    {
+      "patient": "patient0343",
+      "frames": 5,
+      "iou_mean": 0.6899,
+      "iou_min": 0.6451
+    },
+    {
+      "patient": "patient0344",
+      "frames": 5,
+      "iou_mean": 0.7733,
+      "iou_min": 0.7662
+    },
+    {
+      "patient": "patient0345",
+      "frames": 5,
+      "iou_mean": 0.751,
+      "iou_min": 0.7312
+    },
+    {
+      "patient": "patient0346",
+      "frames": 5,
+      "iou_mean": 0.7595,
+      "iou_min": 0.7182
+    },
+    {
+      "patient": "patient0347",
+      "frames": 5,
+      "iou_mean": 0.7074,
+      "iou_min": 0.691
+    },
+    {
+      "patient": "patient0348",
+      "frames": 5,
+      "iou_mean": 0.6804,
+      "iou_min": 0.6577
+    },
+    {
+      "patient": "patient0349",
+      "frames": 5,
+      "iou_mean": 0.8035,
+      "iou_min": 0.79
+    },
+    {
+      "patient": "patient0350",
+      "frames": 5,
+      "iou_mean": 0.7975,
+      "iou_min": 0.7611
+    },
+    {
+      "patient": "patient0351",
+      "frames": 5,
+      "iou_mean": 0.7856,
+      "iou_min": 0.7791
+    },
+    {
+      "patient": "patient0352",
+      "frames": 5,
+      "iou_mean": 0.7155,
+      "iou_min": 0.7051
+    },
+    {
+      "patient": "patient0353",
+      "frames": 5,
+      "iou_mean": 0.8148,
+      "iou_min": 0.7722
+    },
+    {
+      "patient": "patient0354",
+      "frames": 5,
+      "iou_mean": 0.7648,
+      "iou_min": 0.7081
+    },
+    {
+      "patient": "patient0355",
+      "frames": 5,
+      "iou_mean": 0.8007,
+      "iou_min": 0.7698
+    },
+    {
+      "patient": "patient0356",
+      "frames": 5,
+      "iou_mean": 0.7887,
+      "iou_min": 0.7609
+    },
+    {
+      "patient": "patient0357",
+      "frames": 5,
+      "iou_mean": 0.8094,
+      "iou_min": 0.7915
+    },
+    {
+      "patient": "patient0358",
+      "frames": 5,
+      "iou_mean": 0.7285,
+      "iou_min": 0.7068
+    },
+    {
+      "patient": "patient0359",
+      "frames": 5,
+      "iou_mean": 0.7626,
+      "iou_min": 0.7408
+    },
+    {
+      "patient": "patient0360",
+      "frames": 5,
+      "iou_mean": 0.7865,
+      "iou_min": 0.747
+    },
+    {
+      "patient": "patient0361",
+      "frames": 5,
+      "iou_mean": 0.8339,
+      "iou_min": 0.8027
+    },
+    {
+      "patient": "patient0362",
+      "frames": 5,
+      "iou_mean": 0.7895,
+      "iou_min": 0.7665
+    },
+    {
+      "patient": "patient0363",
+      "frames": 5,
+      "iou_mean": 0.8571,
+      "iou_min": 0.8325
+    },
+    {
+      "patient": "patient0364",
+      "frames": 5,
+      "iou_mean": 0.6753,
+      "iou_min": 0.6681
+    },
+    {
+      "patient": "patient0365",
+      "frames": 5,
+      "iou_mean": 0.7317,
+      "iou_min": 0.6252
+    },
+    {
+      "patient": "patient0366",
+      "frames": 5,
+      "iou_mean": 0.772,
+      "iou_min": 0.7355
+    },
+    {
+      "patient": "patient0367",
+      "frames": 5,
+      "iou_mean": 0.7874,
+      "iou_min": 0.7222
+    },
+    {
+      "patient": "patient0368",
+      "frames": 5,
+      "iou_mean": 0.7422,
+      "iou_min": 0.7094
+    },
+    {
+      "patient": "patient0369",
+      "frames": 5,
+      "iou_mean": 0.6893,
+      "iou_min": 0.6509
+    },
+    {
+      "patient": "patient0370",
+      "frames": 5,
+      "iou_mean": 0.8348,
+      "iou_min": 0.7994
+    },
+    {
+      "patient": "patient0371",
+      "frames": 5,
+      "iou_mean": 0.7378,
+      "iou_min": 0.718
+    },
+    {
+      "patient": "patient0372",
+      "frames": 5,
+      "iou_mean": 0.6619,
+      "iou_min": 0.6538
+    },
+    {
+      "patient": "patient0373",
+      "frames": 5,
+      "iou_mean": 0.7898,
+      "iou_min": 0.7688
+    },
+    {
+      "patient": "patient0374",
+      "frames": 5,
+      "iou_mean": 0.8328,
+      "iou_min": 0.8125
+    },
+    {
+      "patient": "patient0375",
+      "frames": 5,
+      "iou_mean": 0.787,
+      "iou_min": 0.7567
+    },
+    {
+      "patient": "patient0376",
+      "frames": 5,
+      "iou_mean": 0.7154,
+      "iou_min": 0.6965
+    },
+    {
+      "patient": "patient0377",
+      "frames": 5,
+      "iou_mean": 0.816,
+      "iou_min": 0.8008
+    },
+    {
+      "patient": "patient0378",
+      "frames": 5,
+      "iou_mean": 0.7351,
+      "iou_min": 0.6558
+    },
+    {
+      "patient": "patient0379",
+      "frames": 5,
+      "iou_mean": 0.6689,
+      "iou_min": 0.656
+    },
+    {
+      "patient": "patient0380",
+      "frames": 5,
+      "iou_mean": 0.8032,
+      "iou_min": 0.7754
+    },
+    {
+      "patient": "patient0381",
+      "frames": 5,
+      "iou_mean": 0.816,
+      "iou_min": 0.7974
+    },
+    {
+      "patient": "patient0382",
+      "frames": 5,
+      "iou_mean": 0.7928,
+      "iou_min": 0.7455
+    },
+    {
+      "patient": "patient0383",
+      "frames": 5,
+      "iou_mean": 0.8235,
+      "iou_min": 0.7798
+    },
+    {
+      "patient": "patient0384",
+      "frames": 5,
+      "iou_mean": 0.7157,
+      "iou_min": 0.6993
+    },
+    {
+      "patient": "patient0385",
+      "frames": 5,
+      "iou_mean": 0.8414,
+      "iou_min": 0.833
+    },
+    {
+      "patient": "patient0386",
+      "frames": 5,
+      "iou_mean": 0.7759,
+      "iou_min": 0.7468
+    },
+    {
+      "patient": "patient0387",
+      "frames": 5,
+      "iou_mean": 0.7967,
+      "iou_min": 0.7769
+    },
+    {
+      "patient": "patient0388",
+      "frames": 5,
+      "iou_mean": 0.7425,
+      "iou_min": 0.696
+    },
+    {
+      "patient": "patient0389",
+      "frames": 5,
+      "iou_mean": 0.7832,
+      "iou_min": 0.7687
+    },
+    {
+      "patient": "patient0390",
+      "frames": 5,
+      "iou_mean": 0.6151,
+      "iou_min": 0.5942
+    },
+    {
+      "patient": "patient0391",
+      "frames": 5,
+      "iou_mean": 0.7238,
+      "iou_min": 0.6802
+    },
+    {
+      "patient": "patient0392",
+      "frames": 5,
+      "iou_mean": 0.8006,
+      "iou_min": 0.772
+    },
+    {
+      "patient": "patient0393",
+      "frames": 5,
+      "iou_mean": 0.502,
+      "iou_min": 0.4711
+    },
+    {
+      "patient": "patient0394",
+      "frames": 5,
+      "iou_mean": 0.811,
+      "iou_min": 0.7966
+    },
+    {
+      "patient": "patient0395",
+      "frames": 5,
+      "iou_mean": 0.7318,
+      "iou_min": 0.7152
+    },
+    {
+      "patient": "patient0396",
+      "frames": 5,
+      "iou_mean": 0.7204,
+      "iou_min": 0.7148
+    },
+    {
+      "patient": "patient0397",
+      "frames": 5,
+      "iou_mean": 0.7434,
+      "iou_min": 0.734
+    },
+    {
+      "patient": "patient0398",
+      "frames": 5,
+      "iou_mean": 0.7527,
+      "iou_min": 0.7413
+    },
+    {
+      "patient": "patient0399",
+      "frames": 5,
+      "iou_mean": 0.7094,
+      "iou_min": 0.6871
+    },
+    {
+      "patient": "patient0400",
+      "frames": 5,
+      "iou_mean": 0.7067,
+      "iou_min": 0.6803
+    },
+    {
+      "patient": "patient0401",
+      "frames": 5,
+      "iou_mean": 0.742,
+      "iou_min": 0.731
+    },
+    {
+      "patient": "patient0402",
+      "frames": 5,
+      "iou_mean": 0.6775,
+      "iou_min": 0.6453
+    },
+    {
+      "patient": "patient0403",
+      "frames": 5,
+      "iou_mean": 0.7829,
+      "iou_min": 0.7713
+    },
+    {
+      "patient": "patient0404",
+      "frames": 5,
+      "iou_mean": 0.802,
+      "iou_min": 0.7743
+    },
+    {
+      "patient": "patient0405",
+      "frames": 5,
+      "iou_mean": 0.827,
+      "iou_min": 0.7577
+    },
+    {
+      "patient": "patient0406",
+      "frames": 5,
+      "iou_mean": 0.7706,
+      "iou_min": 0.6818
+    },
+    {
+      "patient": "patient0407",
+      "frames": 5,
+      "iou_mean": 0.772,
+      "iou_min": 0.7541
+    },
+    {
+      "patient": "patient0408",
+      "frames": 5,
+      "iou_mean": 0.7357,
+      "iou_min": 0.7256
+    },
+    {
+      "patient": "patient0409",
+      "frames": 5,
+      "iou_mean": 0.7589,
+      "iou_min": 0.712
+    },
+    {
+      "patient": "patient0410",
+      "frames": 5,
+      "iou_mean": 0.8021,
+      "iou_min": 0.748
+    },
+    {
+      "patient": "patient0411",
+      "frames": 5,
+      "iou_mean": 0.6443,
+      "iou_min": 0.6127
+    },
+    {
+      "patient": "patient0412",
+      "frames": 5,
+      "iou_mean": 0.805,
+      "iou_min": 0.7728
+    },
+    {
+      "patient": "patient0413",
+      "frames": 5,
+      "iou_mean": 0.8523,
+      "iou_min": 0.8341
+    },
+    {
+      "patient": "patient0414",
+      "frames": 5,
+      "iou_mean": 0.7726,
+      "iou_min": 0.7549
+    },
+    {
+      "patient": "patient0415",
+      "frames": 5,
+      "iou_mean": 0.8533,
+      "iou_min": 0.8466
+    },
+    {
+      "patient": "patient0416",
+      "frames": 5,
+      "iou_mean": 0.7403,
+      "iou_min": 0.693
+    },
+    {
+      "patient": "patient0417",
+      "frames": 5,
+      "iou_mean": 0.8247,
+      "iou_min": 0.8197
+    },
+    {
+      "patient": "patient0418",
+      "frames": 5,
+      "iou_mean": 0.7395,
+      "iou_min": 0.7173
+    },
+    {
+      "patient": "patient0419",
+      "frames": 5,
+      "iou_mean": 0.8101,
+      "iou_min": 0.7892
+    },
+    {
+      "patient": "patient0420",
+      "frames": 5,
+      "iou_mean": 0.625,
+      "iou_min": 0.6159
+    },
+    {
+      "patient": "patient0421",
+      "frames": 5,
+      "iou_mean": 0.8072,
+      "iou_min": 0.7769
+    },
+    {
+      "patient": "patient0422",
+      "frames": 5,
+      "iou_mean": 0.6933,
+      "iou_min": 0.6429
+    },
+    {
+      "patient": "patient0423",
+      "frames": 5,
+      "iou_mean": 0.7541,
+      "iou_min": 0.7033
+    },
+    {
+      "patient": "patient0424",
+      "frames": 5,
+      "iou_mean": 0.7285,
+      "iou_min": 0.7039
+    },
+    {
+      "patient": "patient0425",
+      "frames": 5,
+      "iou_mean": 0.7677,
+      "iou_min": 0.7461
+    },
+    {
+      "patient": "patient0426",
+      "frames": 5,
+      "iou_mean": 0.7445,
+      "iou_min": 0.7212
+    },
+    {
+      "patient": "patient0427",
+      "frames": 5,
+      "iou_mean": 0.7852,
+      "iou_min": 0.774
+    },
+    {
+      "patient": "patient0428",
+      "frames": 5,
+      "iou_mean": 0.8118,
+      "iou_min": 0.7937
+    },
+    {
+      "patient": "patient0429",
+      "frames": 5,
+      "iou_mean": 0.7875,
+      "iou_min": 0.7727
+    },
+    {
+      "patient": "patient0430",
+      "frames": 5,
+      "iou_mean": 0.5571,
+      "iou_min": 0.5296
+    },
+    {
+      "patient": "patient0431",
+      "frames": 5,
+      "iou_mean": 0.7936,
+      "iou_min": 0.7397
+    },
+    {
+      "patient": "patient0432",
+      "frames": 5,
+      "iou_mean": 0.8099,
+      "iou_min": 0.7984
+    },
+    {
+      "patient": "patient0433",
+      "frames": 5,
+      "iou_mean": 0.8449,
+      "iou_min": 0.8304
+    },
+    {
+      "patient": "patient0434",
+      "frames": 5,
+      "iou_mean": 0.8295,
+      "iou_min": 0.7988
+    },
+    {
+      "patient": "patient0435",
+      "frames": 5,
+      "iou_mean": 0.8266,
+      "iou_min": 0.8151
+    },
+    {
+      "patient": "patient0436",
+      "frames": 5,
+      "iou_mean": 0.7922,
+      "iou_min": 0.7721
+    },
+    {
+      "patient": "patient0437",
+      "frames": 5,
+      "iou_mean": 0.7136,
+      "iou_min": 0.6992
+    },
+    {
+      "patient": "patient0438",
+      "frames": 5,
+      "iou_mean": 0.7757,
+      "iou_min": 0.7355
+    },
+    {
+      "patient": "patient0439",
+      "frames": 5,
+      "iou_mean": 0.8214,
+      "iou_min": 0.8087
+    },
+    {
+      "patient": "patient0440",
+      "frames": 5,
+      "iou_mean": 0.7956,
+      "iou_min": 0.7577
+    },
+    {
+      "patient": "patient0441",
+      "frames": 5,
+      "iou_mean": 0.7525,
+      "iou_min": 0.7351
+    },
+    {
+      "patient": "patient0442",
+      "frames": 5,
+      "iou_mean": 0.8091,
+      "iou_min": 0.8002
+    },
+    {
+      "patient": "patient0443",
+      "frames": 5,
+      "iou_mean": 0.7832,
+      "iou_min": 0.759
+    },
+    {
+      "patient": "patient0444",
+      "frames": 5,
+      "iou_mean": 0.6582,
+      "iou_min": 0.6387
+    },
+    {
+      "patient": "patient0445",
+      "frames": 5,
+      "iou_mean": 0.7281,
+      "iou_min": 0.7148
+    },
+    {
+      "patient": "patient0446",
+      "frames": 5,
+      "iou_mean": 0.8482,
+      "iou_min": 0.8038
+    },
+    {
+      "patient": "patient0447",
+      "frames": 5,
+      "iou_mean": 0.7091,
+      "iou_min": 0.696
+    },
+    {
+      "patient": "patient0448",
+      "frames": 5,
+      "iou_mean": 0.8827,
+      "iou_min": 0.8718
+    },
+    {
+      "patient": "patient0449",
+      "frames": 5,
+      "iou_mean": 0.7411,
+      "iou_min": 0.7227
+    },
+    {
+      "patient": "patient0450",
+      "frames": 5,
+      "iou_mean": 0.7913,
+      "iou_min": 0.7868
+    },
+    {
+      "patient": "patient0451",
+      "frames": 5,
+      "iou_mean": 0.7611,
+      "iou_min": 0.7422
+    },
+    {
+      "patient": "patient0452",
+      "frames": 5,
+      "iou_mean": 0.8496,
+      "iou_min": 0.8415
+    },
+    {
+      "patient": "patient0453",
+      "frames": 5,
+      "iou_mean": 0.8748,
+      "iou_min": 0.8618
+    },
+    {
+      "patient": "patient0454",
+      "frames": 5,
+      "iou_mean": 0.7793,
+      "iou_min": 0.7525
+    },
+    {
+      "patient": "patient0455",
+      "frames": 5,
+      "iou_mean": 0.7756,
+      "iou_min": 0.7522
+    },
+    {
+      "patient": "patient0456",
+      "frames": 5,
+      "iou_mean": 0.731,
+      "iou_min": 0.722
+    },
+    {
+      "patient": "patient0457",
+      "frames": 5,
+      "iou_mean": 0.7982,
+      "iou_min": 0.7699
+    },
+    {
+      "patient": "patient0458",
+      "frames": 5,
+      "iou_mean": 0.7938,
+      "iou_min": 0.7786
+    },
+    {
+      "patient": "patient0459",
+      "frames": 5,
+      "iou_mean": 0.8499,
+      "iou_min": 0.8307
+    },
+    {
+      "patient": "patient0460",
+      "frames": 5,
+      "iou_mean": 0.7844,
+      "iou_min": 0.7362
+    },
+    {
+      "patient": "patient0461",
+      "frames": 5,
+      "iou_mean": 0.7875,
+      "iou_min": 0.7631
+    },
+    {
+      "patient": "patient0462",
+      "frames": 5,
+      "iou_mean": 0.7995,
+      "iou_min": 0.7861
+    },
+    {
+      "patient": "patient0463",
+      "frames": 5,
+      "iou_mean": 0.7502,
+      "iou_min": 0.7214
+    },
+    {
+      "patient": "patient0464",
+      "frames": 5,
+      "iou_mean": 0.8119,
+      "iou_min": 0.8014
+    },
+    {
+      "patient": "patient0465",
+      "frames": 5,
+      "iou_mean": 0.7486,
+      "iou_min": 0.7235
+    },
+    {
+      "patient": "patient0466",
+      "frames": 5,
+      "iou_mean": 0.7749,
+      "iou_min": 0.759
+    },
+    {
+      "patient": "patient0467",
+      "frames": 5,
+      "iou_mean": 0.7534,
+      "iou_min": 0.7393
+    },
+    {
+      "patient": "patient0468",
+      "frames": 5,
+      "iou_mean": 0.7615,
+      "iou_min": 0.7474
+    },
+    {
+      "patient": "patient0469",
+      "frames": 5,
+      "iou_mean": 0.8087,
+      "iou_min": 0.7868
+    },
+    {
+      "patient": "patient0470",
+      "frames": 5,
+      "iou_mean": 0.7147,
+      "iou_min": 0.6918
+    },
+    {
+      "patient": "patient0471",
+      "frames": 5,
+      "iou_mean": 0.7943,
+      "iou_min": 0.727
+    },
+    {
+      "patient": "patient0472",
+      "frames": 5,
+      "iou_mean": 0.8062,
+      "iou_min": 0.7708
+    },
+    {
+      "patient": "patient0473",
+      "frames": 5,
+      "iou_mean": 0.774,
+      "iou_min": 0.7591
+    },
+    {
+      "patient": "patient0474",
+      "frames": 5,
+      "iou_mean": 0.629,
+      "iou_min": 0.5994
+    },
+    {
+      "patient": "patient0475",
+      "frames": 5,
+      "iou_mean": 0.7818,
+      "iou_min": 0.7681
+    },
+    {
+      "patient": "patient0476",
+      "frames": 5,
+      "iou_mean": 0.8338,
+      "iou_min": 0.825
+    },
+    {
+      "patient": "patient0477",
+      "frames": 5,
+      "iou_mean": 0.8058,
+      "iou_min": 0.7978
+    },
+    {
+      "patient": "patient0478",
+      "frames": 5,
+      "iou_mean": 0.7899,
+      "iou_min": 0.7814
+    },
+    {
+      "patient": "patient0479",
+      "frames": 5,
+      "iou_mean": 0.7567,
+      "iou_min": 0.7466
+    },
+    {
+      "patient": "patient0480",
+      "frames": 5,
+      "iou_mean": 0.7676,
+      "iou_min": 0.7295
+    },
+    {
+      "patient": "patient0481",
+      "frames": 5,
+      "iou_mean": 0.7817,
+      "iou_min": 0.7569
+    },
+    {
+      "patient": "patient0482",
+      "frames": 5,
+      "iou_mean": 0.7078,
+      "iou_min": 0.6815
+    },
+    {
+      "patient": "patient0483",
+      "frames": 5,
+      "iou_mean": 0.7977,
+      "iou_min": 0.7758
+    },
+    {
+      "patient": "patient0484",
+      "frames": 5,
+      "iou_mean": 0.8159,
+      "iou_min": 0.8078
+    },
+    {
+      "patient": "patient0485",
+      "frames": 5,
+      "iou_mean": 0.7337,
+      "iou_min": 0.7253
+    },
+    {
+      "patient": "patient0486",
+      "frames": 5,
+      "iou_mean": 0.8299,
+      "iou_min": 0.7799
+    },
+    {
+      "patient": "patient0487",
+      "frames": 5,
+      "iou_mean": 0.6322,
+      "iou_min": 0.6004
+    },
+    {
+      "patient": "patient0488",
+      "frames": 5,
+      "iou_mean": 0.8187,
+      "iou_min": 0.8065
+    },
+    {
+      "patient": "patient0489",
+      "frames": 5,
+      "iou_mean": 0.7198,
+      "iou_min": 0.674
+    },
+    {
+      "patient": "patient0490",
+      "frames": 5,
+      "iou_mean": 0.554,
+      "iou_min": 0.4976
+    },
+    {
+      "patient": "patient0491",
+      "frames": 5,
+      "iou_mean": 0.7891,
+      "iou_min": 0.7402
+    },
+    {
+      "patient": "patient0492",
+      "frames": 5,
+      "iou_mean": 0.7211,
+      "iou_min": 0.7039
+    },
+    {
+      "patient": "patient0493",
+      "frames": 5,
+      "iou_mean": 0.7809,
+      "iou_min": 0.7678
+    },
+    {
+      "patient": "patient0494",
+      "frames": 5,
+      "iou_mean": 0.7161,
+      "iou_min": 0.7005
+    },
+    {
+      "patient": "patient0495",
+      "frames": 5,
+      "iou_mean": 0.6847,
+      "iou_min": 0.6374
+    },
+    {
+      "patient": "patient0496",
+      "frames": 5,
+      "iou_mean": 0.7538,
+      "iou_min": 0.6952
+    },
+    {
+      "patient": "patient0497",
+      "frames": 5,
+      "iou_mean": 0.8293,
+      "iou_min": 0.8108
+    },
+    {
+      "patient": "patient0498",
+      "frames": 5,
+      "iou_mean": 0.7523,
+      "iou_min": 0.7348
+    },
+    {
+      "patient": "patient0499",
+      "frames": 5,
+      "iou_mean": 0.7647,
+      "iou_min": 0.7386
+    },
+    {
+      "patient": "patient0500",
+      "frames": 5,
+      "iou_mean": 0.8684,
+      "iou_min": 0.8579
+    }
+  ]
+}

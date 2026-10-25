@@ -140,7 +140,7 @@ def main() -> int:
 
         # 每 5 epoch 评一次（评的是官方 614 全量 test，非抽样）
         if (epoch + 1) % 5 == 0 or epoch == EPOCHS - 1:
-            dscs, ious = evaluate(net, test_pairs, device)
+            dscs, ious, _sd, _si, _st = evaluate(net, test_pairs, device)
             d = float(np.mean(dscs))
             if d > best["dice"]:
                 best = {"dice": d, "iou": float(np.mean(ious)), "epoch": epoch + 1}
@@ -148,7 +148,7 @@ def main() -> int:
                   f"test_DSC={d:.4f} IoU={float(np.mean(ious)):.4f} "
                   f"({time.time()-t0:.0f}s)", flush=True)
 
-    dscs, ious = evaluate(net, test_pairs, device)
+    dscs, ious, strict_dscs, strict_ious, stats = evaluate(net, test_pairs, device)
     ckpt_dir = Path("/mnt/ee16/home/student03/uai/models/nodule_seg")
     ckpt_dir.mkdir(parents=True, exist_ok=True)
     ckpt = ckpt_dir / "unet_tn3k.pt"
@@ -169,12 +169,16 @@ def main() -> int:
     result = {
         "protocol": f"MONAI UNet from scratch, 25 epochs, AdamW lr1e-3 cosine, bs16, 256px, flip/rot/scale/affine+brightness aug, official TN3K split (2879/614, no sampling)",
         "params_M": round(n_params / 1e6, 1),
-        "dice_mean": round(float(np.mean(dscs)), 4),
-        "dice_std": round(float(np.std(dscs)), 4),
-        "iou_mean": round(float(np.mean(ious)), 4),
+        # A.88：两套口径都写（`_summarize` 里含 empty_mask_breakdown）。
+        # 对外引用一律用 `dice_mean_strict`；`dice_mean` 仅作与历史材料对照。
+        **_summarize(dscs, ious, strict_dscs, strict_ious, stats),
         "best_during_training": {k: (round(v, 4) if isinstance(v, float) else v) for k, v in best.items()},
         "wall_seconds": round(time.time() - t0, 1),
         "generated_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "input_size": SIZE,
+        "note_crop": (
+            f"在 {SIZE}px（中心裁剪/缩放）后的图上计算；与原图全尺寸结果不可混用、不可直接对比。"
+        ),
     }
     OUT.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps(result, ensure_ascii=False), flush=True)
@@ -184,8 +188,29 @@ def main() -> int:
 
 @torch.no_grad()
 def evaluate(net, test_pairs, device):
+    """TN3K 全量评测（DSC / IoU）。
+
+    ## A.88 口径修正：空掩膜不再静默记 1.0
+
+    原实现 ``dscs.append(2*di/ci if ci > 0 else 1.0)`` —— 当**预测与金标准都为空**
+    时（``ci == 0``）记 1.0。那是"完全空集也算满分"，属**乐观口径**：TN3K 里有
+    一批无病灶/掩膜极小的图，这一条会把均值抬高，而且读者从最终一个数字上
+    看不出来。
+
+    现在把三种情形分开统计并**都写进报告**：
+      * ``empty_both``：两边都空 → 不计入 strict 口径（原口径记 1.0）；
+      * ``empty_pred`` / ``empty_gt``：一边空 → 该例 DSC 记 0.0（有病灶没勾出来
+        或凭空勾了一片，都是真错误）；
+      * ``normal``：正常计算。
+
+    对外报数口径（两个都给，避免只给好看的）：
+      * ``dice_mean``      = 原口径（含 empty_both 记 1.0，**乐观**）；
+      * ``dice_mean_strict`` = 剔除 ``empty_both`` 后的均值（**保守/可辩护**）。
+    """
     net.eval()
     dscs, ious = [], []
+    strict_dscs, strict_ious = [], []
+    stats = {"empty_both": 0, "empty_pred": 0, "empty_gt": 0, "normal": 0}
     for i in range(0, len(test_pairs), BS):
         batch = [load_pair(*p) for p in test_pairs[i:i + BS]]
         batch = [b for b in batch if b is not None]
@@ -198,13 +223,50 @@ def evaluate(net, test_pairs, device):
         logits = F.interpolate(logits.float(), size=ys.shape[-2:], mode="bilinear", align_corners=False)
         pred = (torch.sigmoid(logits) > 0.5).float()
         inter = (pred * ys).sum(dim=(1, 2, 3))
-        card = pred.sum(dim=(1, 2, 3)) + ys.sum(dim=(1, 2, 3))
+        pred_card = pred.sum(dim=(1, 2, 3))
+        gt_card = ys.sum(dim=(1, 2, 3))
+        card = pred_card + gt_card
         union = card - inter
-        for di, ui, ci in zip(inter, union, card):
-            dscs.append(float(2 * di / ci) if ci > 0 else 1.0)
-            ious.append(float(di / ui) if ui > 0 else 1.0)
+        for di, ui, ci, pc, gc in zip(
+            inter, union, card, pred_card, gt_card, strict=True
+        ):
+            di, ui, ci = float(di), float(ui), float(ci)
+            pc, gc = float(pc), float(gc)
+            if ci == 0:
+                # 两边都空：原口径记 1.0（乐观），strict 口径不计入
+                stats["empty_both"] += 1
+                dscs.append(1.0)
+                ious.append(1.0)
+                continue
+            dsc = 2 * di / ci
+            iou = di / ui if ui > 0 else 0.0
+            if pc == 0 or gc == 0:
+                # 一边空：真有病灶却没勾出来（或凭空勾一片）→ 该例 0 分
+                stats["empty_pred" if pc == 0 else "empty_gt"] += 1
+            else:
+                stats["normal"] += 1
+            dscs.append(dsc)
+            ious.append(iou)
+            strict_dscs.append(dsc)
+            strict_ious.append(iou)
     net.train()
-    return dscs, ious
+    return dscs, ious, strict_dscs, strict_ious, stats
+
+
+def _summarize(dscs, ious, strict_dscs, strict_ious, stats):
+    """把两套口径 + 空掩膜构成汇总成可写进报告的字段（A.88）。"""
+    out = {
+        "dice_mean": round(float(np.mean(dscs)), 4) if dscs else None,
+        "dice_std": round(float(np.std(dscs)), 4) if dscs else None,
+        "iou_mean": round(float(np.mean(ious)), 4) if ious else None,
+        "dice_mean_strict": round(float(np.mean(strict_dscs)), 4) if strict_dscs else None,
+        "iou_mean_strict": round(float(np.mean(strict_ious)), 4) if strict_ious else None,
+        "dice_caliber_optimistic": "empty_both 记 1.0（原口径）",
+        "dice_caliber_strict": "剔除 empty_both（可辩护口径）",
+        "empty_mask_breakdown": dict(stats),
+        "n_evaluated": len(dscs),
+    }
+    return out
 
 
 if __name__ == "__main__":

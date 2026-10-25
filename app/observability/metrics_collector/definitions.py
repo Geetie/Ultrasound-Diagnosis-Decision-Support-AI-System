@@ -193,6 +193,29 @@ class MetricsDefinitions:
             ["route"],
             registry=r,
         )
+        # A.88 T4-⑤：RAG 三指标（precision / recall / ndcg）的**生产者**。
+        #
+        # 此前这三项只有"规格里有"，既无指标定义也无写入点（架构真相 §3.5 的
+        # "RAG 三指标无生产者"）。诚实口径：**没有 ground truth 就不编数值** ——
+        # 所以拆成两个指标：
+        #   * ``retrieval_quality``：只有**真的算出来**才 set（label ``metric``）；
+        #   * ``retrieval_quality_measurements``：每次评估都 +1，label ``status``
+        #     区分 ``measured`` 与 ``not_measured_no_ground_truth`` 等。
+        # 这样看板上"这条指标是 0"与"这条指标从没被测量过"永远不会混为一谈。
+        self.retrieval_quality = Gauge(
+            "ultrasound_retrieval_quality",
+            "Retrieval quality (precision / recall / ndcg) against provided ground truth; "
+            "only set when actually measured",
+            ["metric"],
+            registry=r,
+        )
+        self.retrieval_quality_measurements = Counter(
+            "ultrasound_retrieval_quality_measurements_total",
+            "Retrieval quality evaluations by status "
+            "(measured / not_measured_<reason>)",
+            ["metric", "status"],
+            registry=r,
+        )
 
     def _init_safety_metrics(self) -> None:
         r = self._registry

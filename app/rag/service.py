@@ -20,6 +20,7 @@ import time
 import structlog
 
 from app.config.settings import settings
+from app.knowledge.authority import rank_indices as authority_rank_indices
 from app.knowledge.version import parse_kb_version
 from app.rag.bm25_fallback import BM25Fallback
 from app.rag.cache import RetrievalCache
@@ -38,6 +39,23 @@ from app.rag.reranker import HeuristicReranker, RerankError, RerankService
 from app.rag.retriever import Retriever
 
 logger = structlog.get_logger("app.rag.service")
+
+
+def _comparison_score(sc: ScoredChunk) -> float:
+    """取一条命中**用于阈值判定**的分数。
+
+    有 rerank 分就用 rerank 分（cross-encoder，0~1），否则用 ``score``
+    （RRF 融合分或 BM25 分）。这是 A.88 A1 之前就存在的取分口径，抽成函数
+    只是为了让"判据"与"参考最大值"用**同一把尺子**（两处各写一遍必然走散）。
+    """
+    return sc.rerank_score if sc.rerank_score is not None else sc.score
+
+
+def _threshold_mode(n_absolute: int, n_relative: int) -> str:
+    """本批阈值实际生效的量纲（写进 ``min_score_filter_applied`` 留痕）。"""
+    if n_absolute and n_relative:
+        return "mixed"
+    return "relative" if n_relative else "absolute"
 
 
 class RAGServiceImpl(RAGService):
@@ -93,11 +111,33 @@ class RAGServiceImpl(RAGService):
         # 它们绕过知识查询智能体的两层缓存。
         self._cache = cache
 
+    @staticmethod
+    def _request_has_image_bytes(request: RetrievalRequest) -> bool:
+        """本次请求是否**可能**带影像腿输入（显式字节或请求作用域槽）。
+
+        缓存正确性的前置判断（A.88 T4-①）：返回 True 时整条缓存旁路。
+        作用域槽的查询是纯内存读（有 TTL），不产生 IO。
+        """
+        if request.image_data is not None:
+            return True
+        try:
+            from app.rag.image_leg import resolve_image_leg_slot
+
+            slot = resolve_image_leg_slot(request.request_id)
+        except Exception as exc:
+            # 槽不可读（极端情况）→ 按"有影像"保守处理（旁路缓存比串号安全）。
+            logger.warning(
+                "image_leg_slot_lookup_failed_treating_as_present",
+                request_id=request.request_id,
+                error=str(exc),
+                error_type=type(exc).__name__,
+            )
+            return True
+        return bool(slot is not None and slot.image_data is not None)
+
     # ------------------------------------------------------------------
     # KB 版本契约（知识查询智能体缓存键依赖）
-    # ------------------------------------------------------------------
-    #
-    # ``app/main.py`` 构造 KnowledgeAgentImpl 时优先从 RAG 服务解析当前
+    # ------------------------------------------------------------------ ``app/main.py`` 构造 KnowledgeAgentImpl 时优先从 RAG 服务解析当前
     # KB 版本（见 main.py 中的 ``_kb_version_resolver`` 四级回退）；KB 版本
     # 变更会嵌入 ``KnowledgeAgentImpl._make_cache_key``，实现缓存自然失效。
     # 因此 RAG 服务必须暴露这两个方法。
@@ -126,13 +166,33 @@ class RAGServiceImpl(RAGService):
     async def retrieve(self, request: RetrievalRequest) -> RetrievalResult:
         start = time.monotonic()
 
+        # A.88 T4-①（缓存正确性，**必须与影像腿接线一起做**）：
+        # 影像腿的字节现在可能来自**请求作用域**（``app/rag/image_leg.py`` 的注入槽
+        # / ContextVar），而 ``request.image_data`` 仍是 None。
+        # ``RetrievalCache.is_cacheable`` 只看得见 ``request.image_data``，于是会把
+        # 这类请求当普通文本检索缓存 —— 缓存键里**没有** session/影像，一旦影像腿
+        # 真的贡献了 chunk，同一句 query 就会把 A 会话的检索结果发给 B 会话
+        # （A.78 病人隔离红线）。所以：带影像腿输入 → **读与写都旁路缓存**，
+        # 与 ``cache.py`` 既有的"image_data 非空不缓存"同口径。
+        image_leg_active = self._request_has_image_bytes(request)
+
         # Stage 0: 缓存查询（命中则跳过 enhance/retrieve/rerank/fallback 全流水线）
         cache_key: str | None = None
-        if self._cache is not None and self._cache.is_cacheable(request):
+        if (
+            self._cache is not None
+            and not image_leg_active
+            and self._cache.is_cacheable(request)
+        ):
             cache_key = self._cache.make_key(request, self._kb_version)
             cached = await self._cache.get(cache_key)
             if cached is not None:
                 return self._finalize_cache_hit(cached, request, start)
+        elif image_leg_active and self._cache is not None:
+            logger.info(
+                "rag_cache_bypassed_image_leg",
+                request_id=request.request_id,
+                organ=request.organ,
+            )
 
         # Stage 1: query enhancement.
         # T-GB-AGT-02：``use_llm_enhancement`` 决定是否允许 LLM 改写查询，
@@ -287,17 +347,49 @@ class RAGServiceImpl(RAGService):
         # （表现为"开了等于没开"，且日志里看不出原因）。
         # 这里不整体放宽阈值、也不给邻居伪造分数，只在过滤条件上排除图谱来源；
         # 剔除条数与豁免条数都留痕（固定事件名，便于探针/守卫读取）。
+        # A.88 A1（量纲错配修复）：阈值的**解释**必须跟随分数实际所处的量纲。
+        #
+        # 缺陷：``min_score_threshold`` 默认 0.5（``app/rag/protocols.py:119``）是按
+        # rerank（cross-encoder，0~1 相似度）口径定的；但 standard 档
+        # （``use_reranking=False``）与 BM25 兜底路径的 ``score`` 是 **RRF** 融合分
+        # （``Retriever._rrf_fuse``：1/(60+rank)，量级 0.016~0.033），拿 0.5 去比
+        # 恒不成立 → 整批被剔空 → 一致性校验「与指南比」永远拿不到 chunk
+        # （``app/fusion/consistency.py:837-863`` 的 ``no_guideline_chunks``）。
+        #
+        # 修法（按每条命中自身携带的量纲选判据，不改 rerank 路径语义）：
+        #   * 该条有 ``rerank_score`` → **绝对**判据（阈值语义原样保留）；
+        #   * 没有 ``rerank_score``（RRF / BM25_FALLBACK）→ **相对**判据
+        #     ``score >= threshold * max_score_of_batch``（max 取本批**非图谱**项
+        #     的 score 最大值；max <= 0 时整批保留）。相对判据保证"头部不会被
+        #     一个来自另一种量纲的常数整批判死"，同时仍按同一比例裁掉长尾。
+        # 图谱来源（``RetrievalMethod.GRAPH``）的豁免**不动**，见上段说明与
+        # ``tests/unit/rag/test_service_graph_threshold.py`` 的钉子。
         if request.min_score_threshold > 0:
+            non_graph = [
+                sc for sc in result.chunks if sc.retrieval_source != RetrievalMethod.GRAPH
+            ]
+            reference_max = max((_comparison_score(sc) for sc in non_graph), default=0.0)
             kept: list[ScoredChunk] = []
             dropped_normal = 0
             graph_exempt = 0
+            n_absolute = 0
+            n_relative = 0
+            relative_floor = request.min_score_threshold * reference_max
             for sc in result.chunks:
                 if sc.retrieval_source == RetrievalMethod.GRAPH:
                     kept.append(sc)
                     graph_exempt += 1
                     continue
-                score = sc.rerank_score if sc.rerank_score is not None else sc.score
-                if score >= request.min_score_threshold:
+                score = _comparison_score(sc)
+                if sc.rerank_score is not None:
+                    # 有 rerank 分：绝对阈值，语义与修复前完全一致。
+                    n_absolute += 1
+                    passed = score >= request.min_score_threshold
+                else:
+                    # 无 rerank 分（RRF / BM25）：相对阈值；max<=0 时整批保留。
+                    n_relative += 1
+                    passed = reference_max <= 0.0 or score >= relative_floor
+                if passed:
                     kept.append(sc)
                 else:
                     dropped_normal += 1
@@ -307,13 +399,152 @@ class RAGServiceImpl(RAGService):
                     "min_score_filter_applied",
                     request_id=request.request_id,
                     threshold=request.min_score_threshold,
+                    # mode：本批阈值是按哪种量纲解释的（探针/守卫读这个字段）
+                    mode=_threshold_mode(n_absolute, n_relative),
+                    # 相对判据下的实际生效下界（absolute-only 时为 None）
+                    relative_floor=round(relative_floor, 6) if n_relative else None,
                     graph_exempt=graph_exempt,
                     dropped=dropped_normal,
                     kept=len(kept),
                 )
 
-        # Stage 5: 写缓存。缓存"阈值过滤后的最终结果"是安全的——min_score_threshold
-        # 已包含在缓存键中，不同阈值不会互相污染。
+        # A.88 T4-④：知识来源**权威性评分**参与排序。
+        #
+        # 缺陷：《架构真相》§3.3 登记"知识来源权威性评分 **无实现**" —— 指南条文、
+        # 教科书段落、既往病例报告被当同一类证据排序，引用顺序里看不出
+        # "这条是 ACR 指南、那条是单个病例"。
+        #
+        # 修法（``app/knowledge/authority.py``）：按来源类型给可解释权重
+        # （指南 1.00 > 教科书 0.95 > 文献 0.90 > 规程 0.85 > 病例报告 0.70；
+        # 未知来源 1.00，**不拿缺失数据当证据扣分**），并按模式参与排序：
+        #
+        # * 默认 ``tie_break``：只在**分数完全相同**的相邻段内按权重重排。
+        #   等权 RRF 浮点分几乎不撞 → 对现有临床输出近乎无影响（这是刻意的：
+        #   先让能力真实存在且可审计，改变结论顺序必须单独过评测）；
+        # * ``weighted``：``score * weight`` 整体重排 —— **会改变临床输出**，
+        #   必须显式开 ``request.extra["authority_ranking"]="weighted"``，
+        #   开启前应先跑检索评测（hit@10 基线见 16 号附录 A.65）。
+        #
+        # 权限位在 ``request.extra`` 而不是新增 settings 字段：本任务的写权限
+        # 不含 ``app/config/settings.py``，而"按请求选档"本来就比全局开关更合适
+        # （可灰度、可按调用方区分）。留痕 ``authority_ranking_applied`` 带模式、
+        # 来源分布与次序变动条数 —— 不做"静默重排"。
+        authority_mode = str(
+            (request.extra or {}).get("authority_ranking", "tie_break")
+        ).strip().lower()
+        if result.chunks and authority_mode != "off":
+            try:
+                outcome = authority_rank_indices(
+                    [sc.chunk for sc in result.chunks],
+                    [_comparison_score(sc) for sc in result.chunks],
+                    mode=authority_mode,
+                )
+                if outcome.changed:
+                    result.chunks = [result.chunks[i] for i in outcome.order]
+                logger.info(
+                    "authority_ranking_applied",
+                    request_id=request.request_id,
+                    mode=outcome.mode,
+                    changed=outcome.changed,
+                    source_kinds=outcome.breakdown,
+                    kept=len(result.chunks),
+                )
+            except Exception as exc:
+                # 排序增强失败 → **保持原顺序**（不阻断检索，但必须留痕：
+                # 静默降级会让"权威性没生效"永远查不出来）。
+                logger.warning(
+                    "authority_ranking_failed",
+                    request_id=request.request_id,
+                    error=str(exc),
+                    error_type=type(exc).__name__,
+                )
+
+        # A.88 T4-④：分级下限评估（**默认不生效**，但必须真的被调用）。
+        #
+        # 缺陷：《架构真相》§3.3 登记「分级下限 **无实现**」。
+        #
+        # 修法：``app/knowledge/grading_floor.py`` 提供显式规则表 +
+        # ``apply_grading_floor``（只抬不降、解析不出等级不猜）。这里在**每次检索**
+        # 都评估一次并留痕 —— 所以"能力被生产路径调用"是可验证的，而
+        # ``GRADING_FLOOR_ENABLED`` 默认 False + 规则表当前为空 ⇒ **临床输出零变化**。
+        #
+        # 为什么挂在 RAG 服务而不是专科结论处：本任务的写权限不含
+        # ``app/agents/specialist/base.py``（专科落分级的地方）。挂在检索边界的好处
+        # 是三条检索入口（知识智能体 / 一致性 / CRAG）都经过这里，留痕完整；
+        # 代价是**分级要由调用方提供**（``request.extra["report_grading"]``），
+        # 而目前没有调用方提供 ⇒ 默认路径的评估结果是 ``disabled``。
+        # 要让规则真正作用于报告，需要（1）开启开关 （2）在规则表登记经专家复核
+        # 的条目 （3）结论侧把分级传进 extra —— 三件事都属**临床输出变更**，
+        # 必须单独立项与评测，不在本轮范围内。
+        try:
+            from app.knowledge.grading_floor import apply_grading_floor
+
+            floor_outcome = apply_grading_floor(
+                organ=request.organ,
+                grading=str((request.extra or {}).get("report_grading") or "") or None,
+            )
+            logger.info(
+                "grading_floor_evaluated",
+                request_id=request.request_id,
+                organ=request.organ,
+                applied=floor_outcome.applied,
+                reason=floor_outcome.reason or None,
+                original_grading=floor_outcome.original_grading,
+                grading=floor_outcome.grading,
+            )
+        except Exception as exc:
+            # 规则评估失败 → 绝不阻断检索（它本身是"默认不生效"的增强项），
+            # 但必须留痕：静默吞掉会让"下限规则坏了"永远查不出来。
+            logger.warning(
+                "grading_floor_evaluation_failed",
+                request_id=request.request_id,
+                error=str(exc),
+                error_type=type(exc).__name__,
+            )
+
+        # A.88 T4-⑤：RAG 三指标（precision / recall / nDCG）的**真实生产者**。
+        #
+        # 缺陷：《架构真相》§3.3 登记这三项"**无生产者**"—— 规格里有、指标定义
+        # 里没有、代码里零写入点，看板永远读不到。
+        #
+        # 诚实口径（这是本项的关键，不能偷懒）：三项指标**必须有 ground truth**
+        # 才算得出来。生产检索请求没有 ground truth，用"检索到的结果"当自己的
+        # 真值是循环证明（→ 恒为 1.0 的假指标）。所以：
+        #   * 调用方（评测脚本 / 离线回放）经 ``request.extra["relevant_chunk_ids"]``
+        #     提供真值 → 真算真写（``ultrasound_retrieval_quality``）；
+        #   * 没提供 → 写 ``not_measured_no_ground_truth`` 计数，**绝不 set(0.0)**
+        #     （那会让"召回率为 0"与"从没测过"混成一件事）。
+        # 两种情况都由同一个生产调用点覆盖，所以"生产者存在且被调用"可验证。
+        try:
+            from app.observability.metrics_collector.rag_quality import (
+                REASON_NO_GROUND_TRUTH,
+                evaluate_and_publish,
+                report_unavailable,
+            )
+
+            relevant_ids = (request.extra or {}).get("relevant_chunk_ids")
+            if relevant_ids:
+                evaluate_and_publish(
+                    [sc.chunk.chunk_id for sc in result.chunks],
+                    relevant_ids,
+                    k=self._rerank_output_top_k,
+                )
+            else:
+                report_unavailable(REASON_NO_GROUND_TRUTH)
+        except Exception as exc:
+            # 观测链路故障不得影响检索返回。
+            logger.warning(
+                "rag_quality_metrics_failed",
+                request_id=request.request_id,
+                error=str(exc),
+                error_type=type(exc).__name__,
+            )
+
+        # Stage 5: 写缓存。缓存"阈值过滤后的最终结果"仍然安全，原因有两条：
+        #  ① ``min_score_threshold`` 与各 ``use_*`` 开关都已在缓存键中；
+        #  ② A.88 起阈值语义依赖"分数所处的量纲"，故键里额外嵌入了
+        #     ``MIN_SCORE_FILTER_SEMANTICS``（见 ``app/rag/cache.py``）：语义一变
+        #     旧键即自然失效，不会把"旧绝对判据剔空的空结果"继续喂给调用方。
         if cache_key is not None:
             await self._cache.set(cache_key, result)
 

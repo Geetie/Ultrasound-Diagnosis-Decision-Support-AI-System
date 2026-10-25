@@ -103,16 +103,30 @@ class TestCreateInferenceEngine:
 
 
 class TestCreateInferenceEngineFromSettings:
-    def test_default_settings_compact(self):
+    """从 settings 造引擎。
+
+    ⚠️ A.88 口径变更（2026-10-25）：``Settings`` 的默认档位从
+    ``compact``/``llama.cpp`` 改为 ``full``/``vllm``（对齐生产 .env 实测值；
+    AGENTS.md 硬规则 #4 禁止把 llama.cpp 当**主**生成引擎，而旧的代码默认
+    恰恰在把任何裸 ``Settings()`` 推回 CPU 引擎）。
+    因此下面凡是"验证 llama.cpp 分支行为"的用例，一律**显式**指定
+    ``engine_type="llama.cpp"`` —— 显式 compact 降级路径仍然完全可用，
+    只是不再是默认。
+    """
+
+    def test_default_settings_is_vllm(self):
+        """默认 settings → vLLM 引擎（生产对齐；反证：改回 compact 即红）。"""
         engine = create_inference_engine_from_settings()
-        assert isinstance(engine, LlamaCppEngine)
+        assert isinstance(engine, VLLMEngine)
 
     def test_override_engine_type(self):
-        engine = create_inference_engine_from_settings(engine_type="vllm")
-        assert isinstance(engine, VLLMEngine)
+        """显式覆盖必须真的生效：默认 vllm → 显式 llama.cpp（compact 链路验证用）。"""
+        engine = create_inference_engine_from_settings(engine_type="llama.cpp")
+        assert isinstance(engine, LlamaCppEngine)
 
     def test_override_host_port(self):
         engine = create_inference_engine_from_settings(
+            engine_type="llama.cpp",
             llama_cpp_host="custom-host",
             llama_cpp_port=9999,
         )
@@ -120,11 +134,15 @@ class TestCreateInferenceEngineFromSettings:
         assert engine._base_url == "http://custom-host:9999"
 
     def test_falsy_temperature_not_overridden(self):
-        engine = create_inference_engine_from_settings(temperature=0.0)
+        engine = create_inference_engine_from_settings(
+            engine_type="llama.cpp", temperature=0.0
+        )
         assert isinstance(engine, LlamaCppEngine)
         assert engine._default_temperature == 0.0
 
     def test_falsy_top_p_not_overridden(self):
-        engine = create_inference_engine_from_settings(top_p=0.0)
+        engine = create_inference_engine_from_settings(
+            engine_type="llama.cpp", top_p=0.0
+        )
         assert isinstance(engine, LlamaCppEngine)
         assert engine._default_top_p == 0.0

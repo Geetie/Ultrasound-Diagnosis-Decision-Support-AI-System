@@ -7,8 +7,8 @@ import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.database import DiagnosisResult
-from app.models.schemas import ResponseTier
+from app.models.database import DiagnosisResult, DiagnosisSession
+from app.models.schemas import TERMINAL_RESULT_STATUSES, ResponseTier
 
 logger = structlog.get_logger()
 
@@ -169,6 +169,54 @@ class DiagnosisRepository:
         result = await self.db.execute(
             select(DiagnosisResult)
             .where(DiagnosisResult.session_id == session_id)
+            .order_by(DiagnosisResult.created_at.desc())
+            .limit(limit)
+        )
+        return list(result.scalars().all())
+
+    async def get_previous_result_same_organ(
+        self,
+        patient_id: str,
+        organ: str,
+        exclude_request_id: str,
+        limit: int = 5,
+    ) -> list:
+        """取"同一患者 + 同器官 + 已终态 + 非本次"的最近若干次结论（A.88 A2）。
+
+        ## 为什么必须是 SQL 级过滤而不是先取回来再筛
+
+        ``get_results_by_session`` 只按 session 取 —— 而"上一次诊断"通常发生在
+        **另一个 session**（同一患者复诊），因此它结构上取不到既往结论：
+        这正是 ``FusionRequest.prior_diagnosis`` 在生产上不可达的原因之一
+        （另一处原因是管线组请求时从不传，见 ``diagnosis_pipeline._safe_fuse``）。
+
+        过滤维度（缺一不可）：
+        * **患者**：``sessions.patient_id`` —— ``diagnosis_results`` 表没有
+          patient_id 列（患者身份属于会话），故 join ``DiagnosisSession``；
+        * **器官**：同器官才可比；跨器官的 confidence/分级差不可比（会造出
+          假"既往不一致"告警）；
+        * **终态**：``TERMINAL_RESULT_STATUSES``（单一事实源，
+          ``app/models/schemas.py``）—— ``processing`` 行的 findings 只有
+          ``{"status": "processing"}``，没有可比对的正文；
+        * **非本次**：排除当前 ``request_id``，否则会拿自己与自己比（恒一致，
+          等于白跑）。
+
+        Returns:
+            按 ``created_at`` 倒序的 ORM 行列表（调用方自行挑最近一条可解析的，
+            因为"最近一条正文可能没有分级"→ 需要往回找，原因要留痕）。
+        """
+        result = await self.db.execute(
+            select(DiagnosisResult)
+            .join(
+                DiagnosisSession,
+                DiagnosisSession.session_id == DiagnosisResult.session_id,
+            )
+            .where(
+                DiagnosisSession.patient_id == patient_id,
+                DiagnosisResult.organ == organ,
+                DiagnosisResult.status.in_(list(TERMINAL_RESULT_STATUSES)),
+                DiagnosisResult.request_id != exclude_request_id,
+            )
             .order_by(DiagnosisResult.created_at.desc())
             .limit(limit)
         )

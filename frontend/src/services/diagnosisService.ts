@@ -1,8 +1,37 @@
 import apiClient from './api';
-import type { DiagnosisRequest, DiagnosisRequestResponse, DiagnosisResult } from '@/types/api';
+import type {
+  DiagnosisRequest,
+  DiagnosisRequestResponse,
+  DiagnosisResult,
+  MultiOrganDiagnosisResponse,
+} from '@/types/api';
 
 export async function requestDiagnosis(data: DiagnosisRequest): Promise<DiagnosisRequestResponse> {
   const response = await apiClient.post<DiagnosisRequestResponse>('/diagnosis/request', data);
+  return response.data;
+}
+
+/**
+ * 多器官联合诊断（T-GB-AGT-01）。
+ *
+ * 为什么必须接：`POST /diagnosis/multi-organ` 是**跨器官冲突检测 / 跨器官一致性**
+ * 唯一在真实链路里有 ≥2 份独立结论的入口（融合层那两条防线都要求 ≥2 份响应），
+ * 而它在 `frontend/src` 里此前**零调用** —— 等于那两条防线生产上从未被喂过。
+ *
+ * 与单器官 `/diagnosis/request` 的差别：一次调用串行跑完会话全部目标器官，
+ * 单器官超时/失败不阻断其余器官（响应用 `partial` / `failed_organs` 如实交代）。
+ */
+export async function requestMultiOrganDiagnosis(data: {
+  session_id: string;
+  organs?: string[];
+  response_tier?: 'realtime' | 'standard' | 'full';
+  per_organ_timeout_seconds?: number;
+  total_timeout_seconds?: number;
+}): Promise<MultiOrganDiagnosisResponse> {
+  const response = await apiClient.post<MultiOrganDiagnosisResponse>(
+    '/diagnosis/multi-organ',
+    data
+  );
   return response.data;
 }
 

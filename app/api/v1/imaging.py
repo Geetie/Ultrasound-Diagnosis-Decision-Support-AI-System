@@ -34,7 +34,7 @@ from app.repositories import SessionRepository
 from app.repositories.dicom_image_repository import DicomImageRepository
 from app.security.auth import get_current_active_user
 from app.services.audit_service import AuditService
-from app.services.dicom_storage import get_dicom_storage
+from app.services.dicom_storage import get_dicom_storage, pseudonymize_patient_id
 
 logger = structlog.get_logger()
 router = APIRouter(tags=["imaging"])
@@ -298,6 +298,18 @@ async def upload_dicom(
         # A.52：入库时做过显示规范化 —— 留痕供审计（原始像素值未改，仅编码位深）
         internal_metadata["dicom_normalized"] = normalized
 
+    # A.88：落盘与索引**只用带盐不可逆假名**，绝不用 raw_patient_id。
+    # 原因：dicom_storage.strip_dicom_phi 会把 (0010,0020) 写成传进去的
+    # patient_id（通用写入原语，语义不动），所以调用侧传原文 = 把 PHI 写回文件，
+    # 脱敏白做。假名保留"同患者可关联"（相似病例 scope=self / 影像向量隔离
+    # 靠 patient_id 相等），但不可逆、不含原文。
+    # 纯展示用的 X****** 形态仍在 response_metadata["patient_id"]，两者互不替代。
+    anonymized_patient_id = pseudonymize_patient_id(raw_patient_id)
+    # PHI 不得进审计 detail（AGENTS.md #10）：只记一个布尔值
+    # "这条影像带上了病人归属标识"，便于运维核对，而不留任何可反推线索
+    # （原文与假名本身都不进 detail）。
+    internal_metadata["patient_id_anonymized"] = bool(anonymized_patient_id)
+
     image_id = generate_image_id()
 
     sop_instance_uid = internal_metadata.get("sop_instance_uid", image_id)
@@ -308,7 +320,7 @@ async def upload_dicom(
         # 旧布局（{date}/{patient}/{session}/{sop}.dcm）保留给不传 ID 的调用方。
         storage_path = await storage.save(
             content=content,
-            patient_id=raw_patient_id,
+            patient_id=anonymized_patient_id,
             session_id=session_id,
             sop_instance_uid=sop_instance_uid,
             storage_id=image_id,
@@ -333,7 +345,7 @@ async def upload_dicom(
             image_id=image_id,
             session_id=session_id,
             storage_path=storage_path,
-            patient_id=raw_patient_id,
+            patient_id=anonymized_patient_id,
             sop_instance_uid=sop_instance_uid,
             modality=str(getattr(dataset, "Modality", "") or "") or None,
             width=_safe_int(getattr(dataset, "Rows", None)),

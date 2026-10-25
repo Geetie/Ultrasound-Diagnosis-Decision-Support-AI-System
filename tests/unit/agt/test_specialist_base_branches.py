@@ -276,7 +276,14 @@ class TestDiseaseThreshold:
         agent._check_disease_threshold(response, None)
 
         assert response.needs_review is False
-        assert response.reasoning_trace == []
+        # A.88 T5-2 语义变更：**不越线时也会写一条** `threshold_adopted`
+        # （采用的阈值 + 来源），否则"凭什么没让我复核"无处可查。
+        # 这里断言的是"没有被判为低置信度"，而不是 trace 为空。
+        assert response.reasoning_trace == [
+            "threshold_adopted: scope=organ threshold=0.5 "
+            "confidence=0.9000 disease_code=-"
+        ]
+        assert not any("below_" in tag for tag in response.reasoning_trace)
 
 
 class TestLoadDefaultPrompt:

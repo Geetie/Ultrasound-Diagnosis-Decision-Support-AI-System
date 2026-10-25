@@ -88,6 +88,92 @@ async def _warm_up_speech_engine(engine) -> None:
         logger.warning("speech_engine_warmup_failed", error=str(exc))
 
 
+async def _build_lifespan_dispatcher(
+    *,
+    inference_engine,
+    knowledge_agent,
+    real_dependencies: bool,
+):
+    """lifespan 建 dispatcher 的唯一入口（A.88 配置接线③）。
+
+    ## 为什么需要这一层
+
+    `app/agents/specialist/factory.py` 里有两个建 dispatcher 的入口：
+    `build_dispatcher`（不查库 → 器官阈值恒硬编码 0.85/0.88/0.92）与
+    `build_dispatcher_with_thresholds`（先 `await load_organ_thresholds()`）。
+    lifespan 此前用的是前者，因此 `organ_disease_thresholds` 表**从未被读过**
+    ——"阈值可配置"是壳（《架构真相》§3.3）。
+
+    ## 降级与留痕（两个失败点各自留真实原因）
+
+    * 阈值加载失败 → `load_organ_thresholds` 内部已按 `DEFAULT_ORGAN_THRESHOLDS`
+      降级并 warning；这里再把 `threshold_source` 的 `reason` 打进启动日志，
+      让运维能区分"表里没数据/未配置"与"PG 连不上"；
+    * 建 dispatcher 本身抛错 → 回落到 `build_dispatcher`（硬编码阈值），
+      并留下**真实异常文本**（AGENTS.md 硬规则 8：不许一律写死一个 reason）。
+
+    Args:
+        inference_engine: 已创建的推理引擎（``None`` 表示初始化失败）。
+        knowledge_agent: 知识查询智能体。
+        real_dependencies: 是否具备真实依赖（RAG + inference）。为假时用
+            占位 specialist，不查库（保持改动前的启动路径完全一致）。
+
+    Returns:
+        可用的 dispatcher 实例。
+    """
+    from app.agents.specialist import build_dispatcher, build_dispatcher_with_thresholds
+
+    if not real_dependencies:
+        # 依赖缺失（无 RAG 或 inference 初始化失败）→ 占位 specialist 兜底，
+        # 与改动前的分支完全一致（不查库：没有意义，且会拖慢启动）。
+        return build_dispatcher(
+            inference_engine=None,
+            knowledge_agent=None,
+            use_placeholder_on_missing=True,
+        )
+
+    threshold_source: dict = {}
+    try:
+        dispatcher = await build_dispatcher_with_thresholds(
+            inference_engine=inference_engine,
+            knowledge_agent=knowledge_agent,
+            threshold_source=threshold_source,
+            use_placeholder_on_missing=False,
+        )
+        threshold_source.setdefault("source", "unknown")
+        threshold_source.setdefault("reason", None)
+        if threshold_source["source"] == "defaults":
+            logger.warning(
+                "organ_thresholds_degraded_to_hardcoded",
+                reason=threshold_source["reason"],
+                defaults={
+                    "thyroid": 0.85,
+                    "liver": 0.88,
+                    "cardiac": 0.92,
+                },
+            )
+        else:
+            logger.info(
+                "organ_thresholds_source",
+                source=threshold_source["source"],
+            )
+        return dispatcher
+    except Exception as exc:
+        # 启动期兜底：任何建 dispatcher 的失败都要能降级启动（不是只接某个已知异常）。
+        # 留痕在下面 warning 里（error + error_type + threshold_source 真实原因）。
+        logger.warning(
+            "dispatcher_threshold_init_failed_using_hardcoded",
+            error=str(exc),
+            error_type=type(exc).__name__,
+            threshold_source=threshold_source.get("source"),
+        )
+        return build_dispatcher(
+            inference_engine=inference_engine,
+            knowledge_agent=knowledge_agent,
+            use_placeholder_on_missing=False,
+        )
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     from app.inference.factory import create_inference_engine_from_settings
@@ -97,6 +183,16 @@ async def lifespan(app: FastAPI):
     errors = validate_config()
     if errors:
         raise ConfigValidationError(errors)
+
+    # A.88 配置接线①：生成引擎配置在**启动期**就自检，而不是等第一次判读才炸。
+    # `vllm_require_model=True` + 空模型名会让每次 generate 抛 GENERATION_FAILED
+    # （app/inference/vllm.py:155-164），医生侧只会看到"AI 不可用"。
+    # 注意：这些错误**不**阻断启动（引擎可能是刚被 compact 覆盖过的 llama.cpp，
+    # 或部署方故意留空后自行注入 model），但必须留下可读原因与两条出路。
+    _inference_config_errors = settings.inference_config_errors()
+    if _inference_config_errors:
+        for _err in _inference_config_errors:
+            logger.error("inference_config_invalid", reason=_err)
 
     # OBS: 分布式追踪接线（OTLP → Jaeger；obs_tracing_enabled 默认关闭，
     # full Profile 强制采样 ≥0.5）。init_tracing 内部自带开关与全量兜底，
@@ -439,7 +535,6 @@ async def lifespan(app: FastAPI):
     try:
         from app.agents.knowledge import KnowledgeAgentImpl
         from app.agents.monitor import MonitorAgentImpl
-        from app.agents.specialist import build_dispatcher
         from app.inference.factory import create_inference_engine_from_settings
 
         # knowledge_agent：RAG 不可用时降级为「仅占位」实现（query 抛 RuntimeError）
@@ -503,25 +598,26 @@ async def lifespan(app: FastAPI):
             )
         app.state.inference_engine = inference_engine
 
-        # dispatcher：通过 build_dispatcher 工厂注入 inference + knowledge。
+        # dispatcher：经 `_build_lifespan_dispatcher` 注入 inference + knowledge
+        # **并真的从 DB 读器官阈值**（A.88 配置接线③）。
         # 依赖任一缺失时自动用占位 specialist 兜底（dispatcher 仍可启动）。
         # 知识查询接口 ``app.agents.protocols.KnowledgeAgent`` 是 ABC，
         # 我们的占位 ``_KnowledgeUnavailable`` 没有显式继承，但提供同名
         # ``query`` / ``health_check`` 协程 → 满足 duck-typing 契约；
         # 工厂在 knowledge_agent 异常时也会回退到占位路径。
-        if isinstance(knowledge_agent, KnowledgeAgentImpl) and inference_engine is not None:
-            dispatcher = build_dispatcher(
-                inference_engine=inference_engine,
-                knowledge_agent=knowledge_agent,
-                use_placeholder_on_missing=False,
-            )
-        else:
-            # 依赖缺失（无 RAG 或无 inference）→ 使用占位 specialist 兜底
-            dispatcher = build_dispatcher(
-                inference_engine=None,
-                knowledge_agent=None,
-                use_placeholder_on_missing=True,
-            )
+        #
+        # 改动前这里是直接调 `build_dispatcher(...)`（不查库）→
+        # `organ_disease_thresholds` 表从未被读过，器官阈值恒为硬编码
+        # 0.85/0.88/0.92。lifespan 本来就是 async，`build_dispatcher_with_thresholds`
+        # 也是 async，所以这是最直接的一处真接线；失败降级到硬编码并留真实原因。
+        dispatcher = await _build_lifespan_dispatcher(
+            inference_engine=inference_engine,
+            knowledge_agent=knowledge_agent,
+            real_dependencies=(
+                isinstance(knowledge_agent, KnowledgeAgentImpl)
+                and inference_engine is not None
+            ),
+        )
         app.state.dispatcher = dispatcher
 
         # monitor_agent：独立组件，无需外部依赖

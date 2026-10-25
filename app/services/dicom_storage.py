@@ -1,5 +1,7 @@
 """DICOM文件存储服务 - 支持本地文件系统和MinIO后端"""
 import asyncio
+import hashlib
+import hmac
 import os
 import re
 import shutil
@@ -12,6 +14,98 @@ import structlog
 from app.config.settings import settings
 
 logger = structlog.get_logger()
+
+# ----------------------------------------------------------------------
+# DICOM PatientID → 带盐不可逆假名（A.88）
+#
+# ## 为什么必须有这一步（真实缺陷）
+#
+# ``strip_dicom_phi`` 的语义是"把 (0010,0020) PatientID **写成传进来的那个值**"
+# （见 :func:`strip_dicom_phi`，行为已被
+# ``tests/unit/services/test_dicom_storage_service.py::test_rewrites_patient_id``
+# 钉住）。而上传接口原先把 DICOM 原始 PatientID 原样传进来 → 落盘文件里
+# PatientID **等于原文**，"脱敏"形同虚设：拿到 dcm 文件即可直接读到患者标识。
+# 修法刻意**不动 strip_dicom_phi 的语义**（它是通用写入原语，传什么写什么），
+# 而是在调用侧决定"传什么"—— 传假名。
+#
+# ## 为什么是"带盐不可逆假名"而不是删掉 PatientID
+#
+# * 删掉（或写死常量）会**打断同患者聚合**：相似病例 ``scope="self"``
+#   与影像向量的病人隔离都靠 patient_id 相等来归并同一患者的历次检查；
+# * 因此需要"同一原始 ID → 同一假名"（幂等），"不同原始 ID → 不同假名"
+#   （不可混同），且**不可逆**（不能反推原文）。
+# * 用 HMAC-SHA256 而不是裸 sha256(salt+raw)：裸 sha256 有长度扩展问题，
+#   且仓库既有脱敏机制（``DesensitizationEngine._hash_patient_name``）用的就是
+#   HMAC，这里保持同一手法，不新造第三套。
+#
+# ## 盐从哪来（不新引入硬编码常量）
+#
+# 唯一部署级稳定密钥 ``settings.jwt_secret_key``（.env 配置，两个服务共见）。
+# 该字段**不承担 JWT 签名**（JWT 由 HSM 持钥签发，见 00b 统一配置参考手册），
+# 所以拿它做 HMAC 盐不会削弱任何现有安全属性。
+#
+# 回退条件（写死在这里，便于审计）：
+#   ① ``jwt_secret_key`` 为空（CI / 裸机未配 .env）→ 用仓库既有的脱敏 HMAC 密钥
+#      （``DesensitizationEngine._name_hmac_key``，Redis 持久化，重启后同值）；
+#   ② 两者都取不到（Redis 未载入且无配置）→ 仍产出不可逆假名（**绝不回退成明文**），
+#      但跨进程不可关联，并打 warning。这是刻意的降级：**宁可断链，不可泄 PHI**。
+# ----------------------------------------------------------------------
+
+#: 假名前缀：让"这是脱敏标识"在磁盘路径 / DB / 向量 payload 里一眼可辨。
+PSEUDONYM_PREFIX = "anon_"
+
+#: 派生上下文标签：把本用途与其它 HMAC 用途隔开（同一把钥匙不产生同构输出）。
+_PSEUDONYM_CONTEXT = b"dicom-patient-id-pseudonym-v1"
+
+
+def _pseudonym_key() -> bytes:
+    """解析假名盐（部署级稳定密钥）。回退链见本节文件头注释。"""
+    secret = (getattr(settings, "jwt_secret_key", "") or "").strip()
+    if secret:
+        return _PSEUDONYM_CONTEXT + secret.encode("utf-8")
+
+    try:
+        from app.security.desensitization import desensitization_engine
+
+        key = getattr(desensitization_engine, "_name_hmac_key", None)
+    except Exception as exc:  # 取不到盐不能阻止上传，但必须留痕（零静默约定）
+        logger.warning(
+            "dicom_patient_pseudonym_key_unavailable",
+            error=str(exc),
+            error_type=type(exc).__name__,
+        )
+        key = None
+    if isinstance(key, (bytes, bytearray)) and key:
+        return _PSEUDONYM_CONTEXT + bytes(key)
+
+    logger.warning(
+        "dicom_patient_pseudonym_salt_missing",
+        hint="jwt_secret_key 与脱敏 HMAC 密钥均不可用：假名不可逆但跨进程不可关联",
+    )
+    return _PSEUDONYM_CONTEXT
+
+
+def pseudonymize_patient_id(raw_patient_id: str | None) -> str:
+    """把 DICOM 原始 PatientID 换成**带盐不可逆假名**（``anon_<16 hex>``）。
+
+    语义（单测钉死这三条，别改口径）：
+      * **幂等**：同一原始 ID → 同一假名（否则同患者历次检查断链，
+        相似病例 ``scope="self"`` 与影像向量的病人隔离全部失效）；
+      * **抗碰撞**：不同原始 ID → 不同假名（否则跨患者串档，是数据泄露不是精度问题）；
+      * **不可逆**：输出里不含原文字符串，无密钥无法反推。
+
+    空输入返回空串（不上假名——"没有患者标识"和"假名"是两件事，别混淆）。
+
+    调用侧口径（A.88）：**落盘 + 索引 + 向量 payload 一律用假名**，
+    响应体里的 ``X******`` 展示形态由 ``app/api/v1/imaging.py`` 另行生成，
+    两者互不替代。
+    """
+    raw = str(raw_patient_id or "").strip()
+    if not raw:
+        return ""
+    digest = hmac.new(_pseudonym_key(), raw.encode("utf-8"), hashlib.sha256).hexdigest()
+    return f"{PSEUDONYM_PREFIX}{digest[:16]}"
+
 
 _PHI_TAGS = [
     (0x0010, 0x0010),

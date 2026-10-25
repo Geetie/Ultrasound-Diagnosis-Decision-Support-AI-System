@@ -1,0 +1,13 @@
+{
+  "gate": "Gate 2 or-branch: bge-m3 Top10 >= 88%",
+  "kb_version": "kb_v1.3.0",
+  "n_queries": 136,
+  "corpus_chunks": 1257,
+  "hit_at_1": 0.9485,
+  "hit_at_5": 0.9853,
+  "hit_at_10": 0.9853,
+  "mrr": 0.9635,
+  "threshold": 0.88,
+  "verdict": "PASS",
+  "generated_at": "2026-10-02 19:48:34"
+}

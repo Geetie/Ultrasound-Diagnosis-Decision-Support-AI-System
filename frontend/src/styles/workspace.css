@@ -497,6 +497,109 @@
   font-weight: 400;
 }
 
+/* ---- 多部位结果面板（T-GB-AGT-01）----
+   会话 target_organs ≥ 2 且走了多器官端点时才渲染。
+   刻意**不占**结论区一级的三样（结论/恶性风险/建议动作）：
+   它是"每条部位到底跑成没跑成"的交代，排在结论区下方、可滚动。 */
+.ws-multi-organ {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+.ws-multi-organ__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ws-multi-organ__item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-size: var(--font-size-small);
+  color: var(--color-text-primary);
+}
+
+.ws-multi-organ__organ {
+  font-weight: 600;
+}
+
+.ws-multi-organ__status {
+  color: var(--color-text-secondary);
+}
+
+/* 失败/跳过的原因必须是可读中文，且与状态并排（不折叠、不藏进 tooltip） */
+.ws-multi-organ__reason {
+  font-size: var(--font-size-tiny);
+  color: var(--color-attention);
+}
+
+.ws-multi-organ__rerun {
+  font-family: var(--font-cjk);
+  font-size: var(--font-size-tiny);
+  color: var(--color-accent-info, var(--color-text-secondary));
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.ws-multi-organ__rerun:disabled {
+  cursor: default;
+  opacity: 0.6;
+  text-decoration: none;
+}
+
+/* 多部位一致性提示 —— 「看一眼」档描边，与 .ws-stop-alert--attention 同源。
+   绝不用红色：红专属于「禁忌命中」（契约 §2）。 */
+.ws-multi-organ__cross {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border: 1.5px solid var(--color-attention);
+  border-radius: var(--radius-card);
+}
+
+/* 未核对 / 未返回：用中性描边，避免与"已核对"同视觉权重 */
+.ws-multi-organ__cross[data-tone='not_run'],
+.ws-multi-organ__cross[data-tone='empty'] {
+  border-color: var(--color-border);
+}
+
+.ws-multi-organ__cross-title {
+  font-size: var(--font-size-small);
+  font-weight: 600;
+  color: var(--color-attention);
+}
+
+.ws-multi-organ__cross[data-tone='not_run'] .ws-multi-organ__cross-title,
+.ws-multi-organ__cross[data-tone='empty'] .ws-multi-organ__cross-title {
+  color: var(--color-text-secondary);
+}
+
+.ws-multi-organ__cross-line {
+  font-size: var(--font-size-tiny);
+  color: var(--color-text-secondary);
+}
+
+/* 免责：提示不替代医生判断 —— 一句常驻，不折叠 */
+.ws-multi-organ__cross-disclaimer {
+  font-size: var(--font-size-tiny);
+  color: var(--color-text-muted, var(--color-text-secondary));
+}
+
 /* ---- 报告侧面板（07 的 2:182 / 12 同构）----
    480×860，绝对 x=960 / y=40（960+480=1440、40+860=900，即贴右边缘与底边）。
    报告是检查的收尾动作而非目的地，所以用侧面板而不是独立页面。

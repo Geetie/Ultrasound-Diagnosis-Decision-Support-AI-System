@@ -1,0 +1,14 @@
+{
+  "protocol": "MONAI UNet from scratch, 25 epochs, AdamW lr1e-3 cosine, bs16, 256px, flip/rot/scale/affine+brightness aug, official TN3K split (2879/614, no sampling)",
+  "params_M": 4.3,
+  "dice_mean": 0.7961,
+  "dice_std": 0.208,
+  "iou_mean": 0.7004,
+  "best_during_training": {
+    "dice": 0.7961,
+    "iou": 0.7004,
+    "epoch": 25
+  },
+  "wall_seconds": 292.6,
+  "generated_at": "2026-10-03 17:30:52"
+}

@@ -757,9 +757,14 @@ class ConsistencyChecker:
                     )
             # 分级码差异
             if prior_grade:
-                current_grade = _extract_simple_grade(resp.content or "")
+                # A.88：必须传 organ —— 否则 `_extract_simple_grade` 只能识别
+                # "入参本身就是规范码"的窄情形，正文形态（"分级: TR2 总分: 2 …"）
+                # 会解析不出来 → 分级变化检查静默失效（比假告警更隐蔽）。
+                current_grade = _extract_simple_grade(
+                    resp.content or "", prior_organ or None
+                )
                 if current_grade and prior_grade:
-                    diff = _grade_diff(prior_grade, current_grade)
+                    diff = _grade_diff(prior_grade, current_grade, prior_organ or None)
                     if diff is not None:
                         if diff >= self._prior_grade_diff_critical:
                             worst_severity = _max_severity(
@@ -1029,25 +1034,106 @@ def _max_severity(a: ConsistencySeverity, b: ConsistencySeverity) -> Consistency
 _GRADE_NUM_RE = re.compile(r"(\d+)")
 
 
-def _extract_simple_grade(text: str) -> str | None:
-    """从文本中抽取「数字」形式分级（最后出现的数字）。"""
+def _extract_simple_grade(text: str, organ: str | None = None) -> str | None:
+    """从结论正文抽取**分级主级**（A.88 修：此前是"取最后一个数字"）。
+
+    ## 原实现为什么是错的（真机可复现的假 CRITICAL）
+
+    原实现 ``_GRADE_NUM_RE.findall(text)[-1]`` 取"正文里最后一个数字"。而生产
+    结论正文长这样（服务器 DB 真实原文）::
+
+        甲状腺 · TR2 — 分级: TR2 总分: 2 置信度: 0.85 理由: 囊性…
+
+    最后一个数字是 **0.85 → "85"**（置信度/小数），于是::
+
+        _extract_simple_grade(正文) = "85"
+        prior_grade（A2 走单一事实源）= "2"
+        _grade_diff = |2 - 85| = 83  ≥ critical(2)  → **CRITICAL**
+
+    后果不是"分数难看"，而是**每一次有既往诊断的复诊都会判成"分级严重不一致"**
+    → ``needs_review=True`` + ``review_reason=consistency_failed``，医生被
+    假告警推着走（而且这条路径在 A.88 A2 接线之前**根本不可达**，所以一直没暴露）。
+
+    ## 修法：改用分级抽取的单一事实源
+
+    复用 :func:`app.inference.grading_definitions.extract_grading_severest`
+    （显式分级段优先 → 段内取最重，见其 docstring 的 p27 真机教训），
+    再经 :func:`grade_major_level` 归一为主级整数（``TR4a``→4、``LR-5``→5、
+    cardiac 的 ``severe``→3）。**不新写正则**：评测、专科结论、本处必须是同一把尺子。
+
+    Args:
+        text: 结论正文（或历史 ``grade`` 字符串）。
+        organ: 器官；缺省时**不做推断**（无器官信息就无法选对分级族，宁可返回 None
+            让调用方走"未评估"，也不猜一个族出来——猜错族会造出更离谱的级差）。
+
+    Returns:
+        主级数字字符串（如 ``"3"``）；解析不到返回 ``None``。
+    """
     if not text:
         return None
-    matches = _GRADE_NUM_RE.findall(text)
-    if not matches:
+
+    from app.inference.grading_definitions import (
+        extract_grading_severest,
+        grade_major_level,
+    )
+
+    stripped = str(text).strip()
+
+    # ① 整段就是**一个分级码**（"TR3" / "4a" / "LR-5" / "lr-3"）→ 直接按主级取。
+    #    为什么先走这条：它覆盖 prior_diagnosis 里的规范码（原先各测试就在传
+    #    "TR3"/"LR-3"），且 SSOT 抽取器对"裸数字"（"4b"、"4"）不认——那是
+    #    正文抽取器的职责边界，不是缺陷。这里按码解析不会误伤正文（正文里
+    #    一定还有别的字段文字，匹配不到 `^...$`）。
+    m = _GRADE_CODE_RE.match(stripped)
+    if m:
+        code = m.group(1).lower()
+        if organ:
+            level = grade_major_level(organ, code)
+            if level is not None:
+                return str(level)
+        # 无器官（或该器官不认这个码）→ 只可取数字主级（"4a" → "4"）
+        return code[0]
+
+    # ② 正文形态（"甲状腺 · TR2 — 分级: TR2 总分: 2 置信度: 0.85 …"）→ 必须走
+    #    单一事实源；没有器官就不猜族（宁可 None = 未评估）。
+    if not organ:
         return None
-    return matches[-1]
+
+    grading = extract_grading_severest(stripped, organ)
+    level = grade_major_level(organ, grading)
+    return str(level) if level is not None else None
+
+    grading = extract_grading_severest(str(text), organ)
+    level = grade_major_level(organ, grading)
+    return str(level) if level is not None else None
 
 
-def _grade_diff(prior: str, current: str) -> int | None:
-    """两个分级码的数字差（绝对值）。无法解析 → 返回 None。"""
-    p = _extract_simple_grade(prior)
-    c = _extract_simple_grade(current)
+#: 形如 ``TR3`` / ``TI-RADS 4a`` / ``LR-5`` / ``4a`` / ``3`` 的分级码。
+#: 只用于"无器官上下文时能否把入参本身当分级码"这一条窄路径。
+_GRADE_CODE_RE = re.compile(
+    r"^\s*(?:T[\s\-_]?I[\s\-_]?R[\s\-_]?A[\s\-_]?D[\s\-_]?S?|TR|L[\s\-_]?I[\s\-_]?R[\s\-_]?A[\s\-_]?D[\s\-_]?S?|LR)?"
+    r"[\s\-_:]*([0-5][abc]?)\s*$",
+    re.IGNORECASE,
+)
+
+
+def _grade_diff(prior: str, current: str, organ: str | None = None) -> int | None:
+    """两个分级码的**主级**数字差（绝对值）。无法解析 → 返回 None。
+
+    A.88：两侧都走 :func:`_extract_simple_grade`（= 单一事实源 + 主级归一），
+    因此 ``"TR4a"`` vs ``"4b"`` 这类同主级写法得到 0，而不是原来的"一个能解析、
+    一个解析成 None"或"拿置信度小数当分级"。
+
+    Args:
+        organ: 器官（决定分级族）。缺省时只接受"入参本身就是规范码"的情形。
+    """
+    p = _extract_simple_grade(prior, organ)
+    c = _extract_simple_grade(current, organ)
     if p is None or c is None:
         return None
     try:
         return abs(int(p) - int(c))
-    except ValueError:  # silent-ok: 分级非整数（如 TR4A）→ 无法算级差，返回 None
+    except ValueError:  # silent-ok: 主级已由 grade_major_level 保证为整数；异常属不可解析 → None
         return None
 
 
@@ -1324,7 +1410,12 @@ def _semantic_compare(
             and chunk_grade
             and _same_grade_family(resp_grade, chunk_grade)
         ):
-            diff = _grade_diff(resp_grade, chunk_grade)
+            # A.88：`_extract_grade_label` 产出的形如 "tr5"/"lr-3"/"ti-rads4"，
+            # 而 `_grade_diff` 现在走"单一事实源 + 主级归一"。
+            # 这里两侧都已在**同一族**（`_same_grade_family` 已判过），故按
+            # 数字后缀取主级即可；但仍传 organ 以保持与既往对比路径同一把尺子
+            # （cardiac 的 LVEF 数字 → normal/mild/moderate/severe 的映射需要它）。
+            diff = _grade_diff(resp_grade, chunk_grade, organ)
             if diff is not None and diff >= 2:
                 worst_severity = _max_severity(
                     worst_severity, ConsistencySeverity.WARNING

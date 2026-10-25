@@ -87,6 +87,30 @@ class TestExtractFindingsHandlesBothShapes:
 
         assert extract_findings_text(stored["fusion_result"]) == "低回声结节"
 
+    def test_生产落库的扁平形状必须认得(self):
+        """A.88 反证腿：真实落库形状是**扁平 content**，不是 final_response。
+
+        真机核对（服务器 PG 最近 20 条带 fusion_result 的行）：**20/20 扁平**、
+        `0/20` 含 final_response。所以这条用例是"读路径到底读不读得到正文"的
+        唯一判据 —— 去掉扁平分支，这条立刻红（而在修之前它是绿的，
+        因为样本形状是手写的）。
+        """
+        from app.services.diagnosis_pipeline import _fusion_result_to_dict
+
+        # 用**真实写入侧**的产物做样本：样本形状与生产同源，不再手写
+        stored = _fusion_result_to_dict(
+            _Fusion("TI-RADS 4a，建议细针穿刺")
+        )
+
+        assert "final_response" not in stored, "写入侧不应有 final_response（形状自证）"
+        assert stored["content"]
+        assert extract_findings_text(stored) == "TI-RADS 4a，建议细针穿刺"
+
+    def test_扁平形状优先且不掩盖嵌套形状(self):
+        both = {"content": "扁平结论", "final_response": {"content": "嵌套结论"}}
+
+        assert extract_findings_text(both) == "扁平结论"
+
     def test_缺失或异常形态返回空串(self):
         for value in (None, {}, {"final_response": None}, "", 0, {"final_response": {}}):
             assert extract_findings_text(value) == ""

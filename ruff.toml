@@ -34,6 +34,12 @@ extend-immutable-calls = [
     "fastapi.Security",
     # 项目自有的 FastAPI 依赖类，同样是框架要求的默认参数写法
     "app.security.auth.RoleChecker",
+    # A.88：与 RoleChecker **完全同构**的权限位依赖（同样是无状态的调用路由器，
+    # 由 FastAPI 在每个请求里实例化后调用）。不加这一条会新增 6 条 B008，
+    # 而 B008 的存量基线是 0（不在 .ruff-debt.txt 里）→ 直接顶到棘轮。
+    # 注意：本项只豁免"把 PermissionChecker(...) 作为 Depends() 的默认值"这一种
+    # 框架写法，不放宽任何其它 B008 判定。
+    "app.security.auth.PermissionChecker",
 ]
 
 [format]

@@ -70,6 +70,7 @@ from app.repositories import (
 )
 from app.repositories.dicom_image_repository import DicomImageRepository
 from app.security.three_layer_desensitization import (
+    DesensitizationLayer,
     get_three_layer_desensitization_manager,
 )
 from app.services.degraded_texts import pipeline_failed_text
@@ -257,6 +258,8 @@ async def run_diagnosis_pipeline(request_id: str) -> bool:
     # 预置 None：DB 读取本身也可能抛异常，而异常/取消处理分支需要判断
     # "是否已经读到请求行"（有行才谈得上把它交给监控追踪）。
     request = None
+    # A.88 A2：既往诊断（读段取；取不到为 None，不编造）。
+    prior_diagnosis: dict[str, Any] | None = None
 
     try:
         async with AsyncSessionLocal() as db:
@@ -301,6 +304,21 @@ async def run_diagnosis_pipeline(request_id: str) -> bool:
             routing_decision, rollout_decision = await _apply_rollout_gate(
                 request, routing_decision
             )
+
+            # A.88 A2：既往诊断必须在**读段**取（DB 仍打开时）。
+            # 为什么只能在读段：跨 LLM 调用持有连接会被
+            # idle_in_transaction_session_timeout 掐断（见下方 2026-09-30 钉子），
+            # 而 fusion 在本次诊断的 LLM 调用之后才发生 —— 若等到那时再查，
+            # 要么连接已断、要么又开一个会话把"读段已归还连接"的约束破坏掉。
+            # 取不到时**不编造**：返回 None + 真实原因留痕（见函数内注释）。
+            t = time.monotonic()
+            prior_diagnosis = await _safe_load_prior_diagnosis(
+                diagnosis_repo=diagnosis_repo,
+                patient_id=patient_id,
+                organ=getattr(request, "organ", None),
+                request_id=request_id,
+            )
+            timings["db_prior_read_ms"] = (time.monotonic() - t) * 1000.0
         # ← DB session 在此关闭（T-Perf 实测钉子 2026-09-30）：
         # 原先 async with 包住整条管线，dispatcher/fusion 的分钟级 LLM
         # 调用期间事务空闲连接被 idle_in_transaction_session_timeout
@@ -360,40 +378,72 @@ async def run_diagnosis_pipeline(request_id: str) -> bool:
                 )
             )
         t = time.monotonic()
-        # A.47 业务 span（Langfuse trace 树）：attributes 全部经 PhiMaskingExporter
-        # 导出前脱敏 —— 正文文本进 trace 的唯一入口在这里与 output span。
-        async with DiagnosisSpan(
-            SPAN_DIAGNOSIS_DISPATCH,
-            attributes={
-                "organ": request.organ,
-                "tier": getattr(routing_decision, "effective_tier", None)
-                and routing_decision.effective_tier.value,
-                "image_count": len(getattr(request, "image_ids", []) or []),
-            },
-        ):
-            specialist_responses = await _safe_dispatch(
-                request,
-                request_id,
-                routing=routing_decision,
-                imaging_metadata=segmentation if isinstance(segmentation, dict) else None,
-            )
-        timings["dispatcher.invoke_ms"] = (time.monotonic() - t) * 1000.0
-        if watcher_task is not None:
-            watcher_task.cancel()
+        # A.88 T4-①（`retrieval-wiring` 交付的注入口，这里是**唯一需要的接线**）：
+        # 影像检索腿此前**结构性不可达** —— `Retriever._resolve_image_leg` 要求
+        # `request.image_data`，而三个生产调用点（`agents/knowledge.py` /
+        # `fusion/consistency.py` / `fusion/crag.py`）都不传字节，于是"影像增强
+        # 检索"这个开关在生产上等于没开。
+        #
+        # 作用域包住 **dispatch + fusion** 两段：检索发生在专科智能体内部
+        # （`knowledge.query`）与融合层的指南比对 / CRAG 再检索里，都在这个区间内。
+        #
+        # 为什么必须 `async with`（不是调一次就算）：worker 协程会被复用
+        # （`diagnosis_worker` 顺序消费多条请求），作用域漏退出会让**下一次判读**
+        # 读到**上一次的影像字节** —— 跨病人串号是 A.78 红线。`async with` 由解释器
+        # 保证退出，比手写 try/finally 少一个出错点。
+        #
+        # 失败语义：本作用域**永不抛异常**（`attach_image_leg_for_request` 把任何
+        # 失败归到 `skip_reason` 并留痕），所以它不会成为主链路的新失败点；
+        # 取不到字节时检索侧照常工作，并把真实原因（能力不可用 / 没送字节 /
+        # 解码失败 …）写进 `RetrievalResult.image_leg_skip_reason`。
+        from app.rag.image_leg import image_leg_scope_for_request
 
-        # 2) 融合 (fusion.fuse)
-        t = time.monotonic()
-        async with DiagnosisSpan(
-            SPAN_DIAGNOSIS_FUSION,
-            attributes={"skip_self_rag": skip_self_rag, "self_rag_enabled": use_self_rag},
-        ):
-            fusion_result = await _safe_fuse(
-                request=request,
-                specialist_responses=specialist_responses,
-                request_id=request_id,
-                skip_self_rag=skip_self_rag,
-                use_self_rag=use_self_rag,
-            )
+        async with image_leg_scope_for_request(request) as _image_leg:
+            timings["image_leg.attach_ms"] = (time.monotonic() - t) * 1000.0
+            if _image_leg is not None and getattr(_image_leg, "skip_reason", None):
+                logger.info(
+                    "pipeline_image_leg_skipped",
+                    request_id=request_id,
+                    reason=_image_leg.skip_reason,
+                )
+            # A.47 业务 span（Langfuse trace 树）：attributes 全部经 PhiMaskingExporter
+            # 导出前脱敏 —— 正文文本进 trace 的唯一入口在这里与 output span。
+            t = time.monotonic()
+            async with DiagnosisSpan(
+                SPAN_DIAGNOSIS_DISPATCH,
+                attributes={
+                    "organ": request.organ,
+                    "tier": getattr(routing_decision, "effective_tier", None)
+                    and routing_decision.effective_tier.value,
+                    "image_count": len(getattr(request, "image_ids", []) or []),
+                },
+            ):
+                specialist_responses = await _safe_dispatch(
+                    request,
+                    request_id,
+                    routing=routing_decision,
+                    imaging_metadata=segmentation if isinstance(segmentation, dict) else None,
+                )
+            timings["dispatcher.invoke_ms"] = (time.monotonic() - t) * 1000.0
+            if watcher_task is not None:
+                watcher_task.cancel()
+
+            # 2) 融合 (fusion.fuse)
+            t = time.monotonic()
+            async with DiagnosisSpan(
+                SPAN_DIAGNOSIS_FUSION,
+                attributes={"skip_self_rag": skip_self_rag, "self_rag_enabled": use_self_rag},
+            ):
+                fusion_result = await _safe_fuse(
+                    request=request,
+                    specialist_responses=specialist_responses,
+                    request_id=request_id,
+                    skip_self_rag=skip_self_rag,
+                    use_self_rag=use_self_rag,
+                    # A.88 A2：既往诊断真正接到融合层（此前恒 None →
+                    # consistency.py 的"与既往比"分支生产不可达）。
+                    prior_diagnosis=prior_diagnosis,
+                )
         timings["fusion.fuse_ms"] = (time.monotonic() - t) * 1000.0
         # A.38 计时拆分：fuse 内部含 LLM 校验（validate/Self-RAG 与 CRAG），
         # 14s 波动此前不可归因 —— 从 FusionResult 抄出子计时一起落库。
@@ -405,6 +455,31 @@ async def run_diagnosis_pipeline(request_id: str) -> bool:
         timings["fusion.validate_degraded"] = bool(
             getattr(fusion_result, "validate_degraded", False)
         )
+
+        # 2b) T2a 影像分类旁路（A.88 T5-1）：**只作辅助参考**，不改结论/置信度/状态。
+        #     位置说明：放在融合之后 —— 它要的是"本次影像"而不是"本次结论"，
+        #     放在 dispatch 之前会与分割旁路抢同一次磁盘读；放在融合之后则
+        #     完全处在 LLM 关键路径之外，默认关时零开销。
+        t = time.monotonic()
+        t2a_classification = await _safe_t2a_classification(request)
+        timings["t2a_classification.bypass_ms"] = (time.monotonic() - t) * 1000.0
+
+        # 2c) 幻觉检测（A.88 T5-3）：对本次**最终响应**做一次检测，把真实的
+        #     严重度写进 findings.fusion_result。此前 hallucination_severity
+        #     全仓无生产者 → 结果接口恒 None（"无生产者不得填值"的诚实做法）。
+        #     成本与档位：只在 FULL 档或开关显式打开时执行（检测是纯正则/词表，
+        #     但仍要遍历 5 类策略 + 一次 CUSUM 上报，不该在 FAST/COMPACT 档白跑）。
+        t = time.monotonic()
+        hallucination = _detect_hallucination_safely(
+            fusion_result,
+            organ=getattr(request, "organ", None),
+            request_id=request_id,
+            force_enabled=bool(
+                getattr(settings, "hallucination_detection_in_pipeline", False)
+            ),
+            is_full_tier=(_effective_tier == _ResponseTier.FULL),
+        )
+        timings["hallucination.detect_ms"] = (time.monotonic() - t) * 1000.0
 
         # 3) 安全网关 (sg.check_output) —— output span 带 gen_ai.* 语义属性，
         # Langfuse 按 OTel GenAI 约定渲染为 LLM Generation（A.47）
@@ -426,6 +501,16 @@ async def run_diagnosis_pipeline(request_id: str) -> bool:
         timings["sg.check_output_ms"] = (time.monotonic() - t) * 1000.0
 
         # 4) 组装 DiagnosisResult 并写 DB（独立短会话，见 _write_result_to_db）
+        # 4a) A.88 T5-4：三层脱敏的**单一汇总入口**（此前 process_full_pipeline
+        #     仅测试调用 → "三层合并后的 all_passed"在生产上恒缺）。
+        #     三层动作已在各自时刻完成（L1 在 dispatch 前、L2 在写库前、
+        #     L3 在 SG 之后），此处只汇总判定。
+        t = time.monotonic()
+        desensitization = await _run_desens_full_pipeline(
+            request_id=request_id, patient_id=patient_id
+        )
+        timings["desensitization.aggregate_ms"] = (time.monotonic() - t) * 1000.0
+
         t = time.monotonic()
         write_ok = await _write_result_to_db(
             request=request,
@@ -437,6 +522,9 @@ async def run_diagnosis_pipeline(request_id: str) -> bool:
             rollout=rollout_decision,
             segmentation=segmentation,
             similar_cases=similar_cases,
+            t2a_classification=t2a_classification,
+            hallucination=hallucination,
+            desensitization=desensitization,
             # 传入起点，使落库 findings 里带上真实的 pipeline.total_ms
             # （否则该键只在写库后才出现在本地 timings 中，接口读不到，
             #  processing_time_ms 会静默回退到 mock 值）
@@ -660,8 +748,19 @@ async def _safe_dispatch(
 
 
 async def _safe_fuse(request, specialist_responses, request_id: str,
-                     skip_self_rag: bool = False, use_self_rag: bool | None = None):
-    """调用 fusion.fuse；失败时返回带 needs_review 的占位 FusionResult。"""
+                     skip_self_rag: bool = False, use_self_rag: bool | None = None,
+                     prior_diagnosis: dict | None = None):
+    """调用 fusion.fuse；失败时返回带 needs_review 的占位 FusionResult。
+
+    Args:
+        prior_diagnosis: 既往诊断（A.88 A2）。形如
+            ``{"organ": "thyroid", "grade": "TR3", "confidence": 0.85}``；
+            ``None`` 表示**确实没有可比对的既往结论**（原因由调用方留痕，
+            本函数不猜测、不编造默认值）。非 None 时才会落到
+            ``FusionRequest.prior_diagnosis``，进而使
+            ``ConsistencyChecker`` 的"与既往诊断对比"分支真正执行
+            （``app/fusion/consistency.py:604-631``）。
+    """
     try:
         from app.main import app as _app_instance
 
@@ -683,6 +782,8 @@ async def _safe_fuse(request, specialist_responses, request_id: str,
             # A.51：use_self_rag 由调用方按档位/重试标志算好（非 FULL 档跳过
             # Self-RAG LLM）；未传时回退到 P1-6 的旧语义（重试即跳过）。
             use_self_rag=(not skip_self_rag) if use_self_rag is None else use_self_rag,
+            # A.88 A2：既往诊断（此前从不传 → "与既往比"生产不可达）。
+            prior_diagnosis=prior_diagnosis,
         )
         return await fusion_engine.fuse(fusion_req)
     except Exception as exc:
@@ -728,6 +829,153 @@ async def _resolve_patient_id(db: Any, session_id: str | None) -> str | None:
             error_type=type(exc).__name__,
         )
         return None
+
+
+#: A.88 A2：往回翻多少条历史结论去找"可解析分级/置信度"的那一条。
+#: 不是 1 —— 最近一条完全可能没有分级（真机历史库里有 451 条无结论、66 条
+#: 输出缺分级，见 AGENTS.md「数据质量事故归档」），只翻 1 条会把"有既往但
+#: 正文没分级"误报成"没有既往"。翻到就停，不会扫库。
+_PRIOR_LOOKBACK_LIMIT = 5
+
+
+async def _safe_load_prior_diagnosis(
+    *,
+    diagnosis_repo: Any,
+    patient_id: str | None,
+    organ: str | None,
+    request_id: str,
+) -> dict | None:
+    """读段内取"同一患者 + 同器官 + 已终态 + 非本次"的最近一次结论（A.88 A2）。
+
+    返回值直接交给 ``FusionRequest.prior_diagnosis``，格式见
+    ``app/fusion/consistency.py:688-695``::
+
+        {"organ": "thyroid", "grade": "tr3", "confidence": 0.85}
+
+    ## 为什么必须真接线（而不是记成"待接线"）
+
+    ``ConsistencyChecker.check`` 的"与既往比"分支以
+    ``request.prior_diagnosis is not None`` 为唯一前提
+    （``app/fusion/consistency.py:623``）；管线此前组 ``FusionRequest`` 时
+    **从不传**该字段 → 这一层校验在生产上从未执行过，而对外契约却一直写着
+    ``consistency_flag=consistent``（A3 同批修）。
+
+    ## 取不到时必须说清**是哪一种**取不到
+
+    每个失败分支留自己的 ``reason``，聚合处取真实原因 —— **不许统一写死一个
+    默认值**（AGENTS.md 硬规则 8 的血泪：``best is None`` 一律报
+    ``image_bytes_unavailable``，把"本来不该勾画"说成"系统取不到影像"）。
+    取值：``no_patient_id`` / ``no_organ`` / ``no_previous`` /
+    ``unparsable_grade`` / ``no_confidence`` / ``lookup_failed``。
+
+    分级抽取复用单一事实源 :func:`app.inference.grading_definitions.extract_grading_severest`
+    （**不新写正则**）；正文抽取复用
+    :func:`app.services.sg_output_data.extract_findings_text`（认对象也认 dict）。
+    """
+    if not patient_id:
+        logger.info(
+            "pipeline_prior_diagnosis_absent",
+            request_id=request_id,
+            reason="no_patient_id",
+        )
+        return None
+    if not organ:
+        logger.info(
+            "pipeline_prior_diagnosis_absent",
+            request_id=request_id,
+            reason="no_organ",
+        )
+        return None
+
+    # 函数内 import：与 _resolve_patient_id 同样的延迟导入风格，避免模块级
+    # 依赖 app.inference 的加载顺序（该模块会拉 lxml/regex 等重依赖）。
+    from app.inference.grading_definitions import extract_grading_severest
+    from app.services.sg_output_data import extract_findings_text
+
+    try:
+        rows = await diagnosis_repo.get_previous_result_same_organ(
+            patient_id=patient_id,
+            organ=organ,
+            exclude_request_id=request_id,
+            limit=_PRIOR_LOOKBACK_LIMIT,
+        )
+    except Exception as exc:
+        logger.warning(
+            "pipeline_prior_diagnosis_lookup_failed",
+            request_id=request_id,
+            patient_id=patient_id,
+            organ=organ,
+            error=str(exc),
+            error_type=type(exc).__name__,
+        )
+        logger.info(
+            "pipeline_prior_diagnosis_absent",
+            request_id=request_id,
+            reason="lookup_failed",
+        )
+        return None
+
+    if not rows:
+        logger.info(
+            "pipeline_prior_diagnosis_absent",
+            request_id=request_id,
+            reason="no_previous",
+        )
+        return None
+
+    # 往回翻：优先用"有分级"的那条；都没有分级时，退而用"有置信度"的那条
+    # （confidence 单信号也能比，见 consistency.py 的 gap 判定）。
+    best_any: dict | None = None
+    scanned = 0
+    for row in rows:
+        scanned += 1
+        findings = getattr(row, "findings", None)
+        payload = findings if isinstance(findings, dict) else {}
+        text = extract_findings_text(payload.get("fusion_result"))
+        grade = extract_grading_severest(text, organ) if text else None
+        confidence = getattr(row, "confidence", None)
+        candidate = {
+            "organ": organ,
+            "grade": grade,
+            "confidence": float(confidence) if confidence is not None else None,
+            # 只作留痕/追溯用：consistency 只读 organ/grade/confidence，
+            # 多带的键不会改变判定（且落库时会被 _fusion_result_to_dict 之外的
+            # 路径忽略）。
+            "source_request_id": getattr(row, "request_id", None),
+        }
+        if grade:
+            logger.info(
+                "pipeline_prior_diagnosis_loaded",
+                request_id=request_id,
+                prior_request_id=candidate["source_request_id"],
+                grade=grade,
+                confidence=candidate["confidence"],
+                scanned=scanned,
+            )
+            return candidate
+        if best_any is None and candidate["confidence"] is not None:
+            best_any = candidate
+
+    if best_any is not None:
+        # 有既往行、但正文里抽不出分级 → 只用置信度比（**不假装有分级**）。
+        logger.info(
+            "pipeline_prior_diagnosis_loaded",
+            request_id=request_id,
+            prior_request_id=best_any["source_request_id"],
+            grade=None,
+            confidence=best_any["confidence"],
+            scanned=scanned,
+            note="grade_unparsable_using_confidence_only",
+        )
+        return best_any
+
+    logger.info(
+        "pipeline_prior_diagnosis_absent",
+        request_id=request_id,
+        reason="unparsable_grade",
+        scanned=scanned,
+    )
+    return None
 
 
 # ── A.46 流式渐进渲染：段落级 SG watcher ────────────────────────────────
@@ -942,11 +1190,24 @@ async def _write_result_to_db(
     rollout: RolloutDecision | None = None,
     segmentation: dict[str, Any] | None = None,
     similar_cases: dict[str, Any] | None = None,
+    t2a_classification: dict[str, Any] | None = None,
+    hallucination: dict[str, Any] | None = None,
+    desensitization: dict[str, Any] | None = None,
     t_start: float | None = None,
 ) -> bool:
     """根据 fusion_result + sg_result 决定 status / findings / confidence 并写 DB。
 
     Args:
+        segmentation: 分割旁路结果（**总是写入**，含 available=False 的情形）。
+        t2a_classification: T2a 分类旁路结果（A.88 T5-1）。**只作辅助参考**，
+            不参与 status/confidence 的判定（见 :func:`_safe_t2a_classification`）。
+        hallucination: 幻觉检测结果（A.88 T5-3）。``severity`` 会写进
+            ``findings.fusion_result.hallucination_severity``（与 schema 字段同名，
+            供结果接口直接读取）；``checked``/``reason`` 用于区分"评估过且干净"
+            与"压根没评估"。
+        desensitization: 三层脱敏的**汇总判定**（A.88 T5-4，由
+            :func:`_run_desens_full_pipeline` 经 ``process_full_pipeline``
+            算出）。``None`` 时不写该键（不冒充"已汇总"）。
         t_start: 管线起点的 ``time.monotonic()``。传入时会在 findings 的
             ``timings_ms`` 中补上 ``pipeline.total_ms``（截至写库前），供
             接口的 ``processing_time_ms`` 与前端进度展示直接使用。
@@ -986,8 +1247,7 @@ async def _write_result_to_db(
         )
     findings = {
         "organ": request.organ,
-        "fusion_result": _fusion_result_to_dict(fusion_result),
-        "sg_result": sg_result or {"service_unavailable": True},
+        "fusion_result": _fusion_result_to_dict(fusion_result),        "sg_result": sg_result or {"service_unavailable": True},
         "timings_ms": timings_ms,
         # A.52 口径修复：报告/结果声明的**知识库版本**必须是本次判读真正检索的
         # 那个库。此前 findings 不写该键，读路径（api/v1/diagnosis.py）只能退回
@@ -1017,7 +1277,36 @@ async def _write_result_to_db(
         "similar_cases": similar_cases
         if similar_cases is not None
         else {"status": "not_run", "cases": []},
+        # A.88 T5-1：T2a 影像分类（**只作辅助参考**，不改结论/置信度/状态）。
+        # 总是写入（含 available=False）——报告层要能显示"未做分类"与**真实原因**，
+        # 而不是字段消失（那会被读成"没有病灶"）。
+        "t2a_classification": t2a_classification
+        if t2a_classification is not None
+        else {"available": False, "reason": "not_run", "skipped": True},
     }
+
+    # A.88 T5-3：幻觉检测的真实结果写进 fusion_result（键名与 schema 字段同名，
+    # 结果接口可直接取）。`checked=False` 时写 None + 真实原因，**不写 False**
+    # —— "没评估"与"评估过且干净"必须可区分。
+    if hallucination is not None:
+        fusion_payload = findings["fusion_result"]
+        if isinstance(fusion_payload, dict):
+            fusion_payload["hallucination_checked"] = bool(
+                hallucination.get("checked", False)
+            )
+            fusion_payload["hallucination_severity"] = hallucination.get("severity")
+            if hallucination.get("reason"):
+                fusion_payload["hallucination_reason"] = str(hallucination["reason"])
+            if hallucination.get("checked"):
+                # 只有真跑过才写这些细节（否则等于给"未评估"编造证据）
+                for key in (
+                    "is_hallucination",
+                    "issue_count",
+                    "confidence",
+                    "issues",
+                ):
+                    if key in hallucination:
+                        fusion_payload[f"hallucination_{key}"] = hallucination[key]
 
     # 三层脱敏 L2（融合层）：对**即将持久化**的输出载荷再脱敏一次。
     # 位置在"组装完成、写库之前"：这是 PII 真正落库的最后一个关口，
@@ -1025,6 +1314,16 @@ async def _write_result_to_db(
     findings = await _desensitize_output_payload(
         request_id=request.request_id, payload=findings
     )
+
+    # A.88 T5-4：三层脱敏的**单一汇总入口**。
+    # 三层动作仍发生在各自的时刻（语义不变），这里只把本次运行的层台账交给
+    # `process_full_pipeline(recorded_stages=...)` 产出唯一判定 —— 该判定
+    # 此前只存在于 process_full_pipeline 内部，而它没被生产调用 → 生产上
+    # 压根没有"三层合并后的 all_passed"这个结论。
+    # `desensitization` 由调用方（它才知道真实 patient_id）算好后传入；
+    # 未传则整体不写该键（不编一个 "unknown" 患者 ID 去冒充汇总结果）。
+    if desensitization is not None:
+        findings["desensitization"] = desensitization
 
     # 3) 写 DB —— **独立短会话**（T-Perf 实测钉子）：
     # 管线主 session（L197）从读请求起持有连接，跨过 dispatcher/fusion 的
@@ -1108,6 +1407,13 @@ async def _write_result_to_db(
 _desens_l1_cache: dict[str, tuple[str, str]] = {}
 _desens_l2_cache: dict[str, tuple[dict[str, Any], dict[str, Any]]] = {}
 _desens_l3_done: set[str] = set()
+#: A.88 T5-4：本次运行**已生效**的各层结果台账（层 → layer_result）。
+#: 三层在时间上分离（LLM 之前 / 落库之前 / SG 之后），无法在同一时刻串行执行；
+#: 收口的正确做法是"各自就地执行 + 登记台账"，运行结束由
+#: ``process_full_pipeline(recorded_stages=...)`` 产出**唯一**的合规汇总判定。
+#: 此前该汇总只存在于 ``process_full_pipeline`` 内部，而它没被生产调用 →
+#: 生产上压根没有"三层合并后的 all_passed"这个结论。
+_desens_stage_results: dict[str, dict[Any, dict[str, Any]]] = {}
 
 DESENS_AUDIT_TTL_SECONDS = 3600
 
@@ -1117,6 +1423,74 @@ def _clear_desens_run(request_id: str) -> None:
     _desens_l1_cache.pop(request_id, None)
     _desens_l2_cache.pop(request_id, None)
     _desens_l3_done.discard(request_id)
+    _desens_stage_results.pop(request_id, None)
+
+
+def _record_desens_stage(request_id: str, layer: Any, layer_result: dict[str, Any]) -> None:
+    """把某层的**真实** ``layer_result`` 登记进本次运行台账（A.88 T5-4）。"""
+    _desens_stage_results.setdefault(request_id, {})[layer] = dict(layer_result or {})
+
+
+async def _run_desens_full_pipeline(
+    *, request_id: str, patient_id: str | None
+) -> dict[str, Any]:
+    """把本次运行的三层结果交给 ``process_full_pipeline`` 汇总（A.88 T5-4）。
+
+    ## 为什么不是"把三次调用替换成一次"
+
+    三层发生在三个不同时刻，硬塞进一个时刻等于**二次脱敏**（对同一份载荷
+    再跑一次会破坏语义，见上方 L1/L2 缓存注释）。所以收口收的是**汇总判定**，
+    不是执行时刻。
+
+    ## 产出
+
+    ``findings["desensitization"]``：三层合并后的
+    ``all_passed`` / ``security_check_failed`` / ``degraded_mode`` +
+    参与汇总的层与各自 ``modified``/``degraded``。这是此前生产上**不存在**的
+    结论（``process_full_pipeline`` 仅测试调用）。
+
+    失败安全：汇总本身异常 → ``status="unavailable"`` + 真实原因；
+    **绝不影响**主判读（三层各自的脱敏动作已经真实发生了，汇总只是留痕）。
+    """
+    stages = _desens_stage_results.get(request_id) or {}
+    if not stages:
+        return {"status": "skipped", "reason": "no_stage_results"}
+
+    t0 = time.monotonic()
+    try:
+        manager = get_three_layer_desensitization_manager()
+        result = await manager.process_full_pipeline(
+            patient_id=str(patient_id or "unknown"),
+            input_data={},
+            llm_output_data=None,
+            recorded_stages=stages,
+        )
+    except Exception as exc:
+        logger.warning(
+            "desens_full_pipeline_failed",
+            request_id=request_id,
+            error=str(exc)[:160],
+            error_type=type(exc).__name__,
+        )
+        return {
+            "status": "unavailable",
+            "reason": f"{type(exc).__name__}: {exc}"[:200],
+        }
+
+    return {
+        "status": "ok",
+        "all_passed": bool(result.all_passed),
+        "security_check_failed": bool(result.security_check_failed),
+        "degraded_mode": bool(result.degraded_mode),
+        "layers": {
+            str(getattr(layer, "value", layer)): {
+                "modified": bool(layer_result.get("modified", False)),
+                "degraded": bool(layer_result.get("degraded", False)),
+            }
+            for layer, layer_result in result.layer_results.items()
+        },
+        "elapsed_ms": round((time.monotonic() - t0) * 1000.0, 2),
+    }
 
 
 async def _mark_desens_audit(
@@ -1157,6 +1531,10 @@ async def _desensitize_input_text(
         )
         masked_text = str(masked.get("clinical_text", raw_text))
         _desens_l1_cache[request_id] = (raw_text, masked_text)
+        # A.88 T5-4：把本层**真实**结果登记进运行台账（供运行末统一汇总）
+        _record_desens_stage(
+            request_id, DesensitizationLayer.STANDARDIZATION, layer_result
+        )
         await _mark_desens_audit(request_id, "l1")
         logger.info(
             "desens_l1_applied",
@@ -1194,6 +1572,8 @@ async def _desensitize_output_payload(
         manager = get_three_layer_desensitization_manager()
         masked, layer_result = await manager.process_fusion_layer(payload)
         _desens_l2_cache[request_id] = (payload, masked)
+        # A.88 T5-4：登记本层真实结果（供运行末统一汇总）
+        _record_desens_stage(request_id, DesensitizationLayer.FUSION, layer_result)
         await _mark_desens_audit(request_id, "l2")
         logger.info(
             "desens_l2_applied",
@@ -1227,8 +1607,12 @@ async def _register_l3_existing_sg_check(
         return
     try:
         manager = get_three_layer_desensitization_manager()
-        manager.record_safety_gateway_existing_check(payload, sg_result)
+        layer_result = manager.record_safety_gateway_existing_check(payload, sg_result)
         _desens_l3_done.add(request_id)
+        # A.88 T5-4：登记本层真实结果（供运行末统一汇总）
+        _record_desens_stage(
+            request_id, DesensitizationLayer.SAFETY_GATEWAY, layer_result
+        )
         await _mark_desens_audit(request_id, "l3")
         logger.info("desens_l3_registered", request_id=request_id)
     except Exception as exc:
@@ -1649,6 +2033,256 @@ async def _safe_nodule_contour(request_row: Any) -> dict[str, Any]:
         }
 
 
+#: A.88 T5-3：幻觉检测严重度 → ``HallucinationSeverity`` 枚举值。
+#: 判据是"命中 issue 的**最大** severity"，与
+#: ``app/inference/hallucination_detector`` 的既有口径一致
+#: （该模块 ``severity_threshold=2`` 判"是否幻觉"，本映射只负责把分级说清）。
+_HALLUCINATION_SEVERITY_BY_LEVEL = {3: "severe", 2: "moderate", 1: "mild"}
+
+
+def _detect_hallucination_safely(
+    fusion_result,
+    *,
+    organ: str | None,
+    request_id: str,
+    force_enabled: bool = False,
+    is_full_tier: bool = False,
+) -> dict[str, Any]:
+    """对本次**最终响应**做一次幻觉检测，结果供 ``findings.fusion_result`` 落库。
+
+    ## 这条接线补的是什么（A.88 T5-3）
+
+    ``DiagnosisResult.hallucination_severity`` 此前**全仓无生产者**：检测器只在
+    ``app/inference/benchmark.py``（评测路径）里被调，而结果接口只能填 ``None``。
+    接口侧当时的做法是"无生产者就不填值"（诚实，但能力等于不存在）。
+    现在补上生产者，契约才有真实取值可读。
+
+    ## 为什么写入 ``findings.fusion_result`` 而不是单独一个顶层键
+
+    严重度是**对融合后的最终结论**做的质检，语义属于融合层的产出；放进
+    ``fusion_result`` 后，读路径与 ``self_rag_passed`` / ``conflict_detected``
+    同一处取值，不必再记一条"另一处还有质检字段"。
+    键名与 schema 字段同名（``hallucination_severity``），读取侧可直接取。
+
+    ## 为什么"未评估"不能写成 None 了事
+
+    ``None`` 有两种含义：**评估过且干净**、**压根没评估**。二者对临床与运维的
+    意义完全不同，故同时写 ``hallucination_checked``（真跑过没有）与
+    ``hallucination_reason``（没跑的真实原因，封闭集合）。这是 AGENTS.md
+    硬规则 8 的直接要求：不许用一个默认值把不同原因抹平。
+
+    ## 成本与档位
+
+    检测本身是纯正则/词表（无 LLM），实测耗时通常在 1ms 量级；但仍会遍历 5 类
+    策略并触发一次 CUSUM/指标上报，所以在 FAST/COMPACT 档默认**不跑**
+    （``hallucination_detection_in_pipeline`` 可强制打开）。失败绝不阻断诊断：
+    任何异常 → ``checked=False`` + 真实原因。
+    """
+    if not (force_enabled or is_full_tier):
+        return {
+            "checked": False,
+            "severity": None,
+            "reason": "not_full_tier_and_switch_off",
+        }
+
+    final_response = getattr(fusion_result, "final_response", None)
+    text = str(getattr(final_response, "content", "") or "")
+    if final_response is None:
+        return {"checked": False, "severity": None, "reason": "no_final_response"}
+    if not text.strip():
+        return {"checked": False, "severity": None, "reason": "empty_text"}
+
+    organ_value = str(organ or getattr(final_response, "organ", "") or "")
+    organ_value = getattr(getattr(final_response, "organ", None), "value", None) or organ_value
+    if not organ_value:
+        # 检测器按器官取词表；没有器官就没有词表 → 不猜（报"未评估"）。
+        return {"checked": False, "severity": None, "reason": "no_organ"}
+
+    t0 = time.monotonic()
+    try:
+        from app.inference.hallucination_detector import get_default_detector
+
+        result = get_default_detector().detect(text, str(organ_value))
+    except Exception as exc:
+        logger.warning(
+            "pipeline_hallucination_detect_failed",
+            request_id=request_id,
+            organ=str(organ_value),
+            error=str(exc)[:160],
+            error_type=type(exc).__name__,
+        )
+        return {
+            "checked": False,
+            "severity": None,
+            "reason": f"detector_failed: {type(exc).__name__}",
+        }
+
+    issues = list(getattr(result, "issues", None) or [])
+    max_level = max(
+        (int(getattr(i, "severity", 0) or 0) for i in issues),
+        default=0,
+    )
+    severity = _HALLUCINATION_SEVERITY_BY_LEVEL.get(max_level)
+    payload = {
+        "checked": True,
+        "severity": severity,
+        "is_hallucination": bool(getattr(result, "is_hallucination", False)),
+        "confidence": round(float(getattr(result, "confidence", 0.0) or 0.0), 4),
+        "issue_count": len(issues),
+        "issues": [
+            {
+                "strategy": getattr(getattr(i, "strategy", None), "value", None),
+                "severity": int(getattr(i, "severity", 0) or 0),
+                "description": str(getattr(i, "description", ""))[:200],
+            }
+            for i in issues[:5]
+        ],
+        "reason": "",
+        "elapsed_ms": round((time.monotonic() - t0) * 1000.0, 2),
+    }
+    logger.info(
+        "pipeline_hallucination_detected",
+        request_id=request_id,
+        organ=str(organ_value),
+        severity=severity,
+        is_hallucination=payload["is_hallucination"],
+        issue_count=payload["issue_count"],
+    )
+    return payload
+
+
+async def _safe_t2a_classification(request_row: Any) -> dict[str, Any]:
+    """T2a 影像分类旁路（A.88 T5-1）：把 8003 的 T2a 分类器接进生产链。
+
+    ## 这条旁路补的是什么
+
+    此前 ``app/`` 下**没有任何** ``/v1/classify`` 调用点，只有审计脚本
+    ``scripts/audit/p29_t2a_aul_holdout.py`` 会调 —— 于是"离线 AUC 0.8950"
+    只是**离线模型指标**，不是系统能力（《架构真相》§3.3 第一条）。
+
+    ## 三条红线（写在代码里，不靠口头约定）
+
+    1. **只作辅助参考**：只写 ``findings["t2a_classification"]``，
+       **不参与**结论选择 / ``confidence`` / ``status`` / ``needs_review``。
+       理由：T2a 是"良性/恶性/正常"三分类，与本系统输出的 TI-RADS /
+       LI-RADS / LVEF 分级体系**不是同一套判读语言**，拿它去改结论等于用
+       一个未做临床验证的探针覆盖专科分级。
+    2. **默认关**（``t2a_classifier_in_pipeline_enabled``，与
+       ``nodule_contour_in_pipeline_enabled`` 同风格）：开启后每例多一次磁盘读
+       + 一次跨进程 HTTP，在没验证过的部署上不该悄悄发生。
+    3. **失败原因必须分开**（AGENTS.md 硬规则 8）："没影影像" / "服务没起" /
+       "服务起了但没加载模型" 对医生意味着完全不同的下一步动作。
+       故本函数**不做任何"统一 reason"的收敛**，只有"取不到影像字节"这一层
+       自己判（``no_image_ids`` / ``image_not_indexed`` / ``no_image_bytes`` /
+       ``frame_decode_failed``），其余一律原样透传客户端给的 reason
+       （``service_unavailable`` / ``model_missing`` / ``invalid_response``）。
+
+    ## 为什么是"顺序 await"而不是"与 dispatch 并发"
+
+    并发能省下几十到几百毫秒，但要引入 task 生命周期管理（管线中途抛错时
+    未 await 的 task 会被销毁并告警）。旁路默认关，开启后也不在 LLM 关键路径上
+    （放在融合之后、写库之前），收益不足以换这份复杂度——与 ``_safe_similar_cases``
+    的既有取舍一致。
+    """
+    from app.config.settings import settings
+
+    if not bool(getattr(settings, "t2a_classifier_in_pipeline_enabled", False)):
+        return {"available": False, "reason": "disabled", "skipped": True}
+
+    image_ids = [str(x) for x in (getattr(request_row, "image_ids", None) or [])]
+    if not image_ids:
+        return {"available": False, "reason": "no_image_ids", "skipped": True}
+
+    t0 = time.monotonic()
+    try:
+        from app.services.dicom_storage import get_dicom_storage
+
+        async with AsyncSessionLocal() as db:
+            repo = DicomImageRepository(db)
+            rows = await repo.filter_existing_in_session(
+                str(getattr(request_row, "session_id", "") or ""), image_ids
+            )
+            if not rows:
+                return {
+                    "available": False,
+                    "reason": "image_not_indexed",
+                    "requested_image_ids": image_ids[:5],
+                }
+            # 只取第一张（T2a 是"整幅图"级分类，多帧不带来额外信息却成倍加成本）
+            row = rows[0]
+            storage_path = row.storage_path
+            image_id = row.image_id
+            frame_count = int(getattr(row, "frame_count", 1) or 1)
+
+        storage = get_dicom_storage()
+        content = await storage.retrieve(storage_path)
+        if not content:
+            return {"available": False, "reason": "no_image_bytes", "image_id": image_id}
+
+        from app.imaging.dicom_pixels import (
+            DicomPixelExtractionError,
+            extract_frame_from_bytes,
+        )
+        from app.inference.t2a_classifier import classify_frame
+
+        # 代表帧：多帧取"首/中/末"里的中间帧（与相似病例/影像向量同一口径）
+        frame_index = frame_indices(frame_count)[1] if frame_count > 1 else None
+        try:
+            frame = extract_frame_from_bytes(content, frame_index=frame_index)
+        except DicomPixelExtractionError as exc:
+            logger.warning(
+                "t2a_frame_decode_failed",
+                request_id=getattr(request_row, "request_id", ""),
+                image_id=image_id,
+                error=str(exc)[:160],
+            )
+            return {
+                "available": False,
+                "reason": "frame_decode_failed",
+                "image_id": image_id,
+                "detail": str(exc)[:200],
+            }
+
+        result = await classify_frame(
+            frame.png_bytes,
+            host=settings.ultrasound_clip_host,
+            port=int(settings.ultrasound_clip_port),
+            timeout_s=float(getattr(settings, "t2a_classifier_timeout_s", 10.0)),
+            request_id=getattr(request_row, "request_id", ""),
+        )
+        payload = {
+            **result,
+            "image_id": image_id,
+            "frame_index": frame.frame_index,
+            "total_frames": frame.total_frames,
+            "organ": str(getattr(request_row, "organ", "") or ""),
+            # 语义标注随结果一起返回：读路径不必再"猜"这块能不能当依据
+            "role": "auxiliary_reference",
+            "bypass_latency_ms": round((time.monotonic() - t0) * 1000.0, 1),
+        }
+        logger.info(
+            "t2a_classification_done",
+            request_id=getattr(request_row, "request_id", ""),
+            available=result.get("available"),
+            reason=result.get("reason"),
+            predicted=result.get("predicted"),
+            elapsed_ms=payload["bypass_latency_ms"],
+        )
+        return payload
+    except Exception as exc:  # 旁路：分类失败绝不影响主判读，但必须留痕
+        logger.warning(
+            "t2a_classification_bypass_failed",
+            request_id=getattr(request_row, "request_id", ""),
+            error=str(exc)[:160],
+            error_type=type(exc).__name__,
+        )
+        return {
+            "available": False,
+            "reason": "service_unavailable",
+            "detail": f"{type(exc).__name__}: {exc}"[:200],
+        }
+
+
 async def _safe_track_diagnosis(
     request_row: Any,
     *,
@@ -1836,8 +2470,41 @@ def _clinical_attributes_to_dict(response) -> dict:
     return attributes
 
 
+def _field_of(source, name: str):
+    """从**对象或 dict** 读一个字段（缺失返回 ``None``）。
+
+    ``_fusion_result_to_dict`` 的两个调用形态不同：写路径拿到 ``FusionResult``
+    对象，读路径/测试替身拿到落库后的 dict 或 ``SimpleNamespace``。同一个语义
+    不能在两种形态上各写一份判断（``sg_output_data.extract_findings_text``
+    已有同款教训），故抽此函数。
+    """
+    if isinstance(source, dict):
+        return source.get(name)
+    return getattr(source, name, None)
+
+
 def _fusion_result_to_dict(fusion_result) -> dict:
-    """把 FusionResult 转为可 JSON 序列化的 dict。"""
+    """把 FusionResult 转为可 JSON 序列化的 dict。
+
+    ## A.88 A3：把融合层**真实跑出来的信号**带给对外契约
+
+    此前本函数只写 ``needs_review`` / ``self_rag_passed`` 等少数键，而
+    ``conflict_report`` / ``consistency_result`` 里的判定结果整包丢弃 ——
+    结果接口只能拿 ``review_reason`` 反推，最终写成硬编码常量
+    （``api/v1/diagnosis.py`` 的 ``consistency_flag=CONSISTENT`` 等，见同批 A3）。
+
+    新增键（**只搬运、不推导、不填默认假值**；对象与 dict 两种形态都认，
+    因为写路径拿到对象、读路径拿到落库后的 dict）：
+      * ``conflict_detected``：冲突检测是否真的跑出冲突；
+      * ``conflict_types``：冲突类型值列表（``grading_conflict`` 等）；
+      * ``consistency_severity``：一致性严重度（``info``/``warning``/``critical``）；
+      * ``compared_with_prior``：**真的**与既往诊断比过（而非"有既往数据"）；
+      * ``compared_with_guidelines``：**真的**与指南比过；
+      * ``validate_degraded``：validate 超预算被降级（不是失败）。
+
+    缺省语义：字段缺失/None → 不写这些键（"未评估"必须能与"评估通过"区分，
+    不能靠 False 假装评估过）。``_fusion_result_to_dict(None)`` 仍返回 ``{}``。
+    """
     if fusion_result is None:
         return {}
     final_response = getattr(fusion_result, "final_response", None)
@@ -1850,6 +2517,41 @@ def _fusion_result_to_dict(fusion_result) -> dict:
         "total_latency_ms": getattr(fusion_result, "total_latency_ms", 0.0),
         "final_confidence": getattr(final_response, "confidence", 0.0) if final_response is not None else 0.0,
     }
+
+    # ── A.88 A3：冲突检测真实信号 ──────────────────────────────────────
+    conflict_report = _field_of(fusion_result, "conflict_report")
+    if conflict_report is not None:
+        has_conflict = _field_of(conflict_report, "has_conflict")
+        if has_conflict is not None:
+            payload["conflict_detected"] = bool(has_conflict)
+        raw_types = _field_of(conflict_report, "conflict_types") or []
+        payload["conflict_types"] = [
+            getattr(t, "value", t) for t in raw_types
+        ]
+
+    # ── A.88 A3：一致性校验真实信号 ────────────────────────────────────
+    consistency_result = _field_of(fusion_result, "consistency_result")
+    if consistency_result is not None:
+        severity = _field_of(consistency_result, "severity")
+        if severity is not None:
+            payload["consistency_severity"] = getattr(severity, "value", severity)
+        # 两个"比过没有"必须是**真实**的布尔：None / 缺失一律不写，
+        # 宁可让读路径判"未评估"（→ consistency_flag=None），
+        # 也不能把"没比过"写成"比过且一致"。
+        compared_prior = _field_of(consistency_result, "compared_with_prior")
+        if isinstance(compared_prior, bool):
+            payload["compared_with_prior"] = compared_prior
+        compared_guidelines = _field_of(
+            consistency_result, "compared_with_guidelines"
+        )
+        if isinstance(compared_guidelines, bool):
+            payload["compared_with_guidelines"] = compared_guidelines
+
+    # ── A.88 A3：validate 降级标记（超预算降级 ≠ 失败）──────────────────
+    validate_degraded = _field_of(fusion_result, "validate_degraded")
+    if isinstance(validate_degraded, bool):
+        payload["validate_degraded"] = validate_degraded
+
     # 主结论文本必须进 findings（响应契约缺口，2026-10-01 T2c 实测）：
     # 此前 final_response.content（TI-RADS 分级+理由+证据）只经
     # recommendations 列落库，findings JSONB 与 API 响应的 diagnosis

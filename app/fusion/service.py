@@ -32,6 +32,7 @@ fuse(request)
 from __future__ import annotations
 
 import asyncio
+import inspect
 import time
 from typing import Any
 
@@ -152,10 +153,16 @@ class FusionEngineImpl(FusionEngine):
         try:
             if self._validate_budget_s > 0:
                 # A.51 降载：超预算 → 优雅降级（needs_review），不失败不挂死。
-                # 预算默认 3.0s（> 实测 P99 2.3s）——只封顶病态尾（历史最坏 14s），
-                # 不造成常态降级。
+                # 预算默认 12.0s（> 10× 常态、< 历史最坏 14s）——只封顶病态尾。
+                #
+                # A.88 T5-5：把预算换算成 **deadline** 往下传。为什么必须传：
+                # 只在外层套 wait_for 的话，"重试"是在**不知道预算**的情况下发生的
+                # —— 它可能在只剩 80ms 时又发起一次 ~1.2s 的调用，结果整段 validate
+                # 被砍、连已经算出来的冲突/一致性结论一起丢掉（validate_degraded）。
+                # 把 deadline 传下去，重试就能"提前收手"，把首轮结果作为结论返回。
+                deadline = self._deadline_for_validate(t_validate)
                 result = await asyncio.wait_for(
-                    self._layered_validator.validate(request),
+                    self._validate_with_deadline(request, deadline),
                     timeout=self._validate_budget_s,
                 )
             else:
@@ -286,6 +293,42 @@ class FusionEngineImpl(FusionEngine):
     # ------------------------------------------------------------------
     # 内部
     # ------------------------------------------------------------------
+
+    def _deadline_for_validate(self, started_at: float) -> float | None:
+        """把 validate 预算换算成截止时刻（A.88 T5-5）。
+
+        ``<= 0``（不设预算）→ ``None``（Self-RAG 退化为按 ``max_retries`` 重试）。
+        另留一点余量给"预算踩线"：外层 ``wait_for`` 与内层判据用**同一个**
+        截止时刻，内层提前 ~100ms 收手，避免"刚发起就超时"的抖动。
+        """
+        if self._validate_budget_s <= 0:
+            return None
+        return started_at + max(0.0, self._validate_budget_s - 0.1)
+
+    async def _validate_with_deadline(self, request: FusionRequest, deadline: float | None):
+        """把 deadline 传给校验器（A.88 T5-5）。
+
+        用 ``inspect`` 检查签名而不是 try/except TypeError：若校验器不接
+        ``deadline``（测试替身 / 第三方实现），**静默退化**为不带预算调用，
+        而不是抛出去变成 ``validation_failed``。为什么不用捕获 TypeError：
+        那会把校验器**内部**真实的 TypeError 也一起吞掉，把 bug 伪装成
+        "参数不支持"。
+        """
+        try:
+            accepts_deadline = "deadline" in inspect.signature(
+                self._layered_validator.validate
+            ).parameters
+        except (TypeError, ValueError) as exc:
+            # 无 introspection 能力（C 扩展/动态对象）→ 保守地不带 deadline
+            logger.warning(
+                "fusion_validator_signature_unavailable",
+                error=str(exc),
+                error_type=type(exc).__name__,
+            )
+            accepts_deadline = False
+        if accepts_deadline:
+            return await self._layered_validator.validate(request, deadline=deadline)
+        return await self._layered_validator.validate(request)
 
     @staticmethod
     def _select_final_response(

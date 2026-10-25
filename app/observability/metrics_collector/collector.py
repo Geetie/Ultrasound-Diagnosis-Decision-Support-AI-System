@@ -193,6 +193,31 @@ class MetricsCollector(MetricsDefinitions):
     def inc_adaptive_rag_route(self, route: str) -> None:
         self.adaptive_rag_route.labels(route=route).inc()
 
+    def set_retrieval_quality(self, metric: str, value: float) -> None:
+        """写入**真的算出来**的检索质量指标（A.88 T4-⑤）。
+
+        只应在有 ground truth 时调用；没有 ground truth 时**不许编数值**，
+        改调 :meth:`record_retrieval_quality_not_measured`。
+        """
+        self.retrieval_quality.labels(metric=metric).set(value)
+
+    def record_retrieval_quality_not_measured(self, metric: str, reason: str) -> None:
+        """记录"这次没测到"（不是记 0）。
+
+        为什么单独一个计数器：把"没测"写成 ``set(0.0)`` 会让看板把
+        "召回率为 0"与"召回率从没测过"混成一件事（A.58/A.62 反复踩过的
+        "幽灵指标"同类问题）。
+        """
+        self.retrieval_quality_measurements.labels(
+            metric=metric, status=f"not_measured_{reason}"
+        ).inc()
+
+    def record_retrieval_quality_measured(self, metric: str) -> None:
+        """记录一次成功测量（配合 :meth:`set_retrieval_quality` 使用）。"""
+        self.retrieval_quality_measurements.labels(
+            metric=metric, status="measured"
+        ).inc()
+
     def record_consent_query_latency(self, seconds: float) -> None:
         self.consent_query_latency.observe(seconds)
 

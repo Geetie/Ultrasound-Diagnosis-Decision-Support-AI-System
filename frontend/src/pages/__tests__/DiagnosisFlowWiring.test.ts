@@ -69,4 +69,26 @@ describe('诊断主链路接线（防"提交后拿不到结果"回归）', () =>
     expect(routes).toContain("import('@/pages/ReportPage')");
     expect(sidebar).toContain("key: '/report'");
   });
+
+  it('侧栏不得再有 /diagnosis 死链（菜单项即点即回首页 ≠ 可用入口）', () => {
+    const sidebar = readSource('src/components/layout/Sidebar.tsx');
+    const routes = readSource('src/app/routes.tsx');
+
+    // 死链成因：菜单项 `{ key: '/diagnosis', label: '诊断结果' }` 在 routes.tsx 里
+    // 没有对应 `path="/diagnosis"`（该独立页按 17-§5 裁定 4 已删），点下去被
+    // `*` 兜底 Navigate 弹回 `/` —— 医生看到的是"点了没反应"，且与上面
+    // `routes not.toContain('path="/diagnosis"')` 的既有断言自相矛盾。
+    expect(sidebar).not.toContain("'/diagnosis'");
+    expect(sidebar).not.toContain('"/diagnosis"');
+
+    // 顺带把这类死链的**通用**成因钉住：侧栏每一个菜单 key 都必须有已注册路由。
+    // 只钉 /diagnosis 一条的话，下次新增菜单项又会引入同样的死链。
+    const keys = [...sidebar.matchAll(/\{\s*key:\s*'([^']+)'/g)].map((m) => m[1]);
+    expect(keys.length).toBeGreaterThan(0);
+    for (const key of keys) {
+      expect(routes, `侧栏菜单项 ${key} 没有对应路由（点了会被 * 兜底弹回 /）`).toContain(
+        `path="${key}"`
+      );
+    }
+  });
 });

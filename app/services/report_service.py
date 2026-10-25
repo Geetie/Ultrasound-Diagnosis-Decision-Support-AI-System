@@ -274,6 +274,25 @@ def missing_sign_blockers(completeness: Mapping[str, Any]) -> list[str]:
     return [f for f in missing if f in SIGN_BLOCKING_SECTIONS]
 
 
+def sign_blockers_of(report: Any) -> list[str]:
+    """**签发门禁的唯一判定口**（A.88）：返回阻塞签发的段落字段名。
+
+    为什么必须抽出来（真实缺陷）：门禁原先只写在 ``POST /report/{id}/sign``
+    端点体内，而 ``POST /report`` 带 ``sign=True`` 时**直调** :func:`sign_report`
+    —— 同一条临床口径（缺「超声所见」/「诊断意见」不许签发）在两个入口上
+    行为不一致，等于门禁可以被一个请求参数绕过：草稿接口能签发一份既无证据
+    段也无结论段的报告。现在两个入口都只调本函数，口径不可能再漂移。
+
+    语义单一：空列表 = 可以签发；非空 = 缺段（仅 ``SIGN_BLOCKING_SECTIONS``）。
+    只做判定、不抛 API 异常 —— 错误契约（``E1030`` + 中文文案 + ``detail``）
+    由 ``app/api/v1/report.py`` 侧组装，服务层不反向依赖 API 层
+    （见 ``.importlinter`` 契约 2「API 顶层不可反向依赖」）。
+    """
+    content = report.content if isinstance(getattr(report, "content", None), dict) else {}
+    completeness = check_completeness(content, organ=getattr(report, "organ", None))
+    return missing_sign_blockers(completeness)
+
+
 def render_template(template: str, mapping: Mapping[str, Any]) -> str:
     """极简占位符渲染：``{{key}}`` → 值。
 
@@ -887,6 +906,7 @@ __all__ = [
     "render_report",
     "render_template",
     "report_payload",
+    "sign_blockers_of",
     "sign_payload",
     "sign_report",
     "verify_report_signature",

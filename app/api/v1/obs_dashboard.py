@@ -8,7 +8,7 @@ from app.observability.alert_escalation import get_alert_escalation_manager
 from app.observability.cache_monitor import get_cache_monitor
 from app.observability.cusum import AISafetyCircuitBreaker
 from app.observability.metrics_collector import get_metrics_collector
-from app.security.auth import RoleChecker
+from app.security.auth import PermissionChecker
 from app.services.cold_archive import ColdArchiveService
 
 logger = structlog.get_logger()
@@ -16,7 +16,12 @@ logger = structlog.get_logger()
 # P0-5（15 号计划）：/internal/obs/* 端点此前无认证——暴露指标仪表盘、
 # 冷归档状态与**可触发归档运行**的 POST 端点。加角色认证：系统管理员 +
 # 质控管理员（归档操作），只读仪表盘同样需登录。
-_require_admin = Depends(RoleChecker(["SYSTEM_ADMIN", "QUALITY_CONTROL"]))
+#
+# A.88 配置接线②：改为按**权限位**准入（``check_permission`` 的生产消费者）。
+# 角色集合由 ``RoleChecker.for_permission("view_qc_report")`` 从 PERMISSIONS
+# 推导 = ["QUALITY_CONTROL", "SYSTEM_ADMIN"]，与原硬编码白名单**逐字相同**
+# （零行为漂移；403 文案与错误码 E1008 也不变）。
+_require_admin = Depends(PermissionChecker("view_qc_report"))
 
 router = APIRouter(
     tags=["observability-internal"],

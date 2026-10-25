@@ -113,6 +113,20 @@ class AppBaseException(HTTPException):
         self.retryable = retryable
         self.retry_strategy = retry_strategy
         super().__init__(status_code=status_code, detail=error_message, headers=headers)
+        # A.88：`HTTPException.__init__` 会把 `self.detail` 覆写成
+        # `detail=error_message`（见上一行的实参），于是调用方显式传入的
+        # `detail` 被**静默丢弃** —— `app_exception_handler` 拼响应时读的正是
+        # `exc.detail`（见本文件 :831），所以结构化字段（例如签发门禁的
+        # `{"missing_blockers": [...]}`）永远到不了响应体。
+        #
+        # 修法刻意**只补"显式传入"这一种情形**：
+        #   * 传了 detail → 用它（本条修复的目的）；
+        #   * 没传 detail → 保持原行为（= error_message），因此对既有全部
+        #     AppBaseException 子类的响应体**零变化**（不动基类默认值）。
+        # 这也是"最小改动"的边界：不改 info/exc 的双轨语义，只让已声明的
+        # 结构化 detail 真正随响应出去。
+        if detail is not None:
+            self.detail = detail
 
 
 class BadRequestException(AppBaseException):

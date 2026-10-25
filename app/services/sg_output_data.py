@@ -31,13 +31,42 @@ def extract_findings_text(fusion_result: Any) -> str:
     """从融合结果抽取 findings 文本（**对象与 dict 两种形态都要认**）。
 
     写路径拿到的是对象（``FusionResult.final_response.content``），而读路径拿到的是
-    落库后的 dict（``{"final_response": {"content": ...}}``）—— 同一个抽取语义，
-    不能因为形态不同就各写一份。
+    落库后的 dict —— 同一个抽取语义，不能因为形态不同就各写一份。
+
+    ## A.88 修掉一个"读路径恒空"的真缺陷（2026-10-25 真机量化）
+
+    本函数原先只认两种 dict 形状：``{"final_response": {"content": ...}}`` 与
+    ``{"final_response": "<文本>"}``。但**生产落库的形状是扁平的** ——
+    ``_fusion_result_to_dict`` 把正文写成 ``fusion_result["content"]``（见
+    ``app/services/diagnosis_pipeline.py:1857-1859``），没有 ``final_response`` 这一层。
+
+    真机核对（服务器 PG，``diagnosis_results`` 最近 20 条带 fusion_result 的行）：
+    **20/20 是扁平 shape**（键 = ``content/completed_at/crag_*/final_confidence/
+    needs_review/review_reason/self_rag_passed/total_latency_ms``），
+    **0/20 含 final_response**。于是：
+
+    * 读路径 ``GET /result/{id}`` 再校验一次 SG 时，喂进去的是**空 findings**
+      （``app/api/v1/diagnosis.py:700``）→ 禁忌/脱敏判定在"无正文"上跑；
+    * 患者历史对比的结论摘要恒为空（``app/api/v1/patients.py:174``）；
+    * 盘上/库里有正文，但任何"按落库读"的消费方都读不到 —— 典型的
+      "写的人一套形状、读的人另一套形状"。
+
+    为什么测试没抓到：用例里的样本形状是**手写的** ``{"final_response": {...}}``
+    （``tests/unit/services/test_sg_output_data.py:86``），与真实落库形状不同。
+
+    本次按"落库形状优先、历史/模型形状兼容"补齐：扁平 ``content`` 先取，
+    再退回 ``final_response`` 的两种形状。**不改写入侧**（写入侧没有错，是读取侧
+    认错了形状），因此对既有历史行**立即生效**、不需要数据迁移。
     """
     if fusion_result is None:
         return ""
 
     if isinstance(fusion_result, dict):
+        # ① 生产真实形状：扁平 content（_fusion_result_to_dict 的产物）
+        flat = fusion_result.get("content")
+        if isinstance(flat, str) and flat:
+            return flat
+        # ② 兼容 FusionResult.model_dump() / 历史样本形状
         final = fusion_result.get("final_response")
         if isinstance(final, dict):
             return str(final.get("content") or "")

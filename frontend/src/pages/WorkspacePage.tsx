@@ -71,6 +71,10 @@ export default function WorkspacePage({
   declaredOrgan,
   sessionStartedAt,
   imageLoadIssue,
+  multiOrganSlot,
+  organCount,
+  reportText,
+  reportStatusNote,
 }: {
   state?: WorkspaceState;
   /**
@@ -115,6 +119,20 @@ export default function WorkspacePage({
   sessionStartedAt?: string | null;
   /** 影像字节/列表取回失败的可读原因（A.58 零静默：失败必须说出来，不许沉默占位）。 */
   imageLoadIssue?: string | null;
+  /**
+   * 多部位结果插槽（T-GB-AGT-01）：会话部位 ≥ 2 且走了多器官端点时由路由传入。
+   * 不传 = 单部位会话，DOM 里不存在这块（默认沉默，契约 §1）。
+   */
+  multiOrganSlot?: ReactNode;
+  /** 多部位会话的部位数（05 态文案按真实计数，不写死 3）。 */
+  organCount?: number;
+  /**
+   * 报告正文（后端 `ReportResponse.rendered`）。传给报告侧面板 → 显示真数据。
+   * 不传 = dev 预览（画布示意文字，只在 `?state=report` 后门出现）。
+   */
+  reportText?: string | null;
+  /** 报告状态备注（如「尚未生成报告草稿」），有值时替代面板底部的画布文案。 */
+  reportStatusNote?: string | null;
 }) {
   const overlay = overlayOf(state);
 
@@ -165,6 +183,8 @@ export default function WorkspacePage({
           view={view}
           onSignNext={onSignNext}
           uploadSlot={uploadSlot}
+          multiOrganSlot={multiOrganSlot}
+          organCount={organCount}
           progressChars={progressChars}
           generationPreview={generationPreview}
         />
@@ -173,10 +193,14 @@ export default function WorkspacePage({
       {/* 仅存在待确认项时渲染；其余状态这个组件根本不出现在 DOM 里 */}
       {isCompactState(state) && <WorkspaceActionBar onConfirm={onConfirm} />}
 
-      {/* 报告侧面板：滑出面板而非页面，可收起、可钉住 */}
+      {/* 报告侧面板：滑出面板而非页面，可收起、可钉住。
+          reportText/statusNote 有值时显示**后端真实正文**（生产入口必须传）；
+          都没有才是 dev 画布预览（见 WorkspaceReportPanel 的数据口径说明）。 */}
       {hasReportPanel(state) && (
         <WorkspaceReportPanel
           signed={state === 'signed'}
+          reportText={reportText}
+          statusNote={reportStatusNote}
           onCollapse={onCollapseReport}
           onStructuredProofread={onStructuredProofread}
           onSign={onSign}

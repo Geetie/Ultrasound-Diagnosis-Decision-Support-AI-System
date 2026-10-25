@@ -13,13 +13,17 @@ import type { SessionInfo } from '@/types/api';
 import { organDisplayName } from '@/types/session';
 import { reportError } from '@/utils/errorReport';
 import VoiceControl from '@/components/voice/VoiceControl';
+import { getApiErrorMessage } from '@/utils/apiError';
+import { getReportByRequest } from '@/services/reportService';
 import { fetchDicomForDisplay, listSessionImages } from '@/services/imagingService';
 import { needsDoctorReview, toConclusionView } from '@/services/diagnosisAdapter';
 import ClinicalInfoPanel from '@/components/workspace/ClinicalInfoPanel';
+import WorkspaceMultiOrganPanel from '@/components/workspace/WorkspaceMultiOrganPanel';
 // 值模型/工具在独立文件（react-refresh：组件文件只导出组件，A.38）
 import {
   EMPTY_CLINICAL_INFO,
   toClinicalText,
+  toConditionCodes,
   type ClinicalInfoValue,
 } from '@/components/workspace/clinicalInfo';
 
@@ -70,6 +74,9 @@ const PHASE_TO_STATE: Record<string, WorkspaceState> = {
   error: 'ai-unavailable',
 };
 
+/** 稳定的空部位列表（供"会话未匹配"时复用，避免每次渲染新建引用）。 */
+const NO_ORGANS: string[] = [];
+
 /** 脱敏人口学 → 身份行；全缺 = null（界面显示『患者信息不可用』）。 */
 function identityOf(s: SessionInfo): string | null {
   const gender = s.gender === 'female' ? '女' : s.gender === 'male' ? '男' : null;
@@ -84,6 +91,60 @@ function WorkspaceRoute() {
   const navigate = useNavigate();
   const flow = useWorkspaceFlow();
   const startFlow = flow.start;
+  const startMultiOrganFlow = flow.startMultiOrgan;
+  const rerunOrganFlow = flow.rerunOrgan;
+  /** 正在单独重跑的部位（null = 空闲）。只用于按钮禁用与文案，不影响结论区。 */
+  const [rerunningOrgan, setRerunningOrgan] = useState<string | null>(null);
+  const handleRerunOrgan = useCallback(
+    (organCode: string) => {
+      setRerunningOrgan(organCode);
+      // rerunOrgan 内部已处理错误（console.error + 界面错误态），finally 只负责复位按钮
+      void rerunOrganFlow(organCode).finally(() => setRerunningOrgan(null));
+    },
+    [rerunOrganFlow]
+  );
+  /**
+   * 报告侧面板（07 draft / 12 signed）的生产可达（T7）。
+   *
+   * 此前 `report` / `signed` 两态**只有 dev 的 `?state=` 后门**能到。
+   * 现在：判读拿到 request_id 后常驻条出现「报告面板」入口，点了就在工作区就地开面板。
+   *
+   * 两个关键口径：
+   *   1. **面板正文必须是后端真数据**（`ReportResponse.rendered`）。原组件只有画布示意
+   *      文字（写死「18.4 × 12.1 mm 低回声结节」），直接放开 = 在真实患者界面上显示
+   *      伪造的超声所见。所以进入面板时先查报告；查不到就**如实说明**没有草稿，
+   *      让医生去 `/report` 页生成，绝不显示假所见。
+   *   2. **signed 只由后端 `signature_present` 驱动**，不由 UI 猜。
+   */
+  const [reportPanel, setReportPanel] = useState<'draft' | 'signed' | null>(null);
+  const [reportText, setReportText] = useState<string | null>(null);
+  const [reportStatusNote, setReportStatusNote] = useState<string | null>(null);
+
+  const openReportPanel = useCallback((rid: string) => {
+    setReportPanel('draft'); // 先开面板（立即有反馈），随后用真实状态纠正
+    setReportText(null);
+    setReportStatusNote('正在读取报告…');
+    getReportByRequest(rid)
+      .then((r) => {
+        setReportPanel(r.signature_present ? 'signed' : 'draft');
+        // 只有后端真的渲染过正文才显示；否则如实说明，不回落到画布示意文字
+        setReportText(r.rendered ?? null);
+        setReportStatusNote(
+          r.rendered
+            ? null
+            : '该报告尚无渲染正文 —— 请到「报告」页生成草稿'
+        );
+      })
+      .catch((err: unknown) => {
+        // 零静默：尚未生成草稿是常见状态（404），不是故障；技术细节留痕、界面说人话
+        console.error('[workspace] 报告读取失败（面板不显示任何正文）', err);
+        setReportPanel('draft');
+        setReportText(null);
+        setReportStatusNote(
+          getApiErrorMessage(err, '尚未生成报告草稿 —— 请到「报告」页生成')
+        );
+      });
+  }, []);
 
   // 真机结果 → 结论视图模型；null = 还没有可用结论（组件退回设计预览文案）
   const view = toConclusionView(flow.result);
@@ -113,6 +174,13 @@ function WorkspaceRoute() {
     demo: { age: number | null; gender: string | null };
     /** 会话起始时间（ISO）—— 影像区时间角标用。影像采集时间本系统未解析，不冒充。 */
     startedAt: string | null;
+    /**
+     * 会话声明的**全部**目标部位（后端 `target_organs`）。
+     * 为什么需要：`organ` 只取第一个部位用于单器官判读；而"多部位会话该走多器官端点"
+     * 这个判断必须看全量部位数。只留 first 的话，3 部位的会话会被当成单器官跑，
+     * 另两个部位永远不会产出结论（正是本任务要修的可达性缺口）。
+     */
+    targetOrgans: string[];
   } | null>(null);
   const [clinical, setClinical] = useState<ClinicalInfoValue>(EMPTY_CLINICAL_INFO);
 
@@ -131,6 +199,7 @@ function WorkspaceRoute() {
           identity: identityOf(s),
           demo: { age: s.age ?? null, gender: s.gender ?? null },
           startedAt: s.created_at ?? null,
+          targetOrgans: s.target_organs ?? [],
         });
       })
       .catch(() => {
@@ -142,6 +211,7 @@ function WorkspaceRoute() {
             identity: null,
             demo: { age: null, gender: null },
             startedAt: null,
+            targetOrgans: [],
           });
         }
       });
@@ -152,6 +222,15 @@ function WorkspaceRoute() {
 
   const sessionMatched = !!sessionId && sessionInfo?.id === sessionId;
   const organ = sessionMatched ? sessionInfo.organ : null;
+  /**
+   * 会话的全部目标部位（未匹配 = `NO_ORGANS`，不猜）。
+   *
+   * 用**模块级常量**而不是字面量 `[]`：这个值进了 handleUploaded 的依赖数组，
+   * 每次渲染新建空数组会让那个 useCallback 每次重建（exhaustive-deps 警告）。
+   */
+  const targetOrgans = sessionMatched ? sessionInfo.targetOrgans : NO_ORGANS;
+  /** 多部位会话：走多器官端点（后端要求 ≥2 份独立结论才有跨器官核对）。 */
+  const isMultiOrgan = targetOrgans.length >= 2;
   const sessionIssue = sessionMatched ? sessionInfo.issue : null;
 
   /**
@@ -214,12 +293,42 @@ function WorkspaceRoute() {
   const sessionImageResolved =
     sessionImage && sessionImage.id === sessionId ? sessionImage.imageId : null;
 
-  /** 影像字节入库 → 立刻发起判读。这就是设计稿里"冻结当前帧即自动发起"的那一步。 */
+  /**
+   * 影像字节入库 → 立刻发起判读。这就是设计稿里"冻结当前帧即自动发起"的那一步。
+   *
+   * 两条分支（T-GB-AGT-01）：
+   *   · 会话 `target_organs` ≥ 2 → **多器官端点**（一次跑完全部部位，
+   *     并拿到交叉器官冲突/一致性结果；这两条防线需要 ≥2 份独立结论）；
+   *   · 单部位 → 原来的单器官端点（行为不变）。
+   * 未走多器官的会话里，第 2、3 个部位永远不会产出结论 —— 这正是本次要修的可达性缺口。
+   */
   const handleUploaded = useCallback(
     async (imageIds: string[]) => {
       if (!sessionId || !organ || imageIds.length === 0) return;
+
+      if (isMultiOrgan) {
+        // ⚠️ 已知限制（如实记录，不粉饰）：多器官端点 `MultiOrganDiagnosisRequest`
+        // 没有 clinical_text / patient_context / image_ids 字段（app/models/schemas.py:785），
+        // 它从**同会话已有请求**继承这三项（orchestrator.py:697-711 的 donor 逻辑）。
+        // 所以本会话若从未发过单器官请求，医生这次填的临床信息不会进 SG 的判据。
+        // 不改后端的前提下只能如实暴露这一点；已在 task 报告里登记。
+        await startMultiOrganFlow({
+          sessionId,
+          organs: targetOrgans,
+        });
+        return;
+      }
+
       // A.36 ⑤：临床信息随判读入参上行（symptom/history/labs → clinical_text，
       // 人口学 + SG 条件 → patient_context）。判读发起后面板锁定（见下方 slot）。
+      //
+      // conditions 发**规范码**不发中文标签：SG 的别名表只认 pregnancy /
+      // contrast_allergy / anticoagulant_therapy，送「妊娠」进去命中数为 0
+      // （勾了禁忌也不拦）。码表唯一来源 clinicalInfo.CONDITION_CODES。
+      //
+      // ⚠️ 一项都没勾时也必须送 `[]`（已确认无条件），不能省成 undefined：
+      // undefined = "未提供" → SG 走保守分支「缺数据即判命中」→ 每次判读都要求
+      // 人工复核，自动结论永远出不来。toConditionCodes([]) 返回 []，不会返回 undefined。
       await startFlow({
         sessionId,
         imageIds,
@@ -233,10 +342,20 @@ function WorkspaceRoute() {
               : sessionInfo?.demo.gender === 'male'
                 ? 'M'
                 : undefined,
+          conditions: toConditionCodes(clinical.conditions),
         },
       });
     },
-    [sessionId, organ, startFlow, clinical, sessionInfo]
+    [
+      sessionId,
+      organ,
+      isMultiOrgan,
+      targetOrgans,
+      startFlow,
+      startMultiOrganFlow,
+      clinical,
+      sessionInfo,
+    ]
   );
 
   const upload = useDicomUpload(sessionId, handleUploaded);
@@ -244,13 +363,33 @@ function WorkspaceRoute() {
   // 需复核才出现确认动作区。**不能只看 requires_manual_review** ——
   // 真机实测存在 sg_result.allowed=false 而 requires_manual_review=false 的组合
   // （SG 说「请转为人工诊断」）。判定收敛在 diagnosisAdapter.needsDoctorReview()。
+  //
+  // 多部位（T-GB-AGT-01）：多器官结果出来后进入 05/14 两态 ——
+  //   · 任一部分失败/未执行 → `organ-tags`（标签排逐部位交代，含重跑入口）
+  //   · 全部完成           → `multi-organ`（部位指示条 + 结论按部位给出）
+  // 单部位会话完全不进这两态（行为不变）。dev 后门（?state=）优先级仍最高。
+  //
+  // ⚠️ 多部位（T-GB-AGT-01）与报告侧面板（T7）都在这条优先级链里：
+  //   dev 后门 > 报告面板（收尾动作，独占结论区） > 多部位 > 单部位判读态。
+  // 单部位会话不传/不进 reportPanel 时行为完全不变。
+  const multiOrganIncomplete =
+    flow.organResults.length > 0 &&
+    flow.organResults.some((r) => r.status === 'failed' || r.status === 'skipped');
   const state: WorkspaceState =
     devState ??
-    (flow.phase === 'concluded'
-      ? needsDoctorReview(flow.result)
-        ? 'actionbar'
-        : 'conclusion'
-      : (PHASE_TO_STATE[flow.phase] ?? 'scanning'));
+    (reportPanel
+      ? reportPanel === 'signed'
+        ? 'signed'
+        : 'report'
+      : flow.organResults.length >= 2
+        ? multiOrganIncomplete
+          ? 'organ-tags'
+          : 'multi-organ'
+        : flow.phase === 'concluded'
+          ? needsDoctorReview(flow.result)
+            ? 'actionbar'
+            : 'conclusion'
+          : (PHASE_TO_STATE[flow.phase] ?? 'scanning'));
 
   // ?dicom=<相对路径> 仅 dev：把真实超声 DICOM 灌进影像区，替换渐变占位。
   // 用来验证 AGENT_TASKS §九 标注的「叠加标注与真实组织纹理的对比度从未验证」。
@@ -342,7 +481,31 @@ function WorkspaceRoute() {
       label: '报告',
       onClick: () => navigate(`/report?request_id=${encodeURIComponent(rid)}`),
     });
+    // 报告侧面板入口（T7）：07/12 两态此前只有 dev `?state=` 可达。
+    // 与上面「报告」导航项分工：那个跳独立报告页（完整编辑/补录/签发），
+    // 这个就地开侧面板（边看结论边看报告草稿，不离开工作区）。
+    // 面板正文只显示后端真实正文（见 openReportPanel），无草稿时如实说明。
+    navItems.push({
+      key: 'report-panel',
+      label: reportPanel ? '收起报告面板' : '报告面板',
+      onClick: () => (reportPanel ? setReportPanel(null) : openReportPanel(rid)),
+    });
   }
+
+  /**
+   * 停档（06）的真实入口：**不提供**，原因如下（不是没做，是不该做）。
+   *
+   * `stopped` 的语义是「禁忌命中，不得签发」，它的唯一合法数据来源是 SG 判读结果
+   * （`view.safetyBlocked` / `sg_result.allowed === false`），不是可手动置位的开关。
+   * 生产上它**已经**由真实数据驱动：`WorkspaceConclusionBody` 在任一判读态下检测到
+   * `safetyBlocked` 就渲染 `WorkspaceStopAlert`（契约 §4「不可削减」）。
+   *
+   * 至于会话终止（`SessionStatus.TERMINATED`）：后端**没有**独立终止端点，只能
+   * `PATCH /api/v1/sessions/{id}` 带 `{status:'terminated'}`（`sessionService.endSession`）。
+   * 该方法前端已有且有调用方（`useSession.handleEndSession`），但它的语义是
+   * 「主动结束检查」，**不是**「禁忌停档」。把它接到 06 屏 = 让医生以为系统判了禁忌，
+   * 实际只是自己中止了检查 —— 属于伪造临床结论，明确不做。
+   */
 
   return (
     <PageSuspense>
@@ -370,6 +533,20 @@ function WorkspaceRoute() {
           />
         }
         navItems={navItems}
+        onCollapseReport={() => setReportPanel(null)}
+        reportText={reportText}
+        reportStatusNote={reportStatusNote}
+        organCount={targetOrgans.length}
+        multiOrganSlot={
+          flow.organResults.length > 0 ? (
+            <WorkspaceMultiOrganPanel
+              results={flow.organResults}
+              crossOrgan={flow.crossOrgan}
+              rerunningOrgan={rerunningOrgan}
+              onRerunOrgan={handleRerunOrgan}
+            />
+          ) : undefined
+        }
         uploadSlot={
           <WorkspaceImageUpload
             ready={!!sessionId && !!organ}

@@ -64,6 +64,194 @@ class SessionNotFoundError(RuntimeError):
     """会话不存在（由 API 层转换为 404）。"""
 
 
+# ----------------------------------------------------------------------
+# A.88 配置接线④：`dispatch_all`（多专科并行）—— 门控开关 + dry-run 计划
+# ----------------------------------------------------------------------
+#
+# 为什么这里只有"计划 + 受门控的可选执行"，**没有**接进 `run_multi_organ_diagnosis`
+# 的主循环（诚实交付，理由不是"来不及"）：
+#
+#   ① **显存**：`dispatch_all` 是 ``asyncio.gather`` 真并发，同一时刻多个
+#      specialist 各打 vLLM。本机 48GB，SKILL 记录在跑的组合已占 ≈45.4GB
+#      （8002 主生成 0.46 + 判官 0.36 + 嵌入 6.8 等常驻）→ 并发峰值按专科数
+#      叠加，极易 OOM，而且会把**整台机器**的推理服务一起打挂（不只本服务）。
+#   ② **语义**：主循环是"逐器官跑完整管线"（含每器官自己的融合 / SafetyGateway /
+#      写终态，见 ``_run_single_organ`` → ``run_diagnosis_pipeline``）。
+#      `dispatch_all` 只覆盖 ``dispatcher.invoke`` 一段，若用它替换 ``_run_single_organ``
+#      就等于**跳过融合与安全门**直接拿专科响应当结论 —— 那是削弱安全链路，
+#      不是"接线"。而把两条都拼起来（先并行 dispatch 再补跑管线）会让同一次
+#      判读调用两次 LLM，成本翻倍且两份结论可能不一致。
+#   ③ **预算**：现状是串行 + 单器官 30s + 全局 90s。并行化会改变"90s 内能跑完
+#      几个器官"的隐含前提（原本 3×30s=90s 正好耗尽），需要真机重标定。
+#
+# 因此本次交付：契约测试（tests/unit/agt/test_a88_dispatch_all_contract.py）
+# + 默认关的门控（``multi_organ_parallel_dispatch_enabled=False``）
+# + 可运行的 dry-run 计划（本函数，不发任何 LLM 请求）。
+# 真机验证显存与端到端耗时后，再决定是否把 ``dispatch_organs_parallel`` 接进主循环。
+
+#: dry-run 计划里"为什么当前不建议打开"的固定判据（真机重标定后应更新这里）。
+_PARALLEL_DISPATCH_BLOCKERS: tuple[str, ...] = (
+    "显存：dispatch_all 是 asyncio.gather 真并发，本机 48GB 常驻组合已占 "
+    "≈45.4GB（8002 主生成 0.46 + 判官 0.36 + 嵌入 6.8 等），并发峰值按专科数"
+    "叠加易 OOM，会连带打挂整机推理服务。",
+    "预算：现有语义是「串行 + 单器官 30s + 全局 90s」，3×30s 正好耗尽 90s；"
+    "并行会改变隐含前提，需真机重标定后才能改默认。",
+    "语义：并行只覆盖 dispatcher.invoke 一段，不含每器官的融合/SafetyGateway/"
+    "写终态（在 run_diagnosis_pipeline）；替换主循环等于跳过安全链路。",
+)
+
+
+def parallel_dispatch_plan(
+    organs: Sequence[Organ | str],
+    *,
+    dispatcher: Any | None = None,
+    gate_enabled: bool | None = None,
+) -> dict[str, Any]:
+    """产出多器官并行 dispatch 的**可执行计划**（dry-run，绝不发 LLM 请求）。
+
+    这是"能力真实存在且可观测"的落点：即便门控默认关，运维/答辩也能一眼看到
+    "这条路径要做什么、受什么限制、当前为什么没开"，而不是一个只有代码没有
+    入口的壳。
+
+    Args:
+        organs: 目标器官列表（``Organ`` 或字符串；重复项**保留**——同器官多专科
+            是喂饱 `GRADING_CONFLICT`（要求同器官 ≥2 条）的合法用法）。
+        dispatcher: 可选，用于检出"哪些器官没有注册 specialist"（缺了会静默
+            降级成占位响应，所以必须提前报出来）。
+        gate_enabled: 覆盖门控判定（测试/审计用）；``None`` 时读 settings。
+
+    Returns:
+        ``{mode, gate_enabled, organs, estimated_llm_calls, missing_specialists,
+        recommended, reasons}``。``mode`` 恒为 ``"dry_run"``。
+    """
+    normalized: list[Organ] = []
+    for item in organs:
+        if isinstance(item, Organ):
+            normalized.append(item)
+            continue
+        try:
+            normalized.append(Organ(item))
+        except ValueError:
+            logger.warning("parallel_dispatch_plan_dropped_unknown_organ", organ=item)
+
+    if gate_enabled is None:
+        gate_enabled = bool(
+            getattr(settings, "multi_organ_parallel_dispatch_enabled", False)
+        )
+
+    missing: list[str] = []
+    if dispatcher is not None:
+        registered = getattr(dispatcher, "_specialists", {}) or {}
+        missing = [o.value for o in normalized if o not in registered]
+
+    reasons = list(_PARALLEL_DISPATCH_BLOCKERS)
+    if missing:
+        reasons.append(
+            "注册不全：这些器官没有 specialist，真跑会静默降级成占位响应 → "
+            f"{missing}"
+        )
+
+    return {
+        "mode": "dry_run",
+        "gate_enabled": gate_enabled,
+        "organs": [o.value for o in normalized],
+        "estimated_llm_calls": len(normalized),
+        "missing_specialists": missing,
+        # 当前不推荐打开：三条阻塞项都还没在真机消除
+        "recommended": False,
+        "reasons": reasons,
+    }
+
+
+async def dispatch_organs_parallel(
+    *,
+    session_id: str,
+    organs: Sequence[Organ],
+    dispatcher: Any,
+    dry_run: bool = True,
+    gate_enabled: bool | None = None,
+    context: Any | None = None,
+) -> dict[str, Any]:
+    """多专科并行 dispatch 的**受门控**入口（默认 dry-run）。
+
+    行为分层（每一层都留痕，不静默）：
+      1. ``dry_run=True``（默认）→ 返回 :func:`parallel_dispatch_plan` 的计划，
+         **不调用任何 specialist**；
+      2. ``dry_run=False`` 但门控关闭 → 返回 ``status="disabled"`` + 真实原因，
+         **仍然不调用**（这是"默认关"的可执行含义，不是注释里的愿望）；
+      3. ``dry_run=False`` 且门控打开 → 走 :func:`app.agents.dispatcher.dispatch_all`
+         真并发，返回各专科响应（**不聚合**，由调用方决定）。
+
+    Returns:
+        dict：``status`` ∈ {``dry_run``, ``disabled``, ``dispatched``}。
+    """
+    from app.agents.dispatcher import dispatch_all
+
+    if dry_run:
+        plan = parallel_dispatch_plan(organs, dispatcher=dispatcher, gate_enabled=gate_enabled)
+        plan["session_id"] = session_id
+        # 三态统一用 ``status`` 表达；``mode`` 保留 dry_run 语义供计划消费方读。
+        plan["status"] = "dry_run"
+        return plan
+
+    if gate_enabled is None:
+        gate_enabled = bool(
+            getattr(settings, "multi_organ_parallel_dispatch_enabled", False)
+        )
+
+    if not gate_enabled:
+        reason = (
+            "multi_organ_parallel_dispatch_enabled=False：并行 dispatch 默认关闭"
+            "（显存峰值 / 串行 90s 预算 / 只覆盖 dispatcher 段 三条阻塞项未消除，"
+            "见 settings.py 该键注释）。本调用未发出任何 LLM 请求。"
+        )
+        logger.warning(
+            "parallel_dispatch_refused_gate_off",
+            session_id=session_id,
+            organs=[o.value for o in organs],
+            reason=reason,
+        )
+        return {
+            "status": "disabled",
+            "session_id": session_id,
+            "organs": [o.value for o in organs],
+            "reason": reason,
+            "responses": [],
+        }
+
+    if context is None:
+        from app.agents.protocols import AgentContext
+
+        context = AgentContext(
+            request_id=f"multi_organ_parallel_{session_id}",
+            session_id=session_id,
+            organ=organs[0] if organs else Organ.THYROID,
+            user_query="multi-organ parallel dispatch",
+        )
+
+    responses = await dispatch_all(dispatcher, context, list(organs))
+    logger.info(
+        "parallel_dispatch_completed",
+        session_id=session_id,
+        organs=[o.value for o in organs],
+        response_count=len(responses),
+    )
+    return {
+        "status": "dispatched",
+        "session_id": session_id,
+        "organs": [o.value for o in organs],
+        "responses": [
+            {
+                "organ": r.organ.value if isinstance(r.organ, Organ) else str(r.organ),
+                "agent_name": r.agent_name,
+                "confidence": round(float(r.confidence or 0.0), 4),
+                "needs_review": bool(r.needs_review),
+            }
+            for r in responses
+        ],
+    }
+
+
 @dataclass
 class OrganRunResult:
     """单个器官的执行结果。"""
@@ -101,6 +289,9 @@ class MultiOrganOutcome:
     organ_statuses: dict[str, str] = field(default_factory=dict)
     total_ms: float = 0.0
     partial: bool = False
+    #: A.88 跨器官融合汇总（``cross_organ_fusion`` 的返回值）。
+    #: 空 dict = 未执行（例如没有可用结论）；``status`` 见该模块的四种取值。
+    cross_organ: dict[str, Any] = field(default_factory=dict)
 
     def organs_with_status(self, status: str) -> list[str]:
         return [r.organ for r in self.organ_results if r.status == status]
@@ -134,6 +325,8 @@ class MultiOrganOutcome:
             "needs_review_organs": self.needs_review_organs,
             "partial": self.partial,
             "total_ms": round(self.total_ms, 2),
+            # A.88：跨器官融合汇总（无结论时为 {}，序列化安全）
+            "cross_organ": dict(self.cross_organ),
         }
 
 
@@ -149,6 +342,9 @@ async def run_multi_organ_diagnosis(
     per_organ_timeout_s: float | None = None,
     total_timeout_s: float | None = None,
     response_tier: ResponseTier | None = None,
+    clinical_text: str | None = None,
+    patient_context: dict[str, Any] | None = None,
+    image_ids: Sequence[str] | None = None,
 ) -> MultiOrganOutcome:
     """对会话执行多器官串行诊断。
 
@@ -159,6 +355,11 @@ async def run_multi_organ_diagnosis(
         total_timeout_s: 全局超时预算（默认取 settings，90s）。
         response_tier: 新建请求时使用的档位；默认
             ``settings.multi_organ_default_response_tier``。
+        clinical_text / patient_context / image_ids: A.88 新增。临床事实由**本次
+            请求**显式传入（与单器官端点一致）；缺省时仍从同会话已有请求继承。
+            **为什么必须补**：多器官请求体原先没有任何临床字段，只能靠继承 ——
+            若该会话从未发过单器官请求，医生这次填的临床信息与勾选的禁忌条件
+            就进不了安全网关（见 ``MultiOrganDiagnosisRequest`` 的 docstring）。
 
     Returns:
         :class:`MultiOrganOutcome`（含各器官状态与会话汇总状态）。
@@ -198,6 +399,17 @@ async def run_multi_organ_diagnosis(
             outcome.total_ms = (time.monotonic() - t_start) * 1000.0
             return outcome
 
+        # A.88 配置接线④：把"并行 dispatch 这条路当前是否可用 / 为什么没开"
+        # 写进启动日志（**只记录计划，不发 LLM 请求**）。这样答辩或排障时能直接
+        # 看到能力状态，而不是只能读代码判断"是不是忘了接"。
+        # 真并发入口是 `dispatch_organs_parallel(..., dry_run=False)`，受
+        # `multi_organ_parallel_dispatch_enabled` 门控（默认关，理由见 settings 注释）。
+        logger.info(
+            "multi_organ_parallel_dispatch_plan",
+            session_id=session_id,
+            **parallel_dispatch_plan(organ_list),
+        )
+
         # 会话进入 active：多器官串行进行中。
         organ_statuses: dict[str, str] = dict(getattr(session, "organ_statuses", None) or {})
         for organ in organ_list:
@@ -229,6 +441,10 @@ async def run_multi_organ_diagnosis(
                 session_id=session_id,
                 organ=organ,
                 response_tier=tier,
+                # A.88：本次请求显式带的临床事实优先；缺省仍从 donor 继承。
+                clinical_text=clinical_text,
+                patient_context=patient_context,
+                image_ids=list(image_ids) if image_ids else None,
             )
 
             organ_statuses[organ.value] = OrganStatus.IN_PROGRESS.value
@@ -257,6 +473,18 @@ async def run_multi_organ_diagnosis(
             session_id,
             organ_statuses,
             SessionStatus(outcome.session_status),
+        )
+
+        # A.88 跨器官融合（**必须放在全部器官跑完之后**）：
+        # 融合层的冲突检测 / 跨器官一致性都要求 `len(responses) >= 2`
+        # （app/fusion/conflict.py:287,313,335,384；consistency.py:656），
+        # 而单器官端点每次只产 1 份结论 → 那两条防线在生产里从未被喂过。
+        # 多器官会话是唯一"天然 ≥2 份独立结论"的场景，所以接在这里。
+        # 只追加旁信息、不改任何器官的 status/confidence/正文（见该模块 docstring）。
+        outcome.cross_organ = await _apply_cross_organ_fusion(
+            diagnosis_repo=diagnosis_repo,
+            session_id=session_id,
+            organ_results=outcome.organ_results,
         )
 
     outcome.total_ms = (time.monotonic() - t_start) * 1000.0
@@ -411,6 +639,127 @@ async def _mark_organ_timeout(
             request_id=request_id,
             error=str(exc),
         )
+
+
+# ----------------------------------------------------------------------
+# A.88 跨器官融合（接线：多器官会话是唯一"天然 ≥2 份独立结论"的场景）
+# ----------------------------------------------------------------------
+
+
+def _has_conclusion(result: OrganRunResult) -> bool:
+    """该器官是否**产出了结论**（可参与跨器官校验）。
+
+    ``completed`` / ``needs_review`` 都有落库正文（后者只是被标记人工复核）；
+    ``failed`` / ``skipped`` 没有正文 —— 把它们塞进融合层会让"空正文"参与
+    分级/建议关键词匹配，产生假冲突假一致。
+    """
+    return result.status in (
+        OrganStatus.COMPLETED.value,
+        OrganStatus.NEEDS_REVIEW.value,
+    )
+
+
+async def _apply_cross_organ_fusion(
+    *,
+    diagnosis_repo: DiagnosisRepository,
+    session_id: str,
+    organ_results: Sequence[OrganRunResult],
+) -> dict[str, Any]:
+    """收集各器官已落库的结论 → 跑跨器官融合 → 写回 findings。
+
+    写回位置：每个参与器官的 ``findings["cross_organ_fusion"]``。为什么写进各器官
+    而不是新建一张表：读路径（``GET /result/{id}``）按 request_id 取单个器官的结果，
+    跨器官信息必须能被**同一个请求**读到，否则前端要多打一次接口（且要处理"哪个
+    器官是主"的问题）。写入**不改** status / confidence / 结论正文。
+
+    Returns:
+        融合汇总 dict（含 ``status``）；任何异常都降级为 ``{"status": "unavailable"}``。
+    """
+    candidates = [r for r in organ_results if _has_conclusion(r) and r.request_id]
+    if len(candidates) < 2:
+        # 诚实口径：不足 2 个器官产出结论 = 前提不成立，不是"无冲突"。
+        logger.info(
+            "cross_organ_skipped_insufficient_conclusions",
+            session_id=session_id,
+            concluded_organs=[r.organ for r in candidates],
+        )
+        return {
+            "status": "insufficient_responses",
+            "session_id": session_id,
+            "organ_count": len(candidates),
+            "reason": "fewer than 2 organs produced a conclusion",
+        }
+
+    # 读取落库 findings（管线写终态用的是**独立短会话**，这里的会话可能还缓存着
+    # processing 快照 —— 与 _read_back_status 同因，先 expire_all 再读）。
+    expire = getattr(getattr(diagnosis_repo, "db", None), "expire_all", None)
+    if expire is not None:
+        expire()
+
+    payloads: list[dict[str, Any]] = []
+    rows_by_request: dict[str, Any] = {}
+    for run in candidates:
+        row = await diagnosis_repo.get_result(str(run.request_id))
+        if row is None:
+            logger.warning(
+                "cross_organ_result_row_missing",
+                session_id=session_id,
+                organ=run.organ,
+                request_id=run.request_id,
+            )
+            continue
+        rows_by_request[str(run.request_id)] = row
+        payloads.append(
+            {
+                "organ": run.organ,
+                "findings": row.findings if isinstance(row.findings, dict) else {},
+            }
+        )
+
+    fusion_engine = _resolve_fusion_engine()
+    from app.services.cross_organ_fusion import cross_organ_fusion
+
+    summary = await cross_organ_fusion(
+        session_id=session_id,
+        organ_results=payloads,
+        fusion_engine=fusion_engine,
+    )
+
+    # 写回各参与器官的 findings（只加一个键，其余字段原样保留）。
+    for request_id, row in rows_by_request.items():
+        findings = dict(row.findings) if isinstance(row.findings, dict) else {}
+        findings["cross_organ_fusion"] = summary
+        try:
+            await diagnosis_repo.update_findings(request_id=request_id, findings=findings)
+        except Exception as exc:
+            logger.warning(
+                "cross_organ_findings_write_failed",
+                session_id=session_id,
+                request_id=request_id,
+                error=str(exc),
+                error_type=type(exc).__name__,
+            )
+    await _commit_if_possible(getattr(diagnosis_repo, "db", None))
+    return summary
+
+
+def _resolve_fusion_engine() -> Any:
+    """取应用级的融合引擎（复用同一套检测器与阈值）。
+
+    **不自己新建** ConflictDetector / ConsistencyChecker：另建一套就会出现
+    "两条产线两套阈值"，且一致性校验需要注入了 RAG 的实例（指南比对才可能真跑）。
+    """
+    try:
+        from app.main import app as _app_instance
+
+        return getattr(_app_instance.state, "fusion_engine", None)
+    except Exception as exc:
+        logger.warning(
+            "cross_organ_fusion_engine_lookup_failed",
+            error=str(exc),
+            error_type=type(exc).__name__,
+        )
+        return None
 
 
 # ----------------------------------------------------------------------

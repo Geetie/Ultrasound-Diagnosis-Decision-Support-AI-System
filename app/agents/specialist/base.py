@@ -828,7 +828,7 @@ class RAGSpecialistAgent(SpecialistAgent):
         response: AgentResponse,
         disease_type: str | None,
     ) -> None:
-        """按器官级/病种级阈值检查 final_conf 并设置 needs_review 标签。
+        """按器官级/病种级阈值检查 final_conf，**总是**把采用的阈值与来源写进 trace。
 
         **D1 偏离点修复**（设计 §2.4）：
         - 优先级：先查 ``disease_thresholds[disease_type]``（病种级），
@@ -838,6 +838,15 @@ class RAGSpecialistAgent(SpecialistAgent):
           ``below_<scope>_threshold: <conf> < <threshold>`` 标签；
         - 若 ``confidence == 0.0``（已降级）则跳过 — 降级响应本身已
           表示"不可用"，无须额外触发 needs_review。
+
+        **A.88 T5-2（病种级阈值接线）**：本方法此前**零调用方**，
+        ``disease_thresholds`` 由 ``factory.load_organ_thresholds`` 从
+        ``organ_disease_thresholds`` 表真实加载并注入，却在生产上从未生效。
+        现由 :meth:`_post_process` 以 ``AgentResponse.disease_code`` 为病种码调用。
+
+        同时新增 ``threshold_adopted`` 留痕（**不越线也写**）：只记
+        「低于阈值」的话，医生问"凭什么没让我复核"时无处可查；把采用的阈值与
+        来源（``disease``/``organ``）落进 trace，两个方向都可解释。
 
         Args:
             response: 已完成 _parse_response 的响应对象。
@@ -856,11 +865,19 @@ class RAGSpecialistAgent(SpecialistAgent):
             scope = "organ"
         if threshold is None:
             return
+        # A.88 T5-2：采用的阈值本身要可审计（含"未越线"的正常情形）
+        adopted = (
+            f"threshold_adopted: scope={scope} threshold={threshold} "
+            f"confidence={response.confidence:.4f} disease_code={disease_type or '-'}"
+        )
+        if adopted not in response.reasoning_trace:
+            response.reasoning_trace.append(adopted)
         if response.confidence < threshold:
             response.needs_review = True
-            response.reasoning_trace.append(
-                f"below_{scope}_threshold: {response.confidence:.4f} < {threshold}"
-            )
+            below = f"below_{scope}_threshold: {response.confidence:.4f} < {threshold}"
+            # 幂等：子类若已在本方法外调过一次（历史写法），不再重复追加同一条
+            if below not in response.reasoning_trace:
+                response.reasoning_trace.append(below)
             logger.info(
                 "specialist_below_threshold",
                 organ=self.get_organ().value,
@@ -927,27 +944,26 @@ class RAGSpecialistAgent(SpecialistAgent):
         多专科联合诊断时所有 specialist 共享同一 ``AgentContext``，
         ``extend`` 操作按器官顺序累积；deduplication 由 KB 软失效层完成。
 
-        **D1 修正**：器官级阈值检查（若 _parse_response 已调用
-        _check_disease_threshold，则不再重复检查器官级 — 避免
-        重复 trace 标签）。
+        **D1 修正**：阈值检查走 :meth:`_check_disease_threshold` 单一入口。
+
+        **A.88 T5-2（真正的接线）**：此前本方法自己内联了一段"只查器官级"
+        的判定，注释写着"病种级由 _parse_response 调用"—— 但三个专科智能体
+        都**没有**在 ``_parse_response`` 里调它，于是病种级阈值永远生效不了
+        （《架构真相》§3.3）。现在改为**总是**调用 :meth:`_check_disease_threshold`，
+        病种码取 ``AgentResponse.disease_code``：
+
+        * 有病种码且该病种配了阈值 → 病种级（更严的那个说了算）；
+        * 无病种码 / 病种没配 → 器官级；
+        * **不猜病种**：不按正文关键词硬推一个码出来（UDT 审定不允许把编码
+          降级成关键词匹配，见 ``02-核心流程与知识库.md:479``）。
         """
         # A.62 证据链留痕（env 开关）：本条记录**落库**的块（= 走 `knowledge_ids` 的那批）
         self._log_evidence_chain(context, recorded_ids=list(response.evidence_chunk_ids))
         # D2: 写入 used_evidence_ids（保留顺序，去重由调用方负责）
         if response.evidence_chunk_ids:
             context.used_evidence_ids.extend(response.evidence_chunk_ids)
-        # D1: 器官级阈值（病种级由 _parse_response 调用 _check_disease_threshold）
-        if (
-            response.confidence > 0.0
-            and self._organ_threshold is not None
-            and response.confidence < self._organ_threshold
-            and not response.needs_review
-        ):
-            response.needs_review = True
-            response.reasoning_trace.append(
-                f"below_organ_threshold: {response.confidence:.4f} < "
-                f"{self._organ_threshold}"
-            )
+        # D1 + A.88 T5-2: 统一阈值入口（病种级优先、器官级兜底、两者都无则不检查）
+        self._check_disease_threshold(response, response.disease_code)
 
     # ------------------------------------------------------------------
     # 内部：M3/M5/M9 临床属性增强

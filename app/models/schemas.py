@@ -57,6 +57,24 @@ class Organ(str, Enum):
     CARDIAC = "cardiac"
 
 
+#: ``diagnosis_results.status`` 的**终态**集合（单一事实源，A.88）。
+#:
+#: 为什么放在模型层：终态判定被三处共用 ——
+#:   ① 结果接口/前端轮询（``frontend/src/services/diagnosisService.ts`` 的同名
+#:      常量是**前端镜像**，改动需同步）；
+#:   ② 跨请求取"上一次结论"（``DiagnosisRepository.get_previous_result_same_organ``）
+#:      —— 只有终态行才承载可信结论，``processing`` 行没有可比对的正文；
+#:   ③ 撤回消费链/审计统计的兜底扫描脚本（``scripts/audit``、``scripts/bench_*``）。
+#: 曾经多处各写一遍，``needs_review`` 就漏过一次（p28 P28-2 真阳性）。
+TERMINAL_RESULT_STATUSES: tuple[str, ...] = (
+    "completed",
+    "needs_review",
+    "cancelled",
+    "failed",
+    "timeout",
+)
+
+
 #: 器官代码 → **医生可见中文名**（单一事实源，A.59）。
 #:
 #: 为什么放在领域模型旁：报告模板的 `{{organ_label}}` 与专科结论正文
@@ -769,6 +787,20 @@ class MultiOrganDiagnosisRequest(BaseModel):
 
     ``organs`` 缺省时取会话 ``target_organs``；超时按规格默认
     单器官 30s / 全局 90s（可显式覆盖，用于测试与调参）。
+
+    ## A.88：补临床事实三字段（此前本请求体**没有任何**临床字段）
+
+    缺陷：多器官请求只能从"同会话已有的诊断请求"继承 ``clinical_text`` /
+    ``patient_context`` / ``image_ids``（见
+    ``app/services/multi_organ_orchestrator._resolve_request_id``）。
+    推论：**若该会话从未发过单器官请求，医生这次在面板上填的临床信息与
+    勾选的禁忌条件根本进不来** → 安全网关拿不到 ``patient_conditions``
+    → 走"缺数据即判命中"的保守分支（每次都要人工复核），
+    或更糟：临床上真有禁忌却按"无条件"放行。
+
+    这与单器官端点（``DiagnosisRequest`` 有这三个字段）不一致，属漏传而非
+    设计选择（同 P2-10 的形态）。现在补上，并保持**向后兼容**：
+    三字段全部可选，缺省时仍按原逻辑从 donor 请求继承。
     """
 
     session_id: str
@@ -776,6 +808,10 @@ class MultiOrganDiagnosisRequest(BaseModel):
     response_tier: ResponseTier | None = None
     per_organ_timeout_seconds: float | None = None
     total_timeout_seconds: float | None = None
+    # A.88：临床事实（与 DiagnosisRequest 同名同义，语义见该模型）
+    clinical_text: str | None = None
+    patient_context: PatientContext | None = None
+    image_ids: list[str] | None = None
 
 
 class MultiOrganDiagnosisResponse(BaseModel):
@@ -792,6 +828,14 @@ class MultiOrganDiagnosisResponse(BaseModel):
     needs_review_organs: list[str]
     partial: bool
     total_ms: float
+    # A.88：跨器官融合（冲突检测 + 跨器官一致性）的**真实**结果。
+    # 为什么必须在这里暴露：这两条防线要求 ``>=2`` 份独立结论
+    # （app/fusion/conflict.py:287,313,335,384 / consistency.py:656），
+    # 单器官端点每次只产 1 份 → 生产上从未被喂过；多器官会话是唯一
+    # 天然满足前提的入口，所以结果必须随本响应返回，否则"跑过"也无从核对。
+    # 空 dict = 未执行；``status`` 取值见 app/services/cross_organ_fusion.py
+    # （ok / insufficient_responses / unavailable）。
+    cross_organ: dict[str, Any] = Field(default_factory=dict)
 
 
 # ============== T-GB-AGT-02 档位升级的医生确认 ==============

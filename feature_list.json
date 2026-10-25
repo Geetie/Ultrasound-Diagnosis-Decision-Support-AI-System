@@ -1269,6 +1269,15 @@
         "a70-prompt-echo-defect"
       ],
       "evidence": "16 号 A.70.7；scripts/audit/p49_degraded_cause.py；tests/unit/quality/test_degraded_cause.py；reports/degraded_cause.json；reports/dirty_records.json（A.70.5）"
+    },
+    {
+      "id": "t7-frontend-dead-pages",
+      "name": "前端死页面待处置（DiagnosisPage / ExaminationPage）",
+      "description": "frontend/src/pages/DiagnosisPage.tsx（630 行）与 ExaminationPage.tsx（133 行）已无任何路由（routes.tsx 中无对应 path，* 兜底回 /）。按 AGENTS.md「不删既有死代码，要删先说明」保留文件，仅在文件头注明「已按 17-§5 裁定 4 删除路由」与保留原因。",
+      "status": "planned",
+      "result": "未删除、未恢复路由。文件头已加登记注释（含保留理由：组件仍被别处引用 / 是唯一完整的多请求结果页实现 / 仍被 DiagnosisFlowWiring.test.ts 作断言对象）。另登记隐患：ExaminationPage.tsx 仍 navigate 到已删除的 /diagnosis 路由，若将来恢复该页路由，这条跳转会立刻变成死链。",
+      "dependencies": [],
+      "evidence": "frontend/src/pages/DiagnosisPage.tsx 文件头注释；frontend/src/pages/ExaminationPage.tsx 文件头注释；frontend/src/components/layout/Sidebar.tsx 已删 /diagnosis 菜单项；frontend/src/pages/__tests__/DiagnosisFlowWiring.test.ts 侧栏死链守卫"
     }
   ]
 }

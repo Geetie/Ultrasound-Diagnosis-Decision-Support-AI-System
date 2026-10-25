@@ -19,6 +19,9 @@
 - **KB 版本嵌入键名**：知识库版本变更 → 旧键自然失效，无需显式清理；
 - 规范化请求包含所有影响检索语义的字段（query / top_k / 各 use_* 开关 /
   min_score_threshold / image_format / extra），避免不同参数互相串味；
+- A.88 起额外嵌入 ``MIN_SCORE_FILTER_SEMANTICS``：``min_score_threshold``
+  的解释可能随分数所处量纲变化（绝对 vs 相对），数值相同而语义不同时
+  必须换键，否则会把"旧判据剔空的空结果"继续喂给调用方；
 - ``request_id`` / ``session_id`` **不入键**（它们不影响结果，只用于追踪，
   且 ``RetrievalResult`` 里也不含这两个字段，不存在跨请求身份泄漏）。
 
@@ -58,6 +61,15 @@ from app.rag.protocols import RetrievalRequest, RetrievalResult
 logger = structlog.get_logger(__name__)
 
 CACHE_KEY_PREFIX = "rag:cache"
+
+#: ``min_score_threshold`` 的**解释版本**（A.88 A1）。
+#:
+#: 缓存存的是"阈值过滤后的最终结果"，而 A.88 之前 0.5 一律按**绝对分**解释：
+#: standard 档（``use_reranking=False``）的 RRF 分（量级 1/(60+rank)）整批被
+#: 剔空后，那份**空结果**也进了缓存。阈值本身没变（仍是 0.5），所以只把
+#: ``min_score_threshold`` 放进键里**不足以**隔离新旧语义 —— 必须显式给语义
+#: 打版本。改动阈值解释规则时递增此值，旧键自然失效。
+MIN_SCORE_FILTER_SEMANTICS = "a88-relative-v1"
 
 # L1（Redis）TTL：比智能体层的 24h 短。RAG 层是共享底座，命中面更宽，
 # 一旦检索侧有变更（索引重建/配置调整），短 TTL 能让影响窗口更可控。
@@ -244,6 +256,9 @@ class RetrievalCache:
             "use_multimodal": request.use_multimodal,
             "use_llm_enhancement": request.use_llm_enhancement,
             "min_score_threshold": request.min_score_threshold,
+            # A.88：阈值的**解释**随分数所处量纲变化（absolute / relative），
+            # 仅靠上面的数值无法区分新旧语义 → 语义版本一并入键。
+            "min_score_filter_semantics": MIN_SCORE_FILTER_SEMANTICS,
             "image_format": request.image_format,
             # extra 用排序键序列化，保证键稳定（dict 顺序不影响语义）
             "extra": json.dumps(request.extra or {}, sort_keys=True, ensure_ascii=False),

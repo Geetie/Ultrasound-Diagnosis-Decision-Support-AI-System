@@ -93,6 +93,54 @@ class _DispatcherLike(Protocol):
 #: Specialist invoker 类型（P2-6）：接收 AgentContext，返回新 AgentResponse
 SpecialistInvoker = Callable[[AgentContext], Awaitable[AgentResponse]]
 
+#: A.88 T5-6：CRAG 恢复的**质量条件**（``recovered=True`` 必须先过其中之一）。
+#: 这些名字会出现在 ``CRAGResult.reason`` 里 —— 运维据此判断"为什么明明检索到东西
+#: 却没算恢复"。**不许**收敛成一句笼统的 "quality check failed"
+#: （AGENTS.md 硬规则 8：每个被跳过的分支要留下自己的原因）。
+CRAG_QUALITY_CONDITIONS = (
+    "evidence_not_used",         # 新检索到的 chunk 一条都没进入新响应
+    "score_below_threshold",     # 检索分数低于 crag_min_evidence_score
+    "revalidation_failed",       # Self-RAG 复评没过
+    "revalidation_error",        # 复评本身抛错（不能把"没评成"当"评过"）
+    "empty_reresponse_content",  # 重生成响应正文为空
+)
+
+#: 复评器类型：接收新响应，返回带 ``passed`` 属性的评估结果
+Revalidator = Callable[[AgentResponse], Awaitable[Any]]
+
+
+def _chunk_score(chunk: Any) -> float | None:
+    """取一个 chunk 的检索分数（拿不到就 ``None``，**不**默认 0.0）。
+
+    两个来源：
+    1. ``ScoredChunk`` 包裹形态：``chunk.score``；
+    2. 本模块 ``_retrieve_via_rag_service`` 写进 ``metadata["retrieval_score"]``
+       的形态（``ScoredChunk.chunk`` 拿到后分数就丢了）。
+
+    为什么拿不到要返回 ``None`` 而不是 0.0：0.0 是个**合法分数**，用它冒充
+    "没分数"会让 ``score_below_threshold`` 在阈值 > 0 时永远成立 ——
+    看起来"校验过"，实际是校验失明。
+    """
+    value = getattr(chunk, "score", None)
+    if value is None:
+        meta = getattr(chunk, "metadata", None)
+        if isinstance(meta, dict):
+            value = meta.get("retrieval_score")
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError) as exc:
+        # 分数存在但不可转成 float → 按"拿不到"处理（返回 None，由调用方报
+        # `score_below_threshold: no_scores_available`）；此处留痕，便于排查
+        # "为什么阈值判据一直说没分数"。
+        logger.debug(
+            "crag_chunk_score_unparsable",
+            value_type=type(value).__name__,
+            error=str(exc)[:120],
+        )
+        return None
+
 
 # ----------------------------------------------------------------------
 # 数据模型
@@ -111,6 +159,10 @@ class CRAGResult:
         reason: 失败/恢复的文本原因。
         via_dispatcher: 是否经中央调度路由（True/False/None 表示未触发检索）。
         specialist_reinvoked: 是否成功重新调用 specialist LLM。
+        quality_checked: A.88 T5-6：本次是否真的做了**恢复质量校验**。
+            ``False`` 表示"只看了检索非空"（质量判据不可用的降级情形）—— 与
+            "校验通过"必须可区分，否则又会变成"空转冒充恢复"。
+        quality_reason: 质量校验的细节（未通过时是哪一条，通过时是哪一条救的）。
     """
 
     recovered: bool
@@ -120,6 +172,8 @@ class CRAGResult:
     reason: str = ""
     via_dispatcher: bool | None = None
     specialist_reinvoked: bool = False
+    quality_checked: bool = False
+    quality_reason: str = ""
 
 
 # ----------------------------------------------------------------------
@@ -154,6 +208,13 @@ class CRAGHandler:
             若提供则用新证据重新调用 specialist；否则 fallback 到占位实现
             （仅合并 evidence，不重跑 LLM）。
         crag_top_k: 补充检索的 top_k（默认 20）。
+        min_evidence_score: **A.88 T5-6** 新证据的检索分数下限（默认 0.0 =
+            不启用）。开启后，最高分都低于该值 → 判"检索到了但不够有说服力"，
+            ``recovered=False`` + ``reason=score_below_threshold``。
+            默认关：会改变既有的恢复判定口径，必须先在真机上按分数分布标定
+            （与 ``similar_cases_min_score`` 同样的纪律）。
+        revalidator: **A.88 T5-6** Self-RAG 复评器（可选）。给了就对**重生成
+            后的响应**再评一次，通过才算恢复 —— 这是"这次真的够了"最直接的判据。
     """
 
     def __init__(
@@ -163,9 +224,13 @@ class CRAGHandler:
         dispatcher_agent: _DispatcherLike | None = None,
         specialist_invoker: SpecialistInvoker | None = None,
         crag_top_k: int = DEFAULT_CRAG_TOP_K,
+        min_evidence_score: float = 0.0,
+        revalidator: Revalidator | None = None,
     ) -> None:
         if crag_top_k <= 0:
             raise ValueError("crag_top_k must be positive")
+        if min_evidence_score < 0.0:
+            raise ValueError("min_evidence_score must be >= 0.0")
         # 至少需要一个检索后端
         if (
             rag_service is None
@@ -187,6 +252,9 @@ class CRAGHandler:
         self._rag_service = rag_service
         self._specialist_invoker = specialist_invoker
         self._crag_top_k = crag_top_k
+        # A.88 T5-6：恢复质量判据（默认不启用分数阈值 —— 会改既有口径）
+        self._min_evidence_score = float(min_evidence_score)
+        self._revalidator = revalidator
         # P2-9 增强：记录最近一次检索异常（用于失败原因透出）
         self._last_retrieval_error: BaseException | None = None
 
@@ -263,11 +331,50 @@ class CRAGHandler:
             )
 
         # 5) 构造新响应：P2-6 修复 — 真正调用 specialist LLM
+        citation_sink: dict[str, Any] = {}
         new_response, specialist_reinvoked = await self._build_new_response(
             original=response,
             new_evidence=new_chunks,
             request=request,
+            citation_sink=citation_sink,
         )
+
+        # 6) A.88 T5-6：**恢复质量校验**。
+        # 此前 recovered=True 的唯一前提是"检索返回非空" —— 于是补充检索回来一条
+        # 与结论无关的块也算"恢复"，而 FusionEngineImpl 会据此清掉 self_rag_failed
+        # 标记（service.py:214-217）→ 一次没修好的质检凭空消失。这是"空转冒充恢复"。
+        quality_ok, quality_reason = await self._verify_recovery_quality(
+            original=response,
+            new_evidence=new_chunks,
+            new_response=new_response,
+            citated=citation_sink.get("cited"),
+        )
+        # ``unverified_`` 前缀 = 占位路径（无重生成）→ 无法校验，不许自称"已校验"
+        quality_checked = not quality_reason.startswith("unverified_")
+        if not quality_ok:
+            logger.info(
+                "crag_recovery_quality_rejected",
+                agent=response.agent_name,
+                failure_category=failure_category,
+                new_evidence_count=len(new_chunks),
+                specialist_reinvoked=specialist_reinvoked,
+                quality_reason=quality_reason,
+            )
+            return CRAGResult(
+                recovered=False,
+                failure_category=failure_category,
+                retrieval_top_k=self._crag_top_k,
+                # 前缀保留检索事实，后缀写明**哪一条**质量条件没过
+                reason=(
+                    f"crag_recovery_quality_rejected: {quality_reason} "
+                    f"(new_chunks={len(new_chunks)}, "
+                    f"reinvoked={specialist_reinvoked})"
+                ),
+                via_dispatcher=via_dispatcher,
+                specialist_reinvoked=specialist_reinvoked,
+                quality_checked=True,
+                quality_reason=quality_reason,
+            )
 
         logger.info(
             "crag_recovered",
@@ -276,6 +383,7 @@ class CRAGHandler:
             new_evidence_count=len(new_chunks),
             via_dispatcher=via_dispatcher,
             specialist_reinvoked=specialist_reinvoked,
+            quality_reason=quality_reason,
         )
         return CRAGResult(
             recovered=True,
@@ -285,9 +393,114 @@ class CRAGHandler:
             reason=(
                 f"crag_recovered_with_{len(new_chunks)}_new_chunks"
                 + ("_reinvoked" if specialist_reinvoked else "_evidence_only")
+                + f" [{quality_reason}]"
             ),
             via_dispatcher=via_dispatcher,
             specialist_reinvoked=specialist_reinvoked,
+            quality_checked=quality_checked,
+            quality_reason=quality_reason,
+        )
+
+    # ------------------------------------------------------------------
+    # 内部：恢复质量校验（A.88 T5-6）
+    # ------------------------------------------------------------------
+
+    async def _verify_recovery_quality(
+        self,
+        *,
+        original: AgentResponse,
+        new_evidence: list[KnowledgeChunk],
+        new_response: AgentResponse,
+        citated: list[str] | None = None,
+    ) -> tuple[bool, str]:
+        """校验"这次是不是**真的**修好了"（任一条件通过即算恢复）。
+
+        条件（按代价从低到高）：
+
+        1. ``revalidation_passed``：给了 ``revalidator`` 时，新响应通过 Self-RAG
+           复评 —— 最直接的判据（LLM 自己再看一遍"证据够不够"）；
+        2. ``score_ok``：开了 ``min_evidence_score`` 时，新证据最高分达到阈值；
+        3. ``evidence_used``：新检索到的 chunk **真的被 specialist 引用过**
+           （说明被用上了，不是拿回来堆着）。
+
+        ## ``citated`` 为什么必须单独传（不能看 new_response 的 evidence）
+
+        :meth:`_build_new_response` 返回的是**三方合并**后的响应
+        （旧 evidence + 新 evidence + specialist 自己引用的）—— 新证据必然
+        出现在里面，拿它判断"用上了没有"**永远为真**，等于没判。
+        所以 ``citated`` 传的是 specialist **合并前**自己引用的那批。
+        无 invoker（占位路径）时 ``citated=None`` → 没有"被引用"的证据，
+        走 ``evidence_not_used``（占位路径只合并证据、没重新生成，不能算恢复）。
+
+        一条都不过 → ``(False, 具体条件名: 细节)``。名字与细节都要给，
+        否则运维只能看到"没恢复"却不知道卡在哪（AGENTS.md 硬规则 8）。
+        """
+        # 0) 空正文：没有结论就谈不上"恢复"，先挡掉（省掉后面的判据）
+        if not str(new_response.content or "").strip():
+            return False, "empty_reresponse_content"
+
+        # 1) Self-RAG 复评（最可信）
+        revalidation_error = ""
+        if self._revalidator is not None:
+            try:
+                revalidation = await self._revalidator(new_response)
+            except Exception as exc:
+                logger.warning(
+                    "crag_revalidation_failed",
+                    error=str(exc),
+                    error_type=type(exc).__name__,
+                    agent=new_response.agent_name,
+                )
+                # "没评成"不等于"评过" —— 不许当通过，继续看后面的判据
+                revalidation = None
+                revalidation_error = f"revalidation_error: {type(exc).__name__}"
+            if revalidation is not None:
+                if bool(getattr(revalidation, "passed", False)):
+                    return True, "revalidation_passed"
+                return False, (
+                    "revalidation_failed: "
+                    f"score={getattr(revalidation, 'score', None)} "
+                    f"reason={getattr(revalidation, 'reason', '') or '-'}"
+                )
+
+        # 2) 检索分数阈值（仅当显式开启）
+        if self._min_evidence_score > 0.0:
+            scores = [_chunk_score(chunk) for chunk in new_evidence]
+            scores = [s for s in scores if s is not None]
+            if not scores:
+                # 有块但一个分数都拿不到 → 无法验证，不许当成通过
+                return False, "score_below_threshold: no_scores_available"
+            best = max(scores)
+            if best < self._min_evidence_score:
+                return False, (
+                    f"score_below_threshold: best={best:.4f} < "
+                    f"{self._min_evidence_score}"
+                )
+            return True, f"score_ok: best={best:.4f}"
+
+        # 3) 新证据是否真的被 specialist 引用（**合并前**的那批）
+        if citated is None:
+            # 占位路径：没有重新生成，只有"证据被并进列表"这件事。
+            # **不能**据此声称"质量已校验" —— 但也无法证伪（检索确实变了、
+            # 证据确实多了一条）。故保持既有的 recovered=True 语义，
+            # 用 quality_checked=False + 明确 reason 把"未校验"讲清楚：
+            # 调用方（FusionResult.crag_recovered + CRAGResult.quality_checked）
+            # 能分辨"真的重生成并通过质量门"与"仅合并证据"。
+            return True, (
+                "unverified_placeholder_evidence_only: specialist not reinvoked, "
+                "quality cannot be verified"
+            )
+        new_ids = {
+            str(getattr(chunk, "chunk_id", "") or "") for chunk in new_evidence
+        }
+        new_ids.discard("")
+        overlap = new_ids & {str(chunk_id) for chunk_id in citated}
+        if overlap:
+            return True, f"evidence_used: {len(overlap)}/{len(new_ids)}"
+        detail = f" ({revalidation_error})" if revalidation_error else ""
+        return False, (
+            f"evidence_not_used: none of {len(new_ids)} new chunk(s) cited by "
+            f"the regenerated specialist response{detail}"
         )
 
     # ------------------------------------------------------------------
@@ -387,6 +600,13 @@ class CRAGHandler:
             )
             result = await self._rag_service.retrieve(retrieval_request)  # type: ignore[union-attr]
             chunks = [sc.chunk for sc in (result.chunks or [])]
+            # A.88 T5-6：把检索分数带下去 —— 恢复质量判据要按分数判定，
+            # 而 `ScoredChunk.chunk` 本身不带分数。写进 metadata 而不是另造
+            # 一个新结构：调用方（重生成、留痕）都不必改。
+            for scored in result.chunks or []:
+                meta = getattr(scored.chunk, "metadata", None)
+                if isinstance(meta, dict) and "retrieval_score" not in meta:
+                    meta["retrieval_score"] = float(getattr(scored, "score", 0.0) or 0.0)
             return chunks, False
         except Exception as exc:
             self._last_retrieval_error = exc
@@ -419,6 +639,7 @@ class CRAGHandler:
         original: AgentResponse,
         new_evidence: list[KnowledgeChunk],
         request: FusionRequest,
+        citation_sink: dict[str, Any] | None = None,
     ) -> tuple[AgentResponse, bool]:
         """基于新证据构造新响应。
 
@@ -428,6 +649,15 @@ class CRAGHandler:
 
         设计文档 02-核心流程与知识库.md:222：
         > Self-RAG 重试：每次仅重新执行**生成与质检**，复用首次检索与校验结果
+
+        Args:
+            citation_sink: **A.88 T5-6** 出参（可选）。函数会把"specialist
+                **自己**重新生成时引用了哪些 chunk"写进 ``citation_sink["cited"]``。
+                为什么需要它：返回的 ``final_response.evidence_chunk_ids`` 是
+                **三方合并**后的（旧 + 新 + 重生成），新证据必然在里面 ——
+                拿它判断"新证据有没有被用上"永远为真，等于没判。
+                用出参而不是返回值，是为了不改既有 2 元组契约（有调用方按
+                2 元组解包）。
 
         Returns:
             ``(new_response, specialist_reinvoked)``。
@@ -445,6 +675,12 @@ class CRAGHandler:
                         request=request,
                     )
                 )
+                if citation_sink is not None:
+                    # 记录 **specialist 自己** 引用的（合并前），供质量校验用
+                    citation_sink["cited"] = [
+                        str(chunk_id)
+                        for chunk_id in (new_response.evidence_chunk_ids or [])
+                    ]
                 # 校验重新调用的响应：保留 specialist 决策权
                 # 三方合并：原 evidence + 新 evidence + specialist 输出 evidence
                 # 避免丢失原 evidence（specialist 重新生成时可能不引用旧 chunk）
@@ -464,10 +700,7 @@ class CRAGHandler:
                     content=new_response.content,
                     confidence=new_response.confidence,
                     evidence_chunk_ids=final_evidence,
-                    reasoning_trace=list(new_response.reasoning_trace or [])
-                    + [
-                        f"crag_reinvoked_with_{len(new_evidence)}_new_chunks",
-                    ],
+                    reasoning_trace=[*list(new_response.reasoning_trace or []), f"crag_reinvoked_with_{len(new_evidence)}_new_chunks"],
                     latency_ms=new_response.latency_ms,
                     needs_review=new_response.needs_review,
                     disease_code=new_response.disease_code,

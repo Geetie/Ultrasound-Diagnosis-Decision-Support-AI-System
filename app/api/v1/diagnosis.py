@@ -35,6 +35,7 @@ from app.models.schemas import (
     DiagnosisResult,
     DifferentialDiagnosis,
     FusionStatus,
+    HallucinationSeverity,
     MalignancyRisk,
     Measurement,
     MultiOrganDiagnosisRequest,
@@ -46,7 +47,7 @@ from app.models.schemas import (
     RoutingConfirmationRequest,
     RoutingConfirmationResponse,
 )
-from app.security.auth import get_current_active_user
+from app.security.auth import PermissionChecker, get_current_active_user
 from app.services.admission_control import check_diagnosis_admission
 from app.services.diagnosis_pipeline import get_routing_router
 from app.services.diagnosis_worker import enqueue_diagnosis
@@ -75,6 +76,44 @@ IDEMPOTENCY_TTL_SECONDS = 600
 RESULT_TIMEOUT_SECONDS = int(
     getattr(settings, "result_read_timeout_seconds", 180)
 )
+
+
+def _hallucination_severity_of(
+    fusion_payload: object,
+) -> "HallucinationSeverity | None":
+    """从落库的 ``findings.fusion_result`` 取幻觉严重度（A.88）。
+
+    ## 为什么必须区分「未评估」与「评估过且干净」
+
+    ``HallucinationSeverity`` 只有 ``severe/moderate/mild`` 三个值 —— **没有
+    "clean/none"**。所以 `None` 是**双义**的：既可能是"没跑检测"，也可能是
+    "跑了、没检出问题"。把两者混成一个 `None` 就是又一次"把没检查过写成通过"
+    （与 ``quality_control`` 里被批准的保守 ``False`` 同族）。
+
+    因此本函数只回答"**该字段该填什么**"，而"有没有跑过"由同级的
+    ``hallucination_checked`` 显式承载（管线写入，前端/审计读它）：
+      * ``hallucination_checked`` 不是 True → 未评估 → 返回 None；
+      * 已评估且给出可识别取值 → 归一为枚举；
+      * 已评估但干净 / 取值不可识别 → None（**不可识别时不猜**，并把原始值
+        记进日志，避免"写错了但也看不出来"）。
+    """
+    if not isinstance(fusion_payload, dict) or not fusion_payload:
+        return None
+    if fusion_payload.get("hallucination_checked") is not True:
+        return None
+
+    raw = fusion_payload.get("hallucination_severity")
+    if raw is None:
+        return None
+    text = str(raw).strip().lower()
+    if not text:
+        return None
+    try:
+        return HallucinationSeverity(text)
+    except ValueError:
+        # 未识别取值：不猜（猜成 mild 等于凭空减轻一条质检结论），只留痕。
+        logger.warning("hallucination_severity_unrecognized", raw=str(raw)[:40])
+        return None
 
 
 def _generate_request_id() -> str:
@@ -199,6 +238,9 @@ async def submit_diagnosis_request(
     session_repo=Depends(get_session_repo),
     audit_service=Depends(get_audit_service),
     current_user: dict | None = Depends(get_current_active_user),
+    # A.88 权限接线②：``submit_diagnosis`` 权限位（此前 PERMISSIONS 零生产调用）。
+    # 只插入依赖参数，下面的函数体一行未改。
+    _perm: dict = Depends(PermissionChecker("submit_diagnosis")),
 ):
     client_ip = fastapi_request.client.host if fastapi_request.client else "unknown"
     user_id = _get_user_id_from_request(fastapi_request)
@@ -551,6 +593,8 @@ async def submit_multi_organ_diagnosis(
     consent_repo=Depends(get_consent_repo),
     audit_service=Depends(get_audit_service),
     current_user: dict | None = Depends(get_current_active_user),
+    # A.88 权限接线②：多器官会话同样是"提交判读"，用同一权限位。
+    _perm: dict = Depends(PermissionChecker("submit_diagnosis")),
 ):
     """T-GB-AGT-01：会话级多器官联合诊断（三器官串行 + 部分完成）。
 
@@ -578,9 +622,20 @@ async def submit_multi_organ_diagnosis(
             per_organ_timeout_s=request.per_organ_timeout_seconds,
             total_timeout_s=request.total_timeout_seconds,
             response_tier=request.response_tier,
+            # A.88：临床事实随请求上行（此前该请求体没有这些字段 → 只能从会话
+            # 已有请求继承；若本会话从未发过单器官请求，医生填的临床信息与
+            # 勾选的禁忌条件就进不了安全网关）。用 model_dump 而不是直接传
+            # Pydantic 对象：orchestrator 与 create_request 都按 dict 处理。
+            clinical_text=request.clinical_text,
+            patient_context=(
+                request.patient_context.model_dump()
+                if request.patient_context is not None
+                else None
+            ),
+            image_ids=request.image_ids,
         )
     except SessionNotFoundError as exc:
-        raise NotFoundException(error_message=str(exc))
+        raise NotFoundException(error_message=str(exc)) from exc
 
     actor_id = get_actor_id(current_user)
     await audit_service.log_action(
@@ -612,6 +667,9 @@ async def submit_multi_organ_diagnosis(
         needs_review_organs=outcome.needs_review_organs,
         partial=outcome.partial,
         total_ms=outcome.total_ms,
+        # A.88：跨器官融合结果（冲突检测 + 跨器官一致性）随响应返回；
+        # 空 dict = 未执行/无融合引擎，绝不用"无冲突"冒充"没跑"。
+        cross_organ=outcome.cross_organ,
     )
 
 
@@ -624,6 +682,8 @@ async def get_diagnosis_result(
     consent_repo=Depends(get_consent_repo),
     session_repo=Depends(get_session_repo),
     current_user: dict | None = Depends(get_current_active_user),
+    # A.88 权限接线②：``view_results`` 权限位（质控管理员/急诊医生也能看）。
+    _perm: dict = Depends(PermissionChecker("view_results")),
 ):
     cache_key = RedisKey.diagnosis_result(request_id)
     cached = await RedisPool.get_with_error(cache_key)
@@ -646,10 +706,17 @@ async def get_diagnosis_result(
         return DiagnosisResult(
             request_id=request_id,
             status="cancelled",
-            consistency_flag=ConsistencyFlag.CONSISTENT,
+            # A.88 A3：cancelled = **一致性校验根本没跑**（请求在融合/校验之前
+            # 就被撤回取消，管线直接写终态）。原写 CONSISTENT 是把"未评估"说成
+            # "一致" —— 与 `quality_control` 里被批准的保守 False 是同一族问题的
+            # 两个方向：那里"未评估→不得声称通过"，这里"未评估→不得声称一致"。
+            # schema 允许 `ConsistencyFlag | None`，故给 None（不编造）。
+            consistency_flag=None,
             desensitization_status=DesensitizationStatus.FULL,
             consent_status_at_output=ConsentStatus.WITHDRAWN,
-            fusion_status=FusionStatus.NORMAL,
+            # A.88 A3：同理，本分支没有 findings.fusion_result（连 findings 都
+            # 没有，payload 是占位），融合层未产出 → BYPASSED，而非 NORMAL。
+            fusion_status=FusionStatus.BYPASSED,
             diagnosis={
                 "organ": result.organ,
                 "findings": "Diagnosis cancelled: patient consent withdrawn",
@@ -668,6 +735,8 @@ async def get_diagnosis_result(
             requires_manual_review=True,
             review_reason="consent_withdrawn_cancelled",
             ai_diagnosis_failed=False,
+            # A.88 A3：`hallucination_severity` **无生产者**（仓库内没有任何
+            # 模块产出幻觉严重度），任何取值都是编造；保持 None 直到真有生产者。
             hallucination_severity=None,
             version_compatibility=check_version_compatibility(
                 settings.resolved_model_version, settings.rag_kb_version
@@ -781,13 +850,44 @@ async def get_diagnosis_result(
     # 否则 R3"同器官连续失败"窗口永远不会被写入。
     ai_diagnosis_failed = result_status in ("failed", "timeout")
 
+    # ── A.88 A3：三个对外字段从**真实信号**推导（此前是硬编码常量）──────
+    #
+    # 原写法 `consistency_flag=CONSISTENT` / `fusion_status=NORMAL` 的危害不是
+    # "少了个功能"，而是**对外表达了错误的事实**：一致性校验在生产上一次都没
+    # 跑过（既往诊断从未接线、标准档指南对比拿不到 chunk），契约却始终声明
+    # "一致"；融合层失败降级时也照样声明 "normal"。医生据此会跳过复核。
+    has_fusion_result = isinstance(fusion_payload, dict) and bool(fusion_payload)
+    fusion_status = FusionStatus.NORMAL if has_fusion_result else FusionStatus.BYPASSED
+
+    if has_fusion_result:
+        # "比过没有"读的是融合层写下的两个真实布尔（A3 在管线侧新增）；
+        # 缺失/类型不对一律视为**未评估**，不猜。
+        compared_prior = fusion_payload.get("compared_with_prior") is True
+        compared_guidelines = fusion_payload.get("compared_with_guidelines") is True
+        evaluated = compared_prior or compared_guidelines
+        if evaluated:
+            severity = fusion_payload.get("consistency_severity")
+            consistency_flag = (
+                ConsistencyFlag.INCONSISTENT
+                if severity == "critical"
+                else ConsistencyFlag.CONSISTENT
+            )
+        else:
+            # 没有任何一路真的比过 → 不得声明 consistent（schema 允许 None）
+            consistency_flag = None
+    else:
+        # 连融合结果都没有（worker 未写入 / 占位 payload）→ 未评估
+        consistency_flag = None
+
     diagnosis_result = DiagnosisResult(
         request_id=request_id,
         status="completed" if result_status == "completed" else result_status,
-        consistency_flag=ConsistencyFlag.CONSISTENT,
+        # A.88 A3：见上方推导（未评估 → None；只有真比过才给 consistent/inconsistent）
+        consistency_flag=consistency_flag,
         desensitization_status=desensitization_status,
         consent_status_at_output=consent_status_at_output,
-        fusion_status=FusionStatus.NORMAL,
+        # A.88 A3：有 findings.fusion_result → NORMAL，否则 BYPASSED
+        fusion_status=fusion_status,
         diagnosis=diagnosis_payload,
         **clinical_attribute_fields(diagnosis_payload),
         # 分割旁路：findings 顶层的 segmentation（不进 clinical_attributes——
@@ -816,7 +916,16 @@ async def get_diagnosis_result(
         requires_manual_review=requires_manual_review,
         review_reason=review_reason,
         ai_diagnosis_failed=ai_diagnosis_failed,
-        hallucination_severity=None,
+        # A.88：`hallucination_severity` 现在**有生产者**了 ——
+        # 管线在 FULL 档跑幻觉检测并把结果写进 `findings.fusion_result`
+        # （`hallucination_severity` / `hallucination_checked` / `hallucination_reason`）。
+        # 读取口径（三条都必须区分开，否则又回到"未评估写成通过"）：
+        #   * `hallucination_checked` 不为 True → **未评估** → None（不编造）；
+        #   * 已评估且有 severity 字符串 → 归一为枚举；
+        #   * 已评估且干净（severity 缺省/None）→ None（"没有幻觉问题"在契约里
+        #     没有独立取值，`HallucinationSeverity` 只有 severe/moderate/mild，
+        #     故用 None 表示"未检出" —— 前端据 `quality_control` 区分展示）。
+        hallucination_severity=_hallucination_severity_of(fusion_payload),
         # T-G1-DATA-02：按兼容矩阵真实计算，不再是恒为 "compatible" 的占位值
         version_compatibility=check_version_compatibility(
             model_version, knowledge_base_version

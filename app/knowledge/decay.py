@@ -239,6 +239,123 @@ async def record_retrieval_references(chunk_ids: Sequence[str]) -> int:
         return 0
 
 
+# ----------------------------------------------------------------------
+# 调度接线（A.88 T4-③）
+# ----------------------------------------------------------------------
+#
+# ## 修的缺陷
+#
+# ``apply_decay`` 此前**只被测试调用**（架构真相 §3.3：时效衰减调度无调用方）
+# → 库里 ``confidence_score`` 恒为入库默认 1.0，衰减这条能力整体是壳。
+#
+# ## 为什么调度点放在检索侧（而不是起一个 APScheduler）
+#
+# 本仓库没有进程内的定时任务框架（``app/services`` 里那些 ``create_task`` 都是
+# 长驻循环/一次性旁路）。为一个"每天跑一次"的幂等 UPDATE 去引入调度器 + 生命周期
+# 管理，成本远高于收益；而**检索侧本来就每请求都过一遍**，加一次"今天跑过没有"
+# 的内存判断即可。
+#
+# 代价（必须写清）：只在**有判读流量**时才会衰减。没有流量的部署需要人工/运维
+# 定时调用 ``run_scheduled_decay``（下面的 CLI 用法）。这不是"纯定时"，但比"永远
+# 不跑"强，且不引入新的常驻组件与停机语义。
+#
+# ## 三条硬约束
+#
+# 1. **失败不阻断检索**：任何异常只记 warning 并返回 0（调用方不需要 try）；
+# 2. **幂等 + 节流**：``_DECAY_INTERVAL_SECONDS`` 内只真跑一次，避免每请求一次
+#    全表 UPDATE；节流状态是进程内的（多副本各跑一次，UPDATE 本身幂等，无副作用）；
+# 3. **留痕命中条数**：``apply_decay`` 已有 ``knowledge_decay_applied``，这里再加
+#    一条带 ``trigger`` 的日志，能区分"定时跑到"与"运维手动跑到"。
+
+#: 两次自动衰减之间的最小间隔（秒）。默认 24h；可用环境变量覆盖（便于运维调试）。
+_DECAY_INTERVAL_SECONDS_DEFAULT = 24 * 3600
+_ENV_DECAY_INTERVAL = "UAI_KNOWLEDGE_DECAY_INTERVAL_SECONDS"
+
+#: 上次自动衰减的单调时刻（进程内节流状态；None = 本进程还没跑过）。
+_last_decay_at: float | None = None
+
+
+def decay_interval_seconds() -> float:
+    """自动衰减的最小间隔（秒）。环境变量非法/非正时回退默认值并留痕。"""
+    import os
+
+    raw = os.environ.get(_ENV_DECAY_INTERVAL)
+    if not raw:
+        return float(_DECAY_INTERVAL_SECONDS_DEFAULT)
+    try:
+        value = float(raw)
+    except (TypeError, ValueError):
+        logger.warning("knowledge_decay_interval_invalid", raw=raw)
+        return float(_DECAY_INTERVAL_SECONDS_DEFAULT)
+    if value <= 0:
+        logger.warning("knowledge_decay_interval_non_positive", raw=raw)
+        return float(_DECAY_INTERVAL_SECONDS_DEFAULT)
+    return value
+
+
+def reset_decay_schedule_for_tests() -> None:
+    """仅供单测重置节流状态（生产不调用）。"""
+    global _last_decay_at
+    _last_decay_at = None
+
+
+def should_run_decay(now_monotonic: float | None = None) -> bool:
+    """节流判定：距上次自动衰减是否已过 ``decay_interval_seconds()``。纯函数式判断。"""
+    import time
+
+    if _last_decay_at is None:
+        return True
+    current = now_monotonic if now_monotonic is not None else time.monotonic()
+    return current - _last_decay_at >= decay_interval_seconds()
+
+
+async def run_scheduled_decay(
+    *, trigger: str = "scheduled", force: bool = False, now: datetime | None = None
+) -> int:
+    """跑一次衰减（自带会话）；返回更新行数。**永不抛异常**。
+
+    Args:
+        trigger: 触发来源（写进日志，区分 ``retrieval`` / ``scheduled`` / ``ops``）。
+        force: 跳过节流（运维手动调用时用）。
+        now: 注入当前时间（测试用）。
+
+    Returns:
+        被更新的行数；跳过或失败时 ``0``。
+    """
+    global _last_decay_at
+    import time
+
+    if not force and not should_run_decay():
+        return 0
+    started = time.monotonic()
+    try:
+        from app.config.database import AsyncSessionLocal
+
+        async with AsyncSessionLocal() as session:
+            updated = await apply_decay(session, now=now)
+            commit = getattr(session, "commit", None)
+            if commit is not None:
+                await commit()
+    except Exception as exc:
+        logger.warning(
+            "knowledge_decay_run_failed",
+            trigger=trigger,
+            error=str(exc),
+            error_type=type(exc).__name__,
+        )
+        return 0
+    # 只有真跑成功才更新节流时刻：失败后下一次请求可以重试。
+    _last_decay_at = time.monotonic()
+    logger.info(
+        "knowledge_decay_scheduled_run",
+        trigger=trigger,
+        updated=updated,
+        elapsed_ms=round((time.monotonic() - started) * 1000.0, 2),
+        interval_s=decay_interval_seconds(),
+    )
+    return updated
+
+
 def idle_deadline(now: datetime | None = None) -> datetime:
     """空闲判定线（便于导出给看板/告警用）。"""
     return _as_aware(now or datetime.now(timezone.utc)) - timedelta(days=IDLE_DECAY_DAYS)

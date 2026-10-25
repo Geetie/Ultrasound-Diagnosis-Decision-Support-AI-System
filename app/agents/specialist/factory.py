@@ -59,7 +59,9 @@ DEFAULT_ORGAN_THRESHOLDS: dict[str, float] = {
 # ----------------------------------------------------------------------
 
 
-async def load_organ_thresholds() -> dict[
+async def load_organ_thresholds(
+    source: dict[str, Any] | None = None,
+) -> dict[
     str, tuple[float, dict[str, float]]
 ]:
     """从 OrganDiseaseThreshold 表加载器官级/病种级置信度阈值。
@@ -69,6 +71,12 @@ async def load_organ_thresholds() -> dict[
     - 按 ``organ`` 分组，每个 organ 取 ``disease_type IS NULL`` 的行
       作为器官级阈值，其他作为病种级阈值（``{disease_type: threshold}``）；
     - DB 不可用时降级为 :data:`DEFAULT_ORGAN_THRESHOLDS`，不抛异常。
+
+    Args:
+        source: 可选的**出参**字典（A.88）。填入
+            ``{"source": "database"|"defaults", "reason": str|None}``，
+            供 lifespan 把"阈值到底来自 DB 还是硬编码、为什么"写进启动日志。
+            不传时行为与改动前完全一致（纯返回值）。
 
     Returns:
         ``{organ_value: (organ_threshold, {disease_type: threshold})}``
@@ -105,6 +113,9 @@ async def load_organ_thresholds() -> dict[
             ),
             organs=list(result_map.keys()),
         )
+        if source is not None:
+            source["source"] = "database"
+            source["reason"] = None
         return result_map
     except Exception as exc:
         # DB 不可用 → 降级为默认硬编码阈值（warning 即可，不阻塞启动）
@@ -113,6 +124,11 @@ async def load_organ_thresholds() -> dict[
             error=str(exc),
             error_type=type(exc).__name__,
         )
+        if source is not None:
+            # 真实原因（异常类型 + 文本），不写死一句通用文案 —— 否则
+            # "表里没数据"和"PG 连不上"在日志里无法区分（AGENTS.md 硬规则 8）。
+            source["source"] = "defaults"
+            source["reason"] = f"{type(exc).__name__}: {exc}"
         return {
             organ: (threshold, {})
             for organ, threshold in DEFAULT_ORGAN_THRESHOLDS.items()
@@ -243,6 +259,7 @@ def _build_placeholder_dispatcher() -> DispatcherAgentImpl:
 async def build_dispatcher_with_thresholds(
     inference_engine: InferenceEngine | None,
     knowledge_agent: KnowledgeAgent | None,
+    threshold_source: dict[str, Any] | None = None,
     **kwargs: Any,
 ) -> DispatcherAgentImpl:
     """异步便捷方法：先加载阈值再构建 dispatcher（**lifespan 调用入口**）。
@@ -261,13 +278,16 @@ async def build_dispatcher_with_thresholds(
     Args:
         inference_engine: 底层 LLM 推理引擎。
         knowledge_agent: 知识查询智能体。
+        threshold_source: 可选出参字典（A.88），被填入
+            ``{"source": "database"|"defaults", "reason": str|None}``，
+            让调用方能把"阈值来自 DB 还是硬编码、为什么"写进启动日志。
         **kwargs: 透传给 :func:`build_dispatcher`（``use_placeholder_on_missing`` /
             ``rag_top_k`` / ``max_tokens``）。
 
     Returns:
         已注入 specialist 的 dispatcher。
     """
-    organ_thresholds = await load_organ_thresholds()
+    organ_thresholds = await load_organ_thresholds(source=threshold_source)
     return build_dispatcher(
         inference_engine=inference_engine,
         knowledge_agent=knowledge_agent,

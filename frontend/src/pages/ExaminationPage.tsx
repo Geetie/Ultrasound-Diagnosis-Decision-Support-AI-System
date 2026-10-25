@@ -1,3 +1,20 @@
+/**
+ * ⚠️ **已无路由的遗留页面（T7 登记为「待处置」，未删除）**
+ *
+ * 检查主界面已由工作区（`/` → `WorkspaceRoute` → `WorkspacePage`）承载，
+ * 本文件在 `routes.tsx` 里**没有任何 path 指向它**。
+ *
+ * 为什么保留而不删（AGENTS.md：不删既有死代码，要删先说明）：
+ *   1. `pages/__tests__/DiagnosisFlowWiring.test.ts` 仍以本文件为断言对象之一
+ *      （「提交成功后把 request_id 带进结果页」的源码级回归守卫），
+ *      删文件就等于删掉那条回归腿；
+ *   2. 本文件是**唯一**演示 `useSession` + DICOM 上传 + 单次判读提交三者直连的
+ *      最小完整例子，排查"上传→提交"链路时可当对照实现；
+ *   3. ⚠️ 注意：它仍 `navigate(\`/diagnosis?request_id=\`)`，而该路由已删 ——
+ *      也就是**若将来恢复本页路由，这条跳转会立刻变成死链**。
+ *      保留它反而把这个问题留在明面上（删文件会让隐患一起消失、无从提醒）。
+ * 处置建议：与 `DiagnosisPage.tsx` 一并处置；恢复路由前必须先改掉这条跳转。
+ */
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { Button, Card, Space, Typography, Upload, message, Select } from 'antd';
 import { UploadOutlined, ApiOutlined } from '@ant-design/icons';

@@ -32,6 +32,11 @@ def cases_filter(scope: str, patient_id: str | None, organ: str | None) -> dict 
 
     * `self`：**必须**按 `patient_id` 过滤（缺 patient_id 就不查，绝不退化成全库）；
     * `deidentified`：按器官过滤（跨病人，需显式开启）。
+
+    ⚠️ 传进来的 ``patient_id`` 必须**已经**是假名（见
+    :func:`scope_patient_id`）：影像向量的 payload 由 ``dicom_images.patient_id``
+    生成，而那一列自 A.88 起是带盐假名（原始 DICOM PatientID 不落库、不落盘）。
+    拿真实 ID 来过滤会**永空**——表现为"相似病例突然全无"，而不是报错。
     """
     if scope == "self":
         pid = str(patient_id or "").strip()
@@ -41,6 +46,23 @@ def cases_filter(scope: str, patient_id: str | None, organ: str | None) -> dict 
     if scope == "deidentified":
         return {"organ": organ} if organ else None
     return None
+
+
+def scope_patient_id(scope: str, patient_id: str | None) -> str | None:
+    """把**真实** patient_id 换成检索用的同一套假名。纯函数（守卫钉住）。
+
+    为什么需要这一层（A.88 改法的必然配套）：写入侧（``dicom_images.patient_id``
+    → 向量 payload）与查询侧（本文件被 ``diagnosis_pipeline`` 调用时传的是
+    ``DiagnosisSession.patient_id``，即真实 ID）**必须是同一个值**，否则
+    `scope="self"` 过滤永远命中不到自己的历史影像 —— 门禁修好了、聚合却断了。
+
+    只有 ``self`` 需要换（跨病人 ``deidentified`` 按器官过滤，与本值无关）。
+    """
+    if scope != "self":
+        return patient_id
+    from app.services.dicom_storage import pseudonymize_patient_id
+
+    return pseudonymize_patient_id(patient_id) or None
 
 
 def date_of(image_id: str, meta: dict | None = None) -> str | None:
@@ -102,7 +124,7 @@ async def find_similar_cases(
     """查相似病例。**永不抛异常**，失败返回 `status="unavailable"`。"""
     from app.config.settings import settings
 
-    flt = cases_filter(scope, patient_id, organ)
+    flt = cases_filter(scope, scope_patient_id(scope, patient_id), organ)
     if flt is None:
         return {
             "status": "skipped",
@@ -277,5 +299,6 @@ __all__ = [
     "find_similar_cases",
     "frame_png_of",
     "public_case",
+    "scope_patient_id",
     "summary_of",
 ]

@@ -120,6 +120,8 @@ export default function WorkspaceConclusionBody({
   view,
   onSignNext,
   uploadSlot,
+  multiOrganSlot,
+  organCount,
   progressChars = 0,
   generationPreview = null,
 }: {
@@ -133,6 +135,13 @@ export default function WorkspaceConclusionBody({
   onSignNext?: () => void;
   /** 影像装载入口插槽（WorkspaceImageUpload）。仅 02 扫查态渲染 —— 见组件内说明。 */
   uploadSlot?: ReactNode;
+  /**
+   * 多部位结果插槽（T-GB-AGT-01）。仅在**有多器官数据**时由路由传入 → 默认沉默。
+   * 单部位会话不传，DOM 里就不存在这块。
+   */
+  multiOrganSlot?: ReactNode;
+  /** 多部位会话的部位数（0/省略 = 未知或单部位）。05 态文案按真实计数，不写死 3。 */
+  organCount?: number;
   /** 生成进度（A.43）：processing 期间已生成字符数，0 = 无进度数据。 */
   progressChars?: number;
   /** 安全预览（A.46）：已过段落级 SG 的文本尾部；null = 无预览或 SG 拒绝。 */
@@ -145,7 +154,10 @@ export default function WorkspaceConclusionBody({
       {blocked && (
         <WorkspaceStopAlert level="attention" message={blocked.message} code={blocked.errorCode} />
       )}
-      <ConclusionSwitch state={state} view={view} onSignNext={onSignNext} uploadSlot={uploadSlot} progressChars={progressChars} generationPreview={generationPreview} />
+      <ConclusionSwitch state={state} view={view} onSignNext={onSignNext} uploadSlot={uploadSlot} organCount={organCount} progressChars={progressChars} generationPreview={generationPreview} />
+      {/* 多部位结果的交代（每部位跑成没跑成 + 一致性提示），排在结论之后。
+          它是补充信息，不抢结论区一级的三样（结论 / 恶性风险 / 建议动作）。 */}
+      {multiOrganSlot}
     </>
   );
 }
@@ -211,6 +223,7 @@ function ConclusionSwitch({
   view,
   onSignNext,
   uploadSlot,
+  organCount = 0,
   progressChars,
   generationPreview,
 }: {
@@ -218,6 +231,8 @@ function ConclusionSwitch({
   view?: ConclusionView | null;
   onSignNext?: () => void;
   uploadSlot?: ReactNode;
+  /** 多部位会话的部位数（0 = 未知/单部位）。用于把"3 个部位"从写死改成真实计数。 */
+  organCount?: number;
   progressChars?: number;
   generationPreview?: string | null;
 }) {
@@ -243,9 +258,11 @@ function ConclusionSwitch({
     case 'multi-organ':
       return (
         <>
-          <p className="ws-conclusion__title">等待冻结取图</p>
+          <p className="ws-conclusion__title">多部位判读中</p>
           <p className="ws-conclusion__subtitle">
-            本检查含 3 个部位 · 结论按部位分别给出，部位指示条已出现在影像下方
+            {organCount > 0
+              ? `本检查含 ${organCount} 个部位 · 结论按部位分别给出，逐部位状态见下方`
+              : '结论按部位分别给出，部位指示条已出现在影像下方'}
           </p>
         </>
       );

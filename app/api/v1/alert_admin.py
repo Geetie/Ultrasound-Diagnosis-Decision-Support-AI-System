@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from app.config.redis import RedisPool
 from app.config.redis_keys import RedisKey
 from app.observability.alert_escalation import get_alert_escalation_manager
-from app.security.auth import RoleChecker
+from app.security.auth import PermissionChecker, RoleChecker
 
 router = APIRouter(tags=["alert-admin"])
 
@@ -90,6 +90,13 @@ class SGThresholdUpdateRequest(BaseModel):
 async def publish_sg_threshold_update(
     request: SGThresholdUpdateRequest,
     current_user: dict[str, Any] = _admin_only,
+    # A.88 权限接线②：阈值配置用**权限位**准入（``check_permission``）。
+    # 权限位名 ``configure_sg_thresholds`` 在 PERMISSIONS 里只授给 SYSTEM_ADMIN
+    # —— 与原白名单 `RoleChecker(["SYSTEM_ADMIN"])` **逐字等价**（不放宽）。
+    # 没复用 ``configure_thresholds`` 的理由见 app/security/auth.py 的
+    # ADMIN_PERMISSIONS 注释：那条指的是离线可评审的器官阈值，本条会即时改变
+    # 对患者的放行/拦截行为，属运行期安全决策。
+    _perm: dict[str, Any] = Depends(PermissionChecker("configure_sg_thresholds")),
 ):
     """向 SafetyGateway 阈值更新流（sg:threshold:stream）投递更新消息。
 

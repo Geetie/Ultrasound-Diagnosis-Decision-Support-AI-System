@@ -71,7 +71,7 @@ class TestFeedbackCorrectionL2:
         app.dependency_overrides[get_diagnosis_repo] = lambda: mock_diag_repo
         app.dependency_overrides[get_session_repo] = lambda: mock_sess_repo
         app.dependency_overrides[get_audit_service] = lambda: mock_audit
-        app.dependency_overrides[get_current_active_user] = lambda: {"user_id": "doctor_001", "role": "DOCTOR"}
+        app.dependency_overrides[get_current_active_user] = lambda: {"user_id": "doctor_001", "role": "ULTRASOUND_DOCTOR"}
 
         yield
 
@@ -109,7 +109,7 @@ class TestFeedbackSupplementL2:
         app.dependency_overrides[get_diagnosis_repo] = lambda: mock_diag_repo
         app.dependency_overrides[get_session_repo] = lambda: mock_sess_repo
         app.dependency_overrides[get_audit_service] = lambda: mock_audit
-        app.dependency_overrides[get_current_active_user] = lambda: {"user_id": "doctor_001", "role": "DOCTOR"}
+        app.dependency_overrides[get_current_active_user] = lambda: {"user_id": "doctor_001", "role": "ULTRASOUND_DOCTOR"}
 
         yield
 
@@ -145,7 +145,7 @@ class TestFeedbackNewKnowledgeL2:
         app.dependency_overrides[get_diagnosis_repo] = lambda: mock_diag_repo
         app.dependency_overrides[get_session_repo] = lambda: mock_sess_repo
         app.dependency_overrides[get_audit_service] = lambda: mock_audit
-        app.dependency_overrides[get_current_active_user] = lambda: {"user_id": "doctor_001", "role": "DOCTOR"}
+        app.dependency_overrides[get_current_active_user] = lambda: {"user_id": "doctor_001", "role": "ULTRASOUND_DOCTOR"}
 
         yield
 
@@ -217,7 +217,7 @@ class TestFeedbackRuleChangeNonL3:
         app.dependency_overrides[get_diagnosis_repo] = lambda: mock_diag_repo
         app.dependency_overrides[get_session_repo] = lambda: mock_sess_repo
         app.dependency_overrides[get_audit_service] = lambda: mock_audit
-        app.dependency_overrides[get_current_active_user] = lambda: {"user_id": "doctor_001", "role": "DOCTOR"}
+        app.dependency_overrides[get_current_active_user] = lambda: {"user_id": "doctor_001", "role": "ULTRASOUND_DOCTOR"}
 
         yield
 
@@ -252,7 +252,7 @@ class TestFeedbackDiagnosisNotFound:
         app.dependency_overrides[get_diagnosis_repo] = lambda: mock_diag_repo
         app.dependency_overrides[get_session_repo] = lambda: mock_sess_repo
         app.dependency_overrides[get_audit_service] = lambda: mock_audit
-        app.dependency_overrides[get_current_active_user] = lambda: {"user_id": "doctor_001", "role": "DOCTOR"}
+        app.dependency_overrides[get_current_active_user] = lambda: {"user_id": "doctor_001", "role": "ULTRASOUND_DOCTOR"}
 
         yield
 
@@ -287,7 +287,7 @@ class TestFeedbackIdempotencyCacheHit:
         app.dependency_overrides[get_diagnosis_repo] = lambda: mock_diag_repo
         app.dependency_overrides[get_session_repo] = lambda: mock_sess_repo
         app.dependency_overrides[get_audit_service] = lambda: mock_audit
-        app.dependency_overrides[get_current_active_user] = lambda: {"user_id": "doctor_001", "role": "DOCTOR"}
+        app.dependency_overrides[get_current_active_user] = lambda: {"user_id": "doctor_001", "role": "ULTRASOUND_DOCTOR"}
 
         yield
 
@@ -335,7 +335,7 @@ class TestFeedbackIdempotencyTTL:
         app.dependency_overrides[get_diagnosis_repo] = lambda: mock_diag_repo
         app.dependency_overrides[get_session_repo] = lambda: mock_sess_repo
         app.dependency_overrides[get_audit_service] = lambda: mock_audit
-        app.dependency_overrides[get_current_active_user] = lambda: {"user_id": "doctor_001", "role": "DOCTOR"}
+        app.dependency_overrides[get_current_active_user] = lambda: {"user_id": "doctor_001", "role": "ULTRASOUND_DOCTOR"}
 
         yield
 
@@ -387,7 +387,7 @@ class TestFeedbackAttachToLatestDiagnosisOfSession:
         app.dependency_overrides[get_diagnosis_repo] = lambda: self.diag_repo
         app.dependency_overrides[get_session_repo] = lambda: _mock_session_repo()
         app.dependency_overrides[get_audit_service] = lambda: _mock_audit_service()
-        app.dependency_overrides[get_current_active_user] = lambda: {"user_id": "doctor_001", "role": "DOCTOR"}
+        app.dependency_overrides[get_current_active_user] = lambda: {"user_id": "doctor_001", "role": "ULTRASOUND_DOCTOR"}
 
         yield
 

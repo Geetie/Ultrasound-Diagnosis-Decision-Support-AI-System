@@ -1,3 +1,21 @@
+/**
+ * ⚠️ **已无路由的遗留页面（T7 登记为「待处置」，未删除）**
+ *
+ * 17-§5 裁定 4：`frontend/src/app/routes.tsx` 里**没有** `path="/diagnosis"`
+ * （`*` 兜底会把访问弹回 `/`）。三块能力已迁入检查工作区：
+ *   · LoadingPhase / timeout / error → `hooks/useWorkspaceFlow` 的 `phase`
+ *   · useProgressiveDiagnosis（结论先落地）→ `pollDiagnosisResult`
+ *   · reviewAcknowledged（已人工核验）→ `flow.confirm()` / `flow.acknowledged`
+ *
+ * 为什么保留而不删（AGENTS.md：不删既有死代码，要删先说明）：
+ *   1. 本文件里的 EvidenceTrace / MeasurementTable / DifferentialDiagnosisList /
+ *      QualityControlBadge 等组件**仍被别处使用**，删页面会顺手断掉那些引用；
+ *   2. 它是「多请求结果页」的唯一完整实现，而工作区当前只承载单次判读，
+ *      将来若要做"一次检查多请求并列"，这里的取数/降级逻辑是可复用参照；
+ *   3. `pages/__tests__/DiagnosisFlowWiring.test.ts` 仍在断言本文件的轮询契约
+ *      （request_id 不得再写成无 setter 的 useState），删掉会同时抹掉那条回归守卫。
+ * 处置建议：待工作区完全覆盖上述能力后，连同相应测试一并删除（需先说明）。
+ */
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, Typography, Button, Spin, Empty, Progress, Tag } from 'antd';

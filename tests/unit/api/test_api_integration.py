@@ -29,7 +29,7 @@ class TestSessionEndpointsIntegration:
         app.dependency_overrides[get_session_repo] = lambda: mock_session_repo
         app.dependency_overrides[get_consent_repo] = lambda: mock_consent_repo
         app.dependency_overrides[get_audit_service] = lambda: mock_audit_service
-        app.dependency_overrides[get_current_active_user] = lambda: {"user_id": "test_user", "role": "doctor"}
+        app.dependency_overrides[get_current_active_user] = lambda: {"user_id": "test_user", "role": "ULTRASOUND_DOCTOR"}
 
         yield {
             "consent_repo": mock_consent_repo,
@@ -121,7 +121,7 @@ class TestDiagnosisEndpointsIntegration:
         app.dependency_overrides[get_consent_repo] = lambda: mock_consent_repo
         app.dependency_overrides[get_session_repo] = lambda: mock_session_repo
         app.dependency_overrides[get_audit_service] = lambda: mock_audit_service
-        app.dependency_overrides[get_current_active_user] = lambda: {"user_id": "test_user", "role": "doctor"}
+        app.dependency_overrides[get_current_active_user] = lambda: {"user_id": "test_user", "role": "ULTRASOUND_DOCTOR"}
 
         yield {
             "diagnosis_repo": mock_diagnosis_repo,
@@ -247,7 +247,7 @@ class TestDICOMEndpointsIntegration:
 
         app.dependency_overrides[get_session_repo] = lambda: mock_session_repo
         app.dependency_overrides[get_audit_service] = lambda: mock_audit_service
-        app.dependency_overrides[get_current_active_user] = lambda: {"user_id": "test_user", "role": "doctor"}
+        app.dependency_overrides[get_current_active_user] = lambda: {"user_id": "test_user", "role": "ULTRASOUND_DOCTOR"}
 
         try:
 
@@ -311,7 +311,7 @@ class TestDICOMEndpointsIntegration:
 
         app.dependency_overrides[get_session_repo] = lambda: mock_session_repo
         app.dependency_overrides[get_audit_service] = lambda: mock_audit_service
-        app.dependency_overrides[get_current_active_user] = lambda: {"user_id": "test_user", "role": "doctor"}
+        app.dependency_overrides[get_current_active_user] = lambda: {"user_id": "test_user", "role": "ULTRASOUND_DOCTOR"}
 
         try:
             invalid_data = b"not a dicom file"
@@ -356,7 +356,7 @@ class TestDICOMEndpointsIntegration:
 
         app.dependency_overrides[get_session_repo] = lambda: mock_session_repo
         app.dependency_overrides[get_audit_service] = lambda: mock_audit_service
-        app.dependency_overrides[get_current_active_user] = lambda: {"user_id": "test_user", "role": "doctor"}
+        app.dependency_overrides[get_current_active_user] = lambda: {"user_id": "test_user", "role": "ULTRASOUND_DOCTOR"}
 
         try:
 
@@ -418,7 +418,7 @@ class TestDICOMEndpointsIntegration:
 
         app.dependency_overrides[get_session_repo] = lambda: mock_session_repo
         app.dependency_overrides[get_audit_service] = lambda: mock_audit_service
-        app.dependency_overrides[get_current_active_user] = lambda: {"user_id": "test_user", "role": "doctor"}
+        app.dependency_overrides[get_current_active_user] = lambda: {"user_id": "test_user", "role": "ULTRASOUND_DOCTOR"}
 
         try:
 
@@ -547,7 +547,7 @@ class TestDICOMRetrieveIntegration:
         app.dependency_overrides[get_audit_service] = lambda: audit_service
         app.dependency_overrides[get_dicom_image_repo] = lambda: image_repo
         app.dependency_overrides[get_current_active_user] = lambda: {
-            "user_id": "test_user", "role": "doctor",
+            "user_id": "test_user", "role": "ULTRASOUND_DOCTOR",
         }
         return app, audit_service, storage
 
@@ -634,7 +634,7 @@ class TestFeedbackEndpointsIntegration:
         app.dependency_overrides[get_diagnosis_repo] = lambda: mock_diagnosis_repo
         app.dependency_overrides[get_session_repo] = lambda: mock_session_repo
         app.dependency_overrides[get_audit_service] = lambda: mock_audit_service
-        app.dependency_overrides[get_current_active_user] = lambda: {"user_id": "test_user", "role": "doctor"}
+        app.dependency_overrides[get_current_active_user] = lambda: {"user_id": "test_user", "role": "ULTRASOUND_DOCTOR"}
 
         yield {
             "feedback_repo": mock_feedback_repo,
@@ -754,7 +754,7 @@ class TestErrorHandlingIntegration:
         app.dependency_overrides[get_session_repo] = lambda: mock_session_repo
         app.dependency_overrides[get_consent_repo] = lambda: mock_consent_repo
         app.dependency_overrides[get_audit_service] = lambda: mock_audit_service
-        app.dependency_overrides[get_current_active_user] = lambda: {"user_id": "test_user", "role": "doctor"}
+        app.dependency_overrides[get_current_active_user] = lambda: {"user_id": "test_user", "role": "ULTRASOUND_DOCTOR"}
 
         try:
             response = test_client.post(
@@ -847,7 +847,7 @@ class TestDiagnosisResultEndpoint:
 
         app.dependency_overrides[get_db_session] = mock_get_db
         app.dependency_overrides[get_diagnosis_repo] = lambda: mock_diagnosis_repo
-        app.dependency_overrides[get_current_active_user] = lambda: {"user_id": "test_user", "role": "doctor"}
+        app.dependency_overrides[get_current_active_user] = lambda: {"user_id": "test_user", "role": "ULTRASOUND_DOCTOR"}
 
         try:
             response = test_client.get("/api/v1/diagnosis/result/nonexistent")
@@ -920,7 +920,7 @@ class TestDiagnosisResultEndpoint:
         app.dependency_overrides[get_diagnosis_repo] = lambda: mock_diagnosis_repo
         app.dependency_overrides[get_consent_repo] = lambda: mock_consent_repo
         app.dependency_overrides[get_session_repo] = lambda: mock_session_repo
-        app.dependency_overrides[get_current_active_user] = lambda: {"user_id": "test_user", "role": "doctor"}
+        app.dependency_overrides[get_current_active_user] = lambda: {"user_id": "test_user", "role": "ULTRASOUND_DOCTOR"}
 
         mock_sg = AsyncMock()
         mock_sg.check_output = AsyncMock(return_value={
@@ -1010,7 +1010,7 @@ class TestDiagnosisResultEndpoint:
         app.dependency_overrides[get_diagnosis_repo] = lambda: mock_diagnosis_repo
         app.dependency_overrides[get_consent_repo] = lambda: mock_consent_repo
         app.dependency_overrides[get_session_repo] = lambda: mock_session_repo
-        app.dependency_overrides[get_current_active_user] = lambda: {"user_id": "test_user", "role": "doctor"}
+        app.dependency_overrides[get_current_active_user] = lambda: {"user_id": "test_user", "role": "ULTRASOUND_DOCTOR"}
 
         mock_sg = AsyncMock()
         mock_sg.check_output = AsyncMock(return_value={
@@ -1061,7 +1061,7 @@ class TestIdempotencyCacheHit:
         app.dependency_overrides[get_consent_repo] = lambda: mock_consent_repo
         app.dependency_overrides[get_session_repo] = lambda: mock_session_repo
         app.dependency_overrides[get_audit_service] = lambda: mock_audit_service
-        app.dependency_overrides[get_current_active_user] = lambda: {"user_id": "test_user", "role": "doctor"}
+        app.dependency_overrides[get_current_active_user] = lambda: {"user_id": "test_user", "role": "ULTRASOUND_DOCTOR"}
 
         cached_response = {
             "request_id": "req_cached_001",

@@ -83,11 +83,25 @@ async def health_check():
 
     image_leg = await probe_image_leg()
 
+    # A.88：T2a 影像分类旁路的**能力状态**（同上口径：不参与 all_healthy）。
+    # 为什么必须暴露：该能力此前只被审计脚本调用（`scripts/audit/p29_*`），
+    # 生产链一行都没有 —— 于是"离线 AUC 0.8950"容易被误读成"系统能力"。
+    # 接线后仍默认关（未做真机联调），所以"关着"与"开着但服务不可达 / 缺模型"
+    # 必须一眼可分，否则运维会以为"配了就等于生效了"。
+    from app.config.settings import settings as _settings
+    from app.inference.t2a_classifier import probe_t2a_classifier
+
+    t2a_classifier = await probe_t2a_classifier(
+        host=_settings.ultrasound_clip_host,
+        port=_settings.ultrasound_clip_port,
+    )
+
     services = {
         "redis": "healthy" if redis_healthy else "unhealthy",
         "database": "healthy" if db_healthy else "unhealthy",
         "hsm": hsm_status,
         "image_leg": image_leg,
+        "t2a_classifier": t2a_classifier,
         # 仅作信息展示，不参与 all_healthy：缓存不可用时检索仍正确，只是变慢
         "retrieval_cache": (
             cache.health() if cache is not None else {"status": "disabled"}

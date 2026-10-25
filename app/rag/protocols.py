@@ -186,6 +186,14 @@ class RetrievalResult(BaseModel):
         triggered_bm25_fallback: True if the result came from BM25 fallback path.
         latency_ms: Total retrieval latency in milliseconds.
         p99_violation: True if latency exceeded the configured P99 critical threshold.
+        dropped_missing_row: 向量库命中但 PG 无该 chunk_id 而被丢弃的条数（A.88 T4-⑥）。
+            "零静默失败"必须带定语：这不再是一句没日志的 ``continue``，而是有
+            warning 日志 + 计数 + 本字段。>0 说明索引与 PG 不一致（需重建/补写）。
+        image_leg_skip_reason: 本次影像腿未执行/未取到数据的原因码（A.88 T4-①）。
+            空串表示影像腿已执行或不需要执行；具体码见
+            ``app/rag/image_leg.py`` 的 ``IMAGE_SKIP_*`` 与
+            ``app/rag/retriever.py`` 的 ``IMAGE_SKIP_*``。**不写死默认值**：
+            每个分支留自己的原因。
     """
     chunks: list[ScoredChunk] = Field(default_factory=list)
     retrieval_method: RetrievalMethod = RetrievalMethod.HYBRID
@@ -194,6 +202,8 @@ class RetrievalResult(BaseModel):
     triggered_bm25_fallback: bool = False
     latency_ms: float = 0.0
     p99_violation: bool = False
+    dropped_missing_row: int = 0
+    image_leg_skip_reason: str = ""
 
     @property
     def top_score(self) -> float:

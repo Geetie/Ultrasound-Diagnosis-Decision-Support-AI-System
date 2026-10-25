@@ -94,6 +94,29 @@ DEFAULT_MAX_RETRIES = 2
 #: 重试间隔（秒）— 防止 LLM 短时过载
 DEFAULT_RETRY_DELAY = 0.0
 
+
+def _budget_left(deadline: float | None) -> float:
+    """距截止时刻还剩多少秒（``deadline=None`` → ``inf``，即"不限"）。"""
+    if deadline is None:
+        return float("inf")
+    import time
+
+    return deadline - time.monotonic()
+
+
+def _retry_affordable(
+    deadline: float | None,
+    per_attempt_cost_s: float,
+) -> bool:
+    """剩余预算是否够**再打一次**评估 LLM（A.88 T5-5）。
+
+    判据：``剩余时间 > 单次成本估计``（严格大于 —— 刚好相等时延时会踩线）。
+    ``deadline=None`` → 恒 True（旧行为：按 max_retries 重试）。
+    """
+    if deadline is None:
+        return True
+    return _budget_left(deadline) > max(0.0, per_attempt_cost_s)
+
 #: self-evaluation prompt 模板
 _SELF_RAG_PROMPT = """你是一名严谨的超声诊断质检员。请对以下诊断结论做自我评估，按 3 个维度各打 0-5 分。
 
@@ -166,23 +189,44 @@ class SelfRAGEvaluator:
     # 公开 API
     # ------------------------------------------------------------------
 
-    async def evaluate(self, response: AgentResponse) -> SelfRAGEvalResult:
+    async def evaluate(
+        self,
+        response: AgentResponse,
+        *,
+        deadline: float | None = None,
+        per_attempt_cost_s: float = 1.2,
+    ) -> SelfRAGEvalResult:
         """执行 Self-RAG 评估（P1-1 修复：实现最多 max_retries 次重试）。
 
         流程：
         1) 启发式兜底：未配置 LLM → 单次启发式评估（不计重试）；
         2) LLM 自我评估：循环尝试最多 ``max_retries+1`` 次：
            - 单次成功（pass=True）→ 立即返回；
-           - 失败 → 若还有重试机会则重试（间隔 ``retry_delay`` 秒）；
+           - 失败 → 若还有重试机会**且预算允许**则重试（间隔 ``retry_delay`` 秒）；
            - 全部失败 → 返回最后一次的评估结果，``reason`` 包含
              ``retries_exhausted`` 标记，便于 CRAG 识别。
         3) 失败安全：LLM 调用异常 → 单次回退到启发式评估（不重试 LLM）。
 
         Args:
             response: 待评估的 specialist 响应。
+            deadline: **A.88 T5-5 预算截止时刻**（``time.monotonic()`` 口径）。
+                给了就以它为硬边界：剩余时间不够再打一次评估 LLM 就不重试，
+                ``reason`` 里写 ``retry_skipped_budget``。
+                ``None`` = 不设预算（旧行为，按 ``max_retries`` 重试）。
+            per_attempt_cost_s: 单次评估 LLM 调用的**成本估计**（秒）。用于
+                "剩余预算够不够再来一次"的判断。默认 1.2s —— 取 A.51 实测
+                双峰差（1853~2295ms 的峰比 743~783ms 的峰高约 1.11s）向上取整，
+                故意偏保守：**宁可少试一次，也不让重试把 validate 拖出预算**。
 
         Returns:
             :class:`SelfRAGEvalResult`：评估结果（passed / score / 维度分）。
+
+        ## 为什么预算判据是"成本估计"而不是"剩余时间 > 0"
+
+        剩余 50ms 时发起一次 ~1.2s 的调用，等于**必然**被外层 ``wait_for`` 砍掉：
+        这次调用不但白费 GPU，还会把整个 validate 变成 ``validate_degraded``
+        （丢掉 already-computed 的冲突/一致性结论）。提前收手，让"首轮结果"作为
+        结论返回，比"半路被砍、什么都没留下"更好。
 
         Notes:
             CRAG 补充检索不计入 Self-RAG 重试次数（设计文档 02-核心流程 §2.1）：
@@ -267,6 +311,23 @@ class SelfRAGEvaluator:
                 last_result.reason = f"zero_score_no_retry: {reason}"
                 return last_result
             if attempt < max_attempts:
+                # A.88 T5-5：预算判据。剩余时间不够再打一次评估 LLM → 提前收手，
+                # 让首轮结果作为结论返回（见 evaluate 的 docstring）。
+                if not _retry_affordable(deadline, per_attempt_cost_s):
+                    last_result.reason = (
+                        f"retry_skipped_budget: {reason} "
+                        f"(attempts={attempt}, budget_left_s="
+                        f"{_budget_left(deadline):.3f})"
+                    )
+                    logger.info(
+                        "self_rag_retry_skipped_budget",
+                        agent=response.agent_name,
+                        attempt=attempt,
+                        score=total,
+                        budget_left_s=round(_budget_left(deadline), 3),
+                        per_attempt_cost_s=per_attempt_cost_s,
+                    )
+                    return last_result
                 logger.info(
                     "self_rag_retry_scheduled",
                     agent=response.agent_name,

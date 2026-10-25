@@ -37,7 +37,7 @@ from app.embedding.protocols import (
 )
 from app.knowledge.protocols import KnowledgeChunk
 from app.rag.bm25_fallback import BM25Index
-from app.rag.image_leg import warn_once
+from app.rag.image_leg import resolve_image_leg_slot, warn_once
 from app.rag.protocols import (
     RetrievalMethod,
     RetrievalRequest,
@@ -117,6 +117,66 @@ class _Hit:
         self.source = source
 
 
+#: 影像腿未执行的**具体**原因码（AGENTS.md 硬规则 8：每个分支留自己的原因）。
+#: 与 ``app/rag/image_leg.py`` 的能力码刻意区分开：
+#: ``capability_*`` = 这个部署根本没有影像检索能力（配置缺陷）；
+#: ``no_image_data`` = 调用方这次没送字节（请求级问题）。
+IMAGE_SKIP_NO_DATA = "no_image_data"
+IMAGE_SKIP_CLIP_UNAVAILABLE = "clip_service_unavailable"
+IMAGE_SKIP_MULTIMODAL_OFF = "multimodal_disabled"
+IMAGE_SKIP_NO_SESSION_FOR_LEG = "no_session_id"
+
+
+class ImageLegResolution:
+    """``retrieve()`` 解析出的影像腿输入（纯数据，便于单测）。"""
+
+    __slots__ = ("image_data", "image_format", "session_id", "skip_reason")
+
+    def __init__(
+        self,
+        image_data: bytes | None,
+        image_format: str,
+        session_id: str | None,
+        skip_reason: str | None,
+    ):
+        self.image_data = image_data
+        self.image_format = image_format
+        self.session_id = session_id
+        self.skip_reason = skip_reason
+
+
+class _DropTally:
+    """**单次** ``retrieve()`` 内的"PG 缺行"丢弃计数（A.88 T4-⑥）。
+
+    刻意不挂在 ``Retriever`` 实例上：实例是长跑共享的，累加会把"上一次请求
+    的丢弃"算进这一次（结果里那个 ``dropped_missing_row`` 就会说谎）。
+    """
+
+    __slots__ = ("dense", "image")
+
+    def __init__(self) -> None:
+        self.dense = 0
+        self.image = 0
+
+    @property
+    def total(self) -> int:
+        return self.dense + self.image
+
+    def add(self, *, source: RetrievalMethod, count: int) -> None:
+        if count <= 0:
+            return
+        # 影像腿在 ``_safe_image`` 里被标成 DENSE（见该方法的注释）；
+        # 这里按"调用来源"分账，而不是按 retrieval_source 分账。
+        if source == RetrievalMethod.DENSE:
+            self.dense += count
+        else:
+            self.image += count
+
+    def add_image(self, count: int) -> None:
+        if count > 0:
+            self.image += count
+
+
 class Retriever:
     """T-GA-RAG-02 multi-modal parallel retriever.
 
@@ -172,26 +232,42 @@ class Retriever:
         # carry (image leg hits are tagged DENSE inside _safe_image, so the
         # image leg is also keyed under DENSE).
         tasks: list[tuple[RetrievalMethod, asyncio.Future]] = []
+        # A.88 T4-⑥：**单次检索**的丢弃计数（PG 缺行）；挂本地变量而不是实例属性。
+        drop_tally = _DropTally()
         tasks.append((
             RetrievalMethod.DENSE,
-            asyncio.create_task(self._safe_dense(enhanced_query, request)),
+            asyncio.create_task(
+                self._safe_dense(enhanced_query, request, drop_tally)
+            ),
         ))
         if self._bm25 is not None:
             tasks.append((
                 RetrievalMethod.SPARSE,
                 asyncio.create_task(self._safe_sparse(enhanced_query, request)),
             ))
-        if (
-            request.use_multimodal
-            and self._clip is not None
-            and request.image_data is not None
-        ):
+        # A.88 T4-①：影像腿**输入解析**（结构可达性修复）。
+        # 旧实现的判据是 ``request.image_data is not None``，而三个生产调用点都不传
+        # → 这条腿结构性不可达（开关打开也不会触发，且日志里看不出任何痕迹）。
+        # 现在改为：显式 ``request.image_data`` 优先，否则按 ``request.request_id``
+        # 取管线登记的注入槽（``app/rag/image_leg.attach_image_leg_for_request``）。
+        # **每个分支都留自己的跳过原因**（不聚合到一个默认值，AGENTS.md 硬规则 8）。
+        leg = self._resolve_image_leg(request)
+        if leg.skip_reason is None:
             # Image leg hits are tagged DENSE in _safe_image; key under DENSE
             # so RRF fusion treats them as a second DENSE leg.
             tasks.append((
                 RetrievalMethod.DENSE,
-                asyncio.create_task(self._safe_image(request)),
+                asyncio.create_task(
+                    self._safe_image(self._with_resolved_leg(request, leg), drop_tally)
+                ),
             ))
+        else:
+            logger.info(
+                "image_leg_skipped",
+                request_id=request.request_id,
+                organ=request.organ,
+                reason=leg.skip_reason,
+            )
 
         legs: dict[RetrievalMethod, list[_Hit]] = {}
         for method, task in tasks:
@@ -230,10 +306,27 @@ class Retriever:
         # 放在返回前而不是各条检索腿里：只看最终入选的 chunks——落选条目的
         # "被引用"并不是真的被用上，把它算进去会让衰减依据失真。
         await self._record_references(chunks)
+        # A.88 T4-③：衰减调度（每日一次，内存节流；失败不影响本次检索）。
+        await self._maybe_run_decay()
+
+        # A.88 T4-⑥：把"向量库命中但 PG 无该行"的丢弃条数暴露到结果里。
+        # §4.3「零静默失败要加定语」正是这一条：不能只有一句无日志的 continue。
+        if drop_tally.total:
+            logger.warning(
+                "retrieval_rows_dropped_missing_in_pg",
+                request_id=request.request_id,
+                organ=request.organ,
+                dropped=drop_tally.total,
+                dropped_dense=drop_tally.dense,
+                dropped_image=drop_tally.image,
+                hint="向量索引与 PG 不一致（索引里有点但知识块行不在）：需重建索引/核对 kb_version",
+            )
 
         return RetrievalResult(
             chunks=chunks,
             retrieval_method=RetrievalMethod.HYBRID,
+            dropped_missing_row=drop_tally.total,
+            image_leg_skip_reason=leg.skip_reason or "",
         )
 
     @staticmethod
@@ -244,6 +337,38 @@ class Retriever:
         from app.knowledge.decay import record_retrieval_references
 
         await record_retrieval_references(chunk_ids)
+
+    @staticmethod
+    async def _maybe_run_decay() -> None:
+        """检索侧的衰减调度点（A.88 T4-③）。
+
+        ## 修的缺陷
+
+        ``app/knowledge/decay.py::apply_decay`` 此前**只被测试调用**（架构真相
+        §3.3「时效衰减调度无调用方」）→ 库里 ``confidence_score`` 恒为入库默认
+        1.0，整条衰减能力是壳。
+
+        ## 为什么挂在检索侧
+
+        本仓库没有进程内定时任务框架；为一个每日幂等 UPDATE 引入调度器不划算。
+        检索是**每请求必过**的唯一通用节点，加一次内存节流判断即可（详见
+        ``decay.run_scheduled_decay`` 的注释，含"只在有流量时才跑"这条代价）。
+
+        ## 失败不阻断检索
+
+        ``run_scheduled_decay`` 自身永不抛；这里再加一层兜底，任何异常只记
+        warning —— 衰减是维护性作业，绝不能让医生的一次检索因此失败。
+        """
+        try:
+            from app.knowledge.decay import run_scheduled_decay
+
+            await run_scheduled_decay(trigger="retrieval")
+        except Exception as exc:
+            logger.warning(
+                "knowledge_decay_dispatch_failed",
+                error=str(exc),
+                error_type=type(exc).__name__,
+            )
 
     async def _get_graph_adapter(self) -> Any | None:
         if self._graph_adapter is not None:
@@ -271,6 +396,29 @@ class Retriever:
         - 门控：settings.graph_query_enabled 为 False 时直接原样返回；
         - 语义：邻居是检索增强补充，append 在 top-k 之后，不改排名；
         - 失败：adapter 内部已降级为空列表，这里再兜一层异常不影响主链路。
+
+        ## 为什么**默认关闭**（不是「忘了打开」，改默认值前先读这段）
+
+        ``settings.graph_query_enabled`` 默认 ``False`` 是**已记录的裁决结果**，
+        不是待办事项。两轮预注册判据都判了 NO_GO：
+
+        * **A.65**（16 号附录 A.65.1）：136 条 golden 上扩边的池子召回
+          ``0.9853 → 0.9853``（**一个新 gold 都没捞到**）→
+          ``NO_GO_NO_RECALL_GAIN``（P0：扩边必须有 ≥2pp 召回增益）。
+          同轮两条硬结论：不排序的裸扩边会把 hit@5 从 0.9853 稀释到
+          **0.0963**（A.64 ``SUPERNODE_RISK`` 的独立验证）；跨文档同章节边
+          在现有语料上零召回收益。
+        * **A.66**（A.66.1/A.66.2）：先证明评测仪器**饱和**（129/136 命中
+          top-1，hit@5 天花板只剩 1.47pp）；再造难集复评，结论是「扩边真有召回
+          增益，但**当前排序转不成收益**」—— 前置条件是邻居排序与可分的长文档
+          语料，不是把开关打开。
+
+        也就是说：**这个开关打开时确实生效**（A.63 已修「score=0 的邻居被
+        ``min_score_threshold`` 吞掉」，见 ``app/rag/service.py`` 的 GRAPH 豁免与
+        ``tests/unit/rag/test_service_graph_threshold.py`` 的钉子），
+        但**没有证据支持默认打开**。要改默认值，先补一份**更难查询集**上的
+        预注册评测（A.65 局限段已写明现有 golden 作为该测量仪器已饱和），
+        达标再动 —— 不要把它当成「接线漏了」顺手打开。
         """
         if (
             not chunks
@@ -359,10 +507,10 @@ class Retriever:
     # ------------------------------------------------------------------
 
     async def _safe_dense(
-        self, query: str, request: RetrievalRequest
+        self, query: str, request: RetrievalRequest, drop_tally: _DropTally | None = None
     ) -> list[_Hit]:
         try:
-            return await self._dense_search(query, request)
+            return await self._dense_search(query, request, drop_tally)
         except (EmbeddingError, VectorIndexError) as exc:
             logger.warning(
                 "dense_search_failed",
@@ -404,7 +552,95 @@ class Retriever:
             for h in hits
         ]
 
-    async def _safe_image(self, request: RetrievalRequest) -> list[_Hit]:
+    def _resolve_image_leg(self, request: RetrievalRequest) -> ImageLegResolution:
+        """解析本次请求的影像腿输入（显式 ``image_data`` 优先，其次请求槽）。
+
+        ## 为什么要有这一步（A.88 T4-①）
+
+        旧判据 ``request.image_data is not None`` 在三个生产调用点恒为 False
+        （``app/agents/knowledge.py`` / ``app/fusion/consistency.py`` /
+        ``app/fusion/crag.py`` 都不传字节）→ 影像腿**结构性不可达**：开关打开
+        也不触发，日志里连"为什么没触发"都没有。
+
+        现在的解析顺序与**各自的跳过原因**：
+
+        1. 显式 ``request.image_data`` 非空 → 直接用（老行为，测试与直连调用可用）；
+        2. ``use_multimodal=False`` → ``multimodal_disabled``；
+        3. 没有 CLIP 服务（``self._clip is None``）→ ``clip_service_unavailable``；
+        4. 按 ``request_id`` 查管线注入槽（``lookup_image_leg_slot``）：
+           * 槽里有字节 → 用；槽里带 ``session_id`` 则一并作为本次的检索范围；
+           * 槽里 ``skip_reason`` 非空（管线取了但没取到）→ **原样上报该原因**
+             （例如 ``capability_collection_missing`` / ``image_bytes_unavailable``），
+             不许改写成 "no_image_data"——那会把"这个部署没建集合"伪装成
+             "这次没送字节"，正是 A.86 踩过的错；
+        5. 槽也没有（管线没接线 / 过了 TTL）→ ``no_image_data``。
+
+        病人隔离：解析出的 ``session_id`` 取自 ``request.session_id``（优先）或槽里
+        那次请求的 session；**两者都没有就不发检索**（由 ``_safe_image`` 兜底）。
+        """
+        if request.image_data is not None:
+            # A.78 病人隔离：有字节但没 session → 这条腿**不跑**，且要留原因。
+            # 提前判掉而不是交给 ``_safe_image`` 内部 return []：那样结果里的
+            # ``image_leg_skip_reason`` 会是空串，"这条腿为什么没贡献"又消失了。
+            if not request.session_id:
+                return ImageLegResolution(
+                    request.image_data,
+                    request.image_format,
+                    None,
+                    IMAGE_SKIP_NO_SESSION_FOR_LEG,
+                )
+            return ImageLegResolution(
+                image_data=request.image_data,
+                image_format=request.image_format,
+                session_id=request.session_id,
+                skip_reason=None,
+            )
+        if not request.use_multimodal:
+            return ImageLegResolution(None, request.image_format, request.session_id,
+                                      IMAGE_SKIP_MULTIMODAL_OFF)
+        if self._clip is None:
+            return ImageLegResolution(None, request.image_format, request.session_id,
+                                      IMAGE_SKIP_CLIP_UNAVAILABLE)
+        slot = resolve_image_leg_slot(request.request_id)
+        if slot is None:
+            return ImageLegResolution(None, request.image_format, request.session_id,
+                                      IMAGE_SKIP_NO_DATA)
+        if slot.image_data is None:
+            # 管线尝试取过图但没取到：**保留它自己的原因码**，不覆盖。
+            return ImageLegResolution(
+                None,
+                request.image_format,
+                request.session_id or slot.session_id or None,
+                slot.skip_reason or IMAGE_SKIP_NO_DATA,
+            )
+        session_for_leg = request.session_id or slot.session_id or None
+        if not session_for_leg:
+            return ImageLegResolution(
+                slot.image_data, slot.image_format, None, IMAGE_SKIP_NO_SESSION_FOR_LEG
+            )
+        return ImageLegResolution(
+            image_data=slot.image_data,
+            image_format=slot.image_format,
+            session_id=session_for_leg,
+            skip_reason=None,
+        )
+
+    @staticmethod
+    def _with_resolved_leg(
+        request: RetrievalRequest, leg: ImageLegResolution
+    ) -> RetrievalRequest:
+        """把解析结果覆盖到**副本**上（不改调用方传进来的请求对象）。"""
+        return request.model_copy(
+            update={
+                "image_data": leg.image_data,
+                "image_format": leg.image_format,
+                "session_id": leg.session_id,
+            }
+        )
+
+    async def _safe_image(
+        self, request: RetrievalRequest, drop_tally: _DropTally | None = None
+    ) -> list[_Hit]:
         if self._clip is None or request.image_data is None:
             return []
         # A.78 病人隔离：没有 session 就**不发检索请求**（宁可这条腿空，也不跨病人搜）。
@@ -477,10 +713,12 @@ class Retriever:
             )
             return []
 
-        return await self._wrap_search_results(results, RetrievalMethod.DENSE)
+        return await self._wrap_search_results(
+            results, RetrievalMethod.DENSE, drop_tally
+        )
 
     async def _dense_search(
-        self, query: str, request: RetrievalRequest
+        self, query: str, request: RetrievalRequest, drop_tally: _DropTally | None = None
     ) -> list[_Hit]:
         # Embed the query (1 call, no retry logic here; the orchestrator wraps).
         text_resp = await self._embedding.embed_text(
@@ -501,7 +739,9 @@ class Retriever:
             top_k=request.top_k,
             filter=flt,
         )
-        return await self._wrap_search_results(results, RetrievalMethod.DENSE)
+        return await self._wrap_search_results(
+            results, RetrievalMethod.DENSE, drop_tally
+        )
 
     # ------------------------------------------------------------------
     # Helpers
@@ -511,7 +751,15 @@ class Retriever:
         self,
         results: list[SearchResult],
         source: RetrievalMethod,
+        drop_tally: _DropTally | None = None,
     ) -> list[_Hit]:
+        """把向量检索命中回填成 ``_Hit``。
+
+        A.88 T4-⑥：回填时**PG 里查不到该 chunk_id** 的行不再静默 ``continue`` ——
+        逐条 ``logger.warning`` + 计数（``drop_tally``）。这是 §4.3「零静默失败
+        要加定语」的具体一条：旧实现无日志无计数，"索引比库多几条"这种不一致
+        在生产上完全看不见。
+        """
         if not results:
             return []
         if self._session_factory is None:
@@ -547,9 +795,20 @@ class Retriever:
 
         score_map = {r.id: float(r.score) for r in results}
         hits: list[_Hit] = []
+        dropped = 0
         for r in results:
             row = rows.get(r.id)
             if row is None:
+                # A.88 T4-⑥：**不再静默丢弃**。逐条留痕（trace 级，避免刷屏）+
+                # 汇总计数（warning 由 retrieve() 统一打，带 request_id）。
+                dropped += 1
+                logger.warning(
+                    "retrieval_hit_dropped_missing_in_pg",
+                    chunk_id=r.id,
+                    retrieval_source=source.value,
+                    score=score_map.get(r.id, 0.0),
+                    hint="向量索引里有点，但 knowledge_chunks 没有这一行",
+                )
                 continue
             chunk = KnowledgeChunk(
                 chunk_id=row.chunk_id,
@@ -570,6 +829,8 @@ class Retriever:
                     source=source,
                 )
             )
+        if dropped and drop_tally is not None:
+            drop_tally.add(source=source, count=dropped)
         return hits
 
     def _rrf_fuse(

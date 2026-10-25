@@ -317,12 +317,36 @@ def main() -> int:
                                                      if isinstance(body, dict) else None})
 
     ok_n = sum(1 for s in steps if s["ok"])
-    print(f"\n== 走查结果：{ok_n}/{len(steps)} 步通过 ==")
+    total_n = len(steps)
+    print(f"\n== 走查结果：{ok_n}/{total_n} 步通过 ==")
     out = pathlib.Path(args.report).expanduser()
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps({"steps": steps, "ok": ok_n, "total": len(steps)},
-                              ensure_ascii=False, indent=2), encoding="utf-8")
+    # A.88：报告必须自带**分母来源**，否则「11/11」这类数字无法核验。
+    # 走查的 step 是**条件追加**的（B1/B2 依赖前面成功、S* 依赖登录），
+    # 所以 total 是动态的 —— 单独写 "11/11" 会让人以为分母恒定。
+    # 这里把 total / ok 一起写进 JSON，并显式记录"分母是动态的"这一口径。
+    payload = {
+        "steps": steps,
+        "ok": ok_n,
+        "total": total_n,
+        "denominator_is_dynamic": True,
+        "denominator_note": (
+            "总步数随分支条件变化（登录失败→后续 S* 不执行；会话没建出来→B1/B2 不执行）。"
+            "引用时必须同时给出 ok/total，不得只写『全部通过』。"
+        ),
+        "pass_rate": round(ok_n / total_n, 4) if total_n else None,
+        "all_passed": ok_n == total_n,
+    }
+    out.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"报告：{out}")
+
+    # A.88：退出码必须反映真实结果。原先**恒 return 0** —— 哪怕有步骤失败，
+    # CI/评审看到的仍是"成功"，只能靠人肉读 JSON 的 ok/total。
+    # 口径：全部通过 → 0；有失败步 → 1（与仓库其它探针一致）。
+    if ok_n != total_n:
+        failed = [s["step"] for s in steps if not s["ok"]]
+        print(f"[FAIL] {total_n - ok_n} 步未通过：{'、'.join(failed)}")
+        return 1
     return 0
 
 

@@ -211,9 +211,11 @@ class ThreeLayerDesensitizationManager:
         llm_output_data: dict[str, Any] | None = None,
         consent_status_at_input: str | None = None,
         fusion_desensitization_degraded: bool = False,
+        safety_gateway_check: dict[str, Any] | None = None,
+        recorded_stages: dict[DesensitizationLayer, dict[str, Any]] | None = None,
     ) -> ThreeLayerDesensitizationResult:
         """
-        执行完整的三层脱敏流程
+        执行完整的三层脱敏流程（**本次接线后成为生产单一入口**）。
 
         Args:
             patient_id: 患者ID
@@ -223,11 +225,42 @@ class ThreeLayerDesensitizationManager:
             fusion_desensitization_degraded: 融合层脱敏服务是否降级
                 （对齐01-系统架构设计降级策略总表"融合层脱敏不可用"场景，
                 True时SG将触发DESENSITIZATION_DEGRADED_SENSITIVE_DETECTED→E4005A1）
+            safety_gateway_check: **既有的** SG ``check_output`` 结果。给了就走
+                :meth:`record_safety_gateway_existing_check`（登记，不再调一次 SG）。
+                生产管线自己已经调过 SG；若本方法再调一次 → 重复审计事件 +
+                额外延迟 + 双份 E4005 语义。
+            recorded_stages: 已经在外部分阶段执行过的层结果（``{层: layer_result}``）。
+                生产管线的三层**必须**发生在三个不同时刻（LLM 之前 / 落库之前 /
+                SG 之后），无法在同一个时间点串行执行 —— 这正是它此前"只用测试
+                调用"的原因。给了 ``recorded_stages`` 时，对应层**不再重跑**
+                （重跑会二次脱敏、语义被破坏），只登记并参与汇总。
+
+        ## A.88 T5-4：为什么要有 `recorded_stages`
+
+        《架构真相》§3.3 记录：本方法**仅测试调用**，生产是三次分散调用。
+        但"三次分散"不是遗漏 —— 是三层在时间上本就分离。于是收口的正确做法
+        不是"把三次调用硬塞进一个时刻"，而是：
+
+        * **生产**：三层仍在各自时刻就地执行（语义不变），把各自的
+          ``layer_result`` 登记进本次运行台账；运行结束时调**本方法一次**
+          （``recorded_stages`` 模式），由它产出**唯一的汇总判定**。
+        * **测试/批处理**：三段都给它，它真的串行执行（既有行为不变）。
+
+        这样收口换来的是一个此前生产上**根本不存在**的东西：三层合并后的
+        ``all_passed`` / ``security_check_failed`` / ``degraded_mode``
+        （此前只有本方法内部计算，而它没被生产调用 → 该判定在生产上恒缺）。
         """
         result = ThreeLayerDesensitizationResult()
+        recorded = dict(recorded_stages or {})
 
         # 第一层：标准化层 - 处理输入数据
-        if input_data:
+        if DesensitizationLayer.STANDARDIZATION in recorded:
+            standardized_data = {}
+            result.add_layer_result(
+                DesensitizationLayer.STANDARDIZATION,
+                recorded[DesensitizationLayer.STANDARDIZATION],
+            )
+        elif input_data:
             standardized_data, layer1_result = await self.process_standardization_layer(input_data)
             result.add_layer_result(DesensitizationLayer.STANDARDIZATION, layer1_result)
         else:
@@ -238,7 +271,12 @@ class ThreeLayerDesensitizationManager:
 
         # 第二层：融合层 - 处理LLM输出
         layer2_degraded = False
-        if current_data:
+        if DesensitizationLayer.FUSION in recorded:
+            fused_data = current_data
+            layer2_result = recorded[DesensitizationLayer.FUSION]
+            result.add_layer_result(DesensitizationLayer.FUSION, layer2_result)
+            layer2_degraded = layer2_result.get("degraded", False)
+        elif current_data:
             fused_data, layer2_result = await self.process_fusion_layer(
                 current_data,
                 fusion_desensitization_degraded=fusion_desensitization_degraded,
@@ -252,22 +290,58 @@ class ThreeLayerDesensitizationManager:
         # desensitization_degraded语义：融合层脱敏服务是否降级（第2层），
         # 而非标准化层是否修改了数据（第1层modified≠降级）。
         # 对齐01-系统架构设计§3.4降级策略总表。
-        if fused_data:
-            final_data, layer3_result = await self.process_safety_gateway_layer(
-                patient_id, fused_data,
-                consent_status_at_input=consent_status_at_input,
-                desensitization_degraded=layer2_degraded,
-            )
+        if DesensitizationLayer.SAFETY_GATEWAY in recorded:
+            layer3_result = recorded[DesensitizationLayer.SAFETY_GATEWAY]
             result.add_layer_result(DesensitizationLayer.SAFETY_GATEWAY, layer3_result)
-            result.set_final_data(final_data)
+            if "final" in layer3_result:
+                result.set_final_data(layer3_result["final"])
+        elif fused_data:
+            if safety_gateway_check is not None:
+                # 生产路径：复用管线**已经**调过的 SG 结果（不重复调用）
+                layer3_result = self.record_safety_gateway_existing_check(
+                    fused_data, safety_gateway_check
+                )
+                result.add_layer_result(
+                    DesensitizationLayer.SAFETY_GATEWAY, layer3_result
+                )
+                result.set_final_data(layer3_result.get("final", fused_data))
+            else:
+                final_data, layer3_result = await self.process_safety_gateway_layer(
+                    patient_id, fused_data,
+                    consent_status_at_input=consent_status_at_input,
+                    desensitization_degraded=layer2_degraded,
+                )
+                result.add_layer_result(DesensitizationLayer.SAFETY_GATEWAY, layer3_result)
+                result.set_final_data(final_data)
 
-        # 语义修正：区分"已执行脱敏(modified)"与"安全校验失败(allowed=False)"
-        # - 第1/2层 modified=True 表示脱敏引擎正常工作（预期行为）
-        # - 第3层(SafetyGateway) check_result.allowed=False 表示安全校验未通过（真正失败）
-        # - any_pii_leakage: 任一层检测到残留敏感数据且未被处理
+        self._apply_aggregate_verdict(result)
+
+        logger.info(
+            "three_layer_desensitization_completed",
+            patient_id=patient_id,
+            all_passed=result.all_passed,
+            layers_processed=len(result.layer_results),
+            replayed_layers=[layer.value for layer in recorded],
+        )
+
+        return result
+
+    @staticmethod
+    def _apply_aggregate_verdict(result: ThreeLayerDesensitizationResult) -> None:
+        """把三层结果汇总成**唯一**的合规判定（单一事实源）。
+
+        语义修正：区分"已执行脱敏(modified)"与"安全校验失败(allowed=False)"
+        - 第1/2层 modified=True 表示脱敏引擎正常工作（预期行为）
+        - 第3层(SafetyGateway) check_result.allowed=False 表示安全校验未通过（真正失败）
+        - any_pii_leakage: 任一层检测到残留敏感数据且未被处理
+
+        **A.88 T5-4**：抽成独立函数 —— 生产（``recorded_stages`` 模式）与
+        测试/批处理（全量执行模式）必须用**同一套**判定，否则两条路径会各自
+        漂移出不同的"合规结论"。
+        """
         has_security_violation = False
         has_degradation = False
-        for layer_type, layer_result in result.layer_results.items():
+        for _layer_type, layer_result in result.layer_results.items():
             check_result = layer_result.get("check_result", {})
             passed = check_result.get("passed", True)
             degraded = check_result.get("degraded_mode", False)
@@ -279,15 +353,6 @@ class ThreeLayerDesensitizationManager:
         result.all_passed = not has_security_violation and not has_degradation
         result.security_check_failed = has_security_violation or has_degradation
         result.degraded_mode = has_degradation
-
-        logger.info(
-            "three_layer_desensitization_completed",
-            patient_id=patient_id,
-            all_passed=result.all_passed,
-            layers_processed=len(result.layer_results)
-        )
-
-        return result
 
 
 _three_layer_manager_instance: ThreeLayerDesensitizationManager | None = None

@@ -30,7 +30,7 @@ from app.models.schemas import (
     ReportSignRequest,
     ReportUpdateRequest,
 )
-from app.security.auth import get_current_active_user
+from app.security.auth import PermissionChecker, get_current_active_user
 from app.services import report_service
 from app.services.audit_service import AuditService
 
@@ -87,6 +87,28 @@ async def _require_consent(session_repo, consent_repo, session) -> None:
     check_consent_status(consent_record, patient_id)
 
 
+def _assert_signable(report) -> None:
+    """签发门禁的唯一出口（A.88）：缺 ``SIGN_BLOCKING_SECTIONS`` 即 E1030 拒绝。
+
+    为什么抽成端点级函数（而不是在服务层抛 API 异常）：判定在
+    :func:`report_service.sign_blockers_of`（单一语义，可单测），错误契约在
+    API 层组装。两个签发入口 —— ``POST /report`` 的 ``sign=True`` 分支与
+    ``POST /{report_id}/sign`` —— **只准**通过本函数过门禁，避免再次出现
+    "一个入口有门禁、另一个入口直调 sign_report" 的绕过（真实缺陷形态）。
+
+    错误契约与 A.32 一致：``E1030`` + 中文段落名 + ``detail.missing_blockers``。
+    """
+    blockers = report_service.sign_blockers_of(report)
+    if not blockers:
+        return
+    labels = "、".join(report_service.section_label(f) for f in blockers)
+    raise BadRequestException(
+        error_code="E1030",
+        error_message=f"报告缺少必需段落，不能签发：{labels}。请在报告页补录后再签发。",
+        detail=json.dumps({"missing_blockers": blockers}, ensure_ascii=False),
+    )
+
+
 @router.post("", response_model=ReportResponse)
 async def create_report_draft(
     payload: ReportDraftRequest,
@@ -128,6 +150,9 @@ async def create_report_draft(
     )
 
     if payload.sign:
+        # A.88：草稿接口的"顺手签发"必须过与 /sign 端点**同一道**门禁。
+        # 门禁拒绝时直接抛 E1030 —— 此时**不写** report_sign 审计（拒绝不是签发）。
+        _assert_signable(report)
         report = await report_service.sign_report(
             report=report, report_repo=report_repo, actor_id=actor_id
         )
@@ -239,6 +264,9 @@ async def sign_report(
     report_repo=Depends(get_report_repo),
     audit_service: AuditService = Depends(get_audit_service),
     current_user: dict | None = Depends(get_current_active_user),
+    # A.88 权限接线②：``sign_report`` 权限位（超声科医生 / 科室主任 / 管理员）。
+    # 只插入依赖参数：门禁（_assert_signable）、审计 source、函数体均未动。
+    _perm: dict = Depends(PermissionChecker("sign_report")),
 ):
     """对报告正文做 HSM 数字签名。
 
@@ -254,17 +282,8 @@ async def sign_report(
         # 已签名的报告不重复签名（重复签名会让既有校验失效）
         raise BadRequestException(error_message=f"报告已签发：{report_id}")
 
-    content = report.content if isinstance(report.content, dict) else {}
-    completeness = report_service.check_completeness(content, organ=report.organ)
-    blockers = report_service.missing_sign_blockers(completeness)
-    if blockers:
-        labels = "、".join(report_service.section_label(f) for f in blockers)
-        raise BadRequestException(
-            error_code="E1030",
-            error_message=f"报告缺少必需段落，不能签发：{labels}。请在报告页补录后再签发。",
-            detail=json.dumps({"missing_blockers": blockers}, ensure_ascii=False),
-        )
-
+    # A.88：门禁判定统一走 _assert_signable（与草稿接口 sign=True 分支同一个函数）
+    _assert_signable(report)
     actor_id = payload.operator_id or get_actor_id(current_user)
     report = await report_service.sign_report(
         report=report, report_repo=report_repo, actor_id=actor_id
