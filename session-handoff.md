@@ -5,9 +5,66 @@
 
 ## Last Updated
 
-2026-10-25（分支 `main`，提交 **`6a6e131`**；**A.88 接线审计修复已交付** —— 用户点名「《架构真相-以代码为准-20261025.md》里的都要修复」，本轮把该文档的 **28 项**逐条接上真调用方或诚实降级，并**另外发现并修掉 4 个报告里没有的真缺陷**。详见 16 号附录 A.88）
+2026-10-25（分支 `main`，提交 **`9a0bfb1`**；**A.89 真机验证已完成** —— A.88 的 13 条链路全部真机验证通过，
+并**在真机上揪出并修掉一个误报率 50% 的规则缺陷**。详见 16 号附录 A.89）
 
-### ⚠️ 下一位 Agent 的第一件事：真机验证（本轮最大风险）
+### 本轮最重要的三件事
+
+1. **纠正我自己的错**：A.88 里我写「影像向量集合不存在」是**引用 A.68 的历史状态**。
+   真机实测 `ultrasound_chunks` **512 维 / 580 点**、`ready=true`（开关打开时）。
+   **教训：把"某次观测"写成"事实"会误导后面每一个人（包括我自己）。**
+2. **修掉 `sg_patient_name` 把医疗用语判成人名**（真机误报 **3/6 → 0/6**）：
+   「建议咨询主治医生」的「咨询主治」被当患者姓名 → 整条结论降级抑制输出，
+   而 `requires_manual_review=False`（医生看到被抑制的结论、**没有任何误报提示**）。
+   修法三条门禁：姓氏表 + 词前不得是汉字 + 角色复合词排除。
+3. **补上 SG 的定位能力**（这才是修掉 #2 的原因）：`explain_sensitive_data()` +
+   `sg_sensitive_hit_located`（规则 + 字段路径 + 偏移 + 长度，**不记原文**）。
+   此前日志只写"检测到 sg_patient_name"，我先后猜「旧进程」「载荷形状」「并发」三次全错。
+
+### 部署与运行态（可直接续接）
+
+- 主服务起于 `19:16:48`（pid 见 `ss -ltnp | grep 18000`）；**SG 起于 `19:47:30`（加载新规则）**。
+- 回滚基线：`~/uai/_backup_pre_a88_20261025_191612`（264M，整目录）。
+- 验证期临时打开的 `RAG_USE_MULTIMODAL=true` **已还原**，主服务已按还原配置重启。
+
+### ⚠️ 一条必须进运维清单的教训
+
+**SG 服务已 22 天未重启**（10-03 起），加载的是 10-03 的规则快照 —— 磁盘上的
+`desensitization_rules_safety.yaml` 后来改过但**一直没生效**，且没有任何提示。
+建议：把「SG 规则/代码变更后必须重启 SG」写进 SKILL `remote-gpu-server-devtest` 的部署清单，
+并在 `_verify_services.sh` 的探活里加上"进程启动时间 vs 规则文件 mtime"的比对。
+
+### 四项遗留（A.89.6）
+
+1. 🔬 **T2a 管线内旁路未开**：只验到"服务侧能分类 + health 可见 + 默认关"。
+   要真出 `findings["t2a_classification"]`，需把 `t2a_classifier_in_pipeline_enabled`
+   置 true 再跑一轮。
+2. 🔬 **影像腿检索贡献未量化**：链路已通（字节真进了 `_resolve_image_leg`、
+   `skip_reason=None`），但没做"影像腿命中 vs 不命中"的 A/B。
+   注意 `fusion/consistency.py` / `fusion/crag.py` 显式传 `use_multimodal=False`
+   是**既有设计**（指南比对不该用图像相似度），影像腿只在知识检索阶段生效。
+3. **历史 `患者PATIENT_001` 脏结论未清理**：本轮修的是"不再因此误判为敏感"，
+   不是清理。清需单独立项（A.77 有"误删 415 条真结论"的教训，须两条以上独立证据）。
+4. **历史 DICOM / `dicom_images.patient_id` 仍是明文**（新上传才用假名；
+   迁移要盘上字节 + DB 列 + Qdrant payload 三处同步，否则同患者聚合断链）。
+
+### A.88 原始交付摘要（保留，供追溯）
+
+### ✅ 真机验证已完成（原"第一件事"已兑现）
+
+A.88 的 13 条链路全部真机验证通过（详见 16 号 A.89.3）。当时列的 4 件重点验证结果：
+
+- **多器官会话 `cross_organ`** → ✅ `status=ok` / `organ_count=3` /
+  三器官各检索到 3 个指南块（证明融合层真的被喂到 ≥2 份结论）；
+- **复诊不再误报 CRITICAL** → ✅ `compared_with_prior=True`、`severity=info`、`review_reason=None`；
+- **`hallucination_severity`** → ✅ 管线真产出（日志 `is_hallucination=True issue_count=2 severity=severe`）；
+- **DICOM 假名** → ✅ 盘上 `anon_7a51776cd2e0b702`、`PatientName=''`、DB 同值。
+
+现在**下一件事**是上面「四项遗留」里的第 1、2 项（T2a 开开关验证 / 影像腿 A/B），
+以及把「SG 规则变更必须重启」写进 SKILL。
+
+<details>
+<summary>A.88 当时的验证计划（已执行，保留作对照）</summary>
 
 **全部改动只跑本机单测（`tests/unit` 7304 passed / 0 failed），一次真机都没跑。**
 上一次部署仍是 `a0a9d58` 的旧代码 —— 也就是说下面这些能力**在真机上还不存在**。
@@ -27,7 +84,9 @@
    - 顺带：`GET /api/v1/health` 的 `services.t2a_classifier` 与
      `services.image_leg` 都应带真实 `status`（前者 `disabled` 属预期）。
 
-### 本轮交付摘要（一句话每条）
+</details>
+
+### A.88 交付摘要（一句话每条）
 
 - **融合层前提成立**：新增 `app/services/cross_organ_fusion.py`，多器官会话收尾真跑
   冲突检测 + 跨器官一致性（此前 4 类冲突规则因"只有 1 份结论"恒空）；

@@ -50,6 +50,32 @@ description: 连接并驱动「学校 GPU 服务器」（student03@10.20.28.21�
 
 一键健康自检（全服务端口探活）：`bash scripts/_verify_services.sh`（在 `~/uai/src`）。
 
+### ⚠️ 改完代码/规则**必须重启对应进程**（A.89 真机事故）
+
+**事故**：SafetyGateway 从 2026-10-03 起**连续 22 天没重启**，一直加载着当时的规则快照；
+磁盘上的 `desensitization_rules_safety.yaml` / `safety_gateway/**` 后来改过多次，
+**一次都没生效，而且没有任何提示** —— 表现成"规则明明是新的，行为却是旧的"，
+排查时先后误判成「旧进程」「载荷形状差异」「并发」，绕了 40 分钟。
+
+**铁律**（比"探活 200"更强）：
+1. **改哪个进程的代码/规则，就重启那个进程** —— 主服务 18000 与 SG 9001 是**两个进程**，
+   只重启一个会让另一半继续跑旧代码（本轮 A.88 部署时就是先只重启了 18000）；
+2. 重启后核对 `ps -o lstart=<pid>` **晚于**被改文件的 `mtime`：
+   ```bash
+   PID=$(ss -ltnp | grep ':9001' | grep -oP 'pid=\K[0-9]+' | head -1)
+   ps -o lstart= -p "$PID"; stat -c '%y' ~/uai/src/desensitization_rules_safety.yaml
+   ```
+   启动时间早于 mtime = 仍在跑旧代码，**必须再重启**；
+3. 规则类文件（YAML/JSON 词表）优先看启动日志里的**加载条数**是否与磁盘一致
+   （如 `sg_desensitization_rules_loaded count=11`）。
+
+| 改了什么 | 必须重启 |
+|---|---|
+| `app/**`（主服务代码）、`settings.py`、`.env` | 18000 |
+| `safety_gateway/**`、`desensitization_rules_*.yaml`、`medical_person_names.yaml` | **9001** |
+| `8003` 的 `scripts/start_embedding_services.py` / T2a-T2b 权重 | 8003 |
+| KB 切库（`rag_kb_version`） | 18000 + 重灌 vector index |
+
 **GPU 显存账（48GB，串行启动）**：主生成 8002 0.46 + 判官 8006 0.36 + 嵌入×3 基线 6.8GB ≈ 45.4GB；
 任何额外 GPU 进程（探针导出/训练）须**临时停判官**再跑。双实例**并发启动会互踩 memory probe**，必须串行。
 

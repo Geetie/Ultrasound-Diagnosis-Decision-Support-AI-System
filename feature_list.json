@@ -1283,14 +1283,15 @@
       "id": "a88-wiring-audit-fixes",
       "name": "A.88 接线审计修复（架构真相 28 项 + 4 个新发现缺陷）",
       "description": "用户点名修复《答辩材料/架构真相-以代码为准-20261025.md》全部问题。把该文档 §2/§3.2/§3.3/§4/§5 的 28 项逐条接上真调用方或诚实降级：融合层（跨器官融合/prior_diagnosis/量纲错配/结果契约三字段）、安全（签发门禁两入口共用/ DICOM PatientID 假名 / 禁忌条件规范码）、检索（影像腿作用域注入/衰减调度/权威性/分级下限/三指标/静默丢弃）、推理（T2a 旁路/病种阈值/幻觉检测生产者/脱敏单入口/CRAG 质量门）、配置权限（默认引擎对齐生产/权限位真接线/阈值工厂/dispatch_all 门控）、前端（多器官可达/cross_organ 三态/报告面板/死链守卫）、证据（5 份报告入库/p14 落盘/p60 退出码/TN3K strict 口径）。另发现并修掉 4 个报告未列的真缺陷：读路径抽取器不认落库扁平形状（真机 20/20）、AppBaseException 吞掉显式 detail、分级抽取取最后一个数字致复诊必误报 CRITICAL、多器官请求体无临床事实字段。",
-      "status": "in_progress",
-      "gate": "本机 pytest tests/unit 7304 passed / 0 failed；tests/unit/quality 347 passed；每条修复带反证腿（改回旧行为即红）。🔬 真机验证未做。",
-      "result": "代码已落地并提交（6a6e131）；未真机验证 → 不能标 done。遗留 12 项见 16 号附录 A.88.7，最高优先是整树部署 + p27/p28/p15/p29 + 四件重点验证（cross_organ=ok / 复诊不误报 / hallucination_severity 有值 / 新上传 DICOM 为 anon_ 开头）。",
+      "status": "done",
+      "gate": "本机 pytest tests/unit 7327 passed / 0 failed；真机 13 条链路全部验证通过；每条修复带反证腿（改回旧行为即红）。",
+      "result": "已交付并真机验证（16 号 A.88 + A.89）。真机验证期间另揪出并修掉一个误报率 50% 的规则缺陷（sg_patient_name 把「建议咨询主治医生」判成患者姓名 → 结论被降级抑制且无任何提示），3/6 → 0/6。四项遗留见 A.89.6：T2a 管线内旁路未开开关验证 / 影像腿检索贡献未量化 / 历史患者PATIENT_001 脏结论未清理 / 历史 DICOM 明文需迁移。",
       "dependencies": [],
       "evidence": [
         "16 号附录 A.88（A.88.1~A.88.7）",
+        "16 号附录 A.89（A.89.1~A.89.6：真机验证 + sg_patient_name 修复）",
         "tests/reports/evidence_20261025/README.md（5 份真机报告 + 逐份口径定语）",
-        "commit 6a6e131"
+        "commits 6a6e131 / e562cc2 / 5269e62 / 9a0bfb1"
       ]
     }
   ]
