@@ -1183,7 +1183,20 @@ class PlaceholderSpecialistAgent(SpecialistAgent):
         return [f"{self.organ.value}_placeholder"]
 
     async def health_check(self) -> bool:
-        return True
+        """占位专科**自报不健康**（A.91 修：原为恒 ``True``）。
+
+        ## 为什么要改（"假通过"的真实来源）
+
+        原实现 `return True`，docstring 写"占位不会失败，方便 dispatcher 集成测试"。
+        但 lifespan 里的 `agents_health_check` 会遍历 dispatcher 的每个专科调它，
+        然后把结果汇成 `dispatcher=True` —— 于是**三专科全是占位时，健康检查照样全绿**。
+
+        这与 A.70（假结论算指标）/ A.77（假规则误删真数据）是同一族问题：
+        系统在"看起来成功"与"真的成功"之间没有可观测分界。
+        占位就该说自己不可用；集成测试若要"占位也算健康"，应显式构造替身，
+        而不是让生产语义为测试让路。
+        """
+        return False
 
     async def close(self) -> None:
         """占位 specialist 无资源可释放。"""

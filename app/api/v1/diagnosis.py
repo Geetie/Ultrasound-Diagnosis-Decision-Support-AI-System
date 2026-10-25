@@ -803,7 +803,29 @@ async def get_diagnosis_result(
     diagnosis_payload = result.findings if isinstance(result.findings, dict) and result.findings else None
     if diagnosis_payload:
         timings = diagnosis_payload.get("timings_ms") or {}
-        processing_time_ms = int(timings.get("pipeline.total_ms") or 0) or settings.phase0a_mock_processing_time_ms
+        # A.91：**不许把"没测到"写成 2500ms**（假数据的一个典型来源）。
+        # 原写法 `int(...) or settings.phase0a_mock_processing_time_ms` 会在
+        # findings 有内容、但 `timings_ms` 缺失/为 0 时静默返回**写死的 2500ms**。
+        # 后果：接口上的 `processing_time_ms` 看起来是真实耗时（读者会拿它算
+        # P50/P99 甚至当门控证据），实际是个常量 —— 这正是"看起来像真数据"。
+        # 现在：有真值用真值；真值缺失 → 0（表示"未测到"），并在日志留痕。
+        _raw_total = timings.get("pipeline.total_ms")
+        try:
+            processing_time_ms = int(float(_raw_total)) if _raw_total else 0
+        except (TypeError, ValueError):
+            logger.warning(
+                "result_processing_time_unparseable",
+                request_id=request_id,
+                raw=str(_raw_total)[:40],
+            )
+            processing_time_ms = 0
+        if processing_time_ms == 0:
+            logger.info(
+                "result_processing_time_unavailable",
+                request_id=request_id,
+                has_timings=bool(timings),
+                hint="findings 有内容但缺 pipeline.total_ms → 不编造耗时",
+            )
         model_version = diagnosis_payload.get("model_version") or settings.resolved_model_version
         # A.52 溯源：生成模型标识（哪个模型出的结论）；管线已写回，回退取运行期真值
         llm_model = diagnosis_payload.get("llm_model") or settings.resolved_llm_model
@@ -820,6 +842,10 @@ async def get_diagnosis_result(
             "recommendation": "N/A",
             "pending": True,
         }
+        # ⚠️ A.91：这是**占位分支**（worker 还没写终态，前端显示"分析中"），
+        # 这里的 2500ms 是 Phase 0A 的**预估展示值**，**不是真实耗时**。
+        # 任何统计/P50/P99/性能门控**不得**取这个分支的值 —— 此时判读还没完成。
+        # （记录在案的假数据来源清单：见 tests/unit/quality/test_a91_no_fake_evidence.py）
         processing_time_ms = settings.phase0a_mock_processing_time_ms
         model_version = settings.resolved_model_version
         llm_model = settings.resolved_llm_model

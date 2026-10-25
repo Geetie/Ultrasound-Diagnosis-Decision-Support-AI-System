@@ -346,9 +346,24 @@ class TestPlaceholderSpecialist:
 
         assert agent.get_capability_tags() == ["liver_placeholder"]
 
-    async def test_health_check_is_always_true(self):
-        """占位类永不失败：否则 Phase 0A 的 dispatcher 集成测试会被健康检查拦住。"""
-        assert await PlaceholderSpecialistAgent(Organ.THYROID).health_check() is True
+    async def test_health_check_reports_unhealthy(self):
+        """占位类必须**自报不健康**（A.91 修：原断言是 `is True`）。
+
+        ## 为什么原来的断言是错的（"假通过"的教科书例子）
+
+        原用例名 `test_health_check_is_always_true`，docstring 写
+        "占位类永不失败：否则 Phase 0A 的 dispatcher 集成测试会被健康检查拦住"。
+
+        这句话把**测试的方便**凌驾到了**生产的真实性**之上：
+        lifespan 的 `agents_health_check` 会遍历 dispatcher 的每个专科并汇总成
+        `dispatcher=True` —— 于是**三专科全是占位时，健康检查照样全绿**。
+        运维看到"全部就绪"，实际一个专科都没实现。
+
+        正确做法：占位自报 `False`；集成测试若需要"占位也放行"，
+        应显式构造替身（或直接断言 `dispatcher` 已构建），
+        而不是让生产语义为测试让路。
+        """
+        assert await PlaceholderSpecialistAgent(Organ.THYROID).health_check() is False
 
     async def test_invoke_returns_zero_confidence_pending_marker(self):
         agent = PlaceholderSpecialistAgent(Organ.CARDIAC)

@@ -93,11 +93,47 @@ def test_default_setting_is_off():
 
 
 def test_warn_once_dedupes():
-    reset_warned_for_tests()
+    """`warn_once` 必须真的按 key 去重（A.91 修：原用例只有 `assert True`）。
+
+    ## 原来的问题是"假测试"
+
+    原实现：
+    ```
     warn_once("k1", "event_a", x=1)
-    warn_once("k1", "event_a", x=2)  # 同一个 key 不再打
-    assert True  # 行为由日志捕获间接保证；这里只钉"不抛异常、可重复调用"
+    warn_once("k1", "event_a", x=2)
+    assert True  # 行为由日志捕获间接保证
+    ```
+    —— 名为"验证去重"，实际**什么都没验证**（恒真断言）。去重坏了它也绿。
+    这类用例的价值是负的：它让"该能力有测试覆盖"这句话不成立，却占着覆盖率的位。
+
+    现在直接断言**日志调用次数**（去重的本质就是"同一个 key 只打一次"）。
+    只断言 `_WARNED` 集合内容不够：即使去重失效，集合里也只有一个 `k1`
+    （重复 add 同一元素是幂等的）—— 那样改了实现测试仍绿，等于假测试。
+
+    做法：patch `logger.warning`，数它被调了几次。
+    """
+    from unittest.mock import patch
+
+    from app.rag import image_leg as mod
+
     reset_warned_for_tests()
+    assert set() == mod._WARNED
+
+    with patch.object(mod.logger, "warning") as spy:
+        warn_once("k1", "event_a", x=1)
+        warn_once("k1", "event_a", x=2)  # 同一个 key 不再打
+        warn_once("k1", "event_a", x=3)
+        assert spy.call_count == 1, (
+            f"同 key 应只打 1 次日志，实际 {spy.call_count} 次 —— 去重失效"
+        )
+
+        warn_once("k2", "event_b", y=1)
+        assert spy.call_count == 2, "不同 key 必须各打一次"
+
+    assert {"k1", "k2"} == mod._WARNED
+
+    reset_warned_for_tests()
+    assert set() == mod._WARNED
 
 
 def test_health_exposes_image_leg_block():
