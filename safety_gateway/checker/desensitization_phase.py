@@ -78,28 +78,44 @@ class DesensitizationPhase(CheckPhase):
 
     async def check_desensitization(self, data: dict[str, Any]) -> list[str]:
         detected_types = []
-        for value in data.values():
-            detected = await self._check_value_recursive(value, depth=0)
+        for key, value in data.items():
+            detected = await self._check_value_recursive(value, depth=0, path=str(key))
             detected_types.extend(detected)
         return list(set(detected_types))
 
-    async def _check_value_recursive(self, value: Any, depth: int) -> list[str]:
+    async def _check_value_recursive(
+        self, value: Any, depth: int, path: str = "$"
+    ) -> list[str]:
         if depth >= MAX_RECURSION_DEPTH:
-            logger.warning("sg_recursion_depth_exceeded", depth=depth)
+            logger.warning("sg_recursion_depth_exceeded", depth=depth, path=path)
             return []
         detected_types = []
         if isinstance(value, str):
             detected = sg_desensitization_engine.check_sensitive_data(value)
             detected_types.extend(detected)
+            if detected:
+                # A.88：命中时**必须留定位信息**（字段路径 + 规则 + 偏移 + 该字段长度），
+                # 否则日志里只有"检测到 sg_patient_name"，排查时只能盲猜 ——
+                # 本轮真机就因此白猜了三次（旧进程/载荷形状/并发），最后靠这条
+                # 才定位到具体字段与偏移。**不记原文**（PHI 不进日志，硬规则 10）。
+                logger.warning(
+                    "sg_sensitive_hit_located",
+                    path=path,
+                    types=detected,
+                    field_length=len(value),
+                    locations=sg_desensitization_engine.explain_sensitive_data(value),
+                )
         elif isinstance(value, (int, float)):
             detected = sg_desensitization_engine.check_sensitive_data(str(value))
             detected_types.extend(detected)
         elif isinstance(value, dict):
-            for v in value.values():
-                detected = await self._check_value_recursive(v, depth + 1)
+            for k, v in value.items():
+                detected = await self._check_value_recursive(v, depth + 1, f"{path}.{k}")
                 detected_types.extend(detected)
         elif isinstance(value, list):
-            for item in value:
-                detected = await self._check_value_recursive(item, depth + 1)
+            for i, item in enumerate(value):
+                detected = await self._check_value_recursive(
+                    item, depth + 1, f"{path}[{i}]"
+                )
                 detected_types.extend(detected)
         return detected_types

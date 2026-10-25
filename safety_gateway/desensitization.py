@@ -230,6 +230,61 @@ class SafetyGatewayDesensitizationEngine:
 
         return list(set(detected_types))
 
+    def explain_sensitive_data(self, text: str) -> list[dict[str, Any]]:
+        """**与 `check_sensitive_data` 同一判据**的定位版：给出规则名 + 偏移 + 长度。
+
+        ## 为什么需要它（2026-10-25 真机排查耗时约 40 分钟）
+
+        ``check_sensitive_data`` 只回规则名（如 ``sg_patient_name``），于是 SG
+        日志里只有"检测到 sg_patient_name" —— **不知道是哪一段文本命中的**。
+        真机现象是：同一段结论**重放**判 pass、走完整链路判 fail，两端都看不到
+        命中位置，只能盲猜（我先猜了"旧进程旧规则""载荷形状""并发"，全错）。
+
+        ## 为什么不直接记原文
+
+        **PHI 不得进日志**（AGENTS.md 硬规则 10）。所以只给
+        ``start`` / ``end`` / ``length``：配合调用方的"字段路径 + 该字段长度"
+        就能在库里按偏移取那几字复核，而不落任何患者信息到日志。
+
+        Returns:
+            ``[{"rule": str, "start": int, "end": int, "length": int}, ...]``；
+            未命中返回空列表。person-name 词典命中记 ``sg_person_name_dict``。
+        """
+        out: list[dict[str, Any]] = []
+
+        with self._rules_lock:
+            sorted_rules: list[DesensitizationRule] = sorted(
+                [r for r in self._rules if r.enabled],
+                key=lambda x: x.priority,
+            )
+            patterns_snapshot = dict(self._compiled_patterns)
+
+        for rule in sorted_rules:
+            pattern: re.Pattern | None = patterns_snapshot.get(rule.name)
+            if not pattern:
+                continue
+            m = pattern.search(text)
+            if m:
+                out.append({
+                    "rule": rule.name,
+                    "start": int(m.start()),
+                    "end": int(m.end()),
+                    "length": int(m.end() - m.start()),
+                })
+
+        if self._person_name_pattern:
+            for full_match in self._person_name_pattern.finditer(text):
+                if full_match.group(0) in self._person_name_set:
+                    out.append({
+                        "rule": "sg_person_name_dict",
+                        "start": int(full_match.start()),
+                        "end": int(full_match.end()),
+                        "length": int(full_match.end() - full_match.start()),
+                    })
+                    break
+
+        return out
+
     def get_rules(self) -> list[DesensitizationRule]:
         return self._rules
 
