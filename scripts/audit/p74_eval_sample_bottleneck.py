@@ -28,6 +28,26 @@
 **三条独立的观察指向同一件事**：系统的**影像-文本配对是断的**。
 这不是某个模块的 bug，是数据链路的结构性缺口。
 
+## ⚠️ A.95 自纠：第一版查错了字段，结论完全反转
+
+第一版用 `findings->'image_ids'`（JSONB 路径）查影像 → 全库 0 条有影像，
+于是得出"判读记录全都没有影像"的结论。**错。**
+
+真相：`image_ids` 是 `diagnosis_results` 表的**独立列**，类型 **`text[]`**，
+**不在 `findings` JSONB 里**。正确查询是 `array_length(image_ids, 1) > 0`。
+
+修正后的真实数字（真机）：
+```
+判读总数 703 / 有正文 451 / **有正文且有影像 240**
+```
+
+即：**240 条已满足"有正文+有影像"**，远超 Qwen3 门控需要的 300 门槛的 80%。
+"样本攒不起来"的真实原因不是"没影像"，而是**采集器额外的去重口径**
+（`patient_id + sop_instance_uid`，同患者同影像只入集一次）加上
+历史样本高度集中在少数患者。
+
+**这条印证了 A.95 的第三条教训**：别信断言，先确认字段位置与类型。
+
 ## 用法
 
     ~/uai/venv/bin/python scripts/audit/p74_eval_sample_bottleneck.py
@@ -70,19 +90,26 @@ async def _funnel() -> dict:
                       count(*) FILTER (
                         WHERE findings->'fusion_result'->>'content' IS NOT NULL
                           AND findings->'fusion_result'->>'content' <> ''
-                          AND jsonb_typeof(findings->'image_ids') = 'array'
-                          AND jsonb_array_length(findings->'image_ids') > 0
+                          AND image_ids IS NOT NULL
+                          AND array_length(image_ids, 1) > 0
                       ) AS has_content_and_image,
                       count(*) FILTER (
-                        WHERE findings->'image_ids' IS NULL
-                           OR jsonb_typeof(findings->'image_ids') <> 'array'
-                           OR jsonb_array_length(COALESCE(findings->'image_ids', '[]'::jsonb)) = 0
+                        WHERE image_ids IS NULL
+                           OR array_length(image_ids, 1) IS NULL
+                           OR array_length(image_ids, 1) = 0
                       ) AS no_image
                     FROM diagnosis_results
                     """
                 )
             )
         ).first()
+        # 患者维度：影像来自多少患者（去重后独立样本的上限由患者数决定）
+        pts = (
+            await db.execute(
+                text("SELECT count(DISTINCT patient_id) FROM dicom_images")
+            )
+        ).scalar()
+        n_imgs = (await db.execute(text("SELECT count(*) FROM dicom_images"))).scalar()
         # 交叉：dicom_images 有影像但判读记录没挂 image_ids 的有多少
         orphans = (
             await db.execute(
@@ -97,6 +124,8 @@ async def _funnel() -> dict:
             )
         ).scalar()
     return {
+        "n_patients_with_images": int(pts or 0),
+        "n_images": int(n_imgs or 0),
         "total_results": int(r[0]),
         "has_content": int(r[1]),
         "has_content_and_image": int(r[2]),
@@ -107,7 +136,6 @@ async def _funnel() -> dict:
 
 def build_story(f: dict) -> dict:
     """把漏斗转成"根因链 + 可执行结论"。纯函数（守卫钉住）。"""
-    gap = f["has_content"] - f["has_content_and_image"]
     blockers: list[str] = []
     if f["has_content_and_image"] < UPGRADE_MIN_SAMPLES:
         blockers.append(
@@ -116,21 +144,25 @@ def build_story(f: dict) -> dict:
     return {
         "funnel": f,
         "root_cause": (
-            f"有正文 {f['has_content']} 条里，**{gap} 条没有任何影像**"
-            f"（只有 {f['has_content_and_image']} 条同时有正文+影像）。"
-            "采集器要求『有影像』（去重键 = patient + sop_instance_uid，"
-            "且 L2 判官需要检索上下文），所以只能采到极少数。"
+            f"有正文 {f['has_content']} 条里，**{f['has_content_and_image']} 条同时有正文+影像** "
+            f"（无影像 {f['no_image']} 条）。"
+            f"真实瓶颈不是【没影像】（{f['has_content_and_image']} 条已满足），而是采集器额外的"
+            "**去重口径**：`patient_id + sop_instance_uid`，同患者同影像只入集一次，"
+            f"而历史样本高度集中在少数患者（真机：{f['n_images']} 张影像只来自 "
+            f"{f['n_patients_with_images']} 个患者）。"
         ),
         "why_not_a_collector_bug": (
-            "采集器按设计拒收无影像记录：没有影像就无法满足"
-            "『同患者同影像只入集一次』的去重口径，也无法给 L2 忠实度判官提供上下文。"
-            "放宽这个条件会得到一批**不可去重、不可判分**的样本，比没有更糟。"
+            "去重口径是对的：同一患者的同一张影像重复入集会让指标虚高"
+            "（一个患者的表现被放大成系统表现）。"
+            "**不能为了凑数放宽去重** —— 那会得到一批不可独立计分的样本。"
+            "正确做法是**产出更多不同患者/不同影像的判读**，而不是重复采同几张。"
         ),
         "same_root_as_other_findings": [
             "A.94/Q2：影像腿打开也没用 —— `_image_chunk_text` 不产特征（不是开关问题）",
-            "A.95/Q3：`no_image` 在无正文组**零区分性**（全库 92.6% 都无图）",
-            "A.95/Q33-①：样本攒不起来 —— 判读记录普遍没有影像",
-            "→ 三条独立观察指向同一件事：**影像-文本配对是断的**",
+            "A.95/Q33-①：样本攒不起来的主因是**患者集中度**，不是缺影像",
+            "⚠️ 与本条并列的【影像-文本配对断裂】结论**已被本轮自纠推翻**："
+            "第一版查错字段（用 findings->'image_ids' 而非 image_ids 列）"
+            "才得出【全库无影像】，实际有 240 条同时有正文+影像",
         ],
         "blockers": blockers,
         "executable_next_steps": [
@@ -152,6 +184,7 @@ async def main(report: str | None) -> int:
     print(f"  有正文 **且有影像**   : {f['has_content_and_image']}")
     print(f"  无影像                : {f['no_image']}")
     print(f"  有影像但无判读的 session: {f['sessions_with_images_but_no_diagnosis']}")
+    print(f"  影像总张数 / 患者数     : {f['n_images']} / {f['n_patients_with_images']}")
     print(f"\n  根因: {story['root_cause']}")
     print(f"\n  {story['why_not_a_collector_bug']}")
     print("\n  同一个根问题的其它表现:")
