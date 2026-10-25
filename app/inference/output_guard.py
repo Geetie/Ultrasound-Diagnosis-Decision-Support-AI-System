@@ -67,8 +67,55 @@ def detect_patient_token_leak(text: str) -> bool:
     单独成函数是因为**处置不同**：这类输出内容本身可用（有分级、有鉴别诊断），
     只是把语料的脱敏标记抄进了患者解释 → 应当**清洗替换**（如替换为「患者」），
     而不是像模板回显那样整条拒收。
+
+    ## A.91：这个函数此前**全仓零调用方**（又一处"实现了但没接线"）
+
+    A.77（2026-10-21）就写好了它并明确"处置是清洗，不是拒收"，但之后
+    **没有任何生产路径调用它** —— 于是：
+    * 模型持续把 `患者PATIENT_001:` / `PATIENT_061医生` 抄进结论；
+    * 安全网关把它误判成"患者姓名"→ 整条结论降级抑制（A.89.4 才修掉误判）；
+    * 历史库积累 47 条，A.90 手工清洗了一次（**只治标**）。
+
+    只清历史不阻断生成侧，等于每次新判读都会重新污染 —— A.91 真机实测：
+    清洗后跑一条新判读，`PATIENT_` **立刻又出现**。所以现在把它接进
+    `specialist/base.py` 的 4b 步（与 `detect_prompt_echo` 同一位置），
+    **落库之前**清洗。
     """
     return bool(_PLACEHOLDER_PATIENT.search(text or ""))
+
+
+#: 语料标记的三种"被当人名用"形态（与 A.90 的 p63 清洗脚本同一口径）
+_RE_LEAK_WITH_COLON = re.compile(r"(?:患者|病人|被检者)\s*PATIENT_\d+\s*[：:]")
+_RE_LEAK_AS_TITLE = re.compile(r"PATIENT_\d+\s*(?=(?:医生|主任|教授|护士|技师|大夫|院长))")
+_RE_LEAK_BARE = re.compile(r"PATIENT_\d+")
+
+
+def clean_patient_token_leak(text: str) -> tuple[str, int]:
+    """把语料脱敏标记**清洗成自然表述**（A.91 接线；与 A.90 的 p63 同一规则）。
+
+    为什么清洗而不是拒收（A.77 教训）：这类结论**有分级、有鉴别诊断**，
+    只是把语料占位符抄进了"患者解释"段落。整条拒收会丢掉真实结论 ——
+    A.77 已经因为"把 PATIENT_ 当回显铁证"误删过 415 条。
+
+    清洗规则（幂等）：
+    * ``患者PATIENT_001:`` → ``患者：``
+    * ``PATIENT_061医生`` → ``医生``
+    * 其余裸 ``PATIENT_00N`` → ``患者``
+
+    Returns:
+        ``(cleaned_text, hit_count)``。``hit_count == 0`` 表示原文干净（原样返回）。
+    """
+    if not text:
+        return text, 0
+    hits = 0
+    out = text
+    out, n = _RE_LEAK_WITH_COLON.subn("患者：", out)
+    hits += n
+    out, n = _RE_LEAK_AS_TITLE.subn("", out)
+    hits += n
+    out, n = _RE_LEAK_BARE.subn("患者", out)
+    hits += n
+    return out, hits
 
 
 def has_real_evidence_id(text: str, evidence_ids: list[str]) -> bool:

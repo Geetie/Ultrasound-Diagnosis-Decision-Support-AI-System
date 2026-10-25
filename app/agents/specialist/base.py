@@ -68,7 +68,11 @@ from app.agents.specialist.solicitation import (
     is_system_handoff_text,
 )
 from app.inference.grading_schema import grading_gbnf, grading_json_schema
-from app.inference.output_guard import detect_prompt_echo
+from app.inference.output_guard import (
+    clean_patient_token_leak,
+    detect_patient_token_leak,
+    detect_prompt_echo,
+)
 from app.inference.protocols import InferenceEngine, InferenceRequest, InferenceResponse
 from app.knowledge.clinical_actions import actions_for
 from app.knowledge.cross_modality import hints_for
@@ -442,6 +446,34 @@ class RAGSpecialistAgent(SpecialistAgent):
             )
             self._post_process(context, response)
             return response
+
+        # 4c) 语料脱敏标记清洗（A.91 接线）：**清洗而非拒收**
+        #
+        # A.77 的结论写死在代码里：`PATIENT_001` 这类串是**脱敏流程用的占位符**，
+        # 模型/模板会在"患者解释"段把它带出来。这类结论**有分级、有鉴别诊断**，
+        # 整条拒收会丢真结论（A.77 曾因此误删 415 条）。
+        #
+        # 位置在 4b（拒收模板回显）之后、解析之前：到这里还带 `PATIENT_` 的，
+        # 一定是"内容可用、只是标记外泄"那一类。
+        #
+        # 注：A.91 真机排查发现**主要来源不是模型**（raw LLM 输出干净），
+        # 而是脱敏引擎两条规则的误报（`patient_name` / `patient_name_with_title`
+        # 把"请结合图"/"咨询主治"当姓名）。那两条已在
+        # `desensitization_rules.yaml` 修掉（见 scripts/ops/fix_patient_name_rule_a91.py）；
+        # 本步是**兜底**：任何残留形态都在落库前清掉。
+        if detect_patient_token_leak(llm_text):
+            cleaned, leak_hits = clean_patient_token_leak(llm_text)
+            logger.warning(
+                "specialist_patient_token_leak_cleaned",
+                organ=organ.value,
+                request_id=context.request_id,
+                hits=leak_hits,
+                text_len_before=len(llm_text),
+                text_len_after=len(cleaned),
+                hint="语料/脱敏占位符被带进结论 → 清洗为自然表述（不拒收，A.77 教训）",
+            )
+            trace.append(f"patient_token_leak_cleaned: {leak_hits}")
+            llm_text = cleaned
 
         # 5) 器官级解析
         try:
