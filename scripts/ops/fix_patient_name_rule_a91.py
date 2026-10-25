@@ -132,7 +132,7 @@ def verify(pattern: str) -> tuple[bool, list[str]]:
     msgs: list[str] = []
     try:
         compiled = re.compile(pattern)
-    except re.error as exc:
+    except re.error as exc:  # silent-ok: 编译失败显式返回 False+原因，调用方据此拒绝写文件
         return False, [f"编译失败: {exc}"]
 
     if compiled.groups != 2:
@@ -181,7 +181,7 @@ def verify_with_title(pattern: str) -> tuple[bool, list[str]]:
     msgs: list[str] = []
     try:
         compiled = re.compile(pattern)
-    except re.error as exc:
+    except re.error as exc:  # silent-ok: 同上，编译失败显式返回给调用方，调用方拒绝写文件
         return False, [f"编译失败: {exc}"]
     if compiled.groups != 2:
         return False, [f"捕获组 = {compiled.groups}，必须恰好 2（group(1)=姓名, group(2)=称谓）"]
