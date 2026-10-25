@@ -5,7 +5,79 @@
 
 ## Last Updated
 
-2026-10-20（分支 `main`；**A.68 已交付第一段** —— R1 图像腿改为「默认关 + 能力可见」并真机验证；R3 第一步分组量化**否掉了原方案**并更正 A.66 的归因（gold 是弱 gold）→ **R2 暂停**。上一轮 A.66/A.67 亦已交付）。
+2026-10-25（分支 `main`，提交 **`6a6e131`**；**A.88 接线审计修复已交付** —— 用户点名「《架构真相-以代码为准-20261025.md》里的都要修复」，本轮把该文档的 **28 项**逐条接上真调用方或诚实降级，并**另外发现并修掉 4 个报告里没有的真缺陷**。详见 16 号附录 A.88）
+
+### ⚠️ 下一位 Agent 的第一件事：真机验证（本轮最大风险）
+
+**全部改动只跑本机单测（`tests/unit` 7304 passed / 0 failed），一次真机都没跑。**
+上一次部署仍是 `a0a9d58` 的旧代码 —— 也就是说下面这些能力**在真机上还不存在**。
+
+验证顺序（服务器在线，按 SKILL `remote-gpu-server-devtest` 的铁律：落盘→scp→bash，别内联 ssh）：
+
+1. `git archive` **整树**同步（硬规则 #7：跨文件改动只部署一部分会 NameError）；
+2. 按 PID 重起 18000（`ps -o lstart` 核对晚于文件 mtime，防旧进程假活）；
+3. 跑 p27（8 轮判读）/ p28（渲染降级）/ p15（检索对齐）/ p29（T2a）；
+4. **重点验这 4 件**（都是本轮新行为，且都有"看起来通了其实没通"的风险）：
+   - **多器官会话的 `cross_organ` 是否 `status=ok`**（不是 `insufficient_responses`/
+     `unavailable`）—— 这是"融合层终于被喂到 ≥2 份结论"的唯一证据；
+   - **复诊是否不再误报 CRITICAL**（A.88.2-③ 的假 `consistency_failed`）；
+   - **`GET /result/{id}` 的 `hallucination_severity` 是否真有值**
+     （`hallucination_checked` 为 true 时）；
+   - **新上传 DICOM 的 `(0010,0020)` 是否已是 `anon_` 开头**（假名生效）；
+   - 顺带：`GET /api/v1/health` 的 `services.t2a_classifier` 与
+     `services.image_leg` 都应带真实 `status`（前者 `disabled` 属预期）。
+
+### 本轮交付摘要（一句话每条）
+
+- **融合层前提成立**：新增 `app/services/cross_organ_fusion.py`，多器官会话收尾真跑
+  冲突检测 + 跨器官一致性（此前 4 类冲突规则因"只有 1 份结论"恒空）；
+  `prior_diagnosis` 真接线（读段取 + 5 个真实 absent 原因）；
+  `min_score_threshold` 按量纲选判据（0.5 绝对 vs RRF 相对）；
+  结果接口三常量改真实推导（未评估 → `None`）。
+- **安全**：签发门禁两入口共用 `_assert_signable`（`sign=true` 不再绕过 E1030）；
+  DICOM PatientID 改带盐不可逆假名（幂等+抗碰撞+不可逆）；禁忌条件改发规范码且空选送 `[]`。
+- **4 个报告未发现的真缺陷**：①读路径抽取器不认落库**扁平**形状（真机 20/20 扁平 →
+  读路径恒空）②`AppBaseException` 吞掉显式 `detail` ③分级抽取取"正文最后一个数字"
+  → 每次复诊必误报 CRITICAL ④多器官请求体无临床事实字段。
+- **证据可复跑**：5 份真机报告入库 `tests/reports/evidence_20261025/`（含逐份口径
+  README）；`p14` 改落盘、`p60` 改退出码、TN3K 加 `dice_mean_strict`。
+- **顺带修掉一条长期红灯**：`tests/unit/inf/test_nodule_area_mm2.py` 的三条用例与
+  A.81 安全闸相反，长期失败；已按当前生产语义重写，并让"只有区域校准才换算 mm²"
+  变成有测试守着的闸门。
+
+### 复跑入口（本轮新增/修改的）
+
+- 既往诊断 SQL 体检（**只读**，服务器）：
+  `~/uai/venv/bin/python scripts/audit/p61_prior_diagnosis_sql_check.py`
+  → 打印患者×器官×状态分布 + "已终态但正文抽不出结论"的行（用来判断 lookback 够不够）
+- dispatcher 性能（**现在会落盘**）：`p14_dispatcher_bench.py --report reports/dispatcher_bench.json`
+  → 看 `p95_is_effectively_max`（N=6 时 P95 就是 max，别单独引用）
+- 医生全流程走查（**退出码现在有意义**）：`p60_doctor_journey.py`
+  → 有失败步即退出码 1；报告带 `denominator_is_dynamic` / `pass_rate` / `all_passed`
+- TN3K 分割（**两套口径**）：`tn3k_seg_unet.py` → 对外引用 `dice_mean_strict`
+  （剔除 `empty_both`），`dice_mean` 仅作历史对照
+
+### 遗留 12 项（详见 16 号 A.88.7，按优先级）
+
+1. 🔬 **无真机验证**（见上，最高优先）
+2. 🔬 **影像检索腿端到端仍不可用**：`probe_image_leg()` 证实集合不存在
+   （`collection_exists=false`）→ 接线通了但**没有可检索的影像向量集合**；
+   需先建 512 维集合并灌数，否则"通了"只是"不报错地跳过"
+3. **历史 DICOM / `dicom_images.patient_id` 仍是明文**（新上传才用假名）。
+   迁移必须**同时**改盘上字节 + DB 列 + Qdrant payload，否则同患者聚合断链 → 单独立项
+4. **分级下限 / 权威性加权默认不生效**（规则表为空 / 需 `extra` 显式开）
+5. **Self-RAG 重试默认仍 0**：机制已交付，但一次重试 +1.11s、上界 2295.7ms 已贴 2.3s
+   → 无法论证不回到 2.3s 以上，故不改默认。开启条件见 A.88.7-5
+6. **`dispatch_all` 真接线未开**（受门控 + dry-run 计划；三条真机阻塞项写进 settings）
+7. **`分级: 无法判断` + 标题 `TR3` 的口径分歧**：**A2 接线后这条已可达**
+   （既往取 3、本次若标题漂移会造假级差）→ 需与专科/评测三条线一起定口径
+8. `Settings()` 会自报 1 条缺模型名（预期：不硬编码模型名），巡检只看 error 会误判
+9. 权限收紧对历史角色数据未真机验证（理论无回归，建议 smoke-doctor/head 各跑一次）
+10. `tests/integration/fus` 15 个 ERROR（`conftest.py` fixture 未导出）——
+    **既有问题**，非本轮引入
+11. `WorkspaceImageRegion.test.tsx` 挂起 > 300s —— 既有问题
+12. 全仓 `npm run lint` 仍 7 errors（全在本轮未触碰的既有文件）
+
 
 - **A.68.1 R1（方案 C，已完成）**：`rag_use_multimodal` 默认 **True→False**；新增 `app/rag/image_leg.py`（`classify_image_leg` 四态纯函数 + `probe_image_leg` 2 秒超时探测 + `warn_once` 去重）；`retriever` 两处「集合不存在」**info→一次性 warning**；`/api/v1/health` 暴露 `services.image_leg`。真机重启（851449→3983054，6 秒 health=200）返回 `enabled=false / collection_exists=false / image_dim=512 / ready=false` → 同时证实"默认已关"与"集合确实不存在"。守卫 `tests/unit/rag/test_image_leg_availability.py` 9 例。
 - **A.68.2 R3 第一步（分组量化，结论反直觉）**：`scripts/audit/p43_hard_set_grouping_quant.py`（只读，判据跑前写死）真机 0.2s → `exact` **13 组 / 均 80.6 篇 / 最大 200 篇**、`prefix2` 与 exact **完全等价**（对话语料 section_path 只有两段）、`prefix1` 更糟（均 95.3 / 最大 400）→ 三档全判 `AMBIGUOUS_GOLD_RISK`。
