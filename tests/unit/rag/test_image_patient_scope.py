@@ -32,12 +32,22 @@ def test_image_filter_without_session_does_not_offer_global_search():
 
 
 def test_safe_image_refuses_search_without_session():
-    """`_safe_image` 在没有 session 时必须提前返回，不得发检索。"""
+    """`_safe_image` 在没有 session 时必须提前返回，不得发检索。
+
+    A.90 更新：过滤从"单档 `image_search_filter(...)`"改为
+    **候选序列 `image_search_filters(...)`**（严格 `session+organ` → 宽松 `session`），
+    原因是真机 292/316 个 session 的影像 payload 没有 `organ` 字段，
+    双条件查询恒 0 命中。**本用例守的那条红线没有变**：
+    无 session 时仍然提前返回，且任何一档都必须带 `session_id`。
+    """
     src = (_REPO / "app" / "rag" / "retriever.py").read_text(encoding="utf-8")
     idx = src.index("async def _safe_image")
-    body = src[idx : idx + 2000]
+    body = src[idx : idx + 3000]
     assert "if not request.session_id:" in body, "无 session 时没有短路"
-    assert "image_search_filter(request.organ, request.session_id)" in body
+    # 必须走候选序列（单档会让影像腿永远空）
+    assert "image_search_filters(request.organ, request.session_id)" in body
+    # 无候选（= 无 session）时不许发请求
+    assert "if not filters:" in body, "候选为空（无 session）时没有短路"
     # 旧写法（只按器官过滤）不许回来
     assert 'filter={"organ": request.organ}' not in src
 

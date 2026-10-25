@@ -90,6 +90,19 @@ def image_search_filter(organ: str | None, session_id: str | None) -> dict | Non
     * 有 organ 再叠加；
     * 两者都没有 → 返回 None；调用方（`_safe_image`）在无 session 时**不应发请求**，
       本函数不替它"放开全库"。
+
+    ## A.90：`organ` 叠加是**有条件的**（否则这条腿永远 0 命中）
+
+    真机实测（2026-10-25）：`ultrasound_chunks` 的 580 个点涉及 316 个 session，
+    其中**只有 24 个**能拿到 `organ`（payload 里 `if row.get("organ")` 才写，
+    而 292 个 session 压根没有 `diagnosis_results` 记录）。
+    于是按 `session_id + organ` 双条件查询 → **命中恒为 0**，
+    影像腿"接线通了但永远返回空"，A/B 十例全部 `new=0`。
+
+    这不是"该不该按 organ 过滤"的问题（按 organ 过滤本身是对的：跨器官影像不该
+    参与本次检索），而是**过滤条件不能比数据里实际存在的字段更严**。
+    故保留 `organ` 在返回值里（调用方据此判断是否需要降级重试），
+    并新增 :func:`image_search_filters` 给出"严格 → 宽松"的候选序列。
     """
     flt: dict = {}
     if session_id:
@@ -97,6 +110,27 @@ def image_search_filter(organ: str | None, session_id: str | None) -> dict | Non
     if organ:
         flt["organ"] = organ
     return flt or None
+
+
+def image_search_filters(organ: str | None, session_id: str | None) -> list[dict]:
+    """影像腿的过滤条件**候选序列**（严格 → 宽松），按顺序尝试直到有命中。
+
+    A.90：为什么需要"降级重试"而不是二选一 ——
+    * 严格档（`session + organ`）：语义最准，但历史 payload 缺 `organ` 时恒 0 命中；
+    * 宽松档（仅 `session`）：**病人隔离仍然成立**（session 属于单一患者），
+      只是少了"同会话跨器官"这一层收窄。影像点本来就按 session 归属，
+      同会话内不同器官的影像同时召回不会泄露他人数据。
+
+    **病人隔离红线不变**：返回的每一档都必带 `session_id`；无 session 返回空列表
+    （调用方据此不发请求，绝不退化成"放开全库"）。
+    """
+    if not session_id:
+        return []
+    strict = {"session_id": session_id}
+    if organ:
+        strict["organ"] = organ
+        return [strict, {"session_id": session_id}]
+    return [strict]
 
 
 class _Hit:
@@ -670,16 +704,45 @@ class Retriever:
         if not resp.embeddings:
             return []
         query_vector = self._embedding_to_list(resp.embeddings[0])
+        # A.78 病人隔离：影像腿**必须**按 session 过滤。
+        # 旧实现只按 organ 过滤 —— 一旦影像向量库灌入多病人数据，
+        # 一次请求就会召回**别的病人**的影像（这是数据泄露，不是精度问题）。
+        #
+        # A.90：过滤条件按「严格 → 宽松」依次尝试（`image_search_filters`）。
+        # 真机实测原因：历史 payload 里 292/316 个 session 没有 `organ` 字段
+        # （建库时 `if row.get("organ")` 才写，而多数 session 没有判读记录），
+        # 于是 `session + organ` 双条件**恒 0 命中**，这条腿长期"通了但永远是空"。
+        # 宽松档只去掉 organ、**仍然带 session**，病人隔离不受影响。
+        filters = image_search_filters(request.organ, request.session_id)
+        if not filters:
+            # 无 session 不发请求（宁可这条腿空，也不跨病人搜）
+            return []
+        results = None
         try:
-            results = await self._vector_client.search(
-                collection=settings.rag_image_collection,
-                query_vector=query_vector,
-                top_k=request.top_k,
-                # A.78 病人隔离：影像腿**必须**按 session 过滤。
-                # 旧实现只按 organ 过滤 —— 一旦影像向量库灌入多病人数据，
-                # 一次请求就会召回**别的病人**的影像（这是数据泄露，不是精度问题）。
-                filter=image_search_filter(request.organ, request.session_id),
-            )
+            for i, flt in enumerate(filters):
+                results = await self._vector_client.search(
+                    collection=settings.rag_image_collection,
+                    query_vector=query_vector,
+                    top_k=request.top_k,
+                    filter=flt,
+                )
+                if results:
+                    if i > 0:
+                        logger.info(
+                            "image_leg_filter_relaxed",
+                            request_id=request.request_id,
+                            tried=len(filters),
+                            used=list(flt.keys()),
+                            hits=len(results),
+                            hint="严格档 0 命中（多见于历史 payload 缺 organ），已退到仅按 session",
+                        )
+                    break
+            if not results:
+                logger.info(
+                    "image_leg_no_hits",
+                    request_id=request.request_id,
+                    filters_tried=[list(f.keys()) for f in filters],
+                )
         except VectorIndexError as exc:
             if _is_collection_not_found(exc):
                 # A.68 / R1：集合缺失是**配置缺陷**，不是正常路径 → warning（仅一次），
@@ -759,13 +822,47 @@ class Retriever:
         逐条 ``logger.warning`` + 计数（``drop_tally``）。这是 §4.3「零静默失败
         要加定语」的具体一条：旧实现无日志无计数，"索引比库多几条"这种不一致
         在生产上完全看不见。
+
+        ## A.90：**影像点不再走回表**（这是影像腿的最后一道死结）
+
+        真机取证（2026-10-25）：影像腿检索**真的有命中**
+        （`collection=ultrasound_chunks returned=3`，score 0.98~1.00），
+        但紧接着全部被这里丢掉：
+
+            retrieval_hit_dropped_missing_in_pg chunk_id=img_20261014_88fce652
+              hint=向量索引里有点，但 knowledge_chunks 没有这一行
+            retrieval_rows_dropped_missing_in_pg dropped=3 dropped_dense=3
+
+        原因不是数据不一致，而是**两类向量被混在同一条回表路径上**：
+        影像点的 id 形如 `img_…`，payload 自带 `image_id/storage_path`，
+        它**本来就不该有 `knowledge_chunks` 行**（那是文本知识块的表）。
+        于是"接线通了 → 有命中 → 全被当脏数据丢掉"。
+
+        修法：**按 id 形态分流** —— `img_` 前缀的命中直接构造"影像块"
+        （正文用 payload 里的可读描述，绝不伪造成知识正文），
+        只有非 `img_` 命中才回表。这样影像腿的命中真的能进融合，
+        而 `retrieval_rows_dropped_missing_in_pg` 也恢复它本来的语义
+        （"文本索引与 PG 不一致"），不再被影像点常年顶成 3。
         """
         if not results:
             return []
+        # A.90：影像点分流（见 docstring）。必须在回表之前判，
+        # 否则它们会被当成"索引有、库里没有"的脏数据丢掉。
+        image_hits, text_results = _split_image_hits(results, source)
+        if image_hits:
+            logger.info(
+                "image_leg_hits_admitted",
+                count=len(image_hits),
+                chunk_ids=[h.chunk_id for h in image_hits[:5]],
+                hint="影像点不回表（img_… 不在 knowledge_chunks），直接作为影像块参与融合",
+            )
+        results = text_results
+        if not results:
+            return image_hits
         if self._session_factory is None:
             # Without a session factory we cannot hydrate chunks; fall back to
             # placeholder content. This branch is used by tests with mocks.
-            return [
+            return image_hits + [
                 _Hit(
                     chunk_id=r.id,
                     chunk=_placeholder_chunk(r.id),
@@ -831,7 +928,7 @@ class Retriever:
             )
         if dropped and drop_tally is not None:
             drop_tally.add(source=source, count=dropped)
-        return hits
+        return image_hits + hits
 
     def _rrf_fuse(
         self, legs: dict[RetrievalMethod, list[_Hit]]
@@ -931,6 +1028,91 @@ def _placeholder_chunk(chunk_id: str) -> KnowledgeChunk:
         section_path="",
         token_count=0,
     )
+
+
+#: 影像向量点的 id 前缀（`build_image_vectors` 用 `image_id` 做点 id）。
+IMAGE_CHUNK_ID_PREFIX = "img_"
+
+
+def is_image_chunk_id(chunk_id: str | None) -> bool:
+    """该向量 id 是否属于**影像集合**（而不是文本知识块）。纯函数（守卫钉住）。"""
+    return str(chunk_id or "").startswith(IMAGE_CHUNK_ID_PREFIX)
+
+
+def _image_chunk_text(chunk_id: str, payload: dict | None) -> str:
+    """影像点 → **可读正文**（给融合层与报告用）。
+
+    为什么不能留空：`_Hit.chunk.content` 若为空串，后续按内容做的
+    分级/建议关键词匹配会得到"空匹配"（假一致）。所以给一段
+    **明确标注为影像参考、且只含 payload 里真实存在字段** 的描述。
+    **绝不编造影像所见**（那是临床内容，必须来自模型/医生）。
+    """
+    p = payload or {}
+    bits = [f"[影像参考] {chunk_id}"]
+    if p.get("modality"):
+        bits.append(f"模态={p['modality']}")
+    if p.get("organ"):
+        bits.append(f"部位={p['organ']}")
+    if p.get("session_id"):
+        # session_id 是检查会话标识（非 PHI），用于溯源
+        bits.append(f"会话={p['session_id']}")
+    if p.get("image_id"):
+        bits.append(f"影像={p['image_id']}")
+    return "；".join(bits)
+
+
+def _split_image_hits(
+    results: list[SearchResult], source: RetrievalMethod
+) -> tuple[list[_Hit], list[SearchResult]]:
+    """把命中分成「影像点」与「需回表的文本命中」。纯函数（守卫钉住）。
+
+    A.90：为什么必须分流（真机取证）—— 影像点 id 形如 `img_…`，
+    `knowledge_chunks` 表**本来就没有这些行**；旧实现一律回表 →
+    影像腿的 3 条高置信命中（score 0.98~1.00）被 `retrieval_hit_dropped_missing_in_pg`
+    当脏数据丢掉，于是"接线修好了"却永远零贡献。
+
+    Returns:
+        ``(image_hits, text_results)`` —— 前者可直接进融合，后者照旧回表。
+    """
+    image_hits: list[_Hit] = []
+    text_results: list[SearchResult] = []
+    for r in results:
+        if not is_image_chunk_id(r.id):
+            text_results.append(r)
+            continue
+        # SimpleSearchResult 的字段名是 `metadata`（承载 payload），不是 `payload`
+        meta = dict(getattr(r, "metadata", None) or {})
+        # `KnowledgeChunk.organ` 的契约**不允许空串**（`organ_must_not_be_empty`），
+        # 而真机上 292/316 个 session 的影像 payload 没有 organ ——
+        # 直接传 "" 会抛 ValidationError 把整条腿打挂（本函数在 _safe_image 里，
+        # 抛错会被外层当"影像腿失败"吞掉，于是又变成"跑不通"）。
+        # 用 "unknown"（与 `_placeholder_chunk` 同一惯例）并留痕，不猜器官。
+        organ_value = str(meta.get("organ") or "").strip() or "unknown"
+        if organ_value == "unknown":
+            logger.debug(
+                "image_chunk_organ_unknown",
+                chunk_id=r.id,
+                hint="影像 payload 无 organ 字段（多为该 session 没有判读记录）",
+            )
+        image_hits.append(
+            _Hit(
+                chunk_id=r.id,
+                chunk=KnowledgeChunk(
+                    chunk_id=r.id,
+                    kb_version=str(meta.get("kb_version") or "image"),
+                    organ=organ_value,
+                    content=_image_chunk_text(r.id, meta),
+                    metadata=meta,
+                    embedding=None,
+                    source_doc_id=str(meta.get("image_id") or r.id),
+                    section_path="",
+                    token_count=0,
+                ),
+                score=float(r.score),
+                source=source,
+            )
+        )
+    return image_hits, text_results
 
 
 __all__ = ["Retriever"]
