@@ -393,11 +393,26 @@ class Settings(BaseSettings):
     rag_use_query_enhancement: bool = True
     rag_use_reranking: bool = True
     rag_use_bm25_fallback: bool = True
-    # A.68 / R1（用户 2026-10-20 拍板「选 C 按需开」）：图像检索腿**默认关闭**。
-    # 原因：`rag_image_collection` 指向的集合在真机不存在（Qdrant 只有
-    # `ultrasound_knowledge_chunks`，1024 维），而 ULC 服务报 512 维 —— 开着也是零贡献，
-    # 且只留 info 日志（生产上看不见）。能力状态见 `/api/v1/health` 的 `image_leg` 块；
-    # 真要启用需先建好 512 维集合，再把本开关置 True（并在请求里带 image_data）。
+    # 图像检索腿开关。**A.88（2026-10-25 真机复核）更正了此处原先的理由**：
+    #
+    # 【旧的、错误的理由，已作废】原注释写"集合在真机不存在（Qdrant 只有
+    # `ultrasound_knowledge_chunks`，1024 维），开着也是零贡献"。
+    # **这是 A.68 当时的临时状态，后来被 `build_image_vectors.py` 灌数改变了**，
+    # 而注释没有跟着更新 —— 于是后续读者（包括我）继续引用了一个过期结论。
+    #
+    # 【真机实测 2026-10-25】`GET :6333/collections` →
+    #   · `ultrasound_chunks`            512 维 / **580 点**  ← 影像向量（与 embedding_dim=512 一致）
+    #   · `ultrasound_knowledge_chunks` 1024 维 / 1257 点  ← 文本知识库
+    # `probe_image_leg()` 也返回 `collection_exists=true / collection_dim=512 /
+    # image_dim=512`。也就是说**集合存在、维度匹配、有数据**。
+    #
+    # 【那为什么默认仍然 False】与集合无关，是**检索语义**问题：
+    # 影像点 id 是 `img_…`，而知识管线按 `chunk_id` 回填正文（`_wrap_search_results`），
+    # 知识表里没有 `img_…` → 命中会被丢掉。A.80/A.81 的结论是**改走独立的
+    # "相似病例"通道**（`similar_cases.py`，A.82 已落地），而不是塞进知识上下文。
+    # 所以本开关的默认值不变，但**理由要改**：不是"没数据"，是"影像向量属于另一条通道"。
+    #
+    # 能力状态见 `/api/v1/health` 的 `image_leg` 块（`ready` 会告诉你开关/集合/维度三者是否齐备）。
     rag_use_multimodal: bool = False
     rag_use_llm_enhancement: bool = False
     rag_collection: str = 'knowledge_chunks'
