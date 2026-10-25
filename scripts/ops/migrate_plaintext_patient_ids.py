@@ -264,6 +264,9 @@ async def _apply(groups: list[dict]) -> dict:
                 raw = await storage.retrieve(r["storage_path"])
                 if not raw:
                     stat["disk_failed"] += 1
+                    stat.setdefault("disk_errors", []).append(
+                        f"{r['image_id']}:no_bytes"
+                    )
                     continue
                 if _read_dicom_patient_id(raw) == pseudo:
                     stat["disk"] += 1  # 已是假名（幂等）
@@ -271,8 +274,16 @@ async def _apply(groups: list[dict]) -> dict:
                 new_bytes = _rewrite_dicom_patient_id(raw, pseudo)
                 await storage.replace(r["storage_path"], new_bytes)
                 stat["disk"] += 1
-            except Exception:
+            except Exception as exc:
+                # A.93：**必须记类型**。第一次执行时这里只累加了一个数字，
+                # 结果"583 个文件全部失败"却看不出原因（实际是 pydicom 的
+                # `explicit_vr` 参数不被接受）—— 排查全靠另写探针才定位。
+                # 迁移类脚本的失败原因必须能直接读出来。
                 stat["disk_failed"] += 1
+                errors: list[str] = stat.setdefault("disk_errors", [])
+                errors.append(
+                    f"{r['image_id']}:{type(exc).__name__}:{str(exc)[:80]}"
+                )
 
         stat["groups"] += 1
         print(
@@ -425,6 +436,16 @@ async def main(
         f"\n[APPLIED] DB {stat['db']} 行 / Qdrant {stat['qdrant']} 点 / "
         f"盘上 {stat['disk']} 文件（失败 {stat['disk_failed']}）"
     )
+    if stat.get("disk_errors"):
+        # 失败原因直接打出来（否则"583 全失败"看不出为什么）
+        print("  盘上失败原因（前 10）:")
+        for err in stat["disk_errors"][:10]:
+            print(f"    {err}")
+        if stat["disk_failed"] == stat["disk"] == 0 or stat["disk"] == 0:
+            print(
+                "  ⚠️ 磁盘一个都没成功 —— 若 DB/Qdrant 已迁移，"
+                "请用 `--disk-only --apply` 续跑（否则盘上永远是明文）"
+            )
     return 0
 
 
