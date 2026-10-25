@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import pathlib
 import sys
 from datetime import datetime, timezone
@@ -42,6 +43,8 @@ from datetime import datetime, timezone
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+
+logger = logging.getLogger(__name__)
 
 EVAL_SET = pathlib.Path.home() / "uai" / "data" / "eval" / "double_engine_eval_set.jsonl"
 
@@ -68,12 +71,21 @@ def count_usable_eval() -> int:
         return 0
     n = 0
     with EVAL_SET.open(encoding="utf-8") as fh:
-        for line in fh:
+        for lineno, line in enumerate(fh, start=1):
             if not line.strip():
                 continue
             try:
                 r = json.loads(line)
-            except json.JSONDecodeError:
+            except json.JSONDecodeError as exc:
+                # 坏行跳过但**计数留痕**（不静默）：评测集有过手工编辑史，
+                # 直接 continue 会让"187 行只读出 157 条"变得无从解释。
+                bad_lines = locals().get("bad_lines", 0) + 1
+                logger.warning(
+                    "eval_set_bad_line_skipped line=%d error=%s total_bad=%d",
+                    lineno,
+                    str(exc)[:60],
+                    bad_lines,
+                )
                 continue
             c = r.get("conclusion") or ""
             if c and "llm_unavailable" not in c and "manual review required" not in c:
@@ -177,8 +189,13 @@ def main(report: str | None) -> int:
         )
         if out.returncode == 0 and out.stdout.strip():
             vram_used = float(out.stdout.strip().splitlines()[0]) / 1024.0
-    except Exception as exc:  # silent-ok: 探不到就如实返回 None（下面判 blocker），不编数字
-        print(f"  [info] 显存探测失败（{type(exc).__name__}）→ 按不可知处理")
+    except Exception as exc:
+        # 探不到就如实返回 None（下面判 blocker），**不编数字** —— 这是有意的显式降级
+        logger.warning(
+            "vram_probe_failed error=%s type=%s → 按不可知处理（不编数字）",
+            str(exc)[:120],
+            type(exc).__name__,
+        )
 
     res = assess(n_eval, vram_used)
     print("=== Qwen3 LLM 基座升级就绪度评估 ===")
