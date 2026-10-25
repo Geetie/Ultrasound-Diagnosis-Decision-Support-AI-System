@@ -10,9 +10,32 @@ from app.inference.grading_schema import (
 
 
 class TestGradingSchema:
-    def test_三器官枚举与expected形态对齐(self):
-        assert GRADING_ENUMS["thyroid"] == ["2", "3", "4a", "4b", "5"]
-        assert GRADING_ENUMS["liver"] == ["1", "2", "3", "4", "5"]
+    def test_三器官枚举与生产分级体系对齐(self):
+        """A.95 更新：原断言钉的是**漏项**的旧枚举，必须改。
+
+        旧断言（错误，已作废）：
+            thyroid == ["2","3","4a","4b","5"]   ← 缺 TR1
+            liver   == ["1","2","3","4","5"]     ← 缺 LR-M / LR-TIV
+
+        真机后果（A.95 Q29 重测发现）：
+        * TR1（正常）被枚举排除 → 正常病例被迫报 TR2 → **假阳性**；
+        * LR-M（可能恶性但非 HCC 特异）与 LR-TIV（**癌栓**）无法输出 →
+          模型只能塞进 LR-4/LR-5 → **临床语义降级**（癌栓被报成普通病灶）。
+
+        补全枚举后常规档一致率 75.18% → 79.56%（+4.4pp）。
+        新断言直接对**生产常量**，不再抄一份必然漂移的硬编码。
+        """
+        from app.agents.specialist.liver import LI_RADS_LEVELS
+
+        # thyroid: TR1~TR5 全覆盖（4a/4b 是 TR4 细分）
+        assert GRADING_ENUMS["thyroid"] == ["1", "2", "3", "4a", "4b", "5"]
+        assert "1" in GRADING_ENUMS["thyroid"], "缺 TR1 = 正常病例被迫报 TR2"
+
+        # liver: 与 LI_RADS_LEVELS 严格一致（含 LR-M / LR-TIV）
+        assert GRADING_ENUMS["liver"] == [
+            x.removeprefix("LR-") for x in LI_RADS_LEVELS
+        ], "liver 枚举必须与 LI_RADS_LEVELS 一致（缺 M/TIV 会让癌栓无法输出）"
+
         assert GRADING_ENUMS["cardiac"] == ["normal", "mild", "moderate", "severe"]
 
     def test_json_schema结构(self):
