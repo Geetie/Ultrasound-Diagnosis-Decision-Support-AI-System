@@ -3,7 +3,14 @@ uvicorn==0.29.0
 # pydantic / starlette 是 fastapi 的传递依赖，但 **app/ 里有 20+ 处直接 import**
 # （pydantic 24 处、starlette 2 处）—— 直接依赖必须显式声明，否则上游换实现/降级时
 # 会以"运行期 ImportError"的形式炸在启动路径上（2026-09-28 真机部署暴露同类问题）。
-pydantic==2.6.4
+#
+# A.95 Q31：pydantic 2.6.4 -> 2.13.5，与**生产实装对齐**。
+# 原因：生产 venv 实际跑的是 2.13.5（已用 Settings()/Organ 真机构造实测通过），
+# 而声明写 2.6.4 → 任何人按 requirements 重建环境会得到**与生产不同**的 pydantic
+# （跨 minor 版本，校验文案与 model_dump 行为都有差异）。
+# 锁文件守卫 test_installed_versions_match_lock 现在会拦这类漂移。
+# 注：fastapi 0.110.0 声明未动 —— 它对 pydantic>=2 兼容，且生产就是它在跑。
+pydantic==2.13.5
 starlette>=0.36.3,<0.37
 pydantic-settings==2.2.1
 sqlalchemy==2.0.27

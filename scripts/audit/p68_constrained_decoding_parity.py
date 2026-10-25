@@ -171,7 +171,7 @@ async def run_arm(cases: list[dict], *, temperature: float, structured: bool) ->
                 )
                 resp = await engine.generate(req)
                 text = getattr(resp, "text", "") or ""
-            except Exception as exc:
+            except Exception as exc:  # silent-ok: 生成失败已写入该例的 error 字段并在报告中统计，非静默
                 out.append(
                     {
                         **c,
@@ -187,7 +187,7 @@ async def run_arm(cases: list[dict], *, temperature: float, structured: bool) ->
                 try:
                     obj = json.loads(text.strip())
                     parsed = str(obj.get("grading") or "") or None
-                except (json.JSONDecodeError, AttributeError):
+                except (json.JSONDecodeError, AttributeError):  # silent-ok: 结构化解析失败已回退到正则抽取，回退路径有留痕
                     parsed = extract_grade(text, c["organ"])
             else:
                 parsed = extract_grade(text, c["organ"])

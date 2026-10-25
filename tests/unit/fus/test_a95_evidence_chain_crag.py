@@ -143,11 +143,14 @@ class TestEvidenceSourcesTraced:
                 for t in node.targets:
                     if isinstance(t, ast.Name) and t.id == "evidence_sources_trace":
                         assigned = True
-            if isinstance(node, ast.keyword) and node.arg == "reasoning_trace":
-                if isinstance(node.value, ast.List):
-                    for el in node.value.elts:
-                        if isinstance(el, ast.Name) and el.id == "evidence_sources_trace":
-                            used_in_trace = True
+            if (
+                isinstance(node, ast.keyword)
+                and node.arg == "reasoning_trace"
+                and isinstance(node.value, ast.List)
+            ):
+                for el in node.value.elts:
+                    if isinstance(el, ast.Name) and el.id == "evidence_sources_trace":
+                        used_in_trace = True
         assert assigned, "没有 evidence_sources_trace 变量定义"
         assert used_in_trace, (
             "evidence_sources_trace 只定义、**没放进 reasoning_trace** —— 留痕等于没做"

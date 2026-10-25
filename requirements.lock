@@ -186,13 +186,13 @@ pycryptodome==3.23.0
     # via minio
 pycryptodomex==3.23.0
     # via gmssl
-pydantic==2.6.4
+pydantic==2.13.5
     # via
     #   -r requirements.txt
     #   fastapi
     #   pydantic-settings
     #   qdrant-client
-pydantic-core==2.16.3
+pydantic-core==2.46.5
     # via pydantic
 pydantic-settings==2.2.1
     # via -r requirements.txt
@@ -252,6 +252,9 @@ typing-extensions==4.16.0
     #   pydantic
     #   pydantic-core
     #   sqlalchemy
+    #   typing-inspection
+typing-inspection==0.4.4
+    # via pydantic
 urllib3==2.8.0
     # via
     #   elastic-transport

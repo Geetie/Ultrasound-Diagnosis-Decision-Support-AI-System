@@ -56,3 +56,118 @@ def test_lockfile_covers_all_direct_deps():
         "（重跑 uv pip compile requirements.txt -o requirements.lock）: "
         f"{missing}"
     )
+
+
+# ----------------------------------------------------------------------
+# A.95 Q31：补「lock vs **实装**」这一层（原来只查 lock vs requirements.txt）
+# ----------------------------------------------------------------------
+#
+# ## 为什么必须补这一层
+#
+# 15 号 P0-4 记录的**真实缺陷**是：`prometheus_client` 锁定 **0.20**、实装 **0.25**
+# —— 这个漂移**就是直方图 p99=None 的诱因**（0.25 改了分位数计算口径）。
+#
+# 而原有守卫只查「requirements.txt 的直接依赖都在 lock 里」，
+# **完全看不到「lock 里的版本 ≠ 运行时实际加载的版本」** ——
+# 而后者才是真正会导致"指标静默失效"的东西。
+#
+# 反证：把 lock 里某个包的版本改掉（模拟漂移）→ 本组用例红。
+
+
+def test_installed_versions_match_lock():
+    """**实装版本 vs lock** 一致性 —— 但**分环境**判定。
+
+    ## A.95 Q31 实测（两处环境都真机查了）
+
+    | 环境 | prometheus_client | 其他漂移 |
+    |---|---|---|
+    | **生产服务器** `~/uai/venv` | **0.20.0 = 0.20.0 已对齐** | pydantic 声明 2.6.4 / 实装 2.13.5；opentelemetry 三件套 1.24.0 / 1.45.1 |
+    | 本机开发 venv | 0.20.0 vs **0.25.0** | 7 个关键包全漂 |
+
+    **结论分两层**：
+    1. 15 号记录的 p99=None 元凶（prometheus_client 0.20 vs 0.25）
+       **在生产已不存在** —— 生产实装与声明一致，这条可销号；
+    2. 但 `pydantic` / `opentelemetry` 仍有漂移 —— 是**真实遗留**，
+       既不能让守卫静默放行，也不能用本机环境冒充生产。
+
+    所以本用例只在**环境自报生产**时严格判定；本机开发环境 skip 并打印
+    实际漂移，避免"本机脏 = 生产坏"的误判。
+
+    反证：在生产 venv 里把 prometheus_client 装成 0.25 即红。
+    """
+    import importlib.metadata as md
+    import os
+    import sys
+
+    import pytest
+
+    lock_pinned = _parse_pinned(LOCK)
+    critical = [
+        "prometheus-client",
+        "fastapi",
+        "sqlalchemy",
+        "pydantic",
+        "redis",
+        "qdrant-client",
+        "aiofiles",
+    ]
+    checked, drifted = 0, []
+    for name in critical:
+        want = lock_pinned.get(name)
+        if want is None:
+            continue
+        try:
+            got = md.version(name)
+        except md.PackageNotFoundError:  # silent-ok: 包未安装时跳过该包，skip 原因已打印
+            continue
+        checked += 1
+        if got != want:
+            drifted.append((name, want, got))
+
+    if checked == 0:
+        pytest.skip("关键依赖均未安装（最小环境）")
+
+    prefix = str(sys.prefix).replace(chr(92), "/")
+    is_prod = os.environ.get("UAI_ENV") == "production" or prefix.endswith("uai/venv")
+    summary = "; ".join(f"{n} lock={w} 实装={g}" for n, w, g in drifted)
+
+    if not is_prod:
+        print(f"[本机开发环境] {len(drifted)} 个漂移（生产为准，不判失败）: {summary}")
+        pytest.skip(
+            f"非生产环境（{sys.prefix}），本机漂移不判失败。"
+            f"本机漂移: {summary}"
+        )
+
+    assert not drifted, (
+        "生产环境依赖 锁定 != 实装 —— 这正是 prometheus_client 0.20 vs 0.25 "
+        "导致直方图 p99=None 的同一类缺陷（指标静默失效、不报错）："
+        + summary
+        + " | 修法：重跑 uv pip compile requirements.txt -o requirements.lock 并对齐环境"
+    )
+
+def test_lock_has_no_duplicate_entries():
+    """lock 里同一个包不许出现两次不同版本（那是合并冲突的残留）。"""
+    seen: dict[str, set[str]] = {}
+    for raw in LOCK.read_text(encoding="utf-8").splitlines():
+        line = raw.split("#")[0].strip()
+        if not line or line.startswith("-"):
+            continue
+        m = re.match(r"^([A-Za-z0-9._-]+)\s*==\s*([A-Za-z0-9.!+]+)$", line)
+        if not m:
+            continue
+        key = m.group(1).lower().replace("_", "-")
+        seen.setdefault(key, set()).add(m.group(2))
+    conflict = {k: v for k, v in seen.items() if len(v) > 1}
+    assert not conflict, f"lock 里同一包有多个版本（合并冲突残留）: {conflict}"
+
+
+def test_prometheus_client_specifically_pinned():
+    """prometheus_client 必须**精确钉死** —— 它是 p99=None 的元凶，不许浮动。"""
+    lock_pinned = _parse_pinned(LOCK)
+    assert "prometheus-client" in lock_pinned, (
+        "prometheus_client 未在 lock 中钉死 —— 它的版本漂移会让直方图 p99 静默变 None"
+    )
+    ver = lock_pinned["prometheus-client"]
+    assert re.fullmatch(r"\d+\.\d+\.\d+", ver), (
+        f"prometheus_client 版本不是精确三段式: {ver!r}"
+    )

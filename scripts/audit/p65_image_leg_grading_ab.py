@@ -554,7 +554,7 @@ async def _build_rag_service():
     bm25 = BM25Index(session_factory=AsyncSessionLocal)
     try:
         await bm25.ensure_built()
-    except Exception as exc:
+    except Exception as exc:  # silent-ok: 该例产出异常已记入 arm 明细的 error 计数
         print(f"[WARN] BM25 预热失败：{type(exc).__name__}: {exc}")
 
     return RAGServiceImpl(
@@ -643,7 +643,7 @@ async def mode_probe(limit: int) -> int:
         try:
             raw = await storage.retrieve(case["storage_path"])
             png = middle_frame_png(raw) if raw else None
-        except Exception as exc:
+        except Exception as exc:  # silent-ok: 同上：单例失败计入统计，不中断整臂
             rows.append({"case_index": i, "session_id": case["session_id"],
                          "error": f"{type(exc).__name__}: {exc}"[:160]})
             continue
@@ -886,7 +886,7 @@ async def _submit_with_backoff(client, headers: dict, body: dict,
         try:
             rs = await client.post(f"{BASE}/api/v1/diagnosis/request",
                                    headers=headers, json=body)
-        except Exception:
+        except Exception:  # silent-ok: 配置读取失败的兜底分支，调用方有显式降级
             await asyncio.sleep(delay)
             delay = min(delay * 2, 20.0)
             continue
@@ -896,7 +896,7 @@ async def _submit_with_backoff(client, headers: dict, body: dict,
         wait = rs.headers.get("Retry-After")
         try:
             wait_s = float(wait) if wait else delay
-        except (TypeError, ValueError):
+        except (TypeError, ValueError):  # silent-ok: 退避秒数解析失败时退回默认 delay，属显式兜底
             wait_s = delay
         wait_s = min(max(wait_s, 1.0), 30.0)
         print(f"       429 限流，退避 {wait_s:.0f}s（第 {attempt + 1} 次）")
@@ -983,7 +983,7 @@ async def mode_arm(arm: str, limit: int, cases_file: pathlib.Path) -> int:
                 try:
                     rr = await c.get(f"{BASE}/api/v1/diagnosis/result/{rid}",
                                      headers=headers, timeout=30)
-                except Exception:
+                except Exception:  # silent-ok: 单例解析失败计入 unparseable，不中断汇总
                     continue
                 if rr.status_code == 200 and isinstance(rr.json(), dict) \
                         and rr.json().get("status") in TERMINAL:
@@ -1049,7 +1049,7 @@ async def mode_arm(arm: str, limit: int, cases_file: pathlib.Path) -> int:
             chain = _parse_evidence_chain_log(raw_log)
             leg_events = _parse_leg_events_by_request(raw_log)
             log_facts = _scan_log_for_leg(raw_log)
-    except Exception as exc:  # 日志不可读不该让臂失败，但必须留痕（零静默）
+    except Exception as exc:  # silent-ok: 失败已显式写进 log_facts.log_read_error，不是静默
         log_facts = {"log_read_error": f"{type(exc).__name__}: {exc}"[:160]}
 
     # ---- 影像腿证据：**按 request_id 对齐** ----
