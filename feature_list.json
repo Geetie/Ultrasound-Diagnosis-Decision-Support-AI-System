@@ -1310,6 +1310,23 @@
         "scripts/audit/p63_patient_token_cleanup.py（dry-run 默认 + 必须备份才 apply）",
         "commit c4224aa"
       ]
+    },
+    {
+      "id": "a91-no-fake-evidence",
+      "name": "A.91 假数据/假测试普查 + E1/E2/E3 证据等级门禁",
+      "description": "用户要求「排查所有假数据假测试，不得拿模板回答作为功能真实打通且实现的证据；打通和真实实现是有区别的」。先立三级判据（E1 真机实测/E2 行为级单测/E3 源码级断言），普查 446 个测试文件 + 267 个 app 文件，查出并修掉 6 处真实问题：①占位专科 health_check 恒 True（三专科全占位时健康检查照样全绿）→ 改 False；②测试把假通过固化成断言（test_health_check_is_always_true）；③test_warn_once_dedupes 名为验证去重实为 assert True → 改 spy 数调用次数；④test_e2e_diagnosis.py 名为端到端、实为 11 处 patch 全 mock（把融合层换掉仍全绿）→ 改写为编排骨架测试并标注 E3；⑤test_e2e_latency.py 同类 → 补证据等级与真实延迟参照；⑥processing_time_ms 静默回退写死 2500ms → 未测到给 0 并留痕。新增 18 条门禁（占位不得自报健康/fake 适配器须标注/接线测试须有结果断言/源码级断言须声明等级/e2e 全 mock 须声明/未测到不许写成具体数字），全部带反证腿。",
+      "status": "done",
+      "gate": "pytest tests/unit 7361 passed / 0 failed；tests/unit/quality 378 passed；新增 18 条守卫全带反证腿（占位改回 True / 去掉非端到端声明 / 加回 mock 回退 / 拆掉去重 四条反证逐项实测变红）；ruff 本轮改动文件全绿。",
+      "result": "已交付。检查后判定合理未改：local_fake 适配器（命名诚实+返回值带 adapter 名）、88 处 patch 多数 mock 依赖而非被测对象、phase0a_mock_kb_version 作为兜底、86 个源码级守卫（E3 级，有价值但不能当功能可用证据）。方法论沉淀：我自己的第一版修复也是假测试（断言 _WARNED 集合在拆掉去重后仍绿），判据本身也会假——写守卫必须跑一次改回旧行为。",
+      "dependencies": [
+        "a88-wiring-audit-fixes",
+        "a90-a88-leftovers"
+      ],
+      "evidence": [
+        "16 号附录 A.91（A.91.1~A.91.6）",
+        "tests/unit/quality/test_a91_no_fake_evidence.py（18 条门禁）",
+        "commit 164c08e"
+      ]
     }
   ]
 }
