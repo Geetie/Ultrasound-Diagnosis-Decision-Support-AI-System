@@ -296,7 +296,13 @@ class TestStructuredOutputChannel:
         # vLLM / OpenAI 兼容（硬规则 #5：结构化输出一律走 response_format）
         assert extra["response_format"]["type"] == "json_schema"
         schema = extra["response_format"]["json_schema"]["schema"]
-        assert schema["properties"]["grading"]["enum"] == ["2", "3", "4a", "4b", "5"]
+        # A.95 更新：原断言 `["2","3","4a","4b","5"]` 钉的是**漏项**的旧枚举
+        # （缺 TR1 → 正常病例被迫报 TR2，假阳性）。新枚举从生产 TI_RADS_LEVELS
+        # 派生，必须含 `1`。真机数据见 16 号 A.95 / Q29。
+        assert schema["properties"]["grading"]["enum"] == ["1", "2", "3", "4a", "4b", "5"]
+        assert "1" in schema["properties"]["grading"]["enum"], (
+            "约束解码枚举缺 TR1 —— 正常病例会被迫报 TR2"
+        )
         assert schema["required"] == ["grading"]
         # 旧服务端回落（vllm.py 仅在无 response_format 时下发）
         assert extra["guided_json"] == schema

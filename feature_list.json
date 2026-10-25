@@ -1394,6 +1394,23 @@
       "evidence": [
         "22-质量提升全景汇总-20261026.md"
       ]
+    },
+    {
+      "id": "a95-a-b-class",
+      "name": "A.95 A类6项+B类4项（四个前提被真机推翻）",
+      "description": "A类6/6完成：Q3无结论归因(251条,三前提证伪,正常期可用分级率18.30%)、Q2影像腿A/B(NO_GAIN,三轮N=20,失败模式换成'分不出级',12/20例被反向索要守卫替换)、Q11证据链(crag.py:885定位,有意合并需可解释,加evidence_sources留痕)、Q7版权台账(8份PDF零开放许可+400对话来源不可追溯→一份都不能进注册路径)、Q22(已在A.88)、Q31依赖锁(prometheus已对齐销号,补lock-vs-实装守卫,pydantic对齐2.13.5,生产7包零漂移)。B类：Q9能力底座交付(跨文档边0→3672+1200,三臂NO_GO_NO_RECALL_GAIN,因golden饱和测不出)、Q10嵌入A/B(REGRESSED:Qwen3 hit@5 -18.38pp/MRR -29.19pp,不换,挡住退化)、Q29约束解码(修枚举漏TR1/LR-M/LR-TIV,常规79.56%/高风险40.88%,P0-2未达成)、Q33只完成子项④vLLM版本固定(0.30.0),其余三项如实标注未做。另用公开数据集构造33047条(p67:AUL1470可商用/CACTUS29963可商用/TN3K614仅评测/CAMUS1000仅评测)。",
+      "status": "done",
+      "gate": "pytest tests/unit 7511 passed / 0 failed；新增守卫81条(Q3 25+Q2 26+Q11 9+Q29 11+Q31 5+Q33④5)，每条反证实测；ruff全绿；零静默counts={}；生产7关键包零漂移。",
+      "result": "A类全部完成；B类2项完成+1项底座交付+1项部分完成。三条教训：①'打开开关'≠'能力生效'(影像腿可达100%但送达40%)；②通用榜单强≠垂域强(Qwen3输bge-m3 18pp,必须自己A/B)；③'等难集'可能掩盖'没数据'(Q9实际是跨文档边为0)。未做项诚实标注：Q33的Qwen3升级/RAGFlow/Cornerstone3D三项需1~2周独立验证周期。",
+      "dependencies": [
+        "a88-wiring-audit-fixes",
+        "a93-external-deps"
+      ],
+      "evidence": [
+        "16号附录A.95（A.95.1~A.95.7）",
+        "reports: degraded_cause.json / image_leg_grading_ab.json / crossdoc_selector_ab.json / embedding_swap_ab.json / constrained_decoding_parity.json / public_hard_set.json",
+        "commits: b10509e / aefc07a / bc86939 / 126c8de / e9da85e / f7fd963 / 2551591"
+      ]
     }
   ]
 }
