@@ -425,6 +425,62 @@ class DicomStorageService:
             return False
         return False
 
+    async def replace(self, storage_path: str, content: bytes) -> bool:
+        """**原地替换**已有影像的字节（A.93：历史患者标识迁移需要改 DICOM 头）。
+
+        ## 为什么需要这个方法
+
+        `save()` 是"新建"语义（生成新 id / 新路径）；迁移要的是"同一条记录、
+        同一个 `storage_path`、只换文件内容" —— 用 `save()` 会产生**孤儿文件**
+        且让 `dicom_images.storage_path` 指向旧文件，影像与记录当场断链。
+
+        ## 安全约束
+
+        * **只覆盖已存在的路径**（`os.path.exists` / MinIO 对象存在）；
+          路径不存在返回 ``False`` 而不是创建 —— 防止"迁移把记录指向一个
+          其实不存在的文件"，那会让影像永久丢失且不易发现；
+        * 先写同目录临时文件再 `os.replace`（原子替换）：中途失败不会留下
+          半个 DICOM 文件（旧文件仍完整）。
+
+        Args:
+            storage_path: 已存在的存储路径（与 `retrieve` 同一形态）。
+            content: 新的完整文件字节。
+
+        Returns:
+            是否成功替换。
+        """
+        if self._backend == "local":
+            if not os.path.exists(storage_path):
+                return False
+            tmp_path = f"{storage_path}.tmp-{os.getpid()}"
+            async with aiofiles.open(tmp_path, "wb") as f:
+                await f.write(content)
+            os.replace(tmp_path, storage_path)  # 原子替换
+            return True
+        elif self._backend == "minio":
+            if storage_path.startswith("minio://"):
+                _, _, path = storage_path.partition("minio://")
+                bucket, _, key = path.partition("/")
+                if bucket and key:
+                    client = self._get_minio_client()
+                    # 先确认对象存在（同 local 分支的语义：不凭空创建）
+                    try:
+                        client.stat_object(bucket, key)
+                    except Exception as exc:
+                        logger.warning(
+                            "dicom_replace_object_missing",
+                            bucket=bucket,
+                            error_type=type(exc).__name__,
+                        )
+                        return False
+                    client.put_object(
+                        bucket, key, BytesIO(content), len(content),
+                        content_type="application/dicom",
+                    )
+                    return True
+            return False
+        return False
+
 
 _dicom_storage: DicomStorageService | None = None
 

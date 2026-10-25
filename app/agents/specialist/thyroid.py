@@ -191,6 +191,30 @@ class ThyroidSpecialistAgent(RAGSpecialistAgent):
         # 6) 提取理由（取"理由"或"分级"行后一段）
         reason = self._extract_reason(normalized, grade)
 
+        # 6b) A.93：**理由与分级矛盾时必须如实标注**（不许静默并用）
+        #
+        # 真机形态：首次输出写「信息不足、无法判断」，抽不到分级 →
+        # `base.invoke` 5b 触发结构化重试，重试拿到 `TR4`，然后
+        # `_parse_response(llm_text=首次文本, grade_override="TR4")` 把两者**合并**。
+        # 于是正文变成「甲状腺 · TR4 — 当前信息不足以进行 TI-RADS 分级…」：
+        # **标题说 TR4、正文说分级不出来**，医生看到会不知所措。
+        #
+        # 这不是解析 bug（合并是有意的：重试只为救回分级，富文本仍取首次），
+        # 而是**两段来源不同的信息被并排展示却没说明**。临床语义上必须讲清：
+        # 分级来自补充的结构化重试，依据仍不足 → 必须转人工。
+        reason_conflicts = bool(
+            reason
+            and any(
+                kw in reason
+                for kw in ("无法判断", "信息不足", "不足以", "无法进行", "无法给出")
+            )
+        )
+        if reason_conflicts and grade_override:
+            reason = (
+                f"{reason}（注：分级 {grade} 来自补充的结构化重试；"
+                "首次判读未能给出分级，依据仍不充分，请人工复核）"
+            )
+
         # 7) 选 top-3 证据 chunk
         evidence_ids = [c.chunk_id for c in chunks[:3]]
 
@@ -220,12 +244,39 @@ class ThyroidSpecialistAgent(RAGSpecialistAgent):
             if not line_s:
                 continue
             if any(kw in line_s for kw in ("理由", "因为", "由于", "Reason", "reason")):
-                # 去掉前缀（"理由:" / "理由："）
+                # ① 行首就是"理由:" → 取该前缀后的内容
                 for prefix in ("理由:", "理由：", "Reason:", "Reason：", "因为", "由于"):
                     if line_s.startswith(prefix):
-                        return line_s[len(prefix):].strip()
+                        return ThyroidSpecialistAgent._cut_at_next_field(line_s[len(prefix):]).strip()
+                # ② A.92 修：**行中出现**"理由:"（模型常把整段塞成一行，如
+                #    `分级: 无法判断 置信度: 0.0 理由: xxx 证据: 无 患者解释: …`）
+                #    原实现走 `return line_s` → 把**整行**当理由，于是最终正文变成
+                #    `甲状腺 · TR4 — 分级: 无法判断 置信度: 0.0 理由: …`，
+                #    标题分级（TR4）与正文"分级: 无法判断"**自相矛盾**。
+                #    真机实测：thyroid 299 条里 59 条（19%）是这种矛盾形态。
+                m = re.search(r"(?:理由|Reason)\s*[:：]", line_s)
+                if m:
+                    tail = line_s[m.end():]
+                    return ThyroidSpecialistAgent._cut_at_next_field(tail).strip()
                 return line_s
         return ""
+
+    @staticmethod
+    def _cut_at_next_field(text: str) -> str:
+        """从「理由」后的文本里**截掉后续字段**（证据/置信度/患者解释…）。
+
+        为什么需要：模型经常把多个字段写在同一行，取"理由"值时必须在下
+        一个字段名处截断，否则理由会把「证据:」「患者解释:」整段吞进去 ——
+        那正是 A.92 那个"标题 TR4 与正文'分级: 无法判断'矛盾"的成因。
+        """
+        if not text:
+            return text
+        stop = re.search(
+            r"\s(?:证据|置信度|总分|分级|鉴别诊断|患者解释|建议|注意事项|"
+            r"Evidence|Confidence|Impression)\s*[:：]",
+            text,
+        )
+        return text[: stop.start()] if stop else text
 
 
 __all__ = [
