@@ -1346,6 +1346,25 @@
         "tests/unit/quality/test_a91_patient_token_cleaning_wired.py（17 条）",
         "commit 265e423"
       ]
+    },
+    {
+      "id": "a93-external-deps",
+      "name": "A.93 解决两项外部依赖：历史 DICOM 明文迁移 + 分级口径分歧",
+      "description": "①历史 DICOM 明文 patient_id 迁移（583 张 → 全假名）：新增 scripts/ops/migrate_plaintext_patient_ids.py（默认 dry-run、apply 必须先备份、只处理 NOT LIKE 'anon_%'、三处同步）与 DicomStorageService.replace()（save 是新建语义会产生孤儿文件；replace 只覆盖已存在路径 + 临时文件原子替换）。真机结果：DB 583 明文→0、Qdrant 10 组明文→0、磁盘 582 个文件头→584/584 与 DB 一致；sessions 断链 0；跨检查聚合仍可用（anon_f1a9… 101 session）。踩坑：pydicom 3.x 的 save_as 不许传 explicit_vr（第一次 583 个文件全失败，且 DB/Qdrant 已成功导致重跑会跳过磁盘）→ 补 --disk-only 续跑模式。②分级口径分歧：统计 thyroid 299 条里 59 条(19%) 是「甲状腺 · TR4 — 分级: 无法判断」形态。拆成两个问题：问题1 是 bug —— _extract_reason 对「行中出现 理由:」直接返回整行，把 分级/置信度/证据 全吞进理由（新增 _cut_at_next_field 在下一字段处截断，83 字→33 字）；问题2 是口径 —— 分级来自结构化重试、理由来自首次输出（5b 有意合并），但不能静默并用，故矛盾时显式注明「分级来自补充的结构化重试、依据仍不充分、请人工复核」。",
+      "status": "done",
+      "gate": "真机：DB/Qdrant 明文各清零、磁盘 584/584 与 DB 一致、session 断链 0、4 条新判读重复'分级:' 0/4 且含 PATIENT_ 0/4。守卫 23 条（9 口径 + 14 迁移）；反证：explicit_vr 加回 save_as → 红。pytest tests/unit 7419 passed / 0 failed。",
+      "result": "两项 Blockers 全部解决。备份：patient_id_migration_20261025_232215.jsonl（10 组完整原值）+ dicom_storage_backup_20261025_232337.tar.gz（104M 字节级可回滚）。顺带发现并恢复答辩材料目录下 6 个文件被误删（含《架构真相-以代码为准》）——教训：git add -A 会把工作区意外缺失当删除意图，提交前必须看 git status 有无 D。",
+      "dependencies": [
+        "a88-wiring-audit-fixes",
+        "a92-desens-minted-token"
+      ],
+      "evidence": [
+        "16 号附录 A.93（A.93.1~A.93.4）",
+        "scripts/ops/migrate_plaintext_patient_ids.py",
+        "tests/unit/agt/test_a93_grading_caliber.py（9 条）",
+        "tests/unit/sec/test_a93_patient_id_migration.py（14 条）",
+        "commit ed64ca2"
+      ]
     }
   ]
 }
