@@ -1327,6 +1327,25 @@
         "tests/unit/quality/test_a91_no_fake_evidence.py（18 条门禁）",
         "commit 164c08e"
       ]
+    },
+    {
+      "id": "a92-desens-minted-token",
+      "name": "A.92 揪出 PATIENT_00N 真源：脱敏引擎自己制造它（不是模型/不是历史脏数据）",
+      "description": "顺着 A.90/A.91 追查「库里 47 条 患者PATIENT_001」，前三次修复全部无效（手工清洗历史/专科 4c 清洗/给 CRAG 加清洗），真机复跑每次仍出现。靠三层探针（CRAG 入口/CRAG 返回/落库前）+ RAWLLM 探针 + L2 前后探针定位：四个环节全干净，唯独 L2 之后变脏 → 根因是 desensitization_rules.yaml 的 patient_name 与 patient_name_with_title 两条规则第二段都是裸「任意 2-4 汉字」，把「患者解释」「咨询主治」当成患者姓名，替换成 PATIENT_00N。与 A.89.2 修的 sg_patient_name 是完全同一误报模式（同一模式在多处各写一份，只修一处不算修完）。修法：姓氏白名单（407 单姓）+ 谓词排除 + 名词标签排除（解释/沟通/说明/病史…，其中「患者解释」是 prompt 固定字段名、几乎每条结论都有，是最关键的漏网）+ 顺带修「病人：」从不匹配的既有漏网。关键约束：_make_name_replacer 硬依赖 match.group(2)，姓氏约束必须用 lookahead（零宽不占组），写成捕获组会让 groups 变 3 → 生产 IndexError；改写工具因此断言恰好 2 个捕获组。另删除一度给 CRAG 加的清洗（探针证明 CRAG 返回时干净，属无证据的防御，会误导后来者）。",
+      "status": "done",
+      "gate": "真机：5 条新判读 含PATIENT_ 由 5/5 True 变 5/5 False；再跑 3 条复核 3/3 False；L2PROBE_AFTER changed 由 True 变 False；正文形态恢复「患者解释: …」；全库残留 21 → 0。守卫 44 条（27 脱敏规则 + 17 接线），反证：还原旧 pattern → 10 条红。全量 pytest tests/unit 7410 passed / 0 failed。",
+      "result": "已修复并真机验证。历史清洗备份 patient_token_cleanup2_20261025_225348.jsonl（21 行含完整 findings 可回滚）。方法论：『我改的地方没生效』通常意味着『病不在我改的地方』——先加探针分段，不要继续推测下一个嫌疑点；另『判据本身也会假』必须跑一次改回旧行为。",
+      "dependencies": [
+        "a90-a88-leftovers",
+        "a91-no-fake-evidence"
+      ],
+      "evidence": [
+        "16 号附录 A.92（A.92.1~A.92.7）",
+        "scripts/ops/fix_patient_name_rule_a91.py（带自校验的规则改写工具）",
+        "tests/unit/quality/test_a91_desens_must_not_mint_token.py（27 条）",
+        "tests/unit/quality/test_a91_patient_token_cleaning_wired.py（17 条）",
+        "commit 265e423"
+      ]
     }
   ]
 }

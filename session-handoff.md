@@ -8,7 +8,34 @@
 2026-10-25（分支 `main`，提交 **`c4224aa`**；**A.90 补完 A.89.6 的三项遗留** ——
 T2a 管线内真机验证 / 影像腿 A/B 裁决 `GAIN`（打通三处死结）/ 历史 `PATIENT_` 标记清洗 47→0）
 
-### A.91 交付（最新）：假数据/假测试普查
+### A.92 交付（最新）：`PATIENT_00N` 真源 = 脱敏引擎自己在制造它
+
+**前三次修复全部无效**（A.90 洗历史 / 专科 4c 接清洗 / 给 CRAG 加清洗），
+第四次靠**探针分段**定位：
+
+```
+CRAG_PROBE_RETURN   has_token=False   ← CRAG 干净
+DBPROBE_CONTENT     has_token=False   ← 落库前一刻干净
+RAWLLM_PROBE        raw_has_token=False ← 模型输出干净
+L2PROBE_BEFORE      has_token=False   tail=… 患者解释: 请结合图像…
+L2PROBE_AFTER       has_token=True    tail=… 患者PATIENT_001: 请结合图像…
+```
+
+**根因**：`desensitization_rules.yaml` 的 `patient_name` 与
+`patient_name_with_title` 第二段都是裸「任意 2-4 汉字」，
+把「患者解释」「咨询主治」当姓名 → 替换成 `PATIENT_00N`。
+**与 A.89.2 修的 `sg_patient_name` 同一误报模式。**
+
+**修法**：`scripts/ops/fix_patient_name_rule_a91.py`（带自校验的改写工具）——
+姓氏白名单 407 单姓 + 谓词排除 + **名词标签排除（解释/沟通/说明/病史…）**
++ 修「病人：」从不匹配的既有漏网。
+硬约束：replacer 依赖 `group(2)`，姓氏必须用 lookahead（捕获组会 IndexError）。
+
+**真机**：5 条新判读 5/5 True → **5/5 False**；再跑 3 条 3/3 False；全库 21 → **0**。
+
+**删掉了**一度给 CRAG 加的清洗（探针证明干净，属无证据的防御，会误导后人）。
+
+### A.91 交付：假数据/假测试普查
 
 用户要求「不得拿模板回答作为功能真实打通且实现的证据；打通和真实实现是有区别的」。
 
