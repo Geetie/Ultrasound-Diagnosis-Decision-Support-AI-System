@@ -1293,6 +1293,23 @@
         "tests/reports/evidence_20261025/README.md（5 份真机报告 + 逐份口径定语）",
         "commits 6a6e131 / e562cc2 / 5269e62 / 9a0bfb1"
       ]
+    },
+    {
+      "id": "a90-a88-leftovers",
+      "name": "A.90 完成 A.89.6 遗留三项（T2a 真机 / 影像腿 A/B / 历史标记清洗）",
+      "description": "①T2a 管线内旁路真机验证：打开开关跑真实影像，findings['t2a_classification'] 真产出（Malignant 0.7821 / 57ms），status/confidence/正文未受影响，验证后开关还原 False。②影像腿检索贡献 A/B（新增 p62，三臂同进程）：首跑 NO_CONTRIBUTION，查出三处独立死结 ——session+organ 双条件恒 0 命中（316 session 仅 24 个有 organ）→ 加「严格→宽松」候选序列（每档必带 session，病人隔离不变）；影像点 img_… 被当脏数据全丢 → 按 id 分流构造影像块；KnowledgeChunk.organ 不许空串 → 缺失用 unknown。修复后裁决 GAIN（10/10 可达、新增 18 块、控制臂稳定、文本依据始终在）。③历史 患者PATIENT_00N 标记清洗（新增 p63）：47 条 → 仍含 0 条，备份 47 行/173KB 含完整 findings（抽查 5/5 可回滚），分级与置信度原样保留，判据两条独立证据（被当人名用 + 排除模板回显），A.77 的 415 条误删教训进了守卫。",
+      "status": "done",
+      "gate": "pytest tests/unit 全量 7348 passed / 0 failed；tests/unit/quality 361 passed（零静默 counts={}）；新增守卫 22 条（8 过滤降级 + 14 清洗），均带反证腿；真机实测见 16 号 A.90。",
+      "result": "三项遗留已交付并真机验证。遗留见 A.90.5：影像腿 A/B 仅 10 例/单器官/单词（样本偏小）；其余语料标记形态未取证；T2a 定位纪律（离线模型输出，永不改结论）。",
+      "dependencies": [
+        "a88-wiring-audit-fixes"
+      ],
+      "evidence": [
+        "16 号附录 A.90（A.90.1~A.90.5）",
+        "scripts/audit/p62_image_leg_contribution_ab.py（三臂 A/B，判据预注册）",
+        "scripts/audit/p63_patient_token_cleanup.py（dry-run 默认 + 必须备份才 apply）",
+        "commit c4224aa"
+      ]
     }
   ]
 }

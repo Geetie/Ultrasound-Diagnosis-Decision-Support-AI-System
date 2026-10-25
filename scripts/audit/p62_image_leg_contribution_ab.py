@@ -52,6 +52,7 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(_REPO_ROOT))
 
 import numpy as np  # noqa: E402
+import structlog  # noqa: E402
 from PIL import Image  # noqa: E402
 from sqlalchemy import text  # noqa: E402
 
@@ -59,6 +60,8 @@ from app.config.database import AsyncSessionLocal  # noqa: E402
 from app.config.settings import settings  # noqa: E402
 from app.rag.protocols import RetrievalRequest  # noqa: E402
 from app.rag.retriever import Retriever  # noqa: E402
+
+logger = structlog.get_logger(__name__)
 
 #: 每次检索取多少条（固定，三臂一致）
 TOP_K = 8
@@ -72,7 +75,12 @@ MAX_CASES_WITHOUT_TEXT = 0
 
 
 def _png_of(dicom_bytes: bytes) -> bytes | None:
-    """DICOM → 中间帧 PNG（与生产 `middle_frame_png` 同一口径的简化版）。"""
+    """DICOM → 中间帧 PNG（与生产 `middle_frame_png` 同一口径的简化版）。
+
+    失败分两级并**各自留痕**：项目解码器失败 → 退到 pydicom 直读像素；
+    再失败 → 返回 ``None``（调用方跳过该例并计数，**不冒充可用样本**）。
+    探针的价值有一半在"知道哪些样本被跳过、为什么"。
+    """
     try:
         from app.imaging.dicom_pixels import extract_frame_from_bytes
         from app.imaging.dicom_structure import frame_indices
@@ -80,11 +88,22 @@ def _png_of(dicom_bytes: bytes) -> bytes | None:
         first = extract_frame_from_bytes(dicom_bytes, None)
         picks = frame_indices(first.total_frames)
         return extract_frame_from_bytes(dicom_bytes, picks[len(picks) // 2]).png_bytes
-    except Exception:
-        # 兜底：造一张同尺寸灰阶图（只为测"检索腿行为"，不冒充真实影像质量）
+    except Exception as exc:
+        logger.warning(
+            "p62_frame_decode_fallback",
+            error_type=type(exc).__name__,
+            error=str(exc)[:120],
+            hint="项目解码器失败，退到 pydicom 直读像素",
+        )
         try:
             return _fallback_png(dicom_bytes)
-        except Exception:
+        except Exception as exc2:
+            logger.warning(
+                "p62_frame_decode_failed",
+                error_type=type(exc2).__name__,
+                error=str(exc2)[:120],
+                hint="该例跳过（不计入分母）",
+            )
             return None
 
 

@@ -5,8 +5,29 @@
 
 ## Last Updated
 
-2026-10-25（分支 `main`，提交 **`9a0bfb1`**；**A.89 真机验证已完成** —— A.88 的 13 条链路全部真机验证通过，
-并**在真机上揪出并修掉一个误报率 50% 的规则缺陷**。详见 16 号附录 A.89）
+2026-10-25（分支 `main`，提交 **`c4224aa`**；**A.90 补完 A.89.6 的三项遗留** ——
+T2a 管线内真机验证 / 影像腿 A/B 裁决 `GAIN`（打通三处死结）/ 历史 `PATIENT_` 标记清洗 47→0）
+
+### A.90 交付（本轮，A.89.6 遗留三项）
+
+1. **T2a 管线内真机验证**：`findings["t2a_classification"]` 真产出
+   （`Malignant` 0.7821 / 57ms），status/confidence/正文未受影响；开关已还原 False。
+2. **影像腿 A/B `GAIN`**（`scripts/audit/p62_image_leg_contribution_ab.py`，三臂同进程）：
+   首跑 `NO_CONTRIBUTION`，查出**三处独立死结**——
+   ①`session+organ` 双条件恒 0 命中（316 session 仅 24 个有 organ）→ 「严格→宽松」候选序列
+   （**每档必带 session**）；②影像点 `img_…` 被当脏数据全丢 → 按 id 分流构造"影像块"；
+   ③`KnowledgeChunk.organ` 不许空串 → 缺失用 `unknown`。
+   修复后 10/10 可达、新增 18 块、控制臂稳定、文本依据始终在。
+3. **历史 `PATIENT_` 清洗**（`scripts/audit/p63_patient_token_cleanup.py`）：47 条 → 仍含 **0**；
+   备份 `~/uai/data/eval/patient_token_cleanup_20261025_213354.jsonl`（47 行/173KB，
+   **含完整 findings**，抽查 5/5 可回滚）；分级与置信度原样保留。
+   判据两条独立证据（"占位符被当人名用" + 排除模板回显），A.77 的 415 条误删教训进了守卫。
+
+### ⚠️ 一条方法论（本轮踩的）
+
+A.90.2 我第一次跑 A/B 时**判据本身写错了**：把"top-k 名额置换"（影像块进来必然挤掉
+等量文本块）判成 `REGRESSION`。**看到 REGRESSION 先问"我测的是不是我要的东西"**，
+已修正并加了 P0 控制臂一致性判据。
 
 ### 本轮最重要的三件事
 
