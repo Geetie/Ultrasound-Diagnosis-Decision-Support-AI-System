@@ -1431,6 +1431,38 @@
         "reports/eval_sample_bottleneck.json",
         "reports/backfill_diagnosis.json"
       ]
+    },
+    {
+      "id": "p0-2-constrained-decoding",
+      "name": "Q29/P0-2 约束解码分级一致率重测",
+      "description": "15号P0-2判据：780例重测，常规/高风险档分级一致率≥95%。真机结果：常规档 79.56%（修复前75.18%）、高风险档 40.88%（修复前54.01%）→ **未达标**。但查出并修掉一个真缺陷：GRADING_ENUMS 漏了合法分级 —— thyroid 缺 TR1（正常病例被迫报TR2=假阳性）、liver 缺 LR-M/LR-TIV（癌栓无法输出=临床语义降级）。枚举已改为从生产 LEVELS 常量派生（踩到模块级循环导入→改延迟解析+轻量代理）。两个口径偏差：780例已不存在（A.70清理608条后只剩157条有真实结论）；llama.cpp已弃用→改为同引擎两次生成一致率。",
+      "status": "done",
+      "gate": "p68 探针 + 11条守卫（枚举必须含TR1/LR-M/LR-TIV、从生产常量派生、无fallback）；反证：还原旧枚举→5条红。",
+      "result": "P0-2 **未达成**（真实结论，未解析数=0）。根因：约束解码只保证格式合法，不保证内容确定。",
+      "dependencies": [
+        "a88-wiring-audit-fixes"
+      ],
+      "evidence": [
+        "16号A.95.2/③",
+        "scripts/audit/p68_constrained_decoding_parity.py",
+        "tests/unit/inf/test_a95_grading_enum_completeness.py",
+        "reports/constrained_decoding_parity.json"
+      ]
+    },
+    {
+      "id": "p0-4-deps",
+      "name": "Q31/P0-4 依赖锁对齐（p99=None 元凶）",
+      "description": "15号P0-4记录的真缺陷：prometheus_client 锁定0.20/实装0.25 —— 这是直方图 p99=None 的诱因。既有守卫只查「lock vs requirements.txt」，看不到「lock vs 运行时实装」。已补三层守卫：lock-vs-实装（分环境判定，本机脏≠生产坏）、同包多版本检测、prometheus_client 必须精确三段式。真机核对：生产已对齐（0.20.0=0.20.0，元凶销号），但 pydantic 声明2.6.4/实装2.13.5 → 已把声明对齐到生产实装 2.13.5（跨minor校验行为有差异，降回旧版风险更大）。**生产复核：7个关键包漂移 0**。",
+      "status": "done",
+      "gate": "tests/unit/quality/test_lockfile_alignment.py 5条守卫；生产实测7包零漂移。",
+      "result": "p99=None 元凶已销号（生产 prometheus_client 0.20.0 对齐）；pydantic 对齐 2.13.5。",
+      "dependencies": [],
+      "evidence": [
+        "16号A.95.2/⑥",
+        "tests/unit/quality/test_lockfile_alignment.py",
+        "requirements.txt",
+        "requirements.lock"
+      ]
     }
   ]
 }
