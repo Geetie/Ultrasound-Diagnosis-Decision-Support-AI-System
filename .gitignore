@@ -52,6 +52,21 @@ docs-for-guiding generating docs/**
 !docs-for-guiding generating docs/**/
 !docs-for-guiding generating docs/**/*.md
 
+# 答辩材料 v6：交付物（渲染图 / 构建与校验脚本 / 文稿）必须入库。
+# 背景：2026-10-28 `build_deck.py` / `check_deck.py` 曾被清空且因本规则不进版本库，
+# 无法从 git 恢复，只能整份重写。故单独放行该目录的这几类文件。
+# 纪律：目录级规则会让 git 不下探（见上方 data/* 同款坑），必须逐级反白。
+!docs-for-guiding generating docs/超声诊疗决策支持系统/
+!docs-for-guiding generating docs/超声诊疗决策支持系统/答辩材料/
+!docs-for-guiding generating docs/超声诊疗决策支持系统/答辩材料/v6/
+!docs-for-guiding generating docs/超声诊疗决策支持系统/答辩材料/v6/*.py
+!docs-for-guiding generating docs/超声诊疗决策支持系统/答辩材料/v6/*.md
+!docs-for-guiding generating docs/超声诊疗决策支持系统/答辩材料/v6/render-png/
+!docs-for-guiding generating docs/超声诊疗决策支持系统/答辩材料/v6/render-png/*.png
+
+# PPT 一律不入库（用户指令 2026-10-30：单文件 ~140MB，GitHub 拒收且无版本价值；
+# 源文件留本地/网盘）。注意：必须放在上方 v6 反白之后才能压住它。
+
 # 敏感数据与模型（`data/*` 根锚定：目录级排除会阻止 git 下探，
 # 使下方 !data/medical_resources/ 逐级反白名单失效；无锚点 `data/`
 # 还会连带吞掉 tests/*/data 等嵌套目录——历史实测踩坑）
@@ -103,3 +118,4 @@ soft_hsm_enabled_at.txt
 # 本地计数与 CI 干净检出同口径。
 scripts/_*.py
 scripts/_*.sh
+*.pptx
