@@ -52,6 +52,11 @@ export default function WorkspacePage({
   onStructuredProofread,
   onSign,
   onSignNext,
+  signing = false,
+  readback,
+  confirming = false,
+  confirmedAt = null,
+  confirmError = null,
   onRevealConclusion,
   dicomImageId,
   dicomImageIds,
@@ -88,6 +93,19 @@ export default function WorkspacePage({
   onStructuredProofread?: () => void;
   onSign?: () => void;
   onSignNext?: () => void;
+  /** 签发请求进行中（防止连点产生重复签名请求）。 */
+  signing?: boolean;
+  /**
+   * 确认动作区的**回读文案**（真实结论原文，通常传 `view.headline`）。
+   * 2026-10-28 修：原组件写死「已回读：TI-RADS 3…」，不随真实结论变。
+   */
+  readback?: string | null;
+  /** 确认回写进行中（P0-4）：按钮禁用防连点。 */
+  confirming?: boolean;
+  /** 服务端已记录的确认时间（ISO 串）。有值 = 已确认。 */
+  confirmedAt?: string | null;
+  /** 确认失败原因。必须显示：静默失败等于医生以为记下了其实没有。 */
+  confirmError?: string | null;
   onRevealConclusion?: () => void;
   /** 真实 DICOM 的 URL。给了就替换影像区的渐变占位（2:4 impl_note）。 */
   dicomImageId?: string;
@@ -191,11 +209,19 @@ export default function WorkspacePage({
       </WorkspaceConclusion>
 
       {/* 仅存在待确认项时渲染；其余状态这个组件根本不出现在 DOM 里 */}
-      {isCompactState(state) && <WorkspaceActionBar onConfirm={onConfirm} />}
+      {isCompactState(state) && (
+        <WorkspaceActionBar
+          onConfirm={onConfirm}
+          readback={readback}
+          confirming={confirming}
+          confirmedAt={confirmedAt}
+          confirmError={confirmError}
+        />
+      )}
 
       {/* 报告侧面板：滑出面板而非页面，可收起、可钉住。
-          reportText/statusNote 有值时显示**后端真实正文**（生产入口必须传）；
-          都没有才是 dev 画布预览（见 WorkspaceReportPanel 的数据口径说明）。 */}
+          reportText/statusNote 有值时显示**后端真实正文**；没有则显示空态提示
+          （2026-10-28 起不再回落画布示意文字，见组件头注释）。 */}
       {hasReportPanel(state) && (
         <WorkspaceReportPanel
           signed={state === 'signed'}
@@ -204,6 +230,7 @@ export default function WorkspacePage({
           onCollapse={onCollapseReport}
           onStructuredProofread={onStructuredProofread}
           onSign={onSign}
+          signing={signing}
         />
       )}
 

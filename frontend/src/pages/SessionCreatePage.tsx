@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppShell from '@/components/shell/AppShell';
 import VoiceDictationButton from '@/components/voice/VoiceDictationButton';
@@ -79,7 +79,21 @@ function consentMessageFor(code: string | null): string | null {
 export default function SessionCreatePage({ theme = 'dark' }: { theme?: ThemeName }) {
   const navigate = useNavigate();
   // 默认预选上次使用的部位 —— 医生通常一键即可
-  const [organ, setOrgan] = useState<OrganType>('thyroid');
+  // **2026-10-28 修（P1-9）**：从"单选 1 个部位"改为"多选"。
+  // 原实现 `target_organs: [organ]` 只能传 1 个 → 生产上永远造不出多部位会话，
+  // 而多器官端点 / 跨器官互检 / 05·14 两态全都以 `target_organs.length >= 2` 为前提
+  // （routes.tsx 的 isMultiOrgan 判定）→ 那三块能力事实上不可达。
+  // 现在保留"默认预选甲状腺"，其余部位可点选/取消；首个选中项 = 单器官判读用的部位。
+  const [organs, setOrgans] = useState<OrganType[]>(['thyroid']);
+  const toggleOrgan = useCallback((o: OrganType) => {
+    setOrgans((prev) => {
+      if (prev.includes(o)) {
+        // 不允许清空：至少留一个部位（判读必须带 target_organ）
+        return prev.length <= 1 ? prev : prev.filter((x) => x !== o);
+      }
+      return [...prev, o];
+    });
+  }, []);
   const [patientInput, setPatientInput] = useState('');
   const [patientState, setPatientState] = useState<PatientState>({ kind: 'unverified' });
   // 上次成功建会话用过的设备号直接回填 —— 重复检查时设备往往就是这一台
@@ -175,7 +189,7 @@ export default function SessionCreatePage({ theme = 'dark' }: { theme?: ThemeNam
       const session = await createSession({
         patient_id: patientState.patientId,
         device_id: trimmedDevice,
-        target_organs: [organ],
+        target_organs: organs,
       });
       localStorage.setItem(LAST_DEVICE_KEY, trimmedDevice);
       navigate(`/?session_id=${encodeURIComponent(session.session_id)}`);
@@ -325,21 +339,38 @@ export default function SessionCreatePage({ theme = 'dark' }: { theme?: ThemeNam
         />
 
         <span className="page-field-label">
-          检查部位 · 默认已预选上次使用的部位，通常一键即可，不必手工挑
+          检查部位 · 可多选（选 2 个以上走多部位联合判读；首个选中项为单器官判读部位）
         </span>
         <div className="page-organ-row" data-node="2:285">
-          {ORGAN_PRESETS.map((o) => (
-            <button
-              key={o}
-              type="button"
-              className={o === organ ? 'page-organ page-organ--selected' : 'page-organ'}
-              aria-pressed={o === organ}
-              onClick={() => setOrgan(o)}
-            >
-              {ORGAN_LABEL[o]}
-            </button>
-          ))}
+          {ORGAN_PRESETS.map((o) => {
+            const selected = organs.includes(o);
+            return (
+              <button
+                key={o}
+                type="button"
+                className={selected ? 'page-organ page-organ--selected' : 'page-organ'}
+                aria-pressed={selected}
+                // 2026-10-28（P1-9）：多选切换；至少保留 1 个部位
+                onClick={() => toggleOrgan(o)}
+                title={
+                  selected && organs.length <= 1
+                    ? '至少保留一个检查部位'
+                    : selected
+                      ? '点击取消该部位'
+                      : '点击加入该部位'
+                }
+              >
+                {ORGAN_LABEL[o]}
+              </button>
+            );
+          })}
         </div>
+        {organs.length > 1 && (
+          <p className="page-note" data-region="multi-organ-hint">
+            已选 {organs.length} 个部位：{organs.map((o) => ORGAN_LABEL[o]).join('、')}
+            {' '}· 判读会走多部位联合端点
+          </p>
+        )}
       </div>
 
       <p className="page-subtitle" style={{ lineHeight: '22px' }}>

@@ -292,7 +292,19 @@ describe('WorkspacePage · 04_判读态结论（design_data 2:12）', () => {
     expect(entries).toHaveLength(1);
     expect(entries[0].textContent).toBe('展开依据 / 鉴别诊断 / 诊断过程');
     // 不允许出现"展开依据""鉴别诊断""诊断过程"三个独立按钮
-    expect(container.querySelectorAll('button')).toHaveLength(0);
+    // 2026-10-28 修（P1-6）：展开入口现在是**真 button**（原本是不可点的 <p>），
+    // 所以这条断言从"按钮数为 0"改为"只有这 1 个按钮，且没有第二个展开按钮"。
+    const buttons = Array.from(container.querySelectorAll('button'));
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0].getAttribute('data-action')).toBe('expand');
+  });
+
+  it('展开入口在无依据时禁用并说明原因（不挂假按钮）', () => {
+    // 无 view = 设计预览模式，没有 evidenceIds → 不可展开
+    render(<WorkspacePage state="conclusion" />);
+    const btn = screen.getByRole('button', { name: '展开依据 / 鉴别诊断 / 诊断过程' });
+    expect(btn).toBeDisabled();
+    expect(btn.getAttribute('title')).toMatch(/未引用任何知识条目/);
   });
 
   it('判读态同样不渲染确认动作区与部位指示条', () => {
@@ -366,17 +378,38 @@ describe('WorkspacePage · 10_确认动作区（design_data 2:297）', () => {
 
   it('回读文案 + 等效说明 + 唯一确认按钮', () => {
     render(<WorkspacePage state="actionbar" />);
+    // 2026-10-28 修（P0-5）：回读文案不再写死「TI-RADS 3」，改为真实结论驱动。
+    // 不传 readback → 只说「本次结论」，**不编造分级**。
     expect(
-      screen.getByText('已回读：TI-RADS 3，考虑良性可能大 —— 请给一个确认动作')
+      screen.getByText('已回读：本次结论 —— 请给一个确认动作')
     ).toBeInTheDocument();
     // 脚踏不得为必需项：等效说明必须在
     expect(screen.getByText(/三选一等效/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '确认结论' })).toBeInTheDocument();
   });
 
+  it('回读文案用真实结论：传 readback 就回读它，不出现画布上的 TI-RADS 3', () => {
+    render(
+      <WorkspacePage
+        state="actionbar"
+        readback="甲状腺 · TR2 — 分级: TR2 总分: 2 置信度: 0.85"
+      />
+    );
+    expect(
+      screen.getByText('已回读：甲状腺 · TR2 — 分级: TR2 总分: 2 置信度: 0.85 —— 请给一个确认动作')
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/已回读：TI-RADS 3/)).toBeNull();
+  });
+
   it('P2：动作区只有一个待选动作，不出现并列第二选择', () => {
-    render(<WorkspacePage state="actionbar" />);
-    expect(screen.getAllByRole('button')).toHaveLength(1);
+    const { container } = render(<WorkspacePage state="actionbar" />);
+    // 2026-10-28：断言**限定在动作区内部**。原本是全页 getByRole('button')，
+    // 那时因为结论区的展开入口是 <p> 才恰好只有 1 个；P1-6 把展开入口改成真 button 后，
+    // 全页会有 2 个按钮（展开 + 确认）。本条的语义是"动作区不出现并列第二选择"，
+    // 所以必须 scope 到 [data-region="actionbar"]，而不是数全页。
+    const bar = container.querySelector('[data-region="actionbar"]')!;
+    expect(bar.querySelectorAll('button')).toHaveLength(1);
+    expect(bar.querySelector('button')!.textContent).toBe('确认结论');
   });
 
   it('确认按钮点击回调被触发', () => {

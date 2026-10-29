@@ -160,6 +160,35 @@ class DiagnosisRepository:
         logger.info("diagnosis_tier_updated", request_id=request_id, tier=tier)
         return True
 
+    async def mark_doctor_confirmed(
+        self,
+        request_id: str,
+        confirmed_by: str,
+    ) -> DiagnosisResult | None:
+        """回写医生确认（「我看过这条结论了」）。
+
+        设计依据 `前端设计/17-医生侧展示契约.md:137-141`：确认与签发是**两个**
+        不可省的操作——确认防 automation bias，签发负法律责任。本方法只写确认，
+        **不动 status / confidence / findings**，也不产生任何签发授权。
+
+        时间戳由服务端生成（不取客户端时间），保证审计可信。
+        重复确认覆盖为最后一次（医生的最后一次"我看过了"才是有效意愿）。
+        """
+        result = await self.get_result(request_id)
+        if not result:
+            return None
+
+        result.doctor_confirmed_at = datetime.now(timezone.utc)
+        result.doctor_confirmed_by = confirmed_by
+        await self.db.flush()
+
+        logger.info(
+            "diagnosis_doctor_confirmed",
+            request_id=request_id,
+            confirmed_by=confirmed_by,
+        )
+        return result
+
     async def get_results_by_session(
         self,
         session_id: str,

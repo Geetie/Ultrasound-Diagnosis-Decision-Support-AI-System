@@ -319,12 +319,20 @@ describe('09_新建检查会话', () => {
     expect(organs[0].getAttribute('aria-pressed')).toBe('true');
   });
 
-  it('部位可切换选中', () => {
+  it('部位可多选切换（2026-10-28 P1-9：原为单选）', () => {
     const { container } = wrap(<SessionCreatePage />);
     const organs = container.querySelectorAll('.page-organ');
+    expect(organs[0].getAttribute('aria-pressed')).toBe('true'); // 默认预选甲状腺
     fireEvent.click(organs[1]);
-    expect(organs[0].getAttribute('aria-pressed')).toBe('false');
+    // 多选：点第 2 个是"加入"，第 1 个仍选中（不再是互斥单选）
+    expect(organs[0].getAttribute('aria-pressed')).toBe('true');
     expect(organs[1].getAttribute('aria-pressed')).toBe('true');
+    // 再点一次可取消
+    fireEvent.click(organs[1]);
+    expect(organs[1].getAttribute('aria-pressed')).toBe('false');
+    // 至少保留 1 个：把唯一选中的也点掉 → 仍然选中
+    fireEvent.click(organs[0]);
+    expect(organs[0].getAttribute('aria-pressed')).toBe('true');
   });
 
   it('患者校验通过后显式带出同意状态（建会话是同意校验必经点）', async () => {
@@ -346,7 +354,9 @@ describe('09_新建检查会话', () => {
   it('不要求事前声明全部部位：说明自动补全是补全不是替代', () => {
     render(<MemoryRouter><SessionCreatePage /></MemoryRouter>);
     expect(screen.getByText(/作为补全而不是替代/)).toBeInTheDocument();
-    expect(screen.getByText(/默认已预选上次使用的部位/)).toBeInTheDocument();
+    // 2026-10-28（P1-9）：文案随多选能力更新 —— 原「默认已预选上次使用的部位」已改成
+    // 「可多选（选 2 个以上走多部位联合判读…）」。这里钉住新口径。
+    expect(screen.getByText(/可多选/)).toBeInTheDocument();
   });
 
   it('主操作「开始检查」44px，真的建会话并带上选中部位', async () => {
@@ -379,13 +389,18 @@ describe('09_新建检查会话', () => {
     await waitFor(() => expect(screen.getByText(/AI 辅助知情同意有效/)).toBeInTheDocument());
     expect(btn).toBeDisabled(); // 患者确认了但设备还没填 —— 仍然不允许提交
     fireEvent.change(screen.getByLabelText('设备编号'), { target: { value: 'D1' } });
-    // 换到第 3 个部位再提交 —— 请求体必须带医生实际选中的部位
+    // 2026-10-28（P1-9）：多选语义 —— 默认选中甲状腺[0]，点第 3 个是"加入"而非"替换"，
+    // 所以请求体是 [thyroid, liver]。原断言 target_organs: ['liver'] 是单选时代的旧契约。
     fireEvent.click(container.querySelectorAll('.page-organ')[2]);
     await waitFor(() => expect(btn).toBeEnabled());
     fireEvent.click(screen.getByRole('button', { name: '开始检查' }));
     await waitFor(() => {
       expect(vi.mocked(createSession)).toHaveBeenCalledWith(
-        expect.objectContaining({ patient_id: 'P1', device_id: 'D1', target_organs: ['liver'] }),
+        expect.objectContaining({
+          patient_id: 'P1',
+          device_id: 'D1',
+          target_organs: ['thyroid', 'liver'],
+        }),
       );
     });
   });

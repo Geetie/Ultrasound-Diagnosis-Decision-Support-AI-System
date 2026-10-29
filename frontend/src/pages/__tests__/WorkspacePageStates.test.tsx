@@ -149,12 +149,33 @@ describe('06_停档禁忌命中 · 全稿唯一打断式提示', () => {
 });
 
 describe('07_报告侧面板 与 12_签发后', () => {
-  it('07：面板渲染、标题「报告草稿」、签发可用、状态行不渲染', () => {
+  it('07：面板渲染、标题「报告草稿」、状态行不渲染', () => {
     const { container } = render(<WorkspacePage state="report" />);
     expect(container.querySelector('[data-region="report-panel"]')).not.toBeNull();
     expect(screen.getByText('报告草稿')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '签发' })).toBeEnabled();
     expect(screen.queryByText(/报告状态：/)).toBeNull();
+    // 2026-10-28 修（P0-1/P1-8）：签发按钮的可点条件变了 ——
+    //   ① `onSign` 未传 → 禁用（原来是 onClick=undefined 却看起来可点）；
+    //   ② 无真实正文（state=report 且未传 reportText）→ 禁用（无正文不能签）。
+    // 这里断言"两个条件都如实反映在按钮上"，不再断言"默认就可用"（那是旧假象）。
+    expect(screen.getByRole('button', { name: '签发' })).toBeDisabled();
+    expect(container.querySelector('[data-region="report-empty"]')).not.toBeNull();
+  });
+
+  it('07：有真实正文 + 有 onSign 时签发才可用', () => {
+    const { container } = render(
+      <WorkspacePage
+        state="report"
+        reportText="所见：肝脏大小形态正常，实质回声均匀。"
+        onSign={() => undefined}
+      />
+    );
+    expect(screen.getByRole('button', { name: '签发' })).toBeEnabled();
+    // 断言 scope 到**报告面板内部**：影像区的设计预览标注框里本来就有
+    // 「18.4 × 12.1 mm」（那是 WorkspaceImageRegion 的画布示意，与本条无关）。
+    const panel = container.querySelector('[data-region="report-panel"]')!;
+    expect(panel.textContent).not.toMatch(/18\.4 × 12\.1 mm/);
+    expect(panel.querySelector('[data-region="report-body"]')).not.toBeNull();
   });
 
   it('12：标题「已签发」、签发禁用、状态行出现', () => {
@@ -184,9 +205,14 @@ describe('07_报告侧面板 与 12_签发后', () => {
     expect(container.querySelector('[data-region="report-panel"]')).not.toBeNull();
   });
 
-  it('报告草稿由系统预生成，医生只改要改的句子', () => {
-    render(<WorkspacePage state="report" />);
-    expect(screen.getByText(/草稿由系统预生成/)).toBeInTheDocument();
+  it('无正文时只出空态，**不再渲染画布示意文字**（P1-8 反证腿）', () => {
+    const { container } = render(<WorkspacePage state="report" />);
+    // 修复前这里会渲染「18.4 × 12.1 mm 低回声结节」= 假超声所见。
+    // 断言 scope 到面板内部（影像区自己的画布示意框是另一回事，不在本条范围）。
+    const panel = container.querySelector('[data-region="report-panel"]')!;
+    expect(panel.textContent).not.toMatch(/18\.4 × 12\.1 mm/);
+    expect(panel.textContent).not.toMatch(/TI-RADS 3 类/);
+    expect(panel.querySelector('[data-region="report-empty"]')).not.toBeNull();
   });
 
   it('无面板的状态下 DOM 里不存在面板', () => {

@@ -14,7 +14,7 @@ import { organDisplayName } from '@/types/session';
 import { reportError } from '@/utils/errorReport';
 import VoiceControl from '@/components/voice/VoiceControl';
 import { getApiErrorMessage } from '@/utils/apiError';
-import { getReportByRequest } from '@/services/reportService';
+import { getReportByRequest, signReport } from '@/services/reportService';
 import { fetchDicomForDisplay, listSessionImages } from '@/services/imagingService';
 import { needsDoctorReview, toConclusionView } from '@/services/diagnosisAdapter';
 import ClinicalInfoPanel from '@/components/workspace/ClinicalInfoPanel';
@@ -119,16 +119,22 @@ function WorkspaceRoute() {
   const [reportPanel, setReportPanel] = useState<'draft' | 'signed' | null>(null);
   const [reportText, setReportText] = useState<string | null>(null);
   const [reportStatusNote, setReportStatusNote] = useState<string | null>(null);
+  // 2026-10-28（P0-1）：报告 ID 必须留下来 —— 面板上的「签发」要调
+  // `POST /report/{report_id}/sign`，而原先只存了正文与状态，没有 id → 无从签发。
+  const [reportId, setReportId] = useState<string | null>(null);
+  const [signing, setSigning] = useState(false);
 
   const openReportPanel = useCallback((rid: string) => {
     setReportPanel('draft'); // 先开面板（立即有反馈），随后用真实状态纠正
     setReportText(null);
+    setReportId(null);
     setReportStatusNote('正在读取报告…');
     getReportByRequest(rid)
       .then((r) => {
         setReportPanel(r.signature_present ? 'signed' : 'draft');
-        // 只有后端真的渲染过正文才显示；否则如实说明，不回落到画布示意文字
+        // 只有后端真的渲染过正文才显示；否则如实说明（空态由面板负责渲染）
         setReportText(r.rendered ?? null);
+        setReportId(r.report_id ?? null);
         setReportStatusNote(
           r.rendered
             ? null
@@ -140,11 +146,86 @@ function WorkspaceRoute() {
         console.error('[workspace] 报告读取失败（面板不显示任何正文）', err);
         setReportPanel('draft');
         setReportText(null);
+        setReportId(null);
         setReportStatusNote(
           getApiErrorMessage(err, '尚未生成报告草稿 —— 请到「报告」页生成')
         );
       });
   }, []);
+
+  /**
+   * 工作区内签发（P0-1 修复，2026-10-28）。
+   *
+   * 为什么必须在这里做：面板上的「签发」原先 `onSign` 未传 → `onClick={undefined}`，
+   * 点了完全没反应。现在真调 `POST /report/{report_id}/sign`。
+   *
+   * 三个口径：
+   *   1. **签名对象是后端渲染正文**，前端只发空 body（operator 由后端从 token 取），
+   *      不在前端拼任何内容 —— 签什么由服务端决定，这是法律责任节点；
+   *   2. **缺段拒签（E1030）如实透传**：后端会拒，前端把中文段落名显示出来，
+   *      不吞成"签发失败"；
+   *   3. **成功后回读后端状态**（`signature_present` 驱动 signed），不由 UI 猜。
+   */
+  const handleSignReport = useCallback(async () => {
+    if (!reportId || signing) return;
+    setSigning(true);
+    setReportStatusNote('正在签发…');
+    try {
+      const signed = await signReport(reportId);
+      setReportPanel(signed.signature_present ? 'signed' : 'draft');
+      setReportText(signed.rendered ?? null);
+      setReportStatusNote(
+        signed.signature_present
+          ? `已签发（密钥 ${signed.signing_key_name ?? '未知'}）`
+          : '服务端未返回签名，请到「报告」页核对'
+      );
+    } catch (err: unknown) {
+      // E1030（缺段拒签）与其它失败一律如实显示后端中文文案
+      reportError('workspace', '工作区内签发失败', err);
+      setReportStatusNote(getApiErrorMessage(err, '签发失败，请到「报告」页处理'));
+    } finally {
+      setSigning(false);
+    }
+  }, [reportId, signing]);
+
+  /**
+   * 「结构化校对」（P0-2 修复，2026-10-28）。
+   *
+   * **这一条不是"没接线"，是"没实现"**：设计文档（14-前端设计评审结论 §263）
+   * 定义了一个「与草稿互切的选词面板」，但仓库里**从来没有这个组件**
+   * （`grep 结构化校对` 只命中本按钮文案与设计文档）。
+   *
+   * 因此本轮**不伪造**一个假的校对面板，而是把按钮接到**唯一真实存在的校对能力**上：
+   * `/report` 页的「补录缺失段落」面板（`ReportPage.tsx` 的 supplement-panel，
+   * 按后端 `completeness.missing` 逐段给输入框、保存后重渲染）。这是同一件事的
+   * 现有实现（"改哪句点哪句"的最小可用版），且带着 request_id 跳过去，医生不用手敲。
+   *
+   * 遗留：真正的"结构化选词面板"（按 TI-RADS 五维度勾选、无关段落自动折叠）
+   * 仍未实现 —— 已登记到修复报告，属需设计/产品排期的功能缺口，不是接线问题。
+   */
+  const handleStructuredProofread = useCallback(() => {
+    const rid = flow.requestId;
+    if (!rid) {
+      setReportStatusNote('尚未发起判读，无法校对 —— 请先完成一次判读');
+      return;
+    }
+    navigate(`/report?request_id=${encodeURIComponent(rid)}`);
+  }, [flow.requestId, navigate]);
+
+  /**
+   * 「下一个病人」（P0-3 修复，2026-10-28）。
+   *
+   * 签发后回工作列表并清屏。清屏靠**换掉 URL 上的 session_id / request_id**
+   * —— 工作区的数据全部由 URL 上的 id 驱动（`sessionInfo` / `sessionImage` 都按 id
+   * 匹配，对不上就不渲染），所以离开这一屏就等于零残留，不需要额外的全局 reset。
+   */
+  const handleSignNext = useCallback(() => {
+    setReportPanel(null);
+    setReportText(null);
+    setReportId(null);
+    setReportStatusNote(null);
+    navigate('/worklist');
+  }, [navigate]);
 
   // 真机结果 → 结论视图模型；null = 还没有可用结论（组件退回设计预览文案）
   const view = toConclusionView(flow.result);
@@ -524,6 +605,10 @@ function WorkspaceRoute() {
         dicomImageIds.length === 0 ? (sessionImageIssueResolved ?? undefined) : undefined
       }
         onConfirm={flow.confirm}
+        /* P0-4：确认回写的三态（进行中 / 已确认 / 失败）必须让医生看见 */
+        confirming={flow.confirming}
+        confirmedAt={flow.confirmedAt}
+        confirmError={flow.confirmError}
         identity={sessionMatched ? sessionInfo.identity ?? undefined : undefined}
         clinicalSlot={
           <ClinicalInfoPanel
@@ -536,6 +621,13 @@ function WorkspaceRoute() {
         onCollapseReport={() => setReportPanel(null)}
         reportText={reportText}
         reportStatusNote={reportStatusNote}
+        /* 2026-10-28：三个原先"从未传入"的回调，现在全部接上真实实现 */
+        onSign={handleSignReport}
+        signing={signing}
+        onStructuredProofread={handleStructuredProofread}
+        onSignNext={handleSignNext}
+        /* P0-5：回读文案改由真实结论驱动（见 WorkspaceActionBar 的 readback 参数） */
+        readback={view?.headline ?? null}
         organCount={targetOrgans.length}
         multiOrganSlot={
           flow.organResults.length > 0 ? (
