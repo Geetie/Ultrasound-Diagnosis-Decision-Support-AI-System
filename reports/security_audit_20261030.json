@@ -1,0 +1,311 @@
+{
+  "meta": {
+    "report": "全仓安全审计",
+    "date": "2026-10-30",
+    "auditor": "security-auditor",
+    "scope": "repo working tree HEAD c65da99 + uncommitted changes (read-only)",
+    "mode": "report-only, no code/config/permission changes, no services started, no production DB touched",
+    "baseline_docs": [
+      "docs/合规/发布就绪报告.md",
+      "progress.md",
+      "docs-for-guiding generating docs/超声诊疗决策支持系统/16-开发进展汇报-20260928.md",
+      "docs-for-guiding generating docs/超声诊疗决策支持系统/答辩材料/v6/research/核查D-部署运行态.md"
+    ],
+    "totals": {"CRITICAL": 2, "HIGH": 5, "MEDIUM": 10, "INFO": 5, "total": 22},
+    "status_totals": {"fixed": 0, "accepted": 0, "open": 22, "known_but_unfixed": 3},
+    "tools": {
+      "skill_script": "node ~/.dsh/skills/security-audit/scripts/audit.cjs --full (hardcoded Clawdbot paths /root/clawd, scanned 0 files; its single HIGH 'No .env file found' is a false positive for this repo)",
+      "python_sca": "OSV API (https://api.osv.dev/v1/query) over all 90 pinned packages in requirements.lock; pip-audit not installed locally",
+      "frontend_sca": "npm audit --json in frontend/ (critical 2 / high 19 / moderate 10 / low 1 = 32)",
+      "route_auth_scan": "custom ast scan over 94 HTTP routes in app/api/v1/*.py",
+      "not_run": ["bandit -ll", "pip-audit (native)", "dynamic pentest", "image CVE scan / SBOM"]
+    },
+    "masking": "no secret plaintext in this file; credentials masked as ****",
+    "notes": "code is authoritative over docs; where docs claim fixed-but-code-differs, entry marked evidence_status=contradicts_docs"
+  },
+  "findings": [
+    {
+      "id": "SEC-01",
+      "severity": "CRITICAL",
+      "category": "credentials/secret-in-repo",
+      "file": "keys/jwt_private.pem",
+      "line": 1,
+      "title": "git 跟踪的可用 RSA 私钥（与跟踪的 jwt_public.pem 配对），.gitignore 规则对已跟踪文件无效",
+      "evidence_status": "verified_openssl_RSA_key_ok_and_tracked; introduced in commit d6f89d5 (2026-05-08); no runtime reader found (HSM-based signing now) but non-use cannot be proven",
+      "fix": "1) rotate jwt_signing_key in HSM and invalidate old tokens (multi-kid rotation already supported in app/security/auth.py:82-108); 2) git rm --cached keys/jwt_private.pem keys/jwt_public.pem (do not delete files, do not change permissions); 3) treat history rewrite as a separate decision, register 'history still contains key' as known residue; 4) if provably never used in production, record that and still remove from HEAD",
+      "status": "open",
+      "known_baseline": "flagged in 答辩材料/v6/research/核查D-部署运行态.md:422 and 中期答辩呈现提案-v3-20261025.md:302 (S2), never remediated"
+    },
+    {
+      "id": "SEC-02",
+      "severity": "CRITICAL",
+      "category": "credentials/secret-in-repo",
+      "file": "scripts/_p1_langfuse_signup.sh",
+      "line": 5,
+      "title": "已跟踪脚本内硬编码 Langfuse 管理口令（明文，已打码 ****），用于 admin@uai.local",
+      "evidence_status": "verified via git ls-files (tracked despite scripts/_*.sh ignore rule); line 5 contains literal password field",
+      "fix": "1) change the Langfuse admin password and clear ~/uai/langfuse/keys.json; 2) git rm --cached scripts/_p1_langfuse_signup.sh (one-shot script, delete preferred); 3) read password from env var at runtime; 4) repo-wide git grep re-check (done this round, single hit)",
+      "status": "open"
+    },
+    {
+      "id": "SEC-03",
+      "severity": "HIGH",
+      "category": "authn/missing-authentication",
+      "file": "app/api/v1/segmentation.py",
+      "line": 90,
+      "title": "无鉴权的高成本推理端点：POST /api/v1/nodule、/api/v1/organ/{organ}/nodule（segmentation.py:90,99）与 POST /api/v1/attributes/hints（attributes.py:33），且不在 RATE_LIMITS 表内",
+      "evidence_status": "verified by ast scan of 94 routes: no Depends(get_current_active_user)/RoleChecker/PermissionChecker and no router-level dependencies; app/config/rate_limit.py:53-85 has no entry",
+      "fix": "add current_user: dict = Depends(get_current_active_user) to the three handlers (one line each) and add two RATE_LIMITS entries copied from /api/v1/imaging/dicom/upload (30/min); do not add special permission bits",
+      "status": "open"
+    },
+    {
+      "id": "SEC-04",
+      "severity": "HIGH",
+      "category": "authz/missing-object-level-authorization",
+      "file": "app/api/v1/session.py",
+      "line": 172,
+      "title": "BOLA/IDOR：任意登录用户可按 ID 读取任意患者的会话/影像/报告/诊断结果（session.py:172、imaging.py:445、diagnosis.py:735、report.py:210）",
+      "evidence_status": "verified: handlers only require authentication, repository lookups carry no actor condition; grep shows no doctor_id/institution/tenant/org_id/hospital column in app/models/database.py",
+      "fix": "product decision first: if single-institution shared access is intended, register as accepted risk with owner in 发布就绪报告; if isolation required, add sessions.doctor_id (alembic) + repository filter get_session(session_id, actor) and pass get_actor_id(current_user) in the four read endpoints; do not introduce an ABAC engine",
+      "status": "open"
+    },
+    {
+      "id": "SEC-05",
+      "severity": "HIGH",
+      "category": "dependencies/known-vulnerabilities",
+      "file": ".github/workflows/security-scan.yml",
+      "line": 34,
+      "title": "依赖门禁声称阻断但当前为红：Python 5 个包有已知漏洞，前端 npm audit 32 条（19 high / 2 critical）",
+      "evidence_status": "verified 2026-10-30: OSV over requirements.lock -> python-multipart 0.0.9 (8 advisories incl. CVE-2024-53981, CVE-2026-24486 arbitrary file write, CVE-2026-42561, CVE-2026-53539), starlette 0.36.3 (CVE-2024-47874 high, CVE-2025-54121, CVE-2026-54283 high, CVE-2026-48710), protobuf 4.25.9 (CVE-2026-0994 high), certifi 2026.7.22 (CRITICAL compromised emSign root CA, fixed 2026.10.19), opentelemetry-api 1.24.0 (moderate); npm audit -> axios 1.16.1 high, echarts 6.0.x moderate XSS, react-router-dom 7.15.x high, vitest/tinypool critical (devDeps)",
+      "fix": "frontend: npm audit fix (no --force); pin axios >=1.19.1, echarts >=6.1.0, react-router-dom >=7.18.2, vitest >=4.1.11. python: python-multipart >=0.0.31; upgrade fastapi to unlock starlette >=0.40 (fixes CVE-2024-47874); bump protobuf/certifi/opentelemetry-*; regenerate requirements.lock with uv pip compile; ensure CI gates really run and are green (never relax --audit-level)",
+      "status": "open",
+      "known_baseline": " contradicts 16-开发进展汇报-20260928.md:21 claim that pip-audit/npm audit are blocking"
+    },
+    {
+      "id": "SEC-06",
+      "severity": "HIGH",
+      "category": "phi/logging",
+      "file": "app/config/logging.py",
+      "line": 17,
+      "title": "原始 patient_id 进 stdout JSON 日志：97 处 patient_id= 调用点，structlog 无脱敏 processor",
+      "evidence_status": "verified: structlog.configure at logging.py:17-23 has only TimeStamper/add_log_level/JSONRenderer; representative sites diagnosis_pipeline.py, three_layer_desensitization.py:143, consent_withdrawal_consumer.py, dicom_storage.py:325; DICOM files use pseudonym anon_<hmac[:16]> while logs carry real IDs",
+      "fix": "add one structlog processor in app/config/logging.py before JSONRenderer that rewrites patient_id/patient_name/patient_context via existing salted HMAC pseudonymize_patient_id() from app/services/dicom_storage.py:43-83; optionally move the helper to app/security/pseudonym.py and rename field to patient_ref",
+      "status": "open"
+    },
+    {
+      "id": "SEC-07",
+      "severity": "HIGH",
+      "category": "device-auth/default-credentials",
+      "file": "docker-compose.dev.yml",
+      "line": 159,
+      "title": "EDGE_API_KEY 默认弱值 dev_edge_api_key 作为设备认证之根，且 DICOM SCP 11112 暴露到宿主 0.0.0.0",
+      "evidence_status": "verified: compose line 159 default; edge/config.py:126/162 only checks non-empty; app/api/v1/device.py:39-57 header-hash auth; edge/dicom_scp.py:129-200 pynetdicom with fixed AE title, no calling-AE allowlist; compose line 194 publishes 11112",
+      "fix": "1) make EDGE_API_KEY mandatory: EDGE_API_KEY=${EDGE_API_KEY:?...} (same style as postgres/redis in that file); 2) bind 127.0.0.1:11112:11112; 3) in production add calling-AE allowlist in edge/dicom_scp.py; do not invent a custom auth layer for DICOM",
+      "status": "open"
+    },
+    {
+      "id": "SEC-08",
+      "severity": "MEDIUM",
+      "category": "runtime/network-exposure",
+      "file": "docker-compose.dev.yml",
+      "line": 12,
+      "title": "所有端口绑 0.0.0.0（5432/6379/8000/9001/11112/8428/9093、llm 8001/8002），违反 AGENTS.md 硬规则 #3（服务只绑 127.0.0.1）",
+      "evidence_status": "verified in docker-compose.dev.yml:12,36,90,130,180,206,225 and docker-compose.llm.yml:13,38; redis-cli -a exposes password via ps on line 39",
+      "fix": "prefix all ports with 127.0.0.1: (string-only change, 7 places); use REDISCLI_AUTH instead of redis-cli -a; keep external access through SSH tunnel/nginx as already documented",
+      "status": "open"
+    },
+    {
+      "id": "SEC-09",
+      "severity": "MEDIUM",
+      "category": "runtime/rate-limiting",
+      "file": "app/config/settings.py",
+      "line": 69,
+      "title": "rate_limit_redis_enabled 默认 False，限流走进程内内存桶，多 worker/多容器下失效",
+      "evidence_status": "verified: settings.py:69 default False; branch app/config/rate_limit.py:236-243; login rate limit is the only pre-bcrypt defense per app/api/v1/auth.py:126-131",
+      "fix": "in the existing production enforcement block (settings.py:765-793) force rate_limit_redis_enabled = True when env == 'production' (3 lines); do not change the algorithm",
+      "status": "open"
+    },
+    {
+      "id": "SEC-10",
+      "severity": "MEDIUM",
+      "category": "input-surface/resource-exhaustion",
+      "file": "app/api/v1/imaging.py",
+      "line": 262,
+      "title": "DICOM 上传先全量 file.read() 再判长度，无请求级 body 上限，单文件上限 500MB",
+      "evidence_status": "verified: imaging.py:262 read() then :264 size check; settings.py:211 dicom_storage_max_file_size=524288000; starlette multipart CVEs compound the risk",
+      "fix": "content = await file.read(settings.dicom_storage_max_file_size + 1) then reject early with 413 (one-line change); optionally cap body at nginx client_max_body_size; do not rewrite storage as streaming",
+      "status": "open"
+    },
+    {
+      "id": "SEC-11",
+      "severity": "MEDIUM",
+      "category": "frontend/session-storage",
+      "file": "frontend/src/services/api.ts",
+      "line": 13,
+      "title": "access token 与 refresh token 均存 localStorage，任一 XSS 可长期劫持会话",
+      "evidence_status": "verified: api.ts:13 reads access_token from localStorage, :26-27 clears both tokens; refresh lifetime 7 days (settings.py:84); CSP script-src 'self' partially mitigates",
+      "fix": "move refresh token to httpOnly+secure+samesite=strict cookie (backend set_cookie) and keep only access token in memory; sessionStorage is not a fix",
+      "status": "open"
+    },
+    {
+      "id": "SEC-12",
+      "severity": "MEDIUM",
+      "category": "runtime/secure-defaults",
+      "file": "app/config/settings.py",
+      "line": 602,
+      "title": "HSTS 默认关闭；env 默认 development，导致生产强制校验（HSM/Redis 口令等）默认不生效",
+      "evidence_status": "verified: settings.py:602 hsts_enabled False, :7 env default 'development', :765-793 production-only enforcement block",
+      "fix": "require ENV explicitly (or require env=='production' when deployment_profile=='full'); force hsts_enabled=True in the production enforcement block",
+      "status": "open"
+    },
+    {
+      "id": "SEC-13",
+      "severity": "MEDIUM",
+      "category": "authn/fail-open",
+      "file": "app/api/v1/alerts.py",
+      "line": 75,
+      "title": "告警 webhook 鉴权 fail-open：alert_webhook_token 默认为空即放行任何人，可注入伪造告警/日志内容",
+      "evidence_status": "verified: alerts.py:75-89 returns early when expected token empty (comment admits 未配置则放行); settings.py:650 default ''; :91 endpoint always returns 200",
+      "fix": "make ALERT_WEBHOOK_TOKEN mandatory (${ALERT_WEBHOOK_TOKEN:?}) and require non-empty in production; or fail-closed with loopback exemption (request.client.host in 127.0.0.1/::1) to keep vmbackup working",
+      "status": "open",
+      "known_baseline": "design tradeoff documented in code comment; default value itself is the vulnerability"
+    },
+    {
+      "id": "SEC-14",
+      "severity": "MEDIUM",
+      "category": "runtime/container-privilege",
+      "file": "Dockerfile.safety-gateway.dev",
+      "line": 1,
+      "title": "SG 容器无 USER 指令，supervisord 以 root 运行（子进程才降权到 sguser）；Dockerfile.llama-cpp 同样 root",
+      "evidence_status": "verified: Dockerfile.safety-gateway.dev has useradd sguser but no USER; deploy/supervisor/safety-gateway.conf:11 user=sguser only for the program; Dockerfile.llama-cpp has no USER; Dockerfile.dev:21 and Dockerfile.edge.dev:31 are correct",
+      "fix": "start supervisord via gosu sguser (gosu already installed in the image) or drop privileges in supervisor conf; add USER 10001 to llama-cpp image; do not override with compose user:",
+      "status": "open"
+    },
+    {
+      "id": "SEC-15",
+      "severity": "MEDIUM",
+      "category": "supply-chain/unpinned-images",
+      "file": "docker-compose.dev.yml",
+      "line": 3,
+      "title": "浮动 :latest 镜像（ankane/pgvector:latest、vllm/vllm-openai:latest），构建不可复现",
+      "evidence_status": "verified: docker-compose.dev.yml:3, docker-compose.llm.yml:3; other images in the same files are pinned",
+      "fix": "pin explicit tags or digests (e.g. ankane/pgvector:v0.7.4, vllm/vllm-openai:v0.6.x), matching the pinned style already used for victoriametrics/alertmanager/redis",
+      "status": "open"
+    },
+    {
+      "id": "SEC-16",
+      "severity": "MEDIUM",
+      "category": "llm/prompt-injection",
+      "file": "app/services/diagnosis_pipeline.py",
+      "line": 1,
+      "title": "LLM 输入侧无提示注入防护（无分隔符约定/无注入检测），输出侧有 SG+output_guard+医生确认补偿",
+      "evidence_status": "verified: repo-wide grep for injection/prompt_guard/sanitize_input/delimiter yields zero hits; compensating controls exist at app/inference/output_guard.py:30-50 and SG six-stage validation",
+      "fix": "wrap user text in explicit delimiters with a 'data not instructions' line in prompts; add an injection-pattern check to output_guard (~15 lines) that forces requires_manual_review; do not add an LLM-based injection classifier",
+      "status": "open"
+    },
+    {
+      "id": "SEC-17",
+      "severity": "MEDIUM",
+      "category": "compliance/consent-bypass",
+      "file": "app/api/v1/imaging.py",
+      "line": 239,
+      "title": "影像链路（上传/取回/推流）完全不校验知情同意状态，撤回同意后 PHI 仍可读写",
+      "evidence_status": "verified: grep check_consent_status in app/api/v1/imaging.py returns nothing; diagnosis.py/report.py/session.py/voice.py all call it (app/api/v1/utils.py:16-31); consent_withdrawal_consumer does not delete images",
+      "fix": "add check_consent_status to the three imaging handlers (resolve patient_id from session_id); the retrieve path must be covered (it is the PHI egress direction); add 2 unit tests",
+      "status": "open",
+      "known_baseline": "contradicts progress.md:127 claim that consent state machine is wired"
+    },
+    {
+      "id": "SEC-18",
+      "severity": "INFO",
+      "category": "input-surface/path-parameter",
+      "file": "app/api/v1/device.py",
+      "line": 207,
+      "title": "OTA 下载 path 参数 package/version 可做弱路径拼接（设备已认证，需预先存在同名 .bin 才可命中）",
+      "evidence_status": "verified by code read; exploitation requires pre-existing crafted file, practical risk very low",
+      "fix": "reject '..' in package/version with 400 (one line)",
+      "status": "open"
+    },
+    {
+      "id": "SEC-19",
+      "severity": "INFO",
+      "category": "defense-in-depth/path-traversal",
+      "file": "app/services/dicom_storage.py",
+      "line": 203,
+      "title": "遗留 _build_storage_path 直接拼接 patient_id/session_id/sop_instance_uid（当前唯一调用方总传 storage_id，路径不可达）",
+      "evidence_status": "verified: imaging.py:321 always passes storage_id; path_for_id regex whitelist at dicom_storage.py:226 blocks traversal; legacy branch unreachable today",
+      "fix": "sanitize the three segments with re.sub(r'[^A-Za-z0-9_.-]', '_', ...) or delete the legacy branch entirely",
+      "status": "open"
+    },
+    {
+      "id": "SEC-20",
+      "severity": "INFO",
+      "category": "info-disclosure",
+      "file": "app/api/v1/health.py",
+      "line": 129,
+      "title": "/api/v1/health/hsm 与 /health/cache 公开暴露 HSM 降级阶段与缓存状态",
+      "evidence_status": "verified: both handlers have no auth dependency",
+      "fix": "keep /health public, add Depends(get_current_active_user) to the two detailed endpoints (two lines) and use aggregated /health fields for monitoring",
+      "status": "open"
+    },
+    {
+      "id": "SEC-21",
+      "severity": "INFO",
+      "category": "build/reproducibility",
+      "file": "Dockerfile.dev",
+      "line": 1,
+      "title": "镜像构建用 requirements.txt 而非 requirements.lock，构建与 SCA 结论不可复现",
+      "evidence_status": "verified: no Dockerfile references requirements.lock (90 pinned packages compiled by uv pip compile)",
+      "fix": "copy/install requirements.lock in Dockerfiles (one line each) and keep pip-audit -r requirements.lock in CI",
+      "status": "open"
+    },
+    {
+      "id": "SEC-22",
+      "severity": "INFO",
+      "category": "tooling-gap",
+      "file": "requirements.txt",
+      "line": 1,
+      "title": "本机缺 pip-audit 与 bandit，本轮 Python SCA 用 OSV API 等价替代，未执行 bandit 代码模式扫描",
+      "evidence_status": "verified: python3 -m pip_audit -> No module named pip_audit; bandit not installed; OSV queried all 90 locked packages instead",
+      "fix": "pip install pip-audit==2.7.3 bandit==1.7.10 (same versions as CI) and add to ./init.sh optional step",
+      "status": "open"
+    }
+  ],
+  "verified_no_issue": [
+    {"area": "SQL injection", "verdict": "none", "evidence": "only one f-string SQL (app/embedding/pgvector_client.py:294) guarded by _validate_collection_name regex whitelist at :46-55; all others parameterized"},
+    {"area": "command injection", "verdict": "none", "evidence": "no shell=True / os.system / os.popen; subprocess calls are static nvidia-smi"},
+    {"area": "deserialization", "verdict": "none", "evidence": "no pickle.load, no yaml.load (safe_load only), no eval/exec/marshal"},
+    {"area": "zip bomb", "verdict": "not_applicable", "evidence": "no zipfile/tarfile upload paths in app/; DICOM parsed directly by pydicom"},
+    {"area": "SSRF", "verdict": "none", "evidence": "PACS endpoint comes from settings (app/integrations/pacs/__init__.py:271-300); alert contact probing is SYSTEM_ADMIN-only"},
+    {"area": "XSS / model output escaping", "verdict": "no direct surface", "evidence": "no dangerouslySetInnerHTML/innerHTML in frontend/src (one test-only hit); React escapes by default; CSP script-src 'self'; echarts 6.0.x advisory tracked in SEC-05"},
+    {"area": "JWT algorithm confusion", "verdict": "none", "evidence": "settings.py:73-80 validator forces RS256; verify uses algorithms=['RS256'] at app/security/auth.py:70-76"},
+    {"area": "password storage", "verdict": "ok", "evidence": "bcrypt with username-dimension rate limit before hashing (app/config/rate_limit.py:110-120), bcrypt offloaded via asyncio.to_thread"},
+    {"area": "refresh token mechanism", "verdict": "ok", "evidence": "rotation + grace period + Redis + cross-process mutex in app/security/refresh_token.py"},
+    {"area": "DICOM de-identification", "verdict": "ok", "evidence": "salted irreversible pseudonym anon_<hmac[:16]> in app/services/dicom_storage.py:43-83; restore path audited at desensitization_restore.py:294-357; residual is SEC-06"},
+    {"area": "SafetyGateway fail-open", "verdict": "none (fail-closed)", "evidence": "app/services/safety_gateway_client.py:410-426 returns passed=False/E4005 on unavailability/timeout; caller defaults to reject at app/api/v1/diagnosis.py:848"},
+    {"area": "CORS wildcard", "verdict": "none", "evidence": "settings.py:96 defaults to localhost origins only; explicit methods/headers at app/main.py:853-861"},
+    {"area": "security headers / CSP", "verdict": "ok", "evidence": "app/security/security_headers.py:31-44 no unsafe-eval, script-src 'self', frame-ancestors 'none', no-store on PHI paths"},
+    {"area": "debug mode / --reload in production", "verdict": "none", "evidence": "no reload=True/debug=True in app/main.py; supervisor and compose use plain uvicorn --workers 1"},
+    {"area": "privileged containers / docker.sock", "verdict": "none", "evidence": "no privileged / docker.sock / network_mode in docker-compose*.yml"},
+    {"area": "PHI in audit log detail", "verdict": "ok", "evidence": "upload path logs only boolean patient_id_anonymized (imaging.py:314-316); stdout logging is the gap (SEC-06)"},
+    {"area": "real PHI in test fixtures", "verdict": "none found", "evidence": "tests/*/data desensitization cases use synthetic IDs; no real name+image+conclusion triples"}
+  ],
+  "not_covered": [
+    "dynamic penetration testing (no services started, no production DB)",
+    "bandit -ll code pattern scan (not installed)",
+    "native pip-audit output (OSV used instead)",
+    "real HSM/SoftHSM key lifecycle on the GPU server",
+    "PACS/HIS network boundary on site",
+    "browser runtime XSS/CSP enforcement and CSRF (no browser session)",
+    "SBOM / image CVE / signature verification (no Trivy/Grype/Syft)",
+    "LLM weight/model file integrity beyond OTA sha256",
+    "data retention / right-to-erasure job execution",
+    "harness_engineering_guide-main/, archive_of_achivement/, .trae/ archives"
+  ],
+  "accepted_risk_baseline_delta": [
+    "发布就绪报告 is a quality/coverage baseline and contains no security risk register; this report is the repo's first explicit security risk ledger (22 entries)",
+    "keys/jwt_private.pem was already flagged in 答辩材料/v6/research/核查D-部署运行态.md:422 but never remediated -> escalated to CRITICAL with concrete steps",
+    "16号:21 claims pip-audit/npm audit are blocking, but current tree is red (SEC-05) -> code is authoritative",
+    "progress.md:127 claims consent state machine wired, but imaging endpoints bypass it (SEC-17)"
+  ]
+}

@@ -5,10 +5,43 @@
 
 ## Last Updated
 
-2026-10-25（分支 `main`，提交 **`c4224aa`**；**A.90 补完 A.89.6 的三项遗留** ——
-T2a 管线内真机验证 / 影像腿 A/B 裁决 `GAIN`（打通三处死结）/ 历史 `PATIENT_` 标记清洗 47→0）
+2026-10-30（分支 `main`，HEAD `c65da99` + 大量未提交改动；**A.96：18 项打通计划 B1~B6 落地 + SEC 本地应急**）
 
-### A.95 交付（最新）：A类6项+B类4项，**四个前提被真机推翻**
+### A.96 交付（最新）
+
+- **B1~B6 六批全部代码落地**（02-3/4/5、02-1、01-1/2/5、03-4/5/6、06-5、04-3A、05-3 S0+S1、06-4、06-6 文档）+ 新增 ~12 个后端测试文件 + alembic **0019**；证据与 file:line 清单见 16 号 **A.96.1~A.96.3**。
+- **拍板 7 项按推荐落定**；01-3 移出"未打通"（**18→17**）；01-5 P99 口径 2s→5s（00 号已改）。
+- **SEC-01/02 本地**：`keys/*.pem`、`scripts/_p1_langfuse_signup.sh` 已出库（git rm --cached），ignore 生效；历史未清（独立决策）。
+- **前端验证 45/45 + tsc 0**；后端 py_compile 全过，**pytest 待环境**。
+
+### Current Objective
+
+18 项打通项收口验证与真机验收（B1/B2/B3 的浏览器判据 + CRAG 端到端）。
+
+### Recommended Next Step
+
+①装本机 SSH 公钥 → SEC-02 口令轮换（先备份旧哈希）→ SEC-01 HSM 指纹比对/轮换；
+②项目环境 `pytest tests/unit -q --dist=loadfile -n 8` 全量实跑，红则修；
+③部署侧 `.env` 补 `T2A_CLASSIFIER_IN_PIPELINE_ENABLED=true`（前置：8003 `/v1/classify` 探活）；
+④真机按各计划文档 ⑤ 节验收（重点：02-4 注入新块用例、02-3 延迟回归、B3 四段浏览器走查）。
+
+### Blockers
+
+1. **SSH 通道**（本机 Mac 公钥未入服务器 authorized_keys）→ SEC-01/02 远端轮换停摆。
+2. 后端 pytest 无本地 venv 可跑（硬规则禁止在工作区建 venv 污染他人暂存改动）。
+3. 工作区有**他人暂存**的 doctor_confirm 改动——本轮所有改动未提交，**不得混提交**；SEC 的 staged deletions（keys/ 与口令脚本）应单独成 commit。
+
+### Files（本轮主要触碰）
+
+`app/services/diagnosis_pipeline.py`（B1/B2/B4/B5 多处）、`app/fusion/crag.py`、`app/agents/{protocols.py,specialist/base.py,routing.py}`、`app/rag/{protocols.py,retriever.py,service.py}`、`app/knowledge/{grading_floor.py,clinical_actions.py}`、`app/config/{settings.py,redis_keys.py}`、`app/observability/cusum/{persistence.py[新],circuit_breaker.py,monitor.py}`、`app/observability/metrics_collector/*`、`app/models/{schemas.py,database.py}`、`app/api/v1/{diagnosis.py,obs_dashboard.py}`、`app/main.py`、`alembic/versions/0019_final_diagnosis.py[新]`、`scripts/audit/p76_missed_rate_audit.py[新]`、`docs/注册材料/*[新]×2`、前端 8 文件（diagnosisService/useWorkspaceFlow/DiagnosisPage/ExaminationPage/diagnosisAdapter/WorkspaceConclusionBody/workspace.css + 2 新测试）、`tests/**` 新增与适配、00 号（P99 口径）、16 号（A.96）、progress.md / session-handoff.md。
+
+### Next Session 第一动作
+
+读 16 号 A.96 → 按上面 Recommended Next Step ① 起（或用户已装公钥则直接连服务器）。
+
+## ------------------------------------------------------
+
+### A.95 交付（前轮）：A类6项+B类4项，**四个前提被真机推翻**
 
 **A 类 6/6**：Q3 归因（251 条：kb_not_ingested 129 / write_gap 64 / outage 53；
 `no_image` 与 `upstream_timeout` 均 **0** —— 前提证伪；正常期可用分级率 **18.30%**）、

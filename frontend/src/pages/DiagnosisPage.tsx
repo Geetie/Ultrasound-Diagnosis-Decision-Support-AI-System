@@ -22,7 +22,11 @@ import { Card, Typography, Button, Spin, Empty, Progress, Tag } from 'antd';
 import { ReloadOutlined, ClockCircleOutlined, LoadingOutlined } from '@ant-design/icons';
 import { tokens } from '@/styles/tokens';
 import { useSessionStore } from '@/stores/sessionStore';
-import { pollDiagnosisResult, STAGE_LABELS } from '@/services/diagnosisService';
+import {
+  pollDiagnosisResult,
+  STAGE_LABELS,
+  DEFAULT_RESPONSE_TIER,
+} from '@/services/diagnosisService';
 import type { DiagnosisStageEvent } from '@/services/diagnosisService';
 import type { DiagnosisResult } from '@/types/api';
 import { useProgressiveDiagnosis } from '@/hooks/useProgressiveDiagnosis';
@@ -56,7 +60,7 @@ export default function DiagnosisPage() {
   // null，`handleRetry` 永远提前返回、轮询入口是死代码，页面拿不到任何诊断结果。
   const requestId = searchParams.get('request_id');
   const [reviewAcknowledged, setReviewAcknowledged] = useState(false);
-  const [responseTier] = useState<'realtime' | 'standard' | 'full'>('standard');
+  const [responseTier] = useState<'realtime' | 'standard' | 'full'>(DEFAULT_RESPONSE_TIER);
   const [stage, setStage] = useState<DiagnosisStageEvent | null>(null);
   const cancelRef = useRef<{ cancel: () => void } | null>(null);
 

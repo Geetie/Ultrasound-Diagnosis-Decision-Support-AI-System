@@ -34,6 +34,8 @@ from app.models.schemas import (
     DiagnosisRequestResponse,
     DiagnosisResult,
     DifferentialDiagnosis,
+    DoctorConfirmRequest,
+    DoctorConfirmResponse,
     FusionStatus,
     HallucinationSeverity,
     MalignancyRisk,
@@ -585,6 +587,62 @@ async def confirm_routing_upgrade(
     )
 
 
+@router.post(
+    "/{request_id}/doctor-confirm", response_model=DoctorConfirmResponse
+)
+async def doctor_confirm_result(
+    request_id: str,
+    payload: DoctorConfirmRequest,
+    diagnosis_repo=Depends(get_diagnosis_repo),
+    audit_service=Depends(get_audit_service),
+    current_user: dict | None = Depends(get_current_active_user),
+):
+    """回写医生「我看过这条结论了」。
+
+    设计依据 `前端设计/17-医生侧展示契约.md:137-141`：
+
+        | 5 | 语音确认／修正 | 不可省（防 automation bias） |
+        | 8 | 签发           | 不可省（法律责任节点）       |
+
+    **确认与签发是两件事，本端点只做确认**：
+    - 不签任何名、不生成报告、不改 status / confidence；
+    - 唯一的副作用是记下「谁、什么时候看过」；
+    - 前端据此撤掉结论卡上的「AI 层标记」（同文档 `:164` 要求在确认后消失）。
+
+    在此之前，工作区的「确认结论」按钮只执行 `setAcknowledged(true)`，
+    全仓无人读该状态，等于医生点了没有任何痕迹。
+    """
+    result = await diagnosis_repo.get_result(request_id)
+    if not result:
+        raise NotFoundException(error_message=f"判读结果不存在：{request_id}")
+
+    actor_id = get_actor_id(current_user)
+    confirmed = await diagnosis_repo.mark_doctor_confirmed(
+        request_id=request_id, confirmed_by=actor_id
+    )
+    if confirmed is None or confirmed.doctor_confirmed_at is None:
+        raise BadRequestException(error_message="确认回写失败，请重试")
+
+    # 写审计：确认是"医生参与过"的证据，出事时要能倒查
+    await audit_service.log_action(
+        action="doctor_confirm_result",
+        actor=actor_id,
+        session_id=getattr(confirmed, "session_id", None),
+        target_type="diagnosis",
+        target_id=request_id,
+        detail={
+            "doctor_confirmed_at": confirmed.doctor_confirmed_at.isoformat(),
+            "doctor_confirmed_by": actor_id,
+        },
+    )
+
+    return DoctorConfirmResponse(
+        request_id=request_id,
+        doctor_confirmed_at=confirmed.doctor_confirmed_at,
+        doctor_confirmed_by=actor_id,
+    )
+
+
 @router.post("/multi-organ", response_model=MultiOrganDiagnosisResponse)
 async def submit_multi_organ_diagnosis(
     request: MultiOrganDiagnosisRequest,
@@ -923,6 +981,17 @@ async def get_diagnosis_result(
         nodule_segmentation=(
             (diagnosis_payload or {}).get("segmentation")
             if isinstance((diagnosis_payload or {}).get("segmentation"), dict)
+            else {"available": False, "reason": "not_run"}
+        ),
+        # T2a 分类旁路（02-1 S3）：与上方分割分支逐字同构 —— findings 顶层
+        # t2a_classification（不进 clinical_attributes，同分割口径：它是影像
+        # 辅助结果，不是 M1~M12 信息需求）。缺失时给
+        # {"available": False, "reason": "not_run"}，让前端能区分"没做分类"
+        # 与"分类了"；payload 内的 role=auxiliary_reference 必须原样透传，
+        # 前端展示时必须带"辅助参考"标注（红线，不得与结论并列同层级）。
+        t2a_classification=(
+            (diagnosis_payload or {}).get("t2a_classification")
+            if isinstance((diagnosis_payload or {}).get("t2a_classification"), dict)
             else {"available": False, "reason": "not_run"}
         ),
         # 相似病例（A.82）：统一走 `response_block()` —— 强制带"参考"标注与免责声明，

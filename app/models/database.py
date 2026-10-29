@@ -106,6 +106,21 @@ class DiagnosisResult(Base):
     knowledge_ids = Column(ARRAY(Text))
     status = Column(String(32))
     result_pushed = Column(Boolean, default=False)
+    # 医生确认回写（2026-10-28，界面修复 P0-4）。
+    # 设计依据 `前端设计/17-医生侧展示契约.md:137-141`：确认与签发是**两个**
+    # 不可省的操作——前者防 automation bias，后者负法律责任，不可合并。
+    # 此前工作区的「确认结论」按钮只 setState，全仓无人读、无端点、无字段。
+    # 存时间戳 + 医生标识而非布尔值，是为了能回答"谁在什么时候确认的"。
+    doctor_confirmed_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    doctor_confirmed_by = Column(String(64), nullable=True)
+    # 05-3 S1：最终诊断与金标准来源（季度回顾审计回填，非诊断管线写入）。
+    # 两个字段缺一不可：单一"最终诊断"不定罪，必须能回答"这个结论从哪来"
+    # （pathology/followup/expert_consensus）。无金标准的审计输出
+    # not_measured_no_final_diagnosis，绝不写 0。
+    final_diagnosis = Column(Text, nullable=True)
+    final_diagnosis_source = Column(String(32), nullable=True)
+    final_diagnosis_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    final_diagnosis_by = Column(String(64), nullable=True)
     created_at = Column(TIMESTAMP(timezone=True), default=func.current_timestamp())
 
 

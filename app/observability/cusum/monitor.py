@@ -113,12 +113,41 @@ class CUSUMMonitor:
         for direction, value in pending_notifications:
             self._notify_alerts(direction, value)
 
+        # 02-5 链B：每次观测后 fire-and-forget 落盘（量级 ~1 SET/判读）。
+        # 无事件循环（同步单测）时 schedule 内部静默跳过。
+        try:
+            from .persistence import schedule_breaker_state_persist
+
+            schedule_breaker_state_persist()
+        except Exception:  # silent-ok: 持久化失败不影响统计主链
+            pass
+
         return result
 
     def reset(self) -> None:
         with self._lock:
             self._state = CUSUMState()
             _logger.info("cusum_reset")
+
+    def restore_state(
+        self,
+        *,
+        s_plus: float = 0.0,
+        s_minus: float = 0.0,
+        total_observations: int = 0,
+        total_severe: int = 0,
+        alert_triggered: bool = False,
+    ) -> None:
+        """02-5 链B：进程重启后由 persistence 回灌 CUSUM 累计量（否则
+        s_plus 归零 = "连续重启即永不熔断"，02-5②-3 / BR4）。"""
+        with self._lock:
+            self._state = CUSUMState(
+                s_plus=float(s_plus),
+                s_minus=float(s_minus),
+                total_observations=int(total_observations),
+                total_severe=int(total_severe),
+                alert_triggered=bool(alert_triggered),
+            )
 
     def get_state(self) -> dict[str, Any]:
         with self._lock:

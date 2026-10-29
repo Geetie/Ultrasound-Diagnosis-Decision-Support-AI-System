@@ -31,7 +31,6 @@ pytestmark = [pytest.mark.track_rag]
 
 from app.knowledge import grading_floor as floor_module  # noqa: E402
 from app.knowledge.grading_floor import (  # noqa: E402
-    GRADING_FLOOR_ENABLED,
     GradingFloorRule,
     apply_grading_floor,
     rule_for_organ,
@@ -50,6 +49,8 @@ _THYROID_RULE = GradingFloorRule(
     min_grade="4",
     reason="测试规则：已穿刺证实病例报告不得低于 TR4",
     reference="测试用（非临床规则）",
+    # 04-3 A1：规则必须带 case 级触发条件（无条件的器官级下限=全器官抬级）
+    condition="pathology_proven",
 )
 
 
@@ -62,8 +63,10 @@ def with_rules(monkeypatch):
 
 class TestDefaultOff:
     def test_switch_defaults_to_false(self):
-        """默认关闭是**已记录的决策**，不是待办。"""
-        assert GRADING_FLOOR_ENABLED is False
+        """默认关闭是**已记录的决策**，不是待办（04-3：开关在 settings）。"""
+        from app.config.settings import settings
+
+        assert settings.grading_floor_enabled is False
 
     def test_production_rule_table_is_empty(self):
         """生产规则表为空 ⇒ 即便有人打开开关，也没有规则能改临床输出。
@@ -89,7 +92,10 @@ class TestDefaultOff:
 
 class TestOnlyRaises:
     def test_low_grade_is_raised_to_floor(self, with_rules):
-        out = apply_grading_floor(organ="thyroid", grading="2", enabled=True)
+        out = apply_grading_floor(
+            organ="thyroid", grading="2", enabled=True,
+            conditions=frozenset({"pathology_proven"}),
+        )
 
         assert out.applied is True
         assert out.raised is True
@@ -98,7 +104,10 @@ class TestOnlyRaises:
         assert out.rule is _THYROID_RULE
 
     def test_at_floor_is_unchanged(self, with_rules):
-        out = apply_grading_floor(organ="thyroid", grading="4", enabled=True)
+        out = apply_grading_floor(
+            organ="thyroid", grading="4", enabled=True,
+            conditions=frozenset({"pathology_proven"}),
+        )
 
         assert out.applied is False
         assert out.grading == "4"
@@ -109,7 +118,10 @@ class TestOnlyRaises:
 
         反证：把判断改成"无条件用 rule.min_grade" → 本用例红。
         """
-        out = apply_grading_floor(organ="thyroid", grading="5", enabled=True)
+        out = apply_grading_floor(
+            organ="thyroid", grading="5", enabled=True,
+            conditions=frozenset({"pathology_proven"}),
+        )
 
         assert out.applied is False
         assert out.grading == "5"
@@ -117,14 +129,20 @@ class TestOnlyRaises:
 
     def test_unparseable_grading_is_not_guessed(self, with_rules):
         """解析不出等级 → 如实上报 ``unparseable``，**不许猜一个等级**。"""
-        out = apply_grading_floor(organ="thyroid", grading="???", enabled=True)
+        out = apply_grading_floor(
+            organ="thyroid", grading="???", enabled=True,
+            conditions=frozenset({"pathology_proven"}),
+        )
 
         assert out.applied is False
         assert out.grading == "???"
         assert out.reason == "unparseable"
 
     def test_missing_grading_is_its_own_reason(self, with_rules):
-        out = apply_grading_floor(organ="thyroid", grading=None, enabled=True)
+        out = apply_grading_floor(
+            organ="thyroid", grading=None, enabled=True,
+            conditions=frozenset({"pathology_proven"}),
+        )
 
         assert out.applied is False
         assert out.reason == "no_grading"
@@ -136,7 +154,10 @@ class TestOnlyRaises:
         # 4a/4b/4c 的主级都是 4：下限 4 时它们都不该被抬
         for sub in ("4a", "4b", "4c"):
             assert grade_major_level("thyroid", sub) == 4
-            out = apply_grading_floor(organ="thyroid", grading=sub, enabled=True)
+            out = apply_grading_floor(
+                organ="thyroid", grading=sub, enabled=True,
+                conditions=frozenset({"pathology_proven"}),
+            )
             assert out.applied is False, f"{sub} 被误判为低于下限"
 
 

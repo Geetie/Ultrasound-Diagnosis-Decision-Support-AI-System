@@ -114,6 +114,7 @@ class AISafetyCircuitBreaker:
         )
         self._notify_suspension_callbacks("pending_confirmation", reason)
         self._notify_pending_confirmation(reason)
+        self._schedule_persist()
 
     def cancel_pending_suspension(self, canceller: str = "department_head") -> bool:
         with self._lock:
@@ -128,6 +129,7 @@ class AISafetyCircuitBreaker:
             cancelled_by=canceller,
             original_reason=cancelled_reason,
         )
+        self._schedule_persist()
         return True
 
     def check_pending_timeout(self) -> bool:
@@ -147,6 +149,7 @@ class AISafetyCircuitBreaker:
         _logger.critical("ai_assist_suspended", reason=self._suspension_reason)
         self._notify_suspension_callbacks("suspended", self._suspension_reason)
         self._emit_safety_meltdown_alert(self._suspension_reason)
+        self._schedule_persist()
         return True
 
     def check_safety_review_timeout(self) -> bool:
@@ -192,6 +195,40 @@ class AISafetyCircuitBreaker:
     def register_safety_meltdown_callback(cls, callback: Callable[[str, float, float, str], None]) -> None:
         cls._safety_meltdown_callback = callback
 
+    def _schedule_persist(self) -> None:
+        """02-5 链B：状态迁移后 fire-and-forget 落 Redis 快照（失败不阻断）。"""
+        try:
+            from .persistence import schedule_breaker_state_persist
+
+            schedule_breaker_state_persist(self)
+        except Exception as exc:
+            _logger.warning("cusum_state_persist_schedule_failed", error=str(exc))
+
+    def restore_state(
+        self,
+        state: "CircuitBreakerState",
+        *,
+        reason: str | None = None,
+        suspended_at: float | None = None,
+        pending_reason: str | None = None,
+        pending_since: float | None = None,
+    ) -> None:
+        """02-5 链B：进程重启后由 persistence.restore_breaker_state 回灌状态。
+
+        期限字段都是绝对时间戳：pending_since 恢复后 check_pending_timeout
+        仍按原 confirm 期限自然到期；SUSPENDED 的安审期限按 suspended_at 重算。
+        """
+        with self._lock:
+            self._state = state
+            self._suspension_reason = reason
+            self._suspended_at = suspended_at
+            self._pending_reason = pending_reason
+            self._pending_since = pending_since
+            if state == self.SUSPENDED:
+                self._safety_review_deadline_at = (
+                    suspended_at or time.time()
+                ) + self.SAFETY_REVIEW_DEADLINE_SECONDS
+
     def resume(self, resumed_by: str = "system_admin") -> None:
         with self._lock:
             previous_state = self._state
@@ -204,6 +241,7 @@ class AISafetyCircuitBreaker:
             self._safety_review_deadline_at = None
             self._suspended_diseases.clear()
         self._monitor.reset()
+        self._schedule_persist()
         _logger.info(
             "ai_assist_resumed",
             resumed_by=resumed_by,

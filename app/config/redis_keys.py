@@ -100,6 +100,10 @@ class RedisKey:
         """重试时跳过 Self-RAG 质检的标志（wiring-audit P1-6：此前只写不读）。"""
         return f"{_PREFIX}:diagnosis:retry_skip_self_rag:{request_id}"
 
+    # 02-5 链B：AI 安全熔断器三态 + CUSUM 累计量的持久化快照（单键 JSON，
+    # 写入用 SETEX 带 24h TTL —— 断流超一天的快照视为过期，按 ACTIVE 处理）。
+    AI_SAFETY_BREAKER_STATE = f"{_PREFIX}:obs:ai_safety_breaker_state"
+
     @staticmethod
     def feedback_idempotency(key: str) -> str:
         return f"{_PREFIX}:feedback:idempotency:{key}"

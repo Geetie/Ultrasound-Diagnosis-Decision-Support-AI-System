@@ -348,6 +348,7 @@ class CRAGHandler:
             new_evidence=new_chunks,
             new_response=new_response,
             citated=citation_sink.get("cited"),
+            prompt_included=citation_sink.get("prompt_included"),
         )
         # ``unverified_`` 前缀 = 占位路径（无重生成）→ 无法校验，不许自称"已校验"
         quality_checked = not quality_reason.startswith("unverified_")
@@ -412,6 +413,7 @@ class CRAGHandler:
         new_evidence: list[KnowledgeChunk],
         new_response: AgentResponse,
         citated: list[str] | None = None,
+        prompt_included: set[str] | None = None,
     ) -> tuple[bool, str]:
         """校验"这次是不是**真的**修好了"（任一条件通过即算恢复）。
 
@@ -494,6 +496,14 @@ class CRAGHandler:
             str(getattr(chunk, "chunk_id", "") or "") for chunk in new_evidence
         }
         new_ids.discard("")
+        # 02-4 S3（判定侧）："cited ∩ new_ids 且该 chunk 确实在本次 prompt 里"。
+        # prompt_included 为 None（旧调用方）→ 行为零漂移；
+        # 为空 set（S1 接线回归/删掉传参）→ citated 全被滤掉 → 必然判
+        # evidence_not_used，"检索到但没喂给模型"不再能冒充恢复。
+        if prompt_included is not None:
+            citated = [
+                _cid for _cid in citated if str(_cid) in prompt_included
+            ]
         overlap = new_ids & {str(chunk_id) for chunk_id in citated}
         if overlap:
             return True, f"evidence_used: {len(overlap)}/{len(new_ids)}"
@@ -668,19 +678,33 @@ class CRAGHandler:
         # 2) P2-6 修复：尝试重新调用 specialist
         if self._specialist_invoker is not None:
             try:
-                new_response = await self._specialist_invoker(
-                    self._build_specialist_context(
-                        original=original,
-                        new_evidence=new_evidence,
-                        request=request,
-                    )
+                specialist_context = self._build_specialist_context(
+                    original=original,
+                    new_evidence=new_evidence,
+                    request=request,
                 )
+                # 02-4 S3（写入侧）：从**真正送给 invoker 的那个 context**
+                # 里读回新块集合 —— 若 S1 接线回归（没传 clinical_context 或
+                # 改了键名），这里得到空集，质量门随后必然拒绝 → 假恢复不可能。
+                prompt_included = {
+                    str(_c.get("chunk_id", ""))
+                    for _c in (
+                        (specialist_context.clinical_context or {}).get(
+                            "crag_evidence_chunks"
+                        )
+                        or []
+                    )
+                    if isinstance(_c, dict)
+                }
+                new_response = await self._specialist_invoker(specialist_context)
                 if citation_sink is not None:
                     # 记录 **specialist 自己** 引用的（合并前），供质量校验用
                     citation_sink["cited"] = [
                         str(chunk_id)
                         for chunk_id in (new_response.evidence_chunk_ids or [])
                     ]
+                    # 02-4 S3：把"哪些新块真的进了本次 prompt"带出给质量门
+                    citation_sink["prompt_included"] = prompt_included
                 # 校验重新调用的响应：保留 specialist 决策权
                 # 三方合并：原 evidence + 新 evidence + specialist 输出 evidence
                 # 避免丢失原 evidence（specialist 重新生成时可能不引用旧 chunk）
@@ -733,21 +757,21 @@ class CRAGHandler:
                             "是 _merge_evidence_three 第①步的有意合并，不是引用造假"
                         ),
                     )
-                final_response = AgentResponse(
-                    agent_name=new_response.agent_name,
-                    organ=new_response.organ,
-                    content=new_response.content,
-                    confidence=new_response.confidence,
-                    evidence_chunk_ids=final_evidence,
-                    reasoning_trace=[
-                        *list(new_response.reasoning_trace or []),
-                        f"crag_reinvoked_with_{len(new_evidence)}_new_chunks",
-                        evidence_sources_trace,
-                    ],
-                    latency_ms=new_response.latency_ms,
-                    needs_review=new_response.needs_review,
-                    disease_code=new_response.disease_code,
-                    used_evidence_ids=list(new_response.used_evidence_ids or []),
+                # 02-4 / 03 §公共事实5：model_copy 代替逐字段重建 ——
+                # 保住 measurement / differential_diagnoses / malignancy_risk /
+                # clinical_actions / patient_explanation / research_metrics /
+                # cross_modality_hints / posterior_acoustic / deviation_severity
+                # 整族 M1~M12 字段（FULL + Self-RAG 失败 + CRAG 恢复成功路径
+                # 此前全部归零）。只覆写真正变化的两项。
+                final_response = new_response.model_copy(
+                    update={
+                        "evidence_chunk_ids": final_evidence,
+                        "reasoning_trace": [
+                            *list(new_response.reasoning_trace or []),
+                            f"crag_reinvoked_with_{len(new_evidence)}_new_chunks",
+                            evidence_sources_trace,
+                        ],
+                    }
                 )
                 logger.info(
                     "crag_specialist_reinvoked",
@@ -792,17 +816,13 @@ class CRAGHandler:
             final_ids=merged_evidence,
         )
         return (
-            AgentResponse(
-                agent_name=original.agent_name,
-                organ=original.organ,
-                content=original.content or "",
-                confidence=round(new_conf, 4),
-                evidence_chunk_ids=merged_evidence,
-                reasoning_trace=new_trace,
-                latency_ms=original.latency_ms,
-                needs_review=original.needs_review,
-                disease_code=original.disease_code,
-                used_evidence_ids=list(original.used_evidence_ids or []),
+            # 02-4：model_copy 保住 M1~M12 整族字段（同上）
+            original.model_copy(
+                update={
+                    "confidence": round(new_conf, 4),
+                    "evidence_chunk_ids": merged_evidence,
+                    "reasoning_trace": new_trace,
+                }
             ),
             False,
         )
@@ -858,6 +878,10 @@ class CRAGHandler:
             user_query=str(user_query),
             imaging_metadata=clinical_context.get("imaging_metadata"),  # type: ignore[union-attr]
             prior_messages=clinical_context.get("prior_messages", []),  # type: ignore[arg-type]
+            # 02-4 S1：把整包 clinical_context（含 crag_evidence_chunks/ids）
+            # 真正送进 AgentContext —— 此前这个 dict 在此处被整体丢弃，
+            # 新证据从未进入重生成的 prompt（1 写 0 读，假恢复根因）。
+            clinical_context=clinical_context,
         )
 
     @staticmethod

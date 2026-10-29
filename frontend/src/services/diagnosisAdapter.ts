@@ -18,7 +18,12 @@
  * 后端没给恶性概率，界面上就不该有这一行。
  */
 
-import type { DiagnosisResult } from '@/types/api';
+import type {
+  CrossModalityHint,
+  DiagnosisResult,
+  DifferentialDiagnosis,
+  ResearchMetrics,
+} from '@/types/api';
 
 /** 「看一眼」档的触发理由（契约 §1：仅命中触发条件时渲染） */
 export type AttentionReason =
@@ -123,6 +128,12 @@ export interface ConclusionView {
   finalConfidence?: number;
   /** 分割旁路（病灶 bbox + 面积）—— available=false 时影像区显示降级原因 */
   segmentation?: SegmentationView;
+  /** 鉴别诊断清单（03-4）—— 后端 differential_diagnoses 原样透传；空数组=本次无，前端不重排 */
+  differentialDiagnoses?: DifferentialDiagnosis[];
+  /** 跨模态对照（03-6）—— 后端 cross_modality_hints 原样透传（教科书级参考，非本次诊断依据） */
+  crossModalityHints?: CrossModalityHint[];
+  /** 科研量化指标（06-5）—— 后端 research_metrics 可合法缺席（无可派生指标时为 None） */
+  researchMetrics?: ResearchMetrics;
 }
 
 /** 融合层终置信度低于此值才触发「看一眼」。低于典型诊断阈值。 */
@@ -231,5 +242,10 @@ export function toConclusionView(result: DiagnosisResult | null): ConclusionView
           }
         : undefined,
     finalConfidence: fusion?.final_confidence,
+    // 03-4 / 03-6 / 06-5：M4/M12/M11 原样透传 —— 不排序、不改写、不补默认值；
+    // 空列表照传（渲染层按 length>0 独立门控），None 省略为 undefined（P1 默认沉默）。
+    differentialDiagnoses: result.differential_diagnoses,
+    crossModalityHints: result.cross_modality_hints,
+    researchMetrics: result.research_metrics ?? undefined,
   };
 }

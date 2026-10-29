@@ -36,9 +36,10 @@ import structlog
 
 logger = structlog.get_logger("app.knowledge.grading_floor")
 
-#: 总开关。**默认关闭**（见模块文档"为什么默认不生效"）。改默认值需：
-#: ① 与临床专家确认每条规则的适用范围；② 台账（16 号附录 A）登记实测影响面。
-GRADING_FLOOR_ENABLED = False
+# 04-3 A2：总开关已迁到 ``settings.grading_floor_enabled``（默认 False，
+# 可灰度/回滚）。``apply_grading_floor(..., enabled=None)`` 时读 settings；
+# 测试/调用方仍可用 ``enabled`` 参数注入（既有守卫范式不受影响）。改默认值需：
+# ① 与临床专家确认每条规则的适用范围；② 台账（16 号附录 A）登记实测影响面。
 
 
 @dataclass(frozen=True)
@@ -50,12 +51,17 @@ class GradingFloorRule:
         min_grade: 报告分级不得低于此值（该器官分级体系内的**规范标签**）。
         reason: 一句人话（进留痕，便于回答"为什么抬了"）。
         reference: 出处（指南/院内规程），可追溯到具体条文。
+        condition: 04-3 A1：触发条件（case 级）。**空串 = 无效规则**（拒绝
+            加载并 warning）—— 没有条件的器官级下限等于"该器官所有病例都抬"
+            （04 号 ②：会把正常病例抬成高风险）。枚举值由临床组给出（如
+            ``pathology_proven``）；生产规则表保持空表，内容必须经医学专家复核。
     """
 
     organ: str
     min_grade: str
     reason: str
     reference: str
+    condition: str = ""
 
 
 #: 规则表。**当前为空**：本轮交付的是"能力真实存在 + 显式规则 + 留痕"，
@@ -80,7 +86,7 @@ class GradingFloorOutcome:
 
 
 def rule_for_organ(organ: str | None) -> GradingFloorRule | None:
-    """取该器官的下限规则；没有规则返回 ``None``（不是"下限为 0 级"）。"""
+    """取该器官的下限规则（不看条件）；没有规则返回 ``None``。"""
     if not organ:
         return None
     target = str(organ).strip().lower()
@@ -90,18 +96,45 @@ def rule_for_organ(organ: str | None) -> GradingFloorRule | None:
     return None
 
 
+def match_rule(
+    organ: str | None, conditions: frozenset[str] | set[str] | None
+) -> GradingFloorRule | None:
+    """按「器官 + 触发条件」取**有效**规则；无效/不满足一律 ``None``（04-3 A1）。
+
+    * 条件为空的规则一律视为**无效**（warning 留痕，拒绝加载）；
+    * 规则有条件而本例未提供该条件 → 规则不生效（宁可不抬，不可误抬）。
+    """
+    rule = rule_for_organ(organ)
+    if rule is None:
+        return None
+    if not str(rule.condition or "").strip():
+        logger.warning(
+            "grading_floor_invalid_rule",
+            organ=rule.organ,
+            hint="规则缺 condition 字段，已拒绝加载（无条件的器官级下限=全器官抬级）",
+        )
+        return None
+    if rule.condition not in (conditions or frozenset()):
+        return None
+    return rule
+
+
 def apply_grading_floor(
     *,
     organ: str | None,
     grading: str | None,
     enabled: bool | None = None,
+    conditions: frozenset[str] | set[str] | None = None,
 ) -> GradingFloorOutcome:
     """把分级抬到该器官的下限（**只抬不降**）。纯函数（守卫钉住）。
 
     Args:
         organ: 器官标识。
         grading: 本次报告的分级（``"TR3"`` / ``"3"`` / ``"moderate"`` 等，按器官）。
-        enabled: 覆盖总开关（测试/调用方注入）；``None`` 用 ``GRADING_FLOOR_ENABLED``。
+        enabled: 覆盖总开关（测试/调用方注入）；``None`` 读
+            ``settings.grading_floor_enabled``。
+        conditions: 本例已成立的触发条件集合（04-3 A1）；规则条件不在其中
+            → 规则不生效。
 
     Returns:
         :class:`GradingFloorOutcome`。``applied=False`` 时 ``grading`` 原样返回。
@@ -109,22 +142,45 @@ def apply_grading_floor(
     留痕口径（每个分支一个原因，不聚合）：
     * ``disabled``：总开关关闭；
     * ``no_rule``：该器官没有登记规则；
+    * ``invalid_rule``：规则缺条件被拒（无条件的器官级下限=全器官抬级）；
+    * ``condition_unmet``：条件不满足（宁可不抬，不可误抬）；
     * ``no_grading``：本次没有分级可判；
     * ``unparseable``：分级解析不出等级（**不猜**）；
     * ``already_at_or_above``：已达标（不降级）；
     * 空串 = 真的抬了（``raised=True``）。
     """
-    is_enabled = GRADING_FLOOR_ENABLED if enabled is None else bool(enabled)
+    if enabled is None:
+        from app.config.settings import settings
+
+        is_enabled = bool(getattr(settings, "grading_floor_enabled", False))
+    else:
+        is_enabled = bool(enabled)
     if not is_enabled:
         return GradingFloorOutcome(
             applied=False, grading=grading, original_grading=grading, reason="disabled"
         )
 
-    rule = rule_for_organ(organ)
-    if rule is None:
+    organ_rule = rule_for_organ(organ)
+    if organ_rule is None:
         return GradingFloorOutcome(
             applied=False, grading=grading, original_grading=grading, reason="no_rule"
         )
+    if not str(organ_rule.condition or "").strip():
+        logger.warning(
+            "grading_floor_invalid_rule",
+            organ=organ_rule.organ,
+            hint="规则缺 condition 字段，已拒绝加载（无条件的器官级下限=全器官抬级）",
+        )
+        return GradingFloorOutcome(
+            applied=False, grading=grading, original_grading=grading,
+            rule=organ_rule, reason="invalid_rule",
+        )
+    if organ_rule.condition not in (conditions or frozenset()):
+        return GradingFloorOutcome(
+            applied=False, grading=grading, original_grading=grading,
+            rule=organ_rule, reason="condition_unmet",
+        )
+    rule = organ_rule
 
     if not grading or not str(grading).strip():
         return GradingFloorOutcome(
@@ -178,10 +234,10 @@ def apply_grading_floor(
 
 
 __all__ = [
-    "GRADING_FLOOR_ENABLED",
     "GRADING_FLOOR_RULES",
     "GradingFloorOutcome",
     "GradingFloorRule",
     "apply_grading_floor",
+    "match_rule",
     "rule_for_organ",
 ]

@@ -35,6 +35,45 @@ from app.config.settings import settings
 logger = structlog.get_logger("app.services.diagnosis_worker")
 
 
+def _budget_for_tier(tier_value: str | None) -> float:
+    """01-5：按档位取端到端预算（秒）。取不到/不识别 → FULL（保守）。"""
+    from app.models.schemas import ResponseTier
+
+    tier = str(tier_value or "").strip().lower()
+    if tier in (ResponseTier.STANDARD.value, ResponseTier.REALTIME.value):
+        return settings.pipeline_total_budget_standard_s
+    return settings.pipeline_total_budget_s
+
+
+async def _read_tier_for_budget(request_id: str) -> str | None:
+    """读落库请求行的 tier 列（提交时的 response_tier；医生升级后已被
+    update_tier 改写）。失败/超时返回 None → 上层保守用 FULL 预算。
+
+    为什么读 DB 而不是改队列消息格式：入队消息是裸 request_id（4 个调用方
+    与既有测试都依赖该格式），改格式牵连重试/DLQ 回放；单列 scalar 读
+    是最短路径。"""
+    try:
+        from sqlalchemy import select
+
+        from app.config.database import AsyncSessionLocal
+        from app.models.database import DiagnosisResult
+
+        async with AsyncSessionLocal() as db:
+            return await db.scalar(
+                select(DiagnosisResult.tier).where(
+                    DiagnosisResult.request_id == request_id
+                )
+            )
+    except Exception as exc:
+        logger.warning(
+            "worker_tier_read_failed",
+            request_id=request_id,
+            error=str(exc),
+            error_type=type(exc).__name__,
+        )
+        return None
+
+
 # ----------------------------------------------------------------------
 # 全局 worker 池状态
 # ----------------------------------------------------------------------
@@ -229,9 +268,12 @@ async def _worker_loop(worker_id: int) -> None:
                 # 早已被删、pipeline_dispatch/fusion_budget_s 是孤儿配置），
                 # 最坏 ~240s 会长时间占死 worker 槽位 → 队列积压雪崩。
                 # 超时按普通失败处理（走既有计数/DLQ 路径），不吞异常。
+                # 01-5：deadline 按 tier 取值（standard/realtime → standard 预算，
+                # 其余 → FULL 预算；读不到 tier 一律保守用 FULL 预算）。
+                tier = await _read_tier_for_budget(request_id)
                 success = await asyncio.wait_for(
                     run_diagnosis_pipeline(request_id),
-                    timeout=settings.pipeline_total_budget_s,
+                    timeout=_budget_for_tier(tier),
                 )
                 elapsed_ms = (time.monotonic() - t_start) * 1000.0
                 logger.info(

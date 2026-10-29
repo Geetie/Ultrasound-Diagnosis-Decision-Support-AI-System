@@ -69,6 +69,12 @@ class AgentContext(BaseModel):
             ``KnowledgeAgent.query(profile=...)``，使"标准/全量"档位真正
             作用于检索强度。``None`` 表示沿用 RAG 默认档位（与引入该
             字段前的行为完全一致）。
+        clinical_context: 临床上下文旁路载荷（与 ``FusionRequest.clinical_context``
+            同名同构）。**02-4 S1 修复**：CRAG 重生成路径经
+            ``CRAGHandler._build_specialist_context`` 把补充检索的新证据
+            （``crag_evidence_chunks`` / ``crag_evidence_ids``）与原 clinical
+            上下文整包装入本字段，specialist 的 ``_build_prompt`` 据此渲染
+            「补充检索依据」段。默认空 dict：非 CRAG 路径 prompt 逐字不变。
     """
     request_id: str
     session_id: str
@@ -78,6 +84,7 @@ class AgentContext(BaseModel):
     imaging_metadata: dict[str, Any] | None = None
     prior_messages: list[dict[str, Any]] = Field(default_factory=list)
     used_evidence_ids: list[str] = Field(default_factory=list)
+    clinical_context: dict[str, Any] = Field(default_factory=dict)
 
     @field_validator("request_id", "session_id")
     @classmethod

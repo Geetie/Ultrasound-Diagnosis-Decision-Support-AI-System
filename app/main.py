@@ -297,6 +297,15 @@ async def lifespan(app: FastAPI):
     breaker = AISafetyCircuitBreaker.get_instance()
     breaker.register_pending_notification_callback(_on_pending_notification)
 
+    # 02-5 链B：重启恢复熔断状态（Redis 快照；读失败/无快照保持 ACTIVE，
+    # 不比现状差 —— "连续重启即永不熔断"缺口由此闭合）。
+    from app.observability.cusum.persistence import restore_breaker_state
+
+    try:
+        await restore_breaker_state(breaker)
+    except Exception as e:
+        logger.warning("cusum_state_restore_failed", error=str(e))
+
     from app.api.websocket.nav import manager as nav_manager
     await nav_manager.start_redis_subscriber()
 
@@ -393,7 +402,10 @@ async def lifespan(app: FastAPI):
     # embedding service, bge-reranker), the app keeps running without RAG
     # and logs a warning. AGT-03 should check `app.state.rag_service`
     # before calling.
-    if settings.rag_use_query_enhancement or settings.rag_use_reranking:
+    # 01-2：构造门只剩 rag_use_query_enhancement —— 原 `or rag_use_reranking`
+    # 是恒真摆设（query_enhancement 默认 True），且该开关已从 settings 删除。
+    # 精排服务照常装配；是否执行由 RetrievalProfile.use_reranking 逐请求决定。
+    if settings.rag_use_query_enhancement:
         try:
             from app.config.database import AsyncSessionLocal
             from app.embedding.bge_m3 import BgeM3MedicalService

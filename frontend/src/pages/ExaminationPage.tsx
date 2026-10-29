@@ -22,7 +22,10 @@ import DicomViewer from '@/components/dicom/DicomViewer';
 import NavigationOverlay from '@/components/navigation/NavigationOverlay';
 import { useNavigationAnnotations } from '@/hooks/useNavigationAnnotations';
 import { useSession } from '@/hooks/useSession';
-import { requestDiagnosis } from '@/services/diagnosisService';
+import {
+  requestDiagnosis,
+  DEFAULT_RESPONSE_TIER,
+} from '@/services/diagnosisService';
 import { useNavigate } from 'react-router-dom';
 import { generateIdempotencyKey } from '@/utils/idGenerator';
 import { getApiErrorMessage } from '@/utils/apiError';
@@ -34,6 +37,8 @@ export default function ExaminationPage() {
   const [imageId, setImageId] = useState<string | undefined>();
   const [diagnosisLoading, setDiagnosisLoading] = useState(false);
   const [selectedOrgan, setSelectedOrgan] = useState<string>('thyroid');
+  // 02-3 方案B：医生可选校验档位；默认仍是 standard（默认行为不静默改变）
+  const [responseTier, setResponseTier] = useState<'standard' | 'full'>(DEFAULT_RESPONSE_TIER);
   const objectUrlRef = useRef<string | null>(null);
   const { sessionId, status, targetOrgans } = useSession();
   useNavigationAnnotations();
@@ -69,7 +74,7 @@ export default function ExaminationPage() {
         session_id: sessionId,
         image_ids: imageId ? [imageId] : [],
         target_organ: selectedOrgan as 'thyroid' | 'liver' | 'cardiac',
-        response_tier: 'standard',
+        response_tier: responseTier,
         idempotency_key: idempotencyKey,
       });
       message.success('诊断请求已提交，正在跳转查看结果');
@@ -129,6 +134,16 @@ export default function ExaminationPage() {
             value={selectedOrgan}
             onChange={setSelectedOrgan}
             options={organOptions}
+            size="small"
+            style={{ width: '100%', marginBottom: 8 }}
+          />
+          <Select
+            value={responseTier}
+            onChange={setResponseTier}
+            options={[
+              { value: 'standard', label: '标准校验' },
+              { value: 'full', label: '全量校验（慢约 1s）' },
+            ]}
             size="small"
             style={{ width: '100%', marginBottom: 8 }}
           />

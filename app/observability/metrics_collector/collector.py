@@ -84,8 +84,8 @@ class MetricsCollector(MetricsDefinitions):
     def record_nav_latency(self, seconds: float) -> None:
         self.nav_latency.observe(seconds)
 
-    def record_assessment_latency(self, seconds: float) -> None:
-        self.assessment_latency.observe(seconds)
+    def record_assessment_latency(self, seconds: float, tier: str = "unknown") -> None:
+        self.assessment_latency.labels(tier=str(tier)).observe(seconds)
 
     def record_diagnosis_latency(self, seconds: float, with_retry: bool = False) -> None:
         self.diagnosis_latency.labels(

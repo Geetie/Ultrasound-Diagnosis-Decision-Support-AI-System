@@ -199,3 +199,37 @@ describe('needsDoctorReview（裁决 requires_manual_review 与 sg_result.allowe
     expect(needsDoctorReview(null)).toBe(false);
   });
 });
+
+describe('M4/M11/M12 字段透传（03-4 / 03-6 / 06-5）', () => {
+  it('带 differential_diagnoses 时原样透传：长度与 rank 保持，前端不重排', () => {
+    const r = structuredClone(REAL_COMPLETED) as DiagnosisResult;
+    r.differential_diagnoses = [
+      { rank: 2, disease_name: '结节性甲状腺肿', confidence: 0.3, supporting_evidence: [], excluding_evidence: [] },
+      { rank: 1, disease_name: '乳头状癌', confidence: null, supporting_evidence: ['微钙化'], excluding_evidence: [] },
+    ];
+    const v = toConclusionView(r)!;
+    expect(v.differentialDiagnoses).toHaveLength(2);
+    expect(v.differentialDiagnoses?.map((d) => d.rank)).toEqual([2, 1]); // 后端顺序原样
+    expect(v.differentialDiagnoses?.[1]?.disease_name).toBe('乳头状癌');
+  });
+
+  it('cross_modality_hints 与 research_metrics 原样透传', () => {
+    const r = structuredClone(REAL_COMPLETED) as DiagnosisResult;
+    r.cross_modality_hints = [{ modality: 'CT', finding: '…', source_reference: 'ACR TI-RADS 2017' }];
+    r.research_metrics = { ai_features: { feature_vector_hash: 'h1' } };
+    const v = toConclusionView(r)!;
+    expect(v.crossModalityHints?.[0]?.modality).toBe('CT');
+    expect(v.researchMetrics?.ai_features?.feature_vector_hash).toBe('h1');
+  });
+
+  it('后端没给（缺键 / None / 空数组）时字段为空 —— P1 默认沉默，不编造', () => {
+    const r = structuredClone(REAL_COMPLETED) as DiagnosisResult;
+    delete r.differential_diagnoses;
+    delete r.cross_modality_hints;
+    r.research_metrics = null;
+    const v = toConclusionView(r)!;
+    expect(v.differentialDiagnoses ?? []).toHaveLength(0);
+    expect(v.crossModalityHints ?? []).toHaveLength(0);
+    expect(v.researchMetrics).toBeUndefined();
+  });
+});

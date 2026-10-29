@@ -819,6 +819,18 @@ class RAGSpecialistAgent(SpecialistAgent):
             parts.append("")
             parts.append("# 影像元数据")
             parts.append(str(context.imaging_metadata))
+        # 02-4 S2：CRAG 补充检索依据段（放最后 —— A.62 真机 2/2 甲状腺
+        # 出现过 PREFIX_TRUNCATED，靠后放置降低前缀截断风险）。
+        # 仅 CRAG 重生成路径（context.clinical_context 带 crag_evidence_chunks）
+        # 会出现；首次生成路径该键为空 → prompt 逐字不变。
+        crag_chunks = (context.clinical_context or {}).get("crag_evidence_chunks")
+        if crag_chunks:
+            parts.append("")
+            parts.append("# 补充检索依据（CRAG；引用时必须使用下方 chunk_id）")
+            for _crag_c in crag_chunks:
+                parts.append(
+                    f"[CRAG:{_crag_c.get('chunk_id', '')}] {_crag_c.get('content', '')}"
+                )
         return "\n".join(parts)
 
     # ------------------------------------------------------------------

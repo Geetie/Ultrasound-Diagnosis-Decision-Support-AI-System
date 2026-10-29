@@ -268,6 +268,17 @@ class RAGServiceImpl(RAGService):
                 )
                 rerank_used = "heuristic"
 
+            # 01-2 步骤5：精排是否真跑了必须可观测（此前只有 p99 越界日志
+            # 才带 rerank 字段）。engine ∈ {bge, heuristic}，验收见 01-2⑤。
+            logger.info(
+                "rerank_applied",
+                engine=rerank_used,
+                n_in=len(candidates),
+                n_out=len(reranked),
+                top_k=self._rerank_output_top_k,
+                request_id=request.request_id,
+            )
+
             # Preserve original retrieval_source from the input chunks when
             # possible (look up by chunk_id), otherwise mark as HYBRID.
             source_by_id = {sc.chunk.chunk_id: sc.retrieval_source for sc in result.chunks}
@@ -473,9 +484,10 @@ class RAGServiceImpl(RAGService):
         # 是三条检索入口（知识智能体 / 一致性 / CRAG）都经过这里，留痕完整；
         # 代价是**分级要由调用方提供**（``request.extra["report_grading"]``），
         # 而目前没有调用方提供 ⇒ 默认路径的评估结果是 ``disabled``。
-        # 要让规则真正作用于报告，需要（1）开启开关 （2）在规则表登记经专家复核
-        # 的条目 （3）结论侧把分级传进 extra —— 三件事都属**临床输出变更**，
-        # 必须单独立项与评测，不在本轮范围内。
+        # 04-3 Phase A 后：本处是**输入侧评估**（extra["report_grading"]，当前无
+        # 生产调用方），只留痕、不作用于输出；判读后评估与 findings 留痕在
+        # ``diagnosis_pipeline._evaluate_grading_floor``（同一开关
+        # settings.grading_floor_enabled）。两处口径不得走散。
         try:
             from app.knowledge.grading_floor import apply_grading_floor
 

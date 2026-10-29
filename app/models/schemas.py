@@ -361,6 +361,24 @@ class ClinicalAction(BaseModel):
     source_reference: str | None = None
 
 
+class CorrectionRateProxyResponse(BaseModel):
+    """05-3 S0：改判率代理指标（只读质控端点）。
+
+    命名带 Proxy 是刻意的：该指标分母为复核反馈，无患者结局，
+    **不是漏诊率**——对外口径必须保留 disclaimer 原文（05-3 计划 §③ YAGNI：
+    "不把改判率改名为漏诊率（口径造假）"）。
+    """
+
+    metric_kind: str = "proxy_correction_rate"
+    disclaimer: str
+    window_days: int
+    insufficient_samples: bool
+    min_samples: int
+    # CorrectionRateReport.as_dict() 的原样透传（结构由 monitor 单测锁定，
+    # 此处不再复刻字段，避免两处口径走散）
+    report: dict
+
+
 class PatientExplanation(BaseModel):
     """患者解释话术（M10）。默认不进入正式报告，由医生选择展示/打印。"""
 
@@ -467,6 +485,14 @@ class DiagnosisResult(BaseModel):
     # 默认仅**同一病人**的历史影像。前端必须标注"参考"，不得当作诊断依据。
     # 形态同样用 Dict 承载（会随检索策略演进），避免过早固化契约。
     similar_cases: dict[str, Any] | None = None
+
+    # T2a 影像分类旁路结果（02-1 S2）：**辅助参考**，与 nodule_segmentation
+    # 同风格的可选 Dict 出口 —— 结果接口/前端由此取类型化字段。
+    # 红线不变：该字段不参与 status / confidence / review_reason（三条红线，
+    # 见 app/inference/t2a_classifier.py docstring 与
+    # _safe_t2a_classification）；available=False 时带 reason，
+    # 前端应显示"未做分类：<原因>"，不得显示成"未检出病灶"。
+    t2a_classification: dict[str, Any] | None = None
 
 
 # ============== DICOM 相关模型 ==============
@@ -859,6 +885,25 @@ class RoutingConfirmationResponse(BaseModel):
     requires_confirmation: bool
     rerun_enqueued: bool
     routing: dict[str, Any]
+
+
+# ============== 医生确认结论（读过了）—— 与签发是两件事 ==============
+class DoctorConfirmRequest(BaseModel):
+    """医生确认「我看过这条结论了」。
+
+    设计依据 `前端设计/17-医生侧展示契约.md:137-141`：确认与签发是**两个**
+    不可省的操作。确认防 automation bias，签发负法律责任，不可合并。
+
+    刻意不带 ``reason``：确认是个瞬时动作，要求填理由会让人跳过它。
+    """
+
+
+class DoctorConfirmResponse(BaseModel):
+    """确认回写结果。时间戳由服务端生成，客户端无法伪造。"""
+
+    request_id: str
+    doctor_confirmed_at: datetime
+    doctor_confirmed_by: str
 
 
 # ============== T-GB-API-02 报告生成与签发 ==============

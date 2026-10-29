@@ -263,8 +263,8 @@ class Retriever:
         top-k chunks. If every leg is empty, the result has zero chunks.
         """
         # Each leg is keyed by the RetrievalMethod enum value that its hits
-        # carry (image leg hits are tagged DENSE inside _safe_image, so the
-        # image leg is also keyed under DENSE).
+        # carry (image leg hits are tagged IMAGE inside _safe_image, so the
+        # image leg is keyed under its own IMAGE slot).
         tasks: list[tuple[RetrievalMethod, asyncio.Future]] = []
         # A.88 T4-⑥：**单次检索**的丢弃计数（PG 缺行）；挂本地变量而不是实例属性。
         drop_tally = _DropTally()
@@ -287,10 +287,12 @@ class Retriever:
         # **每个分支都留自己的跳过原因**（不聚合到一个默认值，AGENTS.md 硬规则 8）。
         leg = self._resolve_image_leg(request)
         if leg.skip_reason is None:
-            # Image leg hits are tagged DENSE in _safe_image; key under DENSE
-            # so RRF fusion treats them as a second DENSE leg.
+            # 01-1 #3 分槽修复：影像腿改用独立 RetrievalMethod.IMAGE。
+            # 旧实现（与 dense 腿共用 DENSE key，注释自承）在 _rrf_fuse 里等于
+            # 把两条腿拼成一条 rank 序列互相挤位；独立分槽后两条腿各贡献
+            # 各自的 1/(k+rank)，互不挤位。
             tasks.append((
-                RetrievalMethod.DENSE,
+                RetrievalMethod.IMAGE,
                 asyncio.create_task(
                     self._safe_image(self._with_resolved_leg(request, leg), drop_tally)
                 ),
@@ -777,7 +779,7 @@ class Retriever:
             return []
 
         return await self._wrap_search_results(
-            results, RetrievalMethod.DENSE, drop_tally
+            results, RetrievalMethod.IMAGE, drop_tally
         )
 
     async def _dense_search(

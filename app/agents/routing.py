@@ -34,7 +34,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace as dataclasses_replace
 from enum import Enum
 from typing import Any
 
@@ -406,6 +406,21 @@ class AdaptiveRAGRouter:
                 retrieval_confidence=retrieval_confidence,
                 organ_threshold=threshold,
             )
+            # 01-2 步骤3：低置信度条件升级 —— 仅升"检索档"（bge 精排 + full
+            # top_k），**不改 effective_tier**（诊断链路的档位语义、Self-RAG/
+            # 幻觉检测判据均不受影响）。高置信度保持 standard profile，
+            # 不是无条件全开。
+            if is_low_confidence and decision.effective_tier != ResponseTier.FULL:
+                decision = dataclasses_replace(
+                    decision,
+                    retrieval_profile=RetrievalProfile.full(self._full_top_k),
+                )
+                logger.info(
+                    "routing_retrieval_profile_upgraded_low_confidence",
+                    retrieval_confidence=retrieval_confidence,
+                    organ_threshold=threshold,
+                    organ=target_organ,
+                )
 
         self._record(decision)
         logger.info("adaptive_rag_routing_decision", **decision.as_dict())

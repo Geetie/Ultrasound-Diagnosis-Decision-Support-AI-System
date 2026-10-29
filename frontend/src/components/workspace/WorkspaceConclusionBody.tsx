@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import WorkspaceStopAlert from './WorkspaceStopAlert';
+import ResearchMetrics from '@/components/diagnosis/ResearchMetrics';
 import type { WorkspaceState } from './states';
 import type { ConclusionView } from '@/services/diagnosisAdapter';
 import type { ReactNode } from 'react';
@@ -50,6 +51,14 @@ function AttentionIcon() {
  *   view 里该字段为 undefined 时**整行不渲染**，不是显示占位。
  *   画布上「低 · 约 2%–5%」是示意文案，后端并没有恶性概率字段，
  *   所以真机模式下这一行必然消失 —— 那是正确行为，不是缺件。
+ *
+ * 【2026-10-28 两处修复】
+ * · **P1-7 分级显示**：适配层 `extractTier()` 早就抽出了 `view.tier`，但**没有任何组件读它**
+ *   —— 医生看到的一句话结论里混着「分级: TR2」，却看不到一个干净的分级标签。
+ *   现在在一句话结论下方加分级徽标（有值才渲染，无值整块不出现）。
+ * · **P1-6 展开依据**：原先是不可点的 `<p>`（`data-action="expand"` 但无 onClick）。
+ *   现在改成真 `<button>` + 展开区，**只渲染后端真给了的东西**（`evidenceIds`），
+ *   没有依据条目时按钮禁用并说明原因，不挂假按钮、不编造依据。
  */
 function ConclusionBlock({
   expandText,
@@ -59,6 +68,7 @@ function ConclusionBlock({
   view?: ConclusionView | null;
 }) {
   const live = view ?? null;
+  const [expanded, setExpanded] = useState(false);
   // 有真机数据时用数据，没有才回落到画布文案
   // A.58：结论正文是 LLM 自由文本，会带裸露的 `**`（真机截图实证）。适配层契约要求
   // **原样透传**（便于与后端对账），所以归一化只在这一刻做（显示层，不改数据）。
@@ -72,6 +82,16 @@ function ConclusionBlock({
     live?.advice ? `建议：${live.advice}` : '建议：6 个月后复查超声，暂不需穿刺',
     { headings: true },
   );
+  // P1-7：分级徽标。`tier` 由适配层从正文正则抽出，无值时不渲染整块。
+  const tier = live?.tier;
+  // P1-6：依据条目。仅 `evidenceIds` 里真实存在的条目；空数组 = 本次结论没有引用
+  // 任何知识条目（后端 `evidence.knowledge_ids` 为 None 或正文无「证据:」段）。
+  // 依据条目 + 鉴别诊断 + 跨模态对照（03-4/03-5/03-6 接线）。三段**独立门控**：
+  // 后端真给了才有，空数组/缺字段整段不渲染 —— 不编造。
+  const evidenceIds = live?.evidenceIds ?? [];
+  const ddx = live?.differentialDiagnoses ?? [];
+  const crossHints = live?.crossModalityHints ?? [];
+  const canExpand = evidenceIds.length > 0 || ddx.length > 0 || crossHints.length > 0;
 
   return (
     <>
@@ -79,6 +99,13 @@ function ConclusionBlock({
       <p className="ws-conclusion__headline" data-node="2:19">
         {headline}
       </p>
+
+      {/* P1-7：分级徽标 —— 后端抽得出分级时才出现 */}
+      {tier && (
+        <span className="ws-tier-chip" data-region="conclusion-tier">
+          分级 {tier}
+        </span>
+      )}
 
       {/* 看一眼档-标记行 —— P1：view.attention 不存在即整行不渲染 */}
       {attention && (
@@ -103,14 +130,107 @@ function ConclusionBlock({
         {advice}
       </p>
 
-      {/* 展开入口-唯一
-          数据里 type 是 TEXT、actions 标注“就地展开三级：依据 → 鉴别 → AI 过程”。
-          三级折叠内容（证据溯源 / 鉴别诊断 / 既往对比，契约 §1 列为「折叠」）
-          未包含在任何一屏的导出数据中，故按数据还原为文本、不挂假按钮；
-          待折叠区数据落地后由本节点升级为 button 并接管 actions。 */}
-      <p className="ws-conclusion__expand" data-action="expand">
-        {expandText}
-      </p>
+      {/* 展开入口-唯一（P1-6 修复：真按钮 + 真展开区）
+          契约要求「展开入口只能有一个，拆成三个并列按钮即违反 P2」——
+          所以这里仍是**一个**按钮，展开后在一个区块内分段列出
+          依据 → 鉴别诊断 → 跨模态对照，各段按后端数据独立门控。
+          2026-10-30 更正：原注释「其余两段后端无字段」已过期 ——
+          differential_diagnoses / cross_modality_hints 均已随结果接口返回。 */}
+      <button
+        type="button"
+        className="ws-conclusion__expand"
+        data-action="expand"
+        aria-expanded={expanded}
+        disabled={!canExpand}
+        title={
+          canExpand
+            ? `展开${[
+                evidenceIds.length > 0 ? `知识条目 ${evidenceIds.length} 条` : null,
+                ddx.length > 0 ? `鉴别诊断 ${ddx.length} 条` : null,
+                crossHints.length > 0 ? `跨模态对照 ${crossHints.length} 条` : null,
+              ]
+                .filter(Boolean)
+                .join('、')}`
+            : '本次结论没有可展开的依据 / 鉴别诊断 / 跨模态对照'
+        }
+        onClick={() => setExpanded((v) => !v)}
+      >
+        {expanded ? '收起依据' : expandText}
+      </button>
+
+      {expanded && canExpand && (
+        <div className="ws-conclusion__evidence" data-region="conclusion-evidence">
+          {evidenceIds.length > 0 && (
+            <>
+              <span className="ws-conclusion__evidence-title">
+                本次结论引用的知识条目（{evidenceIds.length} 条）
+              </span>
+              <ul className="ws-conclusion__evidence-list">
+                {evidenceIds.map((id) => (
+                  <li key={id} className="ws-conclusion__evidence-item">
+                    {id}
+                  </li>
+                ))}
+              </ul>
+              <span className="ws-conclusion__evidence-note">
+                条目 ID 可回知识库原文核对；界面暂未提供点击跳转。
+              </span>
+            </>
+          )}
+
+          {ddx.length > 0 && (
+            <div className="ws-conclusion__ddx" data-region="conclusion-differential">
+              <span className="ws-conclusion__evidence-title">
+                鉴别诊断（按可能性排序，{ddx.length} 条）
+              </span>
+              <ul className="ws-conclusion__ddx-list">
+                {ddx.map((d) => (
+                  <li key={`${d.rank}-${d.disease_name}`} className="ws-conclusion__ddx-row">
+                    <span className="ws-conclusion__ddx-rank">{d.rank}.</span>
+                    <span className="ws-conclusion__ddx-name">{d.disease_name}</span>
+                    <span className="ws-conclusion__ddx-conf">
+                      {typeof d.confidence === 'number'
+                        ? `${Math.round(d.confidence * 100)}%`
+                        : '—'}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <span className="ws-conclusion__evidence-note">
+                可能性为后端解析值；未给出的显示「—」，前端不反推数值。
+              </span>
+            </div>
+          )}
+
+          {crossHints.length > 0 && (
+            <div className="ws-conclusion__cross" data-region="conclusion-cross-modality">
+              <span className="ws-conclusion__evidence-title">
+                跨模态对照（教科书级参考，不构成本次诊断依据）
+              </span>
+              <ul className="ws-conclusion__cross-list">
+                {crossHints.map((h, i) => (
+                  <li key={`${h.modality}-${i}`} className="ws-conclusion__cross-row">
+                    <span className="ws-conclusion__cross-modality">{h.modality}</span>
+                    <span className="ws-conclusion__cross-finding">
+                      {h.clinical_value ? `${h.finding} —— ${h.clinical_value}` : h.finding}
+                    </span>
+                    {h.source_reference && (
+                      <span className="ws-conclusion__cross-source">
+                        出处：{h.source_reference}
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 06-5 科研量化指标：复用既有 ResearchMetrics（此前挂在无路由的 DiagnosisPage）。
+          默认折叠 + 自带「科研用途，非临床决策依据」标注；后端合法缺席即整块不渲染；
+          设计预览模式（view=null）同样不渲染。 */}
+      {live?.researchMetrics && <ResearchMetrics metrics={live.researchMetrics} />}
     </>
   );
 }
@@ -314,7 +434,16 @@ function ConclusionSwitch({
             expandText="报告已签发并推送 PACS。若再修改正文，需要重新签发。"
             view={view}
           />
-          {/* 签发后唯一的主操作是「下一个病人」；点的同时清屏 */}
+          {/* 签发后唯一的主操作是「下一个病人」；点的同时清屏
+           *
+           * 2026-10-28 修（P0-3）：原先 `onClick={onSignNext}` 而 `onSignNext`
+           * 由 `routes.tsx` **从未传入** → 按钮 `onClick={undefined}`，点了完全没反应
+           * 且没有任何视觉提示（按钮不禁用、不变灰）。现在：
+           *   · callback 缺失 → **禁用 + title 说明原因**，不再伪装成可点；
+           *   · 正常路径（routes 传入清理函数）→ 可用。
+           * 注意：本屏的「已推送 PACS」文案是**硬编码**，而 PACS 默认打 local_fake
+           * 适配器（settings.pacs_adapter='local_fake'）—— 这条文案不准确，
+           * 已登记到修复报告，需产品决策后改（不在本轮擅改文案）。 */}
           <div className="ws-sign-row" data-node="2:396">
             <span className="ws-sign-row__status">
               报告状态：已签发（HSM 数字签名）· 已推送 PACS
@@ -323,6 +452,8 @@ function ConclusionSwitch({
               type="button"
               className="ws-primary-button"
               onClick={onSignNext}
+              disabled={!onSignNext}
+              title={onSignNext ? '回到工作列表并清屏' : '返回工作列表的通道未接线'}
             >
               下一个病人
             </button>

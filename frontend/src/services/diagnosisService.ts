@@ -6,6 +6,13 @@ import type {
   MultiOrganDiagnosisResponse,
 } from '@/types/api';
 
+/**
+ * 响应档位的**单一来源**（02-3）。此前 'standard' 字面量散落 5 个调用点。
+ * 默认仍是 standard（默认行为不静默改变；Self-RAG 的档位放宽在后端闸门做）。
+ * 需要更强校验的调用方显式传 'full'。
+ */
+export const DEFAULT_RESPONSE_TIER = 'standard' as const;
+
 export async function requestDiagnosis(data: DiagnosisRequest): Promise<DiagnosisRequestResponse> {
   const response = await apiClient.post<DiagnosisRequestResponse>('/diagnosis/request', data);
   return response.data;
@@ -37,6 +44,24 @@ export async function requestMultiOrganDiagnosis(data: {
 
 export async function getDiagnosisResult(requestId: string): Promise<DiagnosisResult> {
   const response = await apiClient.get<DiagnosisResult>(`/diagnosis/result/${requestId}`);
+  return response.data;
+}
+
+/**
+ * 回写医生「我看过这条结论了」。
+ *
+ * 设计依据 `前端设计/17-医生侧展示契约.md:137-141`：确认与签发是两个
+ * 不可省的操作——确认防 automation bias，签发负法律责任。
+ * **确认不等于授权签发**，本接口不产生任何签名或报告。
+ */
+export async function confirmDiagnosisResult(
+  requestId: string
+): Promise<{ request_id: string; doctor_confirmed_at: string; doctor_confirmed_by: string }> {
+  const response = await apiClient.post<{
+    request_id: string;
+    doctor_confirmed_at: string;
+    doctor_confirmed_by: string;
+  }>(`/diagnosis/${requestId}/doctor-confirm`, {});
   return response.data;
 }
 
@@ -103,7 +128,7 @@ export const STAGE_PLAN_MS: Record<'realtime' | 'standard' | 'full', Array<{ key
 /** 由已耗时推算当前阶段（纯函数，便于单测）。 */
 export function resolveStage(
   elapsedMs: number,
-  tier: 'realtime' | 'standard' | 'full' = 'standard'
+  tier: 'realtime' | 'standard' | 'full' = DEFAULT_RESPONSE_TIER
 ): DiagnosisStageEvent {
   const plan = STAGE_PLAN_MS[tier] ?? STAGE_PLAN_MS.standard;
   let current = plan[0];
@@ -240,7 +265,7 @@ export function pollDiagnosisResult(
     onPreview,
     onPreviewRefused,
     maxBackoffMs = 8000,
-    tier = 'standard',
+    tier = DEFAULT_RESPONSE_TIER,
     onStage,
   } = options;
 

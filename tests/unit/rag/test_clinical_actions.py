@@ -101,3 +101,52 @@ class TestSummary:
 
     def test_summary_placeholder_when_empty(self):
         assert "未生成结构化处置建议" in summarize_actions([])
+
+class TestInstitutionLevelFilter:
+    """06-4：机构层级过滤（settings.institution_level，默认「三甲」零变化）。"""
+
+    @pytest.fixture
+    def set_level(self, monkeypatch):
+        from app.config.settings import settings
+
+        def _set(level):
+            monkeypatch.setattr(settings, "institution_level", level)
+
+        return _set
+
+    def test_base_tier_thyroid_high_excludes_tertiary(self, set_level):
+        set_level("基层")
+        actions = actions_for("thyroid", ["micro"], "high")
+        assert actions, "基层档不得清空建议（清空 = 医生拿不到任何处置意见）"
+        assert not any(
+            item.applicable_level == LEVEL_TERTIARY for item in actions
+        )
+        assert any(item.action_type == "thyroid_function_test" for item in actions)
+
+    def test_base_tier_liver_high_loses_urgent_but_not_empty(self, set_level):
+        set_level("基层")
+        actions = actions_for("liver", [], "high")
+        assert not any(item.action_type == "contrast_imaging" for item in actions)
+        assert any(item.action_type == "liver_function_test" for item in actions)
+
+    def test_base_tier_cardiac_identical_to_default(self, set_level):
+        """心脏规则表 0 条三甲（clinical_actions.py），过滤应为恒等映射。"""
+        baseline = actions_for("cardiac", ["ef_moderate_reduced"], None)
+        set_level("基层")
+        assert actions_for("cardiac", ["ef_moderate_reduced"], None) == baseline
+
+    def test_default_tier_unchanged_from_legacy(self, set_level):
+        """不设档（默认三甲）时输出与既有用例相同——默认零行为漂移的反证腿。"""
+        set_level("三甲")
+        actions = actions_for("thyroid", ["micro"], "high")
+        assert any(item.action_type == "fine_needle_aspiration" for item in actions)
+        assert any(item.applicable_level == LEVEL_TERTIARY for item in actions)
+
+    def test_filter_runs_before_truncation(self, set_level, monkeypatch):
+        """MAX_ACTIONS=1 时：先截后滤会得到空列表；先滤后截应保留基层项。"""
+        import app.knowledge.clinical_actions as ca
+
+        monkeypatch.setattr(ca, "MAX_ACTIONS", 1)
+        set_level("基层")
+        actions = actions_for("thyroid", ["micro"], "high")
+        assert [a.action_type for a in actions] == ["thyroid_function_test"]

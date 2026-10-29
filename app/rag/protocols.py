@@ -81,6 +81,10 @@ class RetrievalMethod(str, Enum):
     """
     DENSE = "dense"
     SPARSE = "sparse"
+    # 01-1 #3 分槽修复：影像腿独立 key。此前与 dense 腿共用 DENSE，
+    # _rrf_fuse 把两条腿拼成同一条 rank 序列互相挤位（高分 dense 块把影像块
+    # 推到 rank 20+，k=60 下分差被压平 → 影像命中进不了 top-5）。
+    IMAGE = "image"
     HYBRID = "hybrid"
     BM25_FALLBACK = "bm25_fallback"
     GRAPH = "graph"

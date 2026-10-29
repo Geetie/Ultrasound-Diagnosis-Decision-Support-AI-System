@@ -134,6 +134,16 @@ def _coerce_response_tier(value: Any) -> ResponseTier:
         return ResponseTier.FULL
 
 
+def _self_rag_should_run(skip_self_rag: bool, effective_tier: ResponseTier) -> bool:
+    """Self-RAG 质检的档位闸门（02-3 方案A）。
+
+    判据 = 「非 REALTIME 档」∧「非重试请求」：standard/full 档都跑自检，
+    REALTIME 档与 retry 请求仍跳过（02-3⑤ 反证腿 R2/R3 的语义）。
+    提为纯函数：判据此前内联在主管线里，改判据无法直接单测。
+    """
+    return (not skip_self_rag) and (effective_tier != ResponseTier.REALTIME)
+
+
 def _assess_routing(request: Any) -> RoutingDecision | None:
     """按规格 §5.3 给出路由判定（任何异常都不得阻断诊断）。"""
     t = time.monotonic()
@@ -143,7 +153,11 @@ def _assess_routing(request: Any) -> RoutingDecision | None:
             target_organ=str(getattr(request, "organ", "") or "") or None,
             requested_tier=_coerce_response_tier(getattr(request, "tier", None)),
         )
-        _record_assessment_latency(time.monotonic() - t)
+        # 01-5 口径修正：路由判定耗时降为 debug 日志，不再占用
+        # ultrasound_assessment_latency_seconds（该指标现测标准路径端到端）。
+        logger.debug(
+            "routing_assess_latency", seconds=round(time.monotonic() - t, 6)
+        )
         return decision
     except Exception as exc:
         logger.warning(
@@ -178,7 +192,17 @@ async def _apply_rollout_gate(
         )
 
         if not decision.allowed and routing is not None:
-            routing = replace(routing, retrieval_profile=RetrievalProfile.standard())
+            # 01-2 步骤4：灰度退回基线只退 use_llm_enhancement / full_validation，
+            # **保留 use_reranking** —— 否则灰度一开，未放行会话（默认 95%）
+            # 的精排被静默关掉（01-2② #4「灰度是静默杀手」）。
+            _baseline = RetrievalProfile.standard()
+            routing = replace(
+                routing,
+                retrieval_profile=replace(
+                    _baseline,
+                    use_reranking=routing.retrieval_profile.use_reranking,
+                ),
+            )
 
         logger.info(
             "rollout_routing_decision",
@@ -199,12 +223,17 @@ async def _apply_rollout_gate(
         return routing, None
 
 
-def _record_assessment_latency(seconds: float) -> None:
-    """obs 指标：routing 评估延迟（wiring-audit P1-3，失败不影响管线）。"""
+def _record_assessment_latency(seconds: float, tier: str = "unknown") -> None:
+    """obs 指标：辅助评估路径端到端延迟（01-5 口径修正，失败不影响管线）。
+
+    口径修正（01-5 ②#3）：此前测的是 ``_assess_routing``（路由判定，毫秒级），
+    与 00 号 §2.1"标准路径 P99"口径错位、永不可能报警。现改为在
+    ``run_diagnosis_pipeline`` 成功出口（写库完成）按 tier 打标记录。
+    """
     try:
         from app.observability.metrics_collector import get_metrics_collector
 
-        get_metrics_collector().record_assessment_latency(seconds)
+        get_metrics_collector().record_assessment_latency(seconds, tier=tier)
     except Exception as exc:
         logger.debug("assessment_latency_record_failed", error=str(exc))
 
@@ -331,17 +360,17 @@ async def run_diagnosis_pipeline(request_id: str) -> bool:
         # （放在读段之后、调度之前：Redis 读取很快，不占 DB 连接。）
         skip_self_rag = await _read_retry_skip_self_rag(request_id)
 
-        # A.51 降载：Self-RAG LLM 质检只在 FULL 档执行——FAST/COMPACT 档
-        # 本就是「省 LLM 调用」的语义（T-GB-AGT-02），此前却统一跑全量校验
-        # （实测 validate 含 LLM 1.85s P50）。降级后档位差异真正生效，
-        # 且 FULL 档行为不变。
+        # A.51 降载：Self-RAG LLM 质检按档位执行——REALTIME 档跳过（省一次评估 LLM）。
+        # 02-3 方案A：判据从「== FULL」放宽为「!= REALTIME」——FULL 档在生产 UI
+        # 路径结构性不可达（前端默认 standard），自检从未真正执行；放宽后
+        # standard/full 都跑（预估 +~0.75s P50，验收见 02-3⑤ V2 延迟回归）。
         from app.models.schemas import ResponseTier as _ResponseTier
 
         # A.58：原为 try/except AttributeError 兜 FULL —— 属性缺失会被**静默**吞掉
         # （表现成"意外降级却无人知"）。改 getattr 显式默认，语义不变但不再有静默分支
         # （零静默守卫的零容忍区要求：主链路 except 必须带证据）。
         _effective_tier = getattr(routing_decision, "effective_tier", _ResponseTier.FULL)
-        use_self_rag = (not skip_self_rag) and (_effective_tier == _ResponseTier.FULL)
+        use_self_rag = _self_rag_should_run(skip_self_rag, _effective_tier)
 
         # 1) 分割旁路**提前**（A.37 ③）：分割量化特征（bbox/面积/概率）必须在
         #    dispatch 之前产出，才能经 imaging_metadata 注入 LLM 上下文 ——
@@ -423,6 +452,7 @@ async def run_diagnosis_pipeline(request_id: str) -> bool:
                     request_id,
                     routing=routing_decision,
                     imaging_metadata=segmentation if isinstance(segmentation, dict) else None,
+                    similar_cases=similar_cases,
                 )
             timings["dispatcher.invoke_ms"] = (time.monotonic() - t) * 1000.0
             if watcher_task is not None:
@@ -467,8 +497,8 @@ async def run_diagnosis_pipeline(request_id: str) -> bool:
         # 2c) 幻觉检测（A.88 T5-3）：对本次**最终响应**做一次检测，把真实的
         #     严重度写进 findings.fusion_result。此前 hallucination_severity
         #     全仓无生产者 → 结果接口恒 None（"无生产者不得填值"的诚实做法）。
-        #     成本与档位：只在 FULL 档或开关显式打开时执行（检测是纯正则/词表，
-        #     但仍要遍历 5 类策略 + 一次 CUSUM 上报，不该在 FAST/COMPACT 档白跑）。
+        #     成本与档位：02-5 链A 后默认全档执行（开关默认 True）；显式置 false
+        #     时退回「仅 FULL 档」（检测是纯正则/词表，~1ms 量级）。
         t = time.monotonic()
         hallucination = _detect_hallucination_safely(
             fusion_result,
@@ -531,6 +561,13 @@ async def run_diagnosis_pipeline(request_id: str) -> bool:
             t_start=t_start,
         )
         timings["db_write_ms"] = (time.monotonic() - t) * 1000.0
+
+        # 01-5 口径修正：辅助评估路径端到端延迟（入口 t_start → 写库完成），
+        # 按 effective_tier 打标；路由判定耗时已降为 debug 日志（见 _assess_routing）。
+        _record_assessment_latency(
+            time.monotonic() - t_start,
+            tier=str(getattr(_effective_tier, "value", _effective_tier)),
+        )
 
         # 5) 推送 WebSocket
         try:
@@ -646,11 +683,76 @@ async def run_diagnosis_pipeline(request_id: str) -> bool:
 # ----------------------------------------------------------------------
 
 
+_SIMILAR_NOTE_LIMIT = 200
+
+
+def _append_similar_cases_note(user_query: str, similar_cases: dict | None) -> str:
+    """01-1 方案(a)：把相似病例通道的既往判读特征文本拼进 user_query。
+
+    * 只取 ``scope="self"``（同一患者自己的历史判读；deidentified 跨病人
+      作用域**绝不**进 prompt，A.82 合规边界）；
+    * 限 200 字（prompt 变长会推高 P99，超预算由 01-5 分档 deadline 兜底）；
+    * 无特征文本时原样返回（不注入空段）。
+    """
+    if not isinstance(similar_cases, dict):
+        return user_query
+    if str(similar_cases.get("scope") or "") != "self":
+        return user_query
+    text = str(similar_cases.get("feature_text") or "").strip()
+    if not text:
+        return user_query
+    return user_query + (
+        "\n【本人历史影像判读特征（背景参考，非诊断依据）】" + text[:_SIMILAR_NOTE_LIMIT]
+    )
+
+
+async def _prior_findings_feature_text(
+    *,
+    patient_id: str | None,
+    organ: str | None,
+    exclude_request_id: str,
+    limit: int = 200,
+) -> str:
+    """本患者该器官最近一次判读的结论特征文本（01-1 方案(a) 的数据源）。
+
+    复用 ``DiagnosisRepository.get_previous_result_same_organ``（与
+    ``_safe_load_prior_diagnosis`` 同一查询）+ ``extract_findings_text``。
+    取不到 → 返回空串（不编造）。自证循环风险已登记（findings 留痕
+    ``feature_text_source=prior_findings``）。任何异常不阻断主判读。
+    """
+    if not patient_id or not organ:
+        return ""
+    try:
+        async with AsyncSessionLocal() as db:
+            repo = DiagnosisRepository(db)
+            rows = await repo.get_previous_result_same_organ(
+                patient_id=patient_id,
+                organ=organ,
+                exclude_request_id=exclude_request_id,
+                limit=3,
+            )
+        for row in rows or []:
+            payload = getattr(row, "findings", None)
+            payload = payload if isinstance(payload, dict) else {}
+            text = extract_findings_text(payload.get("fusion_result"))
+            if text and str(text).strip():
+                return str(text).strip()[:limit]
+        return ""
+    except Exception as exc:
+        logger.warning(
+            "similar_cases_feature_text_failed",
+            error=str(exc)[:160],
+            error_type=type(exc).__name__,
+        )
+        return ""
+
+
 async def _safe_dispatch(
     request,
     request_id: str,
     routing: RoutingDecision | None = None,
     imaging_metadata: dict | None = None,
+    similar_cases: dict | None = None,
 ):
     """调用 dispatcher.invoke；失败时返回 [AgentResponse(confidence=0.0)]。
 
@@ -720,6 +822,8 @@ async def _safe_dispatch(
                 parts.append(f"病史：{pc.relevant_history}")
             if parts:
                 user_query = user_query + "\n患者信息：" + "；".join(parts)
+        # 01-1 方案(a)：相似病例特征文本进 prompt（不打开检索腿、不动检索层）。
+        user_query = _append_similar_cases_note(user_query, similar_cases)
         context = AgentContext(
             request_id=request_id,
             session_id=request.session_id,
@@ -1180,6 +1284,63 @@ async def _mark_result_cancelled(request_id: str) -> None:
         )
 
 
+def _grading_conditions_for(request: Any) -> frozenset[str]:
+    """分级下界规则的触发条件集合（04-3 Phase A 的输入契约）。
+
+    Phase A 只立契约不产内容：生产路径当前**恒返回空集**——没有任何代码
+    路径能判定"已穿刺证实"，那是临床判断；规则内容由医学专家给、规则表
+    保持空表。条件不满足 ⇒ 规则不生效（condition_unmet），宁可不抬、不可误抬。
+    Phase B 接入病理/穿刺标签时只改本函数。
+    """
+    del request  # Phase B：从病例标签/请求上下文提取条件
+    return frozenset()
+
+
+def _evaluate_grading_floor(request: Any, fusion_result: Any) -> dict[str, Any] | None:
+    """判读后评估分级下界并产出留痕 dict（04-3 Phase A，纯审计）。
+
+    * 开关关闭（settings.grading_floor_enabled=False，默认）→ 返回 None，
+      调用方**不写键** ⇒ findings 与改动前逐字节相同；
+    * 分级取自本次融合结论正文（extract_findings_text +
+      extract_grading_severest，与既往诊断抽取同一套单一事实源）；
+    * 只产出 ``findings["grading_floor"] = {applied, reason, from, to,
+      rule_reference, condition}``，**不改 content / 结论正文 / 置信度**。
+    """
+    try:
+        if not bool(getattr(settings, "grading_floor_enabled", False)):
+            return None
+        from app.inference.grading_definitions import extract_grading_severest
+        from app.knowledge.grading_floor import apply_grading_floor
+
+        organ = str(getattr(request, "organ", "") or "") or None
+        text = extract_findings_text(fusion_result)
+        grading = (
+            extract_grading_severest(str(text), organ) if (text and organ) else None
+        )
+        outcome = apply_grading_floor(
+            organ=organ,
+            grading=grading,
+            conditions=_grading_conditions_for(request),
+        )
+        return {
+            "applied": bool(outcome.applied),
+            "reason": outcome.reason or "raised",
+            "from": outcome.original_grading,
+            "to": outcome.grading,
+            "rule_reference": getattr(outcome.rule, "reference", None),
+            "condition": getattr(outcome.rule, "condition", None),
+        }
+    except Exception as exc:
+        # 评估失败绝不阻断写库，但必须留痕（不静默）
+        logger.warning(
+            "pipeline_grading_floor_evaluation_failed",
+            request_id=str(getattr(request, "request_id", "") or ""),
+            error=str(exc)[:160],
+            error_type=type(exc).__name__,
+        )
+        return {"applied": False, "reason": "evaluation_failed", "error": type(exc).__name__}
+
+
 async def _write_result_to_db(
     request,
     fusion_result,
@@ -1212,6 +1373,25 @@ async def _write_result_to_db(
             ``timings_ms`` 中补上 ``pipeline.total_ms``（截至写库前），供
             接口的 ``processing_time_ms`` 与前端进度展示直接使用。
     """
+    # 02-5 链B（B1）：熔断状态探针。纯内存读（微秒级），不新增 await/IO、
+    # 不触碰 dispatch/fusion/SG —— 失败点零增加；读取失败按"无熔断"处理
+    # 并留 warning（熔断读数不得成为新的诊断失败点）。
+    try:
+        from app.observability.cusum import AISafetyCircuitBreaker
+
+        _breaker_info = AISafetyCircuitBreaker.get_instance().suspension_info
+        _breaker_state = _breaker_info.get("state")
+        _safety_gate = {
+            "state": str(
+                getattr(_breaker_state, "value", _breaker_state) or "active"
+            ),
+            "suspended": _breaker_state == AISafetyCircuitBreaker.SUSPENDED,
+            "pending": _breaker_state == AISafetyCircuitBreaker.PENDING_CONFIRMATION,
+        }
+    except Exception as exc:  # silent-ok: 降级读数失败不阻断主链
+        logger.warning("safety_gate_read_failed", error=str(exc))
+        _safety_gate = {"state": "unknown", "suspended": False, "pending": False}
+
     # 1) 决定 status
     if not sg_ok:
         status = "failed"
@@ -1236,6 +1416,18 @@ async def _write_result_to_db(
         review_reason = (
             getattr(fusion_result, "review_reason", None) if fusion_result else None
         )
+        # 02-5 链B（B2，用户拍板语义(a)「降级」）：CUSUM 熔断读者。
+        # 此前 `AISafetyCircuitBreaker.is_suspended` 生产零读者 —— 熔断器改了
+        # 自身状态就停在那里等一个永远不来的读者。这里在"决定 status 的唯一
+        # 收口处"读一次：pending_confirmation / suspended → 降级为
+        # needs_review（**不停服**，结论正文照出），review_reason 以
+        # ai_safety_circuit_breaker_ 前缀留痕；不覆盖融合层已写的更具体原因。
+        if _safety_gate["suspended"] or _safety_gate["pending"]:
+            if status == "completed":
+                status = "needs_review"
+            review_reason = review_reason or (
+                "ai_safety_circuit_breaker_" + _safety_gate["state"]
+            )
 
     # 2) 组装 findings
     timings_ms = {k: round(v, 2) for k, v in timings.items()}
@@ -1267,6 +1459,10 @@ async def _write_result_to_db(
         "routing": routing.as_dict() if routing is not None else None,
         # T-GR-INT-01：灰度判定落库，观测侧据此统计各轨道放量比例
         "rollout": rollout.as_dict() if rollout is not None else None,
+        # 02-5 链B（B1）：熔断状态落库（02-5⑤ B-V3 判据①/④ 的观测面；
+        # "重启失忆"缺口由 app/observability/cusum/persistence.py 的
+        # Redis 快照持久化补 —— 见该模块 docstring）。
+        "safety_gate": _safety_gate,
         # 分割旁路结果（轮廓/面积/概率）。**总是写入**（含 available=False
         # 的情形）——报告层据此显示"未做分割"与原因，而不是字段整体消失，
         # 那会让医生以为"没 nodules"或"系统没这项能力"。
@@ -1284,6 +1480,15 @@ async def _write_result_to_db(
         if t2a_classification is not None
         else {"available": False, "reason": "not_run", "skipped": True},
     }
+
+    # 04-3 Phase A：分级下界评估留痕（**只写 findings，不改结论正文**）。
+    # 开关关闭 → 不写键（findings 与改动前逐字节相同，验收判据 1）；
+    # 开关开 + 空规则表 → 每例都有 reason（no_rule 等，判据 2）；
+    # 条件匹配的规则命中 → applied/from/to/rule_reference 可查（判据 3），
+    # content 仍不变（Phase A 不交付"改结论"）。
+    _grading_floor_audit = _evaluate_grading_floor(request, fusion_result)
+    if _grading_floor_audit is not None:
+        findings["grading_floor"] = _grading_floor_audit
 
     # A.88 T5-3：幻觉检测的真实结果写进 fusion_result（键名与 schema 字段同名，
     # 结果接口可直接取）。`checked=False` 时写 None + 真实原因，**不写 False**
@@ -1760,12 +1965,16 @@ def _area_mm2_from_dicom(content: bytes, area_px: int) -> float | None:
 
 
 async def _safe_similar_cases(request_row: Any) -> dict[str, Any]:
-    """相似病例旁路（A.82）：**独立输出**，不进 LLM 知识上下文，失败不影响主判读。
+    """相似病例旁路（A.82）：**独立输出**，失败不影响主判读。
 
     设计要点：
     * 默认 `scope="self"` → 只查**同一病人**的历史影像（合规、无需额外授权）；
     * 输出仅 `image_id / score / organ / date`，**不含 patient_id / session_id**；
     * 任何异常 → `status="unavailable"`，主流程照常出结论。
+
+    01-1 方案(a) 更正：scope="self" 时会附带 ``feature_text``（本患者该器官
+    最近一次判读的结论特征），由 ``_append_similar_cases_note`` 注入 prompt
+    作背景参考；跨病人作用域（deidentified）仍绝不进 prompt。
     """
     from app.config.settings import settings
 
@@ -1813,6 +2022,17 @@ async def _safe_similar_cases(request_row: Any) -> dict[str, Any]:
             top_k=settings.similar_cases_top_k,
             exclude_image_id=str(index_image_id),
         )
+        # 01-1 方案(a)：补特征文本（本患者该器官最近一次判读的结论特征）。
+        # 只在 scope="self" 下做（跨病人作用域不进 prompt）；取不到 → 不注入。
+        if result.get("status") == "ok" and str(result.get("scope") or "") == "self":
+            feature_text = await _prior_findings_feature_text(
+                patient_id=str(patient_id or "") or None,
+                organ=str(getattr(request_row, "organ", "") or "") or None,
+                exclude_request_id=str(getattr(request_row, "request_id", "") or ""),
+            )
+            if feature_text:
+                result["feature_text"] = feature_text
+                result["feature_text_source"] = "prior_findings"
         logger.info(
             "similar_cases_done",
             request_id=getattr(request_row, "request_id", ""),
@@ -2074,9 +2294,9 @@ def _detect_hallucination_safely(
     ## 成本与档位
 
     检测本身是纯正则/词表（无 LLM），实测耗时通常在 1ms 量级；但仍会遍历 5 类
-    策略并触发一次 CUSUM/指标上报，所以在 FAST/COMPACT 档默认**不跑**
-    （``hallucination_detection_in_pipeline`` 可强制打开）。失败绝不阻断诊断：
-    任何异常 → ``checked=False`` + 真实原因。
+    策略并触发一次 CUSUM/指标上报。02-5 链A（A2）后默认**开启 → 全档执行**；
+    ``hallucination_detection_in_pipeline`` 显式置 false 时退回仅 FULL 档。
+    失败绝不阻断诊断：任何异常 → ``checked=False`` + 真实原因。
     """
     if not (force_enabled or is_full_tier):
         return {

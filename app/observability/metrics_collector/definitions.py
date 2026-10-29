@@ -13,8 +13,9 @@ class MetricsDefinitions:
         )
         self.assessment_latency = Histogram(
             "ultrasound_assessment_latency_seconds",
-            "Assisted assessment latency",
-            buckets=[0.5, 1.0, 1.5, 2.0, 3.0, 5.0],
+            "Assisted assessment (standard path) end-to-end latency by tier",
+            ["tier"],
+            buckets=[0.5, 1.0, 2.0, 3.0, 5.0, 7.0, 10.0],
             registry=r,
         )
         self.diagnosis_latency = Histogram(

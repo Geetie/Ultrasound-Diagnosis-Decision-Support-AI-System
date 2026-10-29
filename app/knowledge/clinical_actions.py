@@ -249,6 +249,14 @@ def actions_for(
     if builder is None:
         return []
     actions = builder(list(features), risk_level)
+    # 06-4：机构层级过滤——基层档隐藏三甲专属建议（如 FNA、增强影像）。
+    # 必须在 [:MAX_ACTIONS] 截断**之前**过滤：先截后滤会丢掉本该保留的建议
+    # （05 号计划 06-4 ②④）。settings 延迟导入保持本模块可独立测试
+    # （与 correction_rate_monitor.py:189 同款范式）。
+    from app.config.settings import settings
+
+    if settings.institution_level == LEVEL_BASE:
+        actions = [a for a in actions if a.applicable_level != LEVEL_TERTIARY]
     return actions[:MAX_ACTIONS]
 
 

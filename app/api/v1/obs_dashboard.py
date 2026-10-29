@@ -10,6 +10,8 @@ from app.observability.cusum import AISafetyCircuitBreaker
 from app.observability.metrics_collector import get_metrics_collector
 from app.security.auth import PermissionChecker
 from app.services.cold_archive import ColdArchiveService
+from app.services.correction_rate_monitor import assess_recent_corrections
+from app.models.schemas import CorrectionRateProxyResponse
 
 logger = structlog.get_logger()
 
@@ -118,6 +120,35 @@ async def run_cold_archive(
     else:
         result = await service.archive_audit_logs()
     return result.as_dict()
+
+
+@router.get("/correction-rate")
+async def correction_rate(
+    window_days: int = Query(default=None, ge=1, le=365),
+    db: AsyncSession = Depends(get_db_session),
+) -> CorrectionRateProxyResponse:
+    """05-3 S0：医生改判率只读端点（接通 correction_rate_monitor 的唯一生产消费者）。
+
+    ⚠️ 口径声明（不许删）：本端点返回的是**改判率代理指标**，不是漏诊率——
+    分母是"产生反馈的复核记录"，无患者结局/金标准。任何把此数字对外表述为
+    "漏诊率"（含 15%→5% 目标口径）的用法都被 `disclaimer` 字段显式拒绝。
+    详见 docs/技术文档/未打通项打通计划/04-治疗与患者结局-3项打通计划.md §05-3。
+    """
+    report = await assess_recent_corrections(db, window_days=window_days)
+    return CorrectionRateProxyResponse(
+        metric_kind="proxy_correction_rate",
+        disclaimer=(
+            "改判率≠漏诊率：本指标仅统计医生对 AI 结论的修正反馈"
+            "（feedback_records.feedback_type='correction'），分母不含患者结局"
+            "或病理/随访金标准，不能用于'漏诊率 15%→5%'等对外口径。"
+            "真实漏诊率需最终诊断+金标准来源（见 05-3 S1 季度审计），"
+            "当前未测量。"
+        ),
+        window_days=window_days or settings.correction_rate_window_days,
+        insufficient_samples=report.insufficient_samples,
+        min_samples=settings.correction_rate_min_samples,
+        report=report.as_dict(),
+    )
 
 
 def _read_gpu_metrics(collector) -> dict:

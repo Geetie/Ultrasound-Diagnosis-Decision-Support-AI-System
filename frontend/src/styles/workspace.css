@@ -366,11 +366,98 @@
   color: var(--color-text-primary);
 }
 
-/* 展开入口（2:30）—— 全区只有一个入口，不要拆成三个并列按钮（P2 一次决策） */
+/* 展开入口（2:30）—— 全区只有一个入口，不要拆成三个并列按钮（P2 一次决策）
+ *
+ * 2026-10-28：从 <p> 升级为 <button>（原先是不可点的假入口）。
+ * 为了不改变画布外观，这里把按钮浏览器默认样式全部抹平（背景/边框/内边距/字体继承）。
+ * `:disabled` 用 --color-text-secondary —— 无依据可展开时**看得见"不可用"**，不伪装成可点。
+ * 只用仓库已有 token（design-tokens.css 里没有 --color-text-muted / --radius-sm / --font-mono）。 */
 .ws-conclusion__expand {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  font: inherit;
   font-size: var(--font-size-small);
   color: var(--color-attention);
+  cursor: pointer;
+  text-align: left;
 }
+
+.ws-conclusion__expand:disabled {
+  color: var(--color-text-secondary);
+  cursor: not-allowed;
+}
+
+.ws-conclusion__expand:not(:disabled):hover {
+  text-decoration: underline;
+}
+
+/* 分级徽标（2026-10-28 新增）—— 后端抽得出分级时才渲染 */
+.ws-tier-chip {
+  align-self: flex-start;
+  padding: 1px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-tag);
+  font-size: var(--font-size-small);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+/* 依据展开区（2026-10-28 新增）—— 只列后端真给的 evidenceIds */
+.ws-conclusion__evidence {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 72px;
+  overflow: auto;
+}
+
+.ws-conclusion__evidence-title {
+  font-size: var(--font-size-small);
+  color: var(--color-text-secondary);
+}
+
+.ws-conclusion__evidence-list {
+  margin: 0;
+  padding-left: 18px;
+  font-family: var(--font-numeric);
+  font-size: var(--font-size-small);
+  color: var(--color-text-primary);
+}
+
+.ws-conclusion__evidence-note {
+  font-size: var(--font-size-small);
+  color: var(--color-text-secondary);
+}
+
+/* 鉴别诊断段（03-4）—— 后端 differential_diagnoses 非空才渲染 */
+.ws-conclusion__ddx { display: flex; flex-direction: column; gap: 2px; }
+.ws-conclusion__ddx-list { margin: 0; padding-left: 0; list-style: none; }
+.ws-conclusion__ddx-row {
+  display: flex; gap: 6px; align-items: baseline;
+  font-size: var(--font-size-small); color: var(--color-text-primary);
+}
+.ws-conclusion__ddx-rank { font-family: var(--font-numeric); color: var(--color-text-secondary); }
+.ws-conclusion__ddx-conf { margin-left: auto; font-family: var(--font-numeric); color: var(--color-text-secondary); }
+
+/* 跨模态对照段（03-6）—— 教科书级参考；出处必须可见 */
+.ws-conclusion__cross { display: flex; flex-direction: column; gap: 2px; }
+.ws-conclusion__cross-list {
+  margin: 0; padding-left: 0; list-style: none;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.ws-conclusion__cross-row {
+  display: flex; flex-direction: column; gap: 1px;
+  font-size: var(--font-size-small); color: var(--color-text-primary);
+}
+.ws-conclusion__cross-modality {
+  align-self: flex-start; padding: 0 6px;
+  border: 1px solid var(--color-border); border-radius: var(--radius-tag);
+  font-family: var(--font-numeric); color: var(--color-text-secondary);
+}
+.ws-conclusion__cross-source { color: var(--color-text-secondary); }
 
 /* ============================================================
    条件性元素（契约 §1：满足条件才渲染，不满足则不存在）

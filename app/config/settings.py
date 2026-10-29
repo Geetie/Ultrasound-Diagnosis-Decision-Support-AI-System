@@ -150,6 +150,12 @@ class Settings(BaseSettings):
     # 低于该样本数只统计不判定：1/1=100% 会直接触发个体告警，把真实信号淹没
     correction_rate_min_samples: int = 20
 
+    # === 06-4 机构层级（处置建议运行时过滤的唯一输入）===
+    # 默认「三甲」= 不过滤，与改动前行为逐条一致（零行为漂移）。
+    # 与 06-6 安全分级的「使用场所」维度共用本定义（05 号计划附录 A.2：
+    # 不要各写一份机构层级口径）。
+    institution_level: str = "三甲"
+
     # T-GR-INT-01 灰度发布路由
     rollout_enabled: bool = False
     rollout_full_percent: int = 5
@@ -287,8 +293,8 @@ class Settings(BaseSettings):
     int_dlq_max_retries: int = 3
     int_worker_blpop_timeout_seconds: int = 5
     # T-Perf 措施#3：管线各阶段延迟预算（秒，超时降级不挂死）
-    pipeline_dispatch_budget_s: float = 6.0
-    pipeline_fusion_budget_s: float = 6.0
+    # 01-5：删除孤儿配置 pipeline_dispatch_budget_s / pipeline_fusion_budget_s
+    # （全仓 0 读取点；16 号"已落地"记载与代码不符，以本注释 + grep 为准）。
     pipeline_sg_budget_s: float = 2.0
     # 并发审查 P0-1：worker 槽位被分钟级管线占死的雪崩防线。
     # dispatch/fusion 两段的预算字段（6.0s）自 T-Perf 起就是**孤儿配置**
@@ -300,6 +306,12 @@ class Settings(BaseSettings):
     # 计数/DLQ 路径），不动上面两个 6.0s：实测 dispatch/fusion 常态已达 ~4.7s，
     # 直接把 6.0s 强制生效会造成大面积超时降级（比不设更糟）。
     pipeline_total_budget_s: float = 180.0
+    # 01-5：分档端到端总预算。FULL 档沿用上面的 pipeline_total_budget_s；
+    # realtime 档不走诊断路径（00 号 §2.1）→ 沿用 standard 值。
+    # standard 初值 = 实测常态（dispatch+fusion ~4.7s，见上方注释）× ~2 倍余量
+    # → 10.0s；P99 目标口径已按实测 ~4.7s 重新定（00 号 §2.1）。
+    # 重定时机：standard 档累计 ≥50 例 P99 观测后按实测收紧。
+    pipeline_total_budget_standard_s: float = 10.0
     # === A.51 fusion-validate 降载（口径闭合后按实测取证）===
     # 实测（p14b，N=8 热态）：validate P50 1.85s / P99 2.30s，双峰分布
     # 750ms（Self-RAG 一次通过）vs 1850ms+（失败后评估重试）。
@@ -391,7 +403,11 @@ class Settings(BaseSettings):
 
     # RAG (T-GA-RAG-01/02/03)
     rag_use_query_enhancement: bool = True
-    rag_use_reranking: bool = True
+    # 01-2：`rag_use_reranking` 已删除 —— 它是摆设开关（`main.py` 构造门被
+    # rag_use_query_enhancement 恒真短路、per-request 又从 RetrievalProfile
+    # 取值，全仓 0 读取点）。运维以为关掉了实际关不掉，比没有更危险；
+    # 精排的真实闸门 = RetrievalProfile.use_reranking（agents/routing.py
+    # → rag/service.py），低置信度条件升级见 routing.assess。
     rag_use_bm25_fallback: bool = True
     # 图像检索腿开关。**A.88（2026-10-25 真机复核）更正了此处原先的理由**：
     #
@@ -431,6 +447,11 @@ class Settings(BaseSettings):
     # 0.49 那条是"同病人但不可比"的影像，0.55 能挡住它又不误伤（样本仅 6 条，
     # 属**暂定值**，攒到 ≥30 条后需按分布重定）。
     similar_cases_min_score: float = 0.55
+    # 04-3 Phase A：分级下界评估总开关（默认关 ⇒ 临床输出零变化）。
+    # 替代模块常量 GRADING_FLOOR_ENABLED（app/knowledge/grading_floor.py）；
+    # 规则表保持空表 —— 规则内容必须经医学专家复核后才能填，找不到依据不填。
+    # 回滚 = 关此开关，无需回退代码。
+    grading_floor_enabled: bool = False
     # 实体近似匹配专用 collection（≤1 万向量），与主检索 collection 隔离。
     # 设计规格 §5.5 / 01-系统架构设计「Gate 0A 强制执行项」指定的名称。
     rag_entity_matching_collection: str = 'entity_matching'
@@ -487,10 +508,11 @@ class Settings(BaseSettings):
     t2a_classifier_in_pipeline_enabled: bool = False
     # 旁路超时（秒）。超时按"能力不可用"降级并留真实原因，绝不阻断判读。
     t2a_classifier_timeout_s: float = 10.0
-    # A.88：幻觉检测**旁路**开关（仅 FULL 档，管线自行决定是否真的跑）。
-    # **默认关**的理由：每次判读要多跑一次 LLM 或规则判定，直接把 P99 抬上去；
-    # 先按需开启、积累真机样本后再定默认。
-    hallucination_detection_in_pipeline: bool = False
+    # A.88：幻觉检测**旁路**开关（02-5 链A A2：默认开启 → 全档执行。检测是
+    # 纯正则/词表（代码注释实测 ~1ms 量级），用它换一条安全链 + CUSUM 观测样本，
+    # 划算；此前默认关时默认档（standard）从不执行 → CUSUM 0 样本、永不触发。
+    # 置 false 可整体关闭。部署侧 .env 如有同名变量需同步核对。
+    hallucination_detection_in_pipeline: bool = True
     # AI 依赖的**硬离线**闸门（2026-10-04 真机事故驱动）：
     # open_clip / huggingface_hub 在装载模型时会向 huggingface.co 发 HEAD 探测
     # 权重；网络不可达时每次 5 次重试 ~14s，且这段是**同步**代码——跑在请求
@@ -722,6 +744,16 @@ class Settings(BaseSettings):
         if v not in allowed:
             raise ValueError(
                 f"nav_auto_upgrade_tier must be one of {allowed}, got '{v}'"
+            )
+        return v
+
+    @field_validator("institution_level")
+    @classmethod
+    def institution_level_must_be_valid(cls, v: str) -> str:
+        allowed = {'三甲', '基层'}
+        if v not in allowed:
+            raise ValueError(
+                f"institution_level must be one of {allowed}, got '{v}'"
             )
         return v
 

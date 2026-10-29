@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  confirmDiagnosisResult,
   pollDiagnosisResult,
   requestDiagnosis,
   requestMultiOrganDiagnosis,
+  DEFAULT_RESPONSE_TIER,
 } from '@/services/diagnosisService';
+import { getApiErrorMessage } from '@/utils/apiError';
 import type {
   CrossOrganBlock,
   DiagnosisResult,
@@ -101,6 +104,11 @@ export interface WorkspaceFlow {
   /** 「已人工核验」勾选，对应 reviewAcknowledged。 */
   acknowledged: boolean;
   setAcknowledged: (v: boolean) => void;
+  /** 确认的提交状态：确认是异步回写，失败要能让医生看见。 */
+  confirming: boolean;
+  confirmError: string | null;
+  /** 服务端记录的确诊时间（ISO 串）；null = 尚未确认。 */
+  confirmedAt: string | null;
   /**
    * 接管**已有** request_id：只轮询取结果，不再新发一次判读。
    *
@@ -140,6 +148,11 @@ export function useWorkspaceFlow(): WorkspaceFlow {
   const [error, setError] = useState<string | null>(null);
   const [requestId, setRequestId] = useState<string | null>(null);
   const [acknowledged, setAcknowledged] = useState(false);
+  // 确认回写（2026-10-28 P0-4）：此前 confirm() 只 setAcknowledged(true)，
+  // 全仓无人读、后端无端点 → 医生点了没有任何痕迹。现在真发请求、真落库。
+  const [confirming, setConfirming] = useState(false);
+  const [confirmError, setConfirmError] = useState<string | null>(null);
+  const [confirmedAt, setConfirmedAt] = useState<string | null>(null);
   // 生成进度（A.43）：后端流式写 Redis → 轮询带回 →「分析中」显示已生成字数。
   // 结论出后归零（下一轮判读重新累积）。
   const [progressChars, setProgressChars] = useState<number>(0);
@@ -172,7 +185,7 @@ export function useWorkspaceFlow(): WorkspaceFlow {
         session_id: input.sessionId,
         image_ids: input.imageIds,
         target_organ: input.targetOrgan,
-        response_tier: input.tier ?? 'standard',
+        response_tier: input.tier ?? DEFAULT_RESPONSE_TIER,
         clinical_text: input.clinicalText || undefined,
         patient_context: input.patientContext,
         // 幂等键：留空由后端按会话去重，避免前端每次生成随机 key 造成永不命中
@@ -206,7 +219,7 @@ export function useWorkspaceFlow(): WorkspaceFlow {
       },
       () => setPhase('timeout'),
       {
-        tier: input.tier ?? 'standard',
+        tier: input.tier ?? DEFAULT_RESPONSE_TIER,
         // 阶段事件只用于埋点/超基线判断，不进界面（⛔ 不许把 6 个阶段名渲染给医生）
         onStage: () => undefined,
         // 生成进度（A.43）：processing 中间态透传已生成字符数 → 「分析中」显示
@@ -219,9 +232,25 @@ export function useWorkspaceFlow(): WorkspaceFlow {
   }, []);
 
   const confirm = useCallback(() => {
-    if (phase !== 'concluded') return;
-    setAcknowledged(true);
-  }, [phase]);
+    if (phase !== 'concluded' || !requestId) return;
+    // 幂等：已确认或正在提交时不重复发请求（防连点产生多条审计）
+    if (confirming || confirmedAt) return;
+
+    setConfirming(true);
+    setConfirmError(null);
+    void confirmDiagnosisResult(requestId)
+      .then((res) => {
+        setConfirmedAt(res.doctor_confirmed_at);
+        setAcknowledged(true);
+      })
+      .catch((err: unknown) => {
+        // 确认失败必须让医生看见：静默失败等于"以为确认了其实没有"，
+        // 而这恰恰是 automation bias 的反面——医生以为系统记下了。
+        setConfirmError(getApiErrorMessage(err, '确认失败，请重试'));
+        setAcknowledged(false);
+      })
+      .finally(() => setConfirming(false));
+  }, [phase, requestId, confirming, confirmedAt]);
 
   /**
    * 宽泛地接收后端的 `cross_organ`：可能是块，也可能是空对象（未执行）。
@@ -266,7 +295,7 @@ export function useWorkspaceFlow(): WorkspaceFlow {
       resp = await requestMultiOrganDiagnosis({
         session_id: input.sessionId,
         organs: input.organs,
-        response_tier: input.tier ?? 'standard',
+        response_tier: input.tier ?? DEFAULT_RESPONSE_TIER,
       });
     } catch (e) {
       // 零静默：技术细节进控制台，医生可见出口是 phase=error 的界面文案
@@ -361,7 +390,7 @@ export function useWorkspaceFlow(): WorkspaceFlow {
       },
       () => setPhase('timeout'),
       {
-        tier: tier ?? 'standard',
+        tier: tier ?? DEFAULT_RESPONSE_TIER,
         onStage: () => undefined,
         onProgress: setProgressChars,
         onPreview: setPreviewText,
@@ -388,5 +417,8 @@ export function useWorkspaceFlow(): WorkspaceFlow {
     confirm,
     acknowledged,
     setAcknowledged,
+    confirming,
+    confirmError,
+    confirmedAt,
   };
 }
