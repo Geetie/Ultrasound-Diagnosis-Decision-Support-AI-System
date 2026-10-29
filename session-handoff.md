@@ -29,7 +29,7 @@
 
 1. **SSH 通道**（本机 Mac 公钥未入服务器 authorized_keys）→ SEC-01/02 远端轮换停摆。
 2. 后端 pytest 无本地 venv 可跑（硬规则禁止在工作区建 venv 污染他人暂存改动）。
-3. 工作区有**他人暂存**的 doctor_confirm 改动——本轮所有改动未提交，**不得混提交**；SEC 的 staged deletions（keys/ 与口令脚本）应单独成 commit。
+3. ~~工作区有他人暂存改动~~ → **已推送（2026-10-30，HEAD=b32bd0e）**：4 个逻辑 commit（SEC 出库 / 答辩材料 v6 / doctor_confirm / B1~B6）；doctor_confirm 与 B1~B6 在 diagnosis.py/database.py/schemas.py 三文件上同 commit（同文件无法拆分，commit message 已注明）。**pptx 一律不入库**（`.gitignore` `*.pptx`）。
 
 ### Files（本轮主要触碰）
 
