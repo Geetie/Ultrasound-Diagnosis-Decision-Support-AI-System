@@ -20,16 +20,15 @@
 
 ### Recommended Next Step
 
-①装本机 SSH 公钥 → SEC-02 口令轮换（先备份旧哈希）→ SEC-01 HSM 指纹比对/轮换；
-②项目环境 `pytest tests/unit -q --dist=loadfile -n 8` 全量实跑，红则修；
-③部署侧 `.env` 补 `T2A_CLASSIFIER_IN_PIPELINE_ENABLED=true`（前置：8003 `/v1/classify` 探活）；
-④真机按各计划文档 ⑤ 节验收（重点：02-4 注入新块用例、02-3 延迟回归、B3 四段浏览器走查）。
+①等管理员窗口结束 → 按 16 号 A.97.5：SEC-01 指纹比对 → 旧口令 401 验证 → 部署 B1~B6（整组 scp + alembic 0019 + `scripts/_restart_main_std.sh` + 端到端 1 例，硬规则 #7）→ 真机走查；
+②SEC-05 依赖修复后跑全量 `make test`；
+③答辩材料按 13 条口径修正逐条过稿。
 
 ### Blockers
 
-1. **SSH 通道**（本机 Mac 公钥未入服务器 authorized_keys）→ SEC-01/02 远端轮换停摆。
-2. 后端 pytest 无本地 venv 可跑（硬规则禁止在工作区建 venv 污染他人暂存改动）。
-3. ~~工作区有他人暂存改动~~ → **已推送（2026-10-30，HEAD=b32bd0e）**：4 个逻辑 commit（SEC 出库 / 答辩材料 v6 / doctor_confirm / B1~B6）；doctor_confirm 与 B1~B6 在 diagnosis.py/database.py/schemas.py 三文件上同 commit（同文件无法拆分，commit message 已注明）。**pptx 一律不入库**（`.gitignore` `*.pptx`）。
+1. **服务器维护窗口**（NVIDIA 驱动升级，管理员 10-30 停全部容器，GPU 不可用）→ SEC-01 指纹比对（HSM 密钥在他人 6379 redis）、B1~B6 部署与真机验收全部等窗口结束（16 号 A.97.5）。
+2. **SEC-05 依赖债**（httpx≥0.28 × starlette 0.36.3 → TestClient 全挂 124 errors）→ correction_rate 端点 4 用例等修复后补跑。
+3. ~~SSH 通道~~ **已打通**（2026-10-30 装公钥）；~~pytest 无环境~~ 已用服务器 venv + 隔离目录解决（113/113 本轮测试全绿，验证后 scratch 已删）；~~工作区他人暂存~~ 已推送（HEAD=b32bd0e）。**pptx 一律不入库**（`.gitignore` `*.pptx`）。
 
 ### Files（本轮主要触碰）
 

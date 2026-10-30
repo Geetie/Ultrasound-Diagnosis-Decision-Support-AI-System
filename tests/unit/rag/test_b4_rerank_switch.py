@@ -33,7 +33,9 @@ class TestSwitchRemoved:
 
     def test_main_construction_gate_dropped_it(self):
         src = (_REPO_ROOT / "app" / "main.py").read_text(encoding="utf-8")
-        assert "rag_use_reranking" not in src
+        # 注释里允许出现旧名（说明为什么删）；代码不得再引用
+        assert "settings.rag_use_reranking" not in src
+        assert "or settings.rag_use_reranking" not in src
 
     def test_profiles_unchanged(self):
         assert RetrievalProfile.standard().use_reranking is False
@@ -45,19 +47,37 @@ class TestSwitchRemoved:
 
 
 class TestLowConfidenceUpgrade:
+    """低置信度语义**以生产代码为准**（routing.py :364 既有规则）：
+    低置信度/跨器官 → 直接升 FULL 档（_build 对 FULL 给 full 检索档）。
+
+    01-2 实际交付：删摆设开关（条件升级的闸门回到 RetrievalProfile）+
+    rerank_applied 日志 + 灰度退回基线时保留精排。"新增仅升检索档的分支"
+    经真机环境实测与既有规则重复（死代码），已按"代码为准"回退
+    （偏离记录见 16 号附录 A.97）。
+    """
+
     def _router(self) -> AdaptiveRAGRouter:
         return AdaptiveRAGRouter()
 
-    def test_low_confidence_upgrades_retrieval_profile_only(self):
+    def test_low_confidence_upgrades_to_full_tier_with_full_retrieval(self):
         decision = self._router().assess(
             query="低回声结节 TI-RADS 评估",
             target_organ="thyroid",
             requested_tier=ResponseTier.STANDARD,
             retrieval_confidence=0.0,
         )
-        assert decision.effective_tier == ResponseTier.STANDARD, (
-            "只升检索档，不改 effective_tier"
+        assert decision.effective_tier == ResponseTier.FULL
+        assert decision.retrieval_profile.use_reranking is True
+
+    def test_realtime_low_confidence_also_upgrades(self):
+        """规格规则（:364）不区分请求档：realtime + 低置信 → FULL。"""
+        decision = self._router().assess(
+            query="低回声结节",
+            target_organ="thyroid",
+            requested_tier=ResponseTier.REALTIME,
+            retrieval_confidence=0.0,
         )
+        assert decision.effective_tier == ResponseTier.FULL
         assert decision.retrieval_profile.use_reranking is True
 
     def test_high_confidence_stays_standard(self):
@@ -79,16 +99,6 @@ class TestLowConfidenceUpgrade:
             retrieval_confidence=None,
         )
         assert decision.retrieval_profile.use_reranking is False
-
-    def test_realtime_tier_still_upgrades_retrieval_only(self):
-        decision = self._router().assess(
-            query="低回声结节",
-            target_organ="thyroid",
-            requested_tier=ResponseTier.REALTIME,
-            retrieval_confidence=0.0,
-        )
-        assert decision.effective_tier == ResponseTier.REALTIME
-        assert decision.retrieval_profile.use_reranking is True
 
 
 class TestRolloutKeepsReranking:

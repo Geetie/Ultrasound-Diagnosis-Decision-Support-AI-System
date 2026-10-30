@@ -43,12 +43,22 @@ class TestHallucinationDefaultEnabled:
 
     def test_standard_tier_runs_detection_when_forced(self):
         # 默认开关打开后，standard 档（is_full_tier=False）真跑检测
+        # （fusion_result 需带 final_response+organ：无器官无词表 → 不猜）。
+        from types import SimpleNamespace
+
         from app.services.diagnosis_pipeline import _detect_hallucination_safely
 
-        result = _detect_hallucination_safely(
-            None, organ=None, request_id="test-02-5", force_enabled=True, is_full_tier=False
+        fusion = SimpleNamespace(
+            final_response=SimpleNamespace(
+                content="超声提示：甲状腺右叶低回声结节，TI-RADS 3 类，建议随访。",
+                organ="thyroid",
+            )
         )
-        assert result["checked"] is True
+        result = _detect_hallucination_safely(
+            fusion, organ="thyroid", request_id="test-02-5",
+            force_enabled=True, is_full_tier=False,
+        )
+        assert result["checked"] is True, result.get("reason")
 
     def test_switch_off_still_gates_non_full_tier(self):
         # 显式置 false 时退回「仅 FULL 档」语义（关闭路径不被默认值改变吞掉）

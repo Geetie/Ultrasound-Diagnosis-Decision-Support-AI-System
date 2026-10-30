@@ -34,7 +34,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass, field, replace as dataclasses_replace
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
@@ -406,21 +406,10 @@ class AdaptiveRAGRouter:
                 retrieval_confidence=retrieval_confidence,
                 organ_threshold=threshold,
             )
-            # 01-2 步骤3：低置信度条件升级 —— 仅升"检索档"（bge 精排 + full
-            # top_k），**不改 effective_tier**（诊断链路的档位语义、Self-RAG/
-            # 幻觉检测判据均不受影响）。高置信度保持 standard profile，
-            # 不是无条件全开。
-            if is_low_confidence and decision.effective_tier != ResponseTier.FULL:
-                decision = dataclasses_replace(
-                    decision,
-                    retrieval_profile=RetrievalProfile.full(self._full_top_k),
-                )
-                logger.info(
-                    "routing_retrieval_profile_upgraded_low_confidence",
-                    retrieval_confidence=retrieval_confidence,
-                    organ_threshold=threshold,
-                    organ=target_organ,
-                )
+            # 01-2 备查：低置信度在 :364 的既有规则（"置信度不足：规格直接给
+            # 全量路径"）已被 elif 捕获并升 FULL 档（_build 对 FULL 给 full
+            # 检索档）—— 本分支按"代码为准"不另加条件升级（2026-10-30 实测
+            # ：在此加分支是死代码，见 16 号附录 A.97 偏离记录）。
 
         self._record(decision)
         logger.info("adaptive_rag_routing_decision", **decision.as_dict())

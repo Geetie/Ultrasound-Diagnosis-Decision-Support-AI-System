@@ -15,7 +15,7 @@ import pytest
 pytestmark = [pytest.mark.track_fus]
 
 from app.agents.protocols import AgentContext, AgentResponse
-from app.agents.specialist.base import SpecialistAgent
+from app.agents.specialist.base import RAGSpecialistAgent
 from app.fusion.crag import CRAGHandler
 from app.fusion.protocols import FusionRequest
 from app.fusion.self_rag import SelfRAGEvalResult
@@ -102,7 +102,7 @@ class _PromptHost:
 
 
 def _render(context: AgentContext) -> str:
-    return SpecialistAgent._build_prompt(_PromptHost(), context, [], [])
+    return RAGSpecialistAgent._build_prompt(_PromptHost(), context, [], [])
 
 
 class TestPromptRendering:
@@ -141,7 +141,8 @@ class TestMetricsNotZeroed:
         resp.differential_diagnoses = [SimpleNamespace(rank=1)]  # 占位断言用不到
         return resp
 
-    def test_reinvoke_path_keeps_m_family(self):
+    @pytest.mark.asyncio
+    async def test_reinvoke_path_keeps_m_family(self):
         """重生成路径：invoker 返回的响应带 M 字段 → final 必须原样保留。"""
         from app.knowledge.protocols import KnowledgeChunk  # noqa: F401
 
@@ -174,7 +175,7 @@ class TestMetricsNotZeroed:
 
         handler = CRAGHandler(specialist_invoker=invoker)
         original = _original()
-        new_resp, reinvoked = handler._build_new_response(
+        new_resp, reinvoked = await handler._build_new_response(
             original=original,
             new_evidence=[_new_chunk()],
             request=_request(original),
@@ -191,13 +192,14 @@ class TestMetricsNotZeroed:
             for t in new_resp.reasoning_trace
         )
 
-    def test_placeholder_path_keeps_m_family(self):
+    @pytest.mark.asyncio
+    async def test_placeholder_path_keeps_m_family(self):
         """占位路径（无 invoker）：confidence/证据变化，M 字段与 needs_review 保留。"""
         handler = CRAGHandler(specialist_invoker=None)
         original = _original(confidence=0.4, needs_review=True,
                              disease_code="UDT-THY-TR3")
         original.differential_diagnoses = ["ddx1"]
-        new_resp, reinvoked = handler._build_new_response(
+        new_resp, reinvoked = await handler._build_new_response(
             original=original,
             new_evidence=[_new_chunk()],
             request=_request(original),

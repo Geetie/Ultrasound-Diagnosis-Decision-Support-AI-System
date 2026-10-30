@@ -13,15 +13,21 @@
 
 ## Blockers
 
-1. **SSH 通道**：本机（Mac）公钥未入 student03@10.20.28.21 的 authorized_keys → SEC-01 HSM 指纹比对/轮换、SEC-02 Langfuse 口令轮换无法执行（修法已在 `docs/合规/安全审计报告-20261030.md` §三）。
-2. **后端 pytest 实跑**：本机无 venv；需项目环境跑 `pytest tests/unit -q --dist=loadfile -n 8`（新增 ~12 个测试文件 + 3 处既有测试适配）。
-3. 部署侧 `.env` 同步两项（`T2A_CLASSIFIER_IN_PIPELINE_ENABLED=true`，前置 8003 可达）。
+1. **服务器维护窗口**：NVIDIA 驱动升级中（Driver/library version mismatch），管理员 10-30 已停全部容器，GPU 不可用——B1~B6 部署与真机验收、SEC-01 指纹比对（HSM 密钥在他人 6379 redis 里，也被停）全部等窗口结束。
+2. **SEC-05 依赖债**：httpx≥0.28 × starlette 0.36.3 令 TestClient 全挂（124 errors）——correction_rate 端点 4 用例等依赖修复后补跑。
 
 **Recommended Next Step**：
-①装 SSH 公钥后先做 SEC-02（备份旧口令哈希→轮换→清 keys.json→旧口令 401 验证）与 SEC-01（HSM `jwt_signing_key` 指纹与仓库公钥比对，不同则登记"已确认未使用"，相同则按审计报告轮换）；
-②项目环境跑 pytest 全量，红则按 A.96.2 清单修；
-③按 00 §五验收判据在真机跑 B1/B2/B3 浏览器走查（p34 探针）；
-④答辩材料按 13 条口径修正逐条过稿。
+①窗口结束后按 16 号 **A.97.5** 顺序执行：SEC-01 指纹比对 → 旧口令 401 验证 → 部署 B1~B6（整组+0019+重启+端到端 1 例）→ 真机走查；
+②SEC-05 依赖修复（python-multipart/starlette/fastapi）后跑全量 `make test`；
+③答辩材料按 13 条口径修正逐条过稿。
+
+## A.97 增量（2026-10-30 深夜，SSH 通道打通后）
+
+- **SEC-02 ✅ 完成**：Langfuse 管理口令已轮换（备份 600 → bcrypt UPDATE → 新旧口令自证双通过 → 容器恢复管理员停机态）；新口令在服务器 `~/uai/.smoke_pw`；旧口令 401 验证待 web 回归。
+- **SEC-01 ⏸**：HSM 密钥持久化在**他人 6379 redis**（新风险登记），比对被停机阻塞；仓库公钥指纹 `c63e8f59…8a631` 已备案。
+- **pytest 实跑（项目 venv，隔离目录，未动生产）**：本轮 12 个测试文件 **113/113 全绿**；全量 7362 passed，剩余 137F+124E 逐组核实为环境伪象（.env 覆盖/缺目录/TestClient 依赖债），与本轮无关。
+- **偏离（以代码为准）**：01-2"仅升检索档"分支为死代码（`routing.py:364` 既有规则低置信→FULL 先捕获），已回退并留备查注释；测试改钉真实语义。
+- 证据：16 号 **A.97**。
 
 ## 四个被推翻的前提（本轮最重要产出）
 
