@@ -1094,13 +1094,15 @@ class TestStructuredOutputPassThrough:
             "response_format 与 guided_json 同时下发 = 两套约束语义打架（硬规则 #5）"
         )
 
-    def test_vllm_guided_json_still_supported_as_fallback(self):
+    def test_vllm_guided_json_fallback_removed(self):
+        """01-4 删净（A.99）：guided_json 回落已删 —— 它是静默失效陷阱
+        （新版 vLLM 忽略之，下发即以为有约束；硬规则 #5）。"""
         engine = VLLMEngine(default_model="m")
         body = engine._build_payload(
             InferenceRequest(prompt="p", extra={"guided_json": _GRADING_SCHEMA})
         )
-        assert body["guided_json"] == _GRADING_SCHEMA
-        assert "response_format" not in body, "只有 guided_json 时不得凭空造 response_format"
+        assert "guided_json" not in body, "静默失效参数不得下发（硬规则 #5）"
+        assert "response_format" not in body
 
     def test_vllm_without_structured_extra_sends_neither(self):
         engine = VLLMEngine(default_model="m")

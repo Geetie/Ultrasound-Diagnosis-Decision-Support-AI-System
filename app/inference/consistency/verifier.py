@@ -5,11 +5,6 @@ from typing import Any
 import structlog
 
 from app.inference.grading_definitions import extract_grading_with_conflict
-from app.inference.grading_schema import (
-    extract_guided_grading,
-    grading_gbnf,
-    grading_json_schema,
-)
 from app.inference.hallucination_detector import (
     DetectionStrategy,
     get_default_detector,
@@ -82,7 +77,6 @@ class ConsistencyVerifier:
         historical_pass_rates: dict[str, list[float]] | None = None,
         overall_timeout_seconds: float | None = None,
         structured_output: bool = False,
-        guided_json: bool = False,
     ):
         self._engine_a = engine_a
         self._engine_b = engine_b
@@ -97,9 +91,10 @@ class ConsistencyVerifier:
         # 结构化输出（2026-09-29 真机 780 例达标攻关）：两引擎收到完全相同的
         # 输出格式指令段，消除"自由文本分级"的表述噪音。默认关闭保持兼容。
         self._structured_output = structured_output
-        # P0-2 约束解码（2026-09-30）：采样层 schema 强制（vLLM guided_json /
-        # llama.cpp GBNF），优于 prompt 级指令——guided 启用时不再追加指令段。
-        self._guided_json = guided_json
+        # 01-4 删净（2026-10-31）：guided_json 链路整体移除 —— 新版 vLLM 对
+        # extra["guided_json"] 是「静默忽略」（AGENTS.md 硬规则 #5），这条链
+        # 会造成"以为采样层已强制、实际毫无约束"的假象；生产 0 构造、测试 0
+        # 引用。结构化输出唯一路径 = response_format（vLLM）+ prompt 指令段。
 
         logger.info(
             "consistency_verifier_initialized",
@@ -247,32 +242,15 @@ class ConsistencyVerifier:
     def _apply_structured_output(self, prompt: str, organ: str) -> str:
         """按器官追加输出格式指令段（未启用时原样返回）。
 
-        guided_json 启用时不追加（采样层已强制 JSON 语法，指令段冗余）。
+        structured_output 关闭时不追加。
         """
-        if self._guided_json or not self._structured_output:
+        if not self._structured_output:
             return prompt
         suffix = _STRUCTURED_OUTPUT_INSTRUCTIONS.get(organ, _STRUCTURED_OUTPUT_FALLBACK)
         return prompt + suffix
 
-    def _apply_guided(self, request: InferenceRequest, organ: str) -> InferenceRequest:
-        """guided 模式：把 organ 对应的 schema/GBNF 注入请求 extra。"""
-        if not self._guided_json:
-            return request
-        schema = grading_json_schema(organ)
-        if schema is None:
-            return request
-        request.extra["guided_json"] = schema
-        gbnf = grading_gbnf(organ)
-        if gbnf:
-            request.extra["grammar"] = gbnf
-        return request
-
     def _extract_grading(self, text: str, organ: str) -> tuple[str | None, bool]:
-        """抽取分级：guided 优先裸值白名单/JSON 字段，回退正则抽取器。"""
-        if self._guided_json:
-            grading = extract_guided_grading(text, organ)
-            if grading:
-                return grading, False
+        """抽取分级：正则抽取器（含冲突检测）。"""
         conflict_result = extract_grading_with_conflict(text, organ)
         return (conflict_result[0], conflict_result[1]) if conflict_result else (None, False)
 
@@ -294,16 +272,13 @@ class ConsistencyVerifier:
             category=case.get("category"),
         )
 
-        request = self._apply_guided(
-            InferenceRequest(
-                prompt=self._apply_structured_output(prompt, organ),
-                max_tokens=512,
-                temperature=0.0,
-                top_p=0.95,
-                request_id=f"consistency-{case_id}",
-                session_id="consistency-verification",
-            ),
-            organ,
+        request = InferenceRequest(
+            prompt=self._apply_structured_output(prompt, organ),
+            max_tokens=512,
+            temperature=0.0,
+            top_p=0.95,
+            request_id=f"consistency-{case_id}",
+            session_id="consistency-verification",
         )
 
         try:

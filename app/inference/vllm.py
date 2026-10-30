@@ -170,16 +170,12 @@ class VLLMEngine(BaseHttpInferenceEngine):
             )
         # 结构化输出（2026-10-13 分级提取根治）：**硬规则** —— 新版 vLLM 对
         # `guided_json` 是「静默忽略」（既无约束也不报错，见 AGENTS.md 硬规则 #5），
-        # 因此结构化输出一律走 OpenAI 兼容的 `response_format`。
-        # 两者互斥：`response_format` 优先；`guided_json` 仅作为兼容旧服务端的回落，
-        # 保留 P0-2 既有行为（不改变老部署）。
+        # 因此结构化输出**唯一**路径 = OpenAI 兼容的 `response_format`。
+        # 01-4 删净（2026-10-31）：原"guided_json 兼容旧服务端回落"分支已删 ——
+        # 它是静默失效陷阱（下发即以为有约束，实际没有），生产 0 调用。
         response_format = request.extra.get("response_format")
         if response_format:
             payload["response_format"] = response_format
-        else:
-            guided = request.extra.get("guided_json")
-            if guided:
-                payload["guided_json"] = guided
 
         return payload
 
