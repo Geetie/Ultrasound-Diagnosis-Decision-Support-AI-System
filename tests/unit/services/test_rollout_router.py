@@ -327,8 +327,15 @@ class TestPipelineGate:
         gated, decision = await pipeline._apply_rollout_gate(self._Request(), routing)
 
         assert decision is not None and decision.allowed is False
-        assert gated.retrieval_profile == RetrievalProfile.standard()
-        assert gated.retrieval_profile == routing.retrieval_profile or routing is not None
+        # 01-2 步骤4（B4，16 号 A.96.2）：灰度退回基线只退 use_llm_enhancement /
+        # full_validation，**保留 use_reranking** —— 否则灰度一开，未放行会话
+        # 的精排被静默关掉（01-2② #4"灰度是静默杀手"）。
+        assert gated.retrieval_profile.use_llm_enhancement is False
+        assert gated.retrieval_profile.full_validation is False
+        assert (
+            gated.retrieval_profile.use_reranking
+            == routing.retrieval_profile.use_reranking
+        ), "灰度退回基线不得动精排开关"
 
     async def test_allowed_session_keeps_profile(self, enabled, monkeypatch):
         from app.services import diagnosis_pipeline as pipeline

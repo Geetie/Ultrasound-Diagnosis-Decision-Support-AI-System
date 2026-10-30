@@ -103,7 +103,7 @@ def _http(method: str, path: str, token: str | None, body: dict | None = None):
         r = c.request(method, f"{API}{path}", json=body, headers=headers)
         try:
             return r.status_code, r.json()
-        except Exception:
+        except Exception:  # silent-ok: 非 JSON 响应原样带回 (code, raw) 供审计输出
             return r.status_code, {"raw": r.text[:200]}
 
 
@@ -130,7 +130,7 @@ async def _run_one(case: dict, token: str) -> dict:
         rid = body.get("request_id")
         if not rid:
             return {"session_id": case["session_id"], "ok": False, "reason": "no_request_id"}
-    except Exception as exc:
+    except Exception as exc:  # silent-ok: 异常类型与上下文进 reason 字段返回给审计汇总
         return {"session_id": case["session_id"], "ok": False,
                 "reason": f"submit_exc_{type(exc).__name__}"}
 

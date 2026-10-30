@@ -21,6 +21,19 @@
 ②SEC-05 依赖修复（python-multipart/starlette/fastapi）后跑全量 `make test`；
 ③答辩材料按 13 条口径修正逐条过稿。
 
+## A.98 增量（2026-10-31，审查修复）
+
+- 审查 Agent 开出的 16 条 commit-caused 红全部处置：WorkspacePage 文案同步、
+  rollout 守卫改钉新语义、a95 AST 守卫兼容 model_copy 形态、
+  **no_silent_catch 的 ls-files 引号坑（真 commit-caused：v6/*.py 首批落在
+  非 ASCII 目录）改 `-z`**、6 处新增静默分支补 `# silent-ok:` 豁免、
+  persistence.py 裸 except 补豁免、死代码维持"代码为准"已回退状态。
+- 忠实环境（完整检出+生产 .env）全量：**后端 7480 passed**，剩余 42F+113E
+  逐组核实为环境伪象（.env 覆盖 / 服务器无 node / TestClient 依赖债 / otel 超时）。
+- 教训入档：**"选择性验证被当成全量验证"**——A.96.3 的"45/45"是指定 4 文件；
+  A.97.3 的"全部环境伪象"结论在缺 docs/frontend/.git 的 scratch 里下了过早。
+  证据：16 号 **A.98**。
+
 ## A.97 增量（2026-10-30 深夜，SSH 通道打通后）
 
 - **SEC-02 ✅ 完成**：Langfuse 管理口令已轮换（备份 600 → bcrypt UPDATE → 新旧口令自证双通过 → 容器恢复管理员停机态）；新口令在服务器 `~/uai/.smoke_pw`；旧口令 401 验证待 web 回归。

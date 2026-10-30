@@ -96,7 +96,7 @@ async def _run_one_turn(monkeypatch, *, tier: str, pipeline, out: dict) -> None:
             break
         await asyncio.sleep(0.01)
     task.cancel()
-    with contextlib.suppress(asyncio.CancelledError):
+    with contextlib.suppress(asyncio.CancelledError):  # silent-ok: 收尾取消等待属预期控制流
         await task
 
 

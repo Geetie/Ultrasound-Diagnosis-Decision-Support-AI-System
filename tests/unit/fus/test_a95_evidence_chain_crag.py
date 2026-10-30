@@ -130,7 +130,12 @@ class TestEvidenceSourcesTraced:
 
         ⚠️ 这条守卫第一版只断言 `"evidence_sources:" in src`，
         而反证（只留变量定义、删掉引用）时**仍然全绿** —— 那是**假守卫**。
-        改为 AST 层面确认变量真的出现在 `reasoning_trace=[...]` 里。
+        AST 层面确认变量真的进入最终响应的 ``reasoning_trace``。
+
+        2026-10-30（B2）：CRAG 重生成路径改为 ``model_copy(update={...})``
+        （修 M1~M12 归零），``reasoning_trace`` 从"调用关键字"搬进
+        ``update`` 字典 —— 本守卫同时接受两种形态，反证在两种形态下
+        都成立（删掉列表里的变量引用 → 红）。
         """
         import ast
 
@@ -143,6 +148,7 @@ class TestEvidenceSourcesTraced:
                 for t in node.targets:
                     if isinstance(t, ast.Name) and t.id == "evidence_sources_trace":
                         assigned = True
+            # 形态 1（A.95 原始）：reasoning_trace=[..., evidence_sources_trace, ...]
             if (
                 isinstance(node, ast.keyword)
                 and node.arg == "reasoning_trace"
@@ -151,6 +157,21 @@ class TestEvidenceSourcesTraced:
                 for el in node.value.elts:
                     if isinstance(el, ast.Name) and el.id == "evidence_sources_trace":
                         used_in_trace = True
+            # 形态 2（B2 后）：model_copy(update={"reasoning_trace": [...]})
+            if (
+                isinstance(node, ast.keyword)
+                and node.arg == "update"
+                and isinstance(node.value, ast.Dict)
+            ):
+                for k, v in zip(node.value.keys, node.value.values):
+                    if (
+                        isinstance(k, ast.Constant)
+                        and k.value == "reasoning_trace"
+                        and isinstance(v, ast.List)
+                    ):
+                        for el in v.elts:
+                            if isinstance(el, ast.Name) and el.id == "evidence_sources_trace":
+                                used_in_trace = True
         assert assigned, "没有 evidence_sources_trace 变量定义"
         assert used_in_trace, (
             "evidence_sources_trace 只定义、**没放进 reasoning_trace** —— 留痕等于没做"

@@ -176,7 +176,7 @@ def rect(slide, x, y, w, h, *, fill=None, line=None, lw=1.0, radius=None,
     if radius is not None and shape == MSO_SHAPE.ROUNDED_RECTANGLE:
         try:
             shp.adjustments[0] = radius
-        except Exception:
+        except Exception:  # silent-ok: 圆角微调仅装饰用途，失败保持默认形状即可
             pass
     shp.text_frame.word_wrap = True
     return shp

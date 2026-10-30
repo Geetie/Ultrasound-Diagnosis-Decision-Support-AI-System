@@ -63,7 +63,7 @@ class Metrics:
             try:
                 self._cache[key] = ImageFont.truetype(
                     self.path, max(8, int(size_pt * 4)), index=idx)
-            except Exception:
+            except Exception:  # silent-ok: 粗体字形缺失回退常规字形，属字体降级本身
                 self._cache[key] = ImageFont.truetype(
                     self.path, max(8, int(size_pt * 4)), index=self.idx)
         return self._cache[key]
@@ -381,7 +381,7 @@ def check_missing_fonts(manifest: Path) -> list[str]:
     """渲染清单的 missingFonts —— 字体缺失的唯一硬证据。"""
     try:
         d = json.loads(manifest.read_text())
-    except Exception as e:
+    except Exception as e:  # silent-ok: 失败原因原样进返回值，由调用方打印上报
         return [f"渲染清单读取失败: {e}"]
     mf = d.get("missingFonts") or []
     return [f"字体缺失（会掉字/回退）: {', '.join(map(str, mf))}"] if mf else []

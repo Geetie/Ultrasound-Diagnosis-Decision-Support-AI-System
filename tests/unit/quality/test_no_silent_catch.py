@@ -108,15 +108,23 @@ def baseline() -> dict[str, int]:
 
 
 def _tracked_python_files() -> list[str]:
-    """git 跟踪的全部 .py（相对仓库根的 POSIX 路径，已排序）。"""
+    """git 跟踪的全部 .py（相对仓库根的 POSIX 路径，已排序）。
+
+    2026-10-31（A.98）：改用 ``-z`` + NUL 切分。此前 ``split()`` 双重踩坑：
+    ① core.quotePath 把非 ASCII 路径输出成带引号的八进制转义串 —— 答辩材料
+    v6 的 ``build_deck.py`` 等成为**首批落在非 ASCII 目录下的被跟踪 .py**
+    后，守卫按字面去 open('"docs-for-guiding…') 直接 FileNotFoundError；
+    ② 按空白切分遇含空格路径会截断。``-z`` 输出原样路径：无引号、无转义、
+    NUL 分隔，与文件系统一致。
+    """
     out = subprocess.run(
-        ["git", "ls-files", "*.py"],
+        ["git", "ls-files", "-z", "*.py"],
         cwd=REPO_ROOT,
         capture_output=True,
         text=True,
         check=True,
     ).stdout
-    return sorted(p for p in out.split() if p)
+    return sorted(p for p in out.split("\x00") if p)
 
 
 def _name_mentions_failure(name: str) -> bool:

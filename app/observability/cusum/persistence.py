@@ -85,7 +85,7 @@ def schedule_breaker_state_persist(breaker: Any | None = None) -> None:
     """fire-and-forget 落盘。无运行中的事件循环（同步测试/启动早期）时静默跳过。"""
     try:
         loop = asyncio.get_running_loop()
-    except RuntimeError:
+    except RuntimeError:  # silent-ok: 无事件循环（同步单测/启动早期）本就无处落盘
         return
     if breaker is None:
         from .circuit_breaker import AISafetyCircuitBreaker

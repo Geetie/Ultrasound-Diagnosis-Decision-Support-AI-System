@@ -300,11 +300,12 @@ describe('WorkspacePage · 04_判读态结论（design_data 2:12）', () => {
   });
 
   it('展开入口在无依据时禁用并说明原因（不挂假按钮）', () => {
-    // 无 view = 设计预览模式，没有 evidenceIds → 不可展开
+    // 无 view = 设计预览模式，没有 evidenceIds/鉴别诊断/跨模态 → 不可展开
+    // 2026-10-30（B3）：禁用原因文案随展开区三段化同步更新（旧文案只提依据）
     render(<WorkspacePage state="conclusion" />);
     const btn = screen.getByRole('button', { name: '展开依据 / 鉴别诊断 / 诊断过程' });
     expect(btn).toBeDisabled();
-    expect(btn.getAttribute('title')).toMatch(/未引用任何知识条目/);
+    expect(btn.getAttribute('title')).toMatch(/没有可展开的依据 \/ 鉴别诊断 \/ 跨模态对照/);
   });
 
   it('判读态同样不渲染确认动作区与部位指示条', () => {
