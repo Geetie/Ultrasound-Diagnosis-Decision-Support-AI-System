@@ -465,8 +465,8 @@ class Settings(BaseSettings):
     rag_bm25_max_chunks: int = 10000
     rag_query_embedding_cache_ttl_seconds: int = 3600
     # 01-4（A.99）：`rag_use_redis_cache` 孤儿开关已删 —— 全仓 0 读取点
-    # （grep 实证），开它什么都不会发生；继 pipeline_dispatch/fusion_budget
-    # 与 rag_use_reranking 之后的第三个孤儿配置。
+    # （grep 实证），开它什么都不会发生；继 pipeline_dispatch/fusion_budget、
+    # rag_use_reranking 之后的第四个孤儿配置（硬规则 #17 由此而来）。
     rag_p99_warning_threshold_ms: float = 80.0
     rag_p99_critical_threshold_ms: float = 100.0
 

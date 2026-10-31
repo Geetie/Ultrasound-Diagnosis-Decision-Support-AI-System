@@ -36,6 +36,9 @@ from app.models.schemas import (
     DifferentialDiagnosis,
     DoctorConfirmRequest,
     DoctorConfirmResponse,
+    FINAL_DIAGNOSIS_SOURCES,
+    FinalDiagnosisRequest,
+    FinalDiagnosisResponse,
     FusionStatus,
     HallucinationSeverity,
     MalignancyRisk,
@@ -640,6 +643,72 @@ async def doctor_confirm_result(
         request_id=request_id,
         doctor_confirmed_at=confirmed.doctor_confirmed_at,
         doctor_confirmed_by=actor_id,
+    )
+
+
+@router.patch(
+    "/{request_id}/final-diagnosis", response_model=FinalDiagnosisResponse
+)
+async def set_final_diagnosis(
+    request_id: str,
+    payload: FinalDiagnosisRequest,
+    diagnosis_repo=Depends(get_diagnosis_repo),
+    audit_service=Depends(get_audit_service),
+    _perm: dict = Depends(PermissionChecker("write_final_diagnosis")),
+    current_user: dict | None = Depends(get_current_active_user),
+):
+    """回填最终诊断与金标准来源（05-3 S1，季度回顾审计的机器写入口）。
+
+    对象级授权：仅 ``write_final_diagnosis`` 权限位（QUALITY_CONTROL / 系统管理员）
+    可写——写"金标准"的人不该是出初始结论的同角色（审计独立性）。
+
+    **单一"最终诊断"不定罪**：必须与 ``final_diagnosis_source``（pathology /
+    followup / expert_consensus）成对写入；缺一不可。漏诊率的分母由此而来
+    （``scripts/audit/p76_missed_rate_audit.py``），分母为 0 时该脚本输出
+    ``not_measured_no_final_diagnosis`` 绝不输出 0。
+
+    副作用边界：只写 4 个审计列，不动判读产物。
+    """
+    if payload.final_diagnosis_source not in FINAL_DIAGNOSIS_SOURCES:
+        raise BadRequestException(
+            error_message=(
+                "final_diagnosis_source 必须是 "
+                f"{sorted(FINAL_DIAGNOSIS_SOURCES)} 之一"
+            )
+        )
+
+    result = await diagnosis_repo.get_result(request_id)
+    if not result:
+        raise NotFoundException(error_message=f"判读结果不存在：{request_id}")
+
+    actor_id = get_actor_id(current_user)
+    written = await diagnosis_repo.mark_final_diagnosis(
+        request_id=request_id,
+        final_diagnosis=payload.final_diagnosis,
+        final_diagnosis_source=payload.final_diagnosis_source,
+        written_by=actor_id,
+    )
+    if written is None or written.final_diagnosis_at is None:
+        raise BadRequestException(error_message="最终诊断回写失败，请重试")
+
+    await audit_service.log_action(
+        action="set_final_diagnosis",
+        actor=actor_id,
+        session_id=getattr(written, "session_id", None),
+        target_type="diagnosis",
+        target_id=request_id,
+        detail={
+            "final_diagnosis_source": payload.final_diagnosis_source,
+            "final_diagnosis_at": written.final_diagnosis_at.isoformat(),
+        },
+    )
+
+    return FinalDiagnosisResponse(
+        request_id=request_id,
+        final_diagnosis=written.final_diagnosis,
+        final_diagnosis_source=written.final_diagnosis_source,
+        final_diagnosis_at=written.final_diagnosis_at,
+        final_diagnosis_by=actor_id,
     )
 
 

@@ -189,6 +189,38 @@ class DiagnosisRepository:
         )
         return result
 
+    async def mark_final_diagnosis(
+        self,
+        request_id: str,
+        final_diagnosis: str,
+        final_diagnosis_source: str,
+        written_by: str,
+    ) -> DiagnosisResult | None:
+        """回填最终诊断与金标准来源（05-3 S1 季度审计写入口）。
+
+        只写 4 个审计列（``final_diagnosis*``），**不动** status / confidence /
+        findings / doctor_confirmed_* —— 审计回填不是判读，改判读就是越权。
+        来源枚举的校验在 API 层（与 p76 审计脚本 SOURCES 同源），本方法不重复。
+        时间戳由服务端生成（同 mark_doctor_confirmed 的审计可信口径）。
+        """
+        result = await self.get_result(request_id)
+        if not result:
+            return None
+
+        result.final_diagnosis = final_diagnosis
+        result.final_diagnosis_source = final_diagnosis_source
+        result.final_diagnosis_at = datetime.now(timezone.utc)
+        result.final_diagnosis_by = written_by
+        await self.db.flush()
+
+        logger.info(
+            "diagnosis_final_diagnosis_written",
+            request_id=request_id,
+            source=final_diagnosis_source,
+            written_by=written_by,
+        )
+        return result
+
     async def get_results_by_session(
         self,
         session_id: str,

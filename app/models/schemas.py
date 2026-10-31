@@ -906,6 +906,33 @@ class DoctorConfirmResponse(BaseModel):
     doctor_confirmed_by: str
 
 
+# ============== 05-3 S1：最终诊断回填（季度审计写入口） ==============
+FINAL_DIAGNOSIS_SOURCES = frozenset({"pathology", "followup", "expert_consensus"})
+
+
+class FinalDiagnosisRequest(BaseModel):
+    """回填最终诊断与金标准来源（05-3 S1）。
+
+    刻意要求 ``final_diagnosis_source`` 与 ``final_diagnosis`` **成对出现**：
+    单一"最终诊断"不定罪，必须能回答"这个结论从哪来"（04 号计划 §05-3 ②，
+    单标记不得定罪）。source 枚举与 ``scripts/audit/p76_missed_rate_audit.py``
+    的 ``SOURCES`` 同源——那边拒收的登记，这里就写不进来。
+    """
+
+    final_diagnosis: str = Field(min_length=1, max_length=500)
+    final_diagnosis_source: str
+
+
+class FinalDiagnosisResponse(BaseModel):
+    """回填结果。时间戳与操作者由服务端生成（同 DoctorConfirmResponse 口径）。"""
+
+    request_id: str
+    final_diagnosis: str
+    final_diagnosis_source: str
+    final_diagnosis_at: datetime
+    final_diagnosis_by: str
+
+
 # ============== T-GB-API-02 报告生成与签发 ==============
 class ReportDraftRequest(BaseModel):
     """生成报告草稿（可选一步签名/推送）。"""

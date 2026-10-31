@@ -66,6 +66,54 @@ export interface SegmentationView {
   candidatesEvaluated?: number;
 }
 
+/** T2a 影像分类旁路视图 —— 来自 result.t2a_classification（后端 02-1 挂入）。
+ *  红线：辅助参考字段——**不参与**结论选择 / confidence / status / needs_review
+ *  （app/services/diagnosis_pipeline.py `_safe_t2a_classification` docstring 三条红线）。
+ *  展示必须带「辅助参考」标注，不得与结论并列同层级。 */
+export interface T2aView {
+  available: boolean;
+  /** available=false 时的原因（后端封闭集合：disabled/no_image_ids/
+   *  image_not_indexed/no_image_bytes/frame_decode_failed/service_unavailable/
+   *  model_missing/invalid_response），渲染层映射成中文 */
+  reason?: string;
+  detail?: string;
+  /** 预测类别原文（Benign/Malignant/Normal），渲染层映射中文 */
+  predicted?: string;
+  /** 三分类概率（键为类别原文） */
+  probs?: Record<string, number>;
+  /** 恶性概率（后端解析值，可能为 null —— 前端不反推） */
+  malignantProb?: number | null;
+  imageId?: string;
+}
+
+/** 校验并收敛 T2a 旁路 dict —— 脏数据宁可当「不可用」也不渲染错误框。 */
+function toT2aView(raw: unknown): T2aView | undefined {
+  if (typeof raw !== 'object' || raw === null) return undefined;
+  const d = raw as Record<string, unknown>;
+  const available = d.available === true;
+  const view: T2aView = {
+    available,
+    reason: typeof d.reason === 'string' ? d.reason : undefined,
+    detail: typeof d.detail === 'string' ? d.detail : undefined,
+    imageId: typeof d.image_id === 'string' ? d.image_id : undefined,
+  };
+  if (!available) return view;
+  // probs：仅接受「字符串键 → 有限数字」的字典，脏值整块丢弃（不猜）
+  if (typeof d.probs === 'object' && d.probs !== null) {
+    const probs: Record<string, number> = {};
+    for (const [k, v] of Object.entries(d.probs as Record<string, unknown>)) {
+      if (typeof v === 'number' && Number.isFinite(v)) probs[k] = v;
+    }
+    if (Object.keys(probs).length > 0) view.probs = probs;
+  }
+  if (typeof d.predicted === 'string' && d.predicted) view.predicted = d.predicted;
+  view.malignantProb =
+    typeof d.malignant_prob === 'number' && Number.isFinite(d.malignant_prob)
+      ? d.malignant_prob
+      : null;
+  return view;
+}
+
 /** 校验并收敛后端的旁路 dict —— 脏数据宁可当「不可用」也不渲染错误框。 */
 function toSegmentationView(raw: unknown): SegmentationView | undefined {
   if (typeof raw !== 'object' || raw === null) return undefined;
@@ -128,6 +176,9 @@ export interface ConclusionView {
   finalConfidence?: number;
   /** 分割旁路（病灶 bbox + 面积）—— available=false 时影像区显示降级原因 */
   segmentation?: SegmentationView;
+  /** T2a 影像分类旁路视图（02-1）—— 辅助参考；available=false 时影像区显示
+   *  「未做影像分类：<原因>」。不参与结论（红线，见 T2aView 注释）。 */
+  t2a?: T2aView;
   /** 鉴别诊断清单（03-4）—— 后端 differential_diagnoses 原样透传；空数组=本次无，前端不重排 */
   differentialDiagnoses?: DifferentialDiagnosis[];
   /** 跨模态对照（03-6）—— 后端 cross_modality_hints 原样透传（教科书级参考，非本次诊断依据） */
@@ -229,6 +280,9 @@ export function toConclusionView(result: DiagnosisResult | null): ConclusionView
     evidenceIds,
     attention,
     segmentation: toSegmentationView(result.nodule_segmentation),
+    // 02-1：T2a 影像分类旁路（辅助参考）—— 原样收敛透传，available=false 时
+    // 影像区显示「未做影像分类：<原因>」（不得显示成"未检出恶性"）。
+    t2a: toT2aView(result.t2a_classification),
     // ⚠️ 恶性风险**故意留空**：真机响应没有任何恶性概率字段。
     // 设计稿 04 的"低 · 约 2%–5%"是画布上的示意文案，不是后端产物。
     // 按 P1 省略而不是硬编码 —— 等后端真的给出区间口径再接。

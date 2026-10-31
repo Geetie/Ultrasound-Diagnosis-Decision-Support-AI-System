@@ -118,6 +118,7 @@ make test-perf                # 性能用例必须串行：-m perf -n0
 | 14 | **判「脏数据」必须用生产同一把尺子（`app.inference.output_guard`）；删除历史数据必须先备份、只删已打标的、默认 dry-run** | A.70：98.7% 的历史结论是提示词示例照抄。删 608 条前用 `p50` 备份到 `~/uai/data/eval/deleted_dirty_20261020.jsonl`（1.9 MB，含完整 findings），再按 `findings.data_quality.prompt_echo` 标记删；若按"重新判定"删，规则一漂移就删错一批 |
 | 15 | **禁止在 `~/.gitconfig` 里设静态 `http.proxy` / `https.proxy`**（git 只认单一地址、**无回退**，代理一挂所有 HTTPS 立等失败）；**要用代理走 `include.path=~/.gitconfig-proxy` 或 `http_proxy` 环境变量按需启用** | 2026-10-28：全局 `http.proxy=http://127.0.0.1:6696` 失效后，`git push` 报 `Failed to connect ... over proxy 127.0.0.1`，而 GitHub 实际走 SSH（`insteadOf` 规则）**根本不读 http.proxy**，是 LFS 的 HTTPS 请求触发的。实测：Clash 真实端口是 `mixed-port: 7890`（`randomMixedPort: false`）；不设代理时 GitHub SSH 与 gitee/pypi 直连均正常，仅 huggingface 不通。 |
 | 16 | **禁止 pptx 入库**（`.gitignore` 已固化 `*.pptx`；大文件交付物用网盘/本地，不进 git） | 2026-10-30：两份 ~140MB 答辩 PPT 被加进 commit → GitHub pre-receive 拒收（GH001 Large files），被迫重写未推送历史。同类风险：>50MB 的任何产物（模型/缓存/导出包）入库前先查体积。 |
+| 17 | **新增 `settings.py` 配置字段必须同时有读取点**：要么接上消费者（代码+测试），要么在字段注释写明"预期消费者与接线计划"；落地前先 `grep` 读写两向。配置项三连孤儿（`pipeline_dispatch_budget_s`/`pipeline_fusion_budget_s`/`rag_use_reranking`/`rag_use_redis_cache` —— 四个）证明"先加字段后接线"必然烂尾 | 2026-10-31（A.99）：`rag_use_redis_cache` 全仓 0 读取点（grep 实证），是第四个孤儿；运维以为关掉了实际什么都没发生，比没有更危险。 |
 
 ## 数据质量事故归档（2026-10-20，详见 16 号 A.70.x）
 

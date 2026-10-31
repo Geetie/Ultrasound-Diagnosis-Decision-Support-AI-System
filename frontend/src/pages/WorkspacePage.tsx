@@ -187,6 +187,7 @@ export default function WorkspacePage({
         dicomFrameOwners={dicomFrameOwners}
         annotationArchiveKey={annotationArchiveKey}
         segmentation={view?.segmentation}
+        t2a={view?.t2a}
         declaredOrgan={declaredOrgan}
         sessionStartedAt={sessionStartedAt}
         imageLoadIssue={imageLoadIssue}

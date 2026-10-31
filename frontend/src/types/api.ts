@@ -241,6 +241,14 @@ export interface DiagnosisResult {
    */
   nodule_segmentation?: Record<string, unknown> | null;
   /**
+   * T2a 影像分类旁路（02-1 后端挂入）：**辅助参考**，与 nodule_segmentation
+   * 同风格的可选 Dict。available=true 带 probs/predicted/malignant_prob；
+   * available=false 带 reason（封闭集合）——前端必须显示「未做影像分类：<原因>」，
+   * **不能**显示成"未检出恶性"。红线：不得与结论并列同层级，展示必须带
+   * 「辅助参考」标注，不参与 status/confidence。
+   */
+  t2a_classification?: Record<string, unknown> | null;
+  /**
    * 相似病例（A.82 后端挂入）：**参考信息**，与「知识依据」分开。
    * 只含 image_id / score / organ / date —— **不含** patient_id / session_id。
    * 后端固定带 `label` 与 `disclaimer`，前端必须原样展示（不得省略"参考"字样）。

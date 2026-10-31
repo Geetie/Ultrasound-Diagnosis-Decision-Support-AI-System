@@ -203,6 +203,9 @@ PERMISSIONS: dict[str, list[str]] = {
         # `app/api/v1/obs_dashboard.py:19` 的 `RoleChecker(["SYSTEM_ADMIN",
         # "QUALITY_CONTROL"])`，接线后零行为漂移（不趁机放宽）。
         "view_qc_report",
+        # 05-3 S1（A.100）：最终诊断回填 —— 季度回顾审计是质控职责；
+        # 不给医生/主任（审计独立性：写"金标准"的人不该是出初始结论的同角色）。
+        "write_final_diagnosis",
     ],
     "SYSTEM_ADMIN": ["*"]
 }

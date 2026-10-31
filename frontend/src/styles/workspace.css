@@ -294,6 +294,16 @@
   cursor: pointer;
 }
 
+/* ---- T2a 影像分类芯片（02-1，辅助参考）----
+   与分割提示同层的小字；不与结论并列（红线）。 ---- */
+.ws-image__t2a {
+  font-size: 11px;
+  line-height: 1.5;
+  opacity: 0.94;
+  pointer-events: none;
+}
+.ws-image__t2a strong { font-weight: 600; }
+
 /* ---- 分割旁路标注（2026-10-08 接真实 nodule_segmentation）----
    SVG 与 Cornerstone viewport 同尺寸铺满影像区；viewBox=分割帧像素尺寸 +
    preserveAspectRatio meet，与 Cornerstone 的 letterbox 数学一致，

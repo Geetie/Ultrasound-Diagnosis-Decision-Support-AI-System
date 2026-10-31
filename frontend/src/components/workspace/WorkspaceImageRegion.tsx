@@ -28,7 +28,8 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import WorkspaceDicomLayer from './WorkspaceDicomLayer';
-import type { SegmentationView } from '@/services/diagnosisAdapter';
+import type { SegmentationView, T2aView } from '@/services/diagnosisAdapter';
+import { t2aPredictedLabel, t2aReasonLabel } from './t2aLabels';
 import { formatLocalTimestamp } from '@/utils/datetime';
 import { segReasonLabel } from '@/utils/segReason';
 
@@ -57,12 +58,16 @@ export function segBelongsToLiveFrame(
   return true;
 }
 
+// 02-1 T2a 纯映射逻辑在 ./t2aLabels（零依赖，测试秒级可跑——
+// 本组件的 cornerstone 链在高负载机器上 jsdom 环境可达 500s+/OOM，A.100.4）。
+
 export default function WorkspaceImageRegion({
   organBar,
   dicomImageId,
   dicomImageIds,
   dicomFrameOwners,
   segmentation,
+  t2a,
   annotationArchiveKey,
   declaredOrgan,
   sessionStartedAt,
@@ -87,6 +92,8 @@ export default function WorkspaceImageRegion({
   dicomFrameOwners?: string[];
   /** 分割旁路视图（来自诊断结果的 nodule_segmentation）。 */
   segmentation?: SegmentationView;
+  /** T2a 影像分类旁路视图（02-1，辅助参考）。 */
+  t2a?: T2aView;
   /** 测量注释存档 key（A.40：后端 image_id，img_/frame_ 前缀）。
    *  undefined = 不持久化（预览/无后端 id 场景）。 */
   annotationArchiveKey?: string;
@@ -258,6 +265,29 @@ export default function WorkspaceImageRegion({
           <span data-region="organ-consistency-hint">
             （若本次影像并非当前声明的检查部位，请回「新建会话」改选部位后重扫）
           </span>
+        </span>
+      )}
+
+      {/* 02-1 T2a 影像分类（辅助参考）：与分割提示同层的小字芯片，不与结论并列。
+          available=true → 类别 + 恶性概率；false → 「未做影像分类：<原因>」——
+          不得显示成"未检出恶性"（缺权重/未启用与"没病"是两回事，同分割契约）。 */}
+      {t2a && stack.length > 0 && (
+        <span
+          className="ws-image__text ws-image__t2a"
+          style={{ right: 24, bottom: 12, maxWidth: 560, textAlign: 'right' }}
+          data-region="t2a-aux"
+          role="note"
+        >
+          {t2a.available ? (
+            <>
+              AI 影像分类（辅助参考，不参与结论）：
+              <strong>{t2aPredictedLabel(t2a.predicted)}</strong>
+              {t2a.malignantProb != null &&
+                ` · 恶性概率 ${Math.round(t2a.malignantProb * 100)}%`}
+            </>
+          ) : (
+            <>未做影像分类：{t2aReasonLabel(t2a.reason)}</>
+          )}
         </span>
       )}
 
