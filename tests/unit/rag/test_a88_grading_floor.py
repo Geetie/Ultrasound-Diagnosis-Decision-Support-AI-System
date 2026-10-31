@@ -63,10 +63,14 @@ def with_rules(monkeypatch):
 
 class TestDefaultOff:
     def test_switch_defaults_to_false(self):
-        """默认关闭是**已记录的决策**，不是待办（04-3：开关在 settings）。"""
-        from app.config.settings import settings
+        """默认关闭是**已记录的决策**，不是待办（04-3：开关在 settings）。
 
-        assert settings.grading_floor_enabled is False
+        读**字段默认值**而非实例值 —— 实例会被部署 .env 覆盖（A.99 已在
+        生产 .env 开启该开关做审计留痕），默认语义只有字段定义说了算。
+        """
+        from app.config.settings import Settings
+
+        assert Settings.model_fields["grading_floor_enabled"].default is False
 
     def test_production_rule_table_is_empty(self):
         """生产规则表为空 ⇒ 即便有人打开开关，也没有规则能改临床输出。
@@ -241,6 +245,11 @@ class TestWiredIntoService:
         assert seen == ["2"]
 
     async def test_evaluation_leaves_trace(self, monkeypatch):
+        # 场景 = "开关关"（部署 .env 现已默认开做审计留痕，A.99）——
+        # 这里显式钉回 False，使断言与部署配置解耦。
+        from app.config.settings import settings
+
+        monkeypatch.setattr(settings, "grading_floor_enabled", False)
         events: list[tuple[str, dict]] = []
 
         class _Logger:

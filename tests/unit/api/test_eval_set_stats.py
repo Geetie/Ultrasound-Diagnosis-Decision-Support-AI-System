@@ -45,6 +45,9 @@ def test_匿名请求被拒(client):
 
 
 def test_缺报告返回200且可读(as_doctor, monkeypatch, tmp_path):
+    # 密封化（A.102）：部署机 ~/uai/reports/ 有真实报告文件，fallback 候选
+    # 会命中 → available=True。把 HOME 钉进 tmp_path 使全部候选落空。
+    monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.setenv("UAI_EVAL_SET_REPORT", str(tmp_path / "missing.json"))
     resp = as_doctor.get(_URL)
     assert resp.status_code == 200, "尚未采集是正常状态，不该 404/500"

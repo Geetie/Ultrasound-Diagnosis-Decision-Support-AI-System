@@ -51,7 +51,7 @@ elastic-transport==9.4.2
     # via elasticsearch
 elasticsearch==9.5.1
     # via -r requirements.txt
-fastapi==0.110.0
+fastapi==0.115.14
     # via -r requirements.txt
 flatbuffers==25.12.19
     # via onnxruntime
@@ -206,7 +206,7 @@ python-dateutil==2.9.0.post0
     # via elasticsearch
 python-dotenv==1.2.3
     # via pydantic-settings
-python-multipart==0.0.9
+python-multipart==0.0.33
     # via -r requirements.txt
 pywin32==312
     # via portalocker
@@ -234,7 +234,7 @@ sqlalchemy==2.0.27
     # via
     #   -r requirements.txt
     #   alembic
-starlette==0.36.3
+starlette==0.41.3
     # via
     #   -r requirements.txt
     #   fastapi

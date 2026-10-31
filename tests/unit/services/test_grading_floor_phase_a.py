@@ -76,7 +76,10 @@ class TestConditionField:
 
 class TestSettingsSwitch:
     def test_default_off(self):
-        assert settings.grading_floor_enabled is False
+        """读**字段默认值**而非实例值 —— 实例会被部署 .env 覆盖（A.99 开启）。"""
+        from app.config.settings import Settings
+
+        assert Settings.model_fields["grading_floor_enabled"].default is False
 
     def test_enabled_none_reads_settings(self, monkeypatch):
         monkeypatch.setattr(settings, "grading_floor_enabled", True)

@@ -247,7 +247,12 @@ class TestDeviceCheckInEndpoints:
         assert resp.status_code == 200
         assert resp.json()["status"] == "ok"
 
-    def test_ota_returns_501(self):
+    def test_ota_returns_501(self, monkeypatch):
+        # 密封化（A.102）：部署机 .env 常配 OTA_PACKAGE_DIR，未钉住时会走
+        # 真实分发路径返回 404 —— 本用例测的是"未配置 → 501"契约位。
+        from app.config.settings import settings
+
+        monkeypatch.setattr(settings, "ota_package_dir", None)
         from app.dependencies import get_device_repo
 
         self._app.dependency_overrides[get_device_repo] = lambda: _device_repo_mock()
