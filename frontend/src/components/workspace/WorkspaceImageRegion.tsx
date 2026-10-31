@@ -29,7 +29,7 @@ import { useState } from 'react';
 import type { ReactNode } from 'react';
 import WorkspaceDicomLayer from './WorkspaceDicomLayer';
 import type { SegmentationView, T2aView } from '@/services/diagnosisAdapter';
-import { t2aPredictedLabel, t2aReasonLabel } from './t2aLabels';
+import T2aChip from './T2aChip';
 import { formatLocalTimestamp } from '@/utils/datetime';
 import { segReasonLabel } from '@/utils/segReason';
 
@@ -269,27 +269,8 @@ export default function WorkspaceImageRegion({
       )}
 
       {/* 02-1 T2a 影像分类（辅助参考）：与分割提示同层的小字芯片，不与结论并列。
-          available=true → 类别 + 恶性概率；false → 「未做影像分类：<原因>」——
-          不得显示成"未检出恶性"（缺权重/未启用与"没病"是两回事，同分割契约）。 */}
-      {t2a && stack.length > 0 && (
-        <span
-          className="ws-image__text ws-image__t2a"
-          style={{ right: 24, bottom: 12, maxWidth: 560, textAlign: 'right' }}
-          data-region="t2a-aux"
-          role="note"
-        >
-          {t2a.available ? (
-            <>
-              AI 影像分类（辅助参考，不参与结论）：
-              <strong>{t2aPredictedLabel(t2a.predicted)}</strong>
-              {t2a.malignantProb != null &&
-                ` · 恶性概率 ${Math.round(t2a.malignantProb * 100)}%`}
-            </>
-          ) : (
-            <>未做影像分类：{t2aReasonLabel(t2a.reason)}</>
-          )}
-        </span>
-      )}
+          渲染细节在 T2aChip（独立组件，测试不拖 cornerstone 链）。 */}
+      {t2a && stack.length > 0 && <T2aChip t2a={t2a} />}
 
       {/* 2:5 未校验标注：虚线＝未经人工校验（用线型而非颜色表达）。
           仅设计预览态（无真实影像）渲染 —— 数据驱动标注见上方 SVG。 */}
