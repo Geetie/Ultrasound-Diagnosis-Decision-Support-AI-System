@@ -24,6 +24,45 @@ from pydantic import BaseModel
 logger = structlog.get_logger()
 
 
+def _build_condition_families(aliases: dict[str, list[str]]) -> dict[str, str]:
+    """别名闭包：把互相引用的别名归到**同一个代表**（并查集，代表取字典序最小）。"""
+    parent: dict[str, str] = {}
+
+    def find(x: str) -> str:
+        parent.setdefault(x, x)
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    def union(a: str, b: str) -> None:
+        ra, rb = find(a), find(b)
+        if ra == rb:
+            return
+        if rb < ra:
+            ra, rb = rb, ra
+        parent[rb] = ra
+
+    for key, values in aliases.items():
+        find(key)
+        for value in values:
+            union(key, value)
+    return {name: find(name) for name in list(parent)}
+
+
+def patient_conditions_match(condition: str, patient_conditions: list[str], aliases: dict[str, list[str]]) -> bool:
+    """规则条件 ↔ 患者条件：按**同族**比较（A.110/G32 起），不是字面键比较。
+
+    这是"旧禁忌引擎"与 `app/knowledge/rule_engine.match_condition` 的**唯一**判定口径
+    （A.129 对拍脚本要求两边逐条等价；此前两边各写一份 .get(...) 字面匹配，
+    A.110 改了一边就漂了）。
+    """
+    families = _build_condition_families(aliases)
+    rule_family = families.get(condition, condition)
+    sent = {families.get(str(c), str(c)) for c in patient_conditions}
+    return rule_family in sent
+
+
 class ContraindicationRule(BaseModel):
     id: str
     organ: str
@@ -220,36 +259,8 @@ class ContraindicationEngine:
 
     @classmethod
     def _condition_families(cls) -> dict[str, str]:
-        """别名闭包：把互相引用的别名归到**同一个代表**（并查集）。
-
-        为什么需要闭包而不是 `.get(condition, [condition])` 的字面匹配：
-        别名表本身是"多键互引"的（`pregnancy` 列了 `pregnancy_ct`，而
-        `pregnancy_ct` 又是一个键）。按字面匹配时，**规则 condition 必须恰好是
-        一个键**才享有别名；`pregnancy_radiation` 恰好不是键（历史漏项）→ 该规则
-        永远打不中。闭包让"任意别名 → 代表"成为单射，表怎么加都不会再漏。
-        """
-        parent: dict[str, str] = {}
-
-        def find(x: str) -> str:
-            parent.setdefault(x, x)
-            while parent[x] != x:
-                parent[x] = parent[parent[x]]
-                x = parent[x]
-            return x
-
-        def union(a: str, b: str) -> None:
-            ra, rb = find(a), find(b)
-            if ra != rb:
-                # 代表取字典序最小者：**确定性**（不依赖 dict 顺序），便于断言与日志对账
-                if rb < ra:
-                    ra, rb = rb, ra
-                parent[rb] = ra
-
-        for key, aliases in cls._CONDITION_ALIASES.items():
-            find(key)
-            for alias in aliases:
-                union(key, alias)
-        return {name: find(name) for name in list(parent)}
+        """别名闭包（委托模块级实现，保证与 rule_engine 同一份口径）。"""
+        return _build_condition_families(cls._CONDITION_ALIASES)
 
     def _match_condition(self, condition: str, diagnosis_data: dict[str, Any]) -> bool:
         if "patient_conditions" in diagnosis_data:
@@ -257,10 +268,9 @@ class ContraindicationEngine:
             if isinstance(patient_conditions, list):
                 # A.110 / G32：按**同族**比较（闭包），而不是"规则 condition 必须是
                 # 别名表的键"。之前 `pregnancy_radiation` 类规则因此恒不命中。
-                families = self._condition_families()
-                rule_family = families.get(condition, condition)
-                sent = {families.get(str(c), str(c)) for c in patient_conditions}
-                return rule_family in sent
+                return patient_conditions_match(
+                    condition, [str(c) for c in patient_conditions], self._CONDITION_ALIASES
+                )
 
         if "clinical_context" in diagnosis_data:
             clinical_context = diagnosis_data["clinical_context"]

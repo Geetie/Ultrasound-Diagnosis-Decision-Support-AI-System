@@ -117,8 +117,13 @@ def match_condition(condition: str, facts: Mapping[str, Any]) -> bool:
     if "patient_conditions" in facts:
         patient_conditions = facts["patient_conditions"]
         if isinstance(patient_conditions, list):
-            aliases = CONDITION_ALIASES.get(condition, [condition])
-            return any(item in aliases for item in patient_conditions)
+            # A.129：与旧禁忌引擎共用同一份"同族"判定（A.110 改过口径后，两边各自
+            # 的字面匹配会漂；对拍脚本 scripts/rule_engine_consistency.py 会当场判红）。
+            from safety_gateway.contraindication import patient_conditions_match
+
+            return patient_conditions_match(
+                condition, [str(item) for item in patient_conditions], CONDITION_ALIASES
+            )
 
     if "clinical_context" in facts:
         clinical_context = facts["clinical_context"]

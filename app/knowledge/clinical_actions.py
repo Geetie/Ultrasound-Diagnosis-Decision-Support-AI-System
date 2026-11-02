@@ -233,6 +233,15 @@ _BUILDERS: dict[str, Callable[[Sequence[str], str | None], list[ClinicalAction]]
 }
 
 
+def _external_rules():
+    """外部规则（惰性导入，避免模块级循环依赖）；未配置/失败 → 空列表。"""
+    try:
+        from app.knowledge.clinical_action_rules import load_rules
+    except Exception:  # silent-ok: 外部规则模块不可用时回退内置表（不影响诊断）
+        return [], None
+    return load_rules()
+
+
 def actions_for(
     organ_code: str | None,
     features: Sequence[str] = (),
@@ -245,14 +254,27 @@ def actions_for(
     """
     if not organ_code:
         return []
-    builder = _BUILDERS.get(organ_code.strip().lower())
-    if builder is None:
-        return []
-    actions = builder(list(features), risk_level)
+    organ_key = organ_code.strip().lower()
+    # A.129 / G37：配置了外部规则文件就用它（整体替换），否则走内置表。
+    # 文件缺失/非法 → 回退内置表（load_rules 已记 error/warning），不让诊断因此失败。
+    external_rules, _err = _external_rules()
+    if external_rules:
+        from app.knowledge.clinical_action_rules import actions_from_rules
+
+        actions = actions_from_rules(
+            external_rules,
+            organ=organ_key,
+            features=list(features),
+            risk_level=risk_level,
+        )
+    else:
+        builder = _BUILDERS.get(organ_key)
+        if builder is None:
+            return []
+        actions = builder(list(features), risk_level)
     # A.127 / G31：给每条建议一个**确定性**规则 ID（器官 + 动作类型）。
     # 不逐条手写（15 处容易漂移），也保证同一器官同一动作在任何版本里 ID 稳定，
     # 审计/反馈可据此对回规则表条目。
-    organ_key = organ_code.strip().lower()
     for action in actions:
         if not action.rule_id:
             action.rule_id = f"{organ_key}:{action.action_type}"

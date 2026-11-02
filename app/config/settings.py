@@ -660,6 +660,10 @@ class Settings(BaseSettings):
     obs_cusum_decision_threshold: float = 3.0
     obs_cusum_calibration_samples: int = 300
     obs_cusum_calibration_simulations: int = 1000
+    # A.129 / G37：处置建议规则的**外部 YAML**（路径为空 = 不启用，行为与内置表一致）。
+    # 显式配置后整体替换内置表；文件非法则整份拒绝并回退内置（不让半份规则上线）。
+    # 读者：app/knowledge/clinical_action_rules.py::load_rules（唯一入口）。
+    clinical_actions_rules_path: str = ""
     # A.115 / G19：周/月统计窗口的数据源（此前 record_weekly_stats 等三个列表
     # 只有测试写入 → `weekly_rate_exceeded` 熔断入口结构性不可达）。
     # feed_enabled=True 让数据真的流起来；enforce=False（默认）只观察不触发暂停
