@@ -405,6 +405,16 @@ async def lifespan(app: FastAPI):
         logger.warning("infra_health_start_failed", error=str(e))
         app.state.infra_health_task = None
 
+    # OBS: CUSUM 周/月统计喂数（A.115 / G19）。此前三个统计窗口只有测试写入 →
+    # `weekly_rate_exceeded` 入口不可达。默认观察模式（只记录，不触发暂停）。
+    try:
+        from app.observability.cusum.stats_collector import start_stats_feed
+
+        start_stats_feed(app)
+    except Exception as e:
+        logger.warning("cusum_stats_feed_start_failed", error=str(e))
+        app.state.cusum_stats_feed_task = None
+
     # OBS: CUSUM 熔断 pending 看门狗（A.109 / N1）。此前 check_pending_timeout()
     # 只有测试调用 → pending 永不过期、重启又被快照恢复回来，等于"触发即永久
     # needs_review"且无出口。看门狗只做计时晋级；恢复仍走管理端点（人工决定）。
@@ -826,7 +836,10 @@ async def lifespan(app: FastAPI):
         logger.warning(
             "obs_export_stop_failed", error=str(e)
         )
-    # OBS: 停止 CUSUM pending 看门狗（周期任务，取消即可）
+    # OBS: 停止 CUSUM 统计喂数 + pending 看门狗（周期任务，取消即可）
+    stats_task = getattr(app.state, "cusum_stats_feed_task", None)
+    if stats_task is not None and not stats_task.done():
+        stats_task.cancel()
     watchdog_task = getattr(app.state, "cusum_watchdog_task", None)
     if watchdog_task is not None and not watchdog_task.done():
         watchdog_task.cancel()

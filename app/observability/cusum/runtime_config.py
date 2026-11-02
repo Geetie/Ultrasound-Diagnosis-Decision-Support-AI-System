@@ -66,7 +66,7 @@ def load_runtime_config(path: str | None = None) -> tuple[CUSUMConfig, str]:
     try:
         with open(resolved, encoding="utf-8") as f:
             report = json.load(f)
-    except (OSError, json.JSONDecodeError) as exc:
+    except (OSError, json.JSONDecodeError) as exc:  # silent-ok: 原因已写进 source（unreadable:<异常名>），调用方与日志可区分
         return base, f"calibration_invalid:unreadable:{type(exc).__name__}"
 
     if not isinstance(report, dict):
@@ -79,7 +79,7 @@ def load_runtime_config(path: str | None = None) -> tuple[CUSUMConfig, str]:
         return base, "calibration_invalid:no_recommendation"
     try:
         h_f, delta_f, target_f = float(h), float(delta), float(target)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError):  # silent-ok: 原因已写进 source（non_numeric），不是吞掉
         return base, "calibration_invalid:non_numeric"
     if h_f <= 0 or delta_f <= 0:
         return base, "calibration_invalid:non_positive"

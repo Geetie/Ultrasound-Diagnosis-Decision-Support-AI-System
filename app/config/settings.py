@@ -660,6 +660,15 @@ class Settings(BaseSettings):
     obs_cusum_decision_threshold: float = 3.0
     obs_cusum_calibration_samples: int = 300
     obs_cusum_calibration_simulations: int = 1000
+    # A.115 / G19：周/月统计窗口的数据源（此前 record_weekly_stats 等三个列表
+    # 只有测试写入 → `weekly_rate_exceeded` 熔断入口结构性不可达）。
+    # feed_enabled=True 让数据真的流起来；enforce=False（默认）只观察不触发暂停
+    # —— 历史数据刚清理过模板回显（A.70），severe 率还没有干净基线，先有数据再谈强制。
+    # 读者：app/observability/cusum/stats_collector.py（唯一入口）。
+    cusum_stats_feed_enabled: bool = True
+    cusum_stats_feed_interval_seconds: float = 3600.0
+    cusum_stats_enforce: bool = False
+    cusum_stats_lookback_days: int = 35
     # A.114 / G18：CUSUM 运行时参数优先消费**已审计的校准产物**（校准器的
     # recommended_h / recommended_delta 此前从不回灌运行时，delta 是硬编码 0.005）。
     # 读者：app/observability/cusum/runtime_config.py::load_runtime_config（唯一入口）。
