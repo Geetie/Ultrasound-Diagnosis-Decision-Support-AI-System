@@ -1480,6 +1480,9 @@ async def _write_result_to_db(
         if t2a_classification is not None
         else {"available": False, "reason": "not_run", "skipped": True},
     }
+    # A.107（G1/P0）：契约字段与报告都读 findings 顶层，写侧却在 fusion_result 里
+    # → 提升一层，见 _lift_clinical_attributes 的 docstring。
+    _lift_clinical_attributes(findings)
 
     # 04-3 Phase A：分级下界评估留痕（**只写 findings，不改结论正文**）。
     # 开关关闭 → 不写键（findings 与改动前逐字节相同，验收判据 1）；
@@ -2688,6 +2691,30 @@ def _clinical_attributes_to_dict(response) -> dict:
             )
 
     return attributes
+
+
+def _lift_clinical_attributes(findings: dict) -> dict:
+    """把 ``clinical_attributes`` 从 ``fusion_result`` 提升到 findings 顶层（A.107 / G1）。
+
+    背景（实测）：唯一写侧在 :func:`_fusion_result_to_dict` 的 payload 里
+    （= ``findings["fusion_result"]["clinical_attributes"]``），而两个读侧
+    （``app/api/v1/diagnosis.py:140`` 的契约字段、``app/services/report_service.py:495``
+    的报告）都读 findings **顶层** → measurement / clinical_actions /
+    patient_explanation / malignancy_risk / differential_diagnoses /
+    cross_modality_hints / research_metrics / posterior_acoustic 八个字段全恒空，
+    而单测用手写的"顶层形状"夹具，所以一直假绿。
+
+    处置：**只提升一层，不动嵌套**——既有读嵌套的代码保持可用，两个读侧立刻拿到
+    数据；同一事实两处可见，但只有一处被写（提升是纯拷贝，不是第二写侧）。
+    缺键/类型不对时原样返回（不抛、不写空字典：``{}`` 与"没有"在契约上语义不同）。
+    """
+    payload = findings.get("fusion_result")
+    if not isinstance(payload, dict):
+        return findings
+    clinical = payload.get("clinical_attributes")
+    if isinstance(clinical, dict) and clinical:
+        findings["clinical_attributes"] = clinical
+    return findings
 
 
 def _field_of(source, name: str):
