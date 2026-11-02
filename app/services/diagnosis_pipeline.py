@@ -2732,6 +2732,10 @@ def _fusion_result_to_dict(fusion_result) -> dict:
         "needs_review": getattr(fusion_result, "needs_review", False),
         "review_reason": getattr(fusion_result, "review_reason", None),
         "self_rag_passed": getattr(fusion_result, "self_rag_passed", None),
+        # A.105：补落 Self-RAG 量化结果 —— 只有 bool 时无法回答"为什么不过"
+        # （A.86 式"分支留原因"；layered_validator.py:160 已把完整评估结果
+        # 存进 self_rag_result，这里补最低限度的 score）。
+        "self_rag_score": getattr(fusion_result, "self_rag_score", None),
         "crag_triggered": getattr(fusion_result, "crag_triggered", False),
         "crag_recovered": getattr(fusion_result, "crag_recovered", False),
         "total_latency_ms": getattr(fusion_result, "total_latency_ms", 0.0),

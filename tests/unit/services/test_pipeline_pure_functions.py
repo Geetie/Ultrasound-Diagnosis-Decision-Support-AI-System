@@ -107,6 +107,18 @@ class TestFusionResultToDict:
         assert d["final_confidence"] == 0.0
         assert "content" not in d
 
+    def test_self_rag_score_passthrough(self):
+        """A.105：只有 bool 时无法回答"为什么不过"，量化分必须落到 findings。"""
+        fr = self._fr()  # _fr 的 **kw 进的是 final_response，量化分在外层
+        fr.self_rag_score = 4.2
+        d = _fusion_result_to_dict(fr)
+        assert d["self_rag_score"] == 4.2
+
+    def test_self_rag_score_none_means_not_run(self):
+        """A.105：未执行时不得写成 0.0 分（0.0=质检过且全不达标，None=没质检）。"""
+        d = _fusion_result_to_dict(self._fr())
+        assert d["self_rag_score"] is None
+
 
 class TestFailedHelpers:
     def test_make_failed_response(self):

@@ -36,8 +36,10 @@ echo "=== [1/4] 环境自检 ==="
 command -v git >/dev/null 2>&1 || { echo "FAIL: 未找到 git"; exit 1; }
 echo "HEAD: $(git rev-parse --short HEAD 2>/dev/null || echo 'n/a')  branch: $(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo 'n/a')"
 
-PY=""
-for candidate in "${PY:-}" python python3; do
+# A.106：这里原本是 `PY=""`，把调用方注入的解释器直接清空 → 只能命中 PATH 上的
+# `python`（常见是系统 python3，无项目依赖），想指 venv 也没有入口。改为尊重 PY。
+PY="${PY:-}"
+for candidate in "$PY" python python3; do
   if [ -n "$candidate" ] && command -v "$candidate" >/dev/null 2>&1; then PY="$candidate"; break; fi
 done
 [ -n "$PY" ] || { echo "FAIL: 未找到 python/python3"; exit 1; }
@@ -57,6 +59,9 @@ for f in AGENTS.md feature_list.json progress.md session-handoff.md; do
 done
 [ "$missing" -eq 0 ] || { echo "FAIL: 状态文件缺失——先按 AGENTS.md 补齐"; exit 1; }
 "$PY" -c "import json,sys; d=json.load(open('feature_list.json',encoding='utf-8')); assert isinstance(d.get('features'),list) and d['features']; print('  ok   feature_list.json features =', len(d['features']))"
+
+# harness 结构自检（A.106：用户级 validate-harness.mjs 换机器就不存在，判据落在仓库里）
+"$PY" scripts/audit/p78_harness_selfcheck.py || { echo "FAIL: harness 自检未过（见上）"; exit 1; }
 
 if [ "$MODE" = "env" ]; then
   echo ""
