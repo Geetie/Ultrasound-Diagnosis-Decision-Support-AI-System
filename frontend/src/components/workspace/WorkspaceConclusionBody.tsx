@@ -93,6 +93,8 @@ function ConclusionBlock({
   const crossHints = live?.crossModalityHints ?? [];
   // A.121 / G34：禁忌命中明细（空 = 本次无命中 → 整块不渲染）
   const contraindications = live?.contraindicationMatches ?? [];
+  // A.122 / G24：转人工原因（空 = 无 → 整块不渲染）
+  const reviewReason = live?.reviewReason;
   const canExpand = evidenceIds.length > 0 || ddx.length > 0 || crossHints.length > 0;
 
   return (
@@ -131,6 +133,15 @@ function ConclusionBlock({
             {risk.range ? ` · ${risk.range}` : ''}
           </span>
         </div>
+      )}
+
+      {/* 转人工原因（G24）：此前 review_reason 在工作区没有读者，医生只看到
+          "需复核"标记却不知道为什么。空值整块不渲染（不写"未知原因"）。 */}
+      {reviewReason && (
+        <p className="ws-review-reason" data-node="2:21" data-region="review-reason">
+          <span className="ws-review-reason__label">转人工原因</span>
+          <span className="ws-review-reason__text">{reviewReason}</span>
+        </p>
       )}
 
       {/* 禁忌命中明细（G34）：SG 侧早就知道命中了哪条规则，但此前只给一句

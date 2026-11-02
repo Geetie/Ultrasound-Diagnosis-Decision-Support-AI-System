@@ -24,6 +24,7 @@ import type {
   DifferentialDiagnosis,
   ResearchMetrics,
 } from '@/types/api';
+import { reviewReasonLabel } from '@/utils/reviewReason';
 
 /** 「看一眼」档的触发理由（契约 §1：仅命中触发条件时渲染） */
 export type AttentionReason =
@@ -244,6 +245,10 @@ export interface ConclusionView {
   finalConfidence?: number;
   /** 禁忌命中明细（G34）：空/缺 = 本次无命中（整块不渲染） */
   contraindicationMatches?: ContraindicationMatchView[];
+  /** 转人工原因（G24）：已人话化；空/未知空串 → undefined（不渲染） */
+  reviewReason?: string;
+  /** 原始原因码（对账/报修用，界面只在兜底时用得上） */
+  reviewReasonCode?: string;
   /** 分割旁路（病灶 bbox + 面积）—— available=false 时影像区显示降级原因 */
   segmentation?: SegmentationView;
   /** T2a 影像分类旁路视图（02-1）—— 辅助参考；available=false 时影像区显示
@@ -368,6 +373,9 @@ export function toConclusionView(result: DiagnosisResult | null): ConclusionView
     finalConfidence: fusion?.final_confidence,
     // A.121 / G34：禁忌命中明细原样收敛（空数组 = 无命中）
     contraindicationMatches: toContraindicationMatches(result.contraindication_matches),
+    // A.122 / G24：转人工原因（此前工作区零读者，医生只看到"需复核"不知道为什么）
+    reviewReason: reviewReasonLabel(result.review_reason),
+    reviewReasonCode: (result.review_reason ?? undefined) || undefined,
     // 03-4 / 03-6 / 06-5：M4/M12/M11 原样透传 —— 不排序、不改写、不补默认值；
     // 空列表照传（渲染层按 length>0 独立门控），None 省略为 undefined（P1 默认沉默）。
     differentialDiagnoses: result.differential_diagnoses,

@@ -308,3 +308,30 @@ describe('G34 禁忌命中明细（A.121）', () => {
     expect(v2.contraindicationMatches).toEqual([]);
   });
 });
+
+describe('G24 转人工原因（A.122）', () => {
+  it('已知原因码 → 中文人话', () => {
+    const view = toConclusionView({ ...REAL_COMPLETED, review_reason: 'consistency_failed' } as never)!;
+    expect(view.reviewReason).toBe('一致性校验未通过');
+    expect(view.reviewReasonCode).toBe('consistency_failed');
+  });
+
+  it('熔断原因 → 带状态的中文', () => {
+    const view = toConclusionView({
+      ...REAL_COMPLETED,
+      review_reason: 'ai_safety_circuit_breaker_pending_confirmation',
+    } as never)!;
+    expect(view.reviewReason).toContain('AI 安全熔断');
+    expect(view.reviewReason).toContain('pending_confirmation');
+  });
+
+  it('未知原因码 → 原样露出（不猜语义、不静默）', () => {
+    const view = toConclusionView({ ...REAL_COMPLETED, review_reason: 'weird_new_code' } as never)!;
+    expect(view.reviewReason).toBe('需人工复核（原因码：weird_new_code）');
+  });
+
+  it('无原因 → undefined（整块不渲染）', () => {
+    const view = toConclusionView(REAL_COMPLETED as never)!;
+    expect(view.reviewReason).toBeUndefined();
+  });
+});

@@ -171,3 +171,29 @@ describe('WorkspaceConclusionBody · 禁忌命中明细（G34）', () => {
     expect(screen.getByText('凝血功能障碍避免穿刺')).toBeInTheDocument();
   });
 });
+
+/**
+ * 转人工原因（A.122 / G24）：此前 review_reason 在工作区无读者，
+ * 医生只看到"需复核"标记却不知道为什么。
+ */
+describe('WorkspaceConclusionBody · 转人工原因（G24）', () => {
+  const BASE: ConclusionView = { headline: '考虑良性结节（TI-RADS 3）', evidenceIds: [] };
+
+  it('有原因：显示"转人工原因 + 中文说明"', () => {
+    const { container } = render(
+      <WorkspaceConclusionBody
+        state="conclusion"
+        view={{ ...BASE, reviewReason: '一致性校验未通过', reviewReasonCode: 'consistency_failed' }}
+      />,
+    );
+    expect(container.querySelector('[data-region="review-reason"]')).not.toBeNull();
+    expect(screen.getByText('转人工原因')).toBeInTheDocument();
+    expect(screen.getByText('一致性校验未通过')).toBeInTheDocument();
+  });
+
+  it('无原因：整块不渲染', () => {
+    const { container } = render(<WorkspaceConclusionBody state="conclusion" view={BASE} />);
+    expect(container.querySelector('[data-region="review-reason"]')).toBeNull();
+    expect(screen.queryByText('转人工原因')).toBeNull();
+  });
+});

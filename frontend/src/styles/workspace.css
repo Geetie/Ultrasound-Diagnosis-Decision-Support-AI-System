@@ -370,6 +370,21 @@
   color: var(--color-text-primary);
 }
 
+/* 转人工原因（G24，2:21）：紧贴结论，用警示色左条而不是整块红底（P1 不制造恐慌） */
+.ws-review-reason {
+  margin: 0;
+  padding: var(--space-1) 0 var(--space-1) var(--space-2);
+  border-left: 2px solid var(--color-attention);
+  font-size: var(--font-size-body);
+  color: var(--color-text-primary);
+}
+
+.ws-review-reason__label {
+  margin-right: var(--space-2);
+  font-size: var(--font-size-tiny);
+  color: var(--color-attention);
+}
+
 /* 禁忌命中明细（G34，2:27）：与风险行同栏，但用列表 + 警示色，避免被当成普通信息 */
 .ws-contraindication {
   display: flex;
