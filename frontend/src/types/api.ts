@@ -255,6 +255,14 @@ export interface DiagnosisResult {
    * 缺省/false 不区分"未降级"与"未评估"，因此 UI 只在 `=== true` 时提示。
    */
   clinical_actions_degraded?: boolean | null;
+  /** 最终诊断（G42，05-3 S1 金标准回填；季度审计人工录入，事后才有） */
+  final_diagnosis?: string | null;
+  /** 金标准来源：pathology / followup / expert_consensus */
+  final_diagnosis_source?: string | null;
+  /** 金标准回填时间（ISO 串） */
+  final_diagnosis_at?: string | null;
+  /** 临床属性集合（M3/M5/M7/M10 的落点） */
+  clinical_attributes?: Record<string, unknown> | null;
   /**
    * 禁忌命中明细（G34）：后端白名单投影 rule_id/description/severity/organ；
    * 缺省/空 = 本次无命中（界面整块不渲染），不许当成"检查过且没问题"的证明。

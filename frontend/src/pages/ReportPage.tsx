@@ -22,6 +22,9 @@ import {
 } from '@/services/reportService';
 import type { ReportResponse } from '@/types/report';
 import { getSession } from '@/services/sessionService';
+import { getDiagnosisResult } from '@/services/diagnosisService';
+import type { DiagnosisResult } from '@/types/api';
+import QcBackfillPanel from '@/components/diagnosis/QcBackfillPanel';
 import { tokens } from '@/styles/tokens';
 import { stripMarkdownEmphasis } from '@/utils/text';
 
@@ -78,6 +81,8 @@ export default function ReportPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [verifyNote, setVerifyNote] = useState<string | null>(null);
+  // A.133 / G42 + G38：质控回填（金标准）与患者沟通话术来自判读结果接口
+  const [qc, setQc] = useState<DiagnosisResult | null>(null);
 
   const status = useMemo(() => {
     if (!report) return null;
@@ -109,6 +114,29 @@ export default function ReportPage() {
       cancelled = true;
     };
   }, [requestId]);
+
+  // A.133：报告**定稿后**再拉判读结果（金标准/话术）。
+  // 草稿期不拉：①金标准会造成锚定偏倚，本来就不显示；②话术属患者沟通材料，
+  // 报告定稿后再看更合适；③少一次请求就少一个失败面。
+  // 失败静默——它只是补充信息，不该让"报告页打不开"这种更严重的后果发生。
+  const finalised = report != null && report.status !== 'draft';
+  useEffect(() => {
+    if (!requestId || !finalised) {
+      setQc(null);
+      return;
+    }
+    let cancelled = false;
+    getDiagnosisResult(requestId)
+      .then((r) => {
+        if (!cancelled) setQc(r);
+      })
+      .catch(() => {
+        if (!cancelled) setQc(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [requestId, finalised]);
 
   const handleGenerate = useCallback(async () => {
     const target = inputRequestId.trim();
@@ -573,6 +601,20 @@ export default function ReportPage() {
             </Space>
           </Space>
         </Card>
+      )}
+
+      {/* A.133 / G42 + G38：质控回填（金标准最终诊断）与患者沟通话术。
+          草稿期不显示金标准（锚定偏倚），见 QcBackfillPanel 的说明。 */}
+      {report && (
+        <QcBackfillPanel
+          reportStatus={report.status}
+          finalDiagnosis={qc?.final_diagnosis ?? undefined}
+          finalDiagnosisSource={qc?.final_diagnosis_source ?? undefined}
+          finalDiagnosisAt={qc?.final_diagnosis_at ?? undefined}
+          patientExplanation={
+            (qc?.clinical_attributes?.patient_explanation as string | undefined) ?? undefined
+          }
+        />
       )}
 
       {/* 签发知情确认 —— 只在完整性未过时被 handleSign 打开。
