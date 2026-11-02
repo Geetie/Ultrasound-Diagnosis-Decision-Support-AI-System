@@ -43,10 +43,20 @@ export async function endSession(
   return response.data;
 }
 
-/** 更新部位状态（多器官联合诊断用）。 */
+/**
+ * 更新部位状态 / 目标部位（多器官联合诊断用）。
+ *
+ * A.120 / G27：补 `target_organs` —— 后端 `SessionUpdateRequest` 已支持整组替换
+ * （空数组会被 422 拒绝，想清空部位请重建会话：替换语义可预测，追加会与
+ * `organ_statuses` 错位）。
+ */
 export async function updateSession(
   sessionId: string,
-  data: { status?: string; organ_statuses?: Record<string, string> }
+  data: {
+    status?: string;
+    organ_statuses?: Record<string, string>;
+    target_organs?: string[];
+  }
 ): Promise<SessionInfo> {
   const response = await apiClient.patch<SessionInfo>(`/sessions/${sessionId}`, data);
   return response.data;

@@ -809,8 +809,23 @@ class SessionListResponse(BaseModel):
 
 
 class SessionUpdateRequest(BaseModel):
+    """会话增量更新。
+
+    A.120 / G27：补 ``target_organs`` —— 此前建会话后**无法追加部位**：
+    多部位判读要求会话的 `target_organs` 含全部部位，而会话建好后没有任何入口能改，
+    医生只能重建会话（丢掉已上传影像与已填临床信息）。
+
+    语义（三态，避免"清空"这种误操作）：
+    * 缺省 ``None`` = 不改；
+    * 非空列表 = **整组替换**（不是追加：替换语义可预测，追加会与器官状态表错位）；
+    * ``[]`` 被 schema 拒绝（min_length=1）——想清空部位请重建会话。
+
+    取值必须是受支持器官（``Organ`` 枚举），非法值由 pydantic 直接 422。
+    """
+
     status: SessionStatus | None = None
     organ_statuses: dict[str, str] | None = None
+    target_organs: list[Organ] | None = Field(default=None, min_length=1)
 
 
 # ============== T-GB-AGT-01 多器官联合诊断 ==============

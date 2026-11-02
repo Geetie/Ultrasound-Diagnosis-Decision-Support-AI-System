@@ -195,6 +195,8 @@ async def update_session(
         session_id=session_id,
         status=request.status,
         organ_statuses=request.organ_statuses,
+        # A.120 / G27：建会话后可追加/替换目标部位（此前无入口，只能重建会话）
+        target_organs=[o.value for o in request.target_organs] if request.target_organs else None,
     )
 
     if not session:
@@ -208,6 +210,9 @@ async def update_session(
         detail={
             "status": request.status.value if request.status else None,
             "organ_statuses": request.organ_statuses,
+            "target_organs": (
+                [o.value for o in request.target_organs] if request.target_organs else None
+            ),
         },
     )
 

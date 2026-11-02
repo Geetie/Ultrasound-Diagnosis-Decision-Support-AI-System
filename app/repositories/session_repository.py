@@ -86,8 +86,9 @@ class SessionRepository:
         session_id: str,
         status: SessionStatus | None = None,
         organ_statuses: dict | None = None,
+        target_organs: list[str] | None = None,
     ) -> DiagnosisSession | None:
-        """更新会话状态"""
+        """更新会话状态（A.120 / G27：支持替换目标部位）。"""
         session = await self.get_session(session_id)
         if not session:
             return None
@@ -99,6 +100,16 @@ class SessionRepository:
 
         if organ_statuses:
             session.organ_statuses = organ_statuses
+
+        if target_organs:
+            # 整组替换（不是追加）。同时给新部位补 PENDING 状态、保留已有部位的状态 ——
+            # 否则 organ_statuses 与 target_organs 错位：新部位没有状态行，界面显示空白。
+            previous = dict(session.organ_statuses or {})
+            session.target_organs = list(target_organs)
+            session.organ_statuses = {
+                organ: previous.get(organ, OrganStatus.PENDING.value)
+                for organ in target_organs
+            }
 
         session.updated_at = now
 
