@@ -1060,6 +1060,17 @@ def _image_chunk_text(chunk_id: str, payload: dict | None) -> str:
         bits.append(f"会话={p['session_id']}")
     if p.get("image_id"):
         bits.append(f"影像={p['image_id']}")
+    # A.137 / G2：索引期由模型写入的视觉特征（成分/回声/边界/钙化）——
+    # 只有 payload 里**真的有**才渲染；没有就保持元数据模板，绝不在这里编造所见。
+    features = p.get("visual_features")
+    if isinstance(features, str):
+        features = [features]
+    if isinstance(features, list):
+        rendered = "；".join(str(f).strip() for f in features if str(f).strip())
+        if rendered:
+            bits.append(f"视觉特征={rendered[:400]}")
+    if p.get("visual_features_source"):
+        bits.append(f"特征来源={p['visual_features_source']}")
     return "；".join(bits)
 
 

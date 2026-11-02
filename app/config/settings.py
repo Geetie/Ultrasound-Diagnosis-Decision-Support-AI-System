@@ -660,6 +660,11 @@ class Settings(BaseSettings):
     obs_cusum_decision_threshold: float = 3.0
     obs_cusum_calibration_samples: int = 300
     obs_cusum_calibration_simulations: int = 1000
+    # A.137 / G2：影像块"视觉特征文本"的可插拔来源。
+    # 空 = 不启用（影像块正文仍是元数据模板，行为与现状一致）；配置后索引期/取回期
+    # 可调该端点产出描述。读者：app/rag/image_caption.py::describe（唯一入口）。
+    image_caption_endpoint: str = ""
+    image_caption_timeout_seconds: float = 5.0
     # A.132 / G45：留存周期任务的**总开关**与 dry-run 默认值。
     # 默认关：冷归档会真实搬迁/删除历史数据，不可逆；默认 dry-run：只体检并在日志里
     # 说明"本轮本该做什么"，观察一轮后再显式打开（data_retention_schedule_enabled=true,
