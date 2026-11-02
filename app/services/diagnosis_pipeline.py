@@ -2896,6 +2896,14 @@ def _fusion_result_to_dict(fusion_result) -> dict:
         payload["conflict_types"] = [
             getattr(t, "value", t) for t in raw_types
         ]
+        # A.135 / G21：可比较性（单器官单响应 → 不可比）。
+        # 只写真实布尔/字符串；None 不写，读路径据此判"未执行"而不是"无冲突"。
+        comparable = _field_of(conflict_report, "comparable")
+        if isinstance(comparable, bool):
+            payload["conflict_comparable"] = comparable
+        skipped = _field_of(conflict_report, "skipped_reason")
+        if isinstance(skipped, str) and skipped:
+            payload["conflict_skipped_reason"] = skipped
 
     # ── A.88 A3：一致性校验真实信号 ────────────────────────────────────
     consistency_result = _field_of(fusion_result, "consistency_result")

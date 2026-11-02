@@ -167,6 +167,8 @@ class ConflictDetector:
         if not responses:
             return ConflictReport(
                 has_conflict=False,
+                comparable=False,
+                skipped_reason="no_responses",
                 conflict_types=[],
                 conflicting_responses=[],
                 resolution_suggestion=ConflictResolution.KEEP_HIGHEST_CONFIDENCE,
@@ -176,6 +178,13 @@ class ConflictDetector:
         conflict_types: list[ConflictType] = []
         conflicting: list[AgentResponse] = []
         details: list[str] = []
+
+        # A.135 / G21：**单条响应无从比较**。这里不改变 has_conflict（仍为 False），
+        # 而是显式标注"本次不可比"——否则下游会把"没得比"读成"比过且干净"。
+        # 注意仍继续走下面的"自检"分支（单条响应内部的建议冲突兜底），
+        # 所以 comparable 只是"跨响应比较是否发生"的口径。
+        comparable = len(responses) >= 2
+        skipped_reason = None if comparable else "single_response"
 
         # 1) GRADING_CONFLICT：同器官不同分级
         grading_conflicts = self._detect_grading_conflicts(responses)
@@ -224,6 +233,8 @@ class ConflictDetector:
         if not has_conflict:
             return ConflictReport(
                 has_conflict=False,
+                comparable=comparable,
+                skipped_reason=skipped_reason,
                 conflict_types=[],
                 conflicting_responses=[],
                 resolution_suggestion=ConflictResolution.KEEP_HIGHEST_CONFIDENCE,
@@ -254,6 +265,8 @@ class ConflictDetector:
 
         return ConflictReport(
             has_conflict=True,
+            comparable=comparable,
+            skipped_reason=skipped_reason,
             conflict_types=conflict_types,
             conflicting_responses=unique_conflicting,
             resolution_suggestion=resolution,

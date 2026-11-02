@@ -352,6 +352,10 @@ export interface ConclusionView {
   measurementView?: MeasurementView;
   /** 阶段耗时（G28/G29）：只含后端**真的写出**的段 + 管线总耗时；可空 */
   stageTimings?: StageTiming[];
+  /** 冲突检测是否可比（G21）：false = 本次没得多响应可比 → 界面显示"未执行" */
+  conflictComparable?: boolean;
+  /** 不可比原因（single_response / no_responses） */
+  conflictSkippedReason?: string;
   /** 转人工原因（G24）：已人话化；空/未知空串 → undefined（不渲染） */
   reviewReason?: string;
   /** 原始原因码（对账/报修用，界面只在兜底时用得上） */
@@ -488,6 +492,13 @@ export function toConclusionView(result: DiagnosisResult | null): ConclusionView
     finalConfidence: fusion?.final_confidence,
     // A.121 / G34：禁忌命中明细原样收敛（空数组 = 无命中）
     contraindicationMatches: toContraindicationMatches(result.contraindication_matches),
+    // A.135 / G21：冲突检测可比性（false 才提示"未执行"；缺省 undefined 不提示）
+    conflictComparable:
+      result.conflict_comparable === false ? false : undefined,
+    conflictSkippedReason:
+      typeof result.conflict_skipped_reason === 'string' && result.conflict_skipped_reason
+        ? result.conflict_skipped_reason
+        : undefined,
     // A.128 / G28：阶段耗时（真实段 + 总耗时；空则不渲染）
     stageTimings: (() => {
       const rows = extractStageTimings(result);

@@ -370,6 +370,13 @@
   color: var(--color-text-primary);
 }
 
+/* 冲突检测未执行说明（G21）：中性提示，不用警示色（这不是异常，是口径说明） */
+.ws-conclusion__conflict-note {
+  margin: var(--space-1) 0 0;
+  font-size: var(--font-size-tiny);
+  color: var(--color-text-secondary);
+}
+
 /* 阶段耗时（G28/G29）：只列实测段，等宽数字便于对比 */
 .ws-conclusion__timings {
   margin-top: var(--space-2);

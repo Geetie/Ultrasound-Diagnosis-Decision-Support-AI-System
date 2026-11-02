@@ -255,6 +255,10 @@ export interface DiagnosisResult {
    * 缺省/false 不区分"未降级"与"未评估"，因此 UI 只在 `=== true` 时提示。
    */
   clinical_actions_degraded?: boolean | null;
+  /** 冲突检测可比较性（G21）：false = 本次没有可比较的多响应（≠ 无冲突） */
+  conflict_comparable?: boolean | null;
+  /** 不可比原因（single_response / no_responses） */
+  conflict_skipped_reason?: string | null;
   /** 最终诊断（G42，05-3 S1 金标准回填；季度审计人工录入，事后才有） */
   final_diagnosis?: string | null;
   /** 金标准来源：pathology / followup / expert_consensus */

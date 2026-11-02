@@ -99,6 +99,13 @@ class ConflictReport(BaseModel):
     """
 
     has_conflict: bool = False
+    #: A.135 / G21：本次冲突检测**是否真的存在可比较的多响应**。
+    #: 单器官判读只派发一个 specialist 响应 → 四类检测全部 `len<2` 直接返回 []，
+    #: 于是 `has_conflict=False` 会被读成"检查过且没冲突"，实际是"没得比"。
+    #: False 时下游必须把它当"未执行"，不得计入"无冲突"分母。
+    comparable: bool = True
+    #: comparable=False 的原因（当前只有 ``single_response``）；可比时为空。
+    skipped_reason: str | None = None
     conflict_types: list[ConflictType] = Field(default_factory=list)
     conflicting_responses: list[AgentResponse] = Field(default_factory=list)
     resolution_suggestion: ConflictResolution = ConflictResolution.KEEP_HIGHEST_CONFIDENCE

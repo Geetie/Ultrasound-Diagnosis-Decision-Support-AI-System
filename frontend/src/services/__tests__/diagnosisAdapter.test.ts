@@ -491,3 +491,20 @@ describe('G28/G29 阶段耗时（A.128）', () => {
     expect(view.stageTimings).toBeUndefined();
   });
 });
+
+describe('G21 冲突检测可比性（A.135）', () => {
+  it('comparable=false → 标记未执行并带原因', () => {
+    const view = toConclusionView({
+      ...REAL_COMPLETED,
+      conflict_comparable: false,
+      conflict_skipped_reason: 'single_response',
+    } as never)!;
+    expect(view.conflictComparable).toBe(false);
+    expect(view.conflictSkippedReason).toBe('single_response');
+  });
+
+  it('comparable=true / 缺省 → 不提示', () => {
+    expect(toConclusionView({ ...REAL_COMPLETED, conflict_comparable: true } as never)!.conflictComparable).toBeUndefined();
+    expect(toConclusionView(REAL_COMPLETED as never)!.conflictComparable).toBeUndefined();
+  });
+});

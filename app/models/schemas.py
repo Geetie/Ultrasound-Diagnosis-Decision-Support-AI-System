@@ -501,6 +501,12 @@ class DiagnosisResult(BaseModel):
     # 形态同样用 Dict 承载（会随检索策略演进），避免过早固化契约。
     similar_cases: dict[str, Any] | None = None
 
+    # 冲突检测可比较性（A.135 / G21）：False = 本次**没有可比较的多响应**
+    # （单器官单响应 / 无响应）。下游必须把它当"未执行"，不得计入"无冲突"。
+    conflict_comparable: bool | None = None
+    #: 不可比的原因（当前为 single_response / no_responses）
+    conflict_skipped_reason: str | None = None
+
     # 处置建议降级标记（A.123 / G33）：True = 特征不足、只剩通用兜底建议；
     # None = 未降级（或缺数据），界面据此提示"建议已降级"，不冒充完整规则输出。
     clinical_actions_degraded: bool | None = None

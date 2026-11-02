@@ -1200,6 +1200,17 @@ async def get_diagnosis_result(
         model_version=model_version,
         llm_model=llm_model,
         knowledge_base_version=knowledge_base_version,
+        # A.135 / G21：冲突检测可比较性（不可比 ≠ 无冲突）
+        conflict_comparable=(
+            (diagnosis_payload or {}).get("conflict_comparable")
+            if isinstance((diagnosis_payload or {}).get("conflict_comparable"), bool)
+            else None
+        ),
+        conflict_skipped_reason=(
+            (diagnosis_payload or {}).get("conflict_skipped_reason")
+            if isinstance((diagnosis_payload or {}).get("conflict_skipped_reason"), str)
+            else None
+        ),
         # A.121 / G34：禁忌命中明细（写法：有才给，空/缺 → None，不造空列表）
         contraindication_matches=(
             (diagnosis_payload or {}).get("contraindication_matches")

@@ -104,6 +104,8 @@ function ConclusionBlock({
   const measurement = live?.measurementView;
   // A.128 / G28+G29：阶段耗时（只含真实遥测段 + 总耗时；此前唯一消费者在死页）
   const stageTimings = live?.stageTimings ?? [];
+  // A.135 / G21：冲突检测不可比时要如实说"未执行"，不能让"没报冲突"被读成"无冲突"
+  const conflictNotCompared = live?.conflictComparable === false;
   const canExpand = evidenceIds.length > 0 || ddx.length > 0 || crossHints.length > 0;
 
   return (
@@ -327,6 +329,14 @@ function ConclusionBlock({
                 ))}
               </ul>
             </div>
+          )}
+
+          {/* 冲突检测可比性（A.135 / G21）：单器官单响应时四类检测全部跳过，
+              "没报冲突"不等于"无冲突"，必须显式说明未执行。 */}
+          {conflictNotCompared && (
+            <p className="ws-conclusion__conflict-note" data-region="conflict-not-compared">
+              冲突检测未执行（本次没有可比较的多路结论{live?.conflictSkippedReason === 'no_responses' ? '：无响应' : ''}）
+            </p>
           )}
 
           {/* 阶段耗时（A.128 / G28+G29）：此前唯一消费者在无路由死页；这里只列

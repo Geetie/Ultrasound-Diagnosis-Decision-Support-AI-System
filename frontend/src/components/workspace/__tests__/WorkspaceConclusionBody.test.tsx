@@ -368,3 +368,28 @@ describe('WorkspaceConclusionBody · 阶段耗时（G28）', () => {
     expect(container.querySelector('[data-region="stage-timings"]')).toBeNull();
   });
 });
+
+/** 冲突检测未执行（A.135 / G21）：单器官单响应时"没报冲突"不等于"无冲突"。 */
+describe('WorkspaceConclusionBody · 冲突检测未执行（G21）', () => {
+  const BASE: ConclusionView = { headline: '考虑良性结节（TI-RADS 3）', evidenceIds: ['c1'] };
+  const EXPAND = '展开依据 / 鉴别诊断 / 诊断过程';
+
+  it('comparable=false → 展开区说明未执行', () => {
+    const { container } = render(
+      <WorkspaceConclusionBody
+        state="conclusion"
+        view={{ ...BASE, conflictComparable: false, conflictSkippedReason: 'single_response' }}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: EXPAND }));
+    const note = container.querySelector('[data-region="conflict-not-compared"]');
+    expect(note).not.toBeNull();
+    expect(note!.textContent).toContain('冲突检测未执行');
+  });
+
+  it('可比时不显示该说明', () => {
+    const { container } = render(<WorkspaceConclusionBody state="conclusion" view={BASE} />);
+    fireEvent.click(screen.getByRole('button', { name: EXPAND }));
+    expect(container.querySelector('[data-region="conflict-not-compared"]')).toBeNull();
+  });
+});
