@@ -660,6 +660,11 @@ class Settings(BaseSettings):
     obs_cusum_decision_threshold: float = 3.0
     obs_cusum_calibration_samples: int = 300
     obs_cusum_calibration_simulations: int = 1000
+    # A.109 / N1：pending→suspended 的晋级判定由独立看门狗周期触发（此前
+    # `check_pending_timeout()` 全仓只有测试调用 → pending 永不过期、重启又被
+    # 快照恢复回来，形成"触发即永久 needs_review"的死锁）。<=0 关闭该任务。
+    # 读者：`app/observability/cusum/watchdog.py::sweep_seconds`（唯一入口）。
+    cusum_pending_sweep_seconds: float = 30.0
     obs_overall_hallucination_warning_rate: float = 0.03
     obs_overall_hallucination_critical_rate: float = 0.05
 

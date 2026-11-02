@@ -382,6 +382,17 @@ async def lifespan(app: FastAPI):
         logger.warning("infra_health_start_failed", error=str(e))
         app.state.infra_health_task = None
 
+    # OBS: CUSUM 熔断 pending 看门狗（A.109 / N1）。此前 check_pending_timeout()
+    # 只有测试调用 → pending 永不过期、重启又被快照恢复回来，等于"触发即永久
+    # needs_review"且无出口。看门狗只做计时晋级；恢复仍走管理端点（人工决定）。
+    try:
+        from app.observability.cusum.watchdog import start_watchdog
+
+        start_watchdog(app)
+    except Exception as e:
+        logger.warning("cusum_pending_watchdog_start_failed", error=str(e))
+        app.state.cusum_watchdog_task = None
+
     # OBS: 指标导出链路接线（/metrics 暴露 + VictoriaMetrics 推送）。
     # 此前 `start_metrics_server()` 只被测试调用、`VictoriaMetricsPusher` 在 app 内
     # 从未实例化 —— 运行期 Prometheus 抓不到、VM 收不到推送，看板再正确也没有数据。
@@ -792,6 +803,11 @@ async def lifespan(app: FastAPI):
         logger.warning(
             "obs_export_stop_failed", error=str(e)
         )
+    # OBS: 停止 CUSUM pending 看门狗（周期任务，取消即可）
+    watchdog_task = getattr(app.state, "cusum_watchdog_task", None)
+    if watchdog_task is not None and not watchdog_task.done():
+        watchdog_task.cancel()
+
     # 分割预热任务若仍在跑（权重加载很慢时），取消后再退出，避免悬挂警告
     warmup_task = getattr(app.state, "segmenter_warmup_task", None)
     if warmup_task is not None and not warmup_task.done():

@@ -388,14 +388,26 @@ function WorkspaceRoute() {
       if (!sessionId || !organ || imageIds.length === 0) return;
 
       if (isMultiOrgan) {
-        // ⚠️ 已知限制（如实记录，不粉饰）：多器官端点 `MultiOrganDiagnosisRequest`
-        // 没有 clinical_text / patient_context / image_ids 字段（app/models/schemas.py:785），
-        // 它从**同会话已有请求**继承这三项（orchestrator.py:697-711 的 donor 逻辑）。
-        // 所以本会话若从未发过单器官请求，医生这次填的临床信息不会进 SG 的判据。
-        // 不改后端的前提下只能如实暴露这一点；已在 task 报告里登记。
+        // A.109 / N8（原注释已过时，此处更正）：后端 `MultiOrganDiagnosisRequest`
+        // **已支持** clinical_text / patient_context / image_ids（schemas.py:846-849，
+        // A.96/B1 加的），此前是前端漏传 —— 于是首判（本会话还没有单器官请求当
+        // donor）时，医生填的临床信息与勾选的禁忌条件根本进不了 SG 判据。
+        // 现在与单器官分支同源同格式上送；三字段可选，缺省仍由后端 donor 继承。
         await startMultiOrganFlow({
           sessionId,
           organs: targetOrgans,
+          imageIds,
+          clinicalText: toClinicalText(clinical),
+          patientContext: {
+            age: sessionInfo?.demo.age ?? undefined,
+            gender:
+              sessionInfo?.demo.gender === 'female'
+                ? 'F'
+                : sessionInfo?.demo.gender === 'male'
+                  ? 'M'
+                  : undefined,
+            conditions: toConditionCodes(clinical.conditions),
+          },
         });
         return;
       }

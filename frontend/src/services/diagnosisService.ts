@@ -34,6 +34,14 @@ export async function requestMultiOrganDiagnosis(data: {
   response_tier?: 'realtime' | 'standard' | 'full';
   per_organ_timeout_seconds?: number;
   total_timeout_seconds?: number;
+  // A.109 / N8：与单器官端点同名同义（后端 MultiOrganDiagnosisRequest 已支持）
+  clinical_text?: string;
+  patient_context?: {
+    age?: number;
+    gender?: 'M' | 'F';
+    conditions?: string[];
+  };
+  image_ids?: string[];
 }): Promise<MultiOrganDiagnosisResponse> {
   const response = await apiClient.post<MultiOrganDiagnosisResponse>(
     '/diagnosis/multi-organ',

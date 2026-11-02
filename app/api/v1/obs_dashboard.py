@@ -1,14 +1,18 @@
 import structlog
 from fastapi import APIRouter, Depends, Query
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.v1.errors import BadRequestException
+from app.api.v1.utils import get_actor_id
 from app.config.database import get_db_session
 from app.config.settings import settings
+from app.dependencies import get_audit_service
 from app.observability.alert_escalation import get_alert_escalation_manager
 from app.observability.cache_monitor import get_cache_monitor
 from app.observability.cusum import AISafetyCircuitBreaker
 from app.observability.metrics_collector import get_metrics_collector
-from app.security.auth import PermissionChecker
+from app.security.auth import PermissionChecker, get_current_active_user
 from app.services.cold_archive import ColdArchiveService
 from app.services.correction_rate_monitor import assess_recent_corrections
 from app.models.schemas import CorrectionRateProxyResponse
@@ -215,3 +219,123 @@ def _read_cache_metrics(cache_mon) -> dict:
     except Exception:
         logger.warning("obs_dashboard_cache_metrics_read_failed", exc_info=True)
         return {}
+
+
+# ---------------------------------------------------------------------------
+# A.109 / N1：熔断状态的**人工恢复入口**
+#
+# 缺口实测：`resume()` / `cancel_pending_suspension()` 早在代码里，但 app/ 内零调用、
+# 没有任何 API/页面能触发；再叠加"pending 不晋级 + 重启从快照恢复"，一旦触发就永久
+# `needs_review`，只能等快照 24h 过期。这里补三个受权限保护、必留审计的恢复动作。
+#
+# 权限：沿用本 router 的 `view_qc_report`（= 质控 + 系统管理员）。这与状态机的
+# 原始设计一致（科室主任在确认窗口内判定是否为统计波动），不额外放宽。
+# ---------------------------------------------------------------------------
+
+
+class BreakerActionRequest(BaseModel):
+    """熔断恢复动作的入参：**必须写原因**（无原因的恢复无法审计）。"""
+
+    reason: str = Field(min_length=1, max_length=200, description="恢复原因（审计必填）")
+    actor: str | None = Field(default=None, max_length=64, description="操作者标识（缺省取登录用户）")
+
+
+def get_breaker() -> AISafetyCircuitBreaker:
+    """可注入依赖：测试可 override，生产走单例。"""
+    return AISafetyCircuitBreaker.get_instance()
+
+
+async def _audit_breaker_action(audit_service, action: str, actor: str, detail: dict) -> None:
+    await audit_service.log_action(
+        action=action,
+        actor=actor,
+        target_type="safety_breaker",
+        target_id="ai_safety_circuit_breaker",
+        detail=detail,
+    )
+
+
+@router.post("/breaker/resume")
+async def resume_breaker(
+    payload: BreakerActionRequest,
+    breaker: AISafetyCircuitBreaker = Depends(get_breaker),
+    audit_service=Depends(get_audit_service),
+    current_user: dict | None = Depends(get_current_active_user),
+):
+    """把熔断器恢复到 ACTIVE（清空 pending/暂停病种/CUSUM 计数）。
+
+    这是"人工确认属于统计波动"的动作：CUSUM 计数一并 `reset()`（否则下一次样本
+    立刻再触发，恢复等于没恢复）。命中全部状态并写审计；重复调用是幂等的。
+    """
+    actor = payload.actor or get_actor_id(current_user)
+    before = dict(breaker.suspension_info)
+    breaker.resume(resumed_by=actor)
+    after = dict(breaker.suspension_info)
+    await _audit_breaker_action(
+        audit_service,
+        "ai_assist_resume_manual",
+        actor,
+        {
+            "reason": payload.reason,
+            "previous_state": before.get("state"),
+            "previous_reason": before.get("reason"),
+            "s_plus_reset_from": before.get("cusum_s_plus"),
+            "current_state": after.get("state"),
+        },
+    )
+    return {"ok": True, "previous": before, "current": after}
+
+
+@router.post("/breaker/cancel-pending")
+async def cancel_pending(
+    payload: BreakerActionRequest,
+    breaker: AISafetyCircuitBreaker = Depends(get_breaker),
+    audit_service=Depends(get_audit_service),
+    current_user: dict | None = Depends(get_current_active_user),
+):
+    """在确认窗口内取消 pending（判定为统计波动），不触发暂停。
+
+    与 `/breaker/resume` 的分工：本端点只对 `pending_confirmation` 生效（状态不对
+    就 400，不静默成功），且**不清 CUSUM 计数**——窗口内赌一把之后若再触发，应当
+    照常升级，而不是被这次取消掩盖。
+    """
+    actor = payload.actor or get_actor_id(current_user)
+    before = dict(breaker.suspension_info)
+    if not breaker.cancel_pending_suspension(canceller=actor):
+        raise BadRequestException(
+            error_message=f"当前状态不是待确认（{before.get('state')}），无法取消 pending"
+        )
+    after = dict(breaker.suspension_info)
+    await _audit_breaker_action(
+        audit_service,
+        "ai_assist_cancel_pending",
+        actor,
+        {
+            "reason": payload.reason,
+            "previous_state": before.get("state"),
+            "previous_reason": before.get("reason"),
+            "current_state": after.get("state"),
+        },
+    )
+    return {"ok": True, "previous": before, "current": after}
+
+
+@router.post("/breaker/resume-disease")
+async def resume_suspended_disease(
+    payload: BreakerActionRequest,
+    disease_type: str = Query(min_length=1, max_length=64),
+    breaker: AISafetyCircuitBreaker = Depends(get_breaker),
+    audit_service=Depends(get_audit_service),
+    current_user: dict | None = Depends(get_current_active_user),
+):
+    """解除单个病种的暂停（`resume_disease` 同样是零调用死方法）。"""
+    actor = payload.actor or get_actor_id(current_user)
+    if not breaker.resume_disease(disease_type):
+        raise BadRequestException(error_message=f"病种未处于暂停状态：{disease_type}")
+    await _audit_breaker_action(
+        audit_service,
+        "ai_assist_resume_disease",
+        actor,
+        {"reason": payload.reason, "disease_type": disease_type},
+    )
+    return {"ok": True, "disease_type": disease_type}

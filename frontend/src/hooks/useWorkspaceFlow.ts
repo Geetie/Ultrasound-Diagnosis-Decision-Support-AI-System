@@ -69,6 +69,16 @@ export interface WorkspaceFlow {
     sessionId: string;
     organs: string[];
     tier?: 'realtime' | 'standard' | 'full';
+    /** 与单器官 `start()` 同名同义：临床事实随请求上行（A.109 / N8）。 */
+    clinicalText?: string;
+    patientContext?: {
+      age?: number;
+      gender?: 'M' | 'F';
+      /** 规范码；`[]` = 已确认无条件，`undefined` = 未提供（SG 保守判命中）。 */
+      conditions?: string[];
+    };
+    /** 本次上传的影像 id：多器官端点已支持（后端 schemas.py:846-849）。 */
+    imageIds?: string[];
   }) => Promise<void>;
   /**
    * 单独重跑某一个器官（多器官流程里失败/跳过的那些）。
@@ -296,6 +306,13 @@ export function useWorkspaceFlow(): WorkspaceFlow {
         session_id: input.sessionId,
         organs: input.organs,
         response_tier: input.tier ?? DEFAULT_RESPONSE_TIER,
+        // A.109 / N8：后端多器官端点早已支持这三项（schemas.py:846-849），
+        // 前端此前不传 → 首判时医生填的临床信息/勾选的禁忌条件进不了 SG 判据
+        // （缺 data 时 SG 走保守分支；反过来也可能过度拦截）。缺省仍由后端
+        // 从同会话 donor 请求继承，保持向后兼容。
+        clinical_text: input.clinicalText || undefined,
+        patient_context: input.patientContext,
+        image_ids: input.imageIds,
       });
     } catch (e) {
       // 零静默：技术细节进控制台，医生可见出口是 phase=error 的界面文案

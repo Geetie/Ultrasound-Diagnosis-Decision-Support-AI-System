@@ -383,6 +383,7 @@ class RAGServiceImpl(RAGService):
             kept: list[ScoredChunk] = []
             dropped_normal = 0
             graph_exempt = 0
+            image_exempt = 0
             n_absolute = 0
             n_relative = 0
             relative_floor = request.min_score_threshold * reference_max
@@ -390,6 +391,15 @@ class RAGServiceImpl(RAGService):
                 if sc.retrieval_source == RetrievalMethod.GRAPH:
                     kept.append(sc)
                     graph_exempt += 1
+                    continue
+                # A.109 / N5：影像腿与图谱腿同属"不同量纲"，不能拿 dense/相对阈值判死活。
+                # 影像块没有 embedding（`retriever._image_hits` 里 embedding=None），
+                # 分数是 0.5*jaccard 的启发式值（`reranker.py:250-257`），恒 < 0.5 的
+                # 绝对阈值 → 打开影像腿后**所有**影像块都被这里剔掉，与"内容没特征"
+                # 是两个独立原因。保留但如实计数，别让"保留"变成静默。
+                if sc.retrieval_source == RetrievalMethod.IMAGE:
+                    kept.append(sc)
+                    image_exempt += 1
                     continue
                 score = _comparison_score(sc)
                 if sc.rerank_score is not None:
@@ -405,7 +415,7 @@ class RAGServiceImpl(RAGService):
                 else:
                     dropped_normal += 1
             result.chunks = kept
-            if graph_exempt or dropped_normal:
+            if graph_exempt or image_exempt or dropped_normal:
                 logger.info(
                     "min_score_filter_applied",
                     request_id=request.request_id,
@@ -415,6 +425,7 @@ class RAGServiceImpl(RAGService):
                     # 相对判据下的实际生效下界（absolute-only 时为 None）
                     relative_floor=round(relative_floor, 6) if n_relative else None,
                     graph_exempt=graph_exempt,
+                    image_exempt=image_exempt,
                     dropped=dropped_normal,
                     kept=len(kept),
                 )
