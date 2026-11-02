@@ -42,6 +42,11 @@ export const CONDITION_CODES = {
   '妊娠': 'pregnancy',
   '造影剂过敏': 'contrast_allergy',
   '抗凝治疗': 'anticoagulant_therapy',
+  // A.110 / G32：规则表里有这两类禁忌（liver_coagulopathy_biopsy /
+  // cardiac_severe_aortic_stenosis），但面板此前只给 3 个勾选项 → 这两条规则
+  // 在界面上"无法被表达"，等于永远不可达。码与 SG 规则 condition 同名。
+  '凝血功能障碍': 'coagulopathy',
+  '重度主动脉瓣狭窄': 'severe_aortic_stenosis',
 } as const;
 
 export type ConditionLabel = keyof typeof CONDITION_CODES;

@@ -1429,6 +1429,20 @@ async def _write_result_to_db(
                 "ai_safety_circuit_breaker_" + _safety_gate["state"]
             )
 
+        # A.110 / G14：幻觉检出后端的**处置**（此前只写 findings，零动作）。
+        # 只在 severe 转人工；mild/moderate 继续按 findings 展示（理由见
+        # _hallucination_review_reason 的 docstring）。
+        _hallucination_reason = _hallucination_review_reason(hallucination)
+        if _hallucination_reason:
+            if status == "completed":
+                status = "needs_review"
+            review_reason = review_reason or _hallucination_reason
+            logger.info(
+                "pipeline_hallucination_escalated_to_review",
+                request_id=getattr(request, "request_id", None),
+                reason=_hallucination_reason,
+            )
+
     # 2) 组装 findings
     timings_ms = {k: round(v, 2) for k, v in timings.items()}
     if t_start is not None:
@@ -2261,6 +2275,27 @@ async def _safe_nodule_contour(request_row: Any) -> dict[str, Any]:
 #: ``app/inference/hallucination_detector`` 的既有口径一致
 #: （该模块 ``severity_threshold=2`` 判"是否幻觉"，本映射只负责把分级说清）。
 _HALLUCINATION_SEVERITY_BY_LEVEL = {3: "severe", 2: "moderate", 1: "mild"}
+
+
+def _hallucination_review_reason(hallucination: dict[str, Any] | None) -> str | None:
+    """幻觉检测的**处置**判据（A.110 / G14）：只有 severe 才要求转人工。
+
+    背景：检测器此前只把结果写进 ``findings``（``is_hallucination`` /
+    ``severity``），后端没有任何动作 —— 前端只能把严重度降成 C 级展示，
+    "检测到严重幻觉"并不改变结论状态。
+
+    为什么只处理 severe：检测器是正则/词表启发式（5 类策略），mild/moderate
+    的误报率未做过真机评估；若一检测到就全部 `needs_review`，会把正常结论
+    整体拖进人工复核（与 N1 的"永久 needs_review"同类风险）。severe 对应
+    最硬的判据（词表 3 级命中），触发面窄、可解释。
+    """
+    if not isinstance(hallucination, dict):
+        return None
+    if not hallucination.get("is_hallucination"):
+        return None
+    severity = hallucination.get("severity")
+    value = getattr(severity, "value", severity)
+    return "hallucination_severe" if value == "severe" else None
 
 
 def _detect_hallucination_safely(

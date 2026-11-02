@@ -1,6 +1,6 @@
 # progress.md — 当前状态（唯一「现在在哪」来源）
 
-**Last Updated**: 2026-11-03（**A.107 按缺口台账开工：G1 主断链 + 4 条配套 + LLM 重试配置**；详见 16 号 A.107）
+**Last Updated**: 2026-11-03（**A.107~A.110 缺口批次**：G1 主断链、N1 熔断恢复、N5 影像腿阈值、N8 多部位临床事实、G32 禁忌族匹配、G14 严重幻觉转人工；详见 16 号对应条目）
 
 **目标**：18 项未打通项收口（详见 `docs/技术文档/未打通项打通计划/00-总览与对账表.md`，现状看其 §十一）
 
@@ -11,6 +11,7 @@
 - **A.105**：`findings.fusion_result` 补 `self_rag_score`（`None`=没质检、`0.0`=质检不过，不许混），守卫 2 例。
 - **A.106**：harness 整饬落地——仓库内自检 `make harness-check`（`scripts/audit/p78_harness_selfcheck.py`，12 项检查，FAIL 阻断）、状态文件追平、`feature_list.json` 过期 `in_progress` 4→1、`00b` 手册与 28 项台账漂移修正、审计认证指引 `docs/合规/Agent作业认证指引.md`。
 - **A.107（本轮）**：①**G1 修复**——`clinical_attributes` 从 `findings.fusion_result` 提升到顶层（`_lift_clinical_attributes`，守卫 6 例），03-4/03-6/06-5 的数据源断链解除；②恶性概率链路（adapter 去掉写死的 `undefined`，新增 `MalignancyRiskView`，只给点估计不做区间推算）；③`final_diagnosis` 四列**只读出口**进契约；④看板 `cusum_s_plus` 改取真值；⑤`guided_json` 死键删净 + 离线脚本 TypeError 修掉；⑥`llm-retry-settings` 显式配置（6 次 + 1s→30s 退避 + 抖动 0.25 + 耗尽续写，**重启 DSH 生效**）。
+- **A.109/A.110（本轮）**：①N1 熔断可恢复（pending 看门狗 + 3 个受审计端点 + 11 守卫）；②N5 影像块不再被 dense 阈值整批剔除（image 豁免 + 留痕）；③N8 多部位首判带临床事实（后端早已支持、前端漏传）；④G32 禁忌别名改**族闭包**匹配（`pregnancy_radiation` 类规则此前恒不命中）+ 面板补凝血/主动脉瓣狭窄两个勾选项；⑤G14 严重幻觉转人工（`hallucination_severe`）。
 - **仍关的能力**（默认值未变，做不到就别说"已打通"）：01-1 影像腿（裁决关，A.68 NO_GAIN）、01-2 低置信升档（生产不传 `retrieval_confidence`）、01-4 残留 1 处死键（`specialist/base.py:744`）、03-5 快照溯源、05-1 报告话术入口、06-4 基层档过滤（默认三甲）、06-6 注册结论（外部）；02-1/04-3 靠部署 `.env` 开。逐项见 28 项台账 §十一。
 
 ## Blockers

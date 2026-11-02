@@ -19,7 +19,15 @@ import {
  * - 不阻塞自动判读：装载即判读是既有口径，空信息由徽标提示而非弹窗拦截。
  */
 
-const CONDITION_OPTIONS = ['妊娠', '造影剂过敏', '抗凝治疗'] as const;
+// A.110 / G32：与 `clinicalInfo.CONDITION_CODES` 一一对应（漏码会被
+// clinicalInfo.test 的源码扫描拦下：勾选项缺码 = 勾了发不出去 = 反向 fail-open）。
+const CONDITION_OPTIONS = [
+  '妊娠',
+  '造影剂过敏',
+  '抗凝治疗',
+  '凝血功能障碍',
+  '重度主动脉瓣狭窄',
+] as const;
 
 export default function ClinicalInfoPanel({
   value,

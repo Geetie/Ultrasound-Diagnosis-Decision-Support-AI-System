@@ -67,11 +67,19 @@ describe('禁忌条件上行接线（C1）', () => {
       .map((m) => m[1])
       // 每行形如 `'妊娠': 'pregnancy'`，取冒号后的那个（值）
       .filter((_, i) => i % 2 === 1);
-    expect(values.length).toBe(3);
+    // A.110 / G32：从 3 条扩到 5 条（补 coagulopathy / severe_aortic_stenosis ——
+    // 规则表里有这两类禁忌，面板不给勾选项等于规则永远不可达）。
+    expect(values.length).toBe(5);
     for (const code of values) {
       expect(code, `码「${code}」必须是 ASCII 小写蛇形`).toMatch(/^[a-z][a-z0-9_]*$/);
     }
-    expect(values).toEqual(['pregnancy', 'contrast_allergy', 'anticoagulant_therapy']);
+    expect(values).toEqual([
+      'pregnancy',
+      'contrast_allergy',
+      'anticoagulant_therapy',
+      'coagulopathy',
+      'severe_aortic_stenosis',
+    ]);
   });
 
   it('未勾选时送 []（不是 undefined）：转换函数不吃 undefined 输入也不吐 undefined', () => {

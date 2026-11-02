@@ -93,7 +93,7 @@ async def run_pending_timeout_watchdog(
             else:
                 await asyncio.wait_for(stop.wait(), timeout=interval)
                 return
-        except asyncio.TimeoutError:
+        except asyncio.TimeoutError:  # silent-ok: 等满一个间隔是正常轮次边界，不是失败
             continue
         except asyncio.CancelledError:
             _logger.info("cusum_pending_watchdog_cancelled")

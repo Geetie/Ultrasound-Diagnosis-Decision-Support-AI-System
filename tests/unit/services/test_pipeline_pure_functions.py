@@ -10,6 +10,7 @@ pytestmark = [pytest.mark.track_inf]
 
 from app.services.diagnosis_pipeline import (
     _clinical_attributes_to_dict,
+    _hallucination_review_reason,
     _extract_findings,
     _extract_recommendation,
     _fusion_result_to_dict,
@@ -264,3 +265,48 @@ class TestLiftClinicalAttributes:
 
         src = inspect.getsource(diagnosis_pipeline._write_result_to_db)
         assert "_lift_clinical_attributes(findings)" in src
+
+
+class TestHallucinationEscalation:
+    """A.110 / G14：检出严重幻觉必须**转人工**，而不是只写 findings。
+
+    修复前：`is_hallucination=True` 只进 findings，status 仍是 completed ——
+    "检测到严重幻觉"不改变结论状态。修复后只在 severe 升级（mild/moderate
+    仅展示），避免启发式检测器把正常结论整体拖进人工复核。
+    """
+
+    def test_severe_escalates(self):
+        from app.models.schemas import HallucinationSeverity
+
+        assert (
+            _hallucination_review_reason(
+                {"is_hallucination": True, "severity": HallucinationSeverity.SEVERE}
+            )
+            == "hallucination_severe"
+        )
+
+    def test_severe_accepts_plain_string(self):
+        assert (
+            _hallucination_review_reason({"is_hallucination": True, "severity": "severe"})
+            == "hallucination_severe"
+        )
+
+    def test_mild_and_moderate_do_not_escalate(self):
+        for sev in ("mild", "moderate"):
+            assert _hallucination_review_reason({"is_hallucination": True, "severity": sev}) is None
+
+    def test_not_hallucination_or_missing(self):
+        assert _hallucination_review_reason(None) is None
+        assert _hallucination_review_reason({}) is None
+        assert _hallucination_review_reason({"is_hallucination": False, "severity": "severe"}) is None
+        assert _hallucination_review_reason({"checked": False, "severity": None}) is None
+
+    def test_write_path_wires_it(self):
+        """防回退：status/review_reason 的收口处必须真的调用（否则纯函数全绿也没用）。"""
+        import inspect
+
+        from app.services import diagnosis_pipeline
+
+        src = inspect.getsource(diagnosis_pipeline._write_result_to_db)
+        assert "_hallucination_review_reason(hallucination)" in src
+        assert "pipeline_hallucination_escalated_to_review" in src
