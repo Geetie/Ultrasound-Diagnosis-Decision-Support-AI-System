@@ -23,7 +23,7 @@ LEDGER = ROOT / "docs" / "合规" / "缺口核实台账-20261103.md"
 #: (文件相对路径, 行号, 该行应包含的关键符号)
 ANCHORS: tuple[tuple[str, int, str], ...] = (
     ("app/services/diagnosis_pipeline.py", 147, "_assess_routing"),
-    ("app/agents/knowledge.py", 570, "async def query"),
+    ("app/agents/knowledge.py", 580, "async def query"),
     ("app/agents/routing.py", 182, "retrieval_confidence"),
     ("app/rag/image_caption.py", 50, "async def describe"),
     ("app/rag/retriever.py", 1065, "visual_features"),

@@ -140,6 +140,29 @@ EMPTY_RAG_RESULT_CONFIDENCE = 0.0
 # ----------------------------------------------------------------------
 
 
+def _retrieval_confidence(chunks: list[KnowledgeChunk]) -> float | None:
+    """从 chunk 分数算检索置信度（A.142 / N4）。
+
+    口径：优先用**精排分**（cross-encoder，与"是否相关"更对齐），没有精排就用原始
+    检索分；两者都没有 → ``None``（未测，不是 0 分）。取 max 而不是均值：
+    只要有一条高置信证据，就说明检索够用——均值会被"凑数 chunk"拉低，
+    反而把够用的检索判成低置信。
+    """
+    rerank = [
+        c.rerank_score
+        for c in chunks
+        if isinstance(getattr(c, "rerank_score", None), (int, float))
+    ]
+    if rerank:
+        return float(max(rerank))
+    raw = [
+        c.score for c in chunks if isinstance(getattr(c, "score", None), (int, float))
+    ]
+    if raw:
+        return float(max(raw))
+    return None
+
+
 class SpecialistAgent(Agent):
     """器官专科智能体抽象基类（极薄标记类）。
 
@@ -358,6 +381,11 @@ class RAGSpecialistAgent(SpecialistAgent):
             return response
 
         trace.append(f"rag_chunks: {len(chunks)}")
+        # A.142 / N4：记录本次检索置信度（优先精排分，其次原始分；没有分 = 未测）。
+        # **只观测不决策**：升档门槛要真机延迟数据才能定，先让分布可见。
+        confidence = _retrieval_confidence(chunks)
+        if confidence is not None:
+            trace.append(f"retrieval_confidence -> {confidence:.4f}")
 
         # 3) 拼装 prompt
         prompt = self._build_prompt(context, chunks, trace)
@@ -563,6 +591,8 @@ class RAGSpecialistAgent(SpecialistAgent):
         response.organ = organ  # 防御性：确保 organ 被设置
         response.agent_name = self._agent_name()
         response.latency_ms = (time.monotonic() - start) * 1000.0
+        # A.142 / N4：把检索置信度挂到响应上（主路径之外的早退分支不设 → None = 未测）
+        response.retrieval_confidence = _retrieval_confidence(chunks)
 
         # 6) 公共后处理（D1 阈值检查 + D2 used_evidence_ids 写入）
         self._post_process(context, response)

@@ -168,6 +168,10 @@ class AgentResponse(BaseModel):
     #: （`{"evaluated": bool, "passed": bool|null, "issues": [...]}`）。
     #: 没有话术 → `None`（未评估），不是"通过"。
     patient_explanation_quality: dict[str, Any] | None = None
+    #: A.142 / N4：本次检索的置信度（0..1）。取 chunk 分数（优先精排分）的最大值；
+    #: 检索器没给分 → None（"未测"而不是"0 分"）。
+    #: 目前**只用于观测与 trace**，不参与路由（升档口径需真机延迟数据后再定）。
+    retrieval_confidence: float | None = None
     # 患者解释话术（M10，默认不入正式报告）
     patient_explanation: PatientExplanation | None = None
     # 科研量化指标（M11，前端默认折叠）

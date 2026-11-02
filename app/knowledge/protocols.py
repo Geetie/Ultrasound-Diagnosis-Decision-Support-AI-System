@@ -101,6 +101,12 @@ class KnowledgeChunk(BaseModel):
     source_doc_id: str
     section_path: str = ""
     token_count: int = 0
+    #: A.142 / N4：检索相关度。此前 RAG 层有分（`ScoredChunk.score`），但
+    #: `KnowledgeAgent.query` 只回 `KnowledgeChunk` → 分被丢弃，于是"低置信度
+    #: 升档"永远读不到置信度。这里把分带过边界；None = 未提供（例如旧缓存条目）。
+    score: float | None = None
+    #: 交叉编码器重排分（None = 未精排）。与 `score` 量纲不同，不要混用比较。
+    rerank_score: float | None = None
 
     @field_validator("chunk_id")
     @classmethod

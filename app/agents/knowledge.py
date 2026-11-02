@@ -561,7 +561,17 @@ class KnowledgeAgentImpl(KnowledgeAgent):
             **profile_kwargs,
         )
         result = await self._rag.retrieve(retrieval_request)
-        return [sc.chunk for sc in result.chunks]
+        chunks: list[KnowledgeChunk] = []
+        for sc in result.chunks:
+            chunk = sc.chunk
+            # A.142 / N4：把 RAG 的分带过边界（此前 `[sc.chunk for ...]` 直接丢弃）。
+            # 用 model_copy 避免与缓存里共享同一个对象时被就地改写。
+            chunk = chunk.model_copy(
+                update={"score": float(getattr(sc, "score", 0.0) or 0.0),
+                        "rerank_score": getattr(sc, "rerank_score", None)}
+            )
+            chunks.append(chunk)
+        return chunks
 
     # ------------------------------------------------------------------
     # KnowledgeAgent protocol
