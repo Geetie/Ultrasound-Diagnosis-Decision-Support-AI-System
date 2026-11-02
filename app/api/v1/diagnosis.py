@@ -822,6 +822,17 @@ async def submit_multi_organ_diagnosis(
     )
 
 
+async def _evidence_sources_for(db: AsyncSession, result: Any) -> dict[str, dict[str, str]] | None:
+    """取本次证据的来源文档/章节（A.126 / G23）；失败/空 → None（不造空字典）。"""
+    ids = getattr(result, "knowledge_ids", None)
+    if not ids:
+        return None
+    from app.services.evidence_sources import load_evidence_sources
+
+    sources = await load_evidence_sources(db, ids)
+    return sources or None
+
+
 @router.get("/result/{request_id}", response_model=DiagnosisResult)
 async def get_diagnosis_result(
     request_id: str,
@@ -1109,6 +1120,8 @@ async def get_diagnosis_result(
         evidence=DiagnosisEvidence(
             knowledge_ids=result.knowledge_ids if hasattr(result, "knowledge_ids") and result.knowledge_ids else None,
             content=result.findings if result.findings else None,
+            # A.126 / G23：裸 chunk_id → 来源文档/章节（查不到就不给，前端回落裸 ID）
+            sources=await _evidence_sources_for(db, result),
         ),
         quality_control=DiagnosisQualityControl(
             confidence_score=result.confidence if hasattr(result, "confidence") and result.confidence else None,

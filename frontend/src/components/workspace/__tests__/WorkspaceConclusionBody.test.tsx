@@ -278,3 +278,31 @@ describe('WorkspaceConclusionBody · 处置建议与测量（G38）', () => {
     expect(container.querySelector('[data-region="measurement"]')!.textContent).not.toContain('估算');
   });
 });
+
+/** 证据来源（A.126 / G23）：显示"文档·章节（chunk_id）"，缺来源回落裸 ID。 */
+describe('WorkspaceConclusionBody · 证据来源（G23）', () => {
+  const BASE: ConclusionView = { headline: '考虑良性结节（TI-RADS 3）', evidenceIds: ['c1', 'c2'] };
+  const EXPAND = '展开依据 / 鉴别诊断 / 诊断过程';
+
+  it('有来源：主行显示文档·章节，次要行是 chunk_id', () => {
+    render(
+      <WorkspaceConclusionBody
+        state="conclusion"
+        view={{
+          ...BASE,
+          evidenceSources: { c1: { docId: 'acr_ti_rads_2017', sectionPath: '第4章/4.2' } },
+        }}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: EXPAND }));
+    expect(screen.getByText(/acr_ti_rads_2017 · 第4章\/4\.2/)).toBeInTheDocument();
+    expect(screen.getByText(/（c1）/)).toBeInTheDocument();
+  });
+
+  it('无来源：回落裸 ID，并保留"暂未提供点击跳转"说明', () => {
+    render(<WorkspaceConclusionBody state="conclusion" view={BASE} />);
+    fireEvent.click(screen.getByRole('button', { name: EXPAND }));
+    expect(screen.getByText('c1')).toBeInTheDocument();
+    expect(screen.getByText(/暂未提供点击跳转/)).toBeInTheDocument();
+  });
+});

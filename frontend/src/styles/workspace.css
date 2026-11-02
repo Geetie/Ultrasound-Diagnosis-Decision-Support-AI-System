@@ -370,6 +370,14 @@
   color: var(--color-text-primary);
 }
 
+/* 证据来源（G23）：主行是文档·章节，次要行是 chunk_id（等宽、弱化） */
+.ws-conclusion__evidence-id {
+  margin-left: var(--space-1);
+  font-family: var(--font-family-mono, monospace);
+  font-size: var(--font-size-tiny);
+  color: var(--color-text-secondary);
+}
+
 /* 结构化处置建议（M7，G38）：与风险行同栏，逐条列出 */
 .ws-actions {
   display: flex;

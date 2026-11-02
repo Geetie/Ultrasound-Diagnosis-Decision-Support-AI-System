@@ -279,6 +279,23 @@ export interface ContraindicationMatchView {
   organ?: string;
 }
 
+function toEvidenceSources(
+  raw: unknown,
+): Record<string, { docId?: string; sectionPath?: string }> | undefined {
+  if (typeof raw !== 'object' || raw === null) return undefined;
+  const out: Record<string, { docId?: string; sectionPath?: string }> = {};
+  for (const [chunkId, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof value !== 'object' || value === null) continue;
+    const d = value as Record<string, unknown>;
+    const docId = typeof d.source_doc_id === 'string' && d.source_doc_id ? d.source_doc_id : undefined;
+    const sectionPath =
+      typeof d.section_path === 'string' && d.section_path ? d.section_path : undefined;
+    if (!docId && !sectionPath) continue;
+    out[chunkId] = { docId, sectionPath };
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
 function toContraindicationMatches(raw: unknown): ContraindicationMatchView[] {
   if (!Array.isArray(raw)) return [];
   const out: ContraindicationMatchView[] = [];
@@ -308,6 +325,8 @@ export interface ConclusionView {
   tier?: string;
   /** 证据条目 id（来自 evidence.knowledge_ids 与 content 里的证据引用） */
   evidenceIds: string[];
+  /** 证据来源（G23）：chunk_id → {docId, sectionPath}；缺键 = 未索引，回落裸 ID */
+  evidenceSources?: Record<string, { docId?: string; sectionPath?: string }>;
   /** 「看一眼」档 —— 多条理由时按此顺序取第一条，不并列渲染（P2 一次决策） */
   attention?: { reason: AttentionReason; text: string };
   /** 恶性风险（M5）—— 后端未给概率与分级时整个字段不存在（不编造） */
@@ -440,6 +459,8 @@ export function toConclusionView(result: DiagnosisResult | null): ConclusionView
     organ: diagnosis.organ,
     tier: extractTier(content),
     evidenceIds,
+    // A.126 / G23：来源文档/章节（后端只给查到的；缺键回落裸 chunk_id）
+    evidenceSources: toEvidenceSources(result.evidence?.sources),
     attention,
     segmentation: toSegmentationView(result.nodule_segmentation),
     // 02-1：T2a 影像分类旁路（辅助参考）—— 原样收敛透传，available=false 时

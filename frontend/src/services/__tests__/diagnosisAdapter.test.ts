@@ -413,3 +413,31 @@ describe('G38 结构化处置建议/测量迁移（A.125）', () => {
     expect(toConclusionView({ ...REAL_COMPLETED, measurement: {} } as never)!.measurementView).toBeUndefined();
   });
 });
+
+describe('G23 证据来源溯源（A.126）', () => {
+  it('后端给了 sources → chunk_id→文档/章节（只保留非空字段）', () => {
+    const view = toConclusionView({
+      ...REAL_COMPLETED,
+      evidence: {
+        knowledge_ids: ['c1', 'c2'],
+        sources: {
+          c1: { source_doc_id: 'acr_ti_rads_2017', section_path: '第4章/4.2' },
+          c2: { source_doc_id: 'acr_ti_rads_2017' },
+        },
+      },
+    } as never)!;
+    expect(view.evidenceSources).toEqual({
+      c1: { docId: 'acr_ti_rads_2017', sectionPath: '第4章/4.2' },
+      c2: { docId: 'acr_ti_rads_2017', sectionPath: undefined },
+    });
+  });
+
+  it('没有 sources / 脏形状 → undefined（界面回落裸 ID）', () => {
+    expect(toConclusionView(REAL_COMPLETED as never)!.evidenceSources).toBeUndefined();
+    const v = toConclusionView({
+      ...REAL_COMPLETED,
+      evidence: { knowledge_ids: ['c1'], sources: { c1: {} , c2: 'junk' } },
+    } as never)!;
+    expect(v.evidenceSources).toBeUndefined();
+  });
+});

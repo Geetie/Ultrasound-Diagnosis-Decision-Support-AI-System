@@ -256,6 +256,9 @@ class DiagnosisRequestResponse(BaseModel):
 class DiagnosisEvidence(BaseModel):
     knowledge_ids: list[str] | None = None
     content: dict[str, Any] | None = None
+    # A.126 / G23：chunk_id → {source_doc_id, section_path}。只有查到的才出现；
+    # 缺键 = 该 chunk 已下线/未索引，前端回落显示裸 ID（不编造来源）。
+    sources: dict[str, dict[str, str]] | None = None
 
 
 class DiagnosisQualityControl(BaseModel):

@@ -89,6 +89,8 @@ function ConclusionBlock({
   // 依据条目 + 鉴别诊断 + 跨模态对照（03-4/03-5/03-6 接线）。三段**独立门控**：
   // 后端真给了才有，空数组/缺字段整段不渲染 —— 不编造。
   const evidenceIds = live?.evidenceIds ?? [];
+  // A.126 / G23：chunk_id → 来源文档/章节（缺键回落裸 ID）
+  const evidenceSources = live?.evidenceSources ?? {};
   const ddx = live?.differentialDiagnoses ?? [];
   const crossHints = live?.crossModalityHints ?? [];
   // A.121 / G34：禁忌命中明细（空 = 本次无命中 → 整块不渲染）
@@ -252,14 +254,23 @@ function ConclusionBlock({
                 本次结论引用的知识条目（{evidenceIds.length} 条）
               </span>
               <ul className="ws-conclusion__evidence-list">
-                {evidenceIds.map((id) => (
-                  <li key={id} className="ws-conclusion__evidence-item">
-                    {id}
-                  </li>
-                ))}
+                {evidenceIds.map((id) => {
+                  const src = evidenceSources[id];
+                  const label = src?.docId
+                    ? `${src.docId}${src.sectionPath ? ` · ${src.sectionPath}` : ''}`
+                    : null;
+                  return (
+                    <li key={id} className="ws-conclusion__evidence-item" data-chunk-id={id}>
+                      {label ?? id}
+                      {label && <span className="ws-conclusion__evidence-id">（{id}）</span>}
+                    </li>
+                  );
+                })}
               </ul>
               <span className="ws-conclusion__evidence-note">
-                条目 ID 可回知识库原文核对；界面暂未提供点击跳转。
+                {Object.keys(evidenceSources).length > 0
+                  ? '来源为知识库文档与章节；未标注来源的条目表示该 chunk 未索引，仅能以 ID 核对。'
+                  : '条目 ID 可回知识库原文核对；界面暂未提供点击跳转。'}
               </span>
             </>
           )}

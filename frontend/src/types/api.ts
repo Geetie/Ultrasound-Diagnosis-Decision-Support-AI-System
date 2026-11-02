@@ -195,7 +195,17 @@ export interface DiagnosisResult {
   /** ⚠️ 实测是**小写** `normal`；设计文档写的大写 `NORMAL` 是错的。 */
   fusion_status: 'normal' | 'bypassed';
   diagnosis: DiagnosisDetail;
-  evidence: Record<string, unknown>;
+  /**
+   * 证据（G23）：`knowledge_ids` 是裸 chunk_id 列表，`sources` 是
+   * chunk_id → {source_doc_id, section_path}（A.126 起由结果接口补上；只含查到的，
+   * 缺键 = 未索引/已下线，界面回落显示裸 ID，不编造来源）。
+   */
+  evidence: {
+    knowledge_ids?: string[] | null;
+    content?: Record<string, unknown> | null;
+    sources?: Record<string, { source_doc_id?: string; section_path?: string }> | null;
+    [key: string]: unknown;
+  };
   quality_control?: Record<string, unknown>;
   /**
    * ⚠️ **与 `diagnosis.sg_result.allowed` 存在语义矛盾**，实测同一条响应里：
