@@ -103,6 +103,11 @@ class SafetyCheckResponse(BaseModel):
     elapsed_ms: float = 0.0
     consent_check_timeout: bool = False
     hallucination_warning: bool = False
+    # A.121 / G34：禁忌命中的结构化明细（rule_id/description/severity/organ）。
+    # 此前 CheckResult 带出来了，但响应模型没有这个字段 → 上游只拿到
+    # "检测到 N 条禁忌" 一句汇总，rule_id 与 description 全部丢在网关内部，
+    # 医生看不到"到底命中了哪条规则"。
+    contraindication_matches: list[dict[str, Any]] = []
 
 
 class ConsistencyCheckRequest(BaseModel):
@@ -455,6 +460,7 @@ async def _perform_safety_check_inner(request: SafetyCheckRequest) -> SafetyChec
         elapsed_ms=check_result.elapsed_ms,
         consent_check_timeout=check_result.consent_check_timeout,
         hallucination_warning=check_result.hallucination_warning,
+        contraindication_matches=list(check_result.contraindication_matches or []),
     )
 
     if check_result.degraded_mode:

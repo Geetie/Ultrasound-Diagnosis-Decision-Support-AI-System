@@ -1125,6 +1125,12 @@ async def get_diagnosis_result(
         model_version=model_version,
         llm_model=llm_model,
         knowledge_base_version=knowledge_base_version,
+        # A.121 / G34：禁忌命中明细（写法：有才给，空/缺 → None，不造空列表）
+        contraindication_matches=(
+            (diagnosis_payload or {}).get("contraindication_matches")
+            if isinstance((diagnosis_payload or {}).get("contraindication_matches"), list)
+            else None
+        ),
         # 05-3 S1（A.107 / G42）：金标准回填的**只读出口**——没有它，四个列
         # 写了也无人能看，回填率无法进界面/审计统计。
         final_diagnosis=_opt_str(getattr(result, "final_diagnosis", None)),

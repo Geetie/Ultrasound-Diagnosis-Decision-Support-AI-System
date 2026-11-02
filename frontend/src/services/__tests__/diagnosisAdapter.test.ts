@@ -269,3 +269,42 @@ describe('M4/M11/M12 字段透传（03-4 / 03-6 / 06-5）', () => {
     expect(v.researchMetrics).toBeUndefined();
   });
 });
+
+describe('G34 禁忌命中明细（A.121）', () => {
+  it('后端给了命中明细 → 原样收敛为视图字段', () => {
+    const view = toConclusionView({
+      ...REAL_COMPLETED,
+      contraindication_matches: [
+        {
+          rule_id: 'thyroid_pregnancy_fna',
+          description: '妊娠期避免 FNA',
+          severity: 'high',
+          organ: 'thyroid',
+        },
+      ],
+    } as never)!;
+    expect(view.contraindicationMatches).toEqual([
+      {
+        ruleId: 'thyroid_pregnancy_fna',
+        description: '妊娠期避免 FNA',
+        severity: 'high',
+        organ: 'thyroid',
+      },
+    ]);
+  });
+
+  it('没有该字段 → 空数组（整块不渲染，不编造）', () => {
+    const view = toConclusionView(REAL_COMPLETED as never)!;
+    expect(view.contraindicationMatches).toEqual([]);
+  });
+
+  it('脏数据（非数组 / 空行）→ 丢弃而不是渲染错误框', () => {
+    const v1 = toConclusionView({ ...REAL_COMPLETED, contraindication_matches: 'x' } as never)!;
+    expect(v1.contraindicationMatches).toEqual([]);
+    const v2 = toConclusionView({
+      ...REAL_COMPLETED,
+      contraindication_matches: [{}, 'junk', { rule_id: '' }],
+    } as never)!;
+    expect(v2.contraindicationMatches).toEqual([]);
+  });
+});

@@ -241,6 +241,11 @@ export interface DiagnosisResult {
    */
   nodule_segmentation?: Record<string, unknown> | null;
   /**
+   * 禁忌命中明细（G34）：后端白名单投影 rule_id/description/severity/organ；
+   * 缺省/空 = 本次无命中（界面整块不渲染），不许当成"检查过且没问题"的证明。
+   */
+  contraindication_matches?: Array<Record<string, unknown>> | null;
+  /**
    * T2a 影像分类旁路（02-1 后端挂入）：**辅助参考**，与 nodule_segmentation
    * 同风格的可选 Dict。available=true 带 probs/predicted/malignant_prob；
    * available=false 带 reason（封闭集合）——前端必须显示「未做影像分类：<原因>」，

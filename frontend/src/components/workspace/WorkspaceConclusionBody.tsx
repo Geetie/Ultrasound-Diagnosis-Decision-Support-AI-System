@@ -91,6 +91,8 @@ function ConclusionBlock({
   const evidenceIds = live?.evidenceIds ?? [];
   const ddx = live?.differentialDiagnoses ?? [];
   const crossHints = live?.crossModalityHints ?? [];
+  // A.121 / G34：禁忌命中明细（空 = 本次无命中 → 整块不渲染）
+  const contraindications = live?.contraindicationMatches ?? [];
   const canExpand = evidenceIds.length > 0 || ddx.length > 0 || crossHints.length > 0;
 
   return (
@@ -128,6 +130,22 @@ function ConclusionBlock({
               : ''}
             {risk.range ? ` · ${risk.range}` : ''}
           </span>
+        </div>
+      )}
+
+      {/* 禁忌命中明细（G34）：SG 侧早就知道命中了哪条规则，但此前只给一句
+          "检测到 N 条禁忌"。这里如实列出 rule 描述，供医生复核；空数组不渲染。 */}
+      {contraindications.length > 0 && (
+        <div className="ws-contraindication" data-node="2:27">
+          <span className="ws-contraindication__label">禁忌命中（需人工确认）</span>
+          <ul className="ws-contraindication__list">
+            {contraindications.map((m, i) => (
+              <li key={`${m.ruleId ?? 'rule'}-${i}`} className="ws-contraindication__item">
+                {m.description ?? m.ruleId}
+                {m.ruleId && m.description ? `（${m.ruleId}）` : ''}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 

@@ -120,3 +120,54 @@ describe('WorkspaceConclusionBody · 展开区新三段（03-4/03-6/06-5）', ()
     expect(c2.querySelector('[data-testid="research-metrics"]')).toBeNull();
   });
 });
+
+/**
+ * 禁忌命中明细（A.121 / G34）。
+ * 此前 SG 只给一句"检测到 N 条禁忌"，rule_id 与 description 全丢在网关内部；
+ * 现在如实列出命中的规则，供医生复核。**空数组整块不渲染**（不编造"没有禁忌"）。
+ */
+describe('WorkspaceConclusionBody · 禁忌命中明细（G34）', () => {
+  const BASE: ConclusionView = { headline: '考虑良性结节（TI-RADS 3）', evidenceIds: [] };
+
+  it('有命中：渲染描述与规则 id', () => {
+    const { container } = render(
+      <WorkspaceConclusionBody
+        state="conclusion"
+        view={{
+          ...BASE,
+          contraindicationMatches: [
+            {
+              ruleId: 'thyroid_pregnancy_fna',
+              description: '妊娠期避免 FNA',
+              severity: 'high',
+              organ: 'thyroid',
+            },
+          ],
+        }}
+      />,
+    );
+    const block = container.querySelector('[data-node="2:27"]');
+    expect(block).not.toBeNull();
+    expect(screen.getByText('禁忌命中（需人工确认）')).toBeInTheDocument();
+    expect(screen.getByText(/妊娠期避免 FNA/)).toBeInTheDocument();
+    expect(screen.getByText(/thyroid_pregnancy_fna/)).toBeInTheDocument();
+  });
+
+  it('无命中：整块不渲染（不显示"没有禁忌"这种说法）', () => {
+    const { container } = render(
+      <WorkspaceConclusionBody state="conclusion" view={{ ...BASE, contraindicationMatches: [] }} />,
+    );
+    expect(container.querySelector('[data-node="2:27"]')).toBeNull();
+    expect(screen.queryByText('禁忌命中（需人工确认）')).toBeNull();
+  });
+
+  it('只有 description 没有 ruleId 也能显示', () => {
+    render(
+      <WorkspaceConclusionBody
+        state="conclusion"
+        view={{ ...BASE, contraindicationMatches: [{ description: '凝血功能障碍避免穿刺' }] }}
+      />,
+    );
+    expect(screen.getByText('凝血功能障碍避免穿刺')).toBeInTheDocument();
+  });
+});

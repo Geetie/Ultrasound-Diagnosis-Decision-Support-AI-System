@@ -355,3 +355,68 @@ class TestGradingFloorEscalation:
         assert src.index("_grading_floor_audit = _evaluate_grading_floor") < src.index("# 1) 决定 status")
         assert "_grading_floor_review_reason(_grading_floor_audit)" in src
         assert "pipeline_grading_floor_escalated_to_review" in src
+
+
+class TestContraindicationMatchesProjection:
+    """A.121 / G34：禁忌命中明细要能上屏，但只投影白名单字段。
+
+    此前 SG 响应模型不带 `contraindication_matches`，上游只显示"检测到 N 条禁忌"——
+    医生看不到"命中的是哪条规则"。
+    """
+
+    def test_projects_whitelist_fields(self):
+        from app.services.diagnosis_pipeline import _contraindication_matches_from
+
+        out = _contraindication_matches_from(
+            {
+                "contraindication_matches": [
+                    {
+                        "rule_id": "thyroid_pregnancy_fna",
+                        "organ": "thyroid",
+                        "condition": "pregnancy",
+                        "description": "妊娠期避免 FNA",
+                        "severity": "high",
+                        "internal_field": "should_be_dropped",
+                    }
+                ]
+            }
+        )
+        assert out == [
+            {
+                "rule_id": "thyroid_pregnancy_fna",
+                "description": "妊娠期避免 FNA",
+                "severity": "high",
+                "organ": "thyroid",
+            }
+        ]
+
+    def test_dedupes_and_skips_blank_rows(self):
+        from app.services.diagnosis_pipeline import _contraindication_matches_from
+
+        out = _contraindication_matches_from(
+            {
+                "contraindication_matches": [
+                    {"rule_id": "r1", "description": "d"},
+                    {"rule_id": "r1", "description": "d"},
+                    {"rule_id": "", "description": ""},
+                    "not-a-dict",
+                ]
+            }
+        )
+        assert len(out) == 1 and out[0]["rule_id"] == "r1"
+
+    def test_missing_or_bad_shape_returns_empty(self):
+        from app.services.diagnosis_pipeline import _contraindication_matches_from
+
+        assert _contraindication_matches_from(None) == []
+        assert _contraindication_matches_from({}) == []
+        assert _contraindication_matches_from({"contraindication_matches": "x"}) == []
+
+    def test_findings_gets_key_only_when_non_empty(self):
+        import inspect
+
+        from app.services import diagnosis_pipeline
+
+        src = inspect.getsource(diagnosis_pipeline._write_result_to_db)
+        assert "_contraindication_matches_from(sg_result)" in src
+        assert 'findings["contraindication_matches"] = _contra' in src

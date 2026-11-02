@@ -1536,6 +1536,10 @@ async def _write_result_to_db(
         if t2a_classification is not None
         else {"available": False, "reason": "not_run", "skipped": True},
     }
+    # A.121 / G34：禁忌命中明细（有才写键；空列表与"没命中"语义不同，不写空键）
+    _contra = _contraindication_matches_from(sg_result)
+    if _contra:
+        findings["contraindication_matches"] = _contra
     # A.107（G1/P0）：契约字段与报告都读 findings 顶层，写侧却在 fusion_result 里
     # → 提升一层，见 _lift_clinical_attributes 的 docstring。
     _lift_clinical_attributes(findings)
@@ -2313,6 +2317,42 @@ async def _safe_nodule_contour(request_row: Any) -> dict[str, Any]:
 #: ``app/inference/hallucination_detector`` 的既有口径一致
 #: （该模块 ``severity_threshold=2`` 判"是否幻觉"，本映射只负责把分级说清）。
 _HALLUCINATION_SEVERITY_BY_LEVEL = {3: "severe", 2: "moderate", 1: "mild"}
+
+
+def _contraindication_matches_from(sg_result: Any) -> list[dict[str, Any]]:
+    """从 SG 结果里取禁忌命中明细（A.121 / G34）。
+
+    SG 侧 `CheckResult.contraindication_matches` 早有 rule_id / organ / condition /
+    description / severity，但响应模型此前没带出来，上游只能显示"检测到 N 条禁忌"。
+    这里做**白名单投影**（只保留可对上屏的四个字段 + 去重），不把网关内部结构原样泼给前端。
+    """
+    if not isinstance(sg_result, dict):
+        return []
+    raw = sg_result.get("contraindication_matches")
+    if not isinstance(raw, list):
+        return []
+    out: list[dict[str, Any]] = []
+    seen: set[tuple[str, str]] = set()
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        rule_id = str(item.get("rule_id") or "").strip()
+        description = str(item.get("description") or "").strip()
+        if not rule_id and not description:
+            continue
+        key = (rule_id, description)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(
+            {
+                "rule_id": rule_id or None,
+                "description": description or None,
+                "severity": str(item.get("severity") or "").strip() or None,
+                "organ": str(item.get("organ") or "").strip() or None,
+            }
+        )
+    return out
 
 
 def _hallucination_review_reason(hallucination: dict[str, Any] | None) -> str | None:

@@ -190,6 +190,38 @@ function toMalignancyRiskView(raw: unknown): MalignancyRiskView | undefined {
   };
 }
 
+/** 禁忌命中明细视图（A.121 / G34）。
+ *
+ * 后端契约 `DiagnosisResult.contraindication_matches` 是白名单投影
+ * （rule_id/description/severity/organ）。界面只负责**如实列出**，不改写、不推断；
+ * 空/缺 = 本次没有禁忌命中，整块不渲染。
+ */
+export interface ContraindicationMatchView {
+  ruleId?: string;
+  description?: string;
+  severity?: string;
+  organ?: string;
+}
+
+function toContraindicationMatches(raw: unknown): ContraindicationMatchView[] {
+  if (!Array.isArray(raw)) return [];
+  const out: ContraindicationMatchView[] = [];
+  for (const item of raw) {
+    if (typeof item !== 'object' || item === null) continue;
+    const d = item as Record<string, unknown>;
+    const ruleId = typeof d.rule_id === 'string' && d.rule_id ? d.rule_id : undefined;
+    const description = typeof d.description === 'string' && d.description ? d.description : undefined;
+    if (!ruleId && !description) continue;
+    out.push({
+      ruleId,
+      description,
+      severity: typeof d.severity === 'string' && d.severity ? d.severity : undefined,
+      organ: typeof d.organ === 'string' && d.organ ? d.organ : undefined,
+    });
+  }
+  return out;
+}
+
 /** 结论区一级视图模型（对应 04_判读态结论） */
 export interface ConclusionView {
   /** 一句话结论 —— 直接来自 fusion_result.content，不二次改写 */
@@ -210,6 +242,8 @@ export interface ConclusionView {
   safetyBlocked?: { message: string; errorCode?: string };
   /** 终置信度 */
   finalConfidence?: number;
+  /** 禁忌命中明细（G34）：空/缺 = 本次无命中（整块不渲染） */
+  contraindicationMatches?: ContraindicationMatchView[];
   /** 分割旁路（病灶 bbox + 面积）—— available=false 时影像区显示降级原因 */
   segmentation?: SegmentationView;
   /** T2a 影像分类旁路视图（02-1）—— 辅助参考；available=false 时影像区显示
@@ -332,6 +366,8 @@ export function toConclusionView(result: DiagnosisResult | null): ConclusionView
           }
         : undefined,
     finalConfidence: fusion?.final_confidence,
+    // A.121 / G34：禁忌命中明细原样收敛（空数组 = 无命中）
+    contraindicationMatches: toContraindicationMatches(result.contraindication_matches),
     // 03-4 / 03-6 / 06-5：M4/M12/M11 原样透传 —— 不排序、不改写、不补默认值；
     // 空列表照传（渲染层按 length>0 独立门控），None 省略为 undefined（P1 默认沉默）。
     differentialDiagnoses: result.differential_diagnoses,

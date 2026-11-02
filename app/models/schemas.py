@@ -495,6 +495,11 @@ class DiagnosisResult(BaseModel):
     # 形态同样用 Dict 承载（会随检索策略演进），避免过早固化契约。
     similar_cases: dict[str, Any] | None = None
 
+    # 禁忌命中明细（A.121 / G34）：SG 侧早有 rule_id/description，但此前响应模型
+    # 不带该字段、上游只显示"检测到 N 条禁忌"——医生看不到是哪条规则。
+    # 白名单投影见 `_contraindication_matches_from`（rule_id/description/severity/organ）。
+    contraindication_matches: list[dict[str, Any]] | None = None
+
     # 05-3 S1 金标准回填（A.107 / G42）：PATCH /{id}/final-diagnosis 是写入口，
     # 但此前**没有任何读取出口** —— 回填率、谁在何时定了金标准，界面与审计
     # 面板都拿不到（"只写不读"）。四个只读字段原样透出，不回写、不参与判读。

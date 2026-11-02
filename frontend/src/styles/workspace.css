@@ -370,6 +370,32 @@
   color: var(--color-text-primary);
 }
 
+/* 禁忌命中明细（G34，2:27）：与风险行同栏，但用列表 + 警示色，避免被当成普通信息 */
+.ws-contraindication {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+}
+
+.ws-contraindication__label {
+  width: 64px;
+  flex: 0 0 64px;
+  font-size: var(--font-size-tiny);
+  color: var(--color-attention);
+}
+
+.ws-contraindication__list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: var(--font-size-body);
+  color: var(--color-text-primary);
+}
+
+.ws-contraindication__item + .ws-contraindication__item {
+  margin-top: 2px;
+}
+
 /* 建议动作（2:29） */
 .ws-conclusion__advice {
   font-size: var(--font-size-body);
