@@ -405,6 +405,16 @@ async def lifespan(app: FastAPI):
         logger.warning("infra_health_start_failed", error=str(e))
         app.state.infra_health_task = None
 
+    # OBS: 审计链周期任务（A.119 / G44）。此前 `start_audit_chain_periodic_tasks`
+    # 全仓零调用、且函数体只"构造"跨链对象从不写锚 → 周期校验与跨链存证都不存在。
+    try:
+        from app.observability.audit_chain.periodic import start_audit_chain_periodic_tasks
+        from app.config.database import AsyncSessionLocal as _AsyncSessionLocal
+
+        await start_audit_chain_periodic_tasks(_AsyncSessionLocal)
+    except Exception as e:
+        logger.warning("audit_chain_periodic_start_failed", error=str(e))
+
     # OBS: CUSUM 周/月统计喂数（A.115 / G19）。此前三个统计窗口只有测试写入 →
     # `weekly_rate_exceeded` 入口不可达。默认观察模式（只记录，不触发暂停）。
     try:
@@ -836,6 +846,14 @@ async def lifespan(app: FastAPI):
         logger.warning(
             "obs_export_stop_failed", error=str(e)
         )
+    # OBS: 停止审计链周期任务
+    try:
+        from app.observability.audit_chain.periodic import stop_audit_chain_periodic_tasks
+
+        await stop_audit_chain_periodic_tasks()
+    except Exception as e:
+        logger.warning("audit_chain_periodic_stop_failed", error=str(e))
+
     # OBS: 停止 CUSUM 统计喂数 + pending 看门狗（周期任务，取消即可）
     stats_task = getattr(app.state, "cusum_stats_feed_task", None)
     if stats_task is not None and not stats_task.done():
