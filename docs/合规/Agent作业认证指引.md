@@ -58,13 +58,15 @@ cd frontend && npx vitest run <file> --reporter=basic
 
 ## 2. 2026-11-03 这一轮做了什么（逐条可核）
 
+**远端已同步**（2026-11-03 01:2x Asia/Shanghai）：`HEAD == origin/main == 8f5ab31`，工作区干净。
+
 | # | 动作 | 提交 | 认证命令 |
 |---|---|---|---|
-| 1 | `self_rag_score` 落进 `findings.fusion_result`（`diagnosis_pipeline.py:2738`），补两条守卫 | `A.105` 提交 | `git show <sha> -- app/services/diagnosis_pipeline.py`；`pytest tests/unit/services/test_pipeline_pure_functions.py -q` |
-| 2 | 新增仓库内 harness 自检 `scripts/audit/p78_harness_selfcheck.py` + 11 条守卫 | `A.106` 提交 | `python scripts/audit/p78_harness_selfcheck.py`；`pytest tests/unit/quality/test_harness_selfcheck.py -q` |
-| 3 | 状态文件追平（`progress.md` / `session-handoff.md` / `feature_list.json` 三条过期 `in_progress`） | 同上 | `git diff <prev>..<sha> -- progress.md session-handoff.md feature_list.json`；`python -c "import json;json.load(open('feature_list.json'))"` |
-| 4 | 文档漂移修正（`00b` 手册列了已删的孤儿开关；台账 §二 停在 A.96 前） | 同上 | `grep -n 'rag_use_redis_cache' "docs-for-guiding generating docs/超声诊疗决策支持系统/00b-统一配置参考手册.md"`（应为 0） |
-| 5 | `.gitignore` 收本机 IDE 授权规则（`.codebuddy/rules/`） | 同上 | `git status --porcelain`（应为空） |
+| 1 | `self_rag_score` 落进 `findings.fusion_result`（`diagnosis_pipeline.py:2738`），补两条守卫 | `fa4a72d` | `git show <sha> -- app/services/diagnosis_pipeline.py`；`pytest tests/unit/services/test_pipeline_pure_functions.py -q` |
+| 2 | 新增仓库内 harness 自检 `scripts/audit/p78_harness_selfcheck.py` + 11 条守卫 | `e83e81f` | `python scripts/audit/p78_harness_selfcheck.py`；`pytest tests/unit/quality/test_harness_selfcheck.py -q` |
+| 3 | 状态文件追平（`progress.md` / `session-handoff.md` / `feature_list.json` 三条过期 `in_progress`） | `8f5ab31` | `git diff <prev>..<sha> -- progress.md session-handoff.md feature_list.json`；`python -c "import json;json.load(open('feature_list.json'))"` |
+| 4 | 文档漂移修正（`00b` 手册列了已删的孤儿开关；台账 §二 停在 A.96 前） | `8f5ab31` | `grep -n 'rag_use_redis_cache' "docs-for-guiding generating docs/超声诊疗决策支持系统/00b-统一配置参考手册.md"`（应为 0） |
+| 5 | `.gitignore` 收本机 IDE 授权规则（`.codebuddy/rules/`） | `8f5ab31` | `git status --porcelain`（应为空） |
 
 > 编号以 `16` 号附录 A 的实际条目为准：本表里的 `A.105/A.106` 就是那两节。
 
