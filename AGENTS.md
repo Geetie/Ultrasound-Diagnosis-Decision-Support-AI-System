@@ -16,7 +16,7 @@
 2. `feature_list.json` —— 功能与门控状态、依赖、证据（「做到哪了」的唯一来源）。
 3. `session-handoff.md` —— 上一会话的阻塞点、涉及文件、下会话第一动作。
 4. `docs-for-guiding generating docs/超声诊疗决策支持系统/00-项目总览与核心指标.md` —— **指标口径唯一来源**。
-5. `docs-for-guiding generating docs/超声诊疗决策支持系统/16-开发进展汇报-20260928.md` —— 进展与**证据台账**（附录 A，最新到 A.16）。
+5. `docs-for-guiding generating docs/超声诊疗决策支持系统/16-开发进展汇报-20260928.md` —— 进展与**证据台账**（附录 A，**编号只增**；读最新条 = 读文件末最后一条 `A.N`，不要相信这里的硬编码数字）。
 6. 任务落到**远程 GPU 服务器 / 真机** → 加载 SKILL `remote-gpu-server-devtest`（先读其 SKILL.md 的铁律）。
 7. 涉及改 `AGENTS.md` / `feature_list.json` / `progress.md` / `.codebuddy/skills/**` → 加载 SKILL `uai-harness-maintenance`。
 
@@ -60,6 +60,7 @@
 
 ```bash
 ./init.sh                     # harness 统一入口：环境自检 + 后端快测 + ruff + 前端 lint/build
+make harness-check            # harness 结构自检（状态文件/附录编号/死链/pptx；FAIL 阻断，WARN 需登记）
 make test                     # 后端单元 + INT 集成（-n 8 --dist=loadfile --timeout=300）
 make cov                      # 覆盖率门禁：整体 ≥82% / 核心 ≥86%（与 CI 同口径）
 make lint                     # ruff 全量（含历史债，仅参考）
@@ -95,7 +96,7 @@ make test-perf                # 性能用例必须串行：-m perf -n0
 - **只追加不重写**：`16` 号附录按 A.N 递增追加；历史结论被推翻时**新增更正条目**并就地标「已作废」，不删旧文。
 - **分层**：本文件只放路由 + 不变量（保持短）；项目事实进项目文档；可复用流程进 SKILL。
 - **技能只装流程，不装事实**：SKILL 里写「怎么查/怎么做」，具体数字指向 `16` 号。
-- **每次收尾跑审计**：`node ~/.codebuddy/skills/harness-creator/scripts/validate-harness.mjs --target .`，分数不得低于 70。
+- **每次收尾跑审计**：`make harness-check`（仓库内 `scripts/audit/p78_harness_selfcheck.py`，判据随代码走、换机器也在；FAIL 必须清零，WARN 需在 `16` 号登记）。用户级 `~/.codebuddy/skills/harness-creator/scripts/validate-harness.mjs` 仅作补充——**换机器不存在**（A.106 实测）。
 - **失效即修**：任何文档/技能与代码或实测不符，当轮修掉或标「待验证」，不得留错。
 
 ## 硬规则（禁止再犯 · 违反即返工）
@@ -151,6 +152,6 @@ make test-perf                # 性能用例必须串行：-m perf -n0
 4. 更新 `session-handoff.md`：Blockers / Files / Next Session。
 5. 有实测数字或决策 → 追加 `16` 号附录 A 一节（A.N 递增）。
 6. 远程侧：清理 `/tmp/_*` 探针、核对 GPU 进程清单（嵌入×3 + vLLM 8002）。
-7. 跑 harness 审计（见「维护准则」）；分数不得低于 70，否则本轮不结束。
+7. 跑 `make harness-check`（见「维护准则」）；**FAIL 必须清零**，WARN 写进 `16` 号当轮条目，否则本轮不结束。
 
 > **Next steps 与 clean restart**：下一位 Agent 从 `progress.md` 的 Recommended Next Step 起步即可无缝续接；任何「只存在于聊天历史」的结论都视为已丢失。

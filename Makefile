@@ -8,11 +8,12 @@ TRACKS_UNIT := tests/unit
 TRACKS_INT := tests/integration/int
 PYTEST_FLAGS := -q -p no:cacheprovider -n 8 --dist=loadfile --timeout=300
 
-.PHONY: help install lint lint-fix test test-unit test-int test-all test-perf cov bench bench-all frontend fe-test fe-lint fe-build fe-smoke edge compose-up eval-collect eval-judge eval-gate
+.PHONY: help install lint lint-fix test test-unit test-int test-all test-perf cov bench bench-all frontend fe-test fe-lint fe-build fe-smoke edge compose-up eval-collect eval-judge eval-gate harness-check
 
 help:
 	@echo "make install     - 安装后端依赖（含开发依赖）"
 	@echo "make lint        - ruff 全量检查（含历史债，仅参考）"
+	@echo "make harness-check - harness 结构自检（状态文件/附录编号/死链/pptx，A.106）"
 	@echo "make test        - 后端单元 + INT 集成测试"
 	@echo "make cov         - 覆盖率（整体 80 / 核心 90 门禁）"
 	@echo "make frontend    - 前端 lint + 类型检查 + 测试 + 构建"
@@ -27,6 +28,9 @@ lint:
 
 lint-fix:
 	$(PY) -m ruff check --fix --select RUF100,F401,W291,W292,W293 app tests
+
+harness-check:
+	$(PY) scripts/audit/p78_harness_selfcheck.py
 
 test: test-unit test-int
 
