@@ -191,6 +191,81 @@ function toMalignancyRiskView(raw: unknown): MalignancyRiskView | undefined {
   };
 }
 
+/** 处置建议视图（M7，A.125 / G38 迁移）。
+ *
+ * 后端契约 `ClinicalAction` = { action_type, target_department, urgency,
+ * trigger_condition, description, applicable_level, source_reference }。
+ * 此前唯一渲染点在已删路由的 `DiagnosisPage`（死页），工作区只显示正文里的一句话
+ * "建议：…"。这里把结构化建议搬进可达工作区，医生能看到**逐条**建议与出处。
+ */
+export interface ClinicalActionView {
+  actionType: string;
+  department?: string;
+  urgency?: string;
+  description?: string;
+  applicableLevel?: string;
+  reference?: string;
+}
+
+/** 结构化测量视图（M3，A.125 / G38 迁移）。单位统一 mm / mm³（后端口径）。 */
+export interface MeasurementView {
+  longMm?: number;
+  shortMm?: number;
+  anteroposteriorMm?: number;
+  aspectRatio?: number;
+  volumeMm3?: number;
+  pixelSpacingSource?: string;
+  measurementType?: string;
+}
+
+const URGENCY_ZH: Record<string, string> = {
+  routine: '常规',
+  soon: '尽早',
+  urgent: '紧急',
+  emergency: '急症',
+};
+
+function toClinicalActions(raw: unknown): ClinicalActionView[] {
+  if (!Array.isArray(raw)) return [];
+  const out: ClinicalActionView[] = [];
+  for (const item of raw) {
+    if (typeof item !== 'object' || item === null) continue;
+    const d = item as Record<string, unknown>;
+    const actionType = typeof d.action_type === 'string' ? d.action_type : '';
+    if (!actionType) continue;
+    const urgencyRaw = typeof d.urgency === 'string' ? d.urgency : undefined;
+    out.push({
+      actionType,
+      department: typeof d.target_department === 'string' ? d.target_department : undefined,
+      urgency: urgencyRaw ? (URGENCY_ZH[urgencyRaw] ?? urgencyRaw) : undefined,
+      description: typeof d.description === 'string' ? d.description : undefined,
+      applicableLevel: typeof d.applicable_level === 'string' ? d.applicable_level : undefined,
+      reference: typeof d.source_reference === 'string' ? d.source_reference : undefined,
+    });
+  }
+  return out;
+}
+
+function _num(v: unknown): number | undefined {
+  return typeof v === 'number' && Number.isFinite(v) ? v : undefined;
+}
+
+function toMeasurementView(raw: unknown): MeasurementView | undefined {
+  if (typeof raw !== 'object' || raw === null) return undefined;
+  const d = raw as Record<string, unknown>;
+  const view: MeasurementView = {
+    longMm: _num(d.long_mm),
+    shortMm: _num(d.short_mm),
+    anteroposteriorMm: _num(d.anteroposterior_mm),
+    aspectRatio: _num(d.aspect_ratio),
+    volumeMm3: _num(d.volume_mm3),
+    pixelSpacingSource: typeof d.pixel_spacing_source === 'string' ? d.pixel_spacing_source : undefined,
+    measurementType: typeof d.measurement_type === 'string' ? d.measurement_type : undefined,
+  };
+  const hasAny = Object.values(view).some((v) => v !== undefined);
+  return hasAny ? view : undefined;
+}
+
 /** 禁忌命中明细视图（A.121 / G34）。
  *
  * 后端契约 `DiagnosisResult.contraindication_matches` 是白名单投影
@@ -247,6 +322,10 @@ export interface ConclusionView {
   contraindicationMatches?: ContraindicationMatchView[];
   /** 处置建议是否降级（G33）：true 才提示"特征不足、仅通用建议" */
   actionsDegraded?: boolean;
+  /** 结构化处置建议（M7，G38 迁移）：空 = 无建议（整块不渲染） */
+  clinicalActions?: ClinicalActionView[];
+  /** 结构化测量（M3，G38 迁移）：缺/全空 = 无测量（整块不渲染） */
+  measurementView?: MeasurementView;
   /** 转人工原因（G24）：已人话化；空/未知空串 → undefined（不渲染） */
   reviewReason?: string;
   /** 原始原因码（对账/报修用，界面只在兜底时用得上） */
@@ -381,6 +460,9 @@ export function toConclusionView(result: DiagnosisResult | null): ConclusionView
     finalConfidence: fusion?.final_confidence,
     // A.121 / G34：禁忌命中明细原样收敛（空数组 = 无命中）
     contraindicationMatches: toContraindicationMatches(result.contraindication_matches),
+    // A.125 / G38：结构化处置建议 + 测量（此前只挂在已删路由的死页上）
+    clinicalActions: toClinicalActions(result.clinical_actions),
+    measurementView: toMeasurementView(result.measurement),
     // A.123 / G33：处置建议降级（true 才给；缺省/未知 → undefined，不渲染提示）
     actionsDegraded: result.clinical_actions_degraded === true ? true : undefined,
     // A.122 / G24：转人工原因（此前工作区零读者，医生只看到"需复核"不知道为什么）

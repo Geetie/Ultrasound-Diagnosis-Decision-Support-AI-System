@@ -221,3 +221,60 @@ describe('WorkspaceConclusionBody · 处置建议降级（G33）', () => {
     expect(container.querySelector('[data-region="advice-degraded"]')).toBeNull();
   });
 });
+
+/** 结构化处置建议 / 测量迁移（A.125 / G38）：此前只在死页渲染。 */
+describe('WorkspaceConclusionBody · 处置建议与测量（G38）', () => {
+  const BASE: ConclusionView = { headline: '考虑良性结节（TI-RADS 3）', evidenceIds: [] };
+
+  it('有处置建议：逐条渲染说明/科室/紧急度/出处', () => {
+    const { container } = render(
+      <WorkspaceConclusionBody
+        state="conclusion"
+        view={{
+          ...BASE,
+          clinicalActions: [
+            {
+              actionType: 'fna',
+              department: '超声科',
+              urgency: '紧急',
+              description: '建议超声引导下细针穿刺',
+              reference: 'ACR TI-RADS 2017',
+            },
+          ],
+        }}
+      />,
+    );
+    expect(container.querySelector('[data-region="clinical-actions"]')).not.toBeNull();
+    expect(screen.getByText(/细针穿刺/)).toBeInTheDocument();
+    expect(screen.getByText(/ACR TI-RADS 2017/)).toBeInTheDocument();
+  });
+
+  it('无处置建议：整块不渲染', () => {
+    const { container } = render(<WorkspaceConclusionBody state="conclusion" view={BASE} />);
+    expect(container.querySelector('[data-region="clinical-actions"]')).toBeNull();
+  });
+
+  it('测量：渲染 mm 数值；default 像素间距时标注估算', () => {
+    const { container } = render(
+      <WorkspaceConclusionBody
+        state="conclusion"
+        view={{ ...BASE, measurementView: { longMm: 12.5, shortMm: 8, pixelSpacingSource: 'default' } }}
+      />,
+    );
+    const block = container.querySelector('[data-region="measurement"]');
+    expect(block).not.toBeNull();
+    expect(block!.textContent).toContain('长径 12.5 mm');
+    expect(block!.textContent).toContain('短径 8 mm');
+    expect(block!.textContent).toContain('估算值');
+  });
+
+  it('测量：dicom 像素间距时不标估算', () => {
+    const { container } = render(
+      <WorkspaceConclusionBody
+        state="conclusion"
+        view={{ ...BASE, measurementView: { longMm: 10, pixelSpacingSource: 'dicom' } }}
+      />,
+    );
+    expect(container.querySelector('[data-region="measurement"]')!.textContent).not.toContain('估算');
+  });
+});

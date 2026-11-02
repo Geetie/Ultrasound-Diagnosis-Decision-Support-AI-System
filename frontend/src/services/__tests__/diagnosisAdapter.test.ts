@@ -359,3 +359,57 @@ describe('G26 部分一致性（A.124）', () => {
     expect(view.attention?.text).not.toContain('双引擎');
   });
 });
+
+describe('G38 结构化处置建议/测量迁移（A.125）', () => {
+  it('clinical_actions → 视图字段（紧急度翻中文、带出处）', () => {
+    const view = toConclusionView({
+      ...REAL_COMPLETED,
+      clinical_actions: [
+        {
+          action_type: 'fna',
+          target_department: '超声科',
+          urgency: 'urgent',
+          description: '建议超声引导下细针穿刺',
+          applicable_level: '三甲',
+          source_reference: 'ACR TI-RADS 2017',
+        },
+      ],
+    } as never)!;
+    expect(view.clinicalActions).toEqual([
+      {
+        actionType: 'fna',
+        department: '超声科',
+        urgency: '紧急',
+        description: '建议超声引导下细针穿刺',
+        applicableLevel: '三甲',
+        reference: 'ACR TI-RADS 2017',
+      },
+    ]);
+  });
+
+  it('缺字段/脏行 → 空数组（整块不渲染）', () => {
+    expect(toConclusionView(REAL_COMPLETED as never)!.clinicalActions).toEqual([]);
+    const v = toConclusionView({
+      ...REAL_COMPLETED,
+      clinical_actions: [{}, 'junk', { action_type: '' }],
+    } as never)!;
+    expect(v.clinicalActions).toEqual([]);
+  });
+
+  it('measurement → 视图字段；全空对象 → undefined', () => {
+    const v = toConclusionView({
+      ...REAL_COMPLETED,
+      measurement: { long_mm: 12.5, short_mm: 8, pixel_spacing_source: 'default' },
+    } as never)!;
+    expect(v.measurementView).toEqual({
+      longMm: 12.5,
+      shortMm: 8,
+      anteroposteriorMm: undefined,
+      aspectRatio: undefined,
+      volumeMm3: undefined,
+      pixelSpacingSource: 'default',
+      measurementType: undefined,
+    });
+    expect(toConclusionView({ ...REAL_COMPLETED, measurement: {} } as never)!.measurementView).toBeUndefined();
+  });
+});

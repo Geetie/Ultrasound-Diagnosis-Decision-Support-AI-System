@@ -97,6 +97,9 @@ function ConclusionBlock({
   const reviewReason = live?.reviewReason;
   // A.123 / G33：处置建议降级提示（只有 true 才提示）
   const actionsDegraded = live?.actionsDegraded === true;
+  // A.125 / G38：结构化处置建议 + 测量（此前只挂在已删路由死页）
+  const clinicalActions = live?.clinicalActions ?? [];
+  const measurement = live?.measurementView;
   const canExpand = evidenceIds.length > 0 || ddx.length > 0 || crossHints.length > 0;
 
   return (
@@ -144,6 +147,47 @@ function ConclusionBlock({
           <span className="ws-review-reason__label">转人工原因</span>
           <span className="ws-review-reason__text">{reviewReason}</span>
         </p>
+      )}
+
+      {/* 结构化处置建议（M7，G38 迁移）：此前唯一渲染点在已删路由的死页。
+          逐条给出类型/紧急度/说明/出处；空数组整块不渲染。 */}
+      {clinicalActions.length > 0 && (
+        <div className="ws-actions" data-region="clinical-actions">
+          <span className="ws-actions__label">处置建议</span>
+          <ul className="ws-actions__list">
+            {clinicalActions.map((a, i) => (
+              <li key={`${a.actionType}-${i}`} className="ws-actions__item" data-urgency={a.urgency ?? ''}>
+                <span className="ws-actions__type">
+                  {a.description ?? a.actionType}
+                  {a.department ? `（${a.department}）` : ''}
+                  {a.urgency ? ` · ${a.urgency}` : ''}
+                </span>
+                {a.reference && <span className="ws-actions__ref">{a.reference}</span>}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* 结构化测量（M3，G38 迁移）：单位 mm（后端口径）；pixel_spacing_source=default
+          时测量值属估算，必须标注（否则医生会当成精确值）。 */}
+      {measurement && (
+        <div className="ws-clinical-measure" data-region="measurement">
+          <span className="ws-clinical-measure__label">测量</span>
+          <span className="ws-clinical-measure__value">
+            {[
+              measurement.longMm != null ? `长径 ${measurement.longMm} mm` : null,
+              measurement.shortMm != null ? `短径 ${measurement.shortMm} mm` : null,
+              measurement.anteroposteriorMm != null ? `前后径 ${measurement.anteroposteriorMm} mm` : null,
+              measurement.volumeMm3 != null ? `体积 ${measurement.volumeMm3} mm³` : null,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+            {measurement.pixelSpacingSource === 'default' && (
+              <span className="ws-clinical-measure__estimate">（缺 DICOM 像素间距，尺寸为估算值）</span>
+            )}
+          </span>
+        </div>
       )}
 
       {/* 禁忌命中明细（G34）：SG 侧早就知道命中了哪条规则，但此前只给一句

@@ -370,6 +370,70 @@
   color: var(--color-text-primary);
 }
 
+/* 结构化处置建议（M7，G38）：与风险行同栏，逐条列出 */
+.ws-actions {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+}
+
+.ws-actions__label {
+  width: 64px;
+  flex: 0 0 64px;
+  font-size: var(--font-size-tiny);
+  color: var(--color-text-secondary);
+}
+
+.ws-actions__list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: var(--font-size-body);
+  color: var(--color-text-primary);
+}
+
+.ws-actions__item + .ws-actions__item {
+  margin-top: 2px;
+}
+
+.ws-actions__item[data-urgency='急症'],
+.ws-actions__item[data-urgency='紧急'] {
+  color: var(--color-attention);
+}
+
+.ws-actions__ref {
+  margin-left: var(--space-2);
+  font-size: var(--font-size-tiny);
+  color: var(--color-text-secondary);
+}
+
+/* 结构化测量（M3，G38）：类名刻意不叫 .ws-measurement —— 影像叠加守卫按
+   `.ws-(image|anno|measure)` 前缀识别"影像区规则"，叫 measurement 会被误判成
+   底板叠加样式（该守卫要求影像区只用 overlay token）。 */
+.ws-clinical-measure {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.ws-clinical-measure__label {
+  width: 64px;
+  flex: 0 0 64px;
+  font-size: var(--font-size-tiny);
+  color: var(--color-text-secondary);
+}
+
+.ws-clinical-measure__value {
+  font-size: var(--font-size-body);
+  color: var(--color-text-primary);
+}
+
+.ws-clinical-measure__estimate {
+  margin-left: var(--space-2);
+  font-size: var(--font-size-tiny);
+  color: var(--color-attention);
+}
+
 /* 转人工原因（G24，2:21）：紧贴结论，用警示色左条而不是整块红底（P1 不制造恐慌） */
 .ws-review-reason {
   margin: 0;
