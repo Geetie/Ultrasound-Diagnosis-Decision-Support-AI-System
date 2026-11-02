@@ -31,8 +31,10 @@ async def main() -> None:
     parser.add_argument(
         "--guided-json",
         action="store_true",
-        help="P0-2 约束解码：采样层 schema 强制（vLLM guided_json / llama.cpp GBNF），"
-        "分级输出 {\"grading\": \"<枚举>\"}；启用时不追加 prompt 指令段",
+        help="【已废弃，A.107】P0-2 的 guided_json 链路已从 ConsistencyVerifier 删除"
+        "（新版 vLLM 对它静默忽略，见 AGENTS.md 硬规则 #5）；保留此参数只为不打断"
+        "既有调用脚本，传了也只告警、不再传给 verifier。结构化输出请用 "
+        "--structured-output（response_format）。",
     )
     args = parser.parse_args()
 
@@ -67,8 +69,16 @@ async def main() -> None:
         concurrency=args.concurrency,
         request_timeout_seconds=args.timeout,
         structured_output=args.structured_output,
-        guided_json=args.guided_json,
     )
+    if args.guided_json:
+        # A.107：verifier 的 guided_json 形参已在 A.99.4 删除；这里曾无条件传参，
+        # 导致本脚本**每次运行必 TypeError**（G11）。保留告警而不是静默忽略，
+        # 免得把"没约束"当成"约束了"。
+        print(
+            "[warn] --guided-json 已废弃：guided_json 链路已删除（硬规则 #5），"
+            "本次改用 structured_output 口径。",
+            file=sys.stderr,
+        )
 
     report = await verifier.verify(cases)
 

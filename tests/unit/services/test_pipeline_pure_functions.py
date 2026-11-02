@@ -13,6 +13,7 @@ from app.services.diagnosis_pipeline import (
     _extract_findings,
     _extract_recommendation,
     _fusion_result_to_dict,
+    _lift_clinical_attributes,
     _make_failed_fusion_result,
     _make_failed_response,
     _resolve_patient_id,
@@ -185,3 +186,81 @@ class TestResolvePatientId:
         db = MagicMock()
         db.execute = AsyncMock(side_effect=RuntimeError("db down"))
         assert await _resolve_patient_id(db, "sess-3") is None
+
+
+class TestLiftClinicalAttributes:
+    """A.107 / G1：contract 字段读 findings 顶层，写侧却在 fusion_result 里。
+
+    这组守卫钉的是**真实形状**（写侧产出的 payload 原样塞进 findings，再提升），
+    不是手写的"顶层夹具"——G1 之所以长期假绿，正是因为既有单测直接手写顶层键，
+    绕过了写侧结构。
+    """
+
+    def _findings_with_attrs(self):
+        final = SimpleNamespace(
+            confidence=0.8,
+            content="TI-RADS 4a",
+            measurement=SimpleNamespace(model_dump=lambda: {"long_mm": 12.0}),
+            malignancy_risk=SimpleNamespace(model_dump=lambda: {"risk": 0.31}),
+            posterior_acoustic=None,
+            differential_diagnoses=[SimpleNamespace(model_dump=lambda: {"dx": "腺瘤"})],
+            clinical_actions=[],
+            cross_modality_hints=[],
+            patient_explanation=None,
+            research_metrics=None,
+        )
+        fr = SimpleNamespace(
+            needs_review=False,
+            review_reason=None,
+            self_rag_passed=True,
+            crag_triggered=False,
+            crag_recovered=False,
+            total_latency_ms=10.0,
+            self_rag_score=None,
+            final_response=final,
+        )
+        return {"organ": "thyroid", "fusion_result": _fusion_result_to_dict(fr)}
+
+    def test_real_shape_lifts_to_top_level(self):
+        findings = self._findings_with_attrs()
+        nested = findings["fusion_result"]["clinical_attributes"]
+        assert nested  # 写侧确实产出了
+        _lift_clinical_attributes(findings)
+        # 顶层与嵌套同值，且嵌套仍在（既有读嵌套的代码不受影响）
+        assert findings["clinical_attributes"] == nested
+        assert findings["fusion_result"]["clinical_attributes"] == nested
+
+    def test_contract_reader_now_sees_fields(self):
+        """契约读侧（api/v1/diagnosis.py:140 的写法）必须能取到 measurement。"""
+        findings = self._findings_with_attrs()
+        _lift_clinical_attributes(findings)
+        clinical = findings.get("clinical_attributes") or {}
+        assert clinical["measurement"] == {"long_mm": 12.0}
+        assert clinical["differential_diagnoses"] == [{"dx": "腺瘤"}]
+
+    def test_noop_when_nested_missing(self):
+        findings = {"fusion_result": {"content": "x"}}
+        _lift_clinical_attributes(findings)
+        assert "clinical_attributes" not in findings
+
+    def test_noop_when_nested_empty(self):
+        findings = {"fusion_result": {"clinical_attributes": {}}}
+        _lift_clinical_attributes(findings)
+        assert "clinical_attributes" not in findings
+
+    def test_noop_when_not_dict(self):
+        findings = {"fusion_result": None}
+        assert _lift_clinical_attributes(findings) is findings
+
+    def test_write_path_actually_calls_it(self):
+        """防回退：findings 的**组装处**必须真的调用提升函数。
+
+        组装 findings 的是 `_write_result_to_db()`（不是 `run_diagnosis_pipeline`），
+        所以钉这个函数——只在别处定义 helper 而不调用，本组纯函数测试照样全绿。
+        """
+        import inspect
+
+        from app.services import diagnosis_pipeline
+
+        src = inspect.getsource(diagnosis_pipeline._write_result_to_db)
+        assert "_lift_clinical_attributes(findings)" in src

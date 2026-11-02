@@ -137,6 +137,42 @@ describe('toConclusionView（真机响应 → 结论视图）', () => {
     expect(JSON.stringify(view)).not.toMatch(/\d+%\s*[-–~]\s*\d+%/);
   });
 
+  /**
+   * A.107 / G1：后端 `malignancy_risk` 一旦能到（G1 修复前它恒空，所以这里曾写死
+   * undefined 并声称"后端没有这个字段"），适配层必须原样收敛——但**仍不编造区间**。
+   */
+  it('后端给了恶性概率：分级转中文 + 点估计百分比，不造区间', () => {
+    const view = toConclusionView({
+      ...REAL_COMPLETED,
+      // 契约字段在**响应顶层**（后端 clinical_attribute_fields 展开），不在 diagnosis 里
+      malignancy_risk: { probability: 0.31, level: 'high', basis: [] },
+    } as never)!;
+    expect(view.malignancyRisk).toEqual({
+      level: '高',
+      probability: 0.31,
+      levelRaw: 'high',
+      sourceReference: undefined,
+    });
+    expect(JSON.stringify(view)).not.toMatch(/\d+%\s*[-–~]\s*\d+%/);
+  });
+
+  it('只有分级没有概率：仍给分级，但不显示百分比', () => {
+    const view = toConclusionView({
+      ...REAL_COMPLETED,
+      malignancy_risk: { level: 'medium' },
+    } as never)!;
+    expect(view.malignancyRisk?.level).toBe('中');
+    expect(view.malignancyRisk?.probability).toBeUndefined();
+  });
+
+  it('脏数据（既无概率也无分级）→ 整行省略', () => {
+    const view = toConclusionView({
+      ...REAL_COMPLETED,
+      malignancy_risk: { basis: [] },
+    } as never)!;
+    expect(view.malignancyRisk).toBeUndefined();
+  });
+
   it('终置信度低于阈值时触发「看一眼」，且只给一条（P2 一次决策）', () => {
     // 实测 0.6284 < 0.7 → 触发 low_confidence
     expect(view.attention?.reason).toBe('low_confidence');

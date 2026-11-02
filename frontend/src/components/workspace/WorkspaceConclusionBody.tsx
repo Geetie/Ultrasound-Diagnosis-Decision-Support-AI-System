@@ -120,7 +120,13 @@ function ConclusionBlock({
         <div className="ws-risk-row" data-node="2:26">
           <span className="ws-risk-row__label">恶性风险</span>
           <span className="ws-risk-row__value">
-            {risk.level} · {risk.range}
+            {/* A.107：真实数据 = 中文分级 + 点估计概率（不做区间推算）；
+                画布示意态才带设计稿区间文案。 */}
+            {risk.level}
+            {typeof risk.probability === 'number'
+              ? ` · 概率 ${Math.round(risk.probability * 100)}%`
+              : ''}
+            {risk.range ? ` · ${risk.range}` : ''}
           </span>
         </div>
       )}

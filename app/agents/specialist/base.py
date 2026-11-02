@@ -722,13 +722,15 @@ class RAGSpecialistAgent(SpecialistAgent):
     def _structured_output_extra(self) -> dict[str, Any]:
         """采样层结构化输出参数（由各引擎翻译，见 ``vllm.py`` / ``llama_cpp.py``）。
 
-        返回的字典**故意同时带三种键**，各引擎只取自己支持的那一种，
+        返回的字典**故意带多种键**，各引擎只取自己支持的那一种，
         避免在 Agent 层判断引擎类型：
 
-        - ``response_format``：vLLM / OpenAI 兼容（首选；``guided_json`` 在新版
-          vLLM 被静默忽略，见 AGENTS.md 硬规则 #5）
-        - ``guided_json``：兼容旧服务端（``vllm.py`` 仅在无 ``response_format`` 时下发）
+        - ``response_format``：vLLM / OpenAI 兼容（**唯一**结构化输出路径）
         - ``grammar``：llama.cpp 的 GBNF（``grading_gbnf`` 输出裸枚举值）
+
+        A.107：``guided_json`` 已从这里删除 —— 它在 A.99 随 ``vllm.py`` 的回落
+        分支一起失去读者（新版 vLLM 静默忽略，硬规则 #5），留着只会让"以为采样
+        层强制了、实际没有"的假象复发（G10）。
 
         本器官没有对应枚举时返回空字典（不约束，行为与改造前一致）。
         """
@@ -741,7 +743,6 @@ class RAGSpecialistAgent(SpecialistAgent):
                 "type": "json_schema",
                 "json_schema": {"name": f"{organ}_grading", "schema": schema},
             },
-            "guided_json": schema,
         }
         gbnf = grading_gbnf(organ)
         if gbnf:

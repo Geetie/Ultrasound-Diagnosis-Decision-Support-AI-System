@@ -486,6 +486,14 @@ class DiagnosisResult(BaseModel):
     # 形态同样用 Dict 承载（会随检索策略演进），避免过早固化契约。
     similar_cases: dict[str, Any] | None = None
 
+    # 05-3 S1 金标准回填（A.107 / G42）：PATCH /{id}/final-diagnosis 是写入口，
+    # 但此前**没有任何读取出口** —— 回填率、谁在何时定了金标准，界面与审计
+    # 面板都拿不到（"只写不读"）。四个只读字段原样透出，不回写、不参与判读。
+    final_diagnosis: str | None = None
+    final_diagnosis_source: str | None = None
+    final_diagnosis_at: datetime | None = None
+    final_diagnosis_by: str | None = None
+
     # T2a 影像分类旁路结果（02-1 S2）：**辅助参考**，与 nodule_segmentation
     # 同风格的可选 Dict 出口 —— 结果接口/前端由此取类型化字段。
     # 红线不变：该字段不参与 status / confidence / review_reason（三条红线，

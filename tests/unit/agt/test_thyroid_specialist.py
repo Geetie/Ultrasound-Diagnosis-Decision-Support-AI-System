@@ -287,8 +287,9 @@ class TestInvocationCount:
 class TestStructuredOutputChannel:
     """`_structured_output_extra()` 与 `_call_llm(structured=True)` 的契约。
 
-    引擎各自翻译（vLLM: response_format → guided_json 回落；llama.cpp: GBNF），
-    因此这里一次性断言三种键都在，避免在 Agent 层判断引擎类型。
+    引擎各自翻译（vLLM: response_format；llama.cpp: GBNF）。A.107 删掉了
+    `guided_json`（唯一读者已在 A.99 删除，硬规则 #5），因此这里钉"只有两种键"，
+    并显式断言它不再出现——防"以为采样层强制了、实际没有"。
     """
 
     def test_extra_carries_openai_schema_legacy_schema_and_gbnf(self, specialist):
@@ -304,8 +305,8 @@ class TestStructuredOutputChannel:
             "约束解码枚举缺 TR1 —— 正常病例会被迫报 TR2"
         )
         assert schema["required"] == ["grading"]
-        # 旧服务端回落（vllm.py 仅在无 response_format 时下发）
-        assert extra["guided_json"] == schema
+        # A.107：旧服务端回落键已删（无读者），必须彻底消失
+        assert "guided_json" not in extra
         # llama.cpp GBNF（裸枚举值模板）
         assert '"4a"' in extra["grammar"]
         assert extra["grammar"].startswith("root ::=")
@@ -316,7 +317,8 @@ class TestStructuredOutputChannel:
         await specialist._call_llm(_ctx(), "p", structured=True)
         req = inference.last_request
         assert req.extra["response_format"]["type"] == "json_schema"
-        assert req.extra["guided_json"]["required"] == ["grading"]
+        assert req.extra["response_format"]["json_schema"]["schema"]["required"] == ["grading"]
+        assert "guided_json" not in req.extra
         assert req.extra["grammar"]
 
     def test_unknown_organ_yields_empty_extra(self, rag, inference):

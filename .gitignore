@@ -71,7 +71,10 @@ docs-for-guiding generating docs/**
 # 使下方 !data/medical_resources/ 逐级反白名单失效；无锚点 `data/`
 # 还会连带吞掉 tests/*/data 等嵌套目录——历史实测踩坑）
 dicom_storage/
-models/
+# A.107：原为无锚点 `models/`，会匹配任意层级的 models 目录 —— `app/models/` 命中后
+# 新建的模型文件会被**静默忽略**（`git add` 直接报 ignored，硬规则 #9 同族坑）。
+# 仓库根没有 models/ 目录，锚定到根即保持原意、消除误伤。
+/models/
 data/*
 # 例外：测试目录不能因为名字里带 data 就被忽略。
 # 实测踩到：`data/` 是无锚点模式，把 tests/unit/data 与 tests/integration/data 整目录

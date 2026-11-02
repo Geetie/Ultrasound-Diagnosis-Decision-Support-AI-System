@@ -1,6 +1,7 @@
 import json
 import uuid
 from datetime import datetime, timezone
+from typing import Any
 
 import structlog
 from fastapi import APIRouter, Depends, Header, Request, Response
@@ -81,6 +82,22 @@ IDEMPOTENCY_TTL_SECONDS = 600
 RESULT_TIMEOUT_SECONDS = int(
     getattr(settings, "result_read_timeout_seconds", 180)
 )
+
+
+def _opt_str(value: Any) -> str | None:
+    """只接受 str，其它（含 Mock / None / 数字）一律 None（A.107 / G42）。
+
+    为什么不用裸 ``getattr(..., None)``：真实 ORM 行缺列时返回 None 没问题，
+    但**测试替身/非 ORM 对象**会为一个不存在的属性造出 Mock，直接塞进
+    ``DiagnosisResult`` 会触发 pydantic 校验失败（实测 13 例红）。收回类型是
+    契约层的责任，不把"形状可疑"传下去。
+    """
+    return value if isinstance(value, str) else None
+
+
+def _opt_datetime(value: Any) -> datetime | None:
+    """只接受 datetime，其它一律 None（同上，审计时间戳同理）。"""
+    return value if isinstance(value, datetime) else None
 
 
 def _hallucination_severity_of(
@@ -1098,6 +1115,12 @@ async def get_diagnosis_result(
         model_version=model_version,
         llm_model=llm_model,
         knowledge_base_version=knowledge_base_version,
+        # 05-3 S1（A.107 / G42）：金标准回填的**只读出口**——没有它，四个列
+        # 写了也无人能看，回填率无法进界面/审计统计。
+        final_diagnosis=_opt_str(getattr(result, "final_diagnosis", None)),
+        final_diagnosis_source=_opt_str(getattr(result, "final_diagnosis_source", None)),
+        final_diagnosis_at=_opt_datetime(getattr(result, "final_diagnosis_at", None)),
+        final_diagnosis_by=_opt_str(getattr(result, "final_diagnosis_by", None)),
     )
 
     if result.status == "completed" and not result.result_pushed:

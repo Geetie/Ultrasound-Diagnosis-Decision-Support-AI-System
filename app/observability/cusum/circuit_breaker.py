@@ -323,6 +323,24 @@ class AISafetyCircuitBreaker:
         with self._lock:
             return self._state == self.PENDING_CONFIRMATION
 
+    def monitor_s_plus(self) -> float | None:
+        """当前 CUSUM 上侧累计值（A.107 / N2：运维看板的唯一真值来源）。
+
+        此前看板把 `cusum_s_plus` 写死 `None`，运维看不到熔断进度——这个值
+        本来就在 monitor 的状态里（`CUSUMMonitor.get_state()["s_plus"]`），
+        只是没人取。取不到（monitor 未装配/异常）时返回 None，由看板如实显示
+        "unknown"，**不许**用 0.0 冒充"没有累计"。
+        """
+        monitor = getattr(self, "_monitor", None)
+        if monitor is None:
+            return None
+        try:
+            state = monitor.get_state()
+        except Exception:  # silent-ok: 看板是只读观测面，取不到就返回 None 由调用方标 unknown
+            return None
+        value = state.get("s_plus") if isinstance(state, dict) else None
+        return float(value) if isinstance(value, (int, float)) else None
+
     @property
     def suspension_info(self) -> dict[str, Any]:
         with self._lock:

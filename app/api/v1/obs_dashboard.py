@@ -47,7 +47,9 @@ async def dashboard_data():
     breaker_info = breaker.suspension_info
     breaker_data = {
         "state": breaker_info.get("state", "unknown"),
-        "cusum_s_plus": None,
+        # A.107 / N2：此前写死 None，运维看不到熔断进度；真值在 monitor 状态里。
+        # 取不到时保持 None（看板显示 unknown），不用 0.0 冒充"没有累计"。
+        "cusum_s_plus": breaker.monitor_s_plus(),
         "active_alerts": len(alert_mgr.get_active_alerts()),
     }
 

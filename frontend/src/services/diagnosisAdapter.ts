@@ -154,6 +154,42 @@ function toSegmentationView(raw: unknown): SegmentationView | undefined {
   };
 }
 
+/** 恶性概率视图（M5，A.107 / G1 配套）。
+ *
+ * 后端契约 `MalignancyRisk` = { probability, level: low/medium/high, basis[] }；
+ * 画布视图只需要"中文分级 + 点估计概率"。**不做区间推算**——设计稿的
+ * 「约 2%–5%」是示意文案，不是后端产物（A.58 的 P1 断言保留）。
+ */
+export interface MalignancyRiskView {
+  /** 中文分级（low→低 / medium→中 / high→高；未知原文原样透传，不猜） */
+  level: string;
+  /** 恶性概率点估计（0~1）；后端没给则不显示百分比 */
+  probability?: number;
+  /** 后端分级原文（便于与契约对账） */
+  levelRaw?: string;
+  /** 仅画布示意态使用：设计稿区间的展示文案（真实数据不带） */
+  range?: string;
+  sourceReference?: string;
+}
+
+const RISK_LEVEL_ZH: Record<string, string> = { low: '低', medium: '中', high: '高' };
+
+/** 校验并收敛后端 `malignancy_risk`；两个关键字段都没有 → undefined（整行不渲染）。 */
+function toMalignancyRiskView(raw: unknown): MalignancyRiskView | undefined {
+  if (typeof raw !== 'object' || raw === null) return undefined;
+  const d = raw as Record<string, unknown>;
+  const probability =
+    typeof d.probability === 'number' && Number.isFinite(d.probability) ? d.probability : undefined;
+  const levelRaw = typeof d.level === 'string' && d.level ? d.level : undefined;
+  if (probability === undefined && levelRaw === undefined) return undefined;
+  return {
+    level: levelRaw ? (RISK_LEVEL_ZH[levelRaw] ?? levelRaw) : '未分级',
+    probability,
+    levelRaw,
+    sourceReference: typeof d.source_reference === 'string' ? d.source_reference : undefined,
+  };
+}
+
 /** 结论区一级视图模型（对应 04_判读态结论） */
 export interface ConclusionView {
   /** 一句话结论 —— 直接来自 fusion_result.content，不二次改写 */
@@ -166,8 +202,8 @@ export interface ConclusionView {
   evidenceIds: string[];
   /** 「看一眼」档 —— 多条理由时按此顺序取第一条，不并列渲染（P2 一次决策） */
   attention?: { reason: AttentionReason; text: string };
-  /** 恶性风险 —— 后端未给风险区间时整个字段不存在 */
-  malignancyRisk?: MalignancyRisk;
+  /** 恶性风险（M5）—— 后端未给概率与分级时整个字段不存在（不编造） */
+  malignancyRisk?: MalignancyRiskView;
   /** 建议动作 —— 仅当后端 recommendations 里有可执行动作 */
   advice?: string;
   /** 安全网关是否显式要求转人工（与 requires_manual_review 可能矛盾，见下） */
@@ -283,10 +319,10 @@ export function toConclusionView(result: DiagnosisResult | null): ConclusionView
     // 02-1：T2a 影像分类旁路（辅助参考）—— 原样收敛透传，available=false 时
     // 影像区显示「未做影像分类：<原因>」（不得显示成"未检出恶性"）。
     t2a: toT2aView(result.t2a_classification),
-    // ⚠️ 恶性风险**故意留空**：真机响应没有任何恶性概率字段。
-    // 设计稿 04 的"低 · 约 2%–5%"是画布上的示意文案，不是后端产物。
-    // 按 P1 省略而不是硬编码 —— 等后端真的给出区间口径再接。
-    malignancyRisk: undefined,
+    // M5 恶性概率：此前这里写死 undefined —— 因为 G1 断链让 `malignancy_risk`
+    // 恒空，被误读成"后端没有这个字段"（历史注释即证据）。G1 修复后改为
+    // 原样收敛透传；后端没给时仍整行省略（不编造，见 toMalignancyRiskView）。
+    malignancyRisk: toMalignancyRiskView(result.malignancy_risk),
     advice: extractRationale(content),
     safetyBlocked:
       diagnosis.sg_result?.allowed === false

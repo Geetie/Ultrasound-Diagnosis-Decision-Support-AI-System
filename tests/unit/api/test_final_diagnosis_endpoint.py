@@ -158,3 +158,70 @@ class TestEndpointWiring:
         body = src.split("async def mark_final_diagnosis", 1)[1].split("async def", 1)[0]
         for banned in ("status =", "confidence =", "findings =", "doctor_confirmed_at ="):
             assert banned not in body, f"mark_final_diagnosis 不得改判读产物: {banned}"
+
+
+class TestReadBackContract:
+    """A.107 / G42：写入端点了，但结果载荷必须能**读回来**。
+
+    此前 final_diagnosis 四列只有写入口、没有读取出口 —— 回填率与"谁在何时
+    定的金标准"在界面/审计面板上都拿不到（只写不读）。这里钉两点：
+    ①契约（`DiagnosisResult`）带四个只读字段；
+    ②结果接口装配时真的把行上的值取出来（源码级断言，防"加了字段没接线"）。
+    """
+
+    def test_schema_exposes_four_readonly_fields(self):
+        from datetime import datetime, timezone
+
+        from app.models.schemas import DiagnosisResult
+
+        now = datetime.now(timezone.utc)
+        r = DiagnosisResult(
+            request_id="req_x",
+            status="completed",
+            desensitization_status="full",
+            consent_status_at_output="granted",
+            fusion_status="normal",
+            diagnosis={},
+            processing_time_ms=1,
+            final_diagnosis="乳头状癌",
+            final_diagnosis_source="pathology",
+            final_diagnosis_at=now,
+            final_diagnosis_by="qc_1",
+        )
+        dumped = r.model_dump()
+        assert dumped["final_diagnosis"] == "乳头状癌"
+        assert dumped["final_diagnosis_source"] == "pathology"
+        assert dumped["final_diagnosis_at"] == now
+        assert dumped["final_diagnosis_by"] == "qc_1"
+
+    def test_fields_default_to_none(self):
+        from app.models.schemas import DiagnosisResult
+
+        r = DiagnosisResult(
+            request_id="req_x",
+            status="completed",
+            desensitization_status="full",
+            consent_status_at_output="granted",
+            fusion_status="normal",
+            diagnosis={},
+            processing_time_ms=1,
+        )
+        assert r.final_diagnosis is None
+        assert r.final_diagnosis_source is None
+        assert r.final_diagnosis_at is None
+        assert r.final_diagnosis_by is None
+
+    def test_result_endpoint_actually_wires_them(self):
+        """防回退：结果接口装配 DiagnosisResult 时必须从行上取值。"""
+        import inspect
+
+        from app.api.v1 import diagnosis as diagnosis_api
+
+        src = inspect.getsource(diagnosis_api.get_diagnosis_result)
+        for field, coercion in (
+            ("final_diagnosis", "_opt_str"),
+            ("final_diagnosis_source", "_opt_str"),
+            ("final_diagnosis_at", "_opt_datetime"),
+            ("final_diagnosis_by", "_opt_str"),
+        ):
+            assert f'{field}={coercion}(getattr(result, "{field}", None))' in src
