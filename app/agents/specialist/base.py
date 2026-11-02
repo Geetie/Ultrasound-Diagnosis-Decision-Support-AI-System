@@ -931,6 +931,16 @@ class RAGSpecialistAgent(SpecialistAgent):
                 confidence=response.confidence,
                 threshold=threshold,
             )
+            # A.112 / G13：阈值打标此前没有任何观测面（"误杀率"无从查）。
+            # 只计数不阻断：指标失败绝不能影响判读。
+            try:
+                from app.observability.metrics_collector import get_metrics_collector
+
+                get_metrics_collector().record_organ_threshold_below(
+                    self.get_organ().value, scope
+                )
+            except Exception as exc:  # silent-ok: 观测失败不影响判读（有 warning 留痕）
+                logger.warning("organ_threshold_metric_failed", error=str(exc)[:120])
 
     # ------------------------------------------------------------------
     # 内部：D1+D2 公共后处理（invoke 末尾调用）

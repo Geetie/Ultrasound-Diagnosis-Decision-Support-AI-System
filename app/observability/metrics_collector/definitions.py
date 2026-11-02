@@ -218,6 +218,21 @@ class MetricsDefinitions:
             registry=r,
         )
 
+    def _init_quality_metrics(self) -> None:
+        """判读质量类计数（A.112 / G13）。
+
+        「器官阈值打标」此前只写一句 reasoning_trace + needs_review，**没有任何观测面**
+        —— 阈值是否过严（误杀率）无人可查。这里给一个按 organ/scope 拆分的计数器：
+        只记"低于阈值"的次数，不记置信度分布（分布需要直方图 + 容量规划，另立项）。
+        """
+        r = self._registry
+        self.organ_threshold_below = Counter(
+            "ultrasound_organ_threshold_below_total",
+            "Specialist responses whose confidence fell below the adopted organ/disease threshold",
+            ["organ", "scope"],
+            registry=r,
+        )
+
     def _init_safety_metrics(self) -> None:
         r = self._registry
         self.consent_query_latency = Histogram(

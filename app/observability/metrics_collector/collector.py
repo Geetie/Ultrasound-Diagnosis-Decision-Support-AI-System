@@ -54,6 +54,7 @@ class MetricsCollector(MetricsDefinitions):
         self._init_rag_metrics()
         self._init_safety_metrics()
         self._init_diagnosis_metrics()
+        self._init_quality_metrics()
         self._init_infrastructure_metrics()
 
     def start_metrics_server(self, port: int | None = None) -> None:
@@ -83,6 +84,12 @@ class MetricsCollector(MetricsDefinitions):
 
     def record_nav_latency(self, seconds: float) -> None:
         self.nav_latency.observe(seconds)
+
+    def record_organ_threshold_below(self, organ: str, scope: str) -> None:
+        """记一次"低于阈值"（G13：误杀率的唯一观测面）。"""
+        self.organ_threshold_below.labels(
+            organ=str(organ or "unknown"), scope=str(scope or "unknown")
+        ).inc()
 
     def record_assessment_latency(self, seconds: float, tier: str = "unknown") -> None:
         self.assessment_latency.labels(tier=str(tier)).observe(seconds)
