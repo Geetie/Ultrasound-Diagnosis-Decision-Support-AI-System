@@ -3,7 +3,7 @@ import asyncio
 import hashlib
 import json
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import structlog
@@ -155,12 +155,41 @@ class AuditService:
 
         return True, None, None, None
 
-    async def verify_all_chains(self) -> dict[str, tuple[bool, int | None, str | None, str | None]]:
+    async def verify_all_chains(
+        self, since: datetime | None = None
+    ) -> dict[str, tuple[bool, int | None, str | None, str | None]]:
+        """校验会话级审计链完整性。
+
+        A.131 / G50：支持**增量**校验 —— ``since`` 非空时只校验"自该时刻起有新记录"的会话
+        （先查受影响的 session_id，再取这些会话的**完整链**：链完整性必须从头算，
+        不能只校验新增段）。此前无参调用会把**全表**审计日志读进内存按会话分组，
+        数据量涨上去后每小时一次全表扫描，既慢又吃内存。
+        """
         db = await self._ensure_db()
-        result = await db.execute(
-            select(AuditLog)
-            .order_by(AuditLog.session_id, AuditLog.created_at.asc())
-        )
+
+        if since is not None:
+            # 1) 只挑"有新活动"的会话（distinct，避免把大量行搬回应用层）
+            ids_stmt = (
+                select(AuditLog.session_id)
+                .where(
+                    AuditLog.created_at >= since,
+                    AuditLog.session_id.isnot(None),
+                )
+                .distinct()
+            )
+            session_ids = [sid for sid in (await db.execute(ids_stmt)).scalars().all() if sid]
+            if not session_ids:
+                return {}
+            # 2) 这些会话的**完整**链（O(受影响会话) 而不是 O(全表)）
+            result = await db.execute(
+                select(AuditLog)
+                .where(AuditLog.session_id.in_(session_ids))
+                .order_by(AuditLog.session_id, AuditLog.created_at.asc())
+            )
+        else:
+            result = await db.execute(
+                select(AuditLog).order_by(AuditLog.session_id, AuditLog.created_at.asc())
+            )
         all_logs = result.scalars().all()
 
         from itertools import groupby
@@ -200,6 +229,10 @@ class AuditService:
 
 _periodic_task: asyncio.Task | None = None
 _periodic_running = False
+#: 上一次周期校验的**开始**时刻（A.131 / G50）：下一次据此做增量扫描。
+_last_verified_at: datetime | None = None
+#: 增量扫描的重叠窗口：容忍写入端时钟漂移，避免边界附近的行被跳过。
+_VERIFY_OVERLAP = timedelta(seconds=60)
 
 
 async def start_periodic_verification(interval_hours: int = 1) -> None:
@@ -209,13 +242,24 @@ async def start_periodic_verification(interval_hours: int = 1) -> None:
     _periodic_running = True
 
     async def _run_periodic():
+        global _last_verified_at
         while _periodic_running:
             await asyncio.sleep(interval_hours * 3600)
             try:
                 from app.config.database import get_db_session
+
+                # A.131 / G50：首次全量，之后只校验"有新活动"的会话；
+                # 重叠 60s 是为了容忍写入端时钟漂移（审计链宁可多校验一段，
+                # 也不能因为边界差几毫秒漏掉会话——漏校验=安全问题）。
+                since = (
+                    _last_verified_at - _VERIFY_OVERLAP
+                    if _last_verified_at is not None
+                    else None
+                )
+                started = datetime.now(timezone.utc)
                 async for db_session in get_db_session():
                     service = AuditService(db_session)
-                    results = await service.verify_all_chains()
+                    results = await service.verify_all_chains(since=since)
                     broken = {k: v for k, v in results.items() if not v[0]}
                     if broken:
                         logger.critical(
@@ -227,8 +271,10 @@ async def start_periodic_verification(interval_hours: int = 1) -> None:
                         logger.info(
                             "audit_chain_integrity_verified",
                             total_chains=len(results),
+                            scan_mode="incremental" if since else "full",
                         )
                     break
+                _last_verified_at = started
             except Exception as e:
                 logger.error("periodic_audit_verification_failed", error=str(e))
 
