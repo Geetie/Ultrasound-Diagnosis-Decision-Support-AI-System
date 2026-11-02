@@ -1,15 +1,16 @@
 # progress.md — 当前状态（唯一「现在在哪」来源）
 
-**Last Updated**: 2026-11-03（**A.104 真机部署首跑 + A.105 self_rag_score 落库 + A.106 harness 整饬/认证包**）
+**Last Updated**: 2026-11-03（**A.107 按缺口台账开工：G1 主断链 + 4 条配套 + LLM 重试配置**；详见 16 号 A.107）
 
 **目标**：18 项未打通项收口（详见 `docs/技术文档/未打通项打通计划/00-总览与对账表.md`，现状看其 §十一）
 
-## Current State（2026-11-03，证据见 16 号 A.104~A.106）
+## Current State（2026-11-03，证据见 16 号 A.104~A.107）
 
 - **真机已跑起来**（A.104）：驱动恢复根因是 `CUDA_VISIBLE_DEVICES=2` 指向不存在的卡；覆盖为 0 后部署 B1~B8 + `alembic 0018→0019`，服务栈全起（vLLM 8002 / 嵌入 / SG 9001 / CLIP-T2a 8003 / 主服务 18000）。
 - **首跑实测**：02-1 T2a `available=true, predicted=Malignant, 0.78, 1743ms`（开关→管线→8003→findings→接口全链 ✓）；04-3 留痕 `{applied:false, reason:no_rule}`；02-5 熔断探针 `state=active`；02-3/02-4 真评估（自检不过 → `needs_review`，行为正确）。
 - **A.105**：`findings.fusion_result` 补 `self_rag_score`（`None`=没质检、`0.0`=质检不过，不许混），守卫 2 例。
 - **A.106**：harness 整饬落地——仓库内自检 `make harness-check`（`scripts/audit/p78_harness_selfcheck.py`，12 项检查，FAIL 阻断）、状态文件追平、`feature_list.json` 过期 `in_progress` 4→1、`00b` 手册与 28 项台账漂移修正、审计认证指引 `docs/合规/Agent作业认证指引.md`。
+- **A.107（本轮）**：①**G1 修复**——`clinical_attributes` 从 `findings.fusion_result` 提升到顶层（`_lift_clinical_attributes`，守卫 6 例），03-4/03-6/06-5 的数据源断链解除；②恶性概率链路（adapter 去掉写死的 `undefined`，新增 `MalignancyRiskView`，只给点估计不做区间推算）；③`final_diagnosis` 四列**只读出口**进契约；④看板 `cusum_s_plus` 改取真值；⑤`guided_json` 死键删净 + 离线脚本 TypeError 修掉；⑥`llm-retry-settings` 显式配置（6 次 + 1s→30s 退避 + 抖动 0.25 + 耗尽续写，**重启 DSH 生效**）。
 - **仍关的能力**（默认值未变，做不到就别说"已打通"）：01-1 影像腿（裁决关，A.68 NO_GAIN）、01-2 低置信升档（生产不传 `retrieval_confidence`）、01-4 残留 1 处死键（`specialist/base.py:744`）、03-5 快照溯源、05-1 报告话术入口、06-4 基层档过滤（默认三甲）、06-6 注册结论（外部）；02-1/04-3 靠部署 `.env` 开。逐项见 28 项台账 §十一。
 
 ## Blockers
