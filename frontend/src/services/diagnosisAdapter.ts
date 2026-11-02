@@ -324,7 +324,13 @@ export function toConclusionView(result: DiagnosisResult | null): ConclusionView
       return { reason: 'self_rag_failed', text: 'Self-RAG 校验未通过 · 建议人工复核' };
     }
     if (result.consistency_flag === 'partial_consistent') {
-      return { reason: 'consistency_partial', text: '双引擎结论部分不一致 · 建议人工复核' };
+      // A.124 / G26：后端口径是"只比了既往/指南其中一路"，不是"双引擎部分不一致"
+      // （双引擎已在 01-3 判不做）。文案必须与真实口径一致，否则医生会误以为是
+      // 两个模型打架，而事实是"另一路校验没跑"。
+      return {
+        reason: 'consistency_partial',
+        text: '仅完成部分一致性校验（只比了既往或指南之一）· 建议复核',
+      };
     }
     if (fusion?.needs_review) {
       return { reason: 'needs_review', text: '融合层标记需复核 · 请确认结论依据' };

@@ -175,7 +175,8 @@ class TestConsistencyFlagDerivation:
         result = await _call(monkeypatch, row)
         assert result.consistency_flag is None
 
-    async def test_compared_with_prior_and_info_is_consistent(self, monkeypatch):
+    async def test_compared_with_prior_only_is_partial(self, monkeypatch):
+        """A.124 / G26：只比了既往一路 → 部分一致（不是完整 consistent）。"""
         row = _row(
             fusion_result={
                 "compared_with_prior": True,
@@ -184,9 +185,22 @@ class TestConsistencyFlagDerivation:
             }
         )
         result = await _call(monkeypatch, row)
+        assert result.consistency_flag == ConsistencyFlag.PARTIAL
+
+    async def test_both_legs_compared_is_consistent(self, monkeypatch):
+        """两路都比过且无 critical → 完整一致。"""
+        row = _row(
+            fusion_result={
+                "compared_with_prior": True,
+                "compared_with_guidelines": True,
+                "consistency_severity": "info",
+            }
+        )
+        result = await _call(monkeypatch, row)
         assert result.consistency_flag == ConsistencyFlag.CONSISTENT
 
-    async def test_compared_with_guidelines_only_also_counts(self, monkeypatch):
+    async def test_compared_with_guidelines_only_is_partial(self, monkeypatch):
+        """A.124 / G26：只比了指南一路 → 部分一致（另一路没跑，可信度不同）。"""
         row = _row(
             fusion_result={
                 "compared_with_prior": False,
@@ -195,7 +209,7 @@ class TestConsistencyFlagDerivation:
             }
         )
         result = await _call(monkeypatch, row)
-        assert result.consistency_flag == ConsistencyFlag.CONSISTENT
+        assert result.consistency_flag == ConsistencyFlag.PARTIAL
 
     async def test_critical_severity_is_inconsistent(self, monkeypatch):
         row = _row(

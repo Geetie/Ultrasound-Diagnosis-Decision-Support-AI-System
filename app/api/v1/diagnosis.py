@@ -1052,11 +1052,17 @@ async def get_diagnosis_result(
         evaluated = compared_prior or compared_guidelines
         if evaluated:
             severity = fusion_payload.get("consistency_severity")
-            consistency_flag = (
-                ConsistencyFlag.INCONSISTENT
-                if severity == "critical"
-                else ConsistencyFlag.CONSISTENT
-            )
+            if severity == "critical":
+                consistency_flag = ConsistencyFlag.INCONSISTENT
+            elif compared_prior and compared_guidelines:
+                # 两路都比过且没冲突 → 完整一致
+                consistency_flag = ConsistencyFlag.CONSISTENT
+            else:
+                # A.124 / G26：只比了其中一路（既往 或 指南）→ **部分一致**。
+                # 此前这里也写 CONSISTENT —— `partial_consistent` 枚举值因此成了
+                # 死值（后端从不产出，前端分支永远不执行），而"只比了一路"与
+                # "两路都比过"对医生的可信度不同，不该合并成同一个"一致"。
+                consistency_flag = ConsistencyFlag.PARTIAL
         else:
             # 没有任何一路真的比过 → 不得声明 consistent（schema 允许 None）
             consistency_flag = None

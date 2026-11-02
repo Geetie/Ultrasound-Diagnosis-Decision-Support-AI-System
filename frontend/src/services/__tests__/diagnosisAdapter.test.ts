@@ -350,3 +350,12 @@ describe('G33 处置建议降级（A.123）', () => {
     ).toBeUndefined();
   });
 });
+
+describe('G26 部分一致性（A.124）', () => {
+  it('partial_consistent → 「只完成部分校验」文案（不是"双引擎不一致"）', () => {
+    const view = toConclusionView({ ...REAL_COMPLETED, consistency_flag: 'partial_consistent' } as never)!;
+    expect(view.attention?.reason).toBe('consistency_partial');
+    expect(view.attention?.text).toContain('仅完成部分一致性校验');
+    expect(view.attention?.text).not.toContain('双引擎');
+  });
+});
