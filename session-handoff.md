@@ -1116,6 +1116,23 @@ X/Y 帧」）；③设备/患者列表端点（p16 14/14，零 api_key）；④f
 - **真机遗留**：接手时 8002 未监听（被并行工作线开 GPU 窗口时 `pkill VLLM::EngineCore` 连杀），
   本轮以 `--gpu-memory-utilization 0.40` 拉起 Qwen2.5-7B-Instruct（与判官 8006 共卡）。
 
+## 本轮（A.107–A.136 缺口修复批次）最新状态 — 2026-11-03
+
+**32 个条目已闭环**（含部分项），**5 项因外部条件未闭**，逐条有理由：
+
+| 状态 | 条目 |
+|---|---|
+| 已修 | G1 G10 G11 G13 G14 G16–G20 G22 G24 G25 G26 G27 G31 G32 G33 G34 G35 G36 G37 G42 G43 G44 G45 G46 G47 G50(+余项) |
+| 部分 | G38（3/3 组件均已有可达消费者）、G40（间隔常量化，指南原文引用仍缺）、G21（已消除"假称无冲突"，双采样未做） |
+| 未修（需外部条件） | N4（检索在专科内部、pipeline 无置信度 → 需真机延迟回归与口径）、G2（需 VLM/caption）、G39（需评测集）、G41（需真实随访结局）、G48（需模型实测）、G49（需真机埋点实测） |
+
+**健康复查（A.136）**：`pytest tests/unit -n 4 --dist=loadfile` → **7743 passed / 10 failed / 32 errors**，
+红项与基线 `c65da99` **逐组一致**（emb/inf 需真机模型服务、obs 需 ES、quality 为存量 ruff 债）；
+`cd frontend && npm run build` → ✓ 12.17s。→ **31 个提交未引入新红**。
+
+**下一位接手的第一动作**：`git log --oneline -3` 确认 HEAD，再读 `progress.md` 的
+`Recommended Next Step`；若要继续缺口修复，只能从"需外部条件"清单里挑（其余已闭）。
+
 ## Blockers
 
 | 阻塞 | 谁解 | 备注 |
