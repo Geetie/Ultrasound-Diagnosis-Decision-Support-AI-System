@@ -306,3 +306,33 @@ describe('WorkspaceConclusionBody · 证据来源（G23）', () => {
     expect(screen.getByText(/暂未提供点击跳转/)).toBeInTheDocument();
   });
 });
+
+/** 规则 ID（A.127 / G31）：处置建议可追溯回规则条目。 */
+describe('WorkspaceConclusionBody · 规则 ID（G31）', () => {
+  const BASE: ConclusionView = { headline: '考虑良性结节（TI-RADS 3）', evidenceIds: [] };
+
+  it('有 ruleId：渲染并带 data-rule-id', () => {
+    const { container } = render(
+      <WorkspaceConclusionBody
+        state="conclusion"
+        view={{
+          ...BASE,
+          clinicalActions: [{ actionType: 'fna', ruleId: 'thyroid:fna', description: '穿刺' }],
+        }}
+      />,
+    );
+    const el = container.querySelector('[data-rule-id="thyroid:fna"]');
+    expect(el).not.toBeNull();
+    expect(el!.textContent).toBe('thyroid:fna');
+  });
+
+  it('无 ruleId：不渲染该标记', () => {
+    const { container } = render(
+      <WorkspaceConclusionBody
+        state="conclusion"
+        view={{ ...BASE, clinicalActions: [{ actionType: 'fna', description: '穿刺' }] }}
+      />,
+    );
+    expect(container.querySelector('[data-rule-id]')).toBeNull();
+  });
+});

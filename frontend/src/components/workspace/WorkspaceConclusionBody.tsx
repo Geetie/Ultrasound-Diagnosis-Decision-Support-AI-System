@@ -165,6 +165,11 @@ function ConclusionBlock({
                   {a.urgency ? ` · ${a.urgency}` : ''}
                 </span>
                 {a.reference && <span className="ws-actions__ref">{a.reference}</span>}
+                {a.ruleId && (
+                  <span className="ws-actions__rule" data-rule-id={a.ruleId}>
+                    {a.ruleId}
+                  </span>
+                )}
               </li>
             ))}
           </ul>

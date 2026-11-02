@@ -1,0 +1,35 @@
+"""A.127 / G31：处置建议必须有可追溯的规则条目 ID。
+
+缺口：`ClinicalAction` 只有一句书名级 `source_reference`，报告与前端都不渲染出处；
+"这条建议来自规则表哪一条"无法回答（G31）。这里给确定性 ID：`<organ>:<action_type>`。
+"""
+
+from __future__ import annotations
+
+import pytest
+
+from app.knowledge.clinical_actions import actions_for, summarize_actions
+
+pytestmark = pytest.mark.track_rag
+
+
+def test_every_action_gets_deterministic_rule_id():
+    for organ, risk in (("thyroid", "low"), ("liver", "high"), ("cardiac", "low")):
+        for action in actions_for(organ, [], risk):
+            assert action.rule_id, f"{organ} 有建议缺 rule_id"
+            assert action.rule_id == f"{organ}:{action.action_type}"
+
+
+def test_rule_id_is_stable_and_unique_per_action():
+    acts = actions_for("thyroid", [], "high")
+    ids = [a.rule_id for a in acts]
+    assert len(ids) == len(set(ids)), f"同一批建议里 rule_id 重复：{ids}"
+
+
+def test_unknown_organ_returns_empty_without_ids():
+    assert actions_for("not_an_organ", [], None) == []
+
+
+def test_summary_includes_rule_id():
+    text = summarize_actions(actions_for("thyroid", [], "low"))
+    assert "规则：thyroid:" in text

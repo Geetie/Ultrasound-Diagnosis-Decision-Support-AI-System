@@ -364,6 +364,9 @@ class ClinicalAction(BaseModel):
     """转诊/处置建议（M7）。"""
 
     action_type: str
+    #: A.127 / G31：可追溯的规则条目 ID（`<organ>:<action_type>`）。
+    #: 此前只有一句书名级的 `source_reference`，无法把"这条建议"对回规则表里的哪一条。
+    rule_id: str | None = None
     target_department: str | None = None
     urgency: ClinicalActionUrgency = ClinicalActionUrgency.ROUTINE
     trigger_condition: str | None = None

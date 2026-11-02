@@ -200,6 +200,8 @@ function toMalignancyRiskView(raw: unknown): MalignancyRiskView | undefined {
  */
 export interface ClinicalActionView {
   actionType: string;
+  /** G31：可追溯规则 ID（`<organ>:<action_type>`） */
+  ruleId?: string;
   department?: string;
   urgency?: string;
   description?: string;
@@ -236,6 +238,7 @@ function toClinicalActions(raw: unknown): ClinicalActionView[] {
     const urgencyRaw = typeof d.urgency === 'string' ? d.urgency : undefined;
     out.push({
       actionType,
+      ruleId: typeof d.rule_id === 'string' && d.rule_id ? d.rule_id : undefined,
       department: typeof d.target_department === 'string' ? d.target_department : undefined,
       urgency: urgencyRaw ? (URGENCY_ZH[urgencyRaw] ?? urgencyRaw) : undefined,
       description: typeof d.description === 'string' ? d.description : undefined,

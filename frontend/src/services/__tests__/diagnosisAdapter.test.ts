@@ -441,3 +441,17 @@ describe('G23 证据来源溯源（A.126）', () => {
     expect(v.evidenceSources).toBeUndefined();
   });
 });
+
+describe('G31 处置建议规则 ID（A.127）', () => {
+  it('clinical_actions.rule_id → ruleId（缺省不编造）', () => {
+    const view = toConclusionView({
+      ...REAL_COMPLETED,
+      clinical_actions: [
+        { action_type: 'fna', rule_id: 'thyroid:fna', description: 'x' },
+        { action_type: 'followup', description: 'y' },
+      ],
+    } as never)!;
+    expect(view.clinicalActions?.[0].ruleId).toBe('thyroid:fna');
+    expect(view.clinicalActions?.[1].ruleId).toBeUndefined();
+  });
+});

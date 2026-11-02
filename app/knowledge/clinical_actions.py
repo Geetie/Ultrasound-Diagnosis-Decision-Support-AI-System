@@ -249,6 +249,13 @@ def actions_for(
     if builder is None:
         return []
     actions = builder(list(features), risk_level)
+    # A.127 / G31：给每条建议一个**确定性**规则 ID（器官 + 动作类型）。
+    # 不逐条手写（15 处容易漂移），也保证同一器官同一动作在任何版本里 ID 稳定，
+    # 审计/反馈可据此对回规则表条目。
+    organ_key = organ_code.strip().lower()
+    for action in actions:
+        if not action.rule_id:
+            action.rule_id = f"{organ_key}:{action.action_type}"
     # 06-4：机构层级过滤——基层档隐藏三甲专属建议（如 FNA、增强影像）。
     # 必须在 [:MAX_ACTIONS] 截断**之前**过滤：先截后滤会丢掉本该保留的建议
     # （05 号计划 06-4 ②④）。settings 延迟导入保持本模块可独立测试
@@ -267,6 +274,8 @@ def summarize_actions(actions: Sequence[ClinicalAction]) -> str:
     lines: list[str] = []
     for index, item in enumerate(actions, start=1):
         parts = [f"{index}. {item.action_type}"]
+        if item.rule_id:
+            parts.append(f"规则：{item.rule_id}")
         if item.target_department:
             parts.append(f"科室：{item.target_department}")
         if item.urgency:

@@ -409,6 +409,13 @@
   color: var(--color-attention);
 }
 
+.ws-actions__rule {
+  margin-left: var(--space-1);
+  font-family: var(--font-family-mono, monospace);
+  font-size: var(--font-size-tiny);
+  color: var(--color-text-secondary);
+}
+
 .ws-actions__ref {
   margin-left: var(--space-2);
   font-size: var(--font-size-tiny);
