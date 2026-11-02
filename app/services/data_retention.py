@@ -255,56 +255,90 @@ class DataRetentionService:
         return compliance_report
 
 
+async def run_retention_cycle(
+    service: "DataRetentionService",
+    *,
+    dry_run: bool,
+) -> dict[str, Any]:
+    """跑一轮留存策略（A.132 / G45）。
+
+    ``dry_run=True``（默认）**只做体检**：跑合规校验并把"本轮本该做什么"记进日志，
+    **不搬迁、不删除**任何数据。理由：冷归档会真实移动/删除历史数据，是不可逆操作，
+    没有 dry-run 观察期就自动开跑属高危默认值（与 A.70 删数据前先备份同一纪律）。
+
+    :returns: 摘要（含 dry_run 标记与各项计数），供周期任务日志与测试断言。
+    """
+    if dry_run:
+        compliance = await service.verify_retention_compliance()
+        summary = {
+            "dry_run": True,
+            "would_archive_sessions": None,
+            "would_archive_audit": None,
+            "would_purge_logs": None,
+            "compliant": compliance.get("overall_compliant", False),
+        }
+        logger.info("data_retention_dry_run", **summary)
+        return summary
+
+    archived = await service.archive_expired_sessions()
+    cold_audit = await service.archive_and_purge_audit_logs()
+    cold_outpatient = await service.archive_and_purge_session_archives("outpatient")
+    cold_inpatient = await service.archive_and_purge_session_archives("inpatient")
+    # 仅在未部署对象存储时（显式配置）才退化为直接清理，
+    # 否则"清理"会把本应入冷层的数据直接删掉。
+    if settings.data_retention_purge_without_cold_archive:
+        await service.purge_expired_archives("outpatient")
+        await service.purge_expired_archives("inpatient")
+    purged_logs = await service.purge_expired_operation_logs()
+    compliance = await service.verify_retention_compliance()
+    summary = {
+        "dry_run": False,
+        "archived": archived,
+        "cold_audit": cold_audit.get("archived", 0),
+        "cold_outpatient": cold_outpatient.get("archived", 0),
+        "cold_inpatient": cold_inpatient.get("archived", 0),
+        "purged_logs": purged_logs,
+        "compliant": compliance.get("overall_compliant", False),
+    }
+    logger.info("data_retention_periodic_task_completed", **summary)
+    return summary
+
+
 async def start_data_retention_periodic_task(
     db_session_factory,
     interval_hours: int | None = None,
+    *,
+    dry_run: bool | None = None,
 ) -> None:
+    """启动留存周期任务。
+
+    ``db_session_factory`` 必须是 **sessionmaker**（如 ``AsyncSessionLocal``）——
+    以前写的是 ``async for db in factory()``，对 sessionmaker 直接 TypeError（接线必踩）。
+    ``dry_run`` 缺省读 ``settings.data_retention_dry_run``（默认 True）。
+    """
     global _retention_task, _retention_running
     if _retention_running:
         return
     _retention_running = True
     hours = interval_hours or settings.data_retention_task_interval_hours
+    effective_dry_run = settings.data_retention_dry_run if dry_run is None else dry_run
 
     async def _run():
         while _retention_running:
             await asyncio.sleep(hours * 3600)
             try:
-                async for db in db_session_factory():
+                async with db_session_factory() as db:
                     service = DataRetentionService(db)
-                    # 1) 热层：过期会话 → sessions_archive
-                    archived = await service.archive_expired_sessions()
-                    # 2) 冷层（T-GB-SEC-02）：审计日志与到期会话归档先进对象
-                    #    存储，成功后才从 PG 清理；冷层不可用时保留热数据。
-                    cold_audit = await service.archive_and_purge_audit_logs()
-                    cold_outpatient = await service.archive_and_purge_session_archives(
-                        "outpatient"
-                    )
-                    cold_inpatient = await service.archive_and_purge_session_archives(
-                        "inpatient"
-                    )
-                    # 3) 仅在未部署对象存储时（显式配置）才退化为直接清理，
-                    #    否则"清理"会把本应入冷层的数据直接删掉。
-                    if settings.data_retention_purge_without_cold_archive:
-                        await service.purge_expired_archives("outpatient")
-                        await service.purge_expired_archives("inpatient")
-                    # 4) 操作日志（5 年）
-                    purged_logs = await service.purge_expired_operation_logs()
-                    compliance = await service.verify_retention_compliance()
-                    logger.info(
-                        "data_retention_periodic_task_completed",
-                        archived=archived,
-                        cold_audit=cold_audit.get("archived", 0),
-                        cold_outpatient=cold_outpatient.get("archived", 0),
-                        cold_inpatient=cold_inpatient.get("archived", 0),
-                        purged_logs=purged_logs,
-                        compliant=compliance.get("overall_compliant", False),
-                    )
-                    break
-            except Exception as e:
-                logger.error("data_retention_periodic_task_failed", error=str(e))
+                    await run_retention_cycle(service, dry_run=effective_dry_run)
+            except Exception as e:  # silent-ok: 单轮失败不得让周期任务退出，下一轮继续
+                logger.error("data_retention_periodic_task_failed", error=str(e)[:200])
 
     _retention_task = asyncio.create_task(_run())
-    logger.info("data_retention_periodic_task_started", interval_hours=hours)
+    logger.info(
+        "data_retention_periodic_task_started",
+        interval_hours=hours,
+        dry_run=effective_dry_run,
+    )
 
 
 async def stop_data_retention_periodic_task() -> None:

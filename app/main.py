@@ -405,6 +405,18 @@ async def lifespan(app: FastAPI):
         logger.warning("infra_health_start_failed", error=str(e))
         app.state.infra_health_task = None
 
+    # SEC: 数据留存周期任务（A.132 / G45）。此前 `start_data_retention_periodic_task`
+    # 零生产调用 → retention 配置整体空转。默认**不启动**（不可逆的数据搬迁/删除），
+    # 打开后默认仍是 dry-run（只体检、只记"本该做什么"）。
+    if getattr(settings, "data_retention_schedule_enabled", False):
+        try:
+            from app.config.database import AsyncSessionLocal as _RetentionSessionLocal
+            from app.services.data_retention import start_data_retention_periodic_task
+
+            await start_data_retention_periodic_task(_RetentionSessionLocal)
+        except Exception as e:
+            logger.warning("data_retention_periodic_start_failed", error=str(e))
+
     # OBS: 审计链周期任务（A.119 / G44）。此前 `start_audit_chain_periodic_tasks`
     # 全仓零调用、且函数体只"构造"跨链对象从不写锚 → 周期校验与跨链存证都不存在。
     try:
@@ -846,6 +858,14 @@ async def lifespan(app: FastAPI):
         logger.warning(
             "obs_export_stop_failed", error=str(e)
         )
+    # SEC: 停止留存周期任务（未启动时是 no-op）
+    try:
+        from app.services.data_retention import stop_data_retention_periodic_task
+
+        await stop_data_retention_periodic_task()
+    except Exception as e:
+        logger.warning("data_retention_periodic_stop_failed", error=str(e))
+
     # OBS: 停止审计链周期任务
     try:
         from app.observability.audit_chain.periodic import stop_audit_chain_periodic_tasks

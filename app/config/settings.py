@@ -660,6 +660,13 @@ class Settings(BaseSettings):
     obs_cusum_decision_threshold: float = 3.0
     obs_cusum_calibration_samples: int = 300
     obs_cusum_calibration_simulations: int = 1000
+    # A.132 / G45：留存周期任务的**总开关**与 dry-run 默认值。
+    # 默认关：冷归档会真实搬迁/删除历史数据，不可逆；默认 dry-run：只体检并在日志里
+    # 说明"本轮本该做什么"，观察一轮后再显式打开（data_retention_schedule_enabled=true,
+    # data_retention_dry_run=false）。读者：app/main.py 与
+    # app/services/data_retention.py::start_data_retention_periodic_task。
+    data_retention_schedule_enabled: bool = False
+    data_retention_dry_run: bool = True
     # A.129 / G37：处置建议规则的**外部 YAML**（路径为空 = 不启用，行为与内置表一致）。
     # 显式配置后整体替换内置表；文件非法则整份拒绝并回退内置（不让半份规则上线）。
     # 读者：app/knowledge/clinical_action_rules.py::load_rules（唯一入口）。
