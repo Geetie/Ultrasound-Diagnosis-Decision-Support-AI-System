@@ -1,0 +1,125 @@
+# .graphifyignore —— 全仓代码知识图谱的排除清单（2026-10-30 by graph-builder）
+# 语法同 .gitignore，路径相对仓库根。目标：只索引「代码」，跳过二进制大资产/依赖/生成物。
+
+# ── 版本控制与工具缓存 ──────────────────────────────────────────────────────
+.git/
+.svn/
+.hg/
+__pycache__/
+*.pyc
+*.pyo
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+.coverage*
+graphify-out/cache/
+/tmp/
+
+# ── 依赖树 / 构建产物 ───────────────────────────────────────────────────────
+node_modules/
+frontend/node_modules/
+frontend/dist/
+# app/static/ui = frontend/src 的 vite 编译产物（86 个 minified bundle，23MB，
+# 且同一 bundle 存 3 份哈希副本）。首次全量抽取 52996 节点里 28160 个来自它 —— 纯噪声。
+app/static/ui/
+frontend/.vite/
+dist/
+build/
+out/
+.venv/
+venv/
+env/
+*.egg-info/
+*.dist-info/
+
+# ── 锁文件（高噪声低信号）───────────────────────────────────────────────────
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+poetry.lock
+uv.lock
+
+# ── 大体积二进制资产（约 300MB，必须排除）──────────────────────────────────
+*.pptx
+*.ppt
+*.docx
+*.doc
+*.xlsx
+*.xls
+*.pdf
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.7z
+*.rar
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+*.webp
+*.svg
+*.ico
+*.mp4
+*.mov
+*.mkv
+*.webm
+*.mp3
+*.wav
+*.m4a
+*.ogg
+*.onnx
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.bin
+*.npy
+*.npz
+*.pkl
+*.db
+*.sqlite
+*.sqlite3
+
+# ── 业务数据 / 影像存储 / 凭证（绝不索引）───────────────────────────────────
+data/
+dicom_storage/
+keys/
+secrets/
+credentials/
+uploads/
+storage/
+*.pem
+*.key
+*.p12
+*.pfx
+.env
+.env.*
+
+# ── 报告与审计产物（体积大、非源码）────────────────────────────────────────
+reports/
+tests/reports/
+tests/fixtures/
+tests/benchmark/
+coverage/
+htmlcov/
+logs/
+*.log
+
+# ── 历史归档 / 外部资料（非本仓库源码）─────────────────────────────────────
+archive*/
+archive_of_achivement/
+harness_engineering_guide-main/
+.trae/
+.workbuddy/
+system-map/
+docs-for-guiding generating docs/
+
+# ── 编辑器/系统垃圾 ─────────────────────────────────────────────────────────
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*.swp
+*.swo

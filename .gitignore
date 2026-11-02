@@ -119,3 +119,9 @@ soft_hsm_enabled_at.txt
 scripts/_*.py
 scripts/_*.sh
 *.pptx
+
+# === 图谱工具本地生成物（~90MB，含 39MB 缓存；非源码，禁止入库）===
+graphify-out/
+
+# === DSH 桌面运行环境写入的运行时清单（非本项目代码）===
+package.json
