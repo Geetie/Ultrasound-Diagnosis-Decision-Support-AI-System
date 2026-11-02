@@ -660,6 +660,11 @@ class Settings(BaseSettings):
     obs_cusum_decision_threshold: float = 3.0
     obs_cusum_calibration_samples: int = 300
     obs_cusum_calibration_simulations: int = 1000
+    # A.114 / G18：CUSUM 运行时参数优先消费**已审计的校准产物**（校准器的
+    # recommended_h / recommended_delta 此前从不回灌运行时，delta 是硬编码 0.005）。
+    # 读者：app/observability/cusum/runtime_config.py::load_runtime_config（唯一入口）。
+    obs_cusum_use_calibration: bool = True
+    obs_cusum_calibration_path: str = "data/cusum_calibration_report.json"
     # A.109 / N1：pending→suspended 的晋级判定由独立看门狗周期触发（此前
     # `check_pending_timeout()` 全仓只有测试调用 → pending 永不过期、重启又被
     # 快照恢复回来，形成"触发即永久 needs_review"的死锁）。<=0 关闭该任务。

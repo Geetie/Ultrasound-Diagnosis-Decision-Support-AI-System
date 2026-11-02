@@ -59,7 +59,22 @@ async def run_cusum_calibration(
     )
     results = calibrator.calibrate()
     report = calibrator.generate_calibration_report(results)
-    calibrator.save_calibration_report(report)
+    # A.114 / G18：存到**运行时真正会读的那个路径**，并把"下次启动会采用什么参数"
+    # 一并回给调用方 —— 否则管理员调完参数、看到报告，并不知道线上是否生效。
+    from app.config.settings import settings as _settings
+    from app.observability.cusum.runtime_config import load_runtime_config
+
+    path = getattr(_settings, "obs_cusum_calibration_path", "data/cusum_calibration_report.json")
+    calibrator.save_calibration_report(report, path=path)
+    cfg, source = load_runtime_config(path)
+    report["runtime"] = {
+        "path": path,
+        "source": source,
+        "target_rate": cfg.target_rate,
+        "decision_threshold": cfg.decision_threshold,
+        "delta": cfg.delta,
+        "applies": "next_startup",
+    }
     return report
 
 

@@ -1,6 +1,6 @@
 # progress.md — 当前状态（唯一「现在在哪」来源）
 
-**Last Updated**: 2026-11-03（**A.107~A.113 缺口批次**：G1 主断链、N1 熔断恢复、N5 影像腿阈值、N8 多部位临床事实、G32 禁忌族匹配、G14 严重幻觉转人工、G36 分级下界提示；详见 16 号对应条目）
+**Last Updated**: 2026-11-03（**A.107~A.114 缺口批次**：G1 主断链、N1 熔断恢复、N5 影像腿阈值、N8 多部位临床事实、G32 禁忌族匹配、G14 严重幻觉转人工、G36 分级下界提示；详见 16 号对应条目）
 
 **目标**：18 项未打通项收口（详见 `docs/技术文档/未打通项打通计划/00-总览与对账表.md`，现状看其 §十一）
 
@@ -15,6 +15,7 @@
 - **A.111（本轮）**：G36 分级下界从"只写 findings 无人读"改为"命中即转人工 + 提示不得低于 X"，并把评估前移到 status 判定之前；**不自动改写结论正文**（规则表空、需医学复核）。守卫 3 例（含源码级顺序断言）。
 - **A.112（本轮）**：G13 加器官阈值观测面（`ultrasound_organ_threshold_below_total{organ,scope}`），低于阈值即计数（失败不影响判读）；只做计数不含分布（分布图另立项）。
 - **A.113（本轮）**：G20 熔断事件进审计库（同步回调 → 一次性 task 写库；无事件循环退化 log storage；幂等注册；审计失败只 warning 不阻断熔断）+ G17 病种级 CUSUM 接线（启动显式注册三器官 + `set_circuit_breaker`；病种告警真能 `suspend_disease`；**先试"自动建"被既有契约测试挡回，已改显式注册**）。
+- **A.114（本轮）**：G18 CUSUM 校准回灌——新增 `runtime_config.load_runtime_config()`（严格校验 recommended_h/delta/target_rate，非法回退 settings 并留 `calibration_invalid:<reason>`），`create_cusum_monitor` 改用它并记 `_config_source`；校准端点存到运行时路径并回告 `applies: next_startup`。
 - **仍关的能力**（默认值未变，做不到就别说"已打通"）：01-1 影像腿（裁决关，A.68 NO_GAIN）、01-2 低置信升档（生产不传 `retrieval_confidence`）、01-4 残留 1 处死键（`specialist/base.py:744`）、03-5 快照溯源、05-1 报告话术入口、06-4 基层档过滤（默认三甲）、06-6 注册结论（外部）；02-1/04-3 靠部署 `.env` 开。逐项见 28 项台账 §十一。
 
 ## Blockers
