@@ -164,6 +164,10 @@ class AgentResponse(BaseModel):
     #: A.123 / G33：处置建议是否**降级**（特征不足 → 只剩通用化验兜底）。
     #: 医生看到"只有一条复查/化验"时，必须能知道是"规则就那么建议"还是"特征没抽出来"。
     clinical_actions_degraded: bool = False
+    #: A.138 / G39：患者话术的**确定性**质量检查结果
+    #: （`{"evaluated": bool, "passed": bool|null, "issues": [...]}`）。
+    #: 没有话术 → `None`（未评估），不是"通过"。
+    patient_explanation_quality: dict[str, Any] | None = None
     # 患者解释话术（M10，默认不入正式报告）
     patient_explanation: PatientExplanation | None = None
     # 科研量化指标（M11，前端默认折叠）

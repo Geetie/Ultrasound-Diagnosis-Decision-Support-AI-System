@@ -1118,6 +1118,17 @@ class RAGSpecialistAgent(SpecialistAgent):
             if explanation is not None:
                 response.patient_explanation = explanation
                 response.reasoning_trace.append("patient_explanation -> provided")
+                # A.138 / G39：话术过去零评估；这里跑确定性检查（中文/PHI/绝对化/占位/长度），
+                # 不通过时**不阻断**诊断（它是给患者看的材料），但必须留下可追溯结果。
+                from app.knowledge.patient_explanation_quality import evaluate as _eval_expl
+
+                quality = _eval_expl(explanation)
+                response.patient_explanation_quality = quality.as_dict()
+                if quality.issues:
+                    response.reasoning_trace.append(
+                        "patient_explanation_quality -> "
+                        + "、".join(i.code for i in quality.issues)
+                    )
 
             # M12：跨模态对照提示（教科书级知识表，模型不参与生成）
             hints = hints_for(organ, features)

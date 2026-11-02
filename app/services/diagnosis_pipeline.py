@@ -2796,6 +2796,11 @@ def _clinical_attributes_to_dict(response) -> dict:
                 item.model_dump() if hasattr(item, "model_dump") else item for item in value
             ]
 
+    # A.138 / G39：患者话术质量检查结果（有评估才写；缺省不占键）
+    expl_quality = getattr(response, "patient_explanation_quality", None)
+    if isinstance(expl_quality, dict):
+        attributes["patient_explanation_quality"] = expl_quality
+
     # A.123 / G33：处置建议降级标记（True 才写；False 是默认，不占键）
     if getattr(response, "clinical_actions_degraded", False) is True:
         attributes["clinical_actions_degraded"] = True
