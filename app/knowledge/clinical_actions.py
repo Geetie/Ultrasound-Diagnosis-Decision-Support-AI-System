@@ -31,6 +31,18 @@ REFERENCE_CARDIAC = "ASE 心功能评估建议（定性）"
 # 单次最多给出的处置建议条数：过多会让医生难以判断优先级
 MAX_ACTIONS = 3
 
+# ---------------------------------------------------------------------------
+# 随访间隔（A.134 / G40）：此前是散落在描述字符串里的裸数字（"3-6 个月"/"12 个月"），
+# 既无法按机构调整，也无法被测试断言。集中成常量后：
+#   · 本院要改间隔 → 改这里，或直接用外部规则文件（A.129 / G37）整体替换该条建议；
+#   · 描述文案由常量拼出，数字与文案**不会漂**（改一个漏一个的经典事故）。
+# 这些是**机构默认值**，不是指南原文的逐字引用——`source_reference` 仍标"（定性）"是
+# 诚实的：把"我们默认 12 个月"说成"指南规定 12 个月"是另一种造假，不做。
+FOLLOWUP_MEDIUM_MONTHS_RANGE = "3-6"
+FOLLOWUP_LOW_MONTHS = "12"
+LIVER_FOLLOWUP_MEDIUM_MONTHS = "3"
+LIVER_FOLLOWUP_LOW_MONTHS = "6"
+
 LEVEL_BASE = "基层"
 LEVEL_TERTIARY = "三甲"
 LEVEL_GENERAL = "通用"
@@ -99,7 +111,7 @@ def _thyroid_actions(
                 "short_interval_followup",
                 urgency=ClinicalActionUrgency.SOON,
                 trigger="中等恶性风险",
-                description="建议 3-6 个月复查超声，观察结节大小与形态变化",
+                description=f"建议 {FOLLOWUP_MEDIUM_MONTHS_RANGE} 个月复查超声，观察结节大小与形态变化",
                 level=LEVEL_GENERAL,
                 reference=REFERENCE_TIRADS,
             )
@@ -109,7 +121,7 @@ def _thyroid_actions(
             _action(
                 "annual_followup",
                 trigger="低恶性风险",
-                description="建议 12 个月随访超声；结节明显增大时提前复查",
+                description=f"建议 {FOLLOWUP_LOW_MONTHS} 个月随访超声；结节明显增大时提前复查",
                 level=LEVEL_BASE,
                 reference=REFERENCE_TIRADS,
             )
@@ -151,7 +163,7 @@ def _liver_actions(
                 "short_interval_followup",
                 urgency=ClinicalActionUrgency.SOON,
                 trigger="中等恶性风险",
-                description="建议 3 个月复查超声，必要时行增强影像",
+                description=f"建议 {LIVER_FOLLOWUP_MEDIUM_MONTHS} 个月复查超声，必要时行增强影像",
                 level=LEVEL_GENERAL,
                 reference=REFERENCE_LIRADS,
             )
@@ -161,7 +173,7 @@ def _liver_actions(
             _action(
                 "six_month_followup",
                 trigger="低恶性风险",
-                description="建议 6 个月复查超声随访",
+                description=f"建议 {LIVER_FOLLOWUP_LOW_MONTHS} 个月复查超声随访",
                 level=LEVEL_BASE,
                 reference=REFERENCE_LIRADS,
             )

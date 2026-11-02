@@ -193,36 +193,17 @@ class AuditService:
         all_logs = result.scalars().all()
 
         from itertools import groupby
+
+        # A.134 / G50 余项：链遍历**只有一份实现** ——
+        # `app/observability/audit_chain/verify_utils.verify_chain_integrity()`。
+        # 这里以前复制了一份同样的 for 循环（G50 指出"两实现混写"），
+        # 两份一旦有一边改了边界条件（例如首条 hash_prev 必须为 None），
+        # "同一份数据两条路径给出不同结论"——审计工具最不该出现的不确定性。
+        from app.observability.audit_chain.verify_utils import verify_chain_integrity
+
         verification_results = {}
         for session_id, group in groupby(all_logs, key=lambda log: log.session_id):
-            logs = list(group)
-            prev_hash = None
-            first = True
-            chain_valid = True
-            broken_log_id = None
-            expected_hash = None
-            actual_hash = None
-
-            for log in logs:
-                if first:
-                    first = False
-                    if log.hash_prev is not None:
-                        chain_valid = False
-                        broken_log_id = log.log_id
-                        actual_hash = log.hash_prev
-                        break
-                    prev_hash = log.hash_self
-                    continue
-
-                if log.hash_prev != prev_hash:
-                    chain_valid = False
-                    broken_log_id = log.log_id
-                    expected_hash = prev_hash
-                    actual_hash = log.hash_prev
-                    break
-                prev_hash = log.hash_self
-
-            verification_results[session_id] = (chain_valid, broken_log_id, expected_hash, actual_hash)
+            verification_results[session_id] = verify_chain_integrity(list(group))
 
         return verification_results
 

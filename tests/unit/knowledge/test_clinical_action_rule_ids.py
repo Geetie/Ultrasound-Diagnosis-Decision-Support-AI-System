@@ -33,3 +33,28 @@ def test_unknown_organ_returns_empty_without_ids():
 def test_summary_includes_rule_id():
     text = summarize_actions(actions_for("thyroid", [], "low"))
     assert "规则：thyroid:" in text
+
+
+class TestFollowupIntervalsAreConstants:
+    """A.134 / G40：随访间隔集中成常量，不再散落成描述里的裸数字。
+
+    这样"本院要改间隔"只改一处（或走 A.129 的外部规则文件），且描述文案由常量拼出，
+    不会出现"改了一个动作、漏了另一个"的漂移。`source_reference` 仍标"（定性）"是
+    诚实的：机构默认值不等于指南逐字规定。
+    """
+
+    def test_thyroid_descriptions_use_constants(self):
+        from app.knowledge import clinical_actions as ca
+
+        medium = ca.actions_for("thyroid", [], "medium")[0]
+        low = [a for a in ca.actions_for("thyroid", [], "low") if a.action_type == "annual_followup"][0]
+        assert ca.FOLLOWUP_MEDIUM_MONTHS_RANGE in medium.description
+        assert ca.FOLLOWUP_LOW_MONTHS in low.description
+
+    def test_liver_descriptions_use_constants(self):
+        from app.knowledge import clinical_actions as ca
+
+        medium = ca.actions_for("liver", [], "medium")[0]
+        low = [a for a in ca.actions_for("liver", [], "low") if a.action_type == "six_month_followup"][0]
+        assert ca.LIVER_FOLLOWUP_MEDIUM_MONTHS in medium.description
+        assert ca.LIVER_FOLLOWUP_LOW_MONTHS in low.description
