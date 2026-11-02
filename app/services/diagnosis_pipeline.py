@@ -1296,15 +1296,37 @@ def _grading_conditions_for(request: Any) -> frozenset[str]:
     return frozenset()
 
 
+def _grading_floor_review_reason(audit: dict[str, Any] | None) -> str | None:
+    """分级下界命中后是否转人工（A.111 / G36 Phase B，**只提示不篡改正文**）。
+
+    为什么不是"自动把结论抬级"：分级决定 FNA / 随访间隔 / 转诊，改写 LLM 正文
+    属于"在没有临床验证的规则下替医生改结论"，而且要靠字符串手术去改
+    ``TI-RADS 3 → 4a``（正文里还有理由、鉴别诊断，改错比不改更危险）。
+    因此 Phase B 的落地方式是：**系统提出"不得低于 X，依据是 Y"并转人工**，
+    由医生在结论上确认；规则表仍为空（`GRADING_FLOOR_RULES=()`），所以当前
+    行为零变化，等医学专家复核规则后才会真正触发。
+
+    只认 ``applied=True``（空串 reason 表示"确实抬了"）；关闭/无规则/条件不满足
+    /解析不出等分支原样返回 None —— 那些是"没抬"，不是"抬了没生效"。
+    """
+    if not isinstance(audit, dict):
+        return None
+    if not audit.get("applied"):
+        return None
+    return "grading_floor_raised"
+
+
 def _evaluate_grading_floor(request: Any, fusion_result: Any) -> dict[str, Any] | None:
-    """判读后评估分级下界并产出留痕 dict（04-3 Phase A，纯审计）。
+    """评估分级下界并产出留痕 dict（04-3 Phase A + A.111 Phase B）。
 
     * 开关关闭（settings.grading_floor_enabled=False，默认）→ 返回 None，
       调用方**不写键** ⇒ findings 与改动前逐字节相同；
     * 分级取自本次融合结论正文（extract_findings_text +
       extract_grading_severest，与既往诊断抽取同一套单一事实源）；
-    * 只产出 ``findings["grading_floor"] = {applied, reason, from, to,
-      rule_reference, condition}``，**不改 content / 结论正文 / 置信度**。
+    * 产出 ``findings["grading_floor"] = {applied, reason, from, to,
+      rule_reference, condition}``，**不改 content / 结论正文 / 置信度**；
+    * ``applied=True`` 时由 `_grading_floor_review_reason` 把 status 抬成
+      ``needs_review``（Phase B：提示医生"不得低于 X"，**不替医生改正文**）。
     """
     try:
         if not bool(getattr(settings, "grading_floor_enabled", False)):
@@ -1392,6 +1414,11 @@ async def _write_result_to_db(
         logger.warning("safety_gate_read_failed", error=str(exc))
         _safety_gate = {"state": "unknown", "suspended": False, "pending": False}
 
+    # 04-3 分级下界评估（Phase A 留痕 + Phase B 提示，A.111 / G36）。
+    # 评估必须早于 status 判定：命中下限要能把 status 抬成 needs_review。
+    # 开关关闭 → 返回 None（findings 与改动前逐字节相同）。
+    _grading_floor_audit = _evaluate_grading_floor(request, fusion_result)
+
     # 1) 决定 status
     if not sg_ok:
         status = "failed"
@@ -1441,6 +1468,21 @@ async def _write_result_to_db(
                 "pipeline_hallucination_escalated_to_review",
                 request_id=getattr(request, "request_id", None),
                 reason=_hallucination_reason,
+            )
+
+        # A.111 / G36（Phase B）：分级下界命中 → 提示医生"不得低于 X"，**不改正文**。
+        # 此前 04-3 只有 Phase A（写 findings 留痕），规则填了也没人看得到。
+        _grading_floor_reason = _grading_floor_review_reason(_grading_floor_audit)
+        if _grading_floor_reason:
+            if status == "completed":
+                status = "needs_review"
+            review_reason = review_reason or _grading_floor_reason
+            logger.info(
+                "pipeline_grading_floor_escalated_to_review",
+                request_id=getattr(request, "request_id", None),
+                grading_from=(_grading_floor_audit or {}).get("from"),
+                grading_to=(_grading_floor_audit or {}).get("to"),
+                rule_reference=(_grading_floor_audit or {}).get("rule_reference"),
             )
 
     # 2) 组装 findings
@@ -1498,12 +1540,8 @@ async def _write_result_to_db(
     # → 提升一层，见 _lift_clinical_attributes 的 docstring。
     _lift_clinical_attributes(findings)
 
-    # 04-3 Phase A：分级下界评估留痕（**只写 findings，不改结论正文**）。
-    # 开关关闭 → 不写键（findings 与改动前逐字节相同，验收判据 1）；
-    # 开关开 + 空规则表 → 每例都有 reason（no_rule 等，判据 2）；
-    # 条件匹配的规则命中 → applied/from/to/rule_reference 可查（判据 3），
-    # content 仍不变（Phase A 不交付"改结论"）。
-    _grading_floor_audit = _evaluate_grading_floor(request, fusion_result)
+    # 04-3 分级下界留痕（Phase A 的键 + Phase B 的 advisory 都在里面，见
+    # _evaluate_grading_floor / _grading_floor_review_reason）。正文不改。
     if _grading_floor_audit is not None:
         findings["grading_floor"] = _grading_floor_audit
 

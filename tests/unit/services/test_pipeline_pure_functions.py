@@ -310,3 +310,48 @@ class TestHallucinationEscalation:
         src = inspect.getsource(diagnosis_pipeline._write_result_to_db)
         assert "_hallucination_review_reason(hallucination)" in src
         assert "pipeline_hallucination_escalated_to_review" in src
+
+
+class TestGradingFloorEscalation:
+    """A.111 / G36 Phase B：分级下界命中 → 提示医生，不篡改正文。
+
+    此前 04-3 只有 Phase A（写 findings 留痕）：规则表填了也没人看得到——
+    因为没有任何代码读 `applied`。这里钉住"命中即转人工"的判据与接线，
+    同时钉住"未命中/关闭/无规则"绝不升级（默认行为零变化）。
+    """
+
+    def test_applied_escalates(self):
+        from app.services.diagnosis_pipeline import _grading_floor_review_reason
+
+        assert (
+            _grading_floor_review_reason({"applied": True, "reason": "", "to": "TR4"})
+            == "grading_floor_raised"
+        )
+
+    def test_not_applied_does_not_escalate(self):
+        from app.services.diagnosis_pipeline import _grading_floor_review_reason
+
+        for audit in (
+            None,
+            {},
+            {"applied": False, "reason": "no_rule"},
+            {"applied": False, "reason": "disabled"},
+            {"applied": False, "reason": "condition_unmet"},
+            "not-a-dict",
+        ):
+            assert _grading_floor_review_reason(audit) is None  # type: ignore[arg-type]
+
+    def test_evaluation_runs_before_status_decision(self):
+        """评估必须早于 status 判定，否则"命中"根本改不了 status。
+
+        顺序错了不会报错，只会静默失效（`_grading_floor_audit` 定义在使用之后
+        会直接 NameError，但若有人把两段都挪到 status 之后，就变成永不影响）。
+        """
+        import inspect
+
+        from app.services import diagnosis_pipeline
+
+        src = inspect.getsource(diagnosis_pipeline._write_result_to_db)
+        assert src.index("_grading_floor_audit = _evaluate_grading_floor") < src.index("# 1) 决定 status")
+        assert "_grading_floor_review_reason(_grading_floor_audit)" in src
+        assert "pipeline_grading_floor_escalated_to_review" in src
