@@ -21,6 +21,9 @@ class HallucinationCUSUMBridge:
     _instance_lock = threading.Lock()
 
     HIGH_RISK_TARGET_RATE = 0.01
+    #: 病种监控器上限（A.113 / G17）。病种名来自调用方（当前是器官名），
+    #: 无上限地按调用自动建设会随脏数据无限增长；20 对三器官项目足够宽。
+    MAX_DISEASE_MONITORS = 20
 
     def __init__(self, monitor: CUSUMMonitor):
         self._monitor = monitor
@@ -52,6 +55,17 @@ class HallucinationCUSUMBridge:
         return result
 
     def register_disease_monitor(self, disease_type: str, config: CUSUMConfig | None = None) -> None:
+        # A.113 / G17：本方法此前在 app/ 内**零调用**，于是病种级 CUSUM 整链空壳
+        # （`report_hallucination_result` 的分支恒不命中）。现由 `app/main.py`
+        # 启动时对受支持器官**显式**注册 —— 不用"首次上报即建"，因为那样病种名
+        # 会随调用方脏数据膨胀，且把"配置行为"变成隐式副作用。
+        if len(self._disease_monitors) >= self.MAX_DISEASE_MONITORS and disease_type not in self._disease_monitors:
+            _logger.warning(
+                "cusum_disease_monitor_cap_reached",
+                disease_type=disease_type,
+                cap=self.MAX_DISEASE_MONITORS,
+            )
+            return
         if disease_type not in self._disease_monitors:
             if config is None:
                 config = CUSUMConfig(

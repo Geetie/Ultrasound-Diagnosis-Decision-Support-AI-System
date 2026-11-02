@@ -297,6 +297,29 @@ async def lifespan(app: FastAPI):
     breaker = AISafetyCircuitBreaker.get_instance()
     breaker.register_pending_notification_callback(_on_pending_notification)
 
+    # A.113 / G17：把熔断器交给 bridge —— `set_circuit_breaker` 此前零调用，
+    # 于是病种级 CUSUM 即使有监控器，触发后也到不了 `suspend_disease`。
+    try:
+        bridge.set_circuit_breaker(breaker)
+        # A.113 / G17：病种级监控器由这里**显式**注册（此前 register_disease_monitor
+        # 全仓零调用 → 病种 CUSUM 永不更新、病种暂停永不触发）。注册面 = 受支持器官，
+        # 不用"首次上报即建"：那会让病种名随调用方脏数据膨胀，且把配置变成隐式副作用。
+        from app.models.schemas import Organ as _Organ
+
+        for _organ in _Organ:
+            bridge.register_disease_monitor(_organ.value)
+    except Exception as e:
+        logger.warning("cusum_bridge_set_breaker_failed", error=str(e))
+
+    # A.113 / G20：熔断事件 → 审计库（此前 register_suspension_callback 生产零订阅，
+    # "触发"只有告警没有审计，而"恢复"反而有留痕——倒挂）。失败只 warning，不阻断。
+    try:
+        from app.observability.cusum.audit_bridge import register_breaker_audit_subscriber
+
+        register_breaker_audit_subscriber(breaker)
+    except Exception as e:
+        logger.warning("cusum_breaker_audit_subscriber_failed", error=str(e))
+
     # 02-5 链B：重启恢复熔断状态（Redis 快照；读失败/无快照保持 ACTIVE，
     # 不比现状差 —— "连续重启即永不熔断"缺口由此闭合）。
     from app.observability.cusum.persistence import restore_breaker_state
