@@ -495,6 +495,10 @@ class DiagnosisResult(BaseModel):
     # 形态同样用 Dict 承载（会随检索策略演进），避免过早固化契约。
     similar_cases: dict[str, Any] | None = None
 
+    # 处置建议降级标记（A.123 / G33）：True = 特征不足、只剩通用兜底建议；
+    # None = 未降级（或缺数据），界面据此提示"建议已降级"，不冒充完整规则输出。
+    clinical_actions_degraded: bool | None = None
+
     # 禁忌命中明细（A.121 / G34）：SG 侧早有 rule_id/description，但此前响应模型
     # 不带该字段、上游只显示"检测到 N 条禁忌"——医生看不到是哪条规则。
     # 白名单投影见 `_contraindication_matches_from`（rule_id/description/severity/organ）。

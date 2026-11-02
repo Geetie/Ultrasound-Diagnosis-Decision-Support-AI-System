@@ -245,6 +245,8 @@ export interface ConclusionView {
   finalConfidence?: number;
   /** 禁忌命中明细（G34）：空/缺 = 本次无命中（整块不渲染） */
   contraindicationMatches?: ContraindicationMatchView[];
+  /** 处置建议是否降级（G33）：true 才提示"特征不足、仅通用建议" */
+  actionsDegraded?: boolean;
   /** 转人工原因（G24）：已人话化；空/未知空串 → undefined（不渲染） */
   reviewReason?: string;
   /** 原始原因码（对账/报修用，界面只在兜底时用得上） */
@@ -373,6 +375,8 @@ export function toConclusionView(result: DiagnosisResult | null): ConclusionView
     finalConfidence: fusion?.final_confidence,
     // A.121 / G34：禁忌命中明细原样收敛（空数组 = 无命中）
     contraindicationMatches: toContraindicationMatches(result.contraindication_matches),
+    // A.123 / G33：处置建议降级（true 才给；缺省/未知 → undefined，不渲染提示）
+    actionsDegraded: result.clinical_actions_degraded === true ? true : undefined,
     // A.122 / G24：转人工原因（此前工作区零读者，医生只看到"需复核"不知道为什么）
     reviewReason: reviewReasonLabel(result.review_reason),
     reviewReasonCode: (result.review_reason ?? undefined) || undefined,

@@ -1104,6 +1104,14 @@ class RAGSpecialistAgent(SpecialistAgent):
                 response.reasoning_trace.append(
                     "clinical_actions -> " + "、".join(item.action_type for item in actions)
                 )
+                # A.123 / G33：`risk is None` = 特征没抽出来（或该器官不建风险模型），
+                # 此时规则表只剩通用化验/随访兜底。此前这个"缩水"对医生完全不可见，
+                # 只能看到一条建议，误以为"系统认为不需要更多处置"。
+                if risk is None:
+                    response.clinical_actions_degraded = True
+                    response.reasoning_trace.append(
+                        "clinical_actions_degraded -> no_malignancy_risk(features_missing)"
+                    )
 
             # M10：患者解释话术（默认不入正式报告，由医生按需展示/打印）
             explanation = parse_patient_explanation(llm_text)

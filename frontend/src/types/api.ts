@@ -241,6 +241,11 @@ export interface DiagnosisResult {
    */
   nodule_segmentation?: Record<string, unknown> | null;
   /**
+   * 处置建议降级标记（G33）：true = 特征不足、只剩通用兜底建议。
+   * 缺省/false 不区分"未降级"与"未评估"，因此 UI 只在 `=== true` 时提示。
+   */
+  clinical_actions_degraded?: boolean | null;
+  /**
    * 禁忌命中明细（G34）：后端白名单投影 rule_id/description/severity/organ；
    * 缺省/空 = 本次无命中（界面整块不渲染），不许当成"检查过且没问题"的证明。
    */

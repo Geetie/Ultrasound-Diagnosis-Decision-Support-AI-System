@@ -161,6 +161,9 @@ class AgentResponse(BaseModel):
     malignancy_risk: MalignancyRisk | None = None
     # 转诊/处置建议（M7）
     clinical_actions: list[ClinicalAction] = Field(default_factory=list)
+    #: A.123 / G33：处置建议是否**降级**（特征不足 → 只剩通用化验兜底）。
+    #: 医生看到"只有一条复查/化验"时，必须能知道是"规则就那么建议"还是"特征没抽出来"。
+    clinical_actions_degraded: bool = False
     # 患者解释话术（M10，默认不入正式报告）
     patient_explanation: PatientExplanation | None = None
     # 科研量化指标（M11，前端默认折叠）

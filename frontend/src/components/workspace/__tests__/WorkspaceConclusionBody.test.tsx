@@ -197,3 +197,27 @@ describe('WorkspaceConclusionBody · 转人工原因（G24）', () => {
     expect(screen.queryByText('转人工原因')).toBeNull();
   });
 });
+
+/** 处置建议降级提示（A.123 / G33）：特征不足时医生必须知道建议被缩水了。 */
+describe('WorkspaceConclusionBody · 处置建议降级（G33）', () => {
+  const BASE: ConclusionView = { headline: '考虑良性结节（TI-RADS 3）', evidenceIds: [] };
+
+  it('actionsDegraded=true → 在建议后追加降级说明', () => {
+    const { container } = render(
+      <WorkspaceConclusionBody
+        state="conclusion"
+        view={{ ...BASE, advice: '6 个月复查', actionsDegraded: true }}
+      />,
+    );
+    const block = container.querySelector('[data-region="advice-degraded"]');
+    expect(block).not.toBeNull();
+    expect(screen.getByText(/处置建议已降级/)).toBeInTheDocument();
+  });
+
+  it('无标记 → 不出现降级说明（不制造噪音）', () => {
+    const { container } = render(
+      <WorkspaceConclusionBody state="conclusion" view={{ ...BASE, advice: '6 个月复查' }} />,
+    );
+    expect(container.querySelector('[data-region="advice-degraded"]')).toBeNull();
+  });
+});

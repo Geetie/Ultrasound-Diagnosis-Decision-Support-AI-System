@@ -2796,6 +2796,10 @@ def _clinical_attributes_to_dict(response) -> dict:
                 item.model_dump() if hasattr(item, "model_dump") else item for item in value
             ]
 
+    # A.123 / G33：处置建议降级标记（True 才写；False 是默认，不占键）
+    if getattr(response, "clinical_actions_degraded", False) is True:
+        attributes["clinical_actions_degraded"] = True
+
     for single_field in ("patient_explanation", "research_metrics"):
         value = getattr(response, single_field, None)
         if value is not None:

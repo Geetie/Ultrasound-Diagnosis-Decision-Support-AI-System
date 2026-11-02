@@ -202,6 +202,11 @@ def clinical_attribute_fields(diagnosis_payload: dict | None) -> dict:
         "clinical_actions": _many("clinical_actions", ClinicalAction),
         "cross_modality_hints": _many("cross_modality_hints", CrossModalityHint),
         "posterior_acoustic": clinical.get("posterior_acoustic") or None,
+        # A.123 / G33：处置建议降级标记（True 才给；缺省/False → None，
+        # 免得把"没降级"和"没评估"混成同一个 False）
+        "clinical_actions_degraded": (
+            True if clinical.get("clinical_actions_degraded") is True else None
+        ),
     }
 
 

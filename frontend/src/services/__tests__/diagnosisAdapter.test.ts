@@ -335,3 +335,18 @@ describe('G24 转人工原因（A.122）', () => {
     expect(view.reviewReason).toBeUndefined();
   });
 });
+
+describe('G33 处置建议降级（A.123）', () => {
+  it('后端标记 true → actionsDegraded=true', () => {
+    const view = toConclusionView({ ...REAL_COMPLETED, clinical_actions_degraded: true } as never)!;
+    expect(view.actionsDegraded).toBe(true);
+  });
+
+  it('缺省/false → undefined（不提示"已降级"）', () => {
+    expect(toConclusionView(REAL_COMPLETED as never)!.actionsDegraded).toBeUndefined();
+    expect(
+      toConclusionView({ ...REAL_COMPLETED, clinical_actions_degraded: false } as never)!
+        .actionsDegraded,
+    ).toBeUndefined();
+  });
+});

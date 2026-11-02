@@ -95,6 +95,8 @@ function ConclusionBlock({
   const contraindications = live?.contraindicationMatches ?? [];
   // A.122 / G24：转人工原因（空 = 无 → 整块不渲染）
   const reviewReason = live?.reviewReason;
+  // A.123 / G33：处置建议降级提示（只有 true 才提示）
+  const actionsDegraded = live?.actionsDegraded === true;
   const canExpand = evidenceIds.length > 0 || ddx.length > 0 || crossHints.length > 0;
 
   return (
@@ -163,6 +165,11 @@ function ConclusionBlock({
       {/* 建议动作 */}
       <p className="ws-conclusion__advice" data-node="2:29">
         {advice}
+        {actionsDegraded && (
+          <span className="ws-advice-degraded" data-region="advice-degraded">
+            （处置建议已降级：特征不足，仅给出通用建议，请结合影像自行判断）
+          </span>
+        )}
       </p>
 
       {/* 展开入口-唯一（P1-6 修复：真按钮 + 真展开区）

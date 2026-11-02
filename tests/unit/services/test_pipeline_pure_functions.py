@@ -420,3 +420,37 @@ class TestContraindicationMatchesProjection:
         src = inspect.getsource(diagnosis_pipeline._write_result_to_db)
         assert "_contraindication_matches_from(sg_result)" in src
         assert 'findings["contraindication_matches"] = _contra' in src
+
+
+class TestClinicalActionsDegraded:
+    """A.123 / G33：特征不足导致处置建议缩水时，必须留下可上屏的标记。
+
+    此前 `risk is None`（特征没抽出来）时，`actions_for` 只返回通用化验/随访兜底，
+    医生看到一条建议会以为"系统认为不需要更多处置"——实际是"建议引擎降级了"。
+    """
+
+    def test_flag_written_only_when_degraded(self):
+        from app.services.diagnosis_pipeline import _clinical_attributes_to_dict
+
+        degraded = SimpleNamespace(clinical_actions_degraded=True)
+        assert _clinical_attributes_to_dict(degraded)["clinical_actions_degraded"] is True
+        normal = SimpleNamespace(clinical_actions_degraded=False)
+        assert "clinical_actions_degraded" not in _clinical_attributes_to_dict(normal)
+
+    def test_enrichment_sets_flag_when_risk_missing(self):
+        import inspect
+
+        from app.agents.specialist import base as specialist_base
+
+        # 方法在 RAGSpecialistAgent 上（SpecialistAgent 是基类，不含该实现）
+        src = inspect.getsource(specialist_base.RAGSpecialistAgent._enrich_clinical_attributes)
+        assert "clinical_actions_degraded = True" in src
+        assert "no_malignancy_risk(features_missing)" in src
+
+    def test_api_maps_true_only(self):
+        from app.api.v1.diagnosis import clinical_attribute_fields
+
+        hit = clinical_attribute_fields({"clinical_attributes": {"clinical_actions_degraded": True}})
+        assert hit["clinical_actions_degraded"] is True
+        miss = clinical_attribute_fields({"clinical_attributes": {}})
+        assert miss["clinical_actions_degraded"] is None
