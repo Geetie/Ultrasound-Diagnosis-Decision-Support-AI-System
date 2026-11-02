@@ -221,6 +221,37 @@ class DiagnosisRepository:
         )
         return result
 
+    async def mark_actions_taken(
+        self,
+        request_id: str,
+        rule_ids: list[str],
+        taken_by: str,
+        note: str | None = None,
+    ) -> DiagnosisResult | None:
+        """回填医生实际执行的处置（A.130 / G35）。
+
+        只写 3 个字段（actions_taken/at/by）——**不动** status/confidence/findings/
+        doctor_confirmed_*；采纳对照是审计数据，不是改判读。
+        时间戳由服务端生成（同 mark_doctor_confirmed 的审计可信口径）。
+        """
+        result = await self.get_result(request_id)
+        if not result:
+            return None
+        payload = list(rule_ids)
+        if note:
+            payload = {"rule_ids": payload, "note": note}  # type: ignore[assignment]
+        result.actions_taken = payload
+        result.actions_taken_at = datetime.now(timezone.utc)
+        result.actions_taken_by = taken_by
+        await self.db.flush()
+        logger.info(
+            "diagnosis_actions_taken_written",
+            request_id=request_id,
+            count=len(rule_ids),
+            taken_by=taken_by,
+        )
+        return result
+
     async def get_results_by_session(
         self,
         session_id: str,

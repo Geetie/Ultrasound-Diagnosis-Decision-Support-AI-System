@@ -121,6 +121,11 @@ class DiagnosisResult(Base):
     final_diagnosis_source = Column(String(32), nullable=True)
     final_diagnosis_at = Column(TIMESTAMP(timezone=True), nullable=True)
     final_diagnosis_by = Column(String(64), nullable=True)
+    # A.130 / G35：医生实际执行的处置（规则 ID 列表）+ 时间/操作者。
+    # 此前只有"建议"没有"实际做了什么"，采纳率/偏离率无法计算。
+    actions_taken = Column(JSONB, nullable=True)
+    actions_taken_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    actions_taken_by = Column(String(64), nullable=True)
     created_at = Column(TIMESTAMP(timezone=True), default=func.current_timestamp())
 
 

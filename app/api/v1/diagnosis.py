@@ -27,6 +27,8 @@ from app.models.schemas import (
     ClinicalAction,
     ConsentStatus,
     ConsistencyFlag,
+    ActionsTakenRequest,
+    ActionsTakenResponse,
     CrossModalityHint,
     DesensitizationStatus,
     DiagnosisEvidence,
@@ -731,6 +733,55 @@ async def set_final_diagnosis(
         final_diagnosis_source=written.final_diagnosis_source,
         final_diagnosis_at=written.final_diagnosis_at,
         final_diagnosis_by=actor_id,
+    )
+
+
+@router.patch("/{request_id}/actions-taken", response_model=ActionsTakenResponse)
+async def set_actions_taken(
+    request_id: str,
+    payload: ActionsTakenRequest,
+    diagnosis_repo=Depends(get_diagnosis_repo),
+    audit_service=Depends(get_audit_service),
+    _perm: dict = Depends(PermissionChecker("submit_feedback")),
+    current_user: dict | None = Depends(get_current_active_user),
+):
+    """回填医生实际执行的处置（G35 建议采纳对照）。
+
+    与 PATCH /final-diagnosis 的分工：那边是"最终诊断/金标准"（质控、季度审计），
+    这边是"这次建议我采纳了哪几条"（医生本人、即时动作）。两者都不改判读产物。
+    """
+    result = await diagnosis_repo.get_result(request_id)
+    if not result:
+        raise NotFoundException(error_message=f"判读结果不存在：{request_id}")
+
+    actor_id = get_actor_id(current_user)
+    cleaned = list(dict.fromkeys(str(x).strip() for x in payload.rule_ids if str(x).strip()))
+    if not cleaned:
+        raise BadRequestException(error_message="rule_ids 不能为空（全部未采纳请勿提交空列表）")
+
+    written = await diagnosis_repo.mark_actions_taken(
+        request_id=request_id,
+        rule_ids=cleaned,
+        taken_by=actor_id,
+        note=payload.note,
+    )
+    if written is None or written.actions_taken_at is None:
+        raise BadRequestException(error_message="实际处置回写失败，请重试")
+
+    await audit_service.log_action(
+        action="set_actions_taken",
+        actor=actor_id,
+        session_id=getattr(written, "session_id", None),
+        target_type="diagnosis",
+        target_id=request_id,
+        detail={"rule_ids": cleaned, "note": payload.note},
+    )
+    return ActionsTakenResponse(
+        request_id=request_id,
+        rule_ids=cleaned,
+        note=payload.note,
+        taken_at=written.actions_taken_at,
+        taken_by=actor_id,
     )
 
 

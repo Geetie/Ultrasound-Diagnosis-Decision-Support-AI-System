@@ -31,7 +31,8 @@ ALLOWED_CATEGORIES = {
 # 棘轮：新增条目必须在这里显式上调（并说明为什么），避免清单被顺手扩张。
 # 8 -> 6：`dicom_storage.py` 补测到 95%（达标后按规则移出）、
 #         `sustained_load_test.py` 改记为 excluded_by_design（纯现场脚本，无离线层可言）。
-EXPECTED_ENTRY_COUNT = 6
+# A.130（G35）：新增 1 条 —— alembic/versions/0020_actions_taken.py（真实 PostgreSQL 才能跑迁移）。
+EXPECTED_ENTRY_COUNT = 7
 
 
 @pytest.fixture(scope="module")

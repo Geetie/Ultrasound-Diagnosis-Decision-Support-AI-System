@@ -2,7 +2,7 @@
   "policy": "本清单只解释'剩余的未覆盖部分是什么性质'，不参与降低覆盖率门禁：CI 的整体/核心覆盖率一律按 pyproject.toml 与 .github/workflows/ci.yml 的阈值对整个代码库计算，与清单无关。列为 external_service_semantics / hardware_hsm / external_object_storage / real_database / hardware_gpu 的条目，表示其剩余缺口需要真实外部系统或真机才能覆盖；每条都必须说明'离线已经覆盖到哪一层'，否则不允许留在清单里。",
   "target_core_percent": 90,
   "target_overall_percent": 80,
-  "updated_at": "2026-09-29",
+  "updated_at": "2026-11-03",
   "entries": [
     {
       "module": "app/security/refresh_token.py",
@@ -63,6 +63,16 @@
       "offline_covered": "监控循环的调度、阈值比较、碎片率估算与热重载触发条件（可注入假快照）。",
       "reason": "碎片率与热重载判定必须在真实显存压力下验证才可信，离线估的值与真机行为无对应关系。",
       "next_action": "现场制造显存压力，验证碎片率阈值与模型热重载回执。"
+    },
+    {
+      "module": "alembic/versions/0020_actions_taken.py",
+      "percent": 0.0,
+      "missing_lines": 12,
+      "category": "real_database",
+      "field_verification": true,
+      "offline_covered": "迁移脚本的 revision 链（0020→0019）、三个字段名与 ORM 的一致性由 tests/unit/api/test_actions_taken.py::test_migration_and_model_agree 静态校验；仓储写入路径由伪会话单测覆盖。",
+      "reason": "迁移本身只能在真实 PostgreSQL 上执行（ADD COLUMN IF NOT EXISTS 的幂等性、JSONB 类型、downgrade 回滚），离线无 PG 无法跑。",
+      "next_action": "在真机（uai-postgres 容器）执行 alembic upgrade head 与 downgrade -1，并用 \\d diagnosis_results 核对三个列类型。"
     }
   ],
   "field_progress": [

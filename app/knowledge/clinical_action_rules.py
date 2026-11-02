@@ -118,7 +118,7 @@ def load_rules(path: str | None = None) -> tuple[list[ClinicalActionRule], str |
         return [], f"file_not_found:{resolved}"
     try:
         mtime = os.path.getmtime(resolved)
-    except OSError:
+    except OSError:  # silent-ok: 拿不到 mtime 就退化为"每次都读"，不阻断规则加载
         mtime = 0.0
     return _load_cached(resolved, mtime)
 

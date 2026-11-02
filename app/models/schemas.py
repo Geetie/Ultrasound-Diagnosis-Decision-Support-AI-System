@@ -980,6 +980,30 @@ class FinalDiagnosisResponse(BaseModel):
     final_diagnosis_by: str
 
 
+# ============== G35：实际处置回填（建议采纳对照） ==============
+#: 单次最多回填条数（与 MAX_ACTIONS 同量级；超量视为误用而非"执行了 50 条建议"）
+MAX_ACTIONS_PER_UPDATE = 10
+
+class ActionsTakenRequest(BaseModel):
+    """医生实际执行的处置（规则 ID 列表）。
+
+    `rule_ids` 与 ``ClinicalAction.rule_id`` 同源（``<organ>:<action_type>``），
+    但**不做白名单强校验**：规则表可由外部 YAML 更新（A.129），历史 rule_id 可能已下线；
+    只要求非空字符串。空列表被拒（"没执行任何建议"应走显式 nothing_done 语义，而不是空数组）。
+    """
+
+    rule_ids: list[str] = Field(min_length=1, max_length=MAX_ACTIONS_PER_UPDATE)
+    note: str | None = Field(default=None, max_length=500)
+
+
+class ActionsTakenResponse(BaseModel):
+    request_id: str
+    rule_ids: list[str]
+    note: str | None = None
+    taken_at: datetime
+    taken_by: str
+
+
 # ============== T-GB-API-02 报告生成与签发 ==============
 class ReportDraftRequest(BaseModel):
     """生成报告草稿（可选一步签名/推送）。"""
