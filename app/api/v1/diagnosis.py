@@ -873,8 +873,9 @@ async def get_diagnosis_result(
             evidence=DiagnosisEvidence(knowledge_ids=None, content=None),
             quality_control=DiagnosisQualityControl(
                 confidence_score=None,
-                self_rag_passed=False,
-                consistency_check_passed=False,
+                # A.116 / G25：取消 = 质检根本没跑 → None（未评估），不是 False（没通过）
+                self_rag_passed=None,
+                consistency_check_passed=None,
             ),
             requires_manual_review=True,
             review_reason="consent_withdrawn_cancelled",
@@ -1001,21 +1002,30 @@ async def get_diagnosis_result(
     # 会造成两个方向的误导：把"未评估"写成"未通过"、把"没检查过"写成"检查通过"。
     # 现在一律从管线写回的真实信号推导（`diagnosis_pipeline.py` 的 fusion_result）。
     #
-    # 契约限制：`DiagnosisQualityControl` 的两个字段是**非可选 bool**（`schemas.py:206-207`），
-    # 因此无法表达"未评估"这一第三态；本实现按"未评估 → 不得声称通过（False 保守）"处理。
-    # 如需真正的三态语义，需要把契约改成 `bool | None`（影响面较大，另行排期）。
+    # A.116 / G25：契约已改为三态（`bool | None`），这里按"真实评估过没有"填：
+    #   * self_rag_passed：融合层写下的 bool 原样透出；缺失/非 bool → None（未评估）；
+    #   * consistency_check_passed：`review_reason == "consistency_failed"` → False；
+    #     否则只有**真的比过**（compared_with_prior / compared_with_guidelines 为 True）
+    #     才给 True；两者都没有 → None（未评估，而不是"通过"）。
+    # 这修的是"把没跑过写成没通过/通过"两个方向的误导（同 A.88 幻觉字段的口径）。
     fusion_payload = diagnosis_payload.get("fusion_result")
     if isinstance(fusion_payload, dict) and fusion_payload:
-        self_rag_passed = bool(fusion_payload.get("self_rag_passed"))
-        # 真实信号：融合层在一致性 CRITICAL 时置 review_reason="consistency_failed"
-        # （见 app/fusion/layered_validator.py）。没有该 reason 才认为一致性未失败。
-        consistency_check_passed = (
-            fusion_payload.get("review_reason") != "consistency_failed"
-        )
+        raw_self_rag = fusion_payload.get("self_rag_passed")
+        self_rag_passed = raw_self_rag if isinstance(raw_self_rag, bool) else None
+
+        if fusion_payload.get("review_reason") == "consistency_failed":
+            consistency_check_passed = False
+        elif (
+            fusion_payload.get("compared_with_prior") is True
+            or fusion_payload.get("compared_with_guidelines") is True
+        ):
+            consistency_check_passed = True
+        else:
+            consistency_check_passed = None
     else:
-        # 没有融合结果（worker 未写入 / 占位 payload）→ 不得声称质检通过
-        self_rag_passed = False
-        consistency_check_passed = False
+        # 没有融合结果（worker 未写入 / 占位 payload）→ 两个质检都是"未评估"
+        self_rag_passed = None
+        consistency_check_passed = None
     # 真实失败语义：与 MonitorAgent._is_failure 的判据保持一致（monitor.py:138-142），
     # 否则 R3"同器官连续失败"窗口永远不会被写入。
     ai_diagnosis_failed = result_status in ("failed", "timeout")

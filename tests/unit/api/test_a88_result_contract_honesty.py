@@ -347,3 +347,59 @@ class TestNoHardcodedConstantsRemain:
     def test_derivation_present(self, src):
         assert "fusion_status = FusionStatus.NORMAL if has_fusion_result else FusionStatus.BYPASSED" in src
         assert "consistency_flag = None" in src
+
+
+class TestQualityControlTriState:
+    """A.116 / G25：质检结论必须是**三态**，不许把"没评估"写成"没通过"。
+
+    修复前 `DiagnosisQualityControl` 的两个字段是非可选 `bool`，未评估只能落 False ——
+    医生读到 False 会认为"质检没通过"，而事实可能是"这次没跑质检"。两个方向的误读都会
+    改变处置（False 会让人复核，True 会让人跳过复核，None 才是"不知道，请自己判断"）。
+    """
+
+    async def test_no_fusion_means_not_evaluated(self, monkeypatch):
+        row = _row(findings={})
+        result = await _call(monkeypatch, row)
+        assert result.quality_control is not None
+        assert result.quality_control.self_rag_passed is None
+        assert result.quality_control.consistency_check_passed is None
+
+    async def test_self_rag_true_is_passed(self, monkeypatch):
+        row = _row(fusion_result={"self_rag_passed": True, "compared_with_prior": True})
+        result = await _call(monkeypatch, row)
+        assert result.quality_control.self_rag_passed is True
+        assert result.quality_control.consistency_check_passed is True
+
+    async def test_self_rag_missing_key_is_not_evaluated(self, monkeypatch):
+        row = _row(fusion_result={"needs_review": False})
+        result = await _call(monkeypatch, row)
+        assert result.quality_control.self_rag_passed is None
+
+    async def test_self_rag_false_is_failed(self, monkeypatch):
+        row = _row(fusion_result={"self_rag_passed": False})
+        result = await _call(monkeypatch, row)
+        assert result.quality_control.self_rag_passed is False
+
+    async def test_consistency_failed_reason_is_false(self, monkeypatch):
+        row = _row(fusion_result={"review_reason": "consistency_failed"})
+        result = await _call(monkeypatch, row)
+        assert result.quality_control.consistency_check_passed is False
+
+    async def test_consistency_not_compared_is_none(self, monkeypatch):
+        """有融合结果但从没比过 → None（不是"通过"）。"""
+        row = _row(
+            fusion_result={
+                "needs_review": False,
+                "compared_with_prior": False,
+                "compared_with_guidelines": False,
+            }
+        )
+        result = await _call(monkeypatch, row)
+        assert result.quality_control.consistency_check_passed is None
+
+    async def test_cancelled_branch_is_not_evaluated(self, monkeypatch):
+        """取消 = 质检根本没跑 → None（此前写 False，等于声称"没通过"）。"""
+        row = _row(status="cancelled", findings={})
+        result = await _call(monkeypatch, row)
+        assert result.quality_control.self_rag_passed is None
+        assert result.quality_control.consistency_check_passed is None

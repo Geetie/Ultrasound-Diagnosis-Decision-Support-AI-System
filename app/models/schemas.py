@@ -259,9 +259,18 @@ class DiagnosisEvidence(BaseModel):
 
 
 class DiagnosisQualityControl(BaseModel):
+    """质检汇总（对外契约）。
+
+    A.116 / G25：两个质检结论改为**三态**（``True/False/None``）。
+    此前是非可选 ``bool``，于是"没跑过质检"只能被迫写成 ``False`` ——
+    医生看到 ``False`` 会读成"质检没通过"，而事实可能是"这次根本没评估"
+    （与 A.88 给幻觉严重度补 `checked` 字段是同一类问题：把"没做"写成"没通过"
+    会让人做出不同的处置）。``None`` 的语义固定为**未评估**。
+    """
+
     confidence_score: float | None = None
-    self_rag_passed: bool = False
-    consistency_check_passed: bool = False
+    self_rag_passed: bool | None = None
+    consistency_check_passed: bool | None = None
 
 
 # ============== 医生直接信息需求（M1~M12）共享模型 ==============

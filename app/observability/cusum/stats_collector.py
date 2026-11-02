@@ -161,7 +161,8 @@ def feed_interval_seconds() -> float:
     raw = getattr(settings, "cusum_stats_feed_interval_seconds", DEFAULT_INTERVAL_SECONDS)
     try:
         return max(0.0, float(raw))
-    except (TypeError, ValueError):
+    except (TypeError, ValueError):  # silent-ok: 配置异常按"禁用"处理，调用方日志会打 interval_s=0
+        _logger.warning("cusum_stats_interval_invalid", raw=str(raw))
         return 0.0
 
 
@@ -177,7 +178,8 @@ def lookback_days() -> int:
     raw = getattr(settings, "cusum_stats_lookback_days", DEFAULT_LOOKBACK_DAYS)
     try:
         return max(1, int(raw))
-    except (TypeError, ValueError):
+    except (TypeError, ValueError):  # silent-ok: 配置异常回退默认回看天数，并留 warning
+        _logger.warning("cusum_stats_lookback_invalid", raw=str(raw))
         return DEFAULT_LOOKBACK_DAYS
 
 
