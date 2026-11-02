@@ -63,6 +63,12 @@ class CriticalOperationAudit:
                     hash_prev=prev_hash,
                     hash_self=hash_self,
                     created_at=now,
+                    # A.117 / G46：关键操作必须写**列**，不能只写 detail。
+                    # 冷归档按 `is_critical_operation.is_(False)` 选会话，
+                    # 以前只把标记塞进 detail → 列恒为默认 False → 关键审计链
+                    # 会被当普通记录整条冷归档（`cold_archive.py:238` 的注释
+                    # "关键操作不参与冷归档"与实现相反）。
+                    is_critical_operation=True,
                 )
 
                 self.db.add(audit_log)

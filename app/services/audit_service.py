@@ -112,6 +112,11 @@ class AuditService:
                 hash_prev=hash_prev,
                 hash_self=hash_self,
                 created_at=now,
+                # A.117 / G46：调用方若在 detail 里标了 is_critical_operation，
+                # 必须镜像到**列**——冷归档只认列，不认 detail。
+                is_critical_operation=bool(
+                    isinstance(detail, dict) and detail.get("is_critical_operation") is True
+                ),
             )
 
             db.add(audit_log)

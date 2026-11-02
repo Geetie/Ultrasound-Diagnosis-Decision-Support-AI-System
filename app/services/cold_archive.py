@@ -236,12 +236,22 @@ class ColdArchiveService:
         """找出"整条链都已超期"的会话（避免链被时间切分）。
 
         关键操作记录不参与冷归档（其链路需实时可验）。
+
+        A.117 / G46：这条判据以前**只看列**，而历史写入路径只把
+        `is_critical_operation` 塞进 `detail`、列恒为默认 False → 关键链被当普通
+        记录归档（注释与实现相反）。现在双保险：
+        ①列（新写入已正确置位）；②`detail->>'is_critical_operation'` 不是 "true"
+        —— 保护修复前的历史行。
         """
         stmt = (
             select(AuditLog.session_id)
             .where(
                 AuditLog.session_id.isnot(None),
                 AuditLog.is_critical_operation.is_(False),
+                func.coalesce(
+                    AuditLog.detail["is_critical_operation"].astext, "false"
+                )
+                != "true",
                 AuditLog.created_at < threshold,
             )
             .group_by(AuditLog.session_id)

@@ -1,6 +1,6 @@
 # progress.md — 当前状态（唯一「现在在哪」来源）
 
-**Last Updated**: 2026-11-03（**A.107~A.116 缺口批次**：G1 主断链、N1 熔断恢复、N5 影像腿阈值、N8 多部位临床事实、G32 禁忌族匹配、G14 严重幻觉转人工、G36 分级下界提示；详见 16 号对应条目）
+**Last Updated**: 2026-11-03（**A.107~A.117 缺口批次**：G1 主断链、N1 熔断恢复、N5 影像腿阈值、N8 多部位临床事实、G32 禁忌族匹配、G14 严重幻觉转人工、G36 分级下界提示；详见 16 号对应条目）
 
 **目标**：18 项未打通项收口（详见 `docs/技术文档/未打通项打通计划/00-总览与对账表.md`，现状看其 §十一）
 
@@ -18,6 +18,7 @@
 - **A.114（本轮）**：G18 CUSUM 校准回灌——新增 `runtime_config.load_runtime_config()`（严格校验 recommended_h/delta/target_rate，非法回退 settings 并留 `calibration_invalid:<reason>`），`create_cusum_monitor` 改用它并记 `_config_source`；校准端点存到运行时路径并回告 `applies: next_startup`。
 - **A.115（本轮）**：G19 周/月统计接数据源（`stats_collector`：ISO 周/自然月分桶 + `completed`+`created_at` 薄读取 + 定时任务）；**默认观察模式**（只记 `cusum_window_stats` 含 would_exceed，不触发暂停），`cusum_stats_enforce=True` 才真喂监控器；缺时间戳的行计数告警不静默丢。
 - **A.116（本轮）**：G25 质检结论三态（`DiagnosisQualityControl` 两字段改 `bool|None`；读侧：Self-RAG 缺失→None、一致性"真的比过"才 True、`consistency_failed`→False、取消分支 None/None），修"没评估冒充没通过/没跑过冒充通过"两个方向的误导。
+- **A.117（本轮）**：G46 关键审计链不再被误冷归档（关键写入置列 + 通用写入镜像 detail 标记 + 冷归档选行加 `detail` 双保险保护历史行，并纠正与实现相反的 docstring）。
 - **仍关的能力**（默认值未变，做不到就别说"已打通"）：01-1 影像腿（裁决关，A.68 NO_GAIN）、01-2 低置信升档（生产不传 `retrieval_confidence`）、01-4 残留 1 处死键（`specialist/base.py:744`）、03-5 快照溯源、05-1 报告话术入口、06-4 基层档过滤（默认三甲）、06-6 注册结论（外部）；02-1/04-3 靠部署 `.env` 开。逐项见 28 项台账 §十一。
 
 ## Blockers
