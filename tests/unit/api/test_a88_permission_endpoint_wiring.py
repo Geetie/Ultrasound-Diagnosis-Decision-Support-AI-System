@@ -142,6 +142,9 @@ class TestHttpBehaviour:
         """管理员能过权限门（后面的 Redis 逻辑用桩替身，不验证副作用）。"""
         from unittest.mock import AsyncMock, patch
 
+        from unittest.mock import MagicMock
+
+        from app.config.database import get_db_session
         from app.main import app
         from app.security.auth import get_current_active_user
 
@@ -149,6 +152,15 @@ class TestHttpBehaviour:
             "user_id": "admin_1",
             "role": "SYSTEM_ADMIN",
         }
+        # A.118：端点新增关键审计写库（G43）→ 用伪会话，别让权限测试去连真库
+        fake_db = AsyncMock()
+        fake_db.add = MagicMock()
+        fake_db.commit = AsyncMock()
+        # 关键链要读上一条 hash：execute 必须返回"同步结果对象"，不能是协程
+        fake_db.execute = AsyncMock(
+            return_value=MagicMock(scalar_one_or_none=lambda: None)
+        )
+        app.dependency_overrides[get_db_session] = lambda: fake_db
         mock_client = AsyncMock()
         try:
             with patch(
@@ -161,6 +173,7 @@ class TestHttpBehaviour:
                 )
         finally:
             app.dependency_overrides.pop(get_current_active_user, None)
+            app.dependency_overrides.pop(get_db_session, None)
 
         assert resp.status_code == 200, resp.text
 

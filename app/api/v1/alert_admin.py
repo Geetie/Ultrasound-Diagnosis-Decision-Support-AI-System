@@ -3,8 +3,11 @@ from typing import Any, Literal
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
+from app.config.database import get_db_session
 from app.config.redis import RedisPool
 from app.config.redis_keys import RedisKey
+from app.api.v1.utils import get_actor_id
+from sqlalchemy.ext.asyncio import AsyncSession
 from app.observability.alert_escalation import get_alert_escalation_manager
 from app.security.auth import PermissionChecker, RoleChecker
 
@@ -104,6 +107,7 @@ class SGThresholdUpdateRequest(BaseModel):
 @router.post("/sg-threshold")
 async def publish_sg_threshold_update(
     request: SGThresholdUpdateRequest,
+    db: AsyncSession = Depends(get_db_session),
     current_user: dict[str, Any] = _admin_only,
     # A.88 权限接线②：阈值配置用**权限位**准入（``check_permission``）。
     # 权限位名 ``configure_sg_thresholds`` 在 PERMISSIONS 里只授给 SYSTEM_ADMIN
@@ -147,4 +151,41 @@ async def publish_sg_threshold_update(
     except Exception as exc:
         raise HTTPException(status_code=503, detail=f"Redis 不可用：{exc}") from exc
 
-    return {"status": "published", "stream": RedisKey.SG_THRESHOLD_STREAM, "message": message}
+    # A.118 / G43：改运行时安全阈值是**关键操作**（`is_critical_operation` 名单里的
+    # `threshold_adjustment`），但 `CriticalOperationAudit` 全仓零生产调用 —— 关键链
+    # 一条记录都没有，"谁在何时改了对患者的放行/拦截行为"只能靠普通审计。
+    # 这里在下发**成功之后**写关键链（下发失败不写"改过"的假记录）；
+    # 审计失败则是**合规事故**：阈值已经生效却无法留痕，必须让调用方明确知道（500）。
+    actor = get_actor_id(current_user)
+    try:
+        from app.observability.audit_chain import CriticalOperationAudit
+
+        await CriticalOperationAudit(db).log_critical_operation(
+            operation="threshold_adjustment",
+            operator=actor,
+            before_value=None,
+            after_value=json.dumps(message, sort_keys=True, ensure_ascii=False),
+            detail={
+                "action": message["action"],
+                "organ": message.get("organ"),
+                "threshold": message.get("threshold"),
+                "stream": RedisKey.SG_THRESHOLD_STREAM,
+            },
+        )
+        await db.commit()
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "阈值已下发生效，但关键审计写入失败（合规事故，需立即排查）："
+                f"{type(exc).__name__}: {exc}"
+            ),
+        ) from exc
+
+    return {
+        "status": "published",
+        "stream": RedisKey.SG_THRESHOLD_STREAM,
+        "message": message,
+        "audit_chain": "critical",
+        "audited_by": actor,
+    }

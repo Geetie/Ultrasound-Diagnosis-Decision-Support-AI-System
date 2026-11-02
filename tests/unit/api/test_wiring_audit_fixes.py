@@ -308,6 +308,15 @@ class TestSGThresholdProducer:
         from app.config.redis_keys import RedisKey
 
         mock_client = AsyncMock()
+        # A.118：端点现在还要写**关键审计链**（G43），必须注入一个伪会话；
+        # 用真会话会在这里连库，测试就变成"依赖环境"而不是"依赖契约"。
+        fake_db = AsyncMock()
+        fake_db.add = MagicMock()
+        fake_db.commit = AsyncMock()
+        # 关键链要读上一条 hash：execute 必须返回"同步结果对象"，不能是协程
+        fake_db.execute = AsyncMock(
+            return_value=MagicMock(scalar_one_or_none=lambda: None)
+        )
         with patch(
             "app.api.v1.alert_admin.RedisPool.get_client", AsyncMock(return_value=mock_client)
         ):
@@ -315,6 +324,7 @@ class TestSGThresholdProducer:
                 request=SGThresholdUpdateRequest(
                     action="update", organ="thyroid", threshold=0.7
                 ),
+                db=fake_db,
                 current_user={"user_id": "admin", "role": "SYSTEM_ADMIN"},
             )
         mock_client.xadd.assert_awaited_once()
