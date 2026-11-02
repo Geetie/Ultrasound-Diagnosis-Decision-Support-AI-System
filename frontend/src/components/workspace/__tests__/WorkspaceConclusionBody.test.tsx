@@ -336,3 +336,35 @@ describe('WorkspaceConclusionBody · 规则 ID（G31）', () => {
     expect(container.querySelector('[data-rule-id]')).toBeNull();
   });
 });
+
+/** 阶段耗时（A.128 / G28+G29）：此前只在死页渲染，现在可达工作区。 */
+describe('WorkspaceConclusionBody · 阶段耗时（G28）', () => {
+  const BASE: ConclusionView = { headline: '考虑良性结节（TI-RADS 3）', evidenceIds: ['c1'] };
+  const EXPAND = '展开依据 / 鉴别诊断 / 诊断过程';
+
+  it('有耗时段：展开后逐条显示 label + ms', () => {
+    const { container } = render(
+      <WorkspaceConclusionBody
+        state="conclusion"
+        view={{
+          ...BASE,
+          stageTimings: [
+            { key: 'retrieval', label: '检索知识库与证据', durationMs: 1200, estimated: false, elapsedMs: 0 } as never,
+            { key: 'finalizing', label: '管线总耗时', durationMs: 2600, estimated: false, elapsedMs: 0 } as never,
+          ],
+        }}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: EXPAND }));
+    const block = container.querySelector('[data-region="stage-timings"]');
+    expect(block).not.toBeNull();
+    expect(block!.textContent).toContain('检索知识库与证据');
+    expect(block!.textContent).toContain('1200 ms');
+  });
+
+  it('无耗时：整块不渲染', () => {
+    const { container } = render(<WorkspaceConclusionBody state="conclusion" view={BASE} />);
+    fireEvent.click(screen.getByRole('button', { name: EXPAND }));
+    expect(container.querySelector('[data-region="stage-timings"]')).toBeNull();
+  });
+});

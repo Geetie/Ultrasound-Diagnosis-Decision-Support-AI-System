@@ -102,6 +102,8 @@ function ConclusionBlock({
   // A.125 / G38：结构化处置建议 + 测量（此前只挂在已删路由死页）
   const clinicalActions = live?.clinicalActions ?? [];
   const measurement = live?.measurementView;
+  // A.128 / G28+G29：阶段耗时（只含真实遥测段 + 总耗时；此前唯一消费者在死页）
+  const stageTimings = live?.stageTimings ?? [];
   const canExpand = evidenceIds.length > 0 || ddx.length > 0 || crossHints.length > 0;
 
   return (
@@ -321,6 +323,23 @@ function ConclusionBlock({
                         出处：{h.source_reference}
                       </span>
                     )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* 阶段耗时（A.128 / G28+G29）：此前唯一消费者在无路由死页；这里只列
+              后端真的写出时间的段 + 管线总耗时，不把叙事阶段（submitted/reasoning）
+              伪装成遥测。 */}
+          {stageTimings.length > 0 && (
+            <div className="ws-conclusion__timings" data-region="stage-timings">
+              <span className="ws-conclusion__evidence-title">各阶段耗时（实测）</span>
+              <ul className="ws-conclusion__timings-list">
+                {stageTimings.map((t) => (
+                  <li key={`${t.key}-${t.label}`} className="ws-conclusion__timing-row">
+                    <span className="ws-conclusion__timing-label">{t.label}</span>
+                    <span className="ws-conclusion__timing-value">{t.durationMs} ms</span>
                   </li>
                 ))}
               </ul>

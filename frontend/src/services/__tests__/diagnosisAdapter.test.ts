@@ -455,3 +455,39 @@ describe('G31 处置建议规则 ID（A.127）', () => {
     expect(view.clinicalActions?.[1].ruleId).toBeUndefined();
   });
 });
+
+describe('G28/G29 阶段耗时（A.128）', () => {
+  const withTimings = (timings: Record<string, number>) => {
+    const base = REAL_COMPLETED.diagnosis as unknown as Record<string, unknown>;
+    return {
+      ...REAL_COMPLETED,
+      diagnosis: { ...base, timings_ms: timings },
+    } as never;
+  };
+
+  it('映射真实段：检索/融合/安全/幻觉/写库 + 总耗时', () => {
+    const view = toConclusionView(
+      withTimings({
+        'dispatcher.invoke_ms': 1200,
+        'fusion.fuse_ms': 800,
+        'sg.check_output_ms': 90,
+        'hallucination.detect_ms': 5,
+        db_write_ms: 40,
+        'pipeline.total_ms': 2600,
+      }),
+    )!;
+    const labels = (view.stageTimings ?? []).map((t) => t.label);
+    expect(labels).toContain('检索知识库与证据');
+    expect(labels).toContain('融合与一致性校验');
+    expect(labels).toContain('安全网关校验');
+    expect(labels).toContain('管线总耗时');
+    // 叙事阶段不得伪装成遥测
+    expect(labels).not.toContain('已提交请求');
+    expect(labels).not.toContain('专科模型推理中');
+  });
+
+  it('没有任何 timing → undefined（不渲染空表）', () => {
+    const view = toConclusionView(withTimings({}))!;
+    expect(view.stageTimings).toBeUndefined();
+  });
+});

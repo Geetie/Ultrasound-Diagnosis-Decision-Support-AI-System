@@ -172,10 +172,20 @@ export interface StageTiming {
  * 于是该阶段恒被 `typeof value === 'number'` 过滤掉，**永远不显示**。
  * 这类"键名对不上"缺陷单测抓不到（没有真实响应），只能实测。
  */
+/**
+ * 阶段 → 后端 timings_ms 键。
+ *
+ * A.128 / G28：此前只映射 3 段（检索/融合/安全），后端实际写出的
+ * `hallucination.detect_ms` 与 `db_write_ms` 无人读；`submitted` / `reasoning`
+ * 在后端**没有独立时间戳**（它们是叙事阶段，不是遥测），所以不在这里编造，
+ * 由 `extractStageTimings` 只输出"真有数"的阶段。
+ */
 const TIMING_KEY_MAP: Array<[DiagnosisStageKey, string]> = [
   ['retrieval', 'dispatcher.invoke_ms'],
   ['fusion', 'fusion.fuse_ms'],
   ['safety', 'sg.check_output_ms'],
+  ['safety', 'hallucination.detect_ms'],
+  ['finalizing', 'db_write_ms'],
 ];
 
 export function extractStageTimings(result: DiagnosisResult | null): StageTiming[] {

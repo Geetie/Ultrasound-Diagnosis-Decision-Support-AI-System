@@ -25,6 +25,8 @@ import type {
   ResearchMetrics,
 } from '@/types/api';
 import { reviewReasonLabel } from '@/utils/reviewReason';
+import { extractStageTimings } from '@/services/diagnosisService';
+import type { StageTiming } from '@/services/diagnosisService';
 
 /** 「看一眼」档的触发理由（契约 §1：仅命中触发条件时渲染） */
 export type AttentionReason =
@@ -348,6 +350,8 @@ export interface ConclusionView {
   clinicalActions?: ClinicalActionView[];
   /** 结构化测量（M3，G38 迁移）：缺/全空 = 无测量（整块不渲染） */
   measurementView?: MeasurementView;
+  /** 阶段耗时（G28/G29）：只含后端**真的写出**的段 + 管线总耗时；可空 */
+  stageTimings?: StageTiming[];
   /** 转人工原因（G24）：已人话化；空/未知空串 → undefined（不渲染） */
   reviewReason?: string;
   /** 原始原因码（对账/报修用，界面只在兜底时用得上） */
@@ -484,6 +488,11 @@ export function toConclusionView(result: DiagnosisResult | null): ConclusionView
     finalConfidence: fusion?.final_confidence,
     // A.121 / G34：禁忌命中明细原样收敛（空数组 = 无命中）
     contraindicationMatches: toContraindicationMatches(result.contraindication_matches),
+    // A.128 / G28：阶段耗时（真实段 + 总耗时；空则不渲染）
+    stageTimings: (() => {
+      const rows = extractStageTimings(result);
+      return rows.length > 0 ? rows : undefined;
+    })(),
     // A.125 / G38：结构化处置建议 + 测量（此前只挂在已删路由的死页上）
     clinicalActions: toClinicalActions(result.clinical_actions),
     measurementView: toMeasurementView(result.measurement),
