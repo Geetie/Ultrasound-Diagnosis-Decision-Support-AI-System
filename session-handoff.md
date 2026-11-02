@@ -5,7 +5,15 @@
 
 ## Last Updated
 
-2026-11-03（**A.104 真机部署首跑 + A.105 self_rag_score + A.106 harness 整饬/认证包**；远端已同步，见 16 号 A.104~A.106）
+2026-11-03（**A.107 按缺口台账开工**：G1 主断链 + 4 条配套 + LLM 重试配置；见 16 号 A.104~A.108）
+
+### A.107 增量（最新，2026-11-03）
+
+- **LLM 重试**：`~/.dsh/profiles/desktop/cordis.patch.yml` 配 `dsh-llm-retry-settings`（6 次 / 1s→30s 退避 / 抖动 0.25 / 耗尽续写 / Retry-After≤120s）；**重启 DSH 生效**。
+- **G1（P0）已修**：`_lift_clinical_attributes()` 把 clinical_attributes 提到 findings 顶层（写侧 `5e7964e`，守卫 6 例）。
+- **配套**：恶性概率链路（`MalignancyRiskView`，删 adapter 写死的 undefined）；`final_diagnosis` 四列进契约（只读）；看板 `cusum_s_plus` 取真值；`guided_json` 死键删净；离线一致性脚本 TypeError 修掉；`.gitignore` 的 `models/` 锚定到根（防新模型文件被静默忽略）。
+- **剩**：N1 熔断死锁、N4/N5 影像腿双闸、N8 多部位缺字段、G21/G32/G36 等（见台账 §6）。
+- 入口：`docs/合规/缺口核实台账-20261103.md` §6 状态列 + 16 号 A.107。
 
 ### A.104~A.106 增量（最新）
 
