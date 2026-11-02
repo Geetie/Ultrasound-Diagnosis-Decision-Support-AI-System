@@ -88,7 +88,7 @@ def check_feature_list(root: Path) -> list[Result]:
         return [Result("feature_list", False, "文件缺失")]
     try:
         data = json.loads(raw)
-    except json.JSONDecodeError as exc:
+    except json.JSONDecodeError as exc:  # silent-ok: 原因原样进 FAIL 结果（不吞异常信息）
         return [Result("feature_list", False, f"JSON 不可解析：{exc}")]
     feats = data.get("features") if isinstance(data, dict) else None
     if not isinstance(feats, list) or not feats:

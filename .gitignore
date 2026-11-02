@@ -125,3 +125,7 @@ graphify-out/
 
 # === DSH 桌面运行环境写入的运行时清单（非本项目代码）===
 package.json
+
+# === 本机 IDE 的授权规则（.codebuddy/rules/*.mdc：工具侧"允许全部命令"这类本机设置，
+# 不是项目事实；A.106 清理时发现它一直以未跟踪状态出现）===
+.codebuddy/rules/

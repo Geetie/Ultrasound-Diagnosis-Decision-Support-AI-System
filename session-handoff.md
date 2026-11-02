@@ -5,36 +5,52 @@
 
 ## Last Updated
 
-2026-10-31（**A.98：审查修复落地**——16 条 commit-caused 红清零，忠实环境后端 7480 passed；SEC-02 完成、SEC-01 等维护窗口）
+2026-11-03（**A.104 真机部署首跑 + A.105 self_rag_score + A.106 harness 整饬/认证包**；远端已同步，见 16 号 A.104~A.106）
 
-### A.96 交付（最新）
+### A.104~A.106 增量（最新）
+
+- **A.104（真机）**：`CUDA_VISIBLE_DEVICES=2` 指向不存在的卡是驱动"恢复却没设备"的根因；部署 B1~B8 + `alembic 0019` 成功；首跑 02-1 T2a 真机 `available=true / Malignant / 0.78 / 1743ms`，02-3/02-4 真评估、02-5 熔断探针 active、04-3 留痕 `no_rule`。遗留清单见 A.104.5（`self_rag_reason` 空串、`confidence=0` 口径、浏览器走查、`evidence_ids` 键名、SEC-01）。
+- **A.105**：`findings.fusion_result` 补 `self_rag_score`（`None`=没质检 / `0.0`=质检不过，两者不许混）；守卫 2 例，`tests/unit/services/test_pipeline_pure_functions.py` 18 passed。
+- **A.106（harness）**：新增 `make harness-check`（`scripts/audit/p78_harness_selfcheck.py`，9 类 12 项，FAIL 阻断 / WARN 登记）+ 11 例守卫；状态文件追平 A.99~A.106；`feature_list.json` 过期 `in_progress` 4→1（`a71`→done、`a62-batch3`/`r17`→blocked）；`00b` 手册与 28 项台账漂移修正；**审计认证指引** `docs/合规/Agent作业认证指引.md`。
+- **验收口令（给下一棒/审计方）**：`make harness-check` → 期望 `12 passed, 1 warn, 0 fail`；`git status --porcelain` → 期望空。
+
+### Current Objective
+
+真机侧 A.104.5 遗留收口（`self_rag_reason` 留原因 → 浏览器层走查 → `evidence_ids` 键名）。
+
+### 认证入口（审计方先看这两处）
+
+1. `docs/合规/Agent作业认证指引.md` —— 三层认证法（远端一致性 / `path:行号` 反查 / 复跑分类）+ 本轮逐条动作表 + 边界声明 + 常见误判。
+2. 16 号附录 A 最后两条（A.105 self_rag_score、A.106 harness 整饬）—— 本轮唯一事实与验证命令。
+
+### A.96 交付（历史）
 
 - **B1~B6 六批全部代码落地**（02-3/4/5、02-1、01-1/2/5、03-4/5/6、06-5、04-3A、05-3 S0+S1、06-4、06-6 文档）+ 新增 ~12 个后端测试文件 + alembic **0019**；证据与 file:line 清单见 16 号 **A.96.1~A.96.3**。
 - **拍板 7 项按推荐落定**；01-3 移出"未打通"（**18→17**）；01-5 P99 口径 2s→5s（00 号已改）。
 - **SEC-01/02 本地**：`keys/*.pem`、`scripts/_p1_langfuse_signup.sh` 已出库（git rm --cached），ignore 生效；历史未清（独立决策）。
 - **前端验证 45/45 + tsc 0**；后端 py_compile 全过，**pytest 待环境**。
 
-### Current Objective
+### Current Objective（A.96 时点）
 
 18 项打通项收口验证与真机验收（B1/B2/B3 的浏览器判据 + CRAG 端到端）。
 
-### Recommended Next Step
+### Recommended Next Step（A.96 时点，已过期——见顶部）
 
 ①等管理员窗口结束 → 按 16 号 A.97.5：SEC-01 指纹比对 → 旧口令 401 验证 → 部署 B1~B6（整组 scp + alembic 0019 + `scripts/_restart_main_std.sh` + 端到端 1 例，硬规则 #7）→ 真机走查；
 ②SEC-05 依赖修复后跑全量 `make test`；
 ③答辩材料按 13 条口径修正逐条过稿。
 
-### Blockers
+### Blockers（A.96 时点，已过期——见 progress.md）
 
 1. **服务器维护窗口**（NVIDIA 驱动升级，管理员 10-30 停全部容器，GPU 不可用）→ SEC-01 指纹比对（HSM 密钥在他人 6379 redis）、B1~B6 部署与真机验收全部等窗口结束（16 号 A.97.5）。
 2. **SEC-05 依赖债**（httpx≥0.28 × starlette 0.36.3 → TestClient 全挂 124 errors）→ correction_rate 端点 4 用例等修复后补跑。
 3. ~~SSH 通道~~ **已打通**（2026-10-30 装公钥）；~~pytest 无环境~~ 已用服务器 venv + 隔离目录解决（113/113 本轮测试全绿，验证后 scratch 已删）；~~工作区他人暂存~~ 已推送（HEAD=b32bd0e）。**pptx 一律不入库**（`.gitignore` `*.pptx`）。
 
-### Files（本轮主要触碰）
+### Files（A.96 时点主要触碰）
 
 `app/services/diagnosis_pipeline.py`（B1/B2/B4/B5 多处）、`app/fusion/crag.py`、`app/agents/{protocols.py,specialist/base.py,routing.py}`、`app/rag/{protocols.py,retriever.py,service.py}`、`app/knowledge/{grading_floor.py,clinical_actions.py}`、`app/config/{settings.py,redis_keys.py}`、`app/observability/cusum/{persistence.py[新],circuit_breaker.py,monitor.py}`、`app/observability/metrics_collector/*`、`app/models/{schemas.py,database.py}`、`app/api/v1/{diagnosis.py,obs_dashboard.py}`、`app/main.py`、`alembic/versions/0019_final_diagnosis.py[新]`、`scripts/audit/p76_missed_rate_audit.py[新]`、`docs/注册材料/*[新]×2`、前端 8 文件（diagnosisService/useWorkspaceFlow/DiagnosisPage/ExaminationPage/diagnosisAdapter/WorkspaceConclusionBody/workspace.css + 2 新测试）、`tests/**` 新增与适配、00 号（P99 口径）、16 号（A.96）、progress.md / session-handoff.md。
 
-### Next Session 第一动作
+### Next Session 第一动作（A.96 时点）
 
 读 16 号 A.96 → 按上面 Recommended Next Step ① 起（或用户已装公钥则直接连服务器）。
 

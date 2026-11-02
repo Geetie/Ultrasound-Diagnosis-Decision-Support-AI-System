@@ -1,8 +1,33 @@
 # progress.md — 当前状态（唯一「现在在哪」来源）
 
-**Last Updated**: 2026-10-30（**A.96：18 项未打通项 B1~B6 批量落地 + SEC 本地应急**；拍板 7 项全按推荐）
+**Last Updated**: 2026-11-03（**A.104 真机部署首跑 + A.105 self_rag_score 落库 + A.106 harness 整饬/认证包**）
 
-**目标**：18 项未打通项收口（详见 `docs/技术文档/未打通项打通计划/00-总览与对账表.md`）
+**目标**：18 项未打通项收口（详见 `docs/技术文档/未打通项打通计划/00-总览与对账表.md`，现状看其 §十一）
+
+## Current State（2026-11-03，证据见 16 号 A.104~A.106）
+
+- **真机已跑起来**（A.104）：驱动恢复根因是 `CUDA_VISIBLE_DEVICES=2` 指向不存在的卡；覆盖为 0 后部署 B1~B8 + `alembic 0018→0019`，服务栈全起（vLLM 8002 / 嵌入 / SG 9001 / CLIP-T2a 8003 / 主服务 18000）。
+- **首跑实测**：02-1 T2a `available=true, predicted=Malignant, 0.78, 1743ms`（开关→管线→8003→findings→接口全链 ✓）；04-3 留痕 `{applied:false, reason:no_rule}`；02-5 熔断探针 `state=active`；02-3/02-4 真评估（自检不过 → `needs_review`，行为正确）。
+- **A.105**：`findings.fusion_result` 补 `self_rag_score`（`None`=没质检、`0.0`=质检不过，不许混），守卫 2 例。
+- **A.106**：harness 整饬落地——仓库内自检 `make harness-check`（`scripts/audit/p78_harness_selfcheck.py`，12 项检查，FAIL 阻断）、状态文件追平、`feature_list.json` 过期 `in_progress` 4→1、`00b` 手册与 28 项台账漂移修正、审计认证指引 `docs/合规/Agent作业认证指引.md`。
+- **仍关的能力**（默认值未变，做不到就别说"已打通"）：01-1 影像腿（裁决关，A.68 NO_GAIN）、01-2 低置信升档（生产不传 `retrieval_confidence`）、01-4 残留 1 处死键（`specialist/base.py:744`）、03-5 快照溯源、05-1 报告话术入口、06-4 基层档过滤（默认三甲）、06-6 注册结论（外部）；02-1/04-3 靠部署 `.env` 开。逐项见 28 项台账 §十一。
+
+## Blockers
+
+1. **A.104.5 遗留（真机侧）**：`self_rag_reason` 为空串（自检失败未留原因）、`needs_review` 分支 `confidence=0` 口径待核、06-5/03-4/03-6 浏览器层走查、`evidence_ids` 落 findings 键名核对、SEC-01 指纹比对（Langfuse 容器栈未起）。
+2. **外部依赖**：05-3 真实漏诊率需病理/随访登记；06-6 分级与 CER 结论需注册/临床方；06-4 需部署侧定 `institution_level`。
+3. **全量测试未在本机复跑**：本机缺 torch/monai/open_clip，只能跑点名文件；全量结论引用 16 号 A.102.2（7500 passed / 119F+14E 判为环境伪象），标「采信未复核」。
+4. **harness 自检 1 条 WARN 需人拍板**：16 号附录 A.11/A.17 同号同级重复、A.94 只被引用未成篇（A.106.4）。
+5. **`./init.sh` 快检对任何改动都是红的（存量债）**：`test_ruff_ratchet.py` 报 6 类未登记规则
+   （`UP038`×30 / `I001`×3 / `UP027` / `UP037` / `RUF018`），基线提交 `c65da99` 同样复现；
+   修法要重生成 `.ruff-debt.txt`（口径决策），本轮只登记不动（A.106.6）。
+
+## Recommended Next Step
+
+①按 A.104.5 清单逐条收（先 `self_rag_reason`，它有 A.86 式"分支留原因"的同型缺口）；
+②浏览器层走查 03-4/03-6/06-5（API/DB 已证，浏览器未证）；
+③决定 01-2 是否把 `retrieval_confidence` 接进 `_assess_routing`（会引入 FULL 档成本，需先做 02-3 延迟回归）；
+④每轮收尾跑 `make harness-check`，FAIL 清零、WARN 登记。
 
 ## A.96 本轮产出（2026-10-30）
 
