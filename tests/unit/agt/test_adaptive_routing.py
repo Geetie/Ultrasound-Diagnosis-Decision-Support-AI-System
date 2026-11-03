@@ -148,14 +148,35 @@ class TestSpecRoutingTable:
         assert decision.organ_threshold == pytest.approx(0.85)
 
     def test_row4_confidence_above_threshold_keeps_standard(self):
+        """高分不升档。
+
+        入参语义修正（N4 量纲修复）：`retrieval_confidence` 是**原始检索分**
+        （rerank logit / RRF 尺度，真机实测 1.705~5.207），不是 0~1 结论置信度。
+        此处用接近上锚的实测值（5.0）表达"高分"，归一化后 ≈0.875 > 0.10 → 不升档。
+        """
         decision = _router().assess(
             query=SINGLE_FEATURE_QUERY,
             target_organ="thyroid",
             requested_tier=ResponseTier.STANDARD,
-            retrieval_confidence=0.90,
+            retrieval_confidence=5.0,
         )
 
         assert decision.effective_tier == ResponseTier.STANDARD
+
+    def test_row4_low_retrieval_confidence_triggers_full(self):
+        """低检索分（真机最差例 1.705）→ 归一化 ≈0.051 < 0.10 → 升档全量。
+
+        这条用例在修复前**不可能通过**：旧判据拿 1.705 比 organ_threshold(0.85)，
+        恒不成立，升档从未触发（N4 真断点）。
+        """
+        decision = _router().assess(
+            query=SINGLE_FEATURE_QUERY,
+            target_organ="thyroid",
+            requested_tier=ResponseTier.STANDARD,
+            retrieval_confidence=1.705,
+        )
+
+        assert decision.effective_tier == ResponseTier.FULL
 
     def test_row4_missing_confidence_skips_the_check(self):
         decision = _router().assess(

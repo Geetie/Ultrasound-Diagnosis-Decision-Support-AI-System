@@ -327,10 +327,21 @@ class AdaptiveRAGRouter:
 
         is_cross_organ = len(detected_organs) >= 2
         is_multi_feature = len(feature_categories) >= self._feature_threshold
-        is_low_confidence = (
-            retrieval_confidence is not None
-            and threshold is not None
-            and retrieval_confidence < threshold
+        # N4 量纲修复（2026-11-03 真机实证）：此前是
+        #   retrieval_confidence < threshold        （threshold = organ_threshold ∈ 0~1）
+        # 而 retrieval_confidence 实测取值 1.705~5.207（rerank logit 尺度）——
+        # 恒不成立，低置信度升档**从未触发过**。改为先归一化到 0~1 再与
+        # 同量纲阈值比较（判据与成本定标见 app/agents/retrieval_confidence.py）。
+        from app.agents.retrieval_confidence import (
+            DEFAULT_LOW_CONFIDENCE_THRESHOLD,
+            is_low_retrieval_confidence,
+        )
+
+        low_conf_threshold = getattr(
+            self, "_low_confidence_threshold", DEFAULT_LOW_CONFIDENCE_THRESHOLD
+        )
+        is_low_confidence = is_low_retrieval_confidence(
+            retrieval_confidence, threshold=low_conf_threshold
         )
 
         reasons: list[RoutingReason] = []
