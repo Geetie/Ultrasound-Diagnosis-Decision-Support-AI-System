@@ -21,7 +21,9 @@ point id 由 qdrant_client 统一 uuid5(image_id)（与离线脚本同源幂等�
 
 from __future__ import annotations
 
+import sys
 import uuid
+from pathlib import Path
 from typing import Any
 
 import structlog
@@ -57,6 +59,7 @@ async def index_image_async(
         from app.imaging.dicom_pixels import extract_frame_from_bytes
 
         raw = Path(storage_path).read_bytes()
+        feat_png: bytes | None = None
         try:
             first = extract_frame_from_bytes(raw, None)
             indices = [0] if first.total_frames <= 1 else list(range(min(first.total_frames, 5)))
@@ -77,6 +80,8 @@ async def index_image_async(
                     )
                     if resp.embeddings:
                         vectors.append(list(resp.embeddings[0]))
+                frame_for_feat = extract_frame_from_bytes(raw, indices[0])
+                feat_png = frame_for_feat.png_bytes
             finally:
                 closer = getattr(clip, "close", None)
                 if closer is not None:
@@ -114,6 +119,7 @@ async def index_image_async(
             if not resp.embeddings:
                 raise RuntimeError("no embedding")
             emb = list(resp.embeddings[0])
+            feat_png = raw
 
         payload: dict[str, Any] = {
             "image_id": image_id,
@@ -124,6 +130,25 @@ async def index_image_async(
         }
         if organ:
             payload["organ"] = organ
+        # A.149 / G2：在线索引也要带视觉特征（与离线脚本同源）。
+        # 采集输入用**本次送嵌的最后一帧 PNG**（与嵌入同帧，口径一致）。
+        try:
+            sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
+            from scripts.ops.build_image_vectors import collect_visual_features
+
+            features = await collect_visual_features({"image_id": image_id}, feat_png, clip)
+            if features:
+                vals = [f"{k}={v}" for k, v in sorted(features.items()) if v is not None]
+                if vals:
+                    payload["visual_features"] = vals
+                    payload["visual_features_source"] = "ultrasound_clip_endpoints"
+        except Exception as exc:  # silent-ok: 特征失败 = 无特征（与离线同口径），留账
+            logger.warning(
+                "image_vector_features_failed",
+                image_id=image_id,
+                error=str(exc)[:140],
+                error_type=type(exc).__name__,
+            )
 
         index = QdrantVectorIndex(
             host=settings.qdrant_host,
