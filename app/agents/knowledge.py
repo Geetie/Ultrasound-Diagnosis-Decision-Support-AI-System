@@ -639,8 +639,13 @@ class KnowledgeAgentImpl(KnowledgeAgent):
         # 不能跨 session 复用缓存 —— 否则 B 医生的请求命中 A 医生缓存的影像块
         #（病人隔离被击穿）。带图请求在键里加影像腿标记 → 键必然不同 → 必走真检索。
         # （RAG service 层已有同语义 bypass：rag_cache_bypassed_image_leg。）
-        if kwargs_extra.get("with_image_leg"):
-            # 带图请求：键加作用域段（与旧键不同 → 必走真检索；病人隔离）。
+        with_image = bool(kwargs_extra.get("with_image_leg"))
+        if with_image:
+            # A.160：带图请求**完全旁路 L1/L2**。此前用独立键（with_image 段），
+            # 但缓存里的内容可能来自 bug 期（无图）或并发写的另一份采样——
+            # "每检索必含本 session 影像块"无法从缓存保证。带图请求几乎每
+            # session 唯一，缓存命中率趋近 0，直接 bypass（与 RAG service 层
+            # image_leg_active bypass 同口径）。key 仍生成供锁路径使用。
             cache_key = self._make_cache_key(
                 organ, query, kb_version,
                 f"{self._profile_fingerprint(profile)}:with_image",
@@ -651,7 +656,17 @@ class KnowledgeAgentImpl(KnowledgeAgent):
                 organ, query, kb_version, self._profile_fingerprint(profile)
             )
 
-        # ========== L1 (Redis) 命中检查 ==========
+        # ========== L1 (Redis) 命中检查（A.160：带图请求旁路） ==========
+        if with_image:
+            return await self._rag_fallback_with_cache(
+                query=query,
+                organ=organ,
+                top_k=top_k,
+                cache_key=cache_key,
+                kb_version=kb_version,
+                profile=profile,
+                kwargs_extra=kwargs_extra,
+            )
         cached, is_neg = await self._read_redis(cache_key)
         if cached is not None:
             self._hits_redis += 1
