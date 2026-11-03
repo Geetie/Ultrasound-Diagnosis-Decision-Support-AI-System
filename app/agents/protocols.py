@@ -180,6 +180,11 @@ class AgentResponse(BaseModel):
     #: 检索器没给分 → None（"未测"而不是"0 分"）。
     #: 目前**只用于观测与 trace**，不参与路由（升档口径需真机延迟数据后再定）。
     retrieval_confidence: float | None = None
+    #: A.153 / G21：双采样的**原始多份**响应（dispatcher 聚合后透出给融合层，
+    #: 供 ConflictDetector 对多份做批内一致性判定）。None = 单次采样。
+    contrastive_samples_raw: list["AgentResponse"] | None = None
+    #: 双采样实际使用的温度列表（与 contrastive_samples_raw 一一对应）。
+    sample_temperatures_used: list[float] | None = None
     # 患者解释话术（M10，默认不入正式报告）
     patient_explanation: PatientExplanation | None = None
     # 科研量化指标（M11，前端默认折叠）

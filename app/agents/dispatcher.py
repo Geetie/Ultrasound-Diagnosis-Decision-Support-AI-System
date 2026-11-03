@@ -193,6 +193,12 @@ class DispatcherAgentImpl(DispatcherAgent, Agent):
             responses = [await self._call_one_safe(context.organ, context)]
         aggregated = await self.aggregate(responses)
         aggregated.latency_ms = (time.monotonic() - start) * 1000.0
+        # A.153 / G21：双采样的**原始多份**随聚合响应一起透出，供融合层
+        # ConflictDetector 对多份做批内一致性判定。此前只回 aggregated 一条
+        # → ConflictDetector 判 single_response，双采样"跑了但一致性没跑"
+        # （e2e 真机实测）。
+        aggregated.contrastive_samples_raw = list(responses)
+        aggregated.sample_temperatures_used = list(samples)
         return aggregated
 
     @staticmethod

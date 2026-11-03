@@ -849,6 +849,12 @@ async def _safe_dispatch(
             ),
         )
         response = await dispatcher.invoke(context)
+        # A.153 / G21：双采样时把**原始多份**透出给融合层 —— ConflictDetector
+        # 要对多份做批内一致性判定；只回 aggregated 一条会被判 single_response
+        #（e2e 真机实测：双采样跑了但一致性检测没跑）。
+        raw = getattr(response, "contrastive_samples_raw", None)
+        if raw:
+            return list(raw)
         return [response]
     except Exception as exc:
         logger.warning(
