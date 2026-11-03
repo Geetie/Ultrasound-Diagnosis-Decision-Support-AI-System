@@ -64,6 +64,7 @@
 - **本轮续（P1 第二批）**：**G4/G7/N6 共因修复**——检索降级（`rerank_engine` 退化/BM25 兜底/影像腿跳过/p99 越界/丢行）此前只写日志，医生以为拿到标准配置结果。新增 `app/rag/degradation.py` 纯函数汇总 + 全链路上报（knowledge→trace→findings→`DiagnosisResult.retrieval_degradation`），守卫 16 例。**真机 e2e 实证**：`reasons:["p99_violation"]` 在顶层与 diagnosis 内两处都可读，trace 有对应行。
 - **G8 闭合（P1 最后一项）**：知识缓存主动失效。缺陷比台账更重——`update_kb_version()` 全仓零调用，知识库更新后缓存键不变、新知识最长 24h 不可见。修法：`invalidate_cache()`（清 L2 + 按前缀清 L1，Redis 失败如实上报）+ Redis 更新戳（query 每次读戳，变了即清，多实例各自生效）+ 离线脚本 `signal_kb_cache_invalidation.py` + 运维端点（权限+审计+中文文案）。**真机实证**：造 1 条缓存 → 写戳 → 判读触发 → 键数 1→0，日志 `removed_redis=2`。守卫 12 例。
 - **P2 六项**：核实后 4 项属台账滞后（G13=A.112 指标、G18=A.114 校准回灌、G19=A.115 统计喂数、G20=A.113 审计订阅），实际需动 2 项已修：**G12/N3**（T2a 渲染门槛去掉 stack 限制，前端守卫 2 例）、**G6**（能力探测强制重探端点，真机 `ready=True` 验证通过，守卫 2 例）。**P0/P1/P2 工程缺陷至此全部清零**。
+- **断流契约（目标原话"省得 API 上游断了，让你停止工作"）**：真机演练——**停掉 8002 后判读 9.1s 内正常结束**（`needs_review`、`ai_diagnosis_failed=False`、自动转人工），未挂死/未 500/未永停 processing；恢复后 8002 正常。修复熔断打开时 `retryable=True` 的语义矛盾（该路径本次不再试，标可重试会让调用方白打一轮）→ 改 `retryable=False` + 中文 detail。新增契约守卫 4 例（重试生效/断流错误码/达阈值熔断/熔断期间不再发请求）。
 - **仍关的能力**（默认值未变，做不到就别说"已打通"）：01-1 影像腿（裁决关，A.68 NO_GAIN）、01-2 低置信升档（生产不传 `retrieval_confidence`）、01-4 残留 1 处死键（`specialist/base.py:744`）、03-5 快照溯源、05-1 报告话术入口、06-4 基层档过滤（默认三甲）、06-6 注册结论（外部）；02-1/04-3 靠部署 `.env` 开。逐项见 28 项台账 §十一。
 
 ## Blockers
