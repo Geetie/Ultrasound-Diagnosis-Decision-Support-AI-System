@@ -293,6 +293,23 @@ class RAGServiceImpl(RAGService):
                         retrieval_source=src,
                     )
                 )
+            # A.158：精排截断（n_out=top_k）同样保底影像块 —— bge-reranker 对
+            # "[影像参考] …" 模板文本打分低，影像块常被挤出 top_k（e2e 实测
+            # n_in=20 n_out=5 后 img_ 消失）。与无精排路径 image_exempt 同口径。
+            kept_ids = {sc.chunk.chunk_id for sc in final_chunks}
+            image_overflow = [
+                sc for sc in result.chunks
+                if sc.retrieval_source == RetrievalMethod.IMAGE
+                and sc.chunk.chunk_id not in kept_ids
+            ]
+            if image_overflow:
+                logger.info(
+                    "image_chunk_overflow_kept_rerank",
+                    kept_overflow=len(image_overflow),
+                    chunk_ids=[sc.chunk.chunk_id for sc in image_overflow[:3]],
+                    request_id=request.request_id,
+                )
+                final_chunks.extend(image_overflow)
             result.chunks = final_chunks
         else:
             # No rerank: just keep top rerank_output_top_k.
