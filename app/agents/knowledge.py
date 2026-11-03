@@ -704,6 +704,7 @@ class KnowledgeAgentImpl(KnowledgeAgent):
                         cache_key=cache_key,
                         kb_version=kb_version,
                         profile=profile,
+                        kwargs_extra=kwargs_extra,
                     )
                 try:
                     return await self._rag_fallback_with_cache(
@@ -713,6 +714,7 @@ class KnowledgeAgentImpl(KnowledgeAgent):
                         cache_key=cache_key,
                         kb_version=kb_version,
                         profile=profile,
+                        kwargs_extra=kwargs_extra,
                     )
                 finally:
                     lock.release()
