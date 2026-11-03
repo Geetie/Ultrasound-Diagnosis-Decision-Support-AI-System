@@ -319,8 +319,14 @@ class RAGSpecialistAgent(SpecialistAgent):
     # 公共 invoke 流程
     # ------------------------------------------------------------------
 
-    async def invoke(self, context: AgentContext) -> AgentResponse:
+    async def invoke(
+        self, context: AgentContext, temperature: float | None = None
+    ) -> AgentResponse:
         """公共 invoke 流程：RAG → prompt → LLM → parse → 后处理。
+
+        A.143 / G21：``temperature`` 为双采样注入的本次采样温度（``None`` =
+        引擎默认档，行为与改造前一致）。只影响**本次 LLM 调用**的采样，
+        不改 prompt、不改检索、不改解析。
 
         行为契约：
         1) 调用 :meth:`_retrieve_chunks` 拿 top-k 知识 chunk（异常 → 降级
@@ -399,7 +405,15 @@ class RAGSpecialistAgent(SpecialistAgent):
         last_exc: Exception | None = None
         for attempt in range(2):
             try:
-                llm_response = await self._call_llm_response(context, prompt)
+                # A.143 / G21：双采样时透传本次采样温度；None = 引擎默认档。
+                # 只有显式给了温度才用新签名 —— 保持既有测试替身（旧签名）
+                # 与子类覆写不受影响。
+                if temperature is not None:
+                    llm_response = await self._call_llm_response(
+                        context, prompt, temperature=temperature
+                    )
+                else:
+                    llm_response = await self._call_llm_response(context, prompt)
                 llm_text = llm_response.text or ""
                 if attempt:
                     trace.append(f"llm_retry: recovered(attempt={attempt + 1})")
@@ -714,6 +728,7 @@ class RAGSpecialistAgent(SpecialistAgent):
         prompt: str,
         *,
         structured: bool = False,
+        temperature: float | None = None,
     ) -> InferenceResponse:
         """同 :meth:`_call_llm`，但返回完整响应对象（保留 ``finish_reason``）。
 
@@ -724,6 +739,8 @@ class RAGSpecialistAgent(SpecialistAgent):
         request = InferenceRequest(
             prompt=prompt,
             max_tokens=self._max_tokens,
+            # A.143 / G21：双采样注入的本次温度（None = 引擎默认档，行为不变）
+            temperature=temperature,
             request_id=context.request_id,
             session_id=context.session_id,
             extra=self._structured_output_extra() if structured else {},

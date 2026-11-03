@@ -85,6 +85,14 @@ class AgentContext(BaseModel):
     prior_messages: list[dict[str, Any]] = Field(default_factory=list)
     used_evidence_ids: list[str] = Field(default_factory=list)
     clinical_context: dict[str, Any] = Field(default_factory=dict)
+    #: A.143 / G21：同器官双采样（医生已拍板接受 2× 推理成本）。
+    #: None = 单次采样（默认，行为与改造前一致）；正整数 = 同一 specialist
+    #: 用**不同 temperature** 独立推理 N 次，供融合层做批内一致性检测。
+    #: `sample_temperatures` 缺省由 dispatcher 取
+    #: `[settings.contrastive_sampling_default, settings.contrastive_sampling_secondary]`。
+    contrastive_samples: int | None = None
+    #: 双采样各次使用的温度列表（长度应 == contrastive_samples；None = 用默认档）。
+    sample_temperatures: list[float] | None = None
 
     @field_validator("request_id", "session_id")
     @classmethod

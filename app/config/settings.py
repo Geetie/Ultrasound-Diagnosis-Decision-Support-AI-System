@@ -660,6 +660,13 @@ class Settings(BaseSettings):
     obs_cusum_decision_threshold: float = 3.0
     obs_cusum_calibration_samples: int = 300
     obs_cusum_calibration_simulations: int = 1000
+    # A.143 / G21：同器官对比采样（双采样）。医生已拍板接受 2× 推理成本。
+    # 开关默认关（成本敏感），打开后每例同器官判读发 2 次（不同温度）独立推理，
+    # 融合层据分级的批内一致性触发 GRADING_CONFLICT。读者：dispatcher 与 conflict。
+    contrastive_sampling_enabled: bool = False
+    contrastive_sampling_default: float = 0.1
+    contrastive_sampling_secondary: float = 0.7
+    contrastive_max_samples: int = Field(default=2, ge=1, le=4)
     # A.137 / G2：影像块"视觉特征文本"的可插拔来源。
     # 空 = 不启用（影像块正文仍是元数据模板，行为与现状一致）；配置后索引期/取回期
     # 可调该端点产出描述。读者：app/rag/image_caption.py::describe（唯一入口）。

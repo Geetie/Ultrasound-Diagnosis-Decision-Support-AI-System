@@ -182,11 +182,100 @@ class DispatcherAgentImpl(DispatcherAgent, Agent):
         3. 聚合单条响应（与多 specialist 场景共用同一条聚合逻辑）。
         """
         start = time.monotonic()
-        response = await self._call_one_safe(context.organ, context)
-        responses: list[AgentResponse] = [response]
+        # A.143 / G21：同器官对比采样（默认关）。开启时对同一 specialist 用
+        # 不同 temperature 独立推理 N 次；聚合走同一条 aggregate()（它本就支持
+        # 多响应），分级一致性由融合层 ConflictDetector 判定 —— dispatcher
+        # 只负责"产出多份"，不越权做冲突结论。
+        samples = self._sample_plan(context)
+        if len(samples) > 1:
+            responses = await self._dispatch_multi_sample(context, samples)
+        else:
+            responses = [await self._call_one_safe(context.organ, context)]
         aggregated = await self.aggregate(responses)
         aggregated.latency_ms = (time.monotonic() - start) * 1000.0
         return aggregated
+
+    @staticmethod
+    def _sample_plan(context: AgentContext) -> list[float]:
+        """采样计划（纯函数，便于单测）。
+
+        规则：未开启 / `contrastive_samples <= 1` → 空列表（走单次路径）；
+        开启 → 温度列表 = 显式 `sample_temperatures`（校验长度）或
+        `[默认档, 次档]`；条数上限 `contrastive_max_samples`。
+        """
+        from app.config.settings import settings
+
+        if not getattr(settings, "contrastive_sampling_enabled", False):
+            return []
+        n = context.contrastive_samples or 0
+        if n <= 1:
+            return []
+        max_n = int(settings.contrastive_max_samples)
+        n = min(n, max_n)
+        temps = context.sample_temperatures
+        if temps and len(temps) >= n:
+            return [float(t) for t in temps[:n]]
+        return [settings.contrastive_sampling_default, settings.contrastive_sampling_secondary][:n]
+
+    async def _dispatch_multi_sample(
+        self, context: AgentContext, temperatures: list[float]
+    ) -> list[AgentResponse]:
+        """同一 specialist 用不同温度独立推理（并行；失败降级为占位响应）。"""
+        specialist = self._specialists.get(context.organ)
+        if specialist is None:
+            return [await self._call_one_safe(context.organ, context)]
+        tasks = []
+        for temperature in temperatures:
+            # 逐样本复制 context：evidence/used_evidence 是共享累积面，
+            # 双采样各自检索，合并交给 aggregate()；temperature 走
+            # sample_temperatures 字段随 context 传给专科 → InferenceRequest。
+            sample_context = context.model_copy(
+                update={
+                    "sample_temperatures": [temperature],
+                    "contrastive_samples": 1,
+                    "used_evidence_ids": [],
+                }
+            )
+            tasks.append(self._call_one_safe_for_sample(specialist, sample_context, temperature))
+        return list(await asyncio.gather(*tasks))
+
+    async def _call_one_safe_for_sample(
+        self, specialist: Any, context: AgentContext, temperature: float
+    ) -> AgentResponse:
+        """单样本容错调用（与 _call_one_safe 同样的降级语义，但**不走注册表**）。"""
+        start = time.monotonic()
+        try:
+            response = await specialist.invoke(context, temperature=temperature)
+            return response
+        except TypeError:
+            # 专科未升级签名（不收 temperature）→ 退回无温度调用（行为同单采样）
+            logger.warning(
+                "dispatcher_sample_temperature_unsupported",
+                organ=context.organ.value,
+            )
+            return await specialist.invoke(context)
+        except Exception as exc:
+            logger.warning(
+                "dispatcher_sample_invoke_failed",
+                organ=context.organ.value,
+                temperature=temperature,
+                error=str(exc),
+                error_type=type(exc).__name__,
+            )
+            return self._failed_placeholder(context.organ, exc)
+
+    def _failed_placeholder(self, organ: Organ, exc: Exception) -> AgentResponse:
+        from app.agents.specialist.readable import specialist_unavailable_text
+
+        return AgentResponse(
+            agent_name=self._name,
+            organ=organ,
+            content=specialist_unavailable_text(organ),
+            confidence=0.0,
+            needs_review=True,
+            reasoning_trace=[f"sample_failed: {type(exc).__name__}"],
+            latency_ms=0.0,
+        )
 
     def get_capability_tags(self) -> list[str]:
         return ["dispatcher", "routing", "aggregation"]
