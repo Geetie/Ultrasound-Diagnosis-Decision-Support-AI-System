@@ -503,11 +503,20 @@ class BaseHttpInferenceEngine(BaseHttpClient, InferenceEngine, ABC):
                 engine=self._logger_name,
                 request_id=request.request_id,
             )
+            # 语义修正（LLM 断流演练，2026-11-03）：熔断打开时本引擎**不会再试**
+            # （这是 `_check_circuit_breaker` 直接抛出的短路路径）。
+            # 原写法 `retryable=True` 会让调用方误以为"立刻再试就行"，白白多打
+            # 一轮——熔断的意义正是"别打了"。改为 retryable=False + 明确的
+            # retry_after 提示，调用方应按"上游不可用"走降级（本项目专科层的
+            # `llm_failed` → 转人工 正是这条路径）。
             raise InferenceError(
                 error_code=InferenceErrorCode.CONNECTION_FAILED,
                 message="circuit breaker is open, service unavailable",
-                detail="Circuit breaker tripped, please try again later",
-                retryable=True,
+                detail=(
+                    "熔断器已打开：上游连续失败达到阈值，本引擎在冷却窗口内"
+                    f"（{self._circuit_breaker_timeout:g}s）拒绝请求"
+                ),
+                retryable=False,
                 retry_strategy="retry_after_30s",
             )
 

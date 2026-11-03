@@ -42,9 +42,23 @@ def test_patient_token_leak_helper_is_precise():
     assert detect_patient_token_leak("") is False
 
 
-def test_repeated_output_header_is_detected():
-    text = "# 输出 分级: TR2 总分: 2 … # 输出 分级: TR5 总分: 14 …"
-    assert detect_prompt_echo(text) == "repeated_output_header"
+def test_repeated_output_header_with_placeholder_ids_is_detected():
+    """重复标题 + 占位证据 ID = 确凿回显（A.150 之后的判据）。
+
+    变更背景（真机 G21 实测）：Qwen2.5-7B 在含 "# 输出示例" 的 prompt 下，
+    **即使结论分级/理由齐全且无占位 ID**，也会把 "# 输出" 当格式标记输出
+    7~15 次 → 旧规则 headers>=2 即拒，把整批真采样吃了（4/4 例全误拒）。
+    现在：重复标题**且**含占位 chunk/PATIENT 才判回显；
+    纯标题重复交下游分级解析决定成败。
+    """
+    text = "# 输出 分级: TR2 证据: chunk_a1b2 # 输出 分级: TR5 证据: chunk_c3d4"
+    assert detect_prompt_echo(text) == "placeholder_chunk_id"
+
+
+def test_repeated_header_without_echo_features_is_not_blocked():
+    """真机形态：标题重复 10 次但结论齐全、无占位 ID → 不判回显。"""
+    text = "# 输出\n分级: TR3\n理由: 边界清，形态规则。\n" * 10
+    assert detect_prompt_echo(text) is None
 
 
 def test_single_output_header_alone_is_not_blocked():
