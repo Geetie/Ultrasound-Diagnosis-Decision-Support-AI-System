@@ -392,6 +392,9 @@ class RAGSpecialistAgent(SpecialistAgent):
         confidence = _retrieval_confidence(chunks)
         if confidence is not None:
             trace.append(f"retrieval_confidence -> {confidence:.4f}")
+        # A.151：双采样温度落 trace（端到端可见性——A.149 e2e 发现它只活在进程内）。
+        if temperature is not None:
+            trace.append(f"sample_temperature -> {temperature}")
 
         # 3) 拼装 prompt
         prompt = self._build_prompt(context, chunks, trace)
