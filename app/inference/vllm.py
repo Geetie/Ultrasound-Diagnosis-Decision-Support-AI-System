@@ -152,6 +152,13 @@ class VLLMEngine(BaseHttpInferenceEngine):
         if request.stop:
             payload["stop"] = request.stop
 
+        # A.152：Qwen3 系思考模型默认输出 <think>…</think>（真机实测污染结构化输出与
+        # 正文，token 也大量消耗在思考上 → finish_reason=length）。SKILL 结论：
+        # 思考判官不提升反略降。默认关闭思考；需要思考的调用方显式传
+        # request.extra["enable_thinking"]=True 覆盖。
+        if "enable_thinking" not in request.extra:
+            payload["chat_template_kwargs"] = {"enable_thinking": False}
+
         model_name = request.extra.get("model") or self._default_model
         if model_name:
             payload["model"] = model_name
