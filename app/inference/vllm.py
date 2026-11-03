@@ -159,6 +159,11 @@ class VLLMEngine(BaseHttpInferenceEngine):
         if "enable_thinking" not in request.extra:
             payload["chat_template_kwargs"] = {"enable_thinking": False}
 
+        # A.155：部分 Qwen3 微调变体（实测 II-Medical-8B）的 chat template 不读
+        # enable_thinking，<think> 仍会出现在输出里 → 引擎侧兜底剥除
+        # （对用户不可见；原始含思考的文本不落库）。
+        payload["_strip_think"] = True
+
         model_name = request.extra.get("model") or self._default_model
         if model_name:
             payload["model"] = model_name
@@ -214,6 +219,16 @@ class VLLMEngine(BaseHttpInferenceEngine):
         message = choice.get("message", {})
         text = message.get("content", "")
         finish_reason = choice.get("finish_reason", "stop")
+
+        # A.155：思考模型兜底——剥除 <think>…</think>（含未闭合的 <think> 到末尾）。
+        # 部分微调变体的 chat template 不读 enable_thinking（真机实测 II-Medical-8B），
+        # 引擎侧统一剥除，保证上层看到的永远是"干净结论"。
+        import re as _re
+        text = _re.sub(r"<think>.*?</think>", "", text, flags=_re.DOTALL)
+        # 未闭合的 <think>（finish_reason=length 常见）：从 <think> 起全部剥掉
+        if "<think>" in text:
+            text = text.split("<think>")[0]
+        text = text.lstrip()
 
         usage_data = data.get("usage", {})
         usage = TokenUsage(
