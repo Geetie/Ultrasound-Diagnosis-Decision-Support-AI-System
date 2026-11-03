@@ -339,3 +339,70 @@ async def resume_suspended_disease(
         {"reason": payload.reason, "disease_type": disease_type},
     )
     return {"ok": True, "disease_type": disease_type}
+
+
+# ---------------------------------------------------------------------------
+# D-04：撤回事件死信队列的**读取与重放**入口
+#
+# 缺陷（纠错台账 D-04 / wiring-audit P2-1）：`consent_withdrawal_consumer` 把
+# 处理失败的事件 XADD 进死信流，但全仓**没有任何读取方** —— 运维看不到积压，
+# 死信里的撤回事件永远不会被重试，病人的撤回意图静默丢失（合规面）。
+#
+# 权限沿用本 router 的 `view_qc_report`（质控 + 系统管理员），与熔断恢复一致：
+# 重放会触发数据清理副作用，必须有人签字且写审计。
+# ---------------------------------------------------------------------------
+
+
+@router.get("/dead-letters")
+async def list_dead_letters_api(
+    limit: int = Query(default=20, ge=1, le=200, description="最多返回条数"),
+):
+    """列出撤回事件死信（最新在前，只读）。"""
+    from app.security.dead_letter import dead_letter_depth, list_dead_letters
+
+    rows = await list_dead_letters(limit=limit)
+    return {
+        "depth": await dead_letter_depth(),
+        "returned": len(rows),
+        "items": rows,
+    }
+
+
+class DeadLetterReplayRequest(BaseModel):
+    """死信重放入参：``entry_id`` 必填、``reason`` 必填（无原因的重放无法审计）。"""
+
+    entry_id: str = Field(min_length=1, max_length=64, description="死信 entry_id")
+    reason: str = Field(min_length=1, max_length=200, description="重放原因（审计必填）")
+    actor: str | None = Field(default=None, max_length=64, description="操作者标识（缺省取登录用户）")
+
+
+@router.post("/dead-letters/replay")
+async def replay_dead_letter_api(
+    payload: DeadLetterReplayRequest,
+    audit_service=Depends(get_audit_service),
+    current_user: dict | None = Depends(get_current_active_user),
+):
+    """把一条死信重新投回主处理流（留痕、不删原记录）。
+
+    状态码语义：找不到 / 已重放 / 投递失败 → 400（不静默成功）；
+    成功后写审计（`consent_withdrawal_dead_letter_replayed`）。
+    """
+    from fastapi import HTTPException
+
+    from app.security.dead_letter import replay_dead_letter
+
+    actor = payload.actor or get_actor_id(current_user)
+    outcome = await replay_dead_letter(payload.entry_id, actor=actor)
+    if not outcome["ok"]:
+        raise HTTPException(status_code=400, detail=outcome["reason"])
+    await audit_service.log_action(
+        action="consent_withdrawal_dead_letter_replayed",
+        actor=actor,
+        target_type="consent_withdrawal_dead_letter",
+        target_id=payload.entry_id,
+        detail={
+            "reason": payload.reason,
+            "new_stream_entry": outcome["new_entry_id"],
+        },
+    )
+    return {"ok": True, **outcome}
