@@ -186,6 +186,14 @@ class RAGServiceImpl(RAGService):
             cache_key = self._cache.make_key(request, self._kb_version)
             cached = await self._cache.get(cache_key)
             if cached is not None:
+                # A.162：cache hit 此前完全静默 —— "specialist 拿到的是不是缓存"
+                # 无法从日志判断（N4 探针实测卡在这里）。加 info 留痕。
+                logger.info(
+                    "rag_cache_hit",
+                    request_id=request.request_id,
+                    cache_key=cache_key[:60],
+                    n_results=len(cached.chunks) if hasattr(cached, "chunks") else None,
+                )
                 return self._finalize_cache_hit(cached, request, start)
         elif image_leg_active and self._cache is not None:
             logger.info(
