@@ -370,7 +370,10 @@ async def submit_diagnosis_request(
                     request_id=winner_id,
                     session_id=request.session_id,
                     status="processing",
-                    estimated_time_ms=3000 if request.response_tier == ResponseTier.FULL else 2000,
+                    # G3：从真实档位预算推导（此前硬编码 3000/2000，与实际 180s/10s 差两个量级）
+                    estimated_time_ms=settings.estimate_ms_for_tier(
+                        request.response_tier.value if request.response_tier else None
+                    ),
                     response_tier=request.response_tier,
                 )
             # NX 失败但读不到值（极端：对手刚过期）——继续走正常生成路径
@@ -456,7 +459,10 @@ async def submit_diagnosis_request(
         except Exception as e:
             logger.warning("retry_flag_set_failed", request_id=request_id, error=str(e))
 
-    estimated_time_ms = 3000 if request.response_tier == ResponseTier.FULL else 2000
+    # G3：同上——提交响应与 worker 预算同源
+    estimated_time_ms = settings.estimate_ms_for_tier(
+        request.response_tier.value if request.response_tier else None
+    )
 
     response_data = DiagnosisRequestResponse(
         request_id=request_id,

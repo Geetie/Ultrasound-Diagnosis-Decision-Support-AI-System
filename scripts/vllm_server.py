@@ -117,7 +117,10 @@ async def chat_completions(request: Request) -> JSONResponse:
         prompt = llm.llm_engine.tokenizer.apply_chat_template(
             chat_messages, tokenize=False, add_generation_prompt=True
         )
-    except Exception:
+    except Exception as exc:  # silent-ok: 模板不可用时回落原 prompt（服务不因此中断）
+        import sys as _sys
+
+        print(f"chat_template_unavailable: {type(exc).__name__}: {exc}"[:200], file=_sys.stderr)
         prompt = prompt_fallback
 
     sampling_params = SamplingParams(max_tokens=max_tokens, temperature=temperature)

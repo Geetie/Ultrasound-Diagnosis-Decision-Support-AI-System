@@ -312,6 +312,22 @@ class Settings(BaseSettings):
     # → 10.0s；P99 目标口径已按实测 ~4.7s 重新定（00 号 §2.1）。
     # 重定时机：standard 档累计 ≥50 例 P99 观测后按实测收紧。
     pipeline_total_budget_standard_s: float = 10.0
+
+    def estimate_ms_for_tier(self, tier_value: str | None) -> int:
+        """G3：提交响应里的 ``estimated_time_ms`` 必须来自**真实档位预算**。
+
+        缺陷：``api/v1/diagnosis.py`` 曾硬编码 ``3000 if FULL else 2000``——
+        与 worker 实际预算（``pipeline_total_budget_s``=180s /
+        ``pipeline_total_budget_standard_s``=10s）差两个数量级，前端进度条
+        与服务端超时口径不一致。纯函数，便于单测钉住。
+        """
+        tier = str(tier_value or "").strip().lower()
+        seconds = (
+            self.pipeline_total_budget_s
+            if tier == "full"
+            else self.pipeline_total_budget_standard_s
+        )
+        return max(1, int(round(seconds * 1000)))
     # === A.51 fusion-validate 降载（口径闭合后按实测取证）===
     # 实测（p14b，N=8 热态）：validate P50 1.85s / P99 2.30s，双峰分布
     # 750ms（Self-RAG 一次通过）vs 1850ms+（失败后评估重试）。

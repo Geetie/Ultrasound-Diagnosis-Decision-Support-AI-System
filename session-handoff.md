@@ -13,7 +13,7 @@
 - **G1（P0）已修**：`_lift_clinical_attributes()` 把 clinical_attributes 提到 findings 顶层（写侧 `5e7964e`，守卫 6 例）。
 - **配套**：恶性概率链路（`MalignancyRiskView`，删 adapter 写死的 undefined）；`final_diagnosis` 四列进契约（只读）；看板 `cusum_s_plus` 取真值；`guided_json` 死键删净；离线一致性脚本 TypeError 修掉；`.gitignore` 的 `models/` 锚定到根（防新模型文件被静默忽略）。
 - **剩**：N1 熔断死锁、N4/N5 影像腿双闸、N8 多部位缺字段、G21/G32/G36 等（见台账 §6）。
-- 入口：`docs/合规/缺口核实台账-20261103.md` §6 状态列 + 16 号 A.107。
+- 入口：16 号 A.107（缺口台账已于 2026-11-03 按用户指示删除，剩余项状态以 `progress.md` 为准）。
 
 ### A.104~A.106 增量（最新）
 

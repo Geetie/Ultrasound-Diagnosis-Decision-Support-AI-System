@@ -715,8 +715,13 @@ class RAGSpecialistAgent(SpecialistAgent):
                     "with_image_leg": has_img,
                     "request_id": context.request_id,
                 }
-            except Exception:
-                pass
+            except Exception as exc:  # silent-ok: 槽查询失败 = 按无影像腿处理，不阻断检索
+                logger.warning(
+                    "specialist_image_leg_slot_probe_failed",
+                    request_id=context.request_id,
+                    error=str(exc)[:120],
+                    error_type=type(exc).__name__,
+                )
         return await self._knowledge.query(**kwargs)
 
     async def _call_llm(
