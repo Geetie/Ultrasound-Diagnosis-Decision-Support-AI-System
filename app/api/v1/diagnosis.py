@@ -1200,16 +1200,38 @@ async def get_diagnosis_result(
         model_version=model_version,
         llm_model=llm_model,
         knowledge_base_version=knowledge_base_version,
-        # A.135 / G21：冲突检测可比较性（不可比 ≠ 无冲突）
-        conflict_comparable=(
-            (diagnosis_payload or {}).get("conflict_comparable")
-            if isinstance((diagnosis_payload or {}).get("conflict_comparable"), bool)
-            else None
+        # A.135 / G21：冲突检测可比较性（不可比 ≠ 无冲突）。
+        # A.149 真机实测：信号落在 **fusion_result** 平面（_fusion_result_to_dict 写入），
+        # findings 顶层没有 —— 读侧两个平面都看。
+        conflict_comparable=next(
+            (
+                v
+                for v in (
+                    (diagnosis_payload or {}).get("conflict_comparable"),
+                    ((diagnosis_payload or {}).get("fusion_result") or {}).get(
+                        "conflict_comparable"
+                    )
+                    if isinstance((diagnosis_payload or {}).get("fusion_result"), dict)
+                    else None,
+                )
+                if isinstance(v, bool)
+            ),
+            None,
         ),
-        conflict_skipped_reason=(
-            (diagnosis_payload or {}).get("conflict_skipped_reason")
-            if isinstance((diagnosis_payload or {}).get("conflict_skipped_reason"), str)
-            else None
+        conflict_skipped_reason=next(
+            (
+                v
+                for v in (
+                    (diagnosis_payload or {}).get("conflict_skipped_reason"),
+                    ((diagnosis_payload or {}).get("fusion_result") or {}).get(
+                        "conflict_skipped_reason"
+                    )
+                    if isinstance((diagnosis_payload or {}).get("fusion_result"), dict)
+                    else None,
+                )
+                if isinstance(v, str) and v
+            ),
+            None,
         ),
         # A.121 / G34：禁忌命中明细（写法：有才给，空/缺 → None，不造空列表）
         contraindication_matches=(
