@@ -9,8 +9,9 @@
 - pin_memory + persistent_workers（免每 epoch 重建 worker）
 - AMP bf16 autocast（GPU 计算密度）
 
-实验：AUL 735 张（Normal/Benign/Malignant），分层 70/15/15，
+实验：AUL 735 张（Normal/Benign/Malignant，**肝脏**公开集），分层 70/15/15，
 冻结文本塔只训视觉塔 → 微调前后 M-vs-rest AUC 对照（基线 0.515）。
+文本锚仅用于训练期对比损失；推理（/v1/classify）走纯视觉塔+LR，不经过文本塔。
 """
 from __future__ import annotations
 
@@ -30,10 +31,13 @@ from sklearn.metrics import roc_auc_score
 from torch.utils.data import DataLoader, Dataset
 
 CLASSES = ["Normal", "Benign", "Malignant"]
+# A-02 更正（2026-11-03）：训练集是 AUL（**肝脏**）公开集，此前三条文本锚误写
+# thyroid —— 口径错误（纠错台账 P0）。统一改为 liver；推理路径 /v1/classify
+# 只走视觉塔+LR 探针，不受文本锚影响（已入向量库的数据无需重建）。
 PROMPTS = {
-    "Normal": "an ultrasound image of a benign normal thyroid",
-    "Benign": "an ultrasound image of a benign thyroid nodule",
-    "Malignant": "an ultrasound image of a malignant thyroid cancer nodule",
+    "Normal": "an ultrasound image of a benign normal liver",
+    "Benign": "an ultrasound image of a benign liver lesion",
+    "Malignant": "an ultrasound image of a malignant liver tumor",
 }
 
 
