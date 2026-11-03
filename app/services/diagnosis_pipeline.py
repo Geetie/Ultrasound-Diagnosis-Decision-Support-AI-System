@@ -559,6 +559,8 @@ async def run_diagnosis_pipeline(request_id: str) -> bool:
             # （否则该键只在写库后才出现在本地 timings 中，接口读不到，
             #  processing_time_ms 会静默回退到 mock 值）
             t_start=t_start,
+            # A.149：专科 trace 落 findings（rag_chunks/confidence/双采样温度）
+            specialist_responses=specialist_responses,
         )
         timings["db_write_ms"] = (time.monotonic() - t) * 1000.0
 
@@ -1384,6 +1386,7 @@ async def _write_result_to_db(
     hallucination: dict[str, Any] | None = None,
     desensitization: dict[str, Any] | None = None,
     t_start: float | None = None,
+    specialist_responses: list | None = None,
 ) -> bool:
     """根据 fusion_result + sg_result 决定 status / findings / confidence 并写 DB。
 
