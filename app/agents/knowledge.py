@@ -620,6 +620,12 @@ class KnowledgeAgentImpl(KnowledgeAgent):
         if top_k <= 0:
             raise ValueError("top_k must be positive")
         kwargs_extra = kwargs_extra or {}
+        logger.info(
+            "knowledge_query_kwargs",
+            with_image_leg=bool(kwargs_extra.get("with_image_leg")),
+            request_id=kwargs_extra.get("request_id"),
+            top_k=top_k,
+        )
 
         kb_version = self._current_kb_version()
         # A.159：影像腿是 **per-session** 的（影像块来自本 session 上传的影像），
