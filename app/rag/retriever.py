@@ -631,7 +631,10 @@ class Retriever:
                 session_id=request.session_id,
                 skip_reason=None,
             )
-        if not request.use_multimodal:
+        if not request.use_multimodal and not settings.rag_use_multimodal:
+            # A.149：per-request 关 + 全局关才跳过。此前只看 per-request —— 但知识链路
+            # 构造 RetrievalRequest 时不传该字段（默认 True），而主请求若因旧缓存/
+            # 序列化带 False，会盖掉全局开关。两个都关才是"真的关"。
             return ImageLegResolution(None, request.image_format, request.session_id,
                                       IMAGE_SKIP_MULTIMODAL_OFF)
         if self._clip is None:
