@@ -324,7 +324,21 @@ class Retriever:
 
         fused = self._rrf_fuse(legs)
         top_k = max(1, request.top_k)
-        fused = fused[:top_k]
+        # A.158：截断时保底保留影像块（与 service 层 image_exempt 同口径）——
+        # 影像点带 session 过滤后通常只有 1 个，RRF 分数与文本块并列时被稳定
+        # 排序挤到 top_k 之后 → 影像块永远进不了 prompt（e2e 实测）。
+        head = fused[:top_k]
+        image_overflow = [
+            h for h in fused[top_k:]
+            if h.source == RetrievalMethod.IMAGE
+        ]
+        if image_overflow:
+            logger.info(
+                "image_chunk_overflow_kept_retriever",
+                kept_overflow=len(image_overflow),
+                chunk_ids=[sc.chunk.chunk_id for sc in image_overflow[:3]],
+            )
+        fused = head + image_overflow
         _record_retrieval_outcome(is_empty=not fused)
         chunks = [
             ScoredChunk(
