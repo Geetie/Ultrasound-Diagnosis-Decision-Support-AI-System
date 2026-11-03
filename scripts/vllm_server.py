@@ -120,10 +120,9 @@ async def chat_completions(request: Request) -> JSONResponse:
     except Exception:
         prompt = prompt_fallback
 
-    sampling_kwargs = dict(max_tokens=max_tokens, temperature=temperature)
+    sampling_params = SamplingParams(max_tokens=max_tokens, temperature=temperature)
     if guided is not None:
-        sampling_kwargs["guided_decoding"] = guided
-    sampling_params = SamplingParams(**sampling_kwargs)
+        sampling_params.structured_outputs = guided
     outputs = llm.generate([prompt], sampling_params)
     text = outputs[0].outputs[0].text
     model_name = body.get("model") or getattr(
