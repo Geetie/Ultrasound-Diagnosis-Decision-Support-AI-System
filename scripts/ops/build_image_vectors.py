@@ -163,10 +163,14 @@ async def collect_visual_features(row: dict, png_bytes: bytes, clip: Any) -> dic
                 results = resp.json().get("results") or []
                 if results:
                     first = results[0]
-                    label = first.get("label") or first.get("predicted_label")
+                    # 真机响应（A.144 实测）：{"probs": {...}, "prediction": ..., "malignancy_risk": ...}
+                    label = first.get("prediction") or first.get("label")
                     if label:
                         out["t2a_label"] = str(label)
-                    probs = first.get("probabilities") or {}
+                    risk = first.get("malignancy_risk")
+                    if isinstance(risk, (int, float)):
+                        out["t2a_malignancy_risk"] = round(float(risk), 4)
+                    probs = first.get("probs") or {}
                     for k, v in probs.items():
                         if isinstance(v, (int, float)):
                             out[f"t2a_prob_{k}"] = round(float(v), 4)
@@ -180,12 +184,15 @@ async def collect_visual_features(row: dict, png_bytes: bytes, clip: Any) -> dic
             if resp.status_code == 200:
                 data = resp.json()
                 body = data.get("results", [{}])[0] if isinstance(data.get("results"), list) else data
-                view = body.get("view") or body.get("view_label") or body.get("predicted_view")
+                # 真机响应（A.144 实测）：{"view": ..., "view_probs": {...}, "standard": ..., "quality_grade": ...}
+                view = body.get("view")
                 if view:
                     out["t2b_view"] = str(view)
-                q = body.get("quality") or body.get("quality_score")
+                q = body.get("quality_grade")
                 if isinstance(q, (int, float)):
-                    out["t2b_quality"] = round(float(q), 4)
+                    out["t2b_quality_grade"] = round(float(q), 4)
+                if body.get("standard") is not None:
+                    out["t2b_standard"] = str(bool(body["standard"]))
     except Exception as exc:  # silent-ok: T2b 失败同上；已有字段保留
         print(f"  T2b 特征获取失败（image {row.get('image_id')}）：{type(exc).__name__}: {exc}"[:160])
 
