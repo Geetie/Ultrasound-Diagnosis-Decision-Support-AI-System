@@ -57,6 +57,7 @@
 - **A.153（真机）**：G21 最后断点修复——dispatcher 双采样后聚合把"多份变一份"，ConflictDetector 判 single_response → 原始多份透传融合层。Qwen3-8B 上 8002 验证：conflict_comparable=true ×2、批内一致 2/2（TR2/TR2、TR5/TR5）。
 - **A.154（本轮）**：模型选型搜索刷新——8002 已上 Qwen3-8B；扩大搜索面后**推荐 II-Medical-8B**（Qwen3-8B 医疗强化、架构兼容零改动、hf-mirror 可达 16GB）做 A/B，等你确认后下载。
 - **A.156（真机）**：II-Medical-8B 上 8002（Qwen3-8B 医疗强化版）；回显守卫+思考剥除后输出质量上台阶；**G21 一致性检测真机生效**——双温采样分级分歧（TR4 vs TR1）被 GRADING_CONFLICT+EVIDENCE_CONFLICT 抓到转人工，一致例（TR1/TR1）正常通过。
+- **A.158/A.159（真机）**：影像块进 prompt 的五层链路修复（retriever 截断/精排截断/无精排截断/knowledge 截断/锁路径漏参/缓存垃圾）——e2e 证据：overflow_kept_rerank 日志 + rag_chunk_ids HAS_IMG + 缓存 HAS_IMG:True。遗留：双采样中一份采样仍可能 NO_IMG（缓存并发读/排序差异），"每检索必含影像块"的确定性待收敛。
 - **仍关的能力**（默认值未变，做不到就别说"已打通"）：01-1 影像腿（裁决关，A.68 NO_GAIN）、01-2 低置信升档（生产不传 `retrieval_confidence`）、01-4 残留 1 处死键（`specialist/base.py:744`）、03-5 快照溯源、05-1 报告话术入口、06-4 基层档过滤（默认三甲）、06-6 注册结论（外部）；02-1/04-3 靠部署 `.env` 开。逐项见 28 项台账 §十一。
 
 ## Blockers
