@@ -34,6 +34,10 @@ class RedisKey:
     # 同意相关键名
     CONSENT_WITHDRAWAL_STREAM = f"{_PREFIX}:consent:withdrawal:stream"
     CONSENT_WITHDRAWAL_DEAD_LETTER_STREAM = f"{_PREFIX}:consent:withdrawal:dead_letter"
+    #: G8：知识库更新信号（离线导入脚本 SET，运行中服务轮询后主动清缓存）。
+    #: 用"版本戳"而非消息队列：导入脚本与服务可能不在同一进程/主机，
+    #: 一条 KV 戳足以表达"缓存已过期"，不需要投递保证。
+    KB_CACHE_INVALIDATION_STAMP = f"{_PREFIX}:kb:cache:invalidation_stamp"
     CONSENT_WITHDRAWAL_NOTIFICATION = f"{_PREFIX}:consent:withdrawal:notification"
 
     @staticmethod

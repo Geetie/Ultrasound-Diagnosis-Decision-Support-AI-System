@@ -57,6 +57,7 @@ import structlog
 from cachetools import LRUCache
 
 from app.agents.protocols import KnowledgeAgent
+from app.config.redis_keys import RedisKey
 from app.knowledge.protocols import KnowledgeChunk
 from app.models.schemas import Organ
 from app.rag.protocols import RAGService, RetrievalRequest
@@ -242,6 +243,8 @@ class KnowledgeAgentImpl(KnowledgeAgent):
 
         self._rag = rag_service
         self._redis_factory = redis_client
+        #: G8：上次见到的知识库更新戳（None = 尚未检查过）
+        self._last_invalidation_stamp: str | None = None
         self._redis_ttl = redis_ttl_seconds
         self._local_cache: _TTLLRUCache = _TTLLRUCache(
             maxsize=local_cache_capacity,
@@ -652,6 +655,9 @@ class KnowledgeAgentImpl(KnowledgeAgent):
         # 不能跨 session 复用缓存 —— 否则 B 医生的请求命中 A 医生缓存的影像块
         #（病人隔离被击穿）。带图请求在键里加影像腿标记 → 键必然不同 → 必走真检索。
         # （RAG service 层已有同语义 bypass：rag_cache_bypassed_image_leg。）
+        # G8：知识库更新戳检查（每次查询一次 GET，成本可忽略）
+        await self._maybe_invalidate_on_stamp()
+
         with_image = bool(kwargs_extra.get("with_image_leg"))
         if with_image:
             # A.160：带图请求**完全旁路 L1/L2**。此前用独立键（with_image 段），
@@ -873,6 +879,96 @@ class KnowledgeAgentImpl(KnowledgeAgent):
     # ------------------------------------------------------------------
     # 测试 / 监控辅助
     # ------------------------------------------------------------------
+
+    async def _maybe_invalidate_on_stamp(self) -> None:
+        """G8：Redis 更新戳变了 → 主动清两层缓存。**永不抛异常**（不阻断查询）。
+
+        为什么用"戳"而不是消息：离线导入脚本与运行中服务可能不在同一进程，
+        一条 KV 戳足以表达"缓存已过期"，不需要投递保证（消息丢了缓存就退化为
+        原来的 TTL 语义，不会坏得更糟）。
+        """
+        if self._redis_factory is None:
+            return
+        try:
+            client = await self._redis_factory.get_client()
+            stamp = await client.get(RedisKey.KB_CACHE_INVALIDATION_STAMP)
+        except Exception as exc:  # silent-ok: 戳读失败 = 保持现有缓存语义（不阻断检索）
+            logger.debug(
+                "knowledge_invalidation_stamp_read_failed",
+                error=str(exc)[:120],
+                error_type=type(exc).__name__,
+            )
+            return
+        normalized = stamp.decode() if isinstance(stamp, bytes) else (stamp or "")
+        if not normalized or normalized == self._last_invalidation_stamp:
+            return
+        removed = await self.invalidate_cache(
+            reason=f"kb_stamp_changed:{normalized}", actor="auto"
+        )
+        self._last_invalidation_stamp = normalized
+        logger.info(
+            "knowledge_cache_invalidated_by_stamp",
+            stamp=normalized,
+            removed_local=removed["removed_local"],
+            removed_redis=removed["removed_redis"],
+        )
+
+    async def invalidate_cache(
+        self, *, reason: str = "manual", actor: str | None = None
+    ) -> dict:
+        """**主动**失效两层缓存（G8：此前只能等 TTL 自然过期）。
+
+        缺陷：`update_kb_version()` 全仓零调用 —— 知识库真正更新时 `_kb_version`
+        仍停在启动值，缓存键不变，新知识最长 24 小时不可见（L1 TTL=24h）。
+
+        本方法只清缓存、**不改** kb_version（版本号是知识库的事实，由导入流程
+        或显式端点切换）。Redis 不可用时如实返回 ``redis_error``。
+        """
+        removed_local = len(self._local_cache)
+        self._local_cache.clear()
+
+        removed_redis = 0
+        redis_error: str | None = None
+        try:
+            client = (
+                await self._redis_factory.get_client()
+                if self._redis_factory is not None
+                else None
+            )
+            if client is not None:
+                from app.config.settings import settings as _settings
+
+                pattern = f"{_settings.redis_key_prefix}:kb:cache:*"
+                batch: list[str] = []
+                async for key in client.scan_iter(match=pattern, count=500):
+                    batch.append(key)
+                    if len(batch) >= 500:
+                        removed_redis += int(await client.delete(*batch) or 0)
+                        batch.clear()
+                if batch:
+                    removed_redis += int(await client.delete(*batch) or 0)
+        except Exception as exc:
+            redis_error = f"{type(exc).__name__}: {exc}"[:200]
+            logger.warning(
+                "knowledge_cache_invalidate_redis_failed",
+                reason=reason,
+                actor=actor,
+                error=redis_error,
+            )
+
+        logger.info(
+            "knowledge_cache_invalidated",
+            reason=reason,
+            actor=actor,
+            removed_local=removed_local,
+            removed_redis=removed_redis,
+            redis_error=redis_error,
+        )
+        return {
+            "removed_local": removed_local,
+            "removed_redis": removed_redis,
+            "redis_error": redis_error,
+        }
 
     def get_cache_stats(self) -> dict:
         """返回缓存命中统计（用于测试和监控）。"""

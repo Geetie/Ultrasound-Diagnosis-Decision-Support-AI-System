@@ -76,3 +76,50 @@ def test_replay_success_writes_audit():
     kwargs = audit.log_action.await_args.kwargs
     assert kwargs["action"] == "consent_withdrawal_dead_letter_replayed"
     assert kwargs["target_id"] == "1-1"
+
+
+# ---------------------------------------------------------------------------
+# G8：知识缓存主动失效端点
+# ---------------------------------------------------------------------------
+
+
+def test_kb_cache_invalidate_writes_stamp_and_audits():
+    from unittest.mock import AsyncMock, patch
+
+    audit = AsyncMock()
+    audit.log_action = AsyncMock()
+    app = _app()
+    app.dependency_overrides[obs_dashboard.get_audit_service] = lambda: audit
+
+    client_mock = AsyncMock()
+    client_mock.set = AsyncMock()
+    pool_mock = AsyncMock()
+    pool_mock.get_client = AsyncMock(return_value=client_mock)
+
+    with patch("app.config.redis.RedisPool.get_client", pool_mock.get_client):
+        r = TestClient(app).post(
+            "/obs/kb-cache/invalidate", json={"reason": "reindex kb_v1.4.0"}
+        )
+
+    assert r.status_code == 200
+    body = r.json()
+    assert body["ok"] is True
+    assert "reindex kb_v1.4.0" in body["stamp"]
+    assert client_mock.set.await_count == 1
+    assert audit.log_action.await_count == 1
+    assert audit.log_action.await_args.kwargs["action"] == "kb_cache_invalidated"
+
+
+def test_kb_cache_invalidate_returns_503_when_redis_down():
+    from unittest.mock import AsyncMock, patch
+
+    pool_mock = AsyncMock()
+    pool_mock.get_client = AsyncMock(side_effect=RuntimeError("redis down"))
+    app = _app()
+    app.dependency_overrides[obs_dashboard.get_audit_service] = lambda: AsyncMock()
+
+    with patch("app.config.redis.RedisPool.get_client", pool_mock.get_client):
+        r = TestClient(app).post("/obs/kb-cache/invalidate", json={"reason": "x"})
+
+    assert r.status_code == 503
+    assert "缓存服务" in r.json()["detail"]

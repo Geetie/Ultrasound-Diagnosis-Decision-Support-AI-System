@@ -1,4 +1,6 @@
 import structlog
+from datetime import datetime, timezone
+from fastapi import HTTPException
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -7,6 +9,7 @@ from app.api.v1.errors import BadRequestException
 from app.api.v1.utils import get_actor_id
 from app.config.database import get_db_session
 from app.config.settings import settings
+from app.config.redis_keys import RedisKey
 from app.dependencies import get_audit_service
 from app.observability.alert_escalation import get_alert_escalation_manager
 from app.observability.cache_monitor import get_cache_monitor
@@ -406,3 +409,44 @@ async def replay_dead_letter_api(
         },
     )
     return {"ok": True, **outcome}
+
+
+class KbCacheInvalidateRequest(BaseModel):
+    """知识缓存失效入参（G8）：必须写原因，不允许无痕清缓存。"""
+
+    reason: str = Field(min_length=1, max_length=200, description="失效原因（审计必填）")
+
+
+@router.post("/kb-cache/invalidate")
+async def invalidate_kb_cache(
+    payload: KbCacheInvalidateRequest,
+    audit_service=Depends(get_audit_service),
+    current_user: dict | None = Depends(get_current_active_user),
+):
+    """立即清空知识检索缓存（G8：此前只能等 L1 的 24h TTL）。
+
+    与"改知识库版本号"是两件事：本端点**不动** kb_version，只清缓存。
+    实现上写一个 Redis 更新戳，运行中的服务在下次检索时自行清 L2+L1 ——
+    这样多实例部署时每个实例都会生效，不依赖本进程持有的缓存引用。
+    """
+    from app.config.redis import RedisPool
+
+    actor = get_actor_id(current_user)
+    stamp = f"{datetime.now(timezone.utc).isoformat()}|{payload.reason}|{actor}"
+    try:
+        client = await RedisPool.get_client()
+        await client.set(RedisKey.KB_CACHE_INVALIDATION_STAMP, stamp)
+    except Exception as exc:
+        logger.warning("kb_cache_invalidate_failed", error=str(exc)[:160])
+        raise HTTPException(
+            status_code=503, detail="缓存服务暂不可用，请稍后重试"
+        ) from exc
+
+    await audit_service.log_action(
+        action="kb_cache_invalidated",
+        actor=actor,
+        target_type="knowledge_cache",
+        target_id="kb:cache",
+        detail={"reason": payload.reason, "stamp": stamp},
+    )
+    return {"ok": True, "stamp": stamp, "note": "各实例将在下次检索时清空缓存"}
