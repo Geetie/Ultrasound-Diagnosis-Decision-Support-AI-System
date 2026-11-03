@@ -71,4 +71,5 @@ def test_builder_defaults_to_dry_run_and_is_idempotent_by_design():
     # point id 由 client 用 uuid5(record.id) 确定性生成 → 重复跑幂等（在 qdrant_client 里保证）
     assert "VectorRecord(" in src and "id=row[\"image_id\"]" in src
     # 不允许"没有 payload 也写"
-    assert "metadata=payload_for(row) or {}" in src
+    # A.144：payload 现在带 features 参数（无特征时传 None，行为与 A.79 一致）
+    assert "metadata=payload_for(row, features) or {}" in src

@@ -34,12 +34,18 @@ if str(_SCRIPTS) not in sys.path:
 IMAGE_DIM = 512
 
 
-def payload_for(row: dict) -> dict | None:
+def payload_for(row: dict, features: dict | None = None) -> dict | None:
     """构造向量 payload；**缺 session_id 或 patient_id 时返回 None（拒绝写入）**。纯函数（守卫钉住）。
 
     这是病人隔离的最后一道闸：检索侧按 `session_id` 过滤，
     如果写入时没这个字段，那条向量就永远查不到（写了等于白写），
     更糟的是有人可能改成"不过滤"来找它 —— 所以宁可拒写。
+
+    A.144 / G2：``features`` 是 8003 视觉端点（T2a 切面分类 / T2b 质量回归）
+    的**结构化输出**，原样进 payload 的 ``visual_features``（列表）与
+    ``visual_features_source``（固定 "ultrasound_clip_endpoints"）——
+    检索侧 `_image_chunk_text` 已会渲染这两个键。只放**模型真实输出**，
+    不拼自由文本（CLIP 不产 caption，编一段就是伪造所见）。
     """
     session_id = str(row.get("session_id") or "").strip()
     patient_id = str(row.get("patient_id") or "").strip()
@@ -55,6 +61,11 @@ def payload_for(row: dict) -> dict | None:
     }
     if row.get("organ"):
         payload["organ"] = str(row["organ"])
+    if features:
+        vals = [f"{k}={v}" for k, v in sorted(features.items()) if v is not None]
+        if vals:
+            payload["visual_features"] = vals
+            payload["visual_features_source"] = "ultrasound_clip_endpoints"
     return payload
 
 
@@ -131,6 +142,59 @@ async def _load_rows(limit: int) -> list[dict]:
     return out[:limit] if limit else out
 
 
+async def collect_visual_features(
+    row: dict, png_bytes: bytes, clip: Any
+) -> dict | None:
+    """调 8003 的 T2a/T2b 端点拿结构化视觉输出（A.144 / G2）。
+
+    只收**模型真实输出**的字段（分类概率 / 切面 / 质量），失败返回 None
+    （调用方按"无特征"处理，与 A.137 的"没特征要能被看出来"同口径）。
+    """
+    import httpx
+
+    out: dict = {}
+    base = f"http://127.0.0.1:{getattr(__import__('app.config.settings', fromlist=['settings']).settings, 'ultrasound_clip_port', 8003)}"
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        try:
+            resp = await client.post(
+                f"{base}/v1/classify",
+                json={"image_data": _b64(png_bytes), "image_format": "png"},
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                probs = data.get("probabilities") or {}
+                label = data.get("label")
+                if label:
+                    out["t2a_label"] = str(label)
+                for k in ("normal", "benign", "malignant"):
+                    if isinstance(probs.get(k), (int, float)):
+                        out[f"t2a_prob_{k}"] = round(float(probs[k]), 4)
+        except Exception as exc:  # silent-ok: T2a 失败不阻断 T2b，最终以 features=None 记账
+            print(f"  T2a 特征获取失败（image {row.get('image_id')}）：{type(exc).__name__}: {exc}"[:160])
+        try:
+            resp = await client.post(
+                f"{base}/v1/analyze_view",
+                json={"image_data": _b64(png_bytes), "image_format": "png"},
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                view = data.get("view") or data.get("view_label")
+                if view:
+                    out["t2b_view"] = str(view)
+                q = data.get("quality")
+                if isinstance(q, (int, float)):
+                    out["t2b_quality"] = round(float(q), 4)
+        except Exception as exc:  # silent-ok: T2b 失败同上；已有字段保留
+            print(f"  T2b 特征获取失败（image {row.get('image_id')}）：{type(exc).__name__}: {exc}"[:160])
+    return out or None
+
+
+def _b64(data: bytes) -> str:
+    import base64
+
+    return base64.b64encode(data).decode("ascii")
+
+
 async def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--apply", action="store_true", help="真的嵌入并写库（默认只盘点）")
@@ -138,6 +202,12 @@ async def main() -> int:
     ap.add_argument("--batch", type=int, default=16)
     ap.add_argument(
         "--report", default=str(pathlib.Path.home() / "uai/reports/image_vectors_build.json")
+    )
+    ap.add_argument(
+        "--with-features",
+        action="store_true",
+        help="A.144 / G2：调 8003 的 T2a(/v1/classify) 与 T2b(/v1/analyze_view) "
+        "端点，把结构化视觉输出写进 payload.visual_features（默认关：不启用时行为与 A.79 一致）",
     )
     args = ap.parse_args()
 
@@ -254,11 +324,27 @@ async def main() -> int:
                         )
                     continue
                 stats["embedded"] += 1
+                features = None
+                if args.with_features:
+                    # A.144 / G2：拿本次实际送嵌的帧 PNG 调 T2a/T2b（失败 = 无特征，不阻断）
+                    try:
+                        if needs_frame_conversion(row["storage_path"]):
+                            first = extract_frame_from_bytes(raw, None)
+                            frame = extract_frame_from_bytes(raw, frame_indices_for(first.total_frames)[0])
+                            feat_png = frame.png_bytes
+                        else:
+                            feat_png = raw
+                        features = await collect_visual_features(row, feat_png, clip)
+                        if features:
+                            stats["with_features"] = stats.get("with_features", 0) + 1
+                    except Exception as exc:  # silent-ok: 特征采集整体失败 = 无特征，计入失败账
+                        print(f"  特征采集异常（image {row.get('image_id')}）：{type(exc).__name__}: {exc}"[:160])
+                        features = None
                 records.append(
                     VectorRecord(
                         id=row["image_id"],
                         vector=emb,
-                        metadata=payload_for(row) or {},
+                        metadata=payload_for(row, features) or {},
                     )
                 )
             if records:
