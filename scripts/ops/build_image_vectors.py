@@ -142,57 +142,54 @@ async def _load_rows(limit: int) -> list[dict]:
     return out[:limit] if limit else out
 
 
-async def collect_visual_features(
-    row: dict, png_bytes: bytes, clip: Any
-) -> dict | None:
+async def collect_visual_features(row: dict, png_bytes: bytes, clip: Any) -> dict | None:
     """调 8003 的 T2a/T2b 端点拿结构化视觉输出（A.144 / G2）。
 
-    只收**模型真实输出**的字段（分类概率 / 切面 / 质量），失败返回 None
-    （调用方按"无特征"处理，与 A.137 的"没特征要能被看出来"同口径）。
+    契约（与生产客户端 `ultrasound_clip.py` / 评测器 p29 一致）：**multipart**，
+    字段名固定 `images`；T2a 返回 ``results[].label/probabilities``，T2b 返回
+    切面与质量。失败返回 None（调用方按"无特征"处理 —— "没特征要能被看出来"）。
     """
     import httpx
 
     out: dict = {}
-    base = f"http://127.0.0.1:{getattr(__import__('app.config.settings', fromlist=['settings']).settings, 'ultrasound_clip_port', 8003)}"
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        try:
-            resp = await client.post(
-                f"{base}/v1/classify",
-                json={"image_data": _b64(png_bytes), "image_format": "png"},
-            )
+    from app.config.settings import settings
+
+    base = f"http://127.0.0.1:{getattr(settings, 'ultrasound_clip_port', 8003)}"
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            files = {"images": ("frame.png", png_bytes, "image/png")}
+            resp = await client.post(f"{base}/v1/classify", files=files)
+            if resp.status_code == 200:
+                results = resp.json().get("results") or []
+                if results:
+                    first = results[0]
+                    label = first.get("label") or first.get("predicted_label")
+                    if label:
+                        out["t2a_label"] = str(label)
+                    probs = first.get("probabilities") or {}
+                    for k, v in probs.items():
+                        if isinstance(v, (int, float)):
+                            out[f"t2a_prob_{k}"] = round(float(v), 4)
+    except Exception as exc:  # silent-ok: T2a 失败不阻断 T2b，最终以缺字段记账
+        print(f"  T2a 特征获取失败（image {row.get('image_id')}）：{type(exc).__name__}: {exc}"[:160])
+
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            files = {"images": ("frame.png", png_bytes, "image/png")}
+            resp = await client.post(f"{base}/v1/analyze_view", files=files)
             if resp.status_code == 200:
                 data = resp.json()
-                probs = data.get("probabilities") or {}
-                label = data.get("label")
-                if label:
-                    out["t2a_label"] = str(label)
-                for k in ("normal", "benign", "malignant"):
-                    if isinstance(probs.get(k), (int, float)):
-                        out[f"t2a_prob_{k}"] = round(float(probs[k]), 4)
-        except Exception as exc:  # silent-ok: T2a 失败不阻断 T2b，最终以 features=None 记账
-            print(f"  T2a 特征获取失败（image {row.get('image_id')}）：{type(exc).__name__}: {exc}"[:160])
-        try:
-            resp = await client.post(
-                f"{base}/v1/analyze_view",
-                json={"image_data": _b64(png_bytes), "image_format": "png"},
-            )
-            if resp.status_code == 200:
-                data = resp.json()
-                view = data.get("view") or data.get("view_label")
+                body = data.get("results", [{}])[0] if isinstance(data.get("results"), list) else data
+                view = body.get("view") or body.get("view_label") or body.get("predicted_view")
                 if view:
                     out["t2b_view"] = str(view)
-                q = data.get("quality")
+                q = body.get("quality") or body.get("quality_score")
                 if isinstance(q, (int, float)):
                     out["t2b_quality"] = round(float(q), 4)
-        except Exception as exc:  # silent-ok: T2b 失败同上；已有字段保留
-            print(f"  T2b 特征获取失败（image {row.get('image_id')}）：{type(exc).__name__}: {exc}"[:160])
+    except Exception as exc:  # silent-ok: T2b 失败同上；已有字段保留
+        print(f"  T2b 特征获取失败（image {row.get('image_id')}）：{type(exc).__name__}: {exc}"[:160])
+
     return out or None
-
-
-def _b64(data: bytes) -> str:
-    import base64
-
-    return base64.b64encode(data).decode("ascii")
 
 
 async def main() -> int:
