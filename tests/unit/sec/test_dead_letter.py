@@ -101,3 +101,28 @@ async def test_replay_not_found():
     with patch.object(dl, "_client", AsyncMock(return_value=client)):
         out = await dl.replay_dead_letter("9-9", actor="qc-admin")
     assert out["ok"] is False and out["reason"] == "not_found"
+
+
+@pytest.mark.asyncio
+async def test_replay_second_time_after_marking_is_rejected():
+    """真实闭环：重放会在原条目上加 replayed_at → 再查同 entry_id 必须被拒。
+
+    真机实测（e2e 2026-11-03）：首版把留痕写成"另加一条影子记录"，
+    xrange 查原条目看不到影子 → 同一条死信可被无限重放。本用例钉住该形态。
+    """
+    client = _mock_client()
+    calls = {"n": 0}
+
+    async def _xrange(*args, **kwargs):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return [(b"1-1", {b"event_id": b"e1", b"patient_id": b"p1", b"error": b"boom"})]
+        # 第二次：原条目已被标记（重放时的 xdel+xadd 换成了带标记的条目）
+        return [(b"1-1", {b"event_id": b"e1", b"replayed_at": b"2026-11-03T02:00:00"})]
+
+    client.xrange = AsyncMock(side_effect=_xrange)
+    with patch.object(dl, "_client", AsyncMock(return_value=client)):
+        first = await dl.replay_dead_letter("1-1", actor="qc-admin")
+        second = await dl.replay_dead_letter("1-1", actor="qc-admin")
+    assert first["ok"] is True
+    assert second["ok"] is False and second["reason"] == "already_replayed"

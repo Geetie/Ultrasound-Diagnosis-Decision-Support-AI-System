@@ -142,20 +142,38 @@ async def replay_dead_letter(entry_id: str, actor: str) -> dict[str, Any]:
         logger.warning("dead_letter_replay_add_failed", entry_id=entry_id, error=str(exc)[:160])
         return {"ok": False, "reason": "replay_failed", "new_entry_id": None}
 
-    # 留痕：在原死信上标记（xadd 一条影子记录，不删原记录——审计需要两条都在）
+    # 留痕：**在原条目上加标记字段**（不是另写一条影子记录）。
+    # 真机实测：另写影子条目会导致重复重放检测失效（xrange 查原条目看不到影子）
+    # —— 同一条死信可被无限次重放，e2e 已复现（第二次重放仍 200）。
+    # Redis stream 无"改字段"原语 → 用 XADD 写同 id（Redis 7 支持同 id 追加/合并
+    # 语义由 XACK 后 XDEL 模拟；这里用最稳的可行做法：删原条目 + 写带标记的同字段条目，
+    # 两者在同一 pipeline 内完成，失败则回滚（补回原条目））。
+    marked = {
+        **row,
+        "replayed_at": datetime.now(timezone.utc).isoformat(),
+        "replayed_by": str(actor),
+        "original_entry_id": entry_id,
+    }
     try:
-        await client.xadd(
+        pipe = client.pipeline()
+        pipe.xdel(RedisKey.CONSENT_WITHDRAWAL_DEAD_LETTER_STREAM, entry_id)
+        pipe.xadd(
             RedisKey.CONSENT_WITHDRAWAL_DEAD_LETTER_STREAM,
-            {
-                **payload,
-                "replayed_at": datetime.now(timezone.utc).isoformat(),
-                "replayed_by": str(actor),
-                "original_entry_id": entry_id,
-            },
+            marked,
             maxlen=1000,
         )
+        await pipe.execute()
     except Exception as exc:
         logger.warning("dead_letter_replay_mark_failed", entry_id=entry_id, error=str(exc)[:160])
+        # 回滚：把原条目补回（宁可丢标记，不可丢记录）
+        try:
+            await client.xadd(
+                RedisKey.CONSENT_WITHDRAWAL_DEAD_LETTER_STREAM, row, maxlen=1000
+            )
+        except Exception:
+            logger.critical(
+                "dead_letter_replay_rollback_failed", entry_id=entry_id
+            )
 
     logger.info(
         "dead_letter_replayed",
