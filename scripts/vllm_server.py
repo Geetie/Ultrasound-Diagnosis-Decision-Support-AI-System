@@ -93,7 +93,7 @@ async def chat_completions(request: Request) -> JSONResponse:
         prompt = str(messages[-1].get("content") or "")
 
     from vllm import SamplingParams
-    from vllm.sampling_params import GuidedDecodingParams
+    from vllm.sampling_params import StructuredOutputsParams
 
     # A.151：OpenAI 兼容的 response_format（结构化输出）此前被本包装器**静默丢弃**
     # —— 主服务结构化重试传来的 json_schema 到这里就没了，1.5B 模型自由发挥，
@@ -104,7 +104,7 @@ async def chat_completions(request: Request) -> JSONResponse:
     if rf.get("type") == "json_schema":
         schema = (rf.get("json_schema") or {}).get("schema")
         if schema:
-            guided = GuidedDecodingParams(json=schema)
+            guided = StructuredOutputsParams(json=schema)
 
     # A.151：chat 模板。instruct 模型直接拼 prompt 会输出复述/杂讯
     #（真机实测 "# 输出" 重复、JSON 复读）。用 tokenizer 的 chat template 渲染。
