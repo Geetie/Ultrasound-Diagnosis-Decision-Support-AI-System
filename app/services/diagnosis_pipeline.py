@@ -1503,6 +1503,12 @@ async def _write_result_to_db(
     findings = {
         "organ": request.organ,
         "fusion_result": _fusion_result_to_dict(fusion_result),        "sg_result": sg_result or {"service_unavailable": True},
+        # A.149：专科 trace 落库 —— rag_chunks 数量、retrieval_confidence、
+        # 双采样 temperature 都在这里；此前只活在日志里，端到端验证不可见。
+        "specialist_reasoning_trace": [
+            t for _r in (specialist_responses or [])
+            for t in (getattr(_r, "reasoning_trace", None) or [])
+        ],
         "timings_ms": timings_ms,
         # A.52 口径修复：报告/结果声明的**知识库版本**必须是本次判读真正检索的
         # 那个库。此前 findings 不写该键，读路径（api/v1/diagnosis.py）只能退回
