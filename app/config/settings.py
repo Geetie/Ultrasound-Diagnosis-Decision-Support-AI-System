@@ -308,10 +308,17 @@ class Settings(BaseSettings):
     pipeline_total_budget_s: float = 180.0
     # 01-5：分档端到端总预算。FULL 档沿用上面的 pipeline_total_budget_s；
     # realtime 档不走诊断路径（00 号 §2.1）→ 沿用 standard 值。
-    # standard 初值 = 实测常态（dispatch+fusion ~4.7s，见上方注释）× ~2 倍余量
-    # → 10.0s；P99 目标口径已按实测 ~4.7s 重新定（00 号 §2.1）。
-    # 重定时机：standard 档累计 ≥50 例 P99 观测后按实测收紧。
-    pipeline_total_budget_standard_s: float = 10.0
+    # standard 预算 —— **按真机实测重定**（2026-11-03，n=12）。
+    #
+    # 旧值 10.0s 的依据是"dispatch+fusion ~4.7s 常态"，但真机实测
+    # **dispatch 中位 21.4s + fusion 4.7s**（total: min 24.4s / P50 26.3s /
+    # P90 45.2s / max 59.7s）—— 旧依据把 **fusion 的 4.7s 当成了两段之和**。
+    # 后果：标准档判读在 10s 处被 `pipeline_cancelled` 掐断，
+    # **标准档几乎没有一例能跑完**（真机 e2e 连续复现 elapsed_ms=10007）。
+    #
+    # 重定：P90 45.2s × ~1.3 倍余量 → 60s（与 FULL 档 180s 保持 3 倍差，
+    # 分档语义仍然成立）。重定依据与原始 n=12 数据见 16 号台账。
+    pipeline_total_budget_standard_s: float = 60.0
 
     def estimate_ms_for_tier(self, tier_value: str | None) -> int:
         """G3：提交响应里的 ``estimated_time_ms`` 必须来自**真实档位预算**。
