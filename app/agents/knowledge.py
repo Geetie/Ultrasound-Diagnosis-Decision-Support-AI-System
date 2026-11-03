@@ -543,6 +543,7 @@ class KnowledgeAgentImpl(KnowledgeAgent):
         organ: Organ,
         top_k: int,
         profile: Any = None,
+        kwargs_extra: dict | None = None,
     ) -> list[KnowledgeChunk]:
         """调用底层 RAG（**不加锁**；由 ``query()`` 在锁内调用）。
 
@@ -553,11 +554,17 @@ class KnowledgeAgentImpl(KnowledgeAgent):
         截断，两者语义不同、互不冲突。
         """
         profile_kwargs = self._normalize_profile(profile) or {}
+        kwargs_extra = kwargs_extra or {}
         retrieval_top_k = int(profile_kwargs.pop("top_k", 0) or 0) or top_k
         retrieval_request = RetrievalRequest(
             query=query,
             organ=organ.value,
             top_k=retrieval_top_k,
+            # A.159：request_id 必须透传 —— service 层用它查影像腿槽
+            #（resolve_image_leg_slot(request_id)）来决定是否旁路缓存；
+            # 缺失时带图请求会被当普通文本检索读缓存 → 别的 session 的
+            # 检索结果串号（病人隔离红线）。
+            request_id=kwargs_extra.get("request_id") if kwargs_extra else None,
             **profile_kwargs,
         )
         result = await self._rag.retrieve(retrieval_request)
@@ -707,6 +714,7 @@ class KnowledgeAgentImpl(KnowledgeAgent):
                     cache_key=cache_key,
                     kb_version=kb_version,
                     profile=profile,
+                    kwargs_extra=kwargs_extra,
                 )
         else:
             return await self._rag_fallback_with_cache(
@@ -716,6 +724,7 @@ class KnowledgeAgentImpl(KnowledgeAgent):
                 cache_key=cache_key,
                 kb_version=kb_version,
                 profile=profile,
+                kwargs_extra=kwargs_extra,
             )
 
     async def _rag_fallback_with_cache(
@@ -726,6 +735,7 @@ class KnowledgeAgentImpl(KnowledgeAgent):
         cache_key: str,
         kb_version: str,
         profile: Any = None,
+        kwargs_extra: dict | None = None,
     ) -> list[KnowledgeChunk]:
         """实际 RAG 调用 + 写回缓存（含穿透防护 + 雪崩防护）。
 
@@ -745,7 +755,7 @@ class KnowledgeAgentImpl(KnowledgeAgent):
 
         self._misses += 1
         start = time.monotonic()
-        chunks = await self._call_rag(query, organ, top_k, profile)
+        chunks = await self._call_rag(query, organ, top_k, profile, kwargs_extra)
         is_negative = len(chunks) == 0
 
         # 写回缓存（失败不阻塞业务）。

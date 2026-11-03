@@ -711,7 +711,10 @@ class RAGSpecialistAgent(SpecialistAgent):
 
                 leg = resolve_image_leg_slot(context.request_id)
                 has_img = leg is not None and leg.image_data is not None
-                kwargs["kwargs_extra"] = {"with_image_leg": has_img}
+                kwargs["kwargs_extra"] = {
+                    "with_image_leg": has_img,
+                    "request_id": context.request_id,
+                }
             except Exception:
                 pass
         return await self._knowledge.query(**kwargs)
