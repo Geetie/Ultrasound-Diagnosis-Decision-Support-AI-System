@@ -333,10 +333,13 @@ class Retriever:
             if h.source == RetrievalMethod.IMAGE
         ]
         if image_overflow:
+            # 影像块与文本块 RRF 同分（影像腿单点 rank=1 → 1/61，与 dense 头部相同）
+            # 时被稳定排序挤到 top_k 之后 → 无条件放行（top_k+1 条进 prompt，
+            # specialist prompt 按 chunks 全渲染，代价一条）。
             logger.info(
                 "image_chunk_overflow_kept_retriever",
                 kept_overflow=len(image_overflow),
-                chunk_ids=[sc.chunk.chunk_id for sc in image_overflow[:3]],
+                chunk_ids=[h.chunk.chunk_id for h in image_overflow[:3]],
             )
         fused = head + image_overflow
         _record_retrieval_outcome(is_empty=not fused)

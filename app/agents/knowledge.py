@@ -748,7 +748,18 @@ class KnowledgeAgentImpl(KnowledgeAgent):
             n_results=len(chunks),
             is_negative=is_negative,
         )
-        return chunks[:top_k]
+        # A.158：本层 [:top_k] 截断同样保底影像块（retriever/service 层已放行，
+        # 这里再截会让"影像块进 prompt"在最后一厘米失效）。
+        # KnowledgeChunk 无 retrieval_source；影像块 id 形如 img_…（retriever 约定）。
+        head = chunks[:top_k]
+        img_overflow = [c for c in chunks[top_k:] if str(c.chunk_id).startswith("img_")]
+        if img_overflow:
+            logger.info(
+                "image_chunk_overflow_kept_knowledge",
+                kept_overflow=len(img_overflow),
+                chunk_ids=[c.chunk_id for c in img_overflow[:3]],
+            )
+        return head + img_overflow
 
     async def health_check(self) -> bool:
         """RAG 健康即视为本智能体健康；Redis 健康是 bonus。"""
