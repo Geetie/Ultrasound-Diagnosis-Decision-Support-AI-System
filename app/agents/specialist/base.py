@@ -387,6 +387,9 @@ class RAGSpecialistAgent(SpecialistAgent):
             return response
 
         trace.append(f"rag_chunks: {len(chunks)}")
+        # A.157：证据 chunk ID 落 trace —— 影像块（img_…）是否真进了 prompt，
+        # 只有这里能判断（content 是模型输出，不包含它）。
+        trace.append(f"rag_chunk_ids: {[c.chunk_id for c in chunks]}")
         # A.142 / N4：记录本次检索置信度（优先精排分，其次原始分；没有分 = 未测）。
         # **只观测不决策**：升档门槛要真机延迟数据才能定，先让分布可见。
         confidence = _retrieval_confidence(chunks)
