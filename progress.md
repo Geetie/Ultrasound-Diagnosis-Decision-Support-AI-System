@@ -67,6 +67,7 @@
 - **断流契约（目标原话"省得 API 上游断了，让你停止工作"）**：真机演练——**停掉 8002 后判读 9.1s 内正常结束**（`needs_review`、`ai_diagnosis_failed=False`、自动转人工），未挂死/未 500/未永停 processing；恢复后 8002 正常。修复熔断打开时 `retryable=True` 的语义矛盾（该路径本次不再试，标可重试会让调用方白打一轮）→ 改 `retryable=False` + 中文 detail。新增契约守卫 4 例（重试生效/断流错误码/达阈值熔断/熔断期间不再发请求）。
 - **G49 闭合（真机数据）**：撤回生效时延实测 **n=10，min 17.45ms / P50 24.40ms / P95 25.86ms / max 25.86ms**，目标 500ms（余量约 19 倍）。链路：API 撤回 → Redis Stream → 消费者（handlers: safety_action + data_cleanup）→ `consent_withdrawal_e2e_latency` 计时（起点=医生点击时刻，含队列等待）。无超目标告警。
 - **N4 闭合（量纲修复，真机实证）**：`retrieval_confidence`（实测 1.705~5.207，rerank logit 尺度）被拿去比 `organ_threshold`（0.85，结论置信度 0~1）→ **升档从未触发过**。新增 `app/agents/retrieval_confidence.py` 归一化到 0~1（锚点 1.5/5.5 来自真机 min/max）+ 同量纲阈值 0.10（n=12 定标：仅最差 1 例升档≈8%；升档成本实测 +2.2 倍）。**真机验证**：conf=1.705→升档 full+low_retrieval_confidence；2.816/5.207/None→不升档。守卫 9 例。
+- **G48 闭合（真机）**：无前缀姓名脱敏 0/4 → **4/4**。调研后**不引 NER 模型**（ckiplab 系 GPL-3.0、uer/CLUENER 系未声明许可，均不适合医疗合规项目），改用"姓氏词典（含复姓）+ 就诊动作动词零宽锚点"，零新依赖。两套引擎各一条规则（`patient_name_with_action` / `sg_patient_name_with_action`）并写入各自持久化 YAML。**真机验证**：SG 引擎 `[REDACTED:NAME]`、app 引擎 `PATIENT_00X`，4/4 命中；医学术语误杀 0/5。门禁从"只测量"收紧为"必须全中"（PII 红线）。tests/unit/sec 1424 passed。
 - **仍关的能力**（默认值未变，做不到就别说"已打通"）：01-1 影像腿（裁决关，A.68 NO_GAIN）、01-2 低置信升档（生产不传 `retrieval_confidence`）、01-4 残留 1 处死键（`specialist/base.py:744`）、03-5 快照溯源、05-1 报告话术入口、06-4 基层档过滤（默认三甲）、06-6 注册结论（外部）；02-1/04-3 靠部署 `.env` 开。逐项见 28 项台账 §十一。
 
 ## Blockers
