@@ -62,6 +62,7 @@
 - **A.161（代码侧）**：纠错台账 A-02（P0）修复——T2a 文本锚 thyroid→liver + docstring 声明；推理不受影响（纯视觉塔）；材料侧表述与重训待处理。
 - **本轮（用户指示"删台账 + 优先修 P1"）**：①删除 `docs/合规/缺口核实台账-20261103.md` 及其锚点守卫（悬空引用 3 处已清理，`数据源台账/` 保留——开源目录快照非缺陷台账）；②**G3 修复**：`estimated_time_ms` 硬编码 3000/2000 → `settings.estimate_ms_for_tier()`（与 worker 真实预算 180s/10s 同源，守卫 5 例）；③**D-04 闭合**：死信队列读取侧 + 重放入口（`app/security/dead_letter.py` + 两个受权限审计的端点，守卫 11 例）；④核实 N1/N2/N6/N7/N8/G15/G16/G17 均已在 A.107/A.109/A.111/A.113 修复（台账未更新，属记录滞后非真实欠账）。
 - **本轮续（P1 第二批）**：**G4/G7/N6 共因修复**——检索降级（`rerank_engine` 退化/BM25 兜底/影像腿跳过/p99 越界/丢行）此前只写日志，医生以为拿到标准配置结果。新增 `app/rag/degradation.py` 纯函数汇总 + 全链路上报（knowledge→trace→findings→`DiagnosisResult.retrieval_degradation`），守卫 16 例。**真机 e2e 实证**：`reasons:["p99_violation"]` 在顶层与 diagnosis 内两处都可读，trace 有对应行。
+- **G8 闭合（P1 最后一项）**：知识缓存主动失效。缺陷比台账更重——`update_kb_version()` 全仓零调用，知识库更新后缓存键不变、新知识最长 24h 不可见。修法：`invalidate_cache()`（清 L2 + 按前缀清 L1，Redis 失败如实上报）+ Redis 更新戳（query 每次读戳，变了即清，多实例各自生效）+ 离线脚本 `signal_kb_cache_invalidation.py` + 运维端点（权限+审计+中文文案）。**真机实证**：造 1 条缓存 → 写戳 → 判读触发 → 键数 1→0，日志 `removed_redis=2`。守卫 12 例。
 - **仍关的能力**（默认值未变，做不到就别说"已打通"）：01-1 影像腿（裁决关，A.68 NO_GAIN）、01-2 低置信升档（生产不传 `retrieval_confidence`）、01-4 残留 1 处死键（`specialist/base.py:744`）、03-5 快照溯源、05-1 报告话术入口、06-4 基层档过滤（默认三甲）、06-6 注册结论（外部）；02-1/04-3 靠部署 `.env` 开。逐项见 28 项台账 §十一。
 
 ## Blockers
