@@ -38,6 +38,10 @@ class InFlightDiagnosisRegistry:
 
     _entries: dict[str, _Entry] = field(default_factory=dict)
     _by_patient: dict[str, set] = field(default_factory=dict)
+    #: 因**同意撤回**而被取消的 request_id（供 pipeline 在 CancelledError 里分流
+    #: 日志：撤回 vs 预算超时是两种完全不同的运维事件，混记会让排查走错方向
+    #: —— 真机实测曾把"预算超时"记成"病人撤回"）。
+    _cancelled_by_withdrawal: set[str] = field(default_factory=set)
 
     def register(
         self,
@@ -79,6 +83,11 @@ class InFlightDiagnosisRegistry:
             if not patient_set:
                 self._by_patient.pop(entry.patient_id, None)
 
+    def was_cancelled_by_withdrawal(self, request_id: str | None) -> bool:
+        """该 request 是否因同意撤回被取消（纯查询，不改状态）。"""
+        key = str(request_id or "").strip()
+        return bool(key) and key in self._cancelled_by_withdrawal
+
     def cancel_for_patient(self, patient_id: str) -> list[str]:
         """取消该患者全部在途诊断，返回被取消的 request_id 列表。"""
         request_ids = sorted(self._by_patient.get(patient_id, set()))
@@ -107,6 +116,7 @@ class InFlightDiagnosisRegistry:
                 continue
             entry.task.cancel()
             cancelled.append(request_id)
+            self._cancelled_by_withdrawal.add(request_id)
             self.unregister(request_id)
 
         if cancelled:

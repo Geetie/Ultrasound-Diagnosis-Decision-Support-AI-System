@@ -697,13 +697,32 @@ async def run_diagnosis_pipeline(request_id: str) -> bool:
         return write_ok
 
     except asyncio.CancelledError:
-        # T-G1-INT-06：同意撤回触发的在途取消（见 inflight_diagnosis）。
-        # 必须留下终态：任务被取消时若 DB 行停在 in_progress，前端会一直转圈，
-        # 且没有任何记录说明这次诊断为什么不告而终。
+        # T-G1-INT-06：在途取消（同意撤回 / 预算超时 / 关机）都必须留下终态：
+        # 任务被取消时若 DB 行停在 in_progress，前端会一直转圈，且没有任何
+        # 记录说明这次诊断为什么不告而终。
+        #
+        # 日志分流修正（2026-11-03 真机）：此前**一律**记成
+        # `pipeline_cancelled_by_consent_withdrawal`，于是"预算超时"被误标成
+        # "病人撤回同意" —— 排查时按撤回方向查会完全走错。现在按"是否真的
+        # 撤回过同意"分流，并把预算值一起打出来便于判断。
+        _withdrawn = False
+        try:
+            _withdrawn = bool(
+                get_inflight_registry().was_cancelled_by_withdrawal(request_id)
+            )
+        except Exception as exc:  # silent-ok: 标记读取失败 → 按"非撤回"归类并留痕
+            logger.debug(
+                "pipeline_cancel_withdrawal_probe_failed",
+                request_id=request_id,
+                error=str(exc)[:120],
+            )
         logger.warning(
-            "pipeline_cancelled_by_consent_withdrawal",
+            "pipeline_cancelled_by_consent_withdrawal"
+            if _withdrawn
+            else "pipeline_cancelled_by_budget_or_shutdown",
             request_id=request_id,
             elapsed_ms=round((time.monotonic() - t_start) * 1000.0, 2),
+            withdrawal_confirmed=_withdrawn,
         )
         try:
             # shield：取消已投递过一次，收尾写库不能再被同一个取消打断
