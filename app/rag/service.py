@@ -431,6 +431,13 @@ class RAGServiceImpl(RAGService):
                 else:
                     dropped_normal += 1
             result.chunks = kept
+            # A.158 诊断留痕：kept 的完整 chunk_id 列表（此前只有计数，
+            # "影像块在不在 kept" 无法从日志判断）。
+            logger.info(
+                "min_score_kept_chunk_ids",
+                request_id=request.request_id,
+                chunk_ids=[sc.chunk.chunk_id for sc in kept[:8]],
+            )
             if graph_exempt or image_exempt or dropped_normal:
                 logger.info(
                     "min_score_filter_applied",
