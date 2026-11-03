@@ -54,6 +54,7 @@
 - **A.149（真机）**：G2/G21 端到端收口——修四断点（迁移 0020、双采样接线、影像腿全局开关、在线索引二次映射）+ 专科 trace 落 findings；六信号已验证（上传→向量带特征→admitted→进 prompt→conflict_comparable 可读→trace 落库）。
 - **A.150（真机）**：回显守卫精修（`# 输出` 重复≠回显，修复 4 例全误拒）；G21 批内一致率首个真机数字：有效例 4/4 一致（TR4×4），但 3/4 例输出因 7B 格式依从问题降级——一致率统计瓶颈在模型格式依从，非采样机制。
 - **A.151（真机）**：三层真机缺陷修复——①8002 是 1.5B 自建包装器（非 7B 官方 server，文档与实际不符）且丢弃 response_format、不套 chat 模板 → 补 guided 解码 + chat 模板；②双采样接线；③温度落 trace。真机验证：guided 解码生效、双温两条 trace、结构化重试 recovered ×2、批内一致。
+- **A.153（真机）**：G21 最后断点修复——dispatcher 双采样后聚合把"多份变一份"，ConflictDetector 判 single_response → 原始多份透传融合层。Qwen3-8B 上 8002 验证：conflict_comparable=true ×2、批内一致 2/2（TR2/TR2、TR5/TR5）。
 - **仍关的能力**（默认值未变，做不到就别说"已打通"）：01-1 影像腿（裁决关，A.68 NO_GAIN）、01-2 低置信升档（生产不传 `retrieval_confidence`）、01-4 残留 1 处死键（`specialist/base.py:744`）、03-5 快照溯源、05-1 报告话术入口、06-4 基层档过滤（默认三甲）、06-6 注册结论（外部）；02-1/04-3 靠部署 `.env` 开。逐项见 28 项台账 §十一。
 
 ## Blockers
