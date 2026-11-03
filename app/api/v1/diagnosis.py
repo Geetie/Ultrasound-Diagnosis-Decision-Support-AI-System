@@ -1209,6 +1209,12 @@ async def get_diagnosis_result(
         # A.135 / G21：冲突检测可比较性（不可比 ≠ 无冲突）。
         # A.149 真机实测：信号落在 **fusion_result** 平面（_fusion_result_to_dict 写入），
         # findings 顶层没有 —— 读侧两个平面都看。
+        # G4/G7/N6：检索降级（医生端必须能看出"这次结果的质量前提"）
+        retrieval_degradation=(
+            (diagnosis_payload or {}).get("retrieval_degradation")
+            if isinstance((diagnosis_payload or {}).get("retrieval_degradation"), dict)
+            else None
+        ),
         conflict_comparable=next(
             (
                 v

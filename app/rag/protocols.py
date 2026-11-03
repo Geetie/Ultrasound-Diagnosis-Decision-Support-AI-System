@@ -208,6 +208,9 @@ class RetrievalResult(BaseModel):
     p99_violation: bool = False
     dropped_missing_row: int = 0
     image_leg_skip_reason: str = ""
+    #: 本次精排实际使用的引擎：``bge`` / ``heuristic`` / ``none``。
+    #: G4：此前只进日志（`rerank_applied`），医生端看不到"精排降级为启发式"。
+    rerank_engine: str = "none"
 
     @property
     def top_score(self) -> float:

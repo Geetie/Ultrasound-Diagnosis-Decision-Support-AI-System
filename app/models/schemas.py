@@ -511,6 +511,11 @@ class DiagnosisResult(BaseModel):
     # None = 未降级（或缺数据），界面据此提示"建议已降级"，不冒充完整规则输出。
     clinical_actions_degraded: bool | None = None
 
+    # 检索降级（G4/G7/N6）：{degraded, reasons[], notes[], image_leg_skip_reason}
+    # 此前精排退化/BM25 兜底/影像腿跳过只写日志，医生以为拿到的是标准配置结果。
+    # None = 未采集（不是"没降级"）。
+    retrieval_degradation: dict[str, Any] | None = None
+
     # 禁忌命中明细（A.121 / G34）：SG 侧早有 rule_id/description，但此前响应模型
     # 不带该字段、上游只显示"检测到 N 条禁忌"——医生看不到是哪条规则。
     # 白名单投影见 `_contraindication_matches_from`（rule_id/description/severity/organ）。

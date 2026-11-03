@@ -390,6 +390,12 @@ class RAGSpecialistAgent(SpecialistAgent):
             return response
 
         trace.append(f"rag_chunks: {len(chunks)}")
+        # G4/G7/N6：检索降级摘要入 trace（→ findings → 医生端可见）
+        _degradation = getattr(self._knowledge, "_last_retrieval_degradation", None)
+        if _degradation is not None:
+            trace.append(f"retrieval_degraded: {_degradation.degraded}")
+            for _reason in _degradation.reasons:
+                trace.append(f"retrieval_degraded_reason: {_reason}")
         # A.157：证据 chunk ID 落 trace —— 影像块（img_…）是否真进了 prompt，
         # 只有这里能判断（content 是模型输出，不包含它）。
         trace.append(f"rag_chunk_ids: {[c.chunk_id for c in chunks]}")

@@ -1512,6 +1512,11 @@ async def _write_result_to_db(
     findings = {
         "organ": request.organ,
         "fusion_result": _fusion_result_to_dict(fusion_result),        "sg_result": sg_result or {"service_unavailable": True},
+        # G4/G7/N6：检索降级状态落库（医生端可见的前提）——从专科 trace 反解
+        # reason 码。None = 未采集（不冒充"没降级"）。
+        "retrieval_degradation": _retrieval_degradation_from_trace(
+            specialist_responses
+        ),
         # A.149：专科 trace 落库 —— rag_chunks 数量、retrieval_confidence、
         # 双采样 temperature 都在这里；此前只活在日志里，端到端验证不可见。
         "specialist_reasoning_trace": [
@@ -2872,6 +2877,41 @@ def _field_of(source, name: str):
     if isinstance(source, dict):
         return source.get(name)
     return getattr(source, name, None)
+
+
+def _retrieval_degradation_from_trace(specialist_responses) -> dict | None:
+    """从专科 trace 反解检索降级状态（G4/G7/N6）。纯函数。
+
+    trace 是检索层信号跨到写库层的唯一载体（检索结果对象不跨层传递）。
+    返回 ``None`` 表示**未采集**（专科没产出 trace）——不得用
+    ``{"degraded": False}`` 冒充"没降级"。
+    """
+    if not specialist_responses:
+        return None
+    reasons: set[str] = set()
+    degraded_flags: list[bool] = []
+    for resp in specialist_responses:
+        for line in (getattr(resp, "reasoning_trace", None) or []):
+            text = str(line)
+            if text.startswith("retrieval_degraded: "):
+                degraded_flags.append(text.split(": ", 1)[1].strip().lower() == "true")
+            elif text.startswith("retrieval_degraded_reason: "):
+                reasons.add(text.split(": ", 1)[1].strip())
+    if not degraded_flags:
+        return None
+    from app.rag.degradation import _REASON_NOTES
+
+    ordered = [r for r in _REASON_NOTES if r in reasons]
+    return {
+        "degraded": any(degraded_flags),
+        "reasons": ordered,
+        "notes": [_REASON_NOTES[r] for r in ordered],
+        # trace 里只有"影像腿被跳过"这个事实，没有原始原因码（那在检索层）；
+        # 这里如实给占位标记，**不伪造**具体原因（伪造会让医生看到错误的诊断依据）。
+        "image_leg_skip_reason": (
+            "image_leg_skipped" if "image_leg_skipped" in reasons else None
+        ),
+    }
 
 
 def _fusion_result_to_dict(fusion_result) -> dict:

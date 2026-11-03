@@ -568,6 +568,19 @@ class KnowledgeAgentImpl(KnowledgeAgent):
             **profile_kwargs,
         )
         result = await self._rag.retrieve(retrieval_request)
+        # G4/G7/N6：把本次检索的降级摘要暂存到实例（同协程内 specialist 读走，
+        # 写进 trace → findings → 医生端）。**不改变 query 返回类型**，
+        # 避免破坏既有测试替身与调用方契约。
+        try:
+            from app.rag.degradation import summarize_degradation
+
+            self._last_retrieval_degradation = summarize_degradation(result)
+        except Exception as exc:  # silent-ok: 摘要失败不影响检索本身
+            logger.warning(
+                "knowledge_degradation_summary_failed",
+                error=str(exc)[:120],
+                error_type=type(exc).__name__,
+            )
         chunks: list[KnowledgeChunk] = []
         for sc in result.chunks:
             chunk = sc.chunk

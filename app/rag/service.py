@@ -338,6 +338,8 @@ class RAGServiceImpl(RAGService):
                     request_id=request.request_id,
                 )
             result.chunks = head + image_overflow
+        # G4：精排引擎回填到结果（医生端可见性的数据源）
+        result.rerank_engine = rerank_used
 
         # Stage 4: BM25 fallback (if enabled and triggered).
         if request.use_bm25_fallback and self._bm25_fallback.should_trigger(result):
