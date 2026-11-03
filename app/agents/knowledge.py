@@ -578,6 +578,13 @@ class KnowledgeAgentImpl(KnowledgeAgent):
                         "rerank_score": getattr(sc, "rerank_score", None)}
             )
             chunks.append(chunk)
+        # A.159 诊断：_call_rag 实际返回（与 service 层 min_score_kept 对照）
+        logger.info(
+            "knowledge_call_rag_result",
+            request_id=(kwargs_extra or {}).get("request_id"),
+            n=len(chunks),
+            chunk_ids=[c.chunk_id[:40] for c in chunks[:6]],
+        )
         return chunks
 
     # ------------------------------------------------------------------
