@@ -838,6 +838,13 @@ async def _safe_dispatch(
             # 早已实现，此前恒传 None —— 影像从未进入判读）。
             imaging_metadata=imaging_metadata or None,
             prior_messages=[],
+            # A.143 / G21：双采样由**全局开关**驱动（settings.contrastive_sampling_enabled
+            # → dispatcher._sample_plan），这里只需在开启时把样本数传下去。
+            contrastive_samples=(
+                settings.contrastive_max_samples
+                if getattr(settings, "contrastive_sampling_enabled", False)
+                else None
+            ),
         )
         response = await dispatcher.invoke(context)
         return [response]

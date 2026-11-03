@@ -366,6 +366,26 @@ async def upload_dicom(
             logger.warning("dicom_image_index_rollback_failed",
                            error=str(rb_exc), image_id=image_id)
 
+    # A.147 / G2 收口：新影像**在线**进向量库（此前只有离线脚本覆盖历史库，
+    # 新上传的影像影像腿按 session 过滤恒 0 命中——e2e 实测）。fire-and-forget：
+    # 失败只记日志（indexer 内已兜），不阻断上传。
+    try:
+        import asyncio as _asyncio
+
+        from app.services.image_vector_indexer import index_image_async
+
+        _asyncio.get_running_loop().create_task(
+            index_image_async(
+                image_id=image_id,
+                session_id=session_id,
+                patient_id=anonymized_patient_id,
+                storage_path=storage_path,
+                modality=str(getattr(dataset, "Modality", "") or ""),
+            )
+        )
+    except Exception as e:  # pragma: no cover - 建任务失败不阻断上传
+        logger.warning("image_vector_index_task_create_failed", error=str(e), image_id=image_id)
+
     actor_id = get_actor_id(current_user)
     await audit_service.log_action(
         action="dicom_upload",
