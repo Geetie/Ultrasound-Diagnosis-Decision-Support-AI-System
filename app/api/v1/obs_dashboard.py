@@ -450,3 +450,37 @@ async def invalidate_kb_cache(
         detail={"reason": payload.reason, "stamp": stamp},
     )
     return {"ok": True, "stamp": stamp, "note": "各实例将在下次检索时清空缓存"}
+
+
+@router.post("/image-leg/probe")
+async def refresh_image_leg_capability(
+    audit_service=Depends(get_audit_service),
+    current_user: dict | None = Depends(get_current_active_user),
+):
+    """强制重新探测影像检索腿能力并覆盖 TTL 缓存（G6）。
+
+    缺陷：能力探测结果有 300s TTL（避免每次判读都打 Qdrant）。运维把 Qdrant
+    集合建好/修好后，**判读路径最长 5 分钟仍按旧结论跳过影像腿**，中间没有
+    任何"立即重探"的手段（`/health` 走的是直接探测，不代表判读路径看到的状态）。
+
+    本端点强制刷新缓存，并把探测结果原样返回（含 `ready` 与各分支原因码）。
+    """
+    from app.rag.image_leg import capability_skip_reason, get_leg_capability
+
+    actor = get_actor_id(current_user)
+    capability = await get_leg_capability(refresh=True)
+    await audit_service.log_action(
+        action="image_leg_capability_refreshed",
+        actor=actor,
+        target_type="rag_image_leg",
+        target_id="capability",
+        detail={
+            "ready": bool(capability.get("ready")),
+            "skip_reason": capability_skip_reason(capability),
+        },
+    )
+    return {
+        "ok": True,
+        "capability": capability,
+        "skip_reason": capability_skip_reason(capability),
+    }

@@ -123,3 +123,42 @@ def test_kb_cache_invalidate_returns_503_when_redis_down():
 
     assert r.status_code == 503
     assert "缓存服务" in r.json()["detail"]
+
+
+# ---------------------------------------------------------------------------
+# G6：影像腿能力强制重探
+# ---------------------------------------------------------------------------
+
+
+def test_image_leg_probe_refreshes_cache_and_audits():
+    from unittest.mock import AsyncMock, patch
+
+    audit = AsyncMock()
+    audit.log_action = AsyncMock()
+    app = _app()
+    app.dependency_overrides[obs_dashboard.get_audit_service] = lambda: audit
+
+    fake_cap = {"ready": True, "enabled": True, "collection_exists": True}
+    with patch(
+        "app.rag.image_leg.get_leg_capability", AsyncMock(return_value=fake_cap)
+    ) as probe:
+        r = TestClient(app).post("/obs/image-leg/probe")
+
+    assert r.status_code == 200
+    assert r.json()["capability"]["ready"] is True
+    # 必须带 refresh=True —— 否则读到的还是 TTL 内的旧结论
+    assert probe.await_args.kwargs["refresh"] is True
+    assert audit.log_action.await_count == 1
+    assert audit.log_action.await_args.kwargs["action"] == "image_leg_capability_refreshed"
+
+
+def test_image_leg_probe_reports_skip_reason_when_not_ready():
+    from unittest.mock import AsyncMock, patch
+
+    app = _app()
+    app.dependency_overrides[obs_dashboard.get_audit_service] = lambda: AsyncMock()
+    fake_cap = {"ready": False, "enabled": True, "collection_exists": False}
+    with patch("app.rag.image_leg.get_leg_capability", AsyncMock(return_value=fake_cap)):
+        r = TestClient(app).post("/obs/image-leg/probe")
+    assert r.status_code == 200
+    assert r.json()["skip_reason"]  # 非空原因码，不归并成一句"不可用"
