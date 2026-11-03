@@ -249,6 +249,9 @@ class RAGSpecialistAgent(SpecialistAgent):
         self._knowledge_accepts_profile = _accepts_kwarg(
             knowledge_agent.query, "profile"
         )
+        self._knowledge_accepts_kwargs_extra = _accepts_kwarg(
+            knowledge_agent.query, "kwargs_extra"
+        )
         # D1: 器官级/病种级阈值
         self._organ_threshold = organ_threshold
         self._disease_thresholds: dict[str, float] = dict(disease_thresholds or {})
@@ -699,6 +702,18 @@ class RAGSpecialistAgent(SpecialistAgent):
         profile = getattr(context, "retrieval_profile", None)
         if profile and self._knowledge_accepts_profile:
             kwargs["profile"] = profile
+        # A.159：影像腿激活时告知 knowledge 层——缓存键加 with_image 作用域，
+        # 防止跨 session 复用他人影像块（病人隔离）。只在真实实现接受该参数时传
+        #（测试替身/旧实现不认识 → 跳过，行为同旧）。
+        if getattr(self, "_knowledge_accepts_kwargs_extra", False):
+            try:
+                from app.rag.image_leg import resolve_image_leg_slot
+
+                leg = resolve_image_leg_slot(context.request_id)
+                has_img = leg is not None and leg.image_data is not None
+                kwargs["kwargs_extra"] = {"with_image_leg": has_img}
+            except Exception:
+                pass
         return await self._knowledge.query(**kwargs)
 
     async def _call_llm(

@@ -583,6 +583,7 @@ class KnowledgeAgentImpl(KnowledgeAgent):
         organ: Organ,
         top_k: int = 10,
         profile: Any = None,
+        kwargs_extra: dict | None = None,
     ) -> list[KnowledgeChunk]:
         """带两层缓存 + 三重防护的知识查询。
 
@@ -611,11 +612,24 @@ class KnowledgeAgentImpl(KnowledgeAgent):
             raise ValueError("query must not be empty or whitespace-only")
         if top_k <= 0:
             raise ValueError("top_k must be positive")
+        kwargs_extra = kwargs_extra or {}
 
         kb_version = self._current_kb_version()
-        cache_key = self._make_cache_key(
-            organ, query, kb_version, self._profile_fingerprint(profile)
-        )
+        # A.159：影像腿是 **per-session** 的（影像块来自本 session 上传的影像），
+        # 不能跨 session 复用缓存 —— 否则 B 医生的请求命中 A 医生缓存的影像块
+        #（病人隔离被击穿）。带图请求在键里加影像腿标记 → 键必然不同 → 必走真检索。
+        # （RAG service 层已有同语义 bypass：rag_cache_bypassed_image_leg。）
+        if kwargs_extra.get("with_image_leg"):
+            # 带图请求：键加作用域段（与旧键不同 → 必走真检索；病人隔离）。
+            cache_key = self._make_cache_key(
+                organ, query, kb_version,
+                f"{self._profile_fingerprint(profile)}:with_image",
+            )
+        else:
+            # 纯文本请求：保持旧键形态（历史缓存兼容）。
+            cache_key = self._make_cache_key(
+                organ, query, kb_version, self._profile_fingerprint(profile)
+            )
 
         # ========== L1 (Redis) 命中检查 ==========
         cached, is_neg = await self._read_redis(cache_key)
