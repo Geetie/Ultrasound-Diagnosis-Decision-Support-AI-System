@@ -1,0 +1,37 @@
+{
+  "probe": "p68_constrained_decoding_parity",
+  "generated_at": "2026-11-03T13:22:25.893069+00:00",
+  "eval_set": "/mnt/ee16/home/student03/uai/data/eval/double_engine_eval_set.jsonl",
+  "sample_count": 137,
+  "sample_shortfall": {
+    "planned": 780,
+    "actual": 137,
+    "reason": "780 是历史峰值；A.70 清理 608 条脏数据后，当前最大评测集 double_engine_eval_set.jsonl 仅 169 条（157 条有真实结论）"
+  },
+  "caliber_note": "原判据为「双引擎一致率」，但 llama.cpp 已于 2026-10-01 弃用 （CPU-only 构建、7B 跑 8 线程 CPU）。本报告改为「同一引擎（vLLM）两次生成的分级一致率」—— 这是当前部署下『分级是否稳定』唯一有意义的形式。",
+  "pre_registered": {
+    "min_agreement": 0.95
+  },
+  "regular_arm": {
+    "temperature": 0.1,
+    "total_cases": 137,
+    "compared": 0,
+    "unparseable": 137,
+    "same": 0,
+    "overall_agreement": null,
+    "per_organ": {}
+  },
+  "highrisk_arm": {
+    "temperature": 0.7,
+    "total_cases": 137,
+    "compared": 0,
+    "unparseable": 137,
+    "same": 0,
+    "overall_agreement": null,
+    "per_organ": {}
+  },
+  "verdict": "INSTRUMENT_NOT_READY",
+  "verdict_notes": [
+    "一致率无法计算（可比样本为 0）"
+  ]
+}
