@@ -93,8 +93,37 @@ async def chat_completions(request: Request) -> JSONResponse:
         prompt = str(messages[-1].get("content") or "")
 
     from vllm import SamplingParams
+    from vllm.sampling_params import GuidedDecodingParams
 
-    sampling_params = SamplingParams(max_tokens=max_tokens, temperature=temperature)
+    # A.151：OpenAI 兼容的 response_format（结构化输出）此前被本包装器**静默丢弃**
+    # —— 主服务结构化重试传来的 json_schema 到这里就没了，1.5B 模型自由发挥，
+    # structured_grading_retry_exhausted 全部失败（A.150 真机实测）。
+    # vLLM 0.30 正规姿势：SamplingParams(guided_decoding=GuidedDecodingParams(json=...))。
+    guided = None
+    rf = body.get("response_format") or {}
+    if rf.get("type") == "json_schema":
+        schema = (rf.get("json_schema") or {}).get("schema")
+        if schema:
+            guided = GuidedDecodingParams(json=schema)
+
+    # A.151：chat 模板。instruct 模型直接拼 prompt 会输出复述/杂讯
+    #（真机实测 "# 输出" 重复、JSON 复读）。用 tokenizer 的 chat template 渲染。
+    chat_messages = [
+        {"role": m.get("role", "user"), "content": str(m.get("content", ""))}
+        for m in messages if m.get("role") in ("user", "assistant", "system")
+    ]
+    prompt_fallback = prompt
+    try:
+        prompt = llm.llm_engine.tokenizer.apply_chat_template(
+            chat_messages, tokenize=False, add_generation_prompt=True
+        )
+    except Exception:
+        prompt = prompt_fallback
+
+    sampling_kwargs = dict(max_tokens=max_tokens, temperature=temperature)
+    if guided is not None:
+        sampling_kwargs["guided_decoding"] = guided
+    sampling_params = SamplingParams(**sampling_kwargs)
     outputs = llm.generate([prompt], sampling_params)
     text = outputs[0].outputs[0].text
     model_name = body.get("model") or getattr(
