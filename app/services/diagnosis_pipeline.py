@@ -144,6 +144,88 @@ def _self_rag_should_run(skip_self_rag: bool, effective_tier: ResponseTier) -> b
     return (not skip_self_rag) and (effective_tier != ResponseTier.REALTIME)
 
 
+def _confidence_from_specialists(specialist_responses) -> float | None:
+    """取各专科报回的检索置信度里的**最大值**（纯函数）。
+
+    为什么取 max：多个专科各自检索，只要有一条证据链够强，就不该因为
+    另一个专科检索差而整体升档（升档成本实测 +2.2 倍）。
+    全部缺失 → ``None``（未测，不触发升档）。
+    """
+    values = [
+        float(r.retrieval_confidence)
+        for r in (specialist_responses or [])
+        if isinstance(getattr(r, "retrieval_confidence", None), (int, float))
+    ]
+    return max(values) if values else None
+
+
+def _maybe_upgrade_on_low_confidence(
+    routing: "RoutingDecision | None",
+    specialist_responses,
+    *,
+    request_id: str | None = None,
+) -> "RoutingDecision | None":
+    """检索完成后的二次判定：低检索置信度 → 把档位升到 FULL（纯函数）。
+
+    与 `_assess_routing` 的分工：
+    * `_assess_routing` 在**检索前**判定（看查询复杂度/跨器官），那时没有
+      检索分；
+    * 本函数在**检索后**判定，用真实检索分补上"检索质量不足 → 升级全量"。
+
+    约束：
+    * 已经是 FULL → 原样返回（不重复升级、不新增 reason）；
+    * 检索分为 None（未测）→ 原样返回（"未测"不等于"很差"）；
+    * `routing is None` → 原样返回。
+    """
+    if routing is None:
+        return None
+    try:
+        from app.agents.retrieval_confidence import (
+            DEFAULT_LOW_CONFIDENCE_THRESHOLD,
+            is_low_retrieval_confidence,
+            normalize_retrieval_confidence,
+        )
+        from app.agents.routing import RoutingReason
+        from app.models.schemas import ResponseTier
+
+        if routing.effective_tier == ResponseTier.FULL:
+            return routing
+
+        raw = _confidence_from_specialists(specialist_responses)
+        if raw is None:
+            return routing
+        if not is_low_retrieval_confidence(raw, threshold=DEFAULT_LOW_CONFIDENCE_THRESHOLD):
+            return routing
+
+        logger.info(
+            "pipeline_upgraded_to_full_on_low_confidence",
+            request_id=request_id,
+            retrieval_confidence=round(raw, 4),
+            normalized=round(normalize_retrieval_confidence(raw) or 0.0, 4),
+            threshold=DEFAULT_LOW_CONFIDENCE_THRESHOLD,
+            from_tier=routing.effective_tier.value,
+        )
+        # RoutingDecision 是 **frozen dataclass**（不是 pydantic 模型）——
+        # 用 dataclasses.replace 生成新实例（`model_copy` 会 AttributeError，
+        # 被下面的 except 吞掉 → 升档静默失效，本轮实测踩到）。
+        from dataclasses import replace as _dc_replace
+
+        return _dc_replace(
+            routing,
+            effective_tier=ResponseTier.FULL,
+            reasons=list(routing.reasons) + [RoutingReason.LOW_RETRIEVAL_CONFIDENCE],
+        )
+    except Exception as exc:
+        # 升档判定失败不得阻断判读：保持原档位，但必须留痕（不静默）
+        logger.warning(
+            "pipeline_low_confidence_upgrade_failed",
+            request_id=request_id,
+            error=str(exc)[:160],
+            error_type=type(exc).__name__,
+        )
+        return routing
+
+
 def _assess_routing(request: Any) -> RoutingDecision | None:
     """按规格 §5.3 给出路由判定（任何异常都不得阻断诊断）。"""
     t = time.monotonic()
@@ -457,6 +539,25 @@ async def run_diagnosis_pipeline(request_id: str) -> bool:
             timings["dispatcher.invoke_ms"] = (time.monotonic() - t) * 1000.0
             if watcher_task is not None:
                 watcher_task.cancel()
+
+            # N4 / 01-2：**检索后的二次判定** —— 低检索置信度 → 升档全量。
+            # 此前 `_assess_routing` 在检索**之前**跑，那时根本没有
+            # retrieval_confidence（它是检索产物），于是 routing 里的
+            # `is_low_confidence` 分支在生产上结构性不可达（A.143 台账记为
+            # "生产不传 retrieval_confidence"，本轮补齐）。
+            # 二次判定只在"本次档位仍未升档"时生效，避免重复升级。
+            routing_decision = _maybe_upgrade_on_low_confidence(
+                routing_decision, specialist_responses, request_id=request_id
+            )
+            # 升档后必须同步 `_effective_tier` / `use_self_rag` —— 它们是
+            # 后续 self_rag、幻觉检测、写库的判据；只改 routing 对象不会生效
+            #（这是"改了配置却没接线"的同族问题，此处显式重算）。
+            _new_tier = getattr(
+                routing_decision, "effective_tier", _ResponseTier.FULL
+            )
+            if _new_tier != _effective_tier:
+                _effective_tier = _new_tier
+                use_self_rag = _self_rag_should_run(skip_self_rag, _effective_tier)
 
             # 2) 融合 (fusion.fuse)
             t = time.monotonic()
