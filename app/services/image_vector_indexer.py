@@ -15,7 +15,8 @@
 3. 失败只记日志（不影响上传主流程——影像已入库，向量可以后补）；
 4. 调用点：`imaging.py` 的 upload 端点在落库成功后 fire-and-forget（`asyncio.create_task`）。
 
-point id 与离线脚本一致（`uuid5(image_id)`）→ 重复跑/先离线后在线都幂等。
+point id 由 qdrant_client 统一 uuid5(image_id)（与离线脚本同源幂等）；
+**不要**在这里预映射 uuid —— 会二次映射导致检索侧前缀分流失效（A.149）。
 """
 
 from __future__ import annotations
@@ -26,11 +27,6 @@ from typing import Any
 import structlog
 
 logger = structlog.get_logger("app.services.image_vector_indexer")
-
-
-def _point_id(image_id: str) -> str:
-    """与离线脚本相同的确定性 point id（幂等 upsert）。"""
-    return str(uuid.uuid5(uuid.NAMESPACE_URL, f"ultrasound_image:{image_id}"))
 
 
 async def index_image_async(
@@ -137,7 +133,10 @@ async def index_image_async(
         try:
             await index.upsert(
                 collection=settings.rag_image_collection,
-                vectors=[VectorRecord(id=_point_id(image_id), vector=emb, metadata=payload)],
+                # A.149：id 必须是 image_id（qdrant_client 会统一 uuid5 映射并把
+                # 原始 id 写进 payload.chunk_id——检索侧按 img_ 前缀分流靠它）。
+                # 此前传 uuid5(point_id) 导致二次映射，payload.chunk_id 变 uuid → 被丢。
+                vectors=[VectorRecord(id=image_id, vector=emb, metadata=payload)],
             )
         finally:
             closer = getattr(index, "close", None)
