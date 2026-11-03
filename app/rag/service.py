@@ -296,7 +296,23 @@ class RAGServiceImpl(RAGService):
             result.chunks = final_chunks
         else:
             # No rerank: just keep top rerank_output_top_k.
-            result.chunks = result.chunks[: self._rerank_output_top_k]
+            # A.158：截断时**保底保留影像块**——影像点带 session 过滤后通常只有
+            # 1 个点，RRF 分数常排在文本块之后，纯按 top_k 截会把影像块截掉
+            # （e2e 实测：admitted 有日志但 trace 的 rag_chunk_ids 无 img_ 前缀）。
+            # 与 min_score 过滤的 image_exempt 同口径：保留但如实计数。
+            head = result.chunks[: self._rerank_output_top_k]
+            image_overflow = [
+                sc for sc in result.chunks[self._rerank_output_top_k:]
+                if sc.retrieval_source == RetrievalMethod.IMAGE
+            ]
+            if image_overflow:
+                logger.info(
+                    "image_chunk_overflow_kept",
+                    n_in=len(head),
+                    kept_overflow=len(image_overflow),
+                    request_id=request.request_id,
+                )
+            result.chunks = head + image_overflow
 
         # Stage 4: BM25 fallback (if enabled and triggered).
         if request.use_bm25_fallback and self._bm25_fallback.should_trigger(result):
