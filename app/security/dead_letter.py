@@ -119,7 +119,14 @@ async def replay_dead_letter(entry_id: str, actor: str) -> dict[str, Any]:
         logger.warning("dead_letter_replay_read_failed", entry_id=entry_id, error=str(exc)[:160])
         return {"ok": False, "reason": "read_failed", "new_entry_id": None}
     if not entries:
-        return {"ok": False, "reason": "not_found", "new_entry_id": None}
+        # 已重放过的条目会被替换成带 `replayed_at` 标记的新条目（新 entry_id），
+        # 用旧 id 再查即 not_found。对运维的可操作含义是"该条已重放或不存在"，
+        # 故 reason 文案同时覆盖两种情形（比笼统 not_found 更可诊断）。
+        return {
+            "ok": False,
+            "reason": "not_found_or_already_replayed",
+            "new_entry_id": None,
+        }
 
     _, fields = entries[0]
     row = _decode(fields)

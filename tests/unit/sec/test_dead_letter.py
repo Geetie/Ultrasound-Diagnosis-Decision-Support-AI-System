@@ -100,7 +100,8 @@ async def test_replay_not_found():
     client.xrange = AsyncMock(return_value=[])
     with patch.object(dl, "_client", AsyncMock(return_value=client)):
         out = await dl.replay_dead_letter("9-9", actor="qc-admin")
-    assert out["ok"] is False and out["reason"] == "not_found"
+    assert out["ok"] is False
+    assert out["reason"] == "not_found_or_already_replayed"
 
 
 @pytest.mark.asyncio
