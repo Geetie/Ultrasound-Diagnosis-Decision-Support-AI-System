@@ -168,6 +168,44 @@ class DesensitizationEngine:
                 description="患者姓名脱敏（处理独立的2-4字姓名，支持嵌入上下文）",
                 priority=5
             ),
+            # G48 补强（2026-11-03）：**裸姓名 + 动作动词**（"王小明来我院就诊"）。
+            # 此前三条姓名规则要求前缀/称谓/分隔符，这种临床常见写法完全漏掉
+            #（真机评测：无前缀姓名召回 0/4）。
+            #
+            # 为什么不引 NER 模型：可选中文 NER 的许可都不适合本项目
+            #（ckiplab 系 GPL-3.0；uer/CLUENER 系未声明许可），而医疗文本里
+            # 姓名后面几乎总跟着动作动词 —— 用**姓氏词典 + 动词锚点**可以
+            # 精确覆盖这一类，且不引入任何新依赖与许可风险。
+            DesensitizationRule(
+                name="patient_name_with_action",
+                # 分组结构说明（踩过的坑）：group(1) 必须**包含完整姓名**，
+                # 姓氏只是其中一部分；把名字部分写到组外会导致只替换姓氏一个字。
+                # 左侧零宽断言：句首/标点/空白（不截断词中间）；
+                # 右侧零宽断言：就诊动作动词（不误伤普通名词）。
+                pattern=(
+                    r'(?:^|(?<=[：:，,。；;\s\n\r]))'
+                    r'((?:(?:欧阳|司马|上官|诸葛|东方|皇甫|尉迟|公孙|慕容|司徒|令狐)'
+                    r'|[赵钱孙李周吴郑王冯陈褚卫蒋沈韩杨朱秦尤许何吕施张孔曹严华'
+                    r'金魏陶姜戚谢邹喻柏水窦章云苏潘葛奚范彭郎鲁韦昌马苗凤花方'
+                    r'俞任袁柳鲍史唐费廉岑薛雷贺倪汤滕殷罗毕郝邬安常乐于时傅'
+                    r'顾孟平黄和穆萧尹姚邵汪祁毛狄米贝明臧宋茅庞熊纪舒屈项祝'
+                    r'董梁杜阮蓝闵席季麻强贾路娄危江童颜郭梅盛林刁钟徐邱骆高'
+                    r'夏蔡田樊胡凌霍虞万支柯管卢莫房裘解应宗丁宣邓郁单杭洪包'
+                    r'左石崔吉龚程邢裴陆荣翁惠甄曲封储靳段富焦巴弓牧隗山谷车'
+                    r'侯全班仰秋仲伊宫宁仇栾暴甘厉戎祖武符刘景詹束龙叶幸司黎'
+                    r'白怀蒲邰鄂索咸赖卓蔺屠蒙池乔阴胥苍闻党翟谭贡劳姬申扶冉'
+                    r'雍桑桂濮牛寿通边燕冀浦尚农温别庄晏柴瞿阎充连茹习宦艾鱼'
+                    r'容向古易慎戈廖庾终暨居衡步都耿满弘匡国文寇广禄东欧沃利'
+                    r'蔚越隆师巩聂晁融冷辛阚那简饶曾沙鞠须丰巢关蒯相查后荆红'
+                    r'游竺权逯盖益桓公])'
+                    r'[\u4e00-\u9fa5]{1,3})'
+                    r'(?=(?:来我院|来院|来诊|就诊|入院|出院|复诊|门诊|住院|'
+                    r'家属|之子|之女|本人|诉|自述|告知))'
+                ),
+                replacement='[REDACTED_NAME]',
+                description="患者姓名脱敏（裸姓名 + 就诊动作动词；G48 补强）",
+                priority=5
+            ),
             DesensitizationRule(
                 name="birth_date",
                 pattern=r'(?:(?:出生|生日|诞辰)\s*(?:日期|时间|年月日|年月)?\s*[:：]?\s*)(?P<year_before>\d{4})-\d{2}-\d{2}|(?P<year_after>\d{4})-\d{2}-\d{2}\s*(?:出生|生日|诞辰)',
@@ -260,8 +298,20 @@ class DesensitizationEngine:
             self._persist_token_to_redis(name_hash, token)
             return token
 
+    #: 所有"姓名类"规则的名称前缀 —— 新增姓名规则必须登记在这里，
+    #: 否则 `_make_name_replacer` 不生成替换器，规则静默失效
+    #: （本轮 G48 就踩了这个坑：规则加进表里但召回仍是 0/4）。
+    _NAME_RULE_NAMES = frozenset(
+        {
+            "patient_name",
+            "patient_name_with_title",
+            "patient_name_simple",
+            "patient_name_with_action",
+        }
+    )
+
     def _make_name_replacer(self, rule: DesensitizationRule):
-        if rule.name in ("patient_name", "patient_name_with_title", "patient_name_simple"):
+        if rule.name in self._NAME_RULE_NAMES:
             def replacer(match):
                 if rule.name == "patient_name":
                     original = match.group(2)
@@ -271,6 +321,11 @@ class DesensitizationEngine:
                     original = match.group(1)
                     token = self._get_patient_token(original)
                     return token + match.group(2)
+                elif rule.name == "patient_name_with_action":
+                    # 前后都是零宽断言 → group(1) 就是完整姓名，直接换掉它
+                    original = match.group(1)
+                    token = self._get_patient_token(original)
+                    return match.group(0).replace(original, token, 1)
                 else:
                     original = match.group(1)
                     token = self._get_patient_token(original)

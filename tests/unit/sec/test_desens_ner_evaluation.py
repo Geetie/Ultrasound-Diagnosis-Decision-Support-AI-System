@@ -72,13 +72,21 @@ def test_medical_terms_are_never_redacted(desens):
     assert false_positives == [], f"医学词被误脱敏（会毁掉结论可读性）：{false_positives}"
 
 
-def test_unprefixed_stranger_names_are_known_gap(desens):
-    """已知缺口：无称谓/无前缀的陌生姓名**识别不到**（等 NER 模型）。
+def test_unprefixed_stranger_names_are_redacted(desens):
+    """无称谓/无前缀的陌生姓名（裸姓名 + 就诊动作动词）必须脱敏。
 
-    这里只测量、不设门禁——设成"必须命中"会让测试永远红；设成"必须不命中"
-    又会在接入 NER 后反向锁死。数字进日志，结论进 `16` 号 A.139。
+    **G48 已闭合**（2026-11-03）：此前 0/4，原因是三条姓名规则都要求
+    前缀/称谓/分隔符，`王小明来我院就诊` 这种临床常见写法完全漏掉。
+    现用"姓氏词典 + 就诊动作动词"锚点覆盖（不引 NER 模型：
+    可选中文 NER 的许可都不适合本项目 —— ckiplab 系 GPL-3.0、
+    uer/CLUENER 系未声明许可）。
+
+    门禁从此收紧为"必须全中"：这是 PII 红线，不是可选项。
     """
     strangers = ["王小明", "陈嘉禾", "周文博", "欧阳思远"]
-    hits = [n for n in strangers if _hit(desens, f"{n}来我院就诊")]
-    logger.info("desens_eval unprefixed stranger recall: %s/%s", len(hits), len(strangers))
-    assert len(hits) <= len(strangers)
+    missed = [n for n in strangers if not _hit(desens, f"{n}来我院就诊")]
+    logger.info(
+        "desens_eval unprefixed stranger recall: %s/%s",
+        len(strangers) - len(missed), len(strangers),
+    )
+    assert missed == [], f"无前缀姓名未脱敏（PII 泄漏）：{missed}"

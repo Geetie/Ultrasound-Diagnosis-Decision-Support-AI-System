@@ -985,11 +985,11 @@ class TestEnhancedDesensitizationRules:
 class TestYAMLRuleSync:
     """验证YAML规则文件与默认规则完全同步"""
 
-    def test_yaml_file_has_11_rules(self):
-        """YAML文件应包含11条规则，与默认规则数一致"""
+    def test_yaml_file_has_12_rules(self):
+        """YAML 应含 12 条规则（11 条基线 + G48 的 sg_patient_name_with_action）。"""
         with open(_YAML_PATH, encoding="utf-8") as f:
             data = yaml.safe_load(f)
-        assert len(data["rules"]) == 11
+        assert len(data["rules"]) == 12
 
     def test_yaml_contains_all_enhanced_rule_names(self):
         """YAML应包含所有增强规则名"""
@@ -1000,6 +1000,8 @@ class TestYAMLRuleSync:
         expected_names = {
             "sg_id_card", "sg_phone", "sg_patient_name", "sg_patient_name_standalone",
             "sg_patient_name_simple",
+            # G48：裸姓名 + 就诊动作动词（此前无前缀姓名召回 0/4）
+            "sg_patient_name_with_action",
             "sg_email", "sg_birth_date", "sg_address", "sg_medical_record_number",
             "sg_dicom_uid", "sg_ip_address",
         }
