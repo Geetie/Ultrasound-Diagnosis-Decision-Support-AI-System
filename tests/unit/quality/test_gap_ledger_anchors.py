@@ -26,7 +26,7 @@ ANCHORS: tuple[tuple[str, int, str], ...] = (
     ("app/agents/knowledge.py", 580, "async def query"),
     ("app/agents/routing.py", 182, "retrieval_confidence"),
     ("app/rag/image_caption.py", 50, "async def describe"),
-    ("app/rag/retriever.py", 1065, "visual_features"),
+    ("app/rag/retriever.py", 1068, "visual_features"),
     ("app/fusion/conflict.py", 186, "comparable"),
     ("scripts/audit/p76_missed_rate_audit.py", 34, "def compute_audit"),
     ("app/security/consent_withdrawal_consumer.py", 388, "_record_e2e_latency"),

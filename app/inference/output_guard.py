@@ -56,7 +56,13 @@ def detect_prompt_echo(text: str) -> str | None:
     headers = len(_OUTPUT_HEADER.findall(t))
     if _PLACEHOLDER_PATIENT.search(t) and (headers >= 1 or "chunk_" in t):
         return "placeholder_patient_id"
-    if headers >= _OUTPUT_HEADER_MIN:
+    # A.150：`# 输出` 重复本身**不足以判回显** —— 真机实测（G21 双采样，4 例全中）：
+    # Qwen2.5-7B 在含 "# 输出示例" 的 prompt 下，即使完全没复述示例、结论里分级/理由
+    # 齐全且有效，也会把 "# 输出" 当格式标记反复输出（7~15 次）。
+    # 于是整批被拒 → 双采样/一致率全部采不到数。
+    # 修正：重复标题 **且** 同时含模板回显的实义特征（占位 chunk_id 或占位病人）才算；
+    # "只有标题重复、结论本身有真内容" 交由下游分级解析决定成败。
+    if headers >= _OUTPUT_HEADER_MIN and (_PLACEHOLDER_CHUNK.search(t) or _PLACEHOLDER_PATIENT.search(t)):
         return "repeated_output_header"
     return None
 
