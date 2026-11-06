@@ -12,7 +12,7 @@ Agent 的唯一入口是 [AGENTS.md](AGENTS.md)：开工前按其中的 Startup 
 
 | 命令 | 用途 |
 | --- | --- |
-| `./init.sh` | harness 统一入口：环境自检 + 后端快测 + ruff 静态检查 |
+| `./init.sh` | harness 统一入口：环境自检 + 状态文件/文档质量守卫测试 + ruff 静态检查 |
 | `make test` | 后端单元 + INT 集成测试（`-n 8 --dist=loadfile --timeout=300`） |
 | `make frontend` | 前端 lint + tsc + vitest + build（阻断） |
 
