@@ -2570,6 +2570,18 @@ def _detect_hallucination_safely(
 
     final_response = getattr(fusion_result, "final_response", None)
     text = str(getattr(final_response, "content", "") or "")
+    # G21×D-03 语义隔离（2026-11-07 真机实测发现）：
+    # 双采样聚合后 `final_response.content` 是**两份采样用 "\n\n" 拼接**的。
+    # 直接把拼接文本喂给 `contradictory_grading` 策略，会把"两份独立采样给出
+    # 不同分级"判成幻觉（实测 `检测到矛盾的分级结果: 4, 5`，severe）。
+    # 但双采样分歧**正是 G21 要抓的信号**，应由 ConflictDetector 判为
+    # grading_conflict 并转人工，而不是记到"幻觉率"里 —— 否则幻觉率被系统性抬高
+    # （实测 1/10 = 10%，设计阈值 ≤1%）。
+    # 修法：多份采样时**逐份检测**（每份内部矛盾才算幻觉），再取最严重者。
+    _samples = [
+        r for r in (getattr(fusion_result, "contrastive_samples_raw", None) or [])
+        if str(getattr(r, "content", "") or "").strip()
+    ]
     if final_response is None:
         return {"checked": False, "severity": None, "reason": "no_final_response"}
     if not text.strip():
@@ -2585,7 +2597,20 @@ def _detect_hallucination_safely(
     try:
         from app.inference.hallucination_detector import get_default_detector
 
-        result = get_default_detector().detect(text, str(organ_value))
+        _detector = get_default_detector()
+        if len(_samples) > 1:
+            # 逐份检测：取"检出问题最多"的那份作为本次幻觉结论，
+            # 跨份分歧不在此处计（那属 conflict_detected）。
+            _results = [
+                _detector.detect(str(getattr(r, "content", "") or ""), str(organ_value))
+                for r in _samples
+            ]
+            result = max(
+                _results,
+                key=lambda r: len(getattr(r, "issues", None) or []),
+            )
+        else:
+            result = _detector.detect(text, str(organ_value))
     except Exception as exc:
         logger.warning(
             "pipeline_hallucination_detect_failed",

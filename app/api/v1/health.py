@@ -1,11 +1,14 @@
 import asyncio
 
+import structlog
 from fastapi import APIRouter, HTTPException
 from sqlalchemy import text
 
 from app.config.database import async_engine
 from app.config.redis import RedisPool
 from app.security.hsm import hsm_manager
+
+logger = structlog.get_logger(__name__)
 
 router = APIRouter(tags=["health"])
 
@@ -96,8 +99,36 @@ async def health_check():
         port=_settings.ultrasound_clip_port,
     )
 
+    # N1 补齐（2026-11-03 真机）：CUSUM 熔断状态必须在**健康检查**里可见。
+    # 事故背景：熔断因 `cusum_s_plus_exceeded` 触发后持久化 24h，运行中进程整体
+    # suspended → **每一例判读都被强制 needs_review**，而 /health 当时完全看不出来
+    # （只有需要权限的 obs 看板能查）。运维巡检查不到，系统"看起来正常但全在转人工"。
+    # 与 image_leg/t2a 同口径：**不参与 all_healthy**（熔断是保护动作，不是服务故障），
+    # 但必须一眼可见，并给出恢复入口提示。
+    try:
+        from app.observability.cusum.circuit_breaker import AISafetyCircuitBreaker
+
+        _breaker_info = AISafetyCircuitBreaker.get_instance().suspension_info
+        _breaker_state = str(
+            getattr(_breaker_info.get("state"), "value", _breaker_info.get("state"))
+        )
+        safety_breaker = {
+            "state": _breaker_state,
+            "reason": _breaker_info.get("reason"),
+            "degraded": _breaker_state != "active",
+            "hint": (
+                "AI 辅助已暂停，判读全部转人工；恢复：POST /api/v1/internal/obs/breaker/resume"
+                if _breaker_state != "active"
+                else None
+            ),
+        }
+    except Exception as exc:  # silent-ok: 健康检查读不到熔断状态不应让 /health 失败
+        logger.warning("health_breaker_state_read_failed", error=str(exc)[:120])
+        safety_breaker = {"state": "unknown", "degraded": None}
+
     services = {
         "redis": "healthy" if redis_healthy else "unhealthy",
+        "safety_breaker": safety_breaker,
         "database": "healthy" if db_healthy else "unhealthy",
         "hsm": hsm_status,
         "image_leg": image_leg,
