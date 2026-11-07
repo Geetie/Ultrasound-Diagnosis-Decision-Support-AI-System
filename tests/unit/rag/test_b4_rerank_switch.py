@@ -60,32 +60,39 @@ class TestLowConfidenceUpgrade:
         return AdaptiveRAGRouter()
 
     def test_low_confidence_upgrades_to_full_tier_with_full_retrieval(self):
+        """低检索分 → 升 FULL 并启用精排。
+
+        入参语义（N4 量纲修正后）：`retrieval_confidence` 是**原始检索分**
+        （rerank logit / RRF 尺度，真机实测 1.705~5.207），不是 0~1 结论置信度。
+        1.705 = 真机观测到的最差一例。
+        """
         decision = self._router().assess(
             query="低回声结节 TI-RADS 评估",
             target_organ="thyroid",
             requested_tier=ResponseTier.STANDARD,
-            retrieval_confidence=0.0,
+            retrieval_confidence=1.705,
         )
         assert decision.effective_tier == ResponseTier.FULL
         assert decision.retrieval_profile.use_reranking is True
 
     def test_realtime_low_confidence_also_upgrades(self):
-        """规格规则（:364）不区分请求档：realtime + 低置信 → FULL。"""
+        """规格规则（:364）不区分请求档：realtime + 低检索分 → FULL。"""
         decision = self._router().assess(
             query="低回声结节",
             target_organ="thyroid",
             requested_tier=ResponseTier.REALTIME,
-            retrieval_confidence=0.0,
+            retrieval_confidence=1.705,
         )
         assert decision.effective_tier == ResponseTier.FULL
         assert decision.retrieval_profile.use_reranking is True
 
     def test_high_confidence_stays_standard(self):
+        """高检索分（真机最好例 5.207）→ 保持 standard、不启用精排。"""
         decision = self._router().assess(
             query="低回声结节 TI-RADS 评估",
             target_organ="thyroid",
             requested_tier=ResponseTier.STANDARD,
-            retrieval_confidence=0.99,
+            retrieval_confidence=5.207,
         )
         assert decision.effective_tier == ResponseTier.STANDARD
         assert decision.retrieval_profile.use_reranking is False
