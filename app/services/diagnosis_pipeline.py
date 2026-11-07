@@ -605,6 +605,9 @@ async def run_diagnosis_pipeline(request_id: str) -> bool:
             fusion_result,
             organ=getattr(request, "organ", None),
             request_id=request_id,
+            # D-03：双采样逐份检测需要原始多份采样（FusionResult 上没有该字段，
+            # 它在 AgentResponse 上，只能由调用点显式传入）。
+            specialist_responses=specialist_responses,
             force_enabled=bool(
                 getattr(settings, "hallucination_detection_in_pipeline", False)
             ),
@@ -2528,6 +2531,7 @@ def _detect_hallucination_safely(
     *,
     organ: str | None,
     request_id: str,
+    specialist_responses: list | None = None,
     force_enabled: bool = False,
     is_full_tier: bool = False,
 ) -> dict[str, Any]:
@@ -2579,7 +2583,7 @@ def _detect_hallucination_safely(
     # （实测 1/10 = 10%，设计阈值 ≤1%）。
     # 修法：多份采样时**逐份检测**（每份内部矛盾才算幻觉），再取最严重者。
     _samples = [
-        r for r in (getattr(fusion_result, "contrastive_samples_raw", None) or [])
+        r for r in (specialist_responses or [])
         if str(getattr(r, "content", "") or "").strip()
     ]
     if final_response is None:
