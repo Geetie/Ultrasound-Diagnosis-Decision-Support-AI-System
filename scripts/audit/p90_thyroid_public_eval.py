@@ -366,16 +366,19 @@ def run_tn3k(root: Path, limit: int | None) -> dict:
     if not pairs:
         return {"subset": "tn3k", "status": "blocked", "reason": "图/掩码未配对成功"}
 
+    # 解锁（2026-11-08）：**不给生产加 HTTP 端点**，改为在评测侧直接加载权重。
+    # 理由：分割权重本来就只在 app 进程内用，为了评测改生产架构是舍本逐末。
+    # 独立评测脚本 `scripts/audit/p91_tn3k_seg_eval.py` 复用
+    # `scripts/tn3k_seg_unet.py` 的 evaluate/_summarize（不复制逻辑），
+    # 输出 DSC/IoU + bootstrap CI + per-image 分布。
     return {
         "subset": "tn3k",
-        "status": "blocked",
+        "status": "delegated",
         "reason": (
-            "分割推理端点未就绪：8003 只提供 /v1/classify（分类）与 /v1/analyze_view（切面），"
-            "**没有分割端点**；甲状腺 U-Net 权重在 app 进程内加载，不经 HTTP 暴露。"
+            "分割评测不在本脚本内做：需要 GPU 加载 UNet，与分类评测的轻量 HTTP 路径不同。"
+            "已由独立脚本 p91 完成，见 reports/p91_tn3k_seg_eval.json。"
         ),
-        "unblock_condition": (
-            "需给 8003 加 /v1/segment 端点，或在 app 进程内直接跑分割并 dump 结果再比对。"
-        ),
+        "see_also": "scripts/audit/p91_tn3k_seg_eval.py",
         "dataset": {"name": "TN3K", "n_pairs_available": len(pairs)},
     }
 
