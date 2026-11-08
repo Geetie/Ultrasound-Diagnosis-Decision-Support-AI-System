@@ -1,0 +1,264 @@
+{
+  "probe": "p93_thyroid_retrain",
+  "generated_at": "2026-11-08 18:30:56",
+  "scope": "thyroid_retrain_image_level_split",
+  "scope_note": "TN5000（公开集，CC BY 4.0，标签来自 FNA 活检与病理）。**无患者 ID** → 只能做**图像级**分层随机划分（80/20，seed=42），同一患者的多张图可能跨 train/test，存在同患者泄漏风险 → 本 AUC **偏乐观**，不能当作注册申报级独立验证。恶性占比 71.5% 属人为富集，患病率与派生指标不可外推。",
+  "split_limitation": {
+    "unit": "image",
+    "patient_id_available": false,
+    "patient_level_split_possible": false,
+    "risk": "同一患者/同一病灶的不同切面可能同时进入 train 与 test → 指标偏乐观",
+    "train_ratio": 0.8,
+    "seed": 42,
+    "n_train": 3999,
+    "n_test": 1001,
+    "label_support": {
+      "train": {
+        "0": 1140,
+        "1": 2859
+      },
+      "test": {
+        "0": 286,
+        "1": 715
+      }
+    },
+    "image_overlap_train_test": 0
+  },
+  "lanes": {
+    "①production_t2a_zero_training": "现网 T2a，零训练，与 p90 的 0.6303 同口径复算",
+    "②frozen_linear_probe": "冻结 BiomedCLIP + LR（复现 p89 在 CACTUS 上的做法）",
+    "③zero_shot_text": "不训练：良/恶性文本 prompt 余弦差",
+    "④finetuned_visual": "微调视觉塔（类别锚点 CE）+ LR 探针"
+  },
+  "results": {
+    "production_t2a_zero_shot": {
+      "n_train": 3999,
+      "n_test": 1001,
+      "auc_malignant_vs_benign": 0.6241,
+      "auc_ci95": [
+        0.5839,
+        0.6666
+      ],
+      "bootstrap_n": 2000,
+      "threshold": 0.5,
+      "tp": 668,
+      "fp": 233,
+      "fn": 47,
+      "tn": 53,
+      "precision": 0.7414,
+      "recall_sensitivity": 0.9343,
+      "specificity": 0.1853,
+      "f1": 0.8267,
+      "accuracy": 0.7203,
+      "note": "现网 T2a 视觉塔 + 探针，**本脚本零训练**。用于把 p90 的 0.6303 在本 test 子集上复算，保证与重训结果 apples-to-apples。"
+    },
+    "frozen_linear_probe": {
+      "n_train": 3999,
+      "n_test": 1001,
+      "auc_malignant_vs_benign": 0.7963,
+      "auc_ci95": [
+        0.7651,
+        0.8266
+      ],
+      "bootstrap_n": 2000,
+      "threshold": 0.5,
+      "tp": 690,
+      "fp": 204,
+      "fn": 25,
+      "tn": 82,
+      "precision": 0.7718,
+      "recall_sensitivity": 0.965,
+      "specificity": 0.2867,
+      "f1": 0.8577,
+      "accuracy": 0.7712,
+      "note": "BiomedCLIP 视觉塔**冻结**，LR 仅在 train 图像上拟合；test 不参与。与 p89 的 CACTUS 做法一致，用于判断「不改底模能到多少」。",
+      "wall_s": 7.4,
+      "coef_norm": 14.9078
+    },
+    "zero_shot_text": {
+      "n_test": 1001,
+      "auc_malignant_vs_benign": 0.6362,
+      "auc_ci95": [
+        0.5969,
+        0.6752
+      ],
+      "prompts": {
+        "Benign": "an ultrasound image of a benign thyroid nodule",
+        "Malignant": "an ultrasound image of a malignant thyroid tumor"
+      },
+      "note": "不拟合任何分类器：图像-文本余弦差（恶性 − 良性）作分数，经 sigmoid 映射到 0~1 后才算阈值指标；AUC 只看排序不受影响。"
+    },
+    "finetuned_visual_on_thyroid": {
+      "n_train": 3999,
+      "n_test": 1001,
+      "auc_malignant_vs_benign": 0.9122,
+      "auc_ci95": [
+        0.8918,
+        0.9313
+      ],
+      "bootstrap_n": 2000,
+      "threshold": 0.5,
+      "tp": 652,
+      "fp": 84,
+      "fn": 63,
+      "tn": 202,
+      "precision": 0.8859,
+      "recall_sensitivity": 0.9119,
+      "specificity": 0.7063,
+      "f1": 0.8987,
+      "accuracy": 0.8531,
+      "note": "视觉塔在甲状腺 train 图像上微调（类别锚点 CE，lr=1e-05，最多 6 epoch，按内层 val AUC 早停），再用 LR 探针在 train 上拟合 → test。test 全程未参与训练与选模。",
+      "history": [
+        {
+          "epoch": 1,
+          "loss": 0.4901,
+          "inner_val_auc": 0.878,
+          "epoch_s": 9.0
+        },
+        {
+          "epoch": 2,
+          "loss": 0.2964,
+          "inner_val_auc": 0.8943,
+          "epoch_s": 8.6
+        },
+        {
+          "epoch": 3,
+          "loss": 0.1683,
+          "inner_val_auc": 0.9032,
+          "epoch_s": 8.6
+        },
+        {
+          "epoch": 4,
+          "loss": 0.0951,
+          "inner_val_auc": 0.9096,
+          "epoch_s": 8.5
+        },
+        {
+          "epoch": 5,
+          "loss": 0.0709,
+          "inner_val_auc": 0.915,
+          "epoch_s": 8.6
+        },
+        {
+          "epoch": 6,
+          "loss": 0.0377,
+          "inner_val_auc": 0.9191,
+          "epoch_s": 8.7
+        }
+      ],
+      "best_epoch": 6,
+      "inner_val_auc_at_best": 0.9190828664512875,
+      "checkpoint": "/mnt/ee16/home/student03/uai/models/t2a_thyroid_p93/visual.pt",
+      "wall_s": 69.1
+    }
+  },
+  "hypothesis_verdict": {
+    "hypothesis": "T2a 视觉塔在 AUL（肝脏）上微调 → 跨器官到甲状腺失败，AUC 从肝 0.8950 掉到 0.6303。",
+    "prediction_if_true": "用甲状腺数据重训视觉塔后，TN5000 test AUC 应显著高于 0.6303（尤其应接近 AUL 的 0.8950 量级）。",
+    "reference_auc_current_production": 0.6303,
+    "reference_auc_on_liver_aul": 0.895,
+    "recomputed_production_auc_same_test": 0.6241,
+    "best_retrained_auc": 0.9122,
+    "supported": true,
+    "note": "判定口径预先写死：重训后 AUC>0.75 视为「跨器官迁移失败」假设成立（即瓶颈在视觉塔域偏差，换域重训即可修复）。若重训后仍在 0.63 附近，则假设不成立，瓶颈在任务/标签本身。"
+  },
+  "split_seed_sensitivity": {
+    "lanes": "frozen_linear_probe across split seeds",
+    "runs": [
+      {
+        "seed": 42,
+        "n_train": 3999,
+        "n_test": 1001,
+        "frozen_probe_auc": 0.7963
+      },
+      {
+        "seed": 7,
+        "n_train": 3999,
+        "n_test": 1001,
+        "frozen_probe_auc": 0.7856
+      },
+      {
+        "seed": 123,
+        "n_train": 3999,
+        "n_test": 1001,
+        "frozen_probe_auc": 0.7859
+      },
+      {
+        "seed": 2026,
+        "n_train": 3999,
+        "n_test": 1001,
+        "frozen_probe_auc": 0.7963
+      },
+      {
+        "seed": 31337,
+        "n_train": 3999,
+        "n_test": 1001,
+        "frozen_probe_auc": 0.7993
+      }
+    ],
+    "min": 0.7856,
+    "max": 0.7993,
+    "mean": 0.7927,
+    "std": 0.0058,
+    "why": "TN5000 只能做图像级随机划分，担心 0.7963 是单次划分的运气 → 换 5 个 seed 重跑最便宜的冻结探针 lane。",
+    "conclusion": "冻结探针在 5 个 seed 上 0.7856~0.7993（均值 0.7927，std 0.0058）→ 划分敏感性小，结论不依赖某个 seed。"
+  },
+  "extended_epoch_check": {
+    "what": "甲状腺微调跑 6 epoch 时 inner_val_auc 仍单调上升（0.878→0.9191），怀疑欠拟合 → 用 --epochs 20 --patience 4 重跑。",
+    "curve": [
+      {
+        "epoch": 1,
+        "loss": 0.4901,
+        "inner_val_auc": 0.878
+      },
+      {
+        "epoch": 2,
+        "loss": 0.2964,
+        "inner_val_auc": 0.8943
+      },
+      {
+        "epoch": 3,
+        "loss": 0.1683,
+        "inner_val_auc": 0.9032
+      },
+      {
+        "epoch": 4,
+        "loss": 0.0951,
+        "inner_val_auc": 0.9096
+      },
+      {
+        "epoch": 5,
+        "loss": 0.0709,
+        "inner_val_auc": 0.915
+      },
+      {
+        "epoch": 6,
+        "loss": 0.0377,
+        "inner_val_auc": 0.9191
+      },
+      {
+        "epoch": 7,
+        "loss": 0.0446,
+        "inner_val_auc": 0.9152
+      },
+      {
+        "epoch": 8,
+        "loss": 0.0516,
+        "inner_val_auc": 0.9171
+      },
+      {
+        "epoch": 9,
+        "loss": 0.0351,
+        "inner_val_auc": 0.9117
+      },
+      {
+        "epoch": 10,
+        "loss": 0.0201,
+        "inner_val_auc": 0.9161
+      }
+    ],
+    "outcome": "第 6 轮达峰后不再提升，第 10 轮早停 → 与 6-epoch 版**完全同结果（AUC 0.9122）**，说明已收敛，非欠拟合。",
+    "path": "reports/_p93_long.json"
+  },
+  "conclusion_one_line": "跨器官迁移失败假设**成立**：现网 T2a（肝脏域微调）在同一 test 子集上 AUC 0.6241（复现 p90 的 0.6303）；用甲状腺数据重训视觉塔后升到 **0.9122**（95%CI [0.8918,0.9313]），已接近其在肝脏 AUL 上的 0.8950 量级 → 瓶颈是视觉塔的域偏差，换域重训即可修复，不是任务本身不可分。限制：图像级划分（无患者 ID），指标偏乐观。"
+}

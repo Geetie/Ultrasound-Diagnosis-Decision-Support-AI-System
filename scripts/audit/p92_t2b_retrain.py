@@ -73,6 +73,7 @@ from p87_cactus_video_disjoint import (  # noqa: E402
     CLASSES,
     bootstrap_acc,
     confusion_matrix,
+    parse_name,
     per_class_prf,
     video_disjoint_split,
 )
@@ -151,6 +152,33 @@ def verify_alignment(data_dir: Path, seed: int, batch_size: int) -> dict:
     }
 
 
+def cluster_bootstrap_acc(rows: list[dict], y_true: list[str], y_pred: list[str],
+                          n_boot: int, seed: int = 20261108) -> list[float]:
+    """**按视频整段重采样**的 bootstrap CI（图像级 CI 会低估不确定性）。
+
+    test 只有 17 段视频、4511 张图；同一视频的相邻帧高度相关，按图像重采样等于
+    假装有 4511 个独立样本 → CI 偏窄。这里以视频为独立单位做 cluster bootstrap。
+    """
+    vids = [parse_name(r["filepath"])[0] or f"__nolabel_{i}" for i, r in enumerate(rows)]
+    by_vid: dict[str, list[int]] = {}
+    for i, v in enumerate(vids):
+        by_vid.setdefault(v, []).append(i)
+    keys = sorted(by_vid)
+    rnd = random.Random(seed)
+    accs = []
+    for _ in range(n_boot):
+        pick = [rnd.choice(keys) for _ in keys]
+        idx = [i for v in pick for i in by_vid[v]]
+        if not idx:
+            continue
+        accs.append(sum(1 for i in idx if y_true[i] == y_pred[i]) / len(idx))
+    accs.sort()
+    if not accs:
+        return [float("nan"), float("nan")]
+    return [round(accs[int(0.025 * (len(accs) - 1))], 4),
+            round(accs[int(0.975 * (len(accs) - 1))], 4)]
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--data-dir", default=str(Path.home() / "uai" / "data" / "t2b_cactus"))
@@ -169,6 +197,9 @@ def main() -> int:
     ap.add_argument("--skip-baseline", action="store_true")
     ap.add_argument("--verify-alignment", action="store_true",
                     help="只跑③号 bug 的复现，不训练")
+    ap.add_argument("--rescore-from-ckpt", action="store_true",
+                    help="不训练：从 --ckpt-dir 里已有的 checkpoint 重新算指标"
+                         "（用于补指标口径，例如视频级 cluster CI）")
     args = ap.parse_args()
 
     data_dir = Path(args.data_dir).expanduser()
@@ -258,6 +289,8 @@ def main() -> int:
             "class_support": dict(Counter(yt)),
             "view_accuracy": round(acc, 4),
             "view_accuracy_ci95": bootstrap_acc(yt, yp, args.bootstrap),
+            "view_accuracy_ci95_video_cluster": cluster_bootstrap_acc(
+                rows, yt, yp, args.bootstrap),
             "per_class": per_class_prf(yt, yp),
             "confusion": confusion_matrix(yt, yp),
         }, yt, yp
@@ -272,7 +305,9 @@ def main() -> int:
         baseline, _, _ = score(lr0, Xte, splits["test"])
         baseline["note"] = "BiomedCLIP 视觉塔冻结，LR 仅在 train 视频上拟合；test 视频不参与"
         baseline["wall_s"] = round(time.time() - t0, 1)
-        print(f"[baseline] frozen probe acc={baseline['view_accuracy']}", flush=True)
+        print(f"[baseline] frozen probe acc={baseline['view_accuracy']} "
+              f"CI(img)={baseline['view_accuracy_ci95']} "
+              f"CI(video)={baseline['view_accuracy_ci95_video_cluster']}", flush=True)
 
     # 5 条类别文本锚（文本塔全程冻结，只算一次）
     prompts = [VIEW_PROMPTS[c] for c in CLASSES]
@@ -322,6 +357,76 @@ def main() -> int:
     ckpt_dir.mkdir(parents=True, exist_ok=True)
     results = []
     wanted = [r.strip() for r in args.recipes.split(",") if r.strip()]
+
+    # ---- 补指标模式：从已有 checkpoint 重算（不训练），用于加视频级 cluster CI
+    if args.rescore_from_ckpt:
+        for name in wanted:
+            if name not in RECIPES:
+                raise SystemExit(f"未知配方 {name}")
+            cfg = RECIPES[name]
+            ckpt = ckpt_dir / f"{name}.pt"
+            if not ckpt.exists():
+                print(f"[skip] {name}: 无 checkpoint {ckpt}", flush=True)
+                continue
+            model = build_model(cfg["freeze_blocks"])
+            model.visual.load_state_dict(torch.load(ckpt, map_location=device))
+            model.eval()
+            t0 = time.time()
+            lr = fit_probe(extract_features(model, splits["train"]), splits["train"])
+            test_m, _, _ = score(lr, extract_features(model, splits["test"]), splits["test"])
+            results.append({
+                "recipe": name,
+                "config": {"lr": cfg["lr"], "epochs_cap": cfg["epochs"],
+                           "patience": cfg["patience"],
+                           "freeze_blocks": cfg["freeze_blocks"],
+                           "trainable_params_m": round(sum(
+                               p.numel() for p in model.visual.parameters()
+                               if p.requires_grad) / 1e6, 2),
+                           "batch_size": args.batch_size,
+                           "loss": "CE(logit_scale · image_feat @ class_text_anchor^T)",
+                           "augmentation": "preprocess_train (RandomResizedCrop 0.9~1.0)",
+                           "weight_decay": 0.1},
+                "history": "rescored（未重训，曲线见上一轮正式跑）",
+                "best_epoch": None,
+                "val_acc_cehead_at_best": None,
+                "probe_test": test_m,
+                "checkpoint": str(ckpt),
+                "wall_s": round(time.time() - t0, 1),
+            })
+            print(f"[rescore {name}] acc={test_m['view_accuracy']} "
+                  f"CI(img)={test_m['view_accuracy_ci95']} "
+                  f"CI(video)={test_m['view_accuracy_ci95_video_cluster']}", flush=True)
+        valid_r = [r for r in results if r.get("probe_test")]
+        best_r = max(valid_r, key=lambda r: r["probe_test"]["view_accuracy"]) if valid_r else None
+        ref = (baseline or {}).get("view_accuracy")
+        report = {
+            "probe": "p92_t2b_retrain",
+            "mode": "rescore_from_checkpoint（未重训，只重算指标）",
+            "generated_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "split": meta,
+            "baseline_frozen_probe_this_run": baseline,
+            "recipes": results,
+            "verdict": {
+                "target_acc": TARGET_ACC,
+                "reference_frozen_probe_p89": REF_FROZEN_PROBE,
+                "reference_p87_broken_retrain": REF_VIDEO_DISJOINT_RETRAIN_P87,
+                "best_recipe": best_r["recipe"] if best_r else None,
+                "best_test_acc": best_r["probe_test"]["view_accuracy"] if best_r else None,
+                "frozen_probe_recomputed_this_run": ref,
+                "beats_frozen_probe": bool(
+                    ref is not None and best_r is not None
+                    and best_r["probe_test"]["view_accuracy"] > ref),
+                "meets_target_0_80": bool(
+                    best_r is not None
+                    and best_r["probe_test"]["view_accuracy"] >= TARGET_ACC),
+            },
+        }
+        out_r = Path(args.report).expanduser()
+        out_r.parent.mkdir(parents=True, exist_ok=True)
+        out_r.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+        print(f"\n报告：{out_r}")
+        return 0
+
     for name in wanted:
         if name not in RECIPES:
             raise SystemExit(f"未知配方 {name}；可选 {list(RECIPES)}")

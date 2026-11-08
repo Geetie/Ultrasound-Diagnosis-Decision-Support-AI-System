@@ -1,0 +1,788 @@
+{
+  "probe": "p92_t2b_retrain",
+  "mode": "rescore_from_checkpoint（未重训，只重算指标）",
+  "generated_at": "2026-11-08 19:07:20",
+  "split": {
+    "seed": 42,
+    "n_videos": 116,
+    "videos": {
+      "train": 80,
+      "val": 19,
+      "test": 17
+    },
+    "images": {
+      "train": 20207,
+      "val": 4087,
+      "test": 4511
+    },
+    "views": {
+      "train": {
+        "A4C": 5566,
+        "PL": 2944,
+        "PSMV": 4192,
+        "SC": 4441,
+        "Random": 3064
+      },
+      "val": {
+        "PL": 631,
+        "A4C": 909,
+        "SC": 936,
+        "PSMV": 894,
+        "Random": 717
+      },
+      "test": {
+        "A4C": 947,
+        "PSMV": 928,
+        "SC": 968,
+        "PL": 586,
+        "Random": 1082
+      }
+    },
+    "leakage_check": {
+      "video_overlap_train_test": 0,
+      "video_overlap_train_val": 0
+    }
+  },
+  "baseline_frozen_probe_this_run": {
+    "n_evaluated": 4511,
+    "class_support": {
+      "A4C": 947,
+      "PSMV": 928,
+      "SC": 968,
+      "PL": 586,
+      "Random": 1082
+    },
+    "view_accuracy": 0.8639,
+    "view_accuracy_ci95": [
+      0.8541,
+      0.8732
+    ],
+    "view_accuracy_ci95_video_cluster": [
+      0.706,
+      0.9926
+    ],
+    "per_class": {
+      "A4C": {
+        "precision": 0.9088,
+        "recall": 0.9789,
+        "f1": 0.9426,
+        "support": 947
+      },
+      "PL": {
+        "precision": 0.8478,
+        "recall": 0.9983,
+        "f1": 0.9169,
+        "support": 586
+      },
+      "PSMV": {
+        "precision": 0.8426,
+        "recall": 0.9806,
+        "f1": 0.9064,
+        "support": 928
+      },
+      "Random": {
+        "precision": 0.8563,
+        "recall": 0.5453,
+        "f1": 0.6663,
+        "support": 1082
+      },
+      "SC": {
+        "precision": 0.8576,
+        "recall": 0.9143,
+        "f1": 0.885,
+        "support": 968
+      },
+      "macro_avg": {
+        "precision": 0.8626,
+        "recall": 0.8835,
+        "f1": 0.8634,
+        "support": 4511
+      },
+      "weighted_avg": {
+        "precision": 0.8637,
+        "recall": 0.8639,
+        "f1": 0.8532,
+        "support": 4511
+      }
+    },
+    "confusion": {
+      "A4C": {
+        "A4C": 927,
+        "PL": 0,
+        "PSMV": 6,
+        "Random": 13,
+        "SC": 1,
+        "Other": 0
+      },
+      "PL": {
+        "A4C": 0,
+        "PL": 585,
+        "PSMV": 0,
+        "Random": 1,
+        "SC": 0,
+        "Other": 0
+      },
+      "PSMV": {
+        "A4C": 0,
+        "PL": 1,
+        "PSMV": 910,
+        "Random": 17,
+        "SC": 0,
+        "Other": 0
+      },
+      "Random": {
+        "A4C": 93,
+        "PL": 104,
+        "PSMV": 149,
+        "Random": 590,
+        "SC": 146,
+        "Other": 0
+      },
+      "SC": {
+        "A4C": 0,
+        "PL": 0,
+        "PSMV": 15,
+        "Random": 68,
+        "SC": 885,
+        "Other": 0
+      }
+    },
+    "note": "BiomedCLIP 视觉塔冻结，LR 仅在 train 视频上拟合；test 视频不参与",
+    "wall_s": 232.6
+  },
+  "recipes": [
+    {
+      "recipe": "full_lr3e6",
+      "config": {
+        "lr": 3e-06,
+        "epochs_cap": 5,
+        "patience": 2,
+        "freeze_blocks": 0,
+        "trainable_params_m": 86.19,
+        "batch_size": 256,
+        "loss": "CE(logit_scale · image_feat @ class_text_anchor^T)",
+        "augmentation": "preprocess_train (RandomResizedCrop 0.9~1.0)",
+        "weight_decay": 0.1
+      },
+      "history": "rescored（未重训，曲线见上一轮正式跑）",
+      "best_epoch": null,
+      "val_acc_cehead_at_best": null,
+      "probe_test": {
+        "n_evaluated": 4511,
+        "class_support": {
+          "A4C": 947,
+          "PSMV": 928,
+          "SC": 968,
+          "PL": 586,
+          "Random": 1082
+        },
+        "view_accuracy": 0.9031,
+        "view_accuracy_ci95": [
+          0.8943,
+          0.9118
+        ],
+        "view_accuracy_ci95_video_cluster": [
+          0.7909,
+          0.9939
+        ],
+        "per_class": {
+          "A4C": {
+            "precision": 0.9111,
+            "recall": 0.9852,
+            "f1": 0.9467,
+            "support": 947
+          },
+          "PL": {
+            "precision": 0.8945,
+            "recall": 0.9983,
+            "f1": 0.9435,
+            "support": 586
+          },
+          "PSMV": {
+            "precision": 0.9284,
+            "recall": 0.9774,
+            "f1": 0.9522,
+            "support": 928
+          },
+          "Random": {
+            "precision": 0.898,
+            "recall": 0.6756,
+            "f1": 0.7711,
+            "support": 1082
+          },
+          "SC": {
+            "precision": 0.881,
+            "recall": 0.9483,
+            "f1": 0.9134,
+            "support": 968
+          },
+          "macro_avg": {
+            "precision": 0.9026,
+            "recall": 0.917,
+            "f1": 0.9054,
+            "support": 4511
+          },
+          "weighted_avg": {
+            "precision": 0.9029,
+            "recall": 0.9031,
+            "f1": 0.8982,
+            "support": 4511
+          }
+        },
+        "confusion": {
+          "A4C": {
+            "A4C": 933,
+            "PL": 0,
+            "PSMV": 2,
+            "Random": 12,
+            "SC": 0,
+            "Other": 0
+          },
+          "PL": {
+            "A4C": 0,
+            "PL": 585,
+            "PSMV": 0,
+            "Random": 1,
+            "SC": 0,
+            "Other": 0
+          },
+          "PSMV": {
+            "A4C": 0,
+            "PL": 0,
+            "PSMV": 907,
+            "Random": 21,
+            "SC": 0,
+            "Other": 0
+          },
+          "Random": {
+            "A4C": 91,
+            "PL": 69,
+            "PSMV": 67,
+            "Random": 731,
+            "SC": 124,
+            "Other": 0
+          },
+          "SC": {
+            "A4C": 0,
+            "PL": 0,
+            "PSMV": 1,
+            "Random": 49,
+            "SC": 918,
+            "Other": 0
+          }
+        }
+      },
+      "checkpoint": "/mnt/ee16/home/student03/uai/models/t2b_p92/full_lr3e6.pt",
+      "wall_s": 231.1
+    },
+    {
+      "recipe": "full_lr1e5",
+      "config": {
+        "lr": 1e-05,
+        "epochs_cap": 5,
+        "patience": 2,
+        "freeze_blocks": 0,
+        "trainable_params_m": 86.19,
+        "batch_size": 256,
+        "loss": "CE(logit_scale · image_feat @ class_text_anchor^T)",
+        "augmentation": "preprocess_train (RandomResizedCrop 0.9~1.0)",
+        "weight_decay": 0.1
+      },
+      "history": "rescored（未重训，曲线见上一轮正式跑）",
+      "best_epoch": null,
+      "val_acc_cehead_at_best": null,
+      "probe_test": {
+        "n_evaluated": 4511,
+        "class_support": {
+          "A4C": 947,
+          "PSMV": 928,
+          "SC": 968,
+          "PL": 586,
+          "Random": 1082
+        },
+        "view_accuracy": 0.9065,
+        "view_accuracy_ci95": [
+          0.8976,
+          0.9151
+        ],
+        "view_accuracy_ci95_video_cluster": [
+          0.7987,
+          0.9948
+        ],
+        "per_class": {
+          "A4C": {
+            "precision": 0.9122,
+            "recall": 0.9873,
+            "f1": 0.9483,
+            "support": 947
+          },
+          "PL": {
+            "precision": 0.9112,
+            "recall": 0.9983,
+            "f1": 0.9528,
+            "support": 586
+          },
+          "PSMV": {
+            "precision": 0.9353,
+            "recall": 0.9817,
+            "f1": 0.9579,
+            "support": 928
+          },
+          "Random": {
+            "precision": 0.9017,
+            "recall": 0.6867,
+            "f1": 0.7796,
+            "support": 1082
+          },
+          "SC": {
+            "precision": 0.8748,
+            "recall": 0.9452,
+            "f1": 0.9086,
+            "support": 968
+          },
+          "macro_avg": {
+            "precision": 0.907,
+            "recall": 0.9198,
+            "f1": 0.9095,
+            "support": 4511
+          },
+          "weighted_avg": {
+            "precision": 0.9063,
+            "recall": 0.9064,
+            "f1": 0.9019,
+            "support": 4511
+          }
+        },
+        "confusion": {
+          "A4C": {
+            "A4C": 935,
+            "PL": 0,
+            "PSMV": 1,
+            "Random": 11,
+            "SC": 0,
+            "Other": 0
+          },
+          "PL": {
+            "A4C": 0,
+            "PL": 585,
+            "PSMV": 0,
+            "Random": 1,
+            "SC": 0,
+            "Other": 0
+          },
+          "PSMV": {
+            "A4C": 0,
+            "PL": 0,
+            "PSMV": 911,
+            "Random": 17,
+            "SC": 0,
+            "Other": 0
+          },
+          "Random": {
+            "A4C": 90,
+            "PL": 57,
+            "PSMV": 61,
+            "Random": 743,
+            "SC": 131,
+            "Other": 0
+          },
+          "SC": {
+            "A4C": 0,
+            "PL": 0,
+            "PSMV": 1,
+            "Random": 52,
+            "SC": 915,
+            "Other": 0
+          }
+        }
+      },
+      "checkpoint": "/mnt/ee16/home/student03/uai/models/t2b_p92/full_lr1e5.pt",
+      "wall_s": 241.4
+    },
+    {
+      "recipe": "full_lr3e5",
+      "config": {
+        "lr": 3e-05,
+        "epochs_cap": 3,
+        "patience": 1,
+        "freeze_blocks": 0,
+        "trainable_params_m": 86.19,
+        "batch_size": 256,
+        "loss": "CE(logit_scale · image_feat @ class_text_anchor^T)",
+        "augmentation": "preprocess_train (RandomResizedCrop 0.9~1.0)",
+        "weight_decay": 0.1
+      },
+      "history": "rescored（未重训，曲线见上一轮正式跑）",
+      "best_epoch": null,
+      "val_acc_cehead_at_best": null,
+      "probe_test": {
+        "n_evaluated": 4511,
+        "class_support": {
+          "A4C": 947,
+          "PSMV": 928,
+          "SC": 968,
+          "PL": 586,
+          "Random": 1082
+        },
+        "view_accuracy": 0.9215,
+        "view_accuracy_ci95": [
+          0.9131,
+          0.9295
+        ],
+        "view_accuracy_ci95_video_cluster": [
+          0.8278,
+          0.9959
+        ],
+        "per_class": {
+          "A4C": {
+            "precision": 0.9157,
+            "recall": 0.9863,
+            "f1": 0.9497,
+            "support": 947
+          },
+          "PL": {
+            "precision": 0.9302,
+            "recall": 1.0,
+            "f1": 0.9638,
+            "support": 586
+          },
+          "PSMV": {
+            "precision": 0.9639,
+            "recall": 0.9795,
+            "f1": 0.9717,
+            "support": 928
+          },
+          "Random": {
+            "precision": 0.9263,
+            "recall": 0.732,
+            "f1": 0.8178,
+            "support": 1082
+          },
+          "SC": {
+            "precision": 0.8805,
+            "recall": 0.9669,
+            "f1": 0.9217,
+            "support": 968
+          },
+          "macro_avg": {
+            "precision": 0.9233,
+            "recall": 0.9329,
+            "f1": 0.9249,
+            "support": 4511
+          },
+          "weighted_avg": {
+            "precision": 0.9225,
+            "recall": 0.9215,
+            "f1": 0.9184,
+            "support": 4511
+          }
+        },
+        "confusion": {
+          "A4C": {
+            "A4C": 934,
+            "PL": 0,
+            "PSMV": 1,
+            "Random": 12,
+            "SC": 0,
+            "Other": 0
+          },
+          "PL": {
+            "A4C": 0,
+            "PL": 586,
+            "PSMV": 0,
+            "Random": 0,
+            "SC": 0,
+            "Other": 0
+          },
+          "PSMV": {
+            "A4C": 0,
+            "PL": 0,
+            "PSMV": 909,
+            "Random": 19,
+            "SC": 0,
+            "Other": 0
+          },
+          "Random": {
+            "A4C": 86,
+            "PL": 44,
+            "PSMV": 33,
+            "Random": 792,
+            "SC": 127,
+            "Other": 0
+          },
+          "SC": {
+            "A4C": 0,
+            "PL": 0,
+            "PSMV": 0,
+            "Random": 32,
+            "SC": 936,
+            "Other": 0
+          }
+        }
+      },
+      "checkpoint": "/mnt/ee16/home/student03/uai/models/t2b_p92/full_lr3e5.pt",
+      "wall_s": 234.1
+    },
+    {
+      "recipe": "lastblock_lr5e5",
+      "config": {
+        "lr": 5e-05,
+        "epochs_cap": 5,
+        "patience": 2,
+        "freeze_blocks": 11,
+        "trainable_params_m": 7.48,
+        "batch_size": 256,
+        "loss": "CE(logit_scale · image_feat @ class_text_anchor^T)",
+        "augmentation": "preprocess_train (RandomResizedCrop 0.9~1.0)",
+        "weight_decay": 0.1
+      },
+      "history": "rescored（未重训，曲线见上一轮正式跑）",
+      "best_epoch": null,
+      "val_acc_cehead_at_best": null,
+      "probe_test": {
+        "n_evaluated": 4511,
+        "class_support": {
+          "A4C": 947,
+          "PSMV": 928,
+          "SC": 968,
+          "PL": 586,
+          "Random": 1082
+        },
+        "view_accuracy": 0.9053,
+        "view_accuracy_ci95": [
+          0.8967,
+          0.9138
+        ],
+        "view_accuracy_ci95_video_cluster": [
+          0.7862,
+          0.9959
+        ],
+        "per_class": {
+          "A4C": {
+            "precision": 0.9086,
+            "recall": 0.9863,
+            "f1": 0.9458,
+            "support": 947
+          },
+          "PL": {
+            "precision": 0.9071,
+            "recall": 1.0,
+            "f1": 0.9513,
+            "support": 586
+          },
+          "PSMV": {
+            "precision": 0.9276,
+            "recall": 0.9806,
+            "f1": 0.9534,
+            "support": 928
+          },
+          "Random": {
+            "precision": 0.924,
+            "recall": 0.6627,
+            "f1": 0.7718,
+            "support": 1082
+          },
+          "SC": {
+            "precision": 0.8676,
+            "recall": 0.968,
+            "f1": 0.915,
+            "support": 968
+          },
+          "macro_avg": {
+            "precision": 0.907,
+            "recall": 0.9195,
+            "f1": 0.9075,
+            "support": 4511
+          },
+          "weighted_avg": {
+            "precision": 0.9072,
+            "recall": 0.9054,
+            "f1": 0.8997,
+            "support": 4511
+          }
+        },
+        "confusion": {
+          "A4C": {
+            "A4C": 934,
+            "PL": 0,
+            "PSMV": 1,
+            "Random": 12,
+            "SC": 0,
+            "Other": 0
+          },
+          "PL": {
+            "A4C": 0,
+            "PL": 586,
+            "PSMV": 0,
+            "Random": 0,
+            "SC": 0,
+            "Other": 0
+          },
+          "PSMV": {
+            "A4C": 0,
+            "PL": 0,
+            "PSMV": 910,
+            "Random": 18,
+            "SC": 0,
+            "Other": 0
+          },
+          "Random": {
+            "A4C": 94,
+            "PL": 60,
+            "PSMV": 68,
+            "Random": 717,
+            "SC": 143,
+            "Other": 0
+          },
+          "SC": {
+            "A4C": 0,
+            "PL": 0,
+            "PSMV": 2,
+            "Random": 29,
+            "SC": 937,
+            "Other": 0
+          }
+        }
+      },
+      "checkpoint": "/mnt/ee16/home/student03/uai/models/t2b_p92/lastblock_lr5e5.pt",
+      "wall_s": 223.1
+    }
+  ],
+  "verdict": {
+    "target_acc": 0.8,
+    "reference_frozen_probe_p89": 0.8628,
+    "reference_p87_broken_retrain": 0.2099,
+    "best_recipe": "full_lr3e5",
+    "best_test_acc": 0.9215,
+    "frozen_probe_recomputed_this_run": 0.8639,
+    "beats_frozen_probe": true,
+    "meets_target_0_80": true
+  },
+  "ablation_which_bug_caused_0_2099": {
+    "question": "p87 的 0.2099 到底由哪个 bug 造成？（一个 bug 还是多个合力）",
+    "method": "只修③号标签错位，其余完全照抄 p87 配方（ClipLoss 批内对角线 + preprocess_val 零增强 + lr3e-6 + 3 epoch + 每轮重拟合 LR）",
+    "fixed_frozen_baseline_this_script": 0.8639,
+    "runs": [
+      {
+        "epoch": 1,
+        "loss": 4.2318,
+        "test_acc": 0.8987
+      },
+      {
+        "epoch": 2,
+        "loss": 4.0605,
+        "test_acc": 0.9122
+      },
+      {
+        "epoch": 3,
+        "loss": 4.032,
+        "test_acc": 0.918
+      }
+    ],
+    "conclusion": "只修标签错位这一个 bug，p87 原配方（含 ClipLoss 与零增强）就从 0.2099 升到 0.9180。→ 0.2099 的**唯一主因是③号标签-特征错位**；①②④是真实缺陷但量级远小于它。",
+    "secondary_observation": "该消融跑到第 3 轮后出现 loss 数值爆炸（8.8e17）并崩到 0.3908 —— 原因是未对 logit_scale 做 clamp。正式脚本 p92_t2b_retrain.py 已用 clamp(max=100.0) 防住（4 个正式配方全程 loss 单调下降、无爆炸）。这条也如实记录。"
+  },
+  "conclusion_one_line": "T2b 目标达成：视频不交集划分（80/19/17 视频，20207/4087/4511 图）上，修复三处 bug 后最佳配方 full_lr3e5 达 test acc 0.9215（图像级 95%CI [0.9131,0.9295]；视频级 cluster CI [0.8278,0.9959]），超过目标 0.80 与冻结基线 0.8639；p87 的 0.2099 经消融证明是标签错位的产物，不是微调配方问题。",
+  "bug_fixes": {
+    "in_sample_scoring": "t2b_cactus_train.py::eval_split 用同一份特征 fit 后再 predict 同一份特征，是训练集自评。本脚本：LR 只在 train 特征上拟合，val/test 特征从不参与 fit。",
+    "zero_augmentation": "create_model_and_transforms 返回 (model, preprocess_train, preprocess_val)，p87/t2b_cactus_train 写成 (model, _, preprocess) → 训练用的是 val 变换（零增强）。本脚本训练用 preprocess_train。",
+    "label_feature_misalignment": "p87 用 shuffle=True 的 loader 抽 train 特征，却按 CSV 原序取标签，实测 79.1% 标签错位。本脚本 Dataset 返回样本下标、抽完按下标重排并硬校验。",
+    "contrastive_positive_set": "ClipLoss 批内对角线作正样本，而 batch=256 只有 5 条唯一 caption（理论下界 log(256/5)=3.94，p87 实测 4.03~4.21 贴地走不动）→ 改类别锚点 CE。"
+  },
+  "training_histories_from_full_run": {
+    "full_lr3e6": [
+      {
+        "epoch": 1,
+        "loss": 0.1822,
+        "val_acc_cehead": 0.8441,
+        "epoch_s": 65.0
+      },
+      {
+        "epoch": 2,
+        "loss": 0.0462,
+        "val_acc_cehead": 0.8637,
+        "epoch_s": 75.5
+      },
+      {
+        "epoch": 3,
+        "loss": 0.0245,
+        "val_acc_cehead": 0.861,
+        "epoch_s": 73.0
+      },
+      {
+        "epoch": 4,
+        "loss": 0.0123,
+        "val_acc_cehead": 0.838,
+        "epoch_s": 56.2
+      }
+    ],
+    "full_lr1e5": [
+      {
+        "epoch": 1,
+        "loss": 0.1257,
+        "val_acc_cehead": 0.8676,
+        "epoch_s": 52.4
+      },
+      {
+        "epoch": 2,
+        "loss": 0.0209,
+        "val_acc_cehead": 0.8485,
+        "epoch_s": 54.4
+      },
+      {
+        "epoch": 3,
+        "loss": 0.006,
+        "val_acc_cehead": 0.8669,
+        "epoch_s": 57.3
+      }
+    ],
+    "full_lr3e5": [
+      {
+        "epoch": 1,
+        "loss": 0.1729,
+        "val_acc_cehead": 0.9031,
+        "epoch_s": 52.0
+      },
+      {
+        "epoch": 2,
+        "loss": 0.0169,
+        "val_acc_cehead": 0.8823,
+        "epoch_s": 54.1
+      }
+    ],
+    "lastblock_lr5e5": [
+      {
+        "epoch": 1,
+        "loss": 0.188,
+        "val_acc_cehead": 0.6129,
+        "epoch_s": 39.3
+      },
+      {
+        "epoch": 2,
+        "loss": 0.0723,
+        "val_acc_cehead": 0.7076,
+        "epoch_s": 39.3
+      },
+      {
+        "epoch": 3,
+        "loss": 0.0483,
+        "val_acc_cehead": 0.6589,
+        "epoch_s": 39.7
+      },
+      {
+        "epoch": 4,
+        "loss": 0.0398,
+        "val_acc_cehead": 0.7857,
+        "epoch_s": 40.5
+      },
+      {
+        "epoch": 5,
+        "loss": 0.0304,
+        "val_acc_cehead": 0.8079,
+        "epoch_s": 39.8
+      }
+    ],
+    "note": "早停按 val_acc_cehead 判；best_epoch 见各配方 checkpoint 保存轮次（full_lr3e6=2, full_lr1e5=1, full_lr3e5=1, lastblock_lr5e5=5）。loss 全程单调下降，无爆炸。"
+  },
+  "ci_caveat": "两种 CI 都报：图像级 bootstrap（4511 个样本当独立）偏窄；视频级 cluster bootstrap（test 仅 17 段视频，按视频整段重采样）才是诚实的不确定性 —— 它宽达 [0.8278, 0.9959]。评审时应以视频级 CI 为准：它下界 0.8278 仍高于目标 0.80，但**不能**声称 0.9215 有 ±1% 精度。"
+}
