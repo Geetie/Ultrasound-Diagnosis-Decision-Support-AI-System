@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "project": "超声诊疗决策支持 AI 系统",
-  "updated_at": "2026-11-08T14:27:24+08:00",
+  "updated_at": "2026-11-08T14:37:40+08:00",
   "head_commit": "14a7f9f",
   "branch": "main",
   "status_legend": {
@@ -314,9 +314,12 @@
             "id": "B3",
             "name": "报告话术质量评审集",
             "n_target": "≥100 份",
-            "blocked_by": "医生 5 分制打分",
-            "for_what": "判断给病人看的解释写得好不好（说人话/不吓人/说清下一步）",
-            "status": "零"
+            "blocked_by": null,
+            "for_what": "判断给病人的解释说得清不清楚（主信息/术语/长句/下一步/风险解释/不确定口径/恐吓措辞）",
+            "status": "✅ 规则级已生效并接入生产（app/knowledge/explanation_readability.py，9 项检查）",
+            "can_start_now": true,
+            "why_not_doctor": "拆分后：医学正确性需医生，**可读性不需要**——判据来自 CDC Clear Communication Index（20 项研究验证）+ 健康科普四原则（通俗/准确/不夸大/给下一步），全部可离线确定性计算",
+            "remaining": "人工标注黄金集 50 份（标'能发/不能发'）验证检查本身的敏感度/特异度——不需要医学知识"
           },
           {
             "id": "B4",
@@ -334,11 +337,21 @@
         "3. CAMUS LVEF 误差（不用等）",
         "4. 下载 TN3K（不用等，只是下载）",
         "5. 造 B2 中文检索集（不用等，只需人工筛）",
-        "6. B1 临床文本金标准（等医生）← 唯一硬卡点",
-        "7. B3 话术评审集（等医生）",
+        "6. B3 可读性检查已生效；补 50 份人工标注黄金集验证检查本身（不用等医生）",
+        "7. B1 临床文本金标准（等医生）← 唯一硬卡点",
         "8. B4 随访结局（等临床方）"
       ],
-      "updated_note": "2026-11-08 按用户要求重写为数据集台账，每项写明'为什么需要'"
+      "updated_note": "2026-11-08 按用户要求重写为数据集台账，每项写明'为什么需要'",
+      "deprecated_replacements": {
+        "kb_qa_golden_v1(136)": "B2 中文检索集",
+        "kb_golden_v1(200)": "B2 中文检索集（同源）",
+        "us365k_retrieval_golden_v1(200)": "A1 AUL / A2 TN3K 图像级检索",
+        "clean_eval_set_20261020(17)": "B1 临床文本金标准",
+        "double_engine_eval_set(169)": "B1 副产品（金标准集跑两次算一致率）",
+        "double_engine_eval_set_v3(171)": "同上",
+        "restored_non_echo_20261021(415)": "无需顶替（本就不是测试集）",
+        "consistency_test_cases(780)": "A1/A2/A3 公开集标注 + B1"
+      }
     },
     {
       "id": "retrieval-gate0",

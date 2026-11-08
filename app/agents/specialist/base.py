@@ -1212,6 +1212,35 @@ class RAGSpecialistAgent(SpecialistAgent):
                         + "、".join(i.code for i in quality.issues)
                     )
 
+                # B3：**可读性/结构**检查（与上面的"防错"检查互补）。
+                # 上面那些是"不许出错"（PHI/绝对化/占位符）；这里是"有没有讲清楚"。
+                # 判据来自 CDC Clear Communication Index（20 项，研究验证）：
+                # One Main Message / Common words / Call to Action /
+                # Explain the nature of the risk / What We Know and Don't Know。
+                # 这些**不需要医生**——是科普写作的客观标准，可离线确定性计算。
+                from app.knowledge.explanation_readability import (
+                    check_readability as _check_readability,
+                )
+
+                readability = _check_readability(
+                    getattr(explanation, "explanation", None)
+                    or getattr(explanation, "content", None)
+                )
+                if readability.evaluated:
+                    readability_dict = {
+                        "passed": readability.passed,
+                        "issues": [i.code for i in readability.issues],
+                        "metrics": readability.metrics,
+                    }
+                    base = response.patient_explanation_quality or {}
+                    base["readability"] = readability_dict
+                    response.patient_explanation_quality = base
+                    if readability.issues:
+                        response.reasoning_trace.append(
+                            "patient_explanation_readability -> "
+                            + "、".join(readability.codes())
+                        )
+
             # M12：跨模态对照提示（教科书级知识表，模型不参与生成）
             hints = hints_for(organ, features)
             if hints:
