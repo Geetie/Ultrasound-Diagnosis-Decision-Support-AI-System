@@ -92,3 +92,66 @@ def test_trailing_content_prevents_flagging():
         "4a 类，建议穿刺活检明确",                   # 8 字建议
     ):
         assert detect_degenerate_grade_only(t) is None, f"误判: {t!r}"
+
+
+# ---------------------------------------------------------------------------
+# 自造分档规则检测（2026-11-08）
+#
+# 生产实测：模型输出 `（注：0-2 分为 TR2）`，而 KB 与 prompt 对 `"0-2 分"`
+# 各 0 命中 → 是模型自己编的规则。15 条候选全部来自 10/25~11/07 的新判读，
+# 说明现网仍在犯。
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "（注：0-2 分为 TR2）",
+        "（注：0-2分为TR2，3-4分为TR3）",
+        "结节2分，归TR3类",
+        "3-4分对应TR4a",
+        "总分 5 分是 TR5",
+        "1分是4A类",
+    ],
+)
+def test_self_made_grading_rule_detected(text):
+    """数值→类别的映射，在知识库无出处时必须被判为自造规则。"""
+    from app.inference.output_guard import detect_self_made_grading_rule
+
+    assert detect_self_made_grading_rule(text) == "self_made_grading_rule"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "TI-RADS 4a 类，建议复查",
+        "结节 8mm，低回声，边界清，建议半年复查",
+        "建议 6 个月后复查",
+        "TI-RADS 4 类，2 分。建议穿刺",  # 有分值但没说"分→类"的映射
+        "本次检查未见异常，按常规体检随访",
+    ],
+)
+def test_normal_text_not_flagged_as_self_made_rule(text):
+    """不能误伤正常结论 —— 假阳性会让真结论被拒收。"""
+    from app.inference.output_guard import detect_self_made_grading_rule
+
+    assert detect_self_made_grading_rule(text) is None, f"误判: {text!r}"
+
+
+def test_kb_has_rule_bypasses_detection():
+    """知识库确实有这条规则时不该拒收。
+
+    调用方必须**真的去查**知识库再传 ``kb_has_rule=True``，不能默认传 True。
+    """
+    from app.inference.output_guard import detect_self_made_grading_rule
+
+    assert (
+        detect_self_made_grading_rule("（注：0-2 分为 TR2）", kb_has_rule=True) is None
+    )
+
+
+def test_none_is_safe():
+    from app.inference.output_guard import detect_self_made_grading_rule
+
+    assert detect_self_made_grading_rule(None) is None
+    assert detect_self_made_grading_rule("") is None

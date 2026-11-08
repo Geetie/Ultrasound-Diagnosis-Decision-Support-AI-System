@@ -201,3 +201,57 @@ def detect_degenerate_grade_only(text: str, *, min_body_chars: int = 6) -> str |
     if len(body) < min_body_chars:
         return "grade_only_no_body"
     return None
+
+
+#: 「自造分档规则」的形态（2026-11-08 加）。
+#:
+#: 生产实测：模型会输出
+#:   `（注：0-2 分为 TR2）`
+#:   `（注：0-2分为TR2，3-4分为TR3）`
+#: 而 `kb_v1.4.0` 甲状腺 601 块与 `thyroid.md` 对 `"0-2 分"` **各 0 命中**
+#: —— > 这是模型自己编的分档规则，不是知识库内容。
+#:
+#: 15 条候选**全部来自 2026-10-25~11-07 的新判读**（旧模型期 0 条）→ 现网仍在犯。
+_SELF_MADE_GRADING_RULE = re.compile(
+    r"(?:注|备注)?\s*[:：]?\s*"
+    r"\d+(?:\s*[~\-–至到]\s*\d+)?\s*分\s*[，,]?\s*(?:为|对应|=|是|归|进|划)\s*"
+    r"(?:TR|LR|TI-?RADS|LI-?RADS)?\s*[1-6][abcABC]?\s*[类]?",
+    re.IGNORECASE,
+)
+
+
+def detect_self_made_grading_rule(
+    text: str, *, kb_has_rule: bool = False
+) -> str | None:
+    """判断结论里是否出现「模型自造的分档规则」。纯函数。
+
+    ## 为什么这是一个独立的拒绝理由
+
+    模型输出 `（注：0-2 分为 TR2）` 时：
+    - 它**不是空**（`detect_degenerate_grade_only` 不管）
+    - 它**不是回显**（`detect_prompt_echo` 不管，没有占位 ID）
+    - 但它**给出了一个具体的数值分档规则**，而这个规则在知识库里**不存在**
+
+    这种「编造规则」比编造事实更危险 —— 事实可以核对，**规则会被当成方法论复用**。
+
+    Args:
+        text: 模型结论正文。
+        kb_has_rule: 知识库 / 检索 chunk 里**是否确实有**对应分档规则。
+            为 ``True`` 时不判（模型引用的是真规则）。
+            **调用方必须真的去查**，不能默认传 True。
+
+    Returns:
+        命中返回 ``"self_made_grading_rule"``，否则 ``None``。
+
+    Examples:
+        >>> detect_self_made_grading_rule("结节2分，归TR3类")
+        'self_made_grading_rule'
+        >>> detect_self_made_grading_rule("结节2分，归TR3类", kb_has_rule=True)
+        >>> detect_self_made_grading_rule("TI-RADS 4a 类，建议复查")
+    """
+    t = text or ""
+    if not t or kb_has_rule:
+        return None
+    if _SELF_MADE_GRADING_RULE.search(t):
+        return "self_made_grading_rule"
+    return None

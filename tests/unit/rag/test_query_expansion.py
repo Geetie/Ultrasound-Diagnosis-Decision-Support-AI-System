@@ -147,3 +147,58 @@ def test_b2_thyroid_c_tirads_query_expands() -> None:
     out = expand_query(query)
     assert "甲状腺影像报告和数据系统" in out
     assert out.startswith(query)
+
+
+# ---------------------------------------------------------------------------
+# TR 编号 ↔ C-TIRADS 类别名（2026-11-08 补）
+#
+# 背景：kb_v1.6.0 补进了 C-TIRADS 计数法分档表，表里写「4A 低度可疑恶性」，
+# 而模型/prompt 用 `TR2~TR5`。两套命名不对齐 → 检索词不匹配 → 查不到表。
+# ---------------------------------------------------------------------------
+
+
+def test_tr_codes_map_to_ctirads_category_names():
+    """TR1~TR5 必须展开出 C-TIRADS 分档表里使用的类别名。"""
+    from app.rag.query_expansion import expand_query
+
+    expect = {
+        "TR1": ["1 类", "无结节"],
+        "TR2": ["2 类", "良性"],
+        "TR3": ["3 类", "良性可能"],
+        "TR5": ["5 类", "高度提示恶性"],
+    }
+    for code, wants in expect.items():
+        out = expand_query(f"{code} 结节")
+        for w in wants:
+            assert w in out, f"{code} 未展开出 {w!r}：{out}"
+
+
+def test_tr4_family_expands_all_subgrades():
+    """TR4 是个族（4A/4B/4C），必须一次全给，否则只命中其中一档。"""
+    from app.rag.query_expansion import expand_query
+
+    out = expand_query("TR4 结节")
+    for w in ("4A 类", "4B 类", "4C 类"):
+        assert w in out, f"TR4 未展开出 {w!r}：{out}"
+
+
+def test_tr4_with_subgrade_also_expands():
+    """`TR4a` 这种写法必须也能展开。
+
+    陷阱：正则 `\\bTR\\s*4\\b` 在 `TR4a` 上**不成立** —— `4` 与 `a` 都是单词字符，
+    所以 `\\b` 在 4 后面没有边界。首版就栽在这里，`TR4a` 完全没展开。
+    """
+    from app.rag.query_expansion import expand_query
+
+    for q in ("TR4a 要穿刺吗", "TR4b 类", "TR4c"):
+        out = expand_query(q)
+        assert "4A 类" in out, f"{q!r} 未展开：{out}"
+
+
+def test_tr_expansion_keeps_original_text():
+    """扩展只做加法，原文一个字都不动（可回退、可诊断）。"""
+    from app.rag.query_expansion import expand_query
+
+    q = "TR3 结节的恶性风险"
+    out = expand_query(q)
+    assert out.startswith(q), f"原文被改写了：{q!r} → {out!r}"
