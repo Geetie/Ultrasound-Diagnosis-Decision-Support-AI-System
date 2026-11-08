@@ -4,9 +4,15 @@
 `knowledge_chunks`（KB 管理侧，含 embedding 列），而生产诊断检索器
 （app/rag/retriever.py）读的是 **`vector_index_{rag_collection}`**（即
 `vector_index_knowledge_chunks`）——建库后该表为空，dense 检索什么都查不到。
-本脚本经 `app.embedding.index_factory.from_settings` 生产客户端灌数（幂等）——
+本脚本经 `app.embedding.index_factory.create_index_client_from_settings` 生产客户端灌数（幂等）——
 后端按 `vector_index_backend` 选择：qdrant（默认，A.50.8 上线）或降级 pgvector。
 无嵌入的 chunk 行自动跳过（不拖垮整批）。
+
+2026-11-08 修复：本脚本曾 import 不存在的 `from_settings`（真实名
+`create_index_client_from_settings`），每次执行必 ImportError，**从未成功跑通**。
+真机实测因此留下硬伤：`vector_index_knowledge_chunks` 只到 `kb_v1.2.0`，
+生产在用的 `kb_v1.3.0` 1257 条**从未进过向量索引** → dense 检索腿对 v1.3 内容恒空，
+只剩 BM25 稀疏腿兜底。B2 检索集里"检索不到"的条目有一部分是这里的锅，不是语料缺口。
 
 用法（真机 ~/uai/src）：
     PYTHONPATH=~/uai/src python scripts/server_populate_vector_index.py \
@@ -103,9 +109,17 @@ async def main_async(kb_version: str, organ: str, purge: bool) -> None:
         print(f"ERROR: kb_version={kb_version} 无可灌入行（{skipped} 行无嵌入）")
         raise SystemExit(1)
     # 走工厂：vector_index_backend=qdrant 时写 Qdrant，不可用自动降级 pgvector
-    from app.embedding.index_factory import from_settings
+    #
+    # 2026-11-08 修复：这里此前 `from app.embedding.index_factory import from_settings`，
+    # 而该模块**没有** `from_settings`（真实名是 `create_index_client_from_settings`，
+    # 见 index_factory.__all__）→ 每次执行必 ImportError，脚本从未成功跑通过。
+    # 后果：`knowledge_chunks` 有 embedding，生产向量索引却是空的 ——
+    # 真机实测 `vector_index_knowledge_chunks` 最新只到 kb_v1.2.0，
+    # `kb_v1.3.0` 的 1257 条**从未入索引**（dense 腿查不到任何 v1.3 内容）。
+    # 这是 B2 检索集"检索不到"类问题的**基础设施层**根因之一，不是数据缺口。
+    from app.embedding.index_factory import create_index_client_from_settings
 
-    client = await from_settings()
+    client = await create_index_client_from_settings()
     await client.create_collection(
         settings.rag_collection, dimension=len(records[0].vector)
     )
