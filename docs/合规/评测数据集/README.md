@@ -1,0 +1,113 @@
+# 评测数据集 v2 —— manifest 规范与三分法
+
+> 建档：2026-11-08｜触发：全量核查 14 个自造测试集，发现无一能用于验收（见 16 号 A.166）
+> 纪律：**没有 manifest 的数据集不得进评测**。manifest 缺字段 = 该集不合格。
+
+## 一、为什么要有 manifest
+
+历史教训：`kb_qa_golden_v1` 用了半年、报了 98.53%，后来才发现含影像术语只有 11.8%、
+gold 是"找回自己来源的文档"。**没有一个地方记录过"这个集是怎么造的、能测什么、不能测什么"**，
+于是错误口径一路传播。
+
+manifest 的作用就是：让任何人拿到数据集时，**先看能测什么，再看数字**。
+
+## 二、manifest 必填字段
+
+每个数据集目录下必须有 `manifest.json`：
+
+```json
+{
+  "dataset_id": "v2-retrieval-zh-thyroid",
+  "version": "1.0.0",
+  "created_at": "2026-11-08T00:00:00+08:00",
+  "purpose": "中文检索评测（医生视角 query → chunk 级 gold）",
+  "organ": ["thyroid"],
+  "n_items": 120,
+
+  "provenance": {
+    "source": "public | internal | synthesized | hybrid",
+    "public_datasets": [
+      {"name": "AUL", "license": "CC-BY 4.0", "commercial_ok": true, "url": "..."}
+    ],
+    "internal_source": "生产判读 1056 条中 314 条有结论的，人工筛 120 条",
+    "synthesis_method": "无 / 描述模板（须说明模板来源）",
+    "annotators": ["医生A（甲状腺专科）"] ,
+    "annotation_protocol": "双人独立标注，分歧由第三人裁决"
+  },
+
+  "quality_checks": {
+    "duplicate_rate": 0.0,
+    "template_pollution_rate": 0.0,
+    "imaging_term_coverage": 0.78,
+    "self_contradiction_count": 0,
+    "human_reviewed_ratio": 1.0
+  },
+
+  "valid_for": ["检索 hit@k", "检索 MRR", "检索 NDCG"],
+  "NOT_valid_for": ["分级准确率（无临床金标准）", "漏诊率（无随访数据）"],
+  "known_limitations": ["仅覆盖甲状腺", "query 均来自同一家医院"],
+
+  "metrics_produced": [
+    {"metric": "hit@10", "value": null, "measured_at": null, "n": null}
+  ],
+
+  "maintainer": "lead",
+  "supersedes": ["kb_qa_golden_v1（已作废，见 A.166）"]
+}
+```
+
+## 三、按来源三分法
+
+### ① 公开集（直接用，只需登记许可）
+
+| 集 | 器官 | 许可 | 可商用 | 规模 | 标签 |
+|---|---|---|---|---|---|
+| AUL | 肝 | CC-BY 4.0 | ✅ | 735（全量 11468） | 良恶性 + 分割 |
+| TN3K | 甲状腺 | CC BY-NC 3.0 | ❌ 仅评测 | 3493 张 | 结节分割 |
+| DDTI | 甲状腺 | Open Access | — | 290–480 | 分割 + 部分良恶性 |
+| TG3K | 甲状腺 | CC BY-NC 3.0 | ❌ | 3583 帧 | 分割 |
+| TNSCUI | 甲状腺 | CC BY-ND 4.0 | — | 3644 | 分割 |
+| CACTUS | 心脏 | CC BY 4.0 | ✅ | 37736 帧 | 切面分类 |
+| CAMUS | 心脏 | CC BY-NC-SA 4.0 | ❌ | 500 例 | 分割 + LVEF |
+| EchoNet-Dynamic | 心脏 | Non-commercial | ❌ | 10030 | LVEF/容积 |
+
+登记目录：`docs/合规/数据源台账/open-access-catalog-20260929.csv`（96 个集）。
+
+**纪律**：`commercial_ok=false` 的集，`usage` 必须写 `evaluation_only`，
+且**不得**用于训练或进入产品交付物。
+
+### ② 必须自己造（4 项，全卡在医生标注）
+
+| 数据集 | 卡点 | 目标规模 | 状态 |
+|---|---|---|---|
+| 临床文本 → 判读金标准 | **需医生标注** | ≥200 例（三器官） | 未开始 |
+| 中文检索评测集（chunk 级） | 可半自动 + 人工筛 | ≥100 query，≥50% 含影像术语 | 可立即开始 |
+| 报告话术质量评审集 | 需医生 5 分制 | ≥100 份 | 未开始 |
+| 随访/病理结局 | 需临床随访 | ≥300 例 | 未开始 |
+
+### ③ 已作废（不得再用）
+
+`kb_qa_golden_v1` / `kb_golden_v1` / `us365k_retrieval_golden_v1` /
+`clean_eval_set_20261020` / `double_engine_eval_set` /
+`double_engine_eval_set_v3` / `restored_non_echo_20261021` /
+`consistency_test_cases`
+
+服务器侧已在这些文件旁写 `.DEPRECATED.md` sidecar；
+仓库内 `consistency_test_cases.json` 加了 `DEPRECATED` 字段。
+
+## 四、质量自查（造完必须跑）
+
+| 检查 | 阈值 | 怎么查 |
+|---|---|---|
+| 重复率 | **必须 0** | `len(set(texts)) / len(texts) == 1.0` |
+| 模板污染率 | **≤10%** | 统计前缀重复 ≥3 的组 |
+| 影像术语覆盖 | **≥50%**（检索集） | 关键词命中率 |
+| 自相矛盾病例 | **必须 0** | 对立词对检测（清晰/欠清晰、规则/欠规则…） |
+| 人工复核比例 | **100%**（金标准类） | 标注记录 |
+
+任何一项不达标 → **该集不得进评测**，不得以"先跑起来再说"为由放行。
+
+## 五、相关脚本
+
+- `scripts/audit/p67_public_hard_set.py` —— 从公开集构造 gold 唯一的难集（已支持 aul/tn3k/cactus/camus）
+- 待建：`scripts/audit/p79_dataset_quality_gate.py` —— 按上表四项做自动检查

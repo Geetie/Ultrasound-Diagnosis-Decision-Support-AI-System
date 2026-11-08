@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "project": "超声诊疗决策支持 AI 系统",
-  "updated_at": "2026-10-14",
+  "updated_at": "2026-11-08T12:39:20+08:00",
   "head_commit": "14a7f9f",
   "branch": "main",
   "status_legend": {
@@ -19,6 +19,197 @@
     "skills": ".codebuddy/skills/"
   },
   "features": [
+    {
+      "id": "eval-dataset-rebuild",
+      "status": "in_progress",
+      "priority": "P0",
+      "why": "2026-11-08 全量核查 14 个自造测试集，结论：**没有一个能用于验收临床能力**。直接后果是台账里 7 项核心指标（检索 hit@1/10、MRR、一致率常规/高风险、faithfulness、answer_relevancy）全部不作数，另 3 项（转人工率/完成率/幻觉率）受污染或 n 过小。在此之前继续调模型/调检索都是无据优化。",
+      "scope": {
+        "must": "建立至少 1 个能代表业务场景、且指标可辩护的评测集，并给出每项的来源与许可",
+        "must_not": "不得再用 kb_qa_golden_v1 / consistency_test_cases / clean_eval_set 出任何『达标』结论"
+      },
+      "dataset_triage": {
+        "reusable_public": [
+          {
+            "name": "AUL",
+            "organ": "liver",
+            "license": "CC-BY 4.0",
+            "commercial_ok": true,
+            "n": "735 张（本项目已用子集，完整 11468）",
+            "labels": "良恶性 + 分割",
+            "use": "T2a 分类 AUC、肝病灶检索评测",
+            "status": "已在用（AUC 0.895）"
+          },
+          {
+            "name": "TN3K",
+            "organ": "thyroid",
+            "license": "CC BY-NC 3.0",
+            "commercial_ok": false,
+            "n": "3493 张 / 2421 例",
+            "labels": "结节二值分割",
+            "use": "甲状腺结节分割 Dice、检索金标准（图像级）",
+            "status": "已下载未评测"
+          },
+          {
+            "name": "DDTI",
+            "organ": "thyroid",
+            "license": "Open Access",
+            "n": "290-480 例",
+            "labels": "分割 + 部分良恶性",
+            "use": "甲状腺分割/分类交叉验证",
+            "status": "未下载"
+          },
+          {
+            "name": "TG3K",
+            "organ": "thyroid",
+            "license": "CC BY-NC 3.0",
+            "n": "16 videos / 3583 帧",
+            "labels": "分割",
+            "use": "甲状腺视频/多帧一致性",
+            "status": "未下载"
+          },
+          {
+            "name": "TNSCUI",
+            "organ": "thyroid",
+            "license": "CC BY-ND 4.0",
+            "n": "3644 training",
+            "labels": "分割",
+            "use": "甲状腺分割（注意 ND：不可改作）",
+            "status": "未下载"
+          },
+          {
+            "name": "CACTUS",
+            "organ": "cardiac",
+            "license": "CC BY 4.0",
+            "commercial_ok": true,
+            "n": "37736 帧",
+            "labels": "切面分类",
+            "use": "T2b 切面识别验收",
+            "status": "已下载未评测"
+          },
+          {
+            "name": "CAMUS",
+            "organ": "cardiac",
+            "license": "CC BY-NC-SA 4.0",
+            "commercial_ok": false,
+            "n": "500 例",
+            "labels": "LVEndo/LVEpi/LA 分割 + LVEF",
+            "use": "LVEF/LVEF 分级一致性、分割 Dice",
+            "status": "已下载在用"
+          },
+          {
+            "name": "EchoNet-Dynamic",
+            "organ": "cardiac",
+            "license": "Non-commercial",
+            "n": "10030",
+            "labels": "LVEF/容积",
+            "use": "LVEF 回归误差",
+            "status": "未下载"
+          }
+        ],
+        "must_build_ourselves": [
+          {
+            "what": "临床文本 → 判读金标准",
+            "why": "公开集只有图像标签，没有『这份临床描述该判什么级/该不该穿刺』的中文临床金标准",
+            "blocked_by": "需医生标注",
+            "n_needed": "≥200 例（含三器官）"
+          },
+          {
+            "what": "中文检索评测集（query→相关 chunk）",
+            "why": "现有 golden 是患者问诊标题；必须改成医生视角查询",
+            "blocked_by": "可半自动：用生产 1056 条判读里 314 条有结论的 + 人工筛",
+            "n_needed": "≥100 query，且 ≥50% 含影像术语"
+          },
+          {
+            "what": "报告话术质量评审集",
+            "why": "『写得好不好』无法用规则判定",
+            "blocked_by": "需医生 5 分制打分",
+            "n_needed": "≥100 份报告"
+          },
+          {
+            "what": "随访/病理结局",
+            "why": "算漏诊率的分母",
+            "blocked_by": "需临床随访数据",
+            "n_needed": "≥300 例有结局"
+          }
+        ],
+        "deprecated": [
+          {
+            "name": "kb_qa_golden_v1",
+            "n": 136,
+            "reason": "99% 不含影像术语；gold=来源文档自指；40% 主题是『去哪治/多少钱』"
+          },
+          {
+            "name": "kb_golden_v1",
+            "n": 200,
+            "reason": "query 是文章标题且含 [REDACTED] 脱敏标记；与上同源"
+          },
+          {
+            "name": "us365k_retrieval_golden_v1",
+            "n": 200,
+            "reason": "全英文，与中文业务跨语言"
+          },
+          {
+            "name": "clean_eval_set_20261020",
+            "n": 17,
+            "reason": "8 条无输入、6 条同句、结论多为 llm_unavailable"
+          },
+          {
+            "name": "double_engine_eval_set",
+            "n": 169,
+            "reason": "148 条输入中 127 条来自 3 个模板（86%）"
+          },
+          {
+            "name": "double_engine_eval_set_v3",
+            "n": 171,
+            "reason": "仅 19/171 有输入"
+          },
+          {
+            "name": "restored_non_echo_20261021",
+            "n": 415,
+            "reason": "非测试集，是 A.77 恢复的数据备份"
+          },
+          {
+            "name": "consistency_test_cases",
+            "n": 780,
+            "reason": "156 条重复；BND 组含同句自相矛盾病例；纯模板拼装"
+          }
+        ],
+        "backups_not_testsets": [
+          "deleted_dirty_20261020(608)",
+          "quarantine_20261020(608)",
+          "stale_processing_20261020(107)",
+          "kb_relations_backup(1257)",
+          "patient_id_migration 等 3 个运维记录"
+        ]
+      },
+      "invalidated_metrics": [
+        "检索 hit@10 = 98.53%",
+        "检索 hit@1 = 94.85%",
+        "检索 MRR@10 = 0.9635",
+        "一致率 常规 = 79.56%",
+        "一致率 高风险 = 40.88%",
+        "faithfulness = 0.935（另存 56.3% 矛盾口径）",
+        "answer_relevancy = 0.3788",
+        "检索 Recall@10 = 94.5%（A.4 英文语料，已过时）",
+        "精排 nDCG@10 0.985→0.982（同不合格集）"
+      ],
+      "still_valid_metrics": [
+        "T2a 恶性分类 AUC = 0.895（AUL 公开集，CI 0.871–0.917）",
+        "撤回生效时延 P50 24.4ms / max 25.9ms（真机 10 例）",
+        "端到端延迟 P50 26.3s / P90 45.2s（真机 12 例）"
+      ],
+      "dependencies": [],
+      "evidence": "2026-11-08 全量审计：14 个测试集逐个读原文 + 统计（重复率/模板率/术语覆盖率/自相矛盾检测）",
+      "next_actions": [
+        "1. 先把已下载的三个公开集（AUL/TN3K/CAMUS）接成正式评测脚本，产出可辩护基线",
+        "2. 用生产 1056 条判读中 314 条有结论的，半自动构造中文检索集（人工筛 100 条）",
+        "3. 向医生要 ≥200 例临床文本→分级金标准（这是唯一硬卡点）",
+        "4. 所有新测试集落 data/eval/v2/ 并带 manifest（来源/许可/构造法/规模/已知局限）"
+      ],
+      "name": "评测数据集重建（当前主线）",
+      "description": "评测数据集重建（当前主线：无合格测试集，所有检索/生成类指标作废）"
+    },
     {
       "id": "retrieval-gate0",
       "name": "混合检索 Gate 0（召回率）",
@@ -192,10 +383,11 @@
       "id": "udt-phase1",
       "name": "UDT Phase 1 词汇表（≥2000 词 / 52 器官）",
       "description": "四层管线产出 vocab_v2_final.json，待医生审定；cardiac 危象词表 22 条已建",
-      "status": "in_progress",
+      "status": "planned",
       "result": "约 1650/2000 条（thyroid 723 / liver 684 / cardiac 491）",
       "dependencies": [],
-      "evidence": "16 号 A.15③/A.16；data/udt/vocab_v2_final.json"
+      "evidence": "16 号 A.15③/A.16；data/udt/vocab_v2_final.json",
+      "note": "2026-11-08：主线转移到 eval-dataset-rebuild；本项待数据集就绪后恢复"
     },
     {
       "id": "zero-silence-guard",
@@ -215,7 +407,8 @@
       "result": "官方 68.96% / 宽松 72.8%；主因 context Top-5 缺依据（语料覆盖）。**A.62.14 三口径实测 0.0836~0.1258（n=40）**：建议**不切 `--judge-mode gate`** —— 现状切了只会永远红；切换判据四条已写进 `eval_gate.py --judge-mode` help 并有守卫钉住。",
       "dependencies": [
         "kb-v13",
-        "thyroid-registry-data"
+        "thyroid-registry-data",
+        "eval-dataset-rebuild"
       ],
       "evidence": "16 号 A.10.3/A.10.6/A.13/#5；tests/reports/t1_faithfulness_v11.json"
     },
@@ -1110,7 +1303,8 @@
       "status": "blocked",
       "result": "**第一步（分组量化）已完成，且否掉了原方案（A.68.2）**：新增 `scripts/audit/p43_hard_set_grouping_quant.py`（只读，判据跑前写死：可构造对数 ≥3× 且组内 ≤30 篇）。真机 0.2s 结果：`exact`（现状）**13 组 / 均 80.6 篇 / 最大 200 篇**、`prefix2` 与 exact **完全等价**（对话语料 section_path 只有两段）、`prefix1` 更糟（均 95.3 / 最大 400）→ 三种粒度全判 `AMBIGUOUS_GOLD_RISK`。**结论：放宽分组无效；且现状 13 个组本身就是巨组 → 按 (organ, section_path) 取「另一篇」当 gold ＝ 随机兄弟文档（弱 gold）**。这连带更正 A.66：crossdoc 难集测出的「池子召回 0.045→0.195」只证明「多捞到兄弟文档」，**不能**证明「捞到正确答案」→ **R2 暂停**（在弱 gold 上比选择器没有意义）。**下一步（R3 真内容）**：用更细章节信号造 ≤5 篇/组的小组（来源①`pdf_*` 深层 section_path ②同器官主题聚类 ③人工抽检确认组内另一篇确实能答该问句）；抽检通过率 ≥80% 才算可用。**【A.68.3 第二步也作废（2026-10-20）】**：服务器只读侦察显示 `pdf_*` 共 **401 块 / 248 文档**，`section_path` **只有 8 个取值、全部是指南名**（`ctirads_2021` 64 块/28 篇、`cardiac_echo_measurement_2016` 63/36、`liver_cancer_guideline_2024` 63/39、`thyroid_cancer_norm_2018` 62/55…），`(organ, section_path)` 只有 **8 组、每组 11~55 篇**，**组内 2~5 篇的小组＝0 个**。**根因**：两份语料都没有细粒度结构信号（对话只有「科室」；指南按节独立成 doc 且节间**没有边**）。→ **在现有语料上造不出「gold 唯一且可辩护」的跨文档难集**；三种替代都不可接受（同科室兄弟文档＝弱 gold 已证伪；同指南相邻节＝不唯一；内容聚类＝循环论证）。**处理：暂停造题线，登记为依赖新语料**（带细粒度章节的长文档，或人工标注的「问题→依据段落」对）；现有自造难集**降级为结构性对照专用**，不得作为 GO/NO-GO 依据。替代方向：先做 R17 指标口径、或改用生成质量轴（p27 分级抽取 + 人工抽检）。",
       "dependencies": [
-        "a66-eval-instrument-hard-set"
+        "a66-eval-instrument-hard-set",
+        "eval-dataset-rebuild"
       ],
       "evidence": "21 号「批 9（A.67）」；16 号 A.63/A.64/A.65/A.66；scripts/audit/p40/p41/p42；tests/reports/hard_query_set_*.json"
     },
@@ -1244,7 +1438,8 @@
       "status": "blocked",
       "result": "**【A.71 回到正轨：一套写死口径 + 一条命令】** 新增 `scripts/audit/p52_rag_metric_report.py`：一次跑完 `faithfulness_knowledge`（derived_stripped + 中文断言 + 只算知识断言）/ `faithfulness_all`（对照）/ `citation_coverage` / `citation_correctness` / `answer_relevancy`，口径写在源码 `CALIBERS` 并在报告原样输出；`n<30` → `verdict=INSUFFICIENT_DATA` 不出结论；未测到记 None；报告只给实测值与分位数，门限由 19 号另定。**首次基线（干净样本 17 条，37 秒）**：faithfulness_knowledge **n=5** mean 0.2622 / median 0.1111、faithfulness_all n=5 mean 0.2841、citation_coverage n=5 **0.0**、citation_correctness **n=0**、answer_relevancy **n=1** 0.3301 → `INSUFFICIENT_DATA`。**三条结论**：①17 条干净样本只有 5 条能用（其余是降级/无结论 → 采集端需加「必须产出真结论」过滤）②引用覆盖率 0 是因为这 17 条生成于改提示词之前 ③`answer_relevancy` 仅 1/5 测到 → **判官可靠性本身要查**（0.3788 因此可疑）。**A 口径已实测（A.69.1），并发现两个此前不知道的事实**：新增 `scripts/audit/p44_faithfulness_caliber_a.py`（复用官方断言/NLI prompt；断言分 knowledge/image/advice 三桶；同时给原口径与 A 口径）。同批 40 条两次对照：①**auto（官方英文 prompt）**：原口径 **0.1021**、分桶 knowledge 94.9%/image 4.4% → A 口径 0.1046；②**zh（强制中文断言）**：原口径 **0.1993**、分桶 **image 90.9%**/knowledge **5.8%** → A 口径 **0.0175（仅 19/40 条有知识断言）**。结论：**(a) 判官会把中文结论拆成英文断言**，再对中文资料做 NLI → 跨语言大面积判不支持，**强制中文后分数约翻倍（0.1021→0.1993）**，即 **0.0906 有一半是语言错配**；**(b) A 口径假设成立**（影像所见占 90.9%），但**不能单独当门控**（21/40 条无知识断言、余下 46 条 n 太小）；**(c) 建议改双指标**：知识断言覆盖率（现 47.5%）+ 知识断言支持率（现 4.4%，需扩到 ≥100 条有断言的样本）。**待拍板**：是否把「断言必须与答案同语言」并入正式 faithfulness 口径（不改变指标定义、只除跨语言错配），以及是否采用双指标替代单一门限。附带修掉自己的 bug：context 是列表未 join → 首跑全线判 0（0.0304 对不上 0.0906），已修并加守卫。**【A.69.2 第三层原因：系统派生字段】** 新增 `scripts/audit/p45_unsupported_review.py` 出人工核对表 `tests/reports/faithfulness_review_20261020.md`（19 条样本 / 38 条断言；自动分流 COVERAGE_GAP 7、AMBIGUOUS 30、JUDGE_STRICT 1）。**打开表第一屏发现：38 条里 12 条是系统派生字段**（`分级=TR1`/`总分=0`/`置信度=0.0`）—— 它们由系统算出、本就不可能出现在资料里，而仓库早有 `derived_stripped`（口径 C）专剥这些、**当前默认却是 raw**。故「忠实度低」有三层原因：①派生字段混入（剥掉即可）②影像所见占九成断言（A 口径处理但样本小）③跨语言错配（已修）。**未完成**：`p44` 已接 `--answer-mode`，但 `derived_stripped` 对照因**服务器 22 端口不可达**未跑成，数字待补（不得把 0.1993 当作剥完派生字段后的值）。**【补跑完成】** 口径 C（剥派生字段）+ 中文断言：原口径 **0.1645**、A 口径 **0.1157（31/40 条有知识断言）**、knowledge 占比 18.9%／支持率 13.9%；对比 raw+zh 的 0.1993／0.0175 → **剥派生字段使 A 口径升 6.6 倍**，但整体原口径微降（因影像所见占 76~91%、支持率仅 17%，属**结构性上限**）。口径 C 下 60 条「不支持」分布：COVERAGE_GAP 24（40%）、AMBIGUOUS 33（55%）、JUDGE_STRICT 3（5%）→ **判官不是主因**，主要矛盾是资料没覆盖与推理型断言。**建议（待 00 号拍板）**：faithfulness 降为诊断指标（固定 derived_stripped + 中文断言 + 只算知识断言），主指标改用**引用覆盖率／引用正确率**（每条结论句带来源段号并可审计）。核对表：`tests/reports/faithfulness_review_20261020.md`。**【A.70.1 警告：上述数字建立在脏样本上】** 后续核查发现该评测集 **98.7%（155/169）的结论是提示词模板回显**（见 `a70-prompt-echo-defect`）→ 本条的 0.0906 / 0.1021 / 0.1993 / 0.1645 等数字**只反映「抄示例」的行为，不代表临床推理能力**；修好生成侧并重建干净样本后必须重测；A.106 状态改为 blocked：一套写死口径与 p52 报告已交付，剩余「是否切 --judge-mode gate」由 19 号门限口径拍板（外部决策）",
       "dependencies": [
-        "faithfulness-gate"
+        "faithfulness-gate",
+        "eval-dataset-rebuild"
       ],
       "evidence": "21 号「批 9（A.67）」；16 号 A.63/A.64/A.65/A.66；scripts/langfuse/eval_gate.py；scripts/t1_eval_faithfulness.py；16 号 A.62.14 / A.63.2"
     },
