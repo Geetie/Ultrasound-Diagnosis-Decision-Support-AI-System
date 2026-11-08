@@ -108,3 +108,52 @@ def test_gate_errors_when_no_text_extracted(tmp_path):
     p.write_text('{"foo": "bar"}', encoding="utf-8")
     report = _mod.run_gate(p, None)
     assert report["verdict"] == "ERROR"
+
+
+# ---------------------------------------------------------------------------
+# A.171：按数据集类型区分影像术语覆盖率判据
+# ---------------------------------------------------------------------------
+
+
+def test_retrieval_kind_requires_min_coverage():
+    """检索集：术语覆盖率**低于** 50% 才报警（查询该像医生写的）。"""
+    check = _mod._coverage_check("retrieval", 0.30)
+    assert check["passed"] is False
+    assert _mod._coverage_check("retrieval", 0.62)["passed"] is True
+
+
+def test_plain_language_kind_is_reversed():
+    """患者解释：术语覆盖率**高于** 40% 才报警（好解释该通俗）。"""
+    # B3 黄金集实测覆盖率 0.22 —— 对患者解释来说这是**好**的
+    assert _mod._coverage_check("plain_language", 0.22)["passed"] is True
+    # 太专业的解释应当被判不合格
+    assert _mod._coverage_check("plain_language", 0.75)["passed"] is False
+
+
+def test_skip_kind_returns_none():
+    """skip 类型不做判定（不能算通过也不能算失败）。"""
+    assert _mod._coverage_check("skip", 0.0)["passed"] is None
+
+
+def test_same_coverage_flips_verdict_by_kind():
+    """同一份数据的同一个覆盖率，在不同类型下结论相反 —— 这是本修复的意义。"""
+    cov = 0.22
+    assert _mod._coverage_check("retrieval", cov)["passed"] is False
+    assert _mod._coverage_check("plain_language", cov)["passed"] is True
+
+
+def test_gate_on_plain_language_dataset_passes(tmp_path):
+    """端到端：一份通俗、无重复、无矛盾的解释集应整体 PASS。"""
+    p = tmp_path / "pe.jsonl"
+    lines = [
+        '{"text": "您这次发现一个 8 毫米的小结节，多数是良性的。建议您半年后复查一次。"}',
+        '{"text": "您这个结节形态规则、边界清楚，一般来说问题不大，一年查一次就行。"}',
+        '{"text": "肝脏上看到一个小水泡，是良性的，不用处理，明年体检再看看即可。"}',
+        '{"text": "心脏泵血功能正常，平时注意休息就好，有不舒服随时来。"}',
+        '{"text": "这个结果整体是好的，您放宽心，按常规体检节奏复查即可。"}',
+    ]
+    p.write_text("\n".join(lines), encoding="utf-8")
+    report = _mod.run_gate(p, "text", kind="plain_language")
+    assert report["verdict"] == "PASS", [
+        c for c in report["checks"] if c["passed"] is False
+    ]

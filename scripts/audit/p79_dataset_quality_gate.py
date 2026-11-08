@@ -76,6 +76,21 @@ THRESHOLDS = {
     "self_contradiction_count": 0,
 }
 
+#: 数据集类型 → 影像术语覆盖率的处理方式。
+#:
+#: **为什么需要按类型区分**（2026-11-08 实测）：B3 患者解释可读性黄金集
+#: 覆盖率只有 0.22，被判 FAIL。但那是**口径不适用**而非缺陷——
+#: 该指标是为「检索集/临床文本集」设计的（要求查询像医生写的影像描述）；
+#: 而患者解释按定义就该**少用**专业术语（好解释的特征恰恰是通俗）。
+#: 覆盖率越高，说明这份解释越不像给病人看的。
+#:
+#: 三种类型：
+#:   ``retrieval``（默认）：要求 ≥50%，查询应像医生写的；
+#:   ``plain_language``：**反向**判据——覆盖率 > 40% 才报警（话说得太专业了）；
+#:   ``skip``：不判（如纯标注清单类数据集）。
+DATASET_KINDS = ("retrieval", "plain_language", "skip")
+PLAIN_LANGUAGE_MAX_COVERAGE = 0.40
+
 TEMPLATE_PREFIX_LEN = 18
 TEMPLATE_MIN_GROUP = 3
 
@@ -159,7 +174,43 @@ def check_contradictions(texts: list[str]) -> list[dict]:
     return found
 
 
-def run_gate(path: pathlib.Path, field: str | None) -> dict:
+def _coverage_check(kind: str, coverage: float) -> dict:
+    """按数据集类型给出影像术语覆盖率的判据（见 DATASET_KINDS 说明）。"""
+    if kind == "plain_language":
+        # 反向：通俗表达里术语越多越糟
+        return {
+            "name": "imaging_term_coverage",
+            "value": round(coverage, 4),
+            "threshold": PLAIN_LANGUAGE_MAX_COVERAGE,
+            "passed": coverage <= PLAIN_LANGUAGE_MAX_COVERAGE,
+            "kind": "plain_language(反向)",
+            "why": (
+                "患者解释按定义就该**少用**专业术语，好解释的特征是通俗。"
+                "覆盖率高于 40% 说明这段话太专业、不像给病人看的。"
+            ),
+        }
+    if kind == "skip":
+        return {
+            "name": "imaging_term_coverage",
+            "value": round(coverage, 4),
+            "passed": None,
+            "kind": "skip",
+            "why": "该数据集类型不适用此项判据",
+        }
+    return {
+        "name": "imaging_term_coverage",
+        "value": round(coverage, 4),
+        "threshold": THRESHOLDS["imaging_term_coverage"],
+        "passed": coverage >= THRESHOLDS["imaging_term_coverage"],
+        "kind": "retrieval",
+        "why": (
+            "业务是超声影像辅助诊断，不含影像术语的 query 测不出本系统能力"
+            "（kb_qa_golden_v1 教训：仅 11.8%）"
+        ),
+    }
+
+
+def run_gate(path: pathlib.Path, field: str | None, kind: str = "retrieval") -> dict:
     """跑完整闸门，返回报告 dict。"""
     texts, bad_lines = load_texts(path, field)
     if not texts:
@@ -193,13 +244,7 @@ def run_gate(path: pathlib.Path, field: str | None) -> dict:
             "samples": tmpl_top,
             "why": "模板拼装会让模型答得更好看，但测不出真实能力（double_engine_eval_set 教训：86% 来自 3 个模板）",
         },
-        {
-            "name": "imaging_term_coverage",
-            "value": round(img_cov, 4),
-            "threshold": THRESHOLDS["imaging_term_coverage"],
-            "passed": img_cov >= THRESHOLDS["imaging_term_coverage"],
-            "why": "业务是超声影像辅助诊断，不含影像术语的 query 测不出本系统能力（kb_qa_golden_v1 教训：仅 11.8%）",
-        },
+        _coverage_check(kind, img_cov),
         {
             "name": "self_contradiction_count",
             "value": len(contradictions),
@@ -226,6 +271,10 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--dataset", required=True, help="数据集文件路径")
     ap.add_argument("--field", default=None, help="文本字段名（自动探测失败时指定）")
     ap.add_argument("--report", default=None, help="报告输出路径（可选）")
+    ap.add_argument(
+        "--kind", choices=DATASET_KINDS, default="retrieval",
+        help="数据集类型：retrieval(默认) / plain_language(反向判据) / skip",
+    )
     args = ap.parse_args(argv)
 
     path = pathlib.Path(args.dataset).expanduser()
@@ -233,7 +282,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"文件不存在: {path}", file=sys.stderr)
         return 2
 
-    report = run_gate(path, args.field)
+    report = run_gate(path, args.field, kind=args.kind)
     print(json.dumps(report, ensure_ascii=False, indent=2))
 
     if args.report:

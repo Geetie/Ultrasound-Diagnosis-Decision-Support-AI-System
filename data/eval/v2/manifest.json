@@ -1,58 +1,140 @@
 {
-  "dataset_id": "v2-patient-explanation-readability-golden",
-  "version": "1.0.0",
-  "created_at": "2026-11-08T15:05:00+08:00",
-  "purpose": "验证 app/knowledge/explanation_readability.py 的 9 项 CDC 自动检查准不准（人工标「这段解释能不能直接发给病人」）",
-  "organ": ["thyroid", "liver", "cardiac", "breast", "gallbladder"],
-  "n_items": 50,
-
-  "provenance": {
-    "source": "synthesized",
-    "public_datasets": [],
-    "internal_source": "无。全部为本次会话手写，未取自生产判读，不含任何患者数据",
-    "synthesis_method": "无模板、无脚本生成。50 条逐条手写，每条先想清「我自己愿不愿意听医生这么说」再落笔；脚本仅用于事后校验（质量闸 + 喂检查器统计混淆矩阵）",
-    "annotators": ["会话 Agent（按 CDC Clear Communication Index + 中文健康科普四原则判定，非医生）"],
-    "annotation_protocol": "单人标注。判据仅为「读得懂 / 不吓人 / 说清下一步」，不涉及医学正确性。expected_codes 记的是「人工判断该报出哪些检查项」，不是「检查器实际报出了什么」"
-  },
-
-  "quality_checks": {
-    "duplicate_rate": 0.0,
-    "template_pollution_rate": 0.0,
-    "imaging_term_coverage": 0.22,
-    "self_contradiction_count": 0,
-    "human_reviewed_ratio": 1.0
-  },
-
-  "quality_gate_note": "p79 质量闸的 imaging_term_coverage=0.22 < 0.5 未过。这是**口径不适用**而非缺陷：该阈值是为检索集/临床文本集设计的（要求查询像医生写的影像描述）。本集测的是患者解释可读性，好解释按定义就该少用影像术语——覆盖率越高反而越差。另三项（重复率 0 / 模板污染 0 / 自相矛盾 0）全过，且这三项才是本集真的怕的东西。**未修改阈值**，在此如实登记。",
-
-  "valid_for": [
-    "患者解释可读性检查的准度（准确率/精确率/召回率/特异度）",
-    "发现 explanation_readability 的误报与漏报模式",
-    "规则改动前后的回归对比（同一份 gold，改规则再跑）"
-  ],
-  "NOT_valid_for": [
-    "医学正确性（本集不判断内容对不对，只判断话说得清不清楚）",
-    "生产分布代表性（样本是为覆盖边界刻意设计的，pass/fail 比例不等于线上分布）",
-    "作为医生背书（标注者为 Agent，非临床医生；用于验证规则不用于承担责任）",
-    "跨科室泛化（术语表只覆盖甲状腺/肝胆/心脏/乳腺少数词）"
-  ],
-  "known_limitations": [
-    "标注者不是医生：可读性判断在原则上不需要医学知识，但个别条目的「该不该报某项」仍有主观成分",
-    "样本刻意偏向难例（10/50 条是『我认为检查器会判错』的构造样本），因此绝对准确率不可外推为线上表现",
-    "单条 expected_codes 存在多解：同一段坏解释可以有多种合理拆解，本集只记「至少该报出的」，统计时按 per-code 精确匹配算",
-    "仅中文、仅超声场景"
-  ],
-
-  "metrics_produced": [
-    {"metric": "checker_accuracy", "value": 0.64, "measured_at": "2026-11-08T15:05:00+08:00", "n": 50,
-     "note": "baseline（未改代码）。TP=23 FP=17 TN=9 FN=1"},
-    {"metric": "checker_precision", "value": 0.575, "measured_at": "2026-11-08T15:05:00+08:00", "n": 50},
-    {"metric": "checker_recall", "value": 0.9583, "measured_at": "2026-11-08T15:05:00+08:00", "n": 50},
-    {"metric": "checker_specificity", "value": 0.3462, "measured_at": "2026-11-08T15:05:00+08:00", "n": 50},
-    {"metric": "checker_accuracy_after_candidate_patch", "value": 0.92, "measured_at": "2026-11-08T15:05:00+08:00", "n": 50,
-     "note": "离线仿真的候选补丁（未落生产代码）。既有单测 10/10 仍通过"}
-  ],
-
-  "maintainer": "lead",
-  "supersedes": []
+  "datasets": [
+    {
+      "dataset_id": "v2-zh-retrieval-thyroid-liver-cardiac",
+      "version": "1.0.0",
+      "created_at": "2026-11-08T15:00:00+08:00",
+      "purpose": "中文检索评测：医生视角查询 → chunk 级 gold（测试知识检索能力）",
+      "organ": [
+        "thyroid",
+        "liver",
+        "cardiac"
+      ],
+      "n_items": 120,
+      "provenance": {
+        "source": "internal",
+        "public_datasets": [],
+        "internal_source": "知识库文档（KB chunks），逐条实读原文后标注 gold",
+        "synthesis_method": "无模板、无脚本生成。120 条逐条手写，每条含独立临床推理；脚本仅用于校验（质量闸 + gold 原文比对 + 近似重复检测）",
+        "annotators": [
+          "会话 Agent"
+        ],
+        "annotation_protocol": "gold 标到 doc_id#chunk_index；152 条引用全部逐字命中 chunk 原文；近似重复对（difflib≥0.72）为 0"
+      },
+      "quality_checks": {
+        "duplicate_rate": 0.0,
+        "template_pollution_rate": 0.0,
+        "imaging_term_coverage": 0.5167,
+        "self_contradiction_count": 0,
+        "human_reviewed_ratio": 1.0
+      },
+      "quality_gate_kind": "retrieval",
+      "valid_for": [
+        "检索 hit@k",
+        "检索 MRR",
+        "检索 NDCG",
+        "答案可答性判定"
+      ],
+      "NOT_valid_for": [
+        "分级准确率（无临床金标准）",
+        "漏诊率（无随访）"
+      ],
+      "known_limitations": [
+        "影像术语覆盖率 51.67% 仅勉强过线——因 IMAGING_TERMS 词表缺心脏词（心脏 36 条覆盖率算 0/36）",
+        "心脏科覆盖偏窄：36 条几乎全在瓣膜病，心肌病/先心病/负荷超声未覆盖（语料里没有）",
+        "5 条 answerable:false 反映知识库真实缺口（LI-RADS 全套、LVEF 分级表）"
+      ],
+      "maintainer": "lead",
+      "supersedes": [
+        "kb_qa_golden_v1",
+        "kb_golden_v1（均已作废，见 A.166）"
+      ]
+    },
+    {
+      "dataset_id": "v2-patient-explanation-readability-golden",
+      "version": "1.0.0",
+      "created_at": "2026-11-08T15:05:00+08:00",
+      "purpose": "验证 app/knowledge/explanation_readability.py 的 9 项 CDC 自动检查准不准（人工标「这段解释能不能直接发给病人」）",
+      "organ": [
+        "thyroid",
+        "liver",
+        "cardiac",
+        "breast",
+        "gallbladder"
+      ],
+      "n_items": 50,
+      "provenance": {
+        "source": "synthesized",
+        "public_datasets": [],
+        "internal_source": "无。全部为本次会话手写，未取自生产判读，不含任何患者数据",
+        "synthesis_method": "无模板、无脚本生成。50 条逐条手写，每条先想清「我自己愿不愿意听医生这么说」再落笔；脚本仅用于事后校验（质量闸 + 喂检查器统计混淆矩阵）",
+        "annotators": [
+          "会话 Agent（按 CDC Clear Communication Index + 中文健康科普四原则判定，非医生）"
+        ],
+        "annotation_protocol": "单人标注。判据仅为「读得懂 / 不吓人 / 说清下一步」，不涉及医学正确性。expected_codes 记的是「人工判断该报出哪些检查项」，不是「检查器实际报出了什么」"
+      },
+      "quality_checks": {
+        "duplicate_rate": 0.0,
+        "template_pollution_rate": 0.0,
+        "imaging_term_coverage": 0.22,
+        "self_contradiction_count": 0,
+        "human_reviewed_ratio": 1.0
+      },
+      "quality_gate_note": "p79 质量闸的 imaging_term_coverage=0.22 < 0.5 未过。这是**口径不适用**而非缺陷：该阈值是为检索集/临床文本集设计的（要求查询像医生写的影像描述）。本集测的是患者解释可读性，好解释按定义就该少用影像术语——覆盖率越高反而越差。另三项（重复率 0 / 模板污染 0 / 自相矛盾 0）全过，且这三项才是本集真的怕的东西。**未修改阈值**，在此如实登记。",
+      "valid_for": [
+        "患者解释可读性检查的准度（准确率/精确率/召回率/特异度）",
+        "发现 explanation_readability 的误报与漏报模式",
+        "规则改动前后的回归对比（同一份 gold，改规则再跑）"
+      ],
+      "NOT_valid_for": [
+        "医学正确性（本集不判断内容对不对，只判断话说得清不清楚）",
+        "生产分布代表性（样本是为覆盖边界刻意设计的，pass/fail 比例不等于线上分布）",
+        "作为医生背书（标注者为 Agent，非临床医生；用于验证规则不用于承担责任）",
+        "跨科室泛化（术语表只覆盖甲状腺/肝胆/心脏/乳腺少数词）"
+      ],
+      "known_limitations": [
+        "标注者不是医生：可读性判断在原则上不需要医学知识，但个别条目的「该不该报某项」仍有主观成分",
+        "样本刻意偏向难例（10/50 条是『我认为检查器会判错』的构造样本），因此绝对准确率不可外推为线上表现",
+        "单条 expected_codes 存在多解：同一段坏解释可以有多种合理拆解，本集只记「至少该报出的」，统计时按 per-code 精确匹配算",
+        "仅中文、仅超声场景"
+      ],
+      "metrics_produced": [
+        {
+          "metric": "checker_accuracy",
+          "value": 0.64,
+          "measured_at": "2026-11-08T15:05:00+08:00",
+          "n": 50,
+          "note": "baseline（未改代码）。TP=23 FP=17 TN=9 FN=1"
+        },
+        {
+          "metric": "checker_precision",
+          "value": 0.575,
+          "measured_at": "2026-11-08T15:05:00+08:00",
+          "n": 50
+        },
+        {
+          "metric": "checker_recall",
+          "value": 0.9583,
+          "measured_at": "2026-11-08T15:05:00+08:00",
+          "n": 50
+        },
+        {
+          "metric": "checker_specificity",
+          "value": 0.3462,
+          "measured_at": "2026-11-08T15:05:00+08:00",
+          "n": 50
+        },
+        {
+          "metric": "checker_accuracy_after_candidate_patch",
+          "value": 0.92,
+          "measured_at": "2026-11-08T15:05:00+08:00",
+          "n": 50,
+          "note": "离线仿真的候选补丁（未落生产代码）。既有单测 10/10 仍通过"
+        }
+      ],
+      "maintainer": "lead",
+      "supersedes": [],
+      "quality_gate_kind": "plain_language"
+    }
+  ]
 }
