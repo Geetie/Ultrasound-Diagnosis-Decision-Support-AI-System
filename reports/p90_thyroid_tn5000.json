@@ -1,0 +1,41 @@
+{
+  "probe": "p90_thyroid_public_eval",
+  "generated_at": "2026-11-08 16:40:38",
+  "subsets": {
+    "tn5000": {
+      "subset": "tn5000",
+      "status": "ok",
+      "scope": "public_dataset_holdout_lower_bound",
+      "scope_note": "TN5000 为公开集（CC BY 4.0），标签来自 FNA 活检与病理。无患者 ID、与训练集是否重叠不可证 → 本数字是公开集泛化下界，不能当作注册申报级独立验证。恶性占比 71.5% 属人为富集，**患病率与派生指标不可外推**。",
+      "dataset": {
+        "name": "TN5000",
+        "zip": "/mnt/ee16/home/student03/uai/data/tn5000/TN5000_forReview.zip",
+        "n_evaluated": 5000,
+        "n_failed": 0,
+        "class_support": {
+          "benign": 1426,
+          "malignant": 3574
+        }
+      },
+      "metrics": {
+        "auc_malignant_vs_benign": 0.6303,
+        "auc_ci95": [
+          0.6138,
+          0.647
+        ],
+        "bootstrap_n": 2000,
+        "threshold": 0.5,
+        "tp": 3344,
+        "fp": 1198,
+        "fn": 230,
+        "tn": 228,
+        "precision": 0.7362,
+        "recall_sensitivity": 0.9356,
+        "specificity": 0.1599,
+        "f1": 0.8241,
+        "accuracy": 0.7144
+      },
+      "wall_s": 56.5
+    }
+  }
+}

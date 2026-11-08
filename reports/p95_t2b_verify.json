@@ -1,0 +1,67 @@
+{
+  "probe": "p95_t2b_verify_ckpt",
+  "generated_at": "2026-11-08 18:04:39",
+  "purpose": "独立复算 p92 报出的 test acc，用只做推理的脚本验证数字可信。必要性：p87 曾报 0.2099 但因标签错位是假数字。",
+  "ckpt": "/mnt/ee16/home/student03/uai/models/t2b_p92/full_lr3e6.pt",
+  "split": {
+    "seed": 42,
+    "n_train": 20207,
+    "n_test": 4511
+  },
+  "classes": [
+    "an ultrasound image showing the apical four chamber view of the heart",
+    "an ultrasound image showing the parasternal long axis view of the heart",
+    "an ultrasound image showing the parasternal short axis view at the mitral valve level",
+    "an ultrasound image showing the subcostal four chamber view of the heart",
+    "an ultrasound image without a standard cardiac view"
+  ],
+  "metrics": {
+    "test_accuracy": 0.9031,
+    "test_accuracy_ci95": [
+      0.8945,
+      0.9111
+    ],
+    "macro_f1": 0.9054,
+    "n_test": 4511,
+    "bootstrap_n": 1000
+  },
+  "confusion_matrix": [
+    [
+      933,
+      0,
+      0,
+      0,
+      91
+    ],
+    [
+      0,
+      585,
+      0,
+      0,
+      69
+    ],
+    [
+      2,
+      0,
+      907,
+      1,
+      67
+    ],
+    [
+      0,
+      0,
+      0,
+      918,
+      124
+    ],
+    [
+      12,
+      1,
+      21,
+      49,
+      731
+    ]
+  ],
+  "order_assertion": "PASS（抽特征强制 shuffle=False，且校验 order==range(n)）",
+  "wall_s": 85.7
+}

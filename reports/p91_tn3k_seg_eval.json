@@ -1,0 +1,51 @@
+{
+  "probe": "p91_tn3k_seg_eval",
+  "generated_at": "2026-11-08 16:44:21",
+  "scope": "public_dataset_holdout_lower_bound",
+  "scope_note": "TN3K 为公开集（许可口径见下载清单：HF 卡片 mit / 论文 CC BY-NC 3.0，取保守值仅评测）。按**官方划分** 2879 trainval / 614 test 评测，无抽样。无患者 ID、与训练集是否重叠不可证 → 公开集泛化下界。",
+  "dataset": {
+    "name": "TN3K",
+    "root": "/mnt/ee16/home/student03/uai/data/tn3k_dataset",
+    "n_test_pairs": 614,
+    "normalization": "resize 256x256 + /255（与训练严格一致）"
+  },
+  "checkpoint": "/mnt/ee16/home/student03/uai/models/nodule_seg/unet_tn3k.pt",
+  "device": "cpu",
+  "metrics": {
+    "dice_mean": 0.796,
+    "dice_std": 0.208,
+    "iou_mean": 0.7002,
+    "dice_mean_strict": 0.796,
+    "iou_mean_strict": 0.7002,
+    "dice_caliber_optimistic": "empty_both 记 1.0（原口径）",
+    "dice_caliber_strict": "剔除 empty_both（可辩护口径）",
+    "empty_mask_breakdown": {
+      "empty_both": 0,
+      "empty_pred": 0,
+      "empty_gt": 0,
+      "normal": 614
+    },
+    "n_evaluated": 614,
+    "dice_ci95": [
+      0.7782,
+      0.812
+    ],
+    "dice_strict_ci95": [
+      0.7782,
+      0.812
+    ],
+    "dice_p10_p50_p90": [
+      0.5178,
+      0.8791,
+      0.9539
+    ],
+    "iou_p10_p50_p90": [
+      0.3494,
+      0.7843,
+      0.9119
+    ],
+    "bootstrap_n": 2000
+  },
+  "caliber_note": "对外应引用 **dice_mean_strict**（剔除两边都空的情形）。dice_mean 是乐观口径（空对空记 1.0），仅供与历史数字对照。",
+  "wall_s": 7.3
+}
