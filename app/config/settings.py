@@ -467,7 +467,17 @@ class Settings(BaseSettings):
     # 能力状态见 `/api/v1/health` 的 `image_leg` 块（`ready` 会告诉你开关/集合/维度三者是否齐备）。
     rag_use_multimodal: bool = False
     rag_use_llm_enhancement: bool = False
-    rag_collection: str = 'knowledge_chunks'
+    # 向量集合名（2026-11-08 修：默认值曾是不存在的 `knowledge_chunks`）。
+    #
+    # **实测**（Qdrant 直查）：
+    #   GET /collections/knowledge_chunks            → **404（不存在）**
+    #   GET /collections/ultrasound_knowledge_chunks → 200
+    # 而 `.env` 里**没有** `RAG_COLLECTION` → 生产一直用默认值 → dense 腿查 404 集合。
+    #
+    # 由于 `_dense_search` 的异常被上层吞掉（检索退化为融合排序），
+    # 这个缺陷**不会报错、只会让 dense 腿恒空**，与中国知网"BM25 单独兜底"的
+    # 现象一致。改用 Qdrant 里实际存在的集合名。
+    rag_collection: str = 'ultrasound_knowledge_chunks'
     rag_image_collection: str = 'ultrasound_chunks'
 
     # === A.82 相似病例通道（影像向量的正确用法：独立输出，不进知识上下文）===
