@@ -1,0 +1,535 @@
+{
+  "probe": "p98_thyroid_stratified_5fold",
+  "generated_at": "2026-11-08 20:54:58",
+  "why": "单次 80/20 划分（p93: AUC 0.9122）在生物医学小数据上不可靠：ml-training-skill references/biomedical.md:420 要求 k-fold 5-10。TN5000 无患者 ID → 只能用 StratifiedKFold(5)，故本数字是**图像级划分的乐观估计**。",
+  "dataset": {
+    "name": "TN5000",
+    "zip": "/mnt/ee16/home/student03/uai/data/tn5000/TN5000_forReview.zip",
+    "n_images": 5000,
+    "class_support": {
+      "0": 1426,
+      "1": 3574
+    },
+    "folders": {
+      "VOC2007": 5000
+    }
+  },
+  "split_level": {
+    "unit": "image",
+    "patient_id_available": false,
+    "patient_level_split_possible": false,
+    "reason": "TN5000 每份 XML 仅有 folder/filename/source/owner/size/segmented/object，无任何患者标识（2026-11-08 实测）→ GroupKFold 无分组变量可用",
+    "risk": "同一患者/同一病灶的不同切面可能同时进 train 与 test → 指标偏乐观"
+  },
+  "protocol": {
+    "n_splits": 5,
+    "shuffle": true,
+    "random_state": 42,
+    "epochs": 6,
+    "lr": 1e-05,
+    "patience": 2,
+    "note": "配方与 p93 一致（类别锚点 CE + LR 探针 + 内层 val 早停），只是把单次划分换成 5 折"
+  },
+  "folds": [
+    {
+      "fold": 0,
+      "n_train": 4000,
+      "n_test": 1000,
+      "label_support_test": {
+        "0": 286,
+        "1": 714
+      },
+      "leakage_check": {
+        "stem_overlap": 0,
+        "path_overlap": 0,
+        "patient_id_available": false
+      },
+      "best_epoch": 2,
+      "inner_val_auc": 0.9272,
+      "history": [
+        {
+          "epoch": 1,
+          "loss": 0.4976,
+          "inner_val_auc": 0.9142
+        },
+        {
+          "epoch": 2,
+          "loss": 0.2965,
+          "inner_val_auc": 0.9272
+        },
+        {
+          "epoch": 3,
+          "loss": 0.1548,
+          "inner_val_auc": 0.9203
+        },
+        {
+          "epoch": 4,
+          "loss": 0.0902,
+          "inner_val_auc": 0.9236
+        }
+      ],
+      "wall_s": 141.8,
+      "frozen_probe": {
+        "auc": 0.787,
+        "threshold": 0.5,
+        "tp": 683,
+        "fp": 204,
+        "fn": 31,
+        "tn": 82,
+        "precision": 0.77,
+        "recall_sensitivity": 0.9566,
+        "specificity": 0.2867,
+        "f1": 0.8532,
+        "accuracy": 0.765
+      },
+      "zero_shot": {
+        "auc": 0.6336,
+        "threshold": 0.5,
+        "tp": 318,
+        "fp": 74,
+        "fn": 396,
+        "tn": 212,
+        "precision": 0.8112,
+        "recall_sensitivity": 0.4454,
+        "specificity": 0.7413,
+        "f1": 0.575,
+        "accuracy": 0.53
+      },
+      "finetuned_visual": {
+        "auc": 0.8845,
+        "threshold": 0.5,
+        "tp": 651,
+        "fp": 85,
+        "fn": 63,
+        "tn": 201,
+        "precision": 0.8845,
+        "recall_sensitivity": 0.9118,
+        "specificity": 0.7028,
+        "f1": 0.8979,
+        "accuracy": 0.852
+      }
+    },
+    {
+      "fold": 1,
+      "n_train": 4000,
+      "n_test": 1000,
+      "label_support_test": {
+        "0": 285,
+        "1": 715
+      },
+      "leakage_check": {
+        "stem_overlap": 0,
+        "path_overlap": 0,
+        "patient_id_available": false
+      },
+      "best_epoch": 2,
+      "inner_val_auc": 0.9299,
+      "history": [
+        {
+          "epoch": 1,
+          "loss": 0.4901,
+          "inner_val_auc": 0.9123
+        },
+        {
+          "epoch": 2,
+          "loss": 0.3096,
+          "inner_val_auc": 0.9299
+        },
+        {
+          "epoch": 3,
+          "loss": 0.1806,
+          "inner_val_auc": 0.9228
+        },
+        {
+          "epoch": 4,
+          "loss": 0.1032,
+          "inner_val_auc": 0.9149
+        }
+      ],
+      "wall_s": 170.4,
+      "frozen_probe": {
+        "auc": 0.7813,
+        "threshold": 0.5,
+        "tp": 684,
+        "fp": 201,
+        "fn": 31,
+        "tn": 84,
+        "precision": 0.7729,
+        "recall_sensitivity": 0.9566,
+        "specificity": 0.2947,
+        "f1": 0.855,
+        "accuracy": 0.768
+      },
+      "zero_shot": {
+        "auc": 0.6288,
+        "threshold": 0.5,
+        "tp": 337,
+        "fp": 82,
+        "fn": 378,
+        "tn": 203,
+        "precision": 0.8043,
+        "recall_sensitivity": 0.4713,
+        "specificity": 0.7123,
+        "f1": 0.5944,
+        "accuracy": 0.54
+      },
+      "finetuned_visual": {
+        "auc": 0.9033,
+        "threshold": 0.5,
+        "tp": 656,
+        "fp": 92,
+        "fn": 59,
+        "tn": 193,
+        "precision": 0.877,
+        "recall_sensitivity": 0.9175,
+        "specificity": 0.6772,
+        "f1": 0.8968,
+        "accuracy": 0.849
+      }
+    },
+    {
+      "fold": 2,
+      "n_train": 4000,
+      "n_test": 1000,
+      "label_support_test": {
+        "0": 285,
+        "1": 715
+      },
+      "leakage_check": {
+        "stem_overlap": 0,
+        "path_overlap": 0,
+        "patient_id_available": false
+      },
+      "best_epoch": 5,
+      "inner_val_auc": 0.89,
+      "history": [
+        {
+          "epoch": 1,
+          "loss": 0.5207,
+          "inner_val_auc": 0.8602
+        },
+        {
+          "epoch": 2,
+          "loss": 0.3185,
+          "inner_val_auc": 0.8869
+        },
+        {
+          "epoch": 3,
+          "loss": 0.1871,
+          "inner_val_auc": 0.888
+        },
+        {
+          "epoch": 4,
+          "loss": 0.1104,
+          "inner_val_auc": 0.8897
+        },
+        {
+          "epoch": 5,
+          "loss": 0.0765,
+          "inner_val_auc": 0.89
+        },
+        {
+          "epoch": 6,
+          "loss": 0.0597,
+          "inner_val_auc": 0.8798
+        }
+      ],
+      "wall_s": 247.2,
+      "frozen_probe": {
+        "auc": 0.814,
+        "threshold": 0.5,
+        "tp": 697,
+        "fp": 200,
+        "fn": 18,
+        "tn": 85,
+        "precision": 0.777,
+        "recall_sensitivity": 0.9748,
+        "specificity": 0.2982,
+        "f1": 0.8648,
+        "accuracy": 0.782
+      },
+      "zero_shot": {
+        "auc": 0.641,
+        "threshold": 0.5,
+        "tp": 354,
+        "fp": 83,
+        "fn": 361,
+        "tn": 202,
+        "precision": 0.8101,
+        "recall_sensitivity": 0.4951,
+        "specificity": 0.7088,
+        "f1": 0.6146,
+        "accuracy": 0.556
+      },
+      "finetuned_visual": {
+        "auc": 0.9095,
+        "threshold": 0.5,
+        "tp": 657,
+        "fp": 87,
+        "fn": 58,
+        "tn": 198,
+        "precision": 0.8831,
+        "recall_sensitivity": 0.9189,
+        "specificity": 0.6947,
+        "f1": 0.9006,
+        "accuracy": 0.855
+      }
+    },
+    {
+      "fold": 3,
+      "n_train": 4000,
+      "n_test": 1000,
+      "label_support_test": {
+        "0": 285,
+        "1": 715
+      },
+      "leakage_check": {
+        "stem_overlap": 0,
+        "path_overlap": 0,
+        "patient_id_available": false
+      },
+      "best_epoch": 4,
+      "inner_val_auc": 0.919,
+      "history": [
+        {
+          "epoch": 1,
+          "loss": 0.4969,
+          "inner_val_auc": 0.9022
+        },
+        {
+          "epoch": 2,
+          "loss": 0.3012,
+          "inner_val_auc": 0.9186
+        },
+        {
+          "epoch": 3,
+          "loss": 0.1765,
+          "inner_val_auc": 0.9104
+        },
+        {
+          "epoch": 4,
+          "loss": 0.1039,
+          "inner_val_auc": 0.919
+        },
+        {
+          "epoch": 5,
+          "loss": 0.0689,
+          "inner_val_auc": 0.9179
+        },
+        {
+          "epoch": 6,
+          "loss": 0.057,
+          "inner_val_auc": 0.9179
+        }
+      ],
+      "wall_s": 196.1,
+      "frozen_probe": {
+        "auc": 0.7897,
+        "threshold": 0.5,
+        "tp": 686,
+        "fp": 205,
+        "fn": 29,
+        "tn": 80,
+        "precision": 0.7699,
+        "recall_sensitivity": 0.9594,
+        "specificity": 0.2807,
+        "f1": 0.8543,
+        "accuracy": 0.766
+      },
+      "zero_shot": {
+        "auc": 0.6003,
+        "threshold": 0.5,
+        "tp": 319,
+        "fp": 87,
+        "fn": 396,
+        "tn": 198,
+        "precision": 0.7857,
+        "recall_sensitivity": 0.4462,
+        "specificity": 0.6947,
+        "f1": 0.5691,
+        "accuracy": 0.517
+      },
+      "finetuned_visual": {
+        "auc": 0.9077,
+        "threshold": 0.5,
+        "tp": 643,
+        "fp": 76,
+        "fn": 72,
+        "tn": 209,
+        "precision": 0.8943,
+        "recall_sensitivity": 0.8993,
+        "specificity": 0.7333,
+        "f1": 0.8968,
+        "accuracy": 0.852
+      }
+    },
+    {
+      "fold": 4,
+      "n_train": 4000,
+      "n_test": 1000,
+      "label_support_test": {
+        "0": 285,
+        "1": 715
+      },
+      "leakage_check": {
+        "stem_overlap": 0,
+        "path_overlap": 0,
+        "patient_id_available": false
+      },
+      "best_epoch": 4,
+      "inner_val_auc": 0.8979,
+      "history": [
+        {
+          "epoch": 1,
+          "loss": 0.5016,
+          "inner_val_auc": 0.8825
+        },
+        {
+          "epoch": 2,
+          "loss": 0.3086,
+          "inner_val_auc": 0.8952
+        },
+        {
+          "epoch": 3,
+          "loss": 0.1654,
+          "inner_val_auc": 0.8973
+        },
+        {
+          "epoch": 4,
+          "loss": 0.0913,
+          "inner_val_auc": 0.8979
+        },
+        {
+          "epoch": 5,
+          "loss": 0.0634,
+          "inner_val_auc": 0.8901
+        },
+        {
+          "epoch": 6,
+          "loss": 0.057,
+          "inner_val_auc": 0.8897
+        }
+      ],
+      "wall_s": 175.3,
+      "frozen_probe": {
+        "auc": 0.8233,
+        "threshold": 0.5,
+        "tp": 690,
+        "fp": 191,
+        "fn": 25,
+        "tn": 94,
+        "precision": 0.7832,
+        "recall_sensitivity": 0.965,
+        "specificity": 0.3298,
+        "f1": 0.8647,
+        "accuracy": 0.784
+      },
+      "zero_shot": {
+        "auc": 0.6458,
+        "threshold": 0.5,
+        "tp": 324,
+        "fp": 72,
+        "fn": 391,
+        "tn": 213,
+        "precision": 0.8182,
+        "recall_sensitivity": 0.4531,
+        "specificity": 0.7474,
+        "f1": 0.5833,
+        "accuracy": 0.537
+      },
+      "finetuned_visual": {
+        "auc": 0.9135,
+        "threshold": 0.5,
+        "tp": 638,
+        "fp": 62,
+        "fn": 77,
+        "tn": 223,
+        "precision": 0.9114,
+        "recall_sensitivity": 0.8923,
+        "specificity": 0.7825,
+        "f1": 0.9018,
+        "accuracy": 0.861
+      }
+    }
+  ],
+  "summary_5fold": {
+    "frozen_probe": {
+      "mean": 0.7991,
+      "std": 0.0165,
+      "min": 0.7813,
+      "max": 0.8233,
+      "n": 5,
+      "values": [
+        0.787,
+        0.7813,
+        0.814,
+        0.7897,
+        0.8233
+      ]
+    },
+    "zero_shot": {
+      "mean": 0.6299,
+      "std": 0.0159,
+      "min": 0.6003,
+      "max": 0.6458,
+      "n": 5,
+      "values": [
+        0.6336,
+        0.6288,
+        0.641,
+        0.6003,
+        0.6458
+      ]
+    },
+    "finetuned_visual": {
+      "mean": 0.9037,
+      "std": 0.0101,
+      "min": 0.8845,
+      "max": 0.9135,
+      "n": 5,
+      "values": [
+        0.8845,
+        0.9033,
+        0.9095,
+        0.9077,
+        0.9135
+      ]
+    }
+  },
+  "pooled_oof": {
+    "frozen_probe": {
+      "n": 5000,
+      "auc": 0.7991,
+      "auc_ci95": [
+        0.7853,
+        0.8125
+      ]
+    },
+    "zero_shot": {
+      "n": 5000,
+      "auc": 0.6298,
+      "auc_ci95": [
+        0.6138,
+        0.6471
+      ]
+    },
+    "finetuned_visual": {
+      "n": 5000,
+      "auc": 0.9029,
+      "auc_ci95": [
+        0.893,
+        0.912
+      ]
+    }
+  },
+  "stratified_by_folder": {
+    "note": "TN5000 的 XML `folder` 只有 1 个取值（'VOC2007'），无法按来源分层；TN5000 亦无器官以外的分层字段。按器官分层在此不适用（TN5000 全是甲状腺）。"
+  },
+  "comparison": {
+    "p93_single_split_80_20_auc": 0.9122,
+    "p90_production_t2a_tn5000_auc": 0.6303,
+    "note": "p93 的单次 0.9122 与本脚本 5 折均值的关系见 summary_5fold；若 5 折均值明显低且 std 大，说明单次结果偏乐观/不稳定。"
+  },
+  "split_level_disclaimer": "⚠️ **图像级划分（StratifiedKFold），不是患者级**：TN5000 无患者 ID，同一患者的多张图会跨折 → 本 AUC **偏乐观**，不能当作注册申报级独立验证。恶性占比 71.5% 属人为富集，患病率与派生指标不可外推。",
+  "wall_s": 955.0
+}

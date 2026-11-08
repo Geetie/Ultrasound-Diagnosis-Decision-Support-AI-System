@@ -72,7 +72,7 @@ def ndcg_at_k(ranking: list[str], gold: set[str], k: int = 10) -> float:
 
 # --------------------------------------------------------------------- 数据
 async def load_corpus(kb_version: str | None) -> list[dict]:
-    """读 knowledge_chunks（chunk_id + content + embedding_bge 可选）。"""
+    """读 knowledge_chunks（chunk_id + organ + content + embedding_bge 可选）。"""
     import asyncpg
 
     from app.config.settings import settings
@@ -82,18 +82,18 @@ async def load_corpus(kb_version: str | None) -> list[dict]:
     try:
         if kb_version:
             rows = await conn.fetch(
-                "SELECT chunk_id, source_doc_id, content FROM knowledge_chunks "
+                "SELECT chunk_id, source_doc_id, organ, content FROM knowledge_chunks "
                 "WHERE kb_version = $1",
                 kb_version,
             )
         else:
             # 不指定版本则取全量（多版本并存时每个 chunk 都算候选）
             rows = await conn.fetch(
-                "SELECT chunk_id, source_doc_id, content FROM knowledge_chunks"
+                "SELECT chunk_id, source_doc_id, organ, content FROM knowledge_chunks"
             )
         return [
             {"chunk_id": r["chunk_id"], "source_doc_id": r["source_doc_id"],
-             "text": r["content"]}
+             "organ": r["organ"], "text": r["content"]}
             for r in rows
         ]
     finally:
@@ -173,6 +173,14 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--kb-version", default=None, help="限定 kb_version；默认全量")
     ap.add_argument("--top-k", type=int, default=10)
     ap.add_argument("--report", default="reports/p94_b2_retrieval.json")
+    # 3.5：与生产对齐。生产 `Retriever._dense_search` 带 `filter={"organ": ...}`，
+    # 而本脚本历史口径是**跨器官混检**——两者 hit@k 不可直接比。
+    # 默认 off 保持既有基线（0.5739 / 0.8087 / 0.8696）逐位可复现；
+    # 需要生产口径时显式加 `--organ-filter`。
+    # 注：这不是"默认与生产对齐"，而是"默认与历史基线对齐"——改默认值会让
+    # 所有历史数字失去可比性，故用开关显式切换。
+    ap.add_argument("--organ-filter", action="store_true",
+                    help="按查询的 organ 过滤语料（生产口径；默认跨器官混检）")
     args = ap.parse_args(argv)
 
     ds = Path(args.dataset)
@@ -188,7 +196,22 @@ def main(argv: list[str] | None = None) -> int:
     t0 = time.monotonic()
     q_vecs = embed([r["query"] for r in answerable])
     c_vecs = embed([c["text"] for c in corpus])
-    rankings = cosine_topk(q_vecs, c_vecs, k=args.top_k)
+    if args.organ_filter:
+        # 逐条按该 query 的 organ 只在子集里检索（与生产 _dense_search 的
+        # filter={"organ": ...} 同口径）。
+        rankings = []
+        for r, qv in zip(answerable, q_vecs):
+            organ = r.get("organ")
+            allowed = [i for i, c in enumerate(corpus) if c.get("organ") == organ]
+            if not allowed:
+                rankings.append([])
+                continue
+            rankings.append(cosine_topk([qv], [c_vecs[i] for i in allowed],
+                                        k=args.top_k)[0])
+            # 把子集下标映射回全量下标
+            rankings[-1] = [(allowed[i], s) for i, s in rankings[-1]]
+    else:
+        rankings = cosine_topk(q_vecs, c_vecs, k=args.top_k)
     print(f"嵌入+检索 {time.monotonic()-t0:.1f}s", flush=True)
 
     # 逐条算指标

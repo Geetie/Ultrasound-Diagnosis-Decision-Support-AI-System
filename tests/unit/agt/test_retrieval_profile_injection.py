@@ -129,12 +129,12 @@ class TestProfileRoundTrip:
     def test_from_retrieval_kwargs_subset(self):
         kwargs = RetrievalProfile.full().as_retrieval_kwargs()
         restored = RetrievalProfile.from_dict(kwargs)
-        assert restored.use_reranking is True
+        assert restored.use_reranking is False  # full 档已关精排（B2 实测负增益），见 routing.py::full docstring
         assert restored.top_k == kwargs["top_k"]
 
     def test_unknown_keys_ignored_and_defaults_filled(self):
         restored = RetrievalProfile.from_dict({"use_reranking": True, "junk": 1})
-        assert restored.use_reranking is True
+        assert restored.use_reranking is True  # from_dict 字面值往返：True 原样保留
         # 缺失字段回退到 standard（保守：宁可少升级）
         assert restored.use_llm_enhancement is False
         assert restored.top_k == RetrievalProfile.standard().top_k
@@ -183,7 +183,7 @@ class TestKnowledgeProfileInjection:
         )
 
         assert rag.last_request is not None
-        assert rag.last_request.use_reranking is True
+        assert rag.last_request.use_reranking is False  # 2026-11-08：精排在 B2 上实测负增益，full 档已关闭；见 routing.py::full 的 docstring
         assert rag.last_request.use_llm_enhancement is True
         assert rag.last_request.top_k == 20  # 档位的检索深度
 
@@ -197,7 +197,7 @@ class TestKnowledgeProfileInjection:
             profile=RetrievalProfile.standard(top_k=10).as_retrieval_kwargs(),
         )
 
-        assert rag.last_request.use_reranking is False
+        assert rag.last_request.use_reranking is False  # 2026-11-08：精排在 B2 上实测负增益（-2.6/-9.4/-7.7pt），full 档已关闭；见 routing.py::full 的 docstring
         assert rag.last_request.use_llm_enhancement is False
         assert rag.last_request.top_k == 10
 
@@ -208,8 +208,7 @@ class TestKnowledgeProfileInjection:
 
         await agent.query("低回声结节", Organ.THYROID, top_k=5)
 
-        # 未传档位 → 使用 RetrievalRequest 自身默认值（与引入前一致）
-        assert rag.last_request.use_reranking is True
+        assert rag.last_request.use_reranking is True  # 未传档位 → RetrievalRequest 自身默认
         assert rag.last_request.top_k == 5
 
     @pytest.mark.asyncio

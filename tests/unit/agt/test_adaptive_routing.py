@@ -252,7 +252,7 @@ class TestDoctorConfirmation:
         assert final.requires_confirmation is False
         assert final.pending_upgrade is False
         assert RoutingReason.DOCTOR_CONFIRMED_UPGRADE in final.reasons
-        assert final.retrieval_profile.use_reranking is True
+        assert final.retrieval_profile.use_reranking is False  # 2026-11-08：精排在 B2 上实测负增益（-2.6/-9.4/-7.7pt），full 档已关闭；见 routing.py::full 的 docstring
         assert final.retrieval_profile.use_llm_enhancement is True
         assert final.retrieval_profile.full_validation is True
 
@@ -293,7 +293,7 @@ class TestRetrievalProfile:
         assert standard.full_validation is False
         assert standard.top_k == 10
 
-        assert full.use_reranking is True
+        assert full.use_reranking is False  # 2026-11-08：精排在 B2 上实测负增益（-2.6/-9.4/-7.7pt），full 档已关闭；见 routing.py::full 的 docstring
         assert full.use_llm_enhancement is True
         assert full.full_validation is True
         assert full.top_k == 20
@@ -306,7 +306,7 @@ class TestRetrievalProfile:
                                    **profile.as_retrieval_kwargs())
 
         assert request.top_k == 20
-        assert request.use_reranking is True
+        assert request.use_reranking is False  # 2026-11-08：精排在 B2 上实测负增益（-2.6/-9.4/-7.7pt），full 档已关闭；见 routing.py::full 的 docstring
         assert request.use_llm_enhancement is True
 
 

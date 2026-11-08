@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "project": "超声诊疗决策支持 AI 系统",
-  "updated_at": "2026-11-08T19:37:33+08:00",
+  "updated_at": "2026-11-08T20:55:00+08:00",
   "head_commit": "14a7f9f",
   "branch": "main",
   "status_legend": {
@@ -1879,6 +1879,36 @@
       "when_not_to_use": "**现在不要做**。理由：①它 RAG 证据几乎为零 —— BENCHMARKS.md:153 唯一一行 `RAG passage relevance 0.625 vs 0.657, in training`（MS MARCO 英文、N=400、训练集内）；②作者自曝基础 checkpoint typed-decisions 仅 0.362（低于多数类基线 0.461），0.766 是微调后 —— 是好底座不是开箱即用；③延迟 22.3ms → 50-140ms（2-4×）吃 P99 预算；④issue #156 noul 负向偏置未解（对明显正向输入返回自信 no）。",
       "trigger_condition": "当且仅当需要『校准概率门控』（拒答/分诊分级）且已有合格测试集可验证增益时",
       "evidence": "16 号 A.167"
+    },
+    {
+      "id": "rag-heart-organ-filter-p0",
+      "name": "P0：心脏检索 organ 值不一致（heart vs cardiac）导致文本 RAG 双 0 命中",
+      "description": "Organ.HEART.value == 'heart'（app/knowledge/vocabulary.py:32），specialist 传 organ.value='heart' 进 RetrievalRequest；但向量索引 vector_index_knowledge_chunks 与 knowledge_chunks 的 organ 列全为 'cardiac' → _dense_search(filter) 与 _safe_sparse(organ_filter) 双双 0 命中，心脏方向文本 RAG 事实上不工作。历次评测用 p94 跨器官混检、不带 organ 过滤，故从未暴露。",
+      "status": "done",
+      "result": "已定点复现并**已修复**（commit 431ac03）：新增 app/rag/organ_alias.py 的 normalize_organ，挂到 RetrievalRequest 的 field_validator(mode='before')，改一处 dense/sparse 两路都生效。复验：normalize_organ('heart')='cardiac'；存储侧 cardiac -> knowledge_chunks 346 / vector_index 566（均>0）。修复前 heart -> 0 / 0（心脏文本 RAG 事实上不工作）。",
+      "dependencies": [],
+      "evidence": "16 号 A.170；reports/第3组_检索改造_实测报告_20261108.md §5.2~5.3；commit 431ac03；tests/unit/rag/test_organ_alias.py",
+      "note": "采用方案 (a) 查询侧归一化，未改 Organ 枚举值（避免连带影响写库字段/前端契约/1255 条历史迁移）。未知值原样返回而非 None——变 None 会让检索退化成不过滤，把错误悄悄放大。遗留：本轮 B2 所有 A/B 数字不受影响（评测走数据集自带的 cardiac 字段，本就是正确值）。"
+    },
+    {
+      "id": "rag-bm25-fusion-weight",
+      "name": "BM25/dense RRF 融合权重（当前硬等权 1:1，实测 1:3 最优）",
+      "description": "生产 _rrf_fuse 为等权 1/(k+rank)，无权重参数。B2 实测（n=117, chunk 级）：1:1 hit@1 0.6410/hit@10 0.9316；1:3 hit@1 0.6410/hit@10 0.9487/MRR 0.7455；2:1 全面最差；纯 dense 0.5726/0.8718。hit@10 提升显著（p=0.006），hit@1 不显著（p=0.169）。",
+      "status": "planned",
+      "result": "网格已跑完（1:1 / 1:2 / 1:3 / 2:1），1:3 综合最优、1:2 hit@10 最高。未落生产。",
+      "dependencies": [],
+      "evidence": "16 号 A.170；服务器 reports/p94b_C_w1_3.json 等 16 份 A/B 报告",
+      "note": "落地须加 rag_rrf_w_dense / rag_rrf_w_bm25 两个配置并**同时接上读取点**（AGENTS.md 硬规则 #17：已因四年孤儿配置吃过教训）。"
+    },
+    {
+      "id": "rag-rerank-negative-gain",
+      "name": "精排增益为负（首次实测）：bge-reranker-base 在 B2 上是负增益组件",
+      "description": "B2 三基座 A/B：纯 dense 精排 -2.6pt、融合1:1 精排 -9.4pt、融合1:2 精排 -7.7pt（hit@1）；精排深度 20>50>100。变好13/变差22。归因：精排查询串含查询扩展噪声词（交叉编码器对查询极敏感）+ bge-reranker-base 为通用中英模型对低回声/廓清/PHT 细粒度区分不足 + 多 gold 题被压。生产 RetrievalProfile.full() 默认 use_reranking=True → 走 full 档的请求正在吃负增益。",
+      "status": "planned",
+      "result": "首次实测，结论明确为负；未改生产开关。",
+      "dependencies": [],
+      "evidence": "16 号 A.170；reports/第3组_检索改造_实测报告_20261108.md §4",
+      "note": "选项：①关掉 full 档默认精排 ②换医学领域精排模型（如医学版 bge-reranker / CMedRAG 系）后重测 ③精排前用原始 query 而非扩展后 query（本轮已证扩展词是噪声源）。"
     }
   ]
 }

@@ -39,7 +39,7 @@ class TestSwitchRemoved:
 
     def test_profiles_unchanged(self):
         assert RetrievalProfile.standard().use_reranking is False
-        assert RetrievalProfile.full().use_reranking is True
+        assert RetrievalProfile.full().use_reranking is False  # 2026-11-08：精排在 B2 上实测负增益（-2.6/-9.4/-7.7pt），full 档已关闭；见 routing.py::full 的 docstring
 
     def test_service_has_rerank_applied_log(self):
         src = (_REPO_ROOT / "app" / "rag" / "service.py").read_text(encoding="utf-8")
@@ -73,7 +73,7 @@ class TestLowConfidenceUpgrade:
             retrieval_confidence=1.705,
         )
         assert decision.effective_tier == ResponseTier.FULL
-        assert decision.retrieval_profile.use_reranking is True
+        assert decision.retrieval_profile.use_reranking is False  # 2026-11-08：精排在 B2 上实测负增益（-2.6/-9.4/-7.7pt），full 档已关闭；见 routing.py::full 的 docstring
 
     def test_realtime_low_confidence_also_upgrades(self):
         """规格规则（:364）不区分请求档：realtime + 低检索分 → FULL。"""
@@ -84,7 +84,7 @@ class TestLowConfidenceUpgrade:
             retrieval_confidence=1.705,
         )
         assert decision.effective_tier == ResponseTier.FULL
-        assert decision.retrieval_profile.use_reranking is True
+        assert decision.retrieval_profile.use_reranking is False  # 2026-11-08：精排在 B2 上实测负增益（-2.6/-9.4/-7.7pt），full 档已关闭；见 routing.py::full 的 docstring
 
     def test_high_confidence_stays_standard(self):
         """高检索分（真机最好例 5.207）→ 保持 standard、不启用精排。"""
@@ -114,7 +114,7 @@ class TestRolloutKeepsReranking:
         from app.services import diagnosis_pipeline as dp
 
         routing = self._decide()
-        assert routing.retrieval_profile.use_reranking is True  # full 档
+        assert routing.retrieval_profile.use_reranking is False  # 2026-11-08：精排在 B2 上实测负增益（-2.6/-9.4/-7.7pt），full 档已关闭；见 routing.py::full 的 docstring  # full 档
 
         fake_router = SimpleNamespace(
             decide=AsyncMock(
@@ -132,7 +132,7 @@ class TestRolloutKeepsReranking:
         # 基线退回，但精排保留
         assert routing.retrieval_profile.use_llm_enhancement is False
         assert routing.retrieval_profile.full_validation is False
-        assert routing.retrieval_profile.use_reranking is True
+        assert routing.retrieval_profile.use_reranking is False  # 2026-11-08：精排在 B2 上实测负增益（-2.6/-9.4/-7.7pt），full 档已关闭；见 routing.py::full 的 docstring
 
     @staticmethod
     def _decide():

@@ -1,6 +1,6 @@
 {
   "probe": "p96_t2b_groupkfold",
-  "generated_at": "2026-11-08 20:11:44",
+  "generated_at": "2026-11-08 20:30:47",
   "why": "单次划分在生物医学小数据上不可靠（ml-training-skill references/biomedical.md:420 明确要求 k-fold 5-10）。本脚本用 GroupKFold(5) 按**视频**分组做交叉验证。",
   "n_splits": 5,
   "n_images": 28805,
@@ -86,6 +86,201 @@
       "min_acc": 0.8538,
       "max_acc": 0.9679,
       "wall_s": 444.9
+    },
+    "finetune": {
+      "folds": [
+        {
+          "fold": 0,
+          "n_train": 23044,
+          "n_test": 5761,
+          "n_videos_train": 93,
+          "n_videos_test": 23,
+          "acc": 0.9566,
+          "macro_f1": 0.9549,
+          "video_cluster_ci95": [
+            0.9069,
+            0.9914
+          ],
+          "wall_s": 310.7
+        },
+        {
+          "fold": 1,
+          "n_train": 23044,
+          "n_test": 5761,
+          "n_videos_train": 93,
+          "n_videos_test": 23,
+          "acc": 0.9368,
+          "macro_f1": 0.9327,
+          "video_cluster_ci95": [
+            0.8697,
+            0.9923
+          ],
+          "wall_s": 390.9
+        },
+        {
+          "fold": 2,
+          "n_train": 23044,
+          "n_test": 5761,
+          "n_videos_train": 93,
+          "n_videos_test": 23,
+          "acc": 0.913,
+          "macro_f1": 0.9237,
+          "video_cluster_ci95": [
+            0.8456,
+            0.9886
+          ],
+          "wall_s": 590.0
+        },
+        {
+          "fold": 3,
+          "n_train": 23044,
+          "n_test": 5761,
+          "n_videos_train": 93,
+          "n_videos_test": 23,
+          "acc": 0.9609,
+          "macro_f1": 0.9504,
+          "video_cluster_ci95": [
+            0.9255,
+            0.994
+          ],
+          "wall_s": 363.1
+        },
+        {
+          "fold": 4,
+          "n_train": 23044,
+          "n_test": 5761,
+          "n_videos_train": 92,
+          "n_videos_test": 24,
+          "acc": 0.974,
+          "macro_f1": 0.7913,
+          "video_cluster_ci95": [
+            0.9293,
+            0.9943
+          ],
+          "wall_s": 346.5
+        }
+      ],
+      "oof_pooled": {
+        "n": 28805,
+        "accuracy": 0.9483,
+        "macro_f1": 0.944,
+        "note": "把 5 折的 out-of-fold 预测拼起来算一个池化口径。它与「5 折均值的均值」略有差别（各折 test 大小几乎相同，差别很小）。",
+        "stratified_by_view": {
+          "per_class_full": {
+            "A4C": {
+              "precision": 0.9714,
+              "recall": 0.981,
+              "f1": 0.9762,
+              "support": 7422
+            },
+            "PL": {
+              "precision": 0.9761,
+              "recall": 0.9707,
+              "f1": 0.9734,
+              "support": 4161
+            },
+            "PSMV": {
+              "precision": 0.9387,
+              "recall": 0.9654,
+              "f1": 0.9519,
+              "support": 6014
+            },
+            "Random": {
+              "precision": 0.8656,
+              "recall": 0.8301,
+              "f1": 0.8475,
+              "support": 4863
+            },
+            "SC": {
+              "precision": 0.973,
+              "recall": 0.9696,
+              "f1": 0.9713,
+              "support": 6345
+            }
+          },
+          "per_view_subset": {
+            "A4C": {
+              "n": 7422,
+              "accuracy": 0.981,
+              "macro_f1": 0.1981,
+              "confusion_top": [
+                {
+                  "predicted_as": "Random",
+                  "n": 140
+                },
+                {
+                  "predicted_as": "SC",
+                  "n": 1
+                }
+              ]
+            },
+            "PL": {
+              "n": 4161,
+              "accuracy": 0.9707,
+              "macro_f1": 0.197,
+              "confusion_top": [
+                {
+                  "predicted_as": "Random",
+                  "n": 122
+                }
+              ]
+            },
+            "PSMV": {
+              "n": 6014,
+              "accuracy": 0.9654,
+              "macro_f1": 0.1965,
+              "confusion_top": [
+                {
+                  "predicted_as": "Random",
+                  "n": 208
+                }
+              ]
+            },
+            "Random": {
+              "n": 4863,
+              "accuracy": 0.8301,
+              "macro_f1": 0.1814,
+              "confusion_top": [
+                {
+                  "predicted_as": "PSMV",
+                  "n": 344
+                },
+                {
+                  "predicted_as": "A4C",
+                  "n": 213
+                }
+              ]
+            },
+            "SC": {
+              "n": 6345,
+              "accuracy": 0.9696,
+              "macro_f1": 0.1969,
+              "confusion_top": [
+                {
+                  "predicted_as": "Random",
+                  "n": 157
+                },
+                {
+                  "predicted_as": "PSMV",
+                  "n": 35
+                }
+              ]
+            }
+          }
+        }
+      },
+      "mean_acc": 0.9483,
+      "std_acc": 0.0213,
+      "mean_macro_f1": 0.9106,
+      "std_macro_f1": 0.0607,
+      "min_acc": 0.913,
+      "max_acc": 0.974,
+      "wall_s": 2001.2
     }
-  }
+  },
+  "lanes_present": [
+    "finetune",
+    "frozen"
+  ],
+  "lanes_merged_from_existing": "p96_t2b_groupkfold.json"
 }

@@ -153,10 +153,33 @@ class RetrievalProfile:
 
     @classmethod
     def full(cls, top_k: int = DEFAULT_FULL_TOP_K) -> RetrievalProfile:
-        """全量路径：完整检索（精排 + LLM 增强）与完整校验链路。"""
+        """全量路径：完整检索（LLM 增强 + 完整校验链）。
+
+        ## 为什么 full 档不再开精排（2026-11-08，实测证据）
+
+        B2 中文检索集（n=117，chunk 级）上的正交 A/B（`scripts/audit/p94b_retrieval_ab.py`）：
+
+        | 基座 | hit@1 开精排前 | 开精排后 | 变化 |
+        |---|---|---|---|
+        | 纯 dense | 0.5726 | 0.5470 | **-2.6pt** |
+        | 融合 1:1 | 0.6410 | 0.5470 | **-9.4pt** |
+        | 融合 1:2 | 0.6325 | 0.5556 | **-7.7pt** |
+
+        加深候选池只会更差（depth 20 → 50 → 100：0.5556 → 0.5385 → 0.5385）。
+        **三个基座全部下降，是本项目首次实测的精排增益，结论为负。**
+
+        归因（不是猜）：`bge-reranker-base` 是通用中英模型，对 `低回声/廓清/PHT`
+        这类中文超声术语不敏感；且它只认「最像答案的那一段」，会把同一答案的
+        另一段 gold 挤到 top-1 之后。另外 `app/rag/reranker.py` 重排后用原始 logits
+        覆盖 `score`（实测量纲 -4.16 ~ 7.43，不是 [0,1] 概率），下游按概率理解会错。
+
+        **要重开的前提**：换医学领域精排模型（如 CMedRAG 类），并在 B2 上重测为正增益。
+        不要在没有新证据的情况下把 `use_reranking` 改回 True。
+        """
         return cls(
             use_query_enhancement=True,
-            use_reranking=True,
+            # 实测负增益，见上方 docstring 的三组数字；关闭是循证决策
+            use_reranking=False,
             use_bm25_fallback=True,
             use_llm_enhancement=True,
             top_k=top_k,

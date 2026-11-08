@@ -131,6 +131,9 @@ class RetrievalRequest(BaseModel):
     image_format: str = "dicom"
     top_k: int = 20
     use_query_enhancement: bool = True
+    # 注：此处默认值保持 True，但**实际生产路径全部由 RetrievalProfile 覆盖**：
+    # standard() 与 full() 两档均为 False（B2 实测精排负增益 -2.6/-9.4/-7.7pt）。
+    # 改这里的默认值会影响 10+ 处测试对「通用默认」的假设，超出最小改动边界，不改。
     use_reranking: bool = True
     use_bm25_fallback: bool = True
     use_multimodal: bool = True
