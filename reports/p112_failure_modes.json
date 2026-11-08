@@ -1,0 +1,972 @@
+{
+ "probe": "p103_failure_modes",
+ "generated_at": "2026-11-08 23:18:49",
+ "why": "biomedical.md › Regulatory considerations 要求 'Failure mode analysis: characterize where the model fails and how gracefully'",
+ "parts": [
+  "t2b",
+  "tn5000",
+  "aul",
+  "tn3k"
+ ],
+ "results": {
+  "t2b_random": {
+   "n_rows": 28805,
+   "n_videos": 116,
+   "n_random": 4863,
+   "random_share": 0.1688,
+   "cactus_known_issue": {
+    "note": "CACTUS 官方 README 说明标注取自元数据；`Random` 是「视图中不可归类」的兜底桶，不是解剖切面。故它的定义是**排除性**的 → 天然不可分边界。"
+   },
+   "subject_level": {
+    "n_subjects": 10,
+    "images_per_subject": {
+     "0": 4864,
+     "5": 4211,
+     "4": 4000,
+     "3": 3625,
+     "6": 3055,
+     "7": 2775,
+     "8": 2365,
+     "2": 2342,
+     "9": 1072,
+     "1": 496
+    },
+    "views_per_subject": {
+     "1": {
+      "A4C": 430,
+      "PL": 1,
+      "SC": 65
+     },
+     "2": {
+      "A4C": 1627,
+      "PL": 317,
+      "PSMV": 128,
+      "SC": 270
+     },
+     "3": {
+      "A4C": 2442,
+      "PL": 483,
+      "PSMV": 267,
+      "SC": 433
+     },
+     "4": {
+      "A4C": 1591,
+      "PL": 443,
+      "PSMV": 670,
+      "SC": 1296
+     },
+     "5": {
+      "A4C": 950,
+      "PL": 545,
+      "PSMV": 1055,
+      "SC": 1661
+     },
+     "6": {
+      "A4C": 282,
+      "PL": 485,
+      "PSMV": 998,
+      "SC": 1290
+     },
+     "7": {
+      "A4C": 78,
+      "PL": 441,
+      "PSMV": 1426,
+      "SC": 830
+     },
+     "8": {
+      "A4C": 22,
+      "PL": 732,
+      "PSMV": 1226,
+      "SC": 385
+     },
+     "9": {
+      "PL": 714,
+      "PSMV": 244,
+      "SC": 114
+     },
+     "0": {
+      "Random": 4863,
+      "SC": 1
+     }
+    },
+    "random_subject_attribution": {
+     "0": 4863
+    },
+    "headline": "CACTUS 这批 t2b 数据只有 10 个**受试者**（视频名前缀即受试者号）。p96 的 GroupKFold(5) 按**视频**分组，116 个视频跨 5 折 → **同一受试者的不同视频会同时出现在 train 与 test**。这不是患者级验证，指标仍偏乐观。",
+    "groupkfold_by_subject_feasibility": [
+     {
+      "subject": "0",
+      "images": 4864,
+      "cumulative": 4864,
+      "cumulative_share": 0.1689
+     },
+     {
+      "subject": "5",
+      "images": 4211,
+      "cumulative": 9075,
+      "cumulative_share": 0.315
+     },
+     {
+      "subject": "4",
+      "images": 4000,
+      "cumulative": 13075,
+      "cumulative_share": 0.4539
+     },
+     {
+      "subject": "3",
+      "images": 3625,
+      "cumulative": 16700,
+      "cumulative_share": 0.5798
+     },
+     {
+      "subject": "6",
+      "images": 3055,
+      "cumulative": 19755,
+      "cumulative_share": 0.6858
+     },
+     {
+      "subject": "7",
+      "images": 2775,
+      "cumulative": 22530,
+      "cumulative_share": 0.7822
+     },
+     {
+      "subject": "8",
+      "images": 2365,
+      "cumulative": 24895,
+      "cumulative_share": 0.8643
+     },
+     {
+      "subject": "2",
+      "images": 2342,
+      "cumulative": 27237,
+      "cumulative_share": 0.9456
+     },
+     {
+      "subject": "9",
+      "images": 1072,
+      "cumulative": 28309,
+      "cumulative_share": 0.9828
+     },
+     {
+      "subject": "1",
+      "images": 496,
+      "cumulative": 28805,
+      "cumulative_share": 1.0
+     }
+    ],
+    "does_5fold_by_subject_work": "**不能直接做 5 折**：只有 10 个受试者，最大受试者占 16.89%，最小占 1.72%；5 折每折 ≈5.8k 图，而单个受试者就有 4864 图 → 折间极不可比。可行替代：**leave-one-subject-out（10 折）**，或按受试者分 2~3 组。"
+   },
+   "videos_only_random": {
+    "n_videos": 5,
+    "sorted": [
+     "0",
+     "0_V2",
+     "0_V3",
+     "0_V4",
+     "0_V5"
+    ]
+   },
+   "grade_field_by_view": {
+    "note": "CACTUS 的 `grade` 是图像质量分（1~9，Random 类恒为 0）。Random 的 grade 全 0 → 该类在官方标注里**就是「未分级/非标准」**，不是某个具体解剖切面。",
+    "distributions": {
+     "A4C": {
+      "1": 430,
+      "2": 1627,
+      "3": 2442,
+      "4": 1591,
+      "5": 950,
+      "6": 282,
+      "7": 78,
+      "8": 22
+     },
+     "PL": {
+      "1": 1,
+      "2": 317,
+      "3": 483,
+      "4": 443,
+      "5": 545,
+      "6": 485,
+      "7": 441,
+      "8": 732,
+      "9": 714
+     },
+     "PSMV": {
+      "2": 128,
+      "3": 267,
+      "4": 670,
+      "5": 1055,
+      "6": 998,
+      "7": 1426,
+      "8": 1226,
+      "9": 244
+     },
+     "Random": {
+      "0": 4863
+     },
+     "SC": {
+      "0": 1,
+      "1": 65,
+      "2": 270,
+      "3": 433,
+      "4": 1296,
+      "5": 1661,
+      "6": 1290,
+      "7": 830,
+      "8": 385,
+      "9": 114
+     }
+    },
+    "random_grades_all_zero": true
+   },
+   "random_images_in_random_only_videos": {
+    "n": 4695,
+    "share_of_random": 0.9655,
+    "videos": [
+     "0",
+     "0_V2",
+     "0_V3",
+     "0_V4",
+     "0_V5"
+    ]
+   },
+   "random_images_in_mixed_videos": {
+    "n": 168,
+    "share_of_random": 0.0345,
+    "videos": [
+     "0_V1"
+    ],
+    "note": "这些视频里同时有标准切面帧 → Random 帧是要被逐帧判定的，才真正考模型的判别力"
+   },
+   "cooccurrence": {
+    "videos_with_PSMV": 59,
+    "videos_with_A4C": 47,
+    "random_only_videos_have_PSMV_frames": 0,
+    "random_only_videos_have_A4C_frames": 0,
+    "note": "若 random_only_videos_have_PSMV_frames = 0，说明这些视频根本没有 PSMV 帧；p96 里 Random→PSMV 的 344 张不可能是「看到了同视频的 PSMV」，只能是模型按二维形态在远视频上误配 → 支持「标签定义不可分」而非「数据不足」"
+   },
+   "literal_typing": {
+    "n_win_or_img_filenames": 0,
+    "n_with_random_label": 0,
+    "note": "实测 CACTUS 这批数据里**没有** `WIN_/IMG_` 形态的整机导出文件名 （n_win_or_img_filenames 见上），所有文件都是 `受试者_视频帧号` 形态。故 Random 不是「截图来源」桶，而是**受试者 0 的全部帧**。",
+    "samples": []
+   },
+   "sample_random_for_manual_review": [
+    {
+     "file": "0_frame_2187_v2.jpg",
+     "video": "0",
+     "frame": 2187,
+     "split": "train"
+    },
+    {
+     "file": "0_frame_6938_v2.jpg",
+     "video": "0",
+     "frame": 6938,
+     "split": "train"
+    },
+    {
+     "file": "0_frame_6976_v2.jpg",
+     "video": "0",
+     "frame": 6976,
+     "split": "val"
+    },
+    {
+     "file": "0_V1Frame_261.jpg",
+     "video": "0_V1",
+     "frame": 261,
+     "split": "train"
+    },
+    {
+     "file": "0_V1Frame_497.jpg",
+     "video": "0_V1",
+     "frame": 497,
+     "split": "train"
+    },
+    {
+     "file": "0_V2frame_1372.jpg",
+     "video": "0_V2",
+     "frame": 1372,
+     "split": "test"
+    },
+    {
+     "file": "0_V2frame_2065.jpg",
+     "video": "0_V2",
+     "frame": 2065,
+     "split": "val"
+    },
+    {
+     "file": "0_V2frame_2424.jpg",
+     "video": "0_V2",
+     "frame": 2424,
+     "split": "train"
+    },
+    {
+     "file": "0_V2frame_3066.jpg",
+     "video": "0_V2",
+     "frame": 3066,
+     "split": "val"
+    },
+    {
+     "file": "0_V2frame_3180.jpg",
+     "video": "0_V2",
+     "frame": 3180,
+     "split": "train"
+    },
+    {
+     "file": "0_V2frame_3346.jpg",
+     "video": "0_V2",
+     "frame": 3346,
+     "split": "train"
+    },
+    {
+     "file": "0_V2frame_3470.jpg",
+     "video": "0_V2",
+     "frame": 3470,
+     "split": "val"
+    },
+    {
+     "file": "0_V2frame_5411.jpg",
+     "video": "0_V2",
+     "frame": 5411,
+     "split": "train"
+    },
+    {
+     "file": "0_V3frame_871.jpg",
+     "video": "0_V3",
+     "frame": 871,
+     "split": "train"
+    },
+    {
+     "file": "0_V3frame_2606.jpg",
+     "video": "0_V3",
+     "frame": 2606,
+     "split": "val"
+    },
+    {
+     "file": "0_V3frame_2750.jpg",
+     "video": "0_V3",
+     "frame": 2750,
+     "split": "train"
+    },
+    {
+     "file": "0_V3frame_3419.jpg",
+     "video": "0_V3",
+     "frame": 3419,
+     "split": "train"
+    },
+    {
+     "file": "0_V3frame_3454.jpg",
+     "video": "0_V3",
+     "frame": 3454,
+     "split": "train"
+    },
+    {
+     "file": "0_V3frame_3520.jpg",
+     "video": "0_V3",
+     "frame": 3520,
+     "split": "train"
+    },
+    {
+     "file": "0_V3frame_4745.jpg",
+     "video": "0_V3",
+     "frame": 4745,
+     "split": "train"
+    },
+    {
+     "file": "0_V4frame_674.jpg",
+     "video": "0_V4",
+     "frame": 674,
+     "split": "train"
+    },
+    {
+     "file": "0_V4frame_3330.jpg",
+     "video": "0_V4",
+     "frame": 3330,
+     "split": "train"
+    },
+    {
+     "file": "0_V4frame_3458.jpg",
+     "video": "0_V4",
+     "frame": 3458,
+     "split": "train"
+    },
+    {
+     "file": "0_V4frame_3836.jpg",
+     "video": "0_V4",
+     "frame": 3836,
+     "split": "test"
+    },
+    {
+     "file": "0_V5frame_726.jpg",
+     "video": "0_V5",
+     "frame": 726,
+     "split": "test"
+    },
+    {
+     "file": "0_V5frame_1325.jpg",
+     "video": "0_V5",
+     "frame": 1325,
+     "split": "train"
+    },
+    {
+     "file": "0_V5frame_2949.jpg",
+     "video": "0_V5",
+     "frame": 2949,
+     "split": "val"
+    },
+    {
+     "file": "0_V5frame_5011.jpg",
+     "video": "0_V5",
+     "frame": 5011,
+     "split": "train"
+    },
+    {
+     "file": "0_V5frame_5290.jpg",
+     "video": "0_V5",
+     "frame": 5290,
+     "split": "train"
+    },
+    {
+     "file": "0_V5frame_5562.jpg",
+     "video": "0_V5",
+     "frame": 5562,
+     "split": "train"
+    }
+   ],
+   "random_subject_videos": {
+    "videos": [
+     "0",
+     "0_V1",
+     "0_V2",
+     "0_V3",
+     "0_V4",
+     "0_V5"
+    ],
+    "frames_per_video": {
+     "0": 1157,
+     "0_V4": 1082,
+     "0_V2": 1019,
+     "0_V5": 720,
+     "0_V3": 717,
+     "0_V1": 168
+    },
+    "note": "受试者 0 的 6 个视频全是 Random 帧；其余 9 个受试者的视频里只有 0_V1 混入 1 张 SC。"
+   }
+  },
+  "tn5000_missed_malignant": {
+   "n_joined": 5000,
+   "threshold": 0.5,
+   "overall": {
+    "n_malignant": 3574,
+    "n_benign": 1426,
+    "sensitivity": 0.9149,
+    "specificity": 0.716
+   },
+   "profile_malignant_all": {
+    "n": 3574,
+    "rel_area_median": 0.038808,
+    "rel_area_p10": 0.014214,
+    "rel_area_p90": 0.149638,
+    "cx_median": 0.4944,
+    "cy_median": 0.37,
+    "bucket_mix": {
+     "medium(5-20%)": 1199,
+     "small(1-5%)": 2024,
+     "tiny(<1%)": 136,
+     "large(>=20%)": 215
+    },
+    "score_median": 0.9662
+   },
+   "profile_FN_missed_malignant": {
+    "n": 304,
+    "rel_area_median": 0.027454,
+    "rel_area_p10": 0.008097,
+    "rel_area_p90": 0.15731,
+    "cx_median": 0.5132,
+    "cy_median": 0.367,
+    "bucket_mix": {
+     "medium(5-20%)": 71,
+     "small(1-5%)": 168,
+     "tiny(<1%)": 43,
+     "large(>=20%)": 22
+    },
+    "score_median": 0.2473
+   },
+   "profile_TP_caught_malignant": {
+    "n": 3270,
+    "rel_area_median": 0.039861,
+    "rel_area_p10": 0.015117,
+    "rel_area_p90": 0.149081,
+    "cx_median": 0.4937,
+    "cy_median": 0.37,
+    "bucket_mix": {
+     "medium(5-20%)": 1128,
+     "small(1-5%)": 1856,
+     "large(>=20%)": 193,
+     "tiny(<1%)": 93
+    },
+    "score_median": 0.9707
+   },
+   "sensitivity_by_lesion_size": {
+    "tiny(<1%)": {
+     "n_malignant": 136,
+     "sensitivity": 0.6838,
+     "fn": 43,
+     "score_median": 0.7475
+    },
+    "small(1-5%)": {
+     "n_malignant": 2024,
+     "sensitivity": 0.917,
+     "fn": 168,
+     "score_median": 0.9626
+    },
+    "medium(5-20%)": {
+     "n_malignant": 1199,
+     "sensitivity": 0.9408,
+     "fn": 71,
+     "score_median": 0.9774
+    },
+    "large(>=20%)": {
+     "n_malignant": 215,
+     "sensitivity": 0.8977,
+     "fn": 22,
+     "score_median": 0.968
+    }
+   },
+   "false_positive_rate_by_lesion_size": {
+    "tiny(<1%)": {
+     "n_benign": 485,
+     "false_positive_rate": 0.1546
+    },
+    "small(1-5%)": {
+     "n_benign": 574,
+     "false_positive_rate": 0.3502
+    },
+    "medium(5-20%)": {
+     "n_benign": 239,
+     "false_positive_rate": 0.3933
+    },
+    "large(>=20%)": {
+     "n_benign": 128,
+     "false_positive_rate": 0.2734
+    }
+   },
+   "worst_missed_malignant_lowest_score": [
+    {
+     "stem": "004341",
+     "score": 0.019,
+     "rel_area": 0.040772,
+     "bucket": "small(1-5%)",
+     "cx": 0.175,
+     "cy": 0.479
+    },
+    {
+     "stem": "001962",
+     "score": 0.0196,
+     "rel_area": 0.021437,
+     "bucket": "small(1-5%)",
+     "cx": 0.451,
+     "cy": 0.236
+    },
+    {
+     "stem": "002096",
+     "score": 0.0198,
+     "rel_area": 0.109142,
+     "bucket": "medium(5-20%)",
+     "cx": 0.33,
+     "cy": 0.219
+    },
+    {
+     "stem": "002049",
+     "score": 0.0199,
+     "rel_area": 0.572223,
+     "bucket": "large(>=20%)",
+     "cx": 0.511,
+     "cy": 0.472
+    },
+    {
+     "stem": "002051",
+     "score": 0.0218,
+     "rel_area": 0.584552,
+     "bucket": "large(>=20%)",
+     "cx": 0.504,
+     "cy": 0.409
+    },
+    {
+     "stem": "004413",
+     "score": 0.0246,
+     "rel_area": 0.006685,
+     "bucket": "tiny(<1%)",
+     "cx": 0.575,
+     "cy": 0.368
+    },
+    {
+     "stem": "002981",
+     "score": 0.0262,
+     "rel_area": 0.047799,
+     "bucket": "small(1-5%)",
+     "cx": 0.616,
+     "cy": 0.3
+    },
+    {
+     "stem": "004420",
+     "score": 0.0266,
+     "rel_area": 0.51483,
+     "bucket": "large(>=20%)",
+     "cx": 0.527,
+     "cy": 0.506
+    },
+    {
+     "stem": "003283",
+     "score": 0.0268,
+     "rel_area": 0.026228,
+     "bucket": "small(1-5%)",
+     "cx": 0.792,
+     "cy": 0.46
+    },
+    {
+     "stem": "003838",
+     "score": 0.0292,
+     "rel_area": 0.012067,
+     "bucket": "small(1-5%)",
+     "cx": 0.517,
+     "cy": 0.271
+    },
+    {
+     "stem": "003970",
+     "score": 0.0294,
+     "rel_area": 0.228847,
+     "bucket": "large(>=20%)",
+     "cx": 0.306,
+     "cy": 0.416
+    },
+    {
+     "stem": "001520",
+     "score": 0.0318,
+     "rel_area": 0.035097,
+     "bucket": "small(1-5%)",
+     "cx": 0.429,
+     "cy": 0.368
+    },
+    {
+     "stem": "003664",
+     "score": 0.032,
+     "rel_area": 0.111025,
+     "bucket": "medium(5-20%)",
+     "cx": 0.565,
+     "cy": 0.31
+    },
+    {
+     "stem": "000923",
+     "score": 0.033,
+     "rel_area": 0.453292,
+     "bucket": "large(>=20%)",
+     "cx": 0.547,
+     "cy": 0.43
+    },
+    {
+     "stem": "004320",
+     "score": 0.0349,
+     "rel_area": 0.073046,
+     "bucket": "medium(5-20%)",
+     "cx": 0.546,
+     "cy": 0.24
+    }
+   ],
+   "worst_false_positive_highest_score": [
+    {
+     "stem": "000230",
+     "score": 0.9904,
+     "rel_area": 0.020836,
+     "bucket": "small(1-5%)",
+     "cx": 0.549,
+     "cy": 0.369
+    },
+    {
+     "stem": "000654",
+     "score": 0.9899,
+     "rel_area": 0.042507,
+     "bucket": "small(1-5%)",
+     "cx": 0.59,
+     "cy": 0.5
+    },
+    {
+     "stem": "002482",
+     "score": 0.9893,
+     "rel_area": 0.029109,
+     "bucket": "small(1-5%)",
+     "cx": 0.525,
+     "cy": 0.469
+    },
+    {
+     "stem": "004155",
+     "score": 0.9884,
+     "rel_area": 0.011053,
+     "bucket": "small(1-5%)",
+     "cx": 0.581,
+     "cy": 0.404
+    },
+    {
+     "stem": "000280",
+     "score": 0.9883,
+     "rel_area": 0.014852,
+     "bucket": "small(1-5%)",
+     "cx": 0.428,
+     "cy": 0.288
+    },
+    {
+     "stem": "000329",
+     "score": 0.9875,
+     "rel_area": 0.032579,
+     "bucket": "small(1-5%)",
+     "cx": 0.667,
+     "cy": 0.454
+    },
+    {
+     "stem": "000112",
+     "score": 0.9873,
+     "rel_area": 0.056602,
+     "bucket": "medium(5-20%)",
+     "cx": 0.618,
+     "cy": 0.299
+    },
+    {
+     "stem": "000371",
+     "score": 0.9868,
+     "rel_area": 0.066412,
+     "bucket": "medium(5-20%)",
+     "cx": 0.394,
+     "cy": 0.385
+    },
+    {
+     "stem": "000275",
+     "score": 0.9857,
+     "rel_area": 0.024986,
+     "bucket": "small(1-5%)",
+     "cx": 0.583,
+     "cy": 0.268
+    },
+    {
+     "stem": "000339",
+     "score": 0.9852,
+     "rel_area": 0.068495,
+     "bucket": "medium(5-20%)",
+     "cx": 0.517,
+     "cy": 0.354
+    },
+    {
+     "stem": "000048",
+     "score": 0.9846,
+     "rel_area": 0.120334,
+     "bucket": "medium(5-20%)",
+     "cx": 0.728,
+     "cy": 0.458
+    },
+    {
+     "stem": "004640",
+     "score": 0.9845,
+     "rel_area": 0.031273,
+     "bucket": "small(1-5%)",
+     "cx": 0.502,
+     "cy": 0.393
+    },
+    {
+     "stem": "000318",
+     "score": 0.9832,
+     "rel_area": 0.10585,
+     "bucket": "medium(5-20%)",
+     "cx": 0.529,
+     "cy": 0.382
+    },
+    {
+     "stem": "001883",
+     "score": 0.9829,
+     "rel_area": 0.032546,
+     "bucket": "small(1-5%)",
+     "cx": 0.459,
+     "cy": 0.152
+    },
+    {
+     "stem": "000176",
+     "score": 0.9827,
+     "rel_area": 0.078858,
+     "bucket": "medium(5-20%)",
+     "cx": 0.618,
+     "cy": 0.367
+    }
+   ],
+   "size_effect_check": {
+    "median_rel_area_malignant": 0.038808,
+    "median_rel_area_FN": 0.027454,
+    "median_rel_area_BENIGN": 0.017753,
+    "note": "若 FN 的中位病灶面积显著小于 TP，则漏诊由小病灶驱动；若与良性中位接近，则漏诊更像是「形态偏良性」而非「太小没看清」"
+   }
+  },
+  "aul_benign_as_malignant": {
+   "status": "ok",
+   "class_support": {
+    "Benign": 200,
+    "Malignant": 435,
+    "Normal": 100
+   },
+   "lesion_area_by_class_from_contours": {
+    "Benign/liver": {
+     "n_contours": 200,
+     "area_px_median": 61737.3,
+     "area_px_p10": 27872.7,
+     "area_px_p90": 192280.2,
+     "unit": "像素²（由多边形鞋带公式算；AUL 未给像素间距 → 无法换算成 mm²）"
+    },
+    "Benign/mass": {
+     "n_contours": 200,
+     "area_px_median": 2983.2,
+     "area_px_p10": 428.3,
+     "area_px_p90": 33019.6,
+     "unit": "像素²（由多边形鞋带公式算；AUL 未给像素间距 → 无法换算成 mm²）"
+    },
+    "Benign/outline": {
+     "n_contours": 200,
+     "area_px_median": 141232.0,
+     "area_px_p10": 93717.7,
+     "area_px_p90": 387544.5,
+     "unit": "像素²（由多边形鞋带公式算；AUL 未给像素间距 → 无法换算成 mm²）"
+    },
+    "Malignant/liver": {
+     "n_contours": 432,
+     "area_px_median": 175574.8,
+     "area_px_p10": 48661.0,
+     "area_px_p90": 256886.3,
+     "unit": "像素²（由多边形鞋带公式算；AUL 未给像素间距 → 无法换算成 mm²）"
+    },
+    "Malignant/mass": {
+     "n_contours": 435,
+     "area_px_median": 20489.4,
+     "area_px_p10": 3771.4,
+     "area_px_p90": 85390.0,
+     "unit": "像素²（由多边形鞋带公式算；AUL 未给像素间距 → 无法换算成 mm²）"
+    },
+    "Malignant/outline": {
+     "n_contours": 435,
+     "area_px_median": 386794.0,
+     "area_px_p10": 124071.9,
+     "area_px_p90": 445523.6,
+     "unit": "像素²（由多边形鞋带公式算；AUL 未给像素间距 → 无法换算成 mm²）"
+    }
+   },
+   "what_we_cannot_say": {
+    "benign_subtype_hemangioma_vs_fnh": "**做不到**。AUL（Zenodo 7272660）只给 Benign/Malignant/Normal 三分类，**没有良性亚型标注**（无血管瘤/局灶性结节增生/FNH 之类的标签），也没有病理或随访结果。→ 无法回答「这 114 张是不是某种特定良性病变」。任何这种说法都会是编的。",
+    "label_source": "AUL 的标签是影像学判读（非病理证实），三分类含 Normal 一类。"
+   },
+   "from_p85_report": {
+    "confusion": {
+     "Benign": {
+      "Benign": 82,
+      "Malignant": 114,
+      "Normal": 4,
+      "Unknown": 0
+     },
+     "Malignant": {
+      "Benign": 22,
+      "Malignant": 412,
+      "Normal": 1,
+      "Unknown": 0
+     },
+     "Normal": {
+      "Benign": 42,
+      "Malignant": 6,
+      "Normal": 52,
+      "Unknown": 0
+     }
+    },
+    "per_class": {
+     "Benign": {
+      "precision": 0.5616,
+      "recall": 0.41,
+      "f1": 0.474,
+      "support": 200
+     },
+     "Malignant": {
+      "precision": 0.7744,
+      "recall": 0.9471,
+      "f1": 0.8521,
+      "support": 435
+     },
+     "Normal": {
+      "precision": 0.9123,
+      "recall": 0.52,
+      "f1": 0.6624,
+      "support": 100
+     },
+     "macro_avg": {
+      "precision": 0.7494,
+      "recall": 0.6257,
+      "f1": 0.6628,
+      "support": 735
+     },
+     "weighted_avg": {
+      "precision": 0.7353,
+      "recall": 0.7428,
+      "f1": 0.7234,
+      "support": 735
+     }
+    },
+    "note": "逐图预测未落盘（p85 只写汇总）→ 逐图归因需重跑并保存预测，见 limitation"
+   },
+   "limitation": "p85 报告只存了汇总混淆矩阵（Benign→Malignant 114 张），**未落逐图预测**，故「这 114 张有什么共同点」在现有产物里无法逐图回答。本块给的是数据层能支撑的上限：类别支撑 + 病灶面积分布 + 不能说的话。"
+  },
+  "tn3k_tiny": {
+   "n_masks": 2879,
+   "n_empty": 0,
+   "relative_area_quantiles": {
+    "p0": 0.002037,
+    "p1": 0.004693,
+    "p5": 0.010725,
+    "p10": 0.015872,
+    "p25": 0.033354,
+    "p50": 0.085691,
+    "p75": 0.211514,
+    "p90": 0.36289,
+    "p95": 0.44829,
+    "p99": 0.59974,
+    "p100": 0.758842
+   },
+   "bucket_mix": {
+    "tiny(<1%)": {
+     "n": 121,
+     "share": 0.042,
+     "median_rel_area": 0.006991
+    },
+    "small(1-5%)": {
+     "n": 883,
+     "share": 0.3067,
+     "median_rel_area": 0.02701
+    },
+    "medium(5-20%)": {
+     "n": 1111,
+     "share": 0.3859,
+     "median_rel_area": 0.099835
+    },
+    "large(>=20%)": {
+     "n": 764,
+     "share": 0.2654,
+     "median_rel_area": 0.321765
+    }
+   },
+   "tiny_equivalent_diameter_px": {
+    "n": 121,
+    "median": 35.9,
+    "p5": 21.4,
+    "p95": 73.6,
+    "definition": "等效圆直径 = 2*sqrt(面积/π)，面积按相对面积×该图实际像素数还原",
+    "image_size_range": {
+     "min_h": 174,
+     "max_h": 826,
+     "min_w": 184,
+     "max_w": 1463
+    }
+   },
+   "note": "tiny 阈值沿用 p97 的 <1% 相对面积口径（与现有 DSC 0.4472 同口径，可直接引用）"
+  }
+ },
+ "wall_s": 1.6
+}

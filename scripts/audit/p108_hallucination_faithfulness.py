@@ -207,6 +207,48 @@ def claim_supported(raw: str, pools: list[str]) -> bool:
     return False
 
 
+# ---------------------------------------------------------------- 4.3 复述识别
+
+#: 数值片段（用于判断某条断言是否只是把**输入里的测量值**复述一遍）
+_RE_NUM = re.compile(r"\d{1,3}(?:\.\d+)?\s*(?:%|mm|cm|毫米|厘米|岁|分)?")
+
+
+def _nums(text: str) -> set[str]:
+    out = set()
+    for m in _RE_NUM.finditer(text or ""):
+        token = re.sub(r"\s+", "", m.group(0))
+        if any(ch.isdigit() for ch in token):
+            out.add(token)
+    return out
+
+
+def rebucket_by_input(statements: list[dict], clinical_text: str) -> list[dict]:
+    """把"只是复述输入测量值"的 knowledge 断言改判为 image。纯函数（守卫钉住）。
+
+    ## 为什么必须有这一步（否则 faithfulness 结构性偏低）
+
+    本系统的结论里**必然**含本次影像/测量的数值（`LVEF 60%`、`大小约 8x6mm`）。
+    这些值来自**输入**（医生给的临床文本），不可能出现在知识库里；
+    但它们不带"回声/边界"这类影像术语，于是 p44 的关键词分类器会把它们判进
+    `knowledge` 桶 → 分母里混进"永远不可能有据"的断言 → faithfulness 被压低。
+
+    判据（保守、可审计）：断言里的**每一个**数值 token 都能在 `clinical_text` 里找到
+    → 判为"输入复述"（`image` 桶）。只要有一个数值不在输入里，就仍留在 knowledge 桶
+    （宁可把它算成知识断言，也不放过可能的编造数值）。
+    """
+    have = _nums(clinical_text)
+    out: list[dict] = []
+    for d in statements:
+        item = dict(d)
+        if item.get("bucket") == "knowledge":
+            n = _nums(item.get("statement") or "")
+            if n and n <= have:
+                item["bucket"] = "image"
+                item["rebucket"] = "input_restatement"
+        out.append(item)
+    return out
+
+
 # ---------------------------------------------------------------- 主流程
 
 
@@ -379,6 +421,24 @@ async def main() -> int:
                 res = {"error": f"{type(exc).__name__}: {exc}"}
             res["request_id"] = item.get("request_id")
             res["organ"] = item.get("organ")
+            if res.get("detail"):
+                reb = rebucket_by_input(res["detail"], item.get("clinical_text") or "")
+                agg: dict = {}
+                for b in BUCKETS:
+                    bucket_items = [x for x in reb if x["bucket"] == b]
+                    sup = sum(1 for x in bucket_items if int(x.get("verdict") or 0) == 1)
+                    agg[b] = {
+                        "n": len(bucket_items),
+                        "supported": sup,
+                        "faith": round(sup / len(bucket_items), 4) if bucket_items else None,
+                    }
+                res["buckets"] = agg
+                res["faith_knowledge"] = agg["knowledge"]["faith"]
+                res["faith_all"] = round(
+                    sum(1 for x in reb if int(x.get("verdict") or 0) == 1) / len(reb), 4
+                ) if reb else None
+                res["n_rebucketed"] = sum(1 for x in reb if x.get("rebucket"))
+                res["detail"] = reb
             faith.append(res)
             if i % 5 == 0 or i == len(items):
                 ok = sum(1 for r in faith if r.get("faith_knowledge") is not None)
@@ -430,7 +490,7 @@ async def main() -> int:
                 "definition": "知识断言（不含影像所见与建议）中，有知识块支持的占比",
                 "answer_mode": args.answer_mode,
                 "judge": f"{args.judge_model} @ {args.judge_url}（RAGAS 官方 prompt，/no_think，中文断言）",
-                "bucket_rule": "image/advice/knowledge 三桶由 p44 classify_statement 判定（规则透明）",
+                "bucket_rule": "image/advice/knowledge 三桶由 p44 classify_statement 判定（规则透明）；再按 rebucket_by_input 把\"只复述输入测量值\"的 knowledge 断言改判为 image（否则分母混入永远无据的断言）",
                 "zero_knowledge": "知识断言为 0 的样本记 None，不写 1.0",
             },
             "n_samples": len(items),
@@ -441,9 +501,8 @@ async def main() -> int:
             "mean_faith_all": round(sum(fa) / len(fa), 4) if fa else None,
             "bucket_totals": bucket_tot,
             "unsupported_knowledge_examples": unsupported_examples[:20],
-            "per_sample": [
-                {k: v for k, v in r.items() if k != "detail"} for r in faith
-            ],
+            "n_rebucketed_total": sum(int(r.get("n_rebucketed") or 0) for r in faith),
+            "per_sample": faith,
         },
     }
     out = pathlib.Path(args.report).expanduser()

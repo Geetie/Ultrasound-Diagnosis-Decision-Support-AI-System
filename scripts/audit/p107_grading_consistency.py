@@ -288,6 +288,7 @@ async def main() -> int:
             grades: list[str] = []
             contents: list[str] = []
             confs: list[float] = []
+            latencies: list[float] = []
             for s in range(args.samples):
                 ctx = AgentContext(
                     request_id=f"p107-{case['request_id']}-{s}",
@@ -295,6 +296,7 @@ async def main() -> int:
                     organ=organ_enum[case["organ"]],
                     user_query=case["clinical_text"],
                 )
+                _t = time.monotonic()
                 try:
                     resp = await specialist.invoke(ctx)
                     text = resp.content or ""
@@ -303,6 +305,7 @@ async def main() -> int:
                     text = ""
                     confs.append(0.0)
                     print(f"  [{i}/{s}] invoke 异常 {type(exc).__name__}: {exc}")
+                latencies.append(round(time.monotonic() - _t, 2))
                 contents.append(text[:800])
                 g = extract_grading_severest(text, case["organ"])
                 grades.append(str(g) if g else "")
@@ -317,6 +320,7 @@ async def main() -> int:
                 "n_chunks": len(chunks),
                 "grades": grades,
                 "confidences": confs,
+                "latencies_s": latencies,
                 "agree": agree,
                 "mode": Counter(grades).most_common(1)[0][0] if grades else "",
                 "unparsed": sum(1 for g in grades if not g),
@@ -345,6 +349,9 @@ async def main() -> int:
             "both_parsed_n": len(both_ok),
             "consistency_both_parsed": round(cond / len(both_ok), 4) if both_ok else None,
             "unparsed_samples": sum(r["unparsed"] for r in sub),
+            "latency_p50": (sorted(x for r in sub for x in r.get("latencies_s") or [])
+                            [len([x for r in sub for x in r.get("latencies_s") or []]) // 2]
+                            if sub else None),
             "samples_total": sum(len(r["grades"]) for r in sub),
             "grade_dist": dict(Counter(r["mode"] for r in sub)),
         }
