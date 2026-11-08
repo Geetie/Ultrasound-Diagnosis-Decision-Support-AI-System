@@ -1,0 +1,91 @@
+{
+  "probe": "p96_t2b_groupkfold",
+  "generated_at": "2026-11-08 20:11:44",
+  "why": "单次划分在生物医学小数据上不可靠（ml-training-skill references/biomedical.md:420 明确要求 k-fold 5-10）。本脚本用 GroupKFold(5) 按**视频**分组做交叉验证。",
+  "n_splits": 5,
+  "n_images": 28805,
+  "n_videos": 116,
+  "lanes": {
+    "frozen": {
+      "folds": [
+        {
+          "fold": 0,
+          "n_train": 23044,
+          "n_test": 5761,
+          "n_videos_train": 93,
+          "n_videos_test": 23,
+          "acc": 0.9386,
+          "macro_f1": 0.9325,
+          "video_cluster_ci95": [
+            0.8886,
+            0.9795
+          ],
+          "wall_s": 91.0
+        },
+        {
+          "fold": 1,
+          "n_train": 23044,
+          "n_test": 5761,
+          "n_videos_train": 93,
+          "n_videos_test": 23,
+          "acc": 0.899,
+          "macro_f1": 0.8737,
+          "video_cluster_ci95": [
+            0.7812,
+            0.9896
+          ],
+          "wall_s": 90.1
+        },
+        {
+          "fold": 2,
+          "n_train": 23044,
+          "n_test": 5761,
+          "n_videos_train": 93,
+          "n_videos_test": 23,
+          "acc": 0.8538,
+          "macro_f1": 0.8716,
+          "video_cluster_ci95": [
+            0.7388,
+            0.9853
+          ],
+          "wall_s": 90.8
+        },
+        {
+          "fold": 3,
+          "n_train": 23044,
+          "n_test": 5761,
+          "n_videos_train": 93,
+          "n_videos_test": 23,
+          "acc": 0.933,
+          "macro_f1": 0.913,
+          "video_cluster_ci95": [
+            0.858,
+            0.9849
+          ],
+          "wall_s": 86.6
+        },
+        {
+          "fold": 4,
+          "n_train": 23044,
+          "n_test": 5761,
+          "n_videos_train": 92,
+          "n_videos_test": 24,
+          "acc": 0.9679,
+          "macro_f1": 0.7857,
+          "video_cluster_ci95": [
+            0.9313,
+            0.9945
+          ],
+          "wall_s": 86.3
+        }
+      ],
+      "mean_acc": 0.9185,
+      "std_acc": 0.039,
+      "mean_macro_f1": 0.8753,
+      "std_macro_f1": 0.0505,
+      "min_acc": 0.8538,
+      "max_acc": 0.9679,
+      "wall_s": 444.9
+    }
+  }
+}
