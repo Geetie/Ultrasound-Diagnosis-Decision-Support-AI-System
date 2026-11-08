@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "project": "超声诊疗决策支持 AI 系统",
-  "updated_at": "2026-11-08T14:37:40+08:00",
+  "updated_at": "2026-11-08T14:49:42+08:00",
   "head_commit": "14a7f9f",
   "branch": "main",
   "status_legend": {
@@ -351,6 +351,37 @@
         "double_engine_eval_set_v3(171)": "同上",
         "restored_non_echo_20261021(415)": "无需顶替（本就不是测试集）",
         "consistency_test_cases(780)": "A1/A2/A3 公开集标注 + B1"
+      },
+      "parallel_agents_20261108": {
+        "note": "用户指示并行派 5 个 Agent 构建数据集",
+        "assignments": [
+          {
+            "agent": "A组-已下载",
+            "scope": "AUL/CACTUS/CAMUS 评测脚本 + 基线",
+            "constraint": "数字须含样本量与混淆矩阵"
+          },
+          {
+            "agent": "A组-补下载",
+            "scope": "TN3K/DDTI 下载 + TG3K/TNSCUI 评估 + 下载清单",
+            "constraint": "许可须核准，commercial_ok=false 标仅评测"
+          },
+          {
+            "agent": "B2 中文检索集",
+            "scope": "≥100 query，≥50% 含影像术语，chunk 级 gold",
+            "constraint": "死命令：一条一条手写，禁止脚本生成"
+          },
+          {
+            "agent": "B3 可读性黄金集",
+            "scope": "50 份人工标注 + 混淆矩阵验证检查器",
+            "constraint": "死命令：一条一条手写，禁止脚本生成"
+          },
+          {
+            "agent": "B1/B4 调研",
+            "scope": "穷尽式证伪两项是否只能靠医生/临床方",
+            "constraint": "不是佐证，是找替代方案"
+          }
+        ],
+        "hard_command_reason": "14 个自造测试集全因脚本模板拼装报废：consistency_test_cases(780) 有 156 条完全重复 + 自相矛盾句；double_engine_eval_set(169) 86% 来自 3 个模板。结果 7 项核心指标作废。允许脚本做校验，禁止脚本做内容生产。"
       }
     },
     {
