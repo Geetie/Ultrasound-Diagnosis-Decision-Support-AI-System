@@ -90,7 +90,7 @@ async def survey() -> dict:
         by_organ: dict[str, Counter[str]] = {}
         by_month: dict[str, Counter[str]] = {}
         usable_ids: list[str] = []
-        for rid, organ, created, status, findings, kids in rows:
+        for rid, organ, created, _status, findings, _kids in rows:
             cat, why = classify(findings)
             cats[cat] += 1
             reasons[f"{cat}:{why}"] += 1
@@ -111,7 +111,7 @@ async def survey() -> dict:
         # 有知识库上下文（knowledge_ids 非空）的可用记录数 —— 幻觉/faithfulness 要用
         with_kids = 0
         by_organ_usable = Counter()
-        for rid, organ, created, status, findings, kids in rows:
+        for _rid, organ, _created, _status, findings, kids in rows:
             cat, _ = classify(findings)
             if cat != "usable":
                 continue
@@ -147,7 +147,7 @@ def main() -> int:
 
     try:
         data = asyncio.run(survey())
-    except Exception as exc:  # noqa: BLE001 — 库不可达必须显式失败，不静默给 0
+    except Exception as exc:
         print(f"[FATAL] 库不可达或查询失败：{exc!r}")
         return 2
 
@@ -157,7 +157,7 @@ def main() -> int:
     for f in sorted(d.glob("*.jsonl")):
         try:
             rows = [json.loads(line) for line in f.open(encoding="utf-8") if line.strip()]
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             eval_sets[f.name] = {"error": repr(exc)}
             continue
         n = len(rows)

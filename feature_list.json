@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "project": "超声诊疗决策支持 AI 系统",
-  "updated_at": "2026-11-08T20:55:00+08:00",
+  "updated_at": "2026-11-08",
   "head_commit": "14a7f9f",
   "branch": "main",
   "status_legend": {
@@ -618,7 +618,7 @@
         "thyroid-registry-data",
         "eval-dataset-rebuild"
       ],
-      "evidence": "16 号 A.10.3/A.10.6/A.13/#5；tests/reports/t1_faithfulness_v11.json"
+      "evidence": "16 号 A.10.3/A.10.6/A.13/#5；**A.171（2026-11-08，最新）**：生产干净样本 n=61（只来自 21 条输入）主口径 **0.0514**、纯知识断言 **0.1364**、把 prompt 分档表也算来源的对照口径 B **0.1493**；判官自证腿 3/3 支持（判官不是坏尺子）；旧 0.935 已按 A.166 作废。**结论：95% 门控不仅差一个数量级，且分母里 50% 是系统派生推导** —— 口径未决前不得切 gate。报告 `reports/第4组_生成质量_实测报告_20261108.md`"
     },
     {
       "id": "coverage-core",
@@ -1649,7 +1649,7 @@
         "faithfulness-gate",
         "eval-dataset-rebuild"
       ],
-      "evidence": "21 号「批 9（A.67）」；16 号 A.63/A.64/A.65/A.66；scripts/langfuse/eval_gate.py；scripts/t1_eval_faithfulness.py；16 号 A.62.14 / A.63.2"
+      "evidence": "21 号「批 9（A.67）」；16 号 A.63/A.64/A.65/A.66；scripts/langfuse/eval_gate.py；scripts/t1_eval_faithfulness.py；16 号 A.62.14 / A.63.2；**A.171（本轮）**：faithfulness 给出三口径对照（0.0514 判官只对检索块 / 0.1493 检索块或 prompt 模板 / 0.1364 只算纯知识断言），并实证「知识库不承载分档表」是结构性缺口（甲状腺 601 块里 0 块含 `TR2（2 分）`）"
     },
     {
       "id": "a70-prompt-echo-defect",
@@ -1909,6 +1909,16 @@
       "dependencies": [],
       "evidence": "16 号 A.170；reports/第3组_检索改造_实测报告_20261108.md §4",
       "note": "选项：①关掉 full 档默认精排 ②换医学领域精排模型（如医学版 bge-reranker / CMedRAG 系）后重测 ③精排前用原始 query 而非扩展后 query（本轮已证扩展词是噪声源）。"
+    },
+    {
+      "id": "gen-output-compliance-p0",
+      "name": "生成侧 P0：生产超时与输出依从性（A.171 挖出）",
+      "description": "第 4 组实测挖出 4 个生产缺陷，均与指标无关、但会直接影响判读可用性：①生产 INFERENCE_TIMEOUT_SECONDS=30 而 II-Medical-8B 单次生成 p50≈46s → 判读必然超时→CUSUM 熔断→后续 circuit_breaker_open_reject（真机实测：104 次生成调用中 93 次 >30s = 89.42%，p50 46s/p90 94s；首轮用生产超时整批跑不下去 → circuit_breaker_open）；②该模型 enable_thinking=false 与 /no_think 都压不住思考，max_tokens 被 <think> 吃光，剥除后正文为空 → grade_unparseable/空结论（生产 prompt 里 no_think 0 处）；③“只有分级码、无正文”的退化结论占 32.50% 生产输入（含自造合并口径 52.5%）而 output_guard 不拦；④模型自造分档规则（如 `（注：0-2 分为 TR2）`）写进结论，kb_v1.4.0 与 prompt 均 0 命中。",
+      "status": "planned",
+      "priority": "P0",
+      "result": "待修；修完重跑 4.4 一致率（当前 30.00% 被①③污染）",
+      "dependencies": [],
+      "evidence": "reports/第4组_生成质量_实测报告_20261108.md §七；16 号 A.171"
     }
   ]
 }

@@ -48,7 +48,6 @@ for _p in (str(_SCRIPTS), str(_SCRIPTS / "audit"), str(_SCRIPTS / "langfuse")):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
-from collect_eval_set import _conclusion_of  # noqa: E402
 from p49_degraded_cause import degraded_kind  # noqa: E402
 
 from app.inference.grading_definitions import extract_grading_severest  # noqa: E402
@@ -186,7 +185,7 @@ def main() -> int:
 
     try:
         data = asyncio.run(build())
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         print(f"[FATAL] 库不可达或查询失败：{exc!r}")
         return 2
 

@@ -202,7 +202,7 @@ class FixedKnowledge:
         ]
         self.queries = 0
 
-    async def query(self, query, organ, top_k=10, profile=None, **kwargs):  # noqa: ANN001, ANN201
+    async def query(self, query, organ, top_k=10, profile=None, **kwargs):
         self.queries += 1
         return list(self._chunks)
 
@@ -301,7 +301,7 @@ async def main() -> int:
                     resp = await specialist.invoke(ctx)
                     text = resp.content or ""
                     confs.append(float(resp.confidence or 0.0))
-                except Exception as exc:  # noqa: BLE001
+                except Exception as exc:
                     text = ""
                     confs.append(0.0)
                     print(f"  [{i}/{s}] invoke 异常 {type(exc).__name__}: {exc}")
@@ -391,7 +391,7 @@ async def main() -> int:
             "name": getattr(info, "name", None), "version": getattr(info, "version", None),
             "quantization": getattr(info, "quantization", None),
         }
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         report["model_info"] = {"error": f"{type(exc).__name__}: {exc}"}
 
     path = pathlib.Path(args.report).expanduser()

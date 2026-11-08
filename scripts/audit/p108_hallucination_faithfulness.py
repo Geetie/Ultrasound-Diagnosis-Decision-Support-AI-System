@@ -48,7 +48,6 @@ import re
 import statistics
 import sys
 import time
-from collections import Counter, defaultdict
 
 _SCRIPTS = pathlib.Path(__file__).resolve().parents[1]
 for _p in (str(_SCRIPTS), str(_SCRIPTS / "audit"), str(_SCRIPTS / "langfuse")):
@@ -132,10 +131,7 @@ def score_map_violates(claim: dict, bins: dict[str, list[tuple[float, float]]]) 
     ranges = bins.get(grade) or []
     if not ranges:
         return None
-    for a, b in ranges:
-        if lo >= a and hi <= b:
-            return False
-    return True
+    return all(not (lo >= a and hi <= b) for a, b in ranges)
 
 
 #: 明确不算硬事实的上下文（影像所见/系统派生）
@@ -417,7 +413,7 @@ async def main() -> int:
                     item, args.judge_url, args.judge_model,
                     statements_lang="zh", answer_mode=args.answer_mode,
                 )
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 res = {"error": f"{type(exc).__name__}: {exc}"}
             res["request_id"] = item.get("request_id")
             res["organ"] = item.get("organ")
@@ -457,11 +453,65 @@ async def main() -> int:
     unsupported_examples: list[dict] = []
     for r in faith:
         for d in (r.get("detail") or []):
-            if d.get("bucket") == "knowledge" and int(d.get("verdict") or 0) == 0:
-                if len(unsupported_examples) < 40:
-                    unsupported_examples.append(
-                        {"request_id": r.get("request_id"), "statement": d.get("statement")}
-                    )
+            if (
+                d.get("bucket") == "knowledge"
+                and int(d.get("verdict") or 0) == 0
+                and len(unsupported_examples) < 40
+            ):
+                unsupported_examples.append(
+                    {"request_id": r.get("request_id"), "statement": d.get("statement")}
+                )
+
+    # ---- 口径 B（对照）：把生产 prompt 模板也算作支持来源 ----
+    template_text = {
+        o: (templates.get(o, "") + "\n" + templates.get("_common", "")) for o in kb_pools
+    }
+    caliber_b = {"n": 0, "supportedA": 0, "supportedB": 0}
+    for r in faith:
+        organ = str(r.get("organ") or "")
+        tpl_raw = template_text.get(organ, "")
+        for d in (r.get("detail") or []):
+            if d.get("bucket") != "knowledge":
+                continue
+            caliber_b["n"] += 1
+            v = int(d.get("verdict") or 0)
+            caliber_b["supportedA"] += v
+            if v or claim_supported(d.get("statement") or "", [tpl_raw]):
+                caliber_b["supportedB"] += 1
+    caliber_b["faith_A"] = (
+        round(caliber_b["supportedA"] / caliber_b["n"], 4) if caliber_b["n"] else None
+    )
+    caliber_b["faith_B"] = (
+        round(caliber_b["supportedB"] / caliber_b["n"], 4) if caliber_b["n"] else None
+    )
+    caliber_b["note"] = (
+        "口径 A = 判官只对着**检索块**判（主口径）；口径 B = 断言在检索块或**生产 prompt 模板**"
+        "（TI-RADS 评分表 / LVEF 分档表）中能找到出处也算支持。B 是确定性下界，不是判官替换。"
+    )
+
+    # ---- 知识断言再分三层（供人工抽查，不影响主口径） ----
+    _DERIVED = re.compile(
+        r"总分|总评分|评分(?:为|范围|达到|对应)|评分总和|各项.{0,6}得分|分值为\s*\d|"
+        r"\d+\s*分(?:\s*(?:对应|属于|归为|被归类|→))|\d+\s*分\s*$|"
+        r"TR[1-5]\s*(?:等级|类别|分类|标准|的评分)|≥\s*\d+\s*分|≤\s*\d+\s*分|"
+        r"\d+\s*[-~至]\s*\d+\s*分为", re.IGNORECASE)
+    _SELFREF = re.compile(
+        r"鉴别诊断(?:中|的|第)|证据(?:来源|来自|引用)|文献\s*\[|输出示例|"
+        r"(?:第一|第二|第三)项|本条|上述|该结论|报告(?:中|里)", re.IGNORECASE)
+    tier_cnt = {"derived": [0, 0], "selfref": [0, 0], "pure": [0, 0]}
+    for r in faith:
+        for d in (r.get("detail") or []):
+            if d.get("bucket") != "knowledge":
+                continue
+            st = d.get("statement") or ""
+            sub = "derived" if _DERIVED.search(st) else ("selfref" if _SELFREF.search(st) else "pure")
+            tier_cnt[sub][0] += 1
+            tier_cnt[sub][1] += int(d.get("verdict") or 0)
+    knowledge_tiers = {
+        k: {"n": v[0], "supported": v[1],
+            "faith": round(v[1] / v[0], 4) if v[0] else None}
+        for k, v in tier_cnt.items()
+    }
 
     report = {
         "generated_at": time.strftime("%Y-%m-%d %H:%M:%S"),
@@ -502,6 +552,8 @@ async def main() -> int:
             "bucket_totals": bucket_tot,
             "unsupported_knowledge_examples": unsupported_examples[:20],
             "n_rebucketed_total": sum(int(r.get("n_rebucketed") or 0) for r in faith),
+            "knowledge_tiers": knowledge_tiers,
+            "caliber_b_with_prompt_template": caliber_b,
             "per_sample": faith,
         },
     }
