@@ -1,0 +1,46 @@
+{
+  "dataset_name": "ThyUS2Path",
+  "version": "抽取版（仅标签表，不含图像）",
+  "created_by": "B1/B4 公开资源穷尽调研（2026-11-08）",
+  "files": {
+    "ThyUS2Path_labels.csv": "842 行，列 case_id / histo_label / batch；histo_label: 0=良性 1=恶性"
+  },
+  "source": {
+    "figshare_doi": "10.6084/m9.figshare.27021604",
+    "paper_doi": "10.1038/s41597-024-04156-5",
+    "paper_url": "https://www.nature.com/articles/s41597-024-04156-5",
+    "download_url": "https://ndownloader.figshare.com/articles/27021604/versions/1",
+    "download_note": "实测 HTTP 200 / 1,640,036,355 B；内含 .rar，macOS 用 bsdtar -xf 解",
+    "license": "CC BY 4.0",
+    "commercial_use": true
+  },
+  "size": {
+    "cases": 842,
+    "images": 8508,
+    "batch1_cases": 601,
+    "batch2_cases": 241,
+    "malignant": 524,
+    "benign": 318,
+    "malignant_rate": 0.6223
+  },
+  "label_provenance": {
+    "class": "A（手术病理金标准）",
+    "evidence": "论文原文：pathological diagnosis annotation for each case；入组要求全部半切/全切，histological diagnosis report of the corresponding tissue slides",
+    "verification": "本机实下并解压，读取 batch1_image_label.csv（601 行）+ batch2_image_label.csv（241 行），histo_label 分布 0=318 / 1=524"
+  },
+  "can_measure": [
+    "漏诊率 = P(恶性 | 系统判良性) —— 作为 TN5000 的独立外部验证",
+    "稳健性论证：两集患病率不同（71.5% vs 62.2%），若漏诊率接近，证明指标对患病率不敏感"
+  ],
+  "cannot_measure": [
+    "临床漏诊率（不可外推：恶性占比 62.2%，且全为手术病例）",
+    "NPV / 准确率 / 每千人漏诊数",
+    "随访结局（横断面）",
+    "TI-RADS 分级准确率（无分级标签、无五特征）"
+  ],
+  "known_limitations": [
+    "全为手术切除病例 → 良性侧也是「被切除的良性」，选择偏倚明显",
+    "恶性占比 62.2%，同样只能作下界估计",
+    "无 TI-RADS 五特征标注"
+  ]
+}

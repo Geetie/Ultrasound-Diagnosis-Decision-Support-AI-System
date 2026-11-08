@@ -85,6 +85,13 @@ data/*
 !data/eval/v2/*.jsonl
 !data/eval/v2/*.json
 !data/eval/v2/*.md
+# 例外：B1/B4 的**公开集标签表**必须进仓库（2026-11-08 加）。
+# 理由：这些 CSV 是从 CC BY 4.0 公开集里**抽取出的标签**（KB 级，不含任何图像），
+# 是"漏诊率可算"这一结论的**可复现证据**；图像本体仍在 data/ 下被忽略。
+# 若被 `data/*` 吞掉，换机器后无法复算、评审无法核对，等于结论只剩口头声明（硬规则 #12）。
+!data/public_sets/
+!data/public_sets/*.csv
+!data/public_sets/*.xml
 # 例外：测试目录不能因为名字里带 data 就被忽略。
 # 实测踩到：`data/` 是无锚点模式，把 tests/unit/data 与 tests/integration/data 整目录
 # 忽略了，导致 3 个测试文件只存在于本机、**CI 从未运行过它们**；本地覆盖率因此虚高于 CI。

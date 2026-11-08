@@ -1,0 +1,46 @@
+{
+  "dataset_name": "TN5000",
+  "version": "抽取版（仅标签表，不含图像）",
+  "created_by": "B1/B4 公开资源穷尽调研（2026-11-08）",
+  "files": {
+    "TN5000_labels.csv": "5000 行，列 image_id / label；label: 0=良性 1=恶性",
+    "TN5000_annotation_sample.xml": "单个原始 VOC 标注样例，供字段核对"
+  },
+  "source": {
+    "figshare_doi": "10.6084/m9.figshare.28455641",
+    "paper_doi": "10.1038/s41597-025-05757-4",
+    "paper_url": "https://www.nature.com/articles/s41597-025-05757-4",
+    "download_url": "https://ndownloader.figshare.com/articles/28455641/versions/1",
+    "download_note": "api.figshare.com 返回 403、网页分享链接返回 202 WAF，只有 ndownloader.figshare.com 可下；实测 HTTP 200 / 220,927,209 B",
+    "license": "CC BY 4.0",
+    "commercial_use": true
+  },
+  "size": {
+    "images": 5000,
+    "label_rows": 5000,
+    "malignant": 3574,
+    "benign": 1426,
+    "malignant_rate": 0.7148
+  },
+  "label_provenance": {
+    "class": "A（病理金标准）",
+    "evidence": "论文原文：the types of the annotation of the nodule, i.e. the malignant or benign, is determined according to FNA biopsy and pathological results",
+    "verification": "本机实下并解压，逐 XML 解析 <name> 标签，5000 个文件每图恰好 1 个标签，0 例外"
+  },
+  "can_measure": [
+    "漏诊率 = P(恶性 | 系统判良性) —— 条件概率，不随患病率漂移",
+    "漏诊率 95% Wilson 置信区间",
+    "恶性/良性二分类的敏感度、特异度、AUC"
+  ],
+  "cannot_measure": [
+    "临床漏诊率（不可外推：恶性占比 71.5%，真实人群 5–15%）",
+    "NPV / 准确率 / 每千人漏诊数（患病率扭曲，禁止外推）",
+    "随访结局（本集为横断面，无纵向链接）",
+    "TI-RADS 分级准确率（本集无分级标签、无五特征）"
+  ],
+  "known_limitations": [
+    "恶性占比 71.5%，人为富集 → 结果只能作下界估计",
+    "全部病例均已接受 FNA/病理 → 未穿刺人群（真实临床中被判良性的主体）不在覆盖范围",
+    "无 TI-RADS 五特征标注，无法用于分级规则验证"
+  ]
+}
