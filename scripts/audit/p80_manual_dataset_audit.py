@@ -33,9 +33,16 @@ import sys
 MAX_SINGLE_TYPE_RATIO = 0.40
 #: 至少要有多少种不同的 query 类型
 MIN_DISTINCT_TYPES = 5
-#: 字数变异系数下限（低于即句式雷同）
-#: 变异系数 = 标准差 / 均值。0.25 ≈ 长短有明显的差异
-MIN_LENGTH_CV = 0.25
+#: 字数**绝对跨度**下限（更长者 - 最短者，单位：字）。
+#:
+#: **为什么不用变异系数**（2026-11-08 实测教训）：
+#: 首版用变异系数 ≥0.25 做判据，把一份**真人逐条手写**的 120 条中文检索集判成 FAIL
+#: （实测 CV=0.18）。但读原文后确认那批数据完全合格——长度 21~55 字，
+#: 因为"一句门诊提问"本来就是 20~50 字的窄区间，CV 天然偏低。
+#: 变异系数惩罚的是"长度集中"，而**临床上提问长度本来就该集中**。
+#: 真正该抓的是"所有条目长度几乎一模一样"（模板填充），那表现为**绝对跨度极小**。
+#: 所以改用跨度：CV 仅作参考指标输出，不参与判定。
+MIN_LENGTH_SPAN_CHARS = 15
 #: 至少这么多条才值得做分布分析
 MIN_N_FOR_DISTRIBUTION = 30
 
@@ -123,23 +130,31 @@ def audit(
             "detail": "没有类型字段，跳过（建议补 query_type 便于分析）",
         })
 
-    # 2) 长度变异系数（句式单调检测）
+    # 2) 长度**绝对跨度**（识别"所有条目长度一模一样"的模板填充）
     if len(texts) >= MIN_N_FOR_DISTRIBUTION:
         lens = [len(t) for t in texts]
         mean = statistics.mean(lens)
         sd = statistics.pstdev(lens)
         cv = sd / mean if mean else 0.0
+        span = max(lens) - min(lens)
         checks.append({
-            "name": "length_variability",
-            "value": round(cv, 3),
-            "threshold": MIN_LENGTH_CV,
-            "passed": cv >= MIN_LENGTH_CV,
-            "detail": f"字数 均值 {mean:.0f} / 标准差 {sd:.1f} / 变异系数 {cv:.2f}",
-            "why": "变异系数过低 = 每条长度雷同 = 很可能是同一模板套出来的",
+            "name": "length_span",
+            "value": span,
+            "threshold": MIN_LENGTH_SPAN_CHARS,
+            "passed": span >= MIN_LENGTH_SPAN_CHARS,
+            "detail": (
+                f"最长 {max(lens)} 字 / 最短 {min(lens)} 字 / 跨度 {span} 字"
+                f"（均值 {mean:.0f}、标准差 {sd:.1f}、变异系数 {cv:.2f} 仅供参考）"
+            ),
+            "why": (
+                "跨度极小 = 所有条目长度一模一样 = 模板填充。"
+                "**刻意不用变异系数判定**：临床提问长度本就该集中在 20~50 字，"
+                "CV 偏低是正常的，用它会把合格集误判为不合格（2026-11-08 实测）。"
+            ),
         })
     else:
         checks.append({
-            "name": "length_variability",
+            "name": "length_span",
             "value": None,
             "passed": None,
             "detail": f"样本 {len(texts)} 条 < {MIN_N_FOR_DISTRIBUTION}，不做分布分析",

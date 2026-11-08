@@ -66,22 +66,41 @@ def test_type_concentration_detected():
     assert check["passed"] is False
 
 
-def test_low_length_variability_detected():
-    """字数几乎都一样 = 套模板。"""
-    rows = [
-        _row(f"甲状腺超声检查：描述{i}内容各异但长度刻意相同的一段话", "grading", i)
-        for i in range(30)
-    ]
+def test_identical_lengths_detected():
+    """所有条目长度一模一样 = 套模板（用**绝对跨度**判定）。"""
+    # 构造 30 条长度完全相同的（只有中间一个字符不同）
+    rows = [_row(f"描述第{i}个内容各异的甲状腺结节超声检查结果说明文字", "grading", i) for i in range(30)]
+    # 长度必须完全一致才能测出跨度 0
+    rows = [{"query": "甲" * 20 + str(i % 10), "query_type": "grading", "case_id": str(i)} for i in range(30)]
     r = _mod.audit(rows)
-    check = next(c for c in r["checks"] if c["name"] == "length_variability")
-    assert check["passed"] is False
+    check = next(c for c in r["checks"] if c["name"] == "length_span")
+    assert check["passed"] is False, f"跨度 {check['value']} 应被判不合格"
+
+
+def test_natural_length_variation_passes():
+    """临床提问天然长度在 20~50 字之间波动，CV 低但跨度够 —— 这是合格的。
+
+    2026-11-08 教训：首版用变异系数 ≥0.25 判定，把真人逐条手写的 120 条中文检索集
+    判成 FAIL（实测 CV=0.18），读原文后发现那批数据完全合格。
+    """
+    rows = [
+        _row("为什么指南说不用回声均匀程度来判断良恶性？", "grading", 1),          # 21 字
+        _row("甲状腺结节 C-TIRADS 4 类里，实性、低回声的 4A/4B/4C 恶性率各是多少？", "grading", 2),  # 45 字
+        _row("多灶 4a 类实性结节，最大一个 12mm 且紧贴被膜，是不是该穿？", "indication", 3),
+        _row("随访中的实性结节，长到多少才算增大需要重新评估？", "followup", 4),
+    ] * 8
+    r = _mod.audit(rows)
+    check = next(c for c in r["checks"] if c["name"] == "length_span")
+    assert check["passed"] is True
+    # 变异系数仍然低（说明为什么不能用它判定）
+    assert "变异系数" in check["detail"]
 
 
 def test_small_dataset_skips_distribution_checks():
     """小样本时不做分布分析（但前缀检查照做）。"""
     rows = [_row("短问题？", "t", i) for i in range(3)]
     r = _mod.audit(rows)
-    length_check = next(c for c in r["checks"] if c["name"] == "length_variability")
+    length_check = next(c for c in r["checks"] if c["name"] == "length_span")
     assert length_check["passed"] is None
 
 
