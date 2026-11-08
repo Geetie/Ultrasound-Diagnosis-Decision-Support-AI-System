@@ -193,7 +193,20 @@ class Settings(BaseSettings):
     max_tokens: int = Field(default=2048, alias='inference_max_tokens')
     temperature: float = Field(default=0.1, alias='inference_temperature')
     top_p: float = Field(default=0.95, alias='inference_top_p')
-    inference_timeout_seconds: float = 30.0
+    # 生成超时（2026-11-08 从 30.0 提到 180.0）。
+    #
+    # **依据**：`p107b` 实测 II-Medical-8B 的**单项**生成延迟
+    #   p50 = 46.04 s / p90 = 94.1 s / max = 101.4 s（104 次调用）
+    # 而 30 s 的超时会让 **93/104 = 89.42% 的调用必然超时** → 触发
+    #   `E2002_TIMEOUT` → `circuit_breaker_open` → 后续请求全被拒。
+    #
+    # 也就是说：原来的 30 s 不是"保护"，而是**让系统在正常延迟下自我熔断**。
+    # 任何在此配置下测出的生产指标，测的是"熔断率"而不是"模型能力"。
+    #
+    # 取值：max(实测 max 101.4 s) × 1.7 ≈ 172 → 取 180 s 留余量。
+    # 注意：`inference_max_retries=3`，最坏情况 3×180=540 s，故
+    #   `pipeline_dispatch_budget_s` 需同步评估（见其注释）。
+    inference_timeout_seconds: float = 180.0
     inference_health_check_timeout_seconds: float = 5.0
     inference_connect_timeout_seconds: float = 10.0
 

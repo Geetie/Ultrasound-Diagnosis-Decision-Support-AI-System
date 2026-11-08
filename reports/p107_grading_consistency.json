@@ -1,0 +1,1613 @@
+{
+  "caliber": {
+    "definition": "同一输入跑 N 次，N 个分级全同且均可解析 = 一致；consistency = 一致输入数 / 总输入数",
+    "samples_per_case": 2,
+    "generation_path": "生产专科智能体 invoke()（prompt/思考剥除/解析/结构化重试全部复用生产代码）；唯一固定的是检索结果",
+    "model": "settings.inference_engine → 8002 vLLM（见 report.model_info）",
+    "timeout_seconds": 180.0,
+    "max_retries": 1,
+    "input": "生产库 distinct (clinical_text, organ) + 该请求当时的 knowledge_ids 快照",
+    "tier_rule": "按输入侧征象词分档：甲状腺 ≥2 个高风险征象 → high_risk；心脏有显式 EF% → high_risk",
+    "offline_note": "离线：只测生成侧稳定性；不含融合层/安全网关/DB 写入"
+  },
+  "overall": {
+    "n": 52,
+    "consistent": 19,
+    "consistency": 0.3654,
+    "both_parsed_n": 39,
+    "consistency_both_parsed": 0.4872,
+    "unparsed_samples": 22,
+    "latency_p50": 46.04,
+    "samples_total": 104,
+    "grade_dist": {
+      "2": 5,
+      "": 12,
+      "1": 14,
+      "5": 9,
+      "4": 11,
+      "normal": 1
+    }
+  },
+  "overall_production_only": {
+    "n": 40,
+    "consistent": 12,
+    "consistency": 0.3,
+    "both_parsed_n": 29,
+    "consistency_both_parsed": 0.4138,
+    "unparsed_samples": 19,
+    "latency_p50": 41.93,
+    "samples_total": 80,
+    "grade_dist": {
+      "2": 5,
+      "": 10,
+      "1": 14,
+      "5": 6,
+      "4": 4,
+      "normal": 1
+    }
+  },
+  "by_tier": {
+    "regular": {
+      "n": 37,
+      "consistent": 10,
+      "consistency": 0.2703,
+      "both_parsed_n": 27,
+      "consistency_both_parsed": 0.3704,
+      "unparsed_samples": 18,
+      "latency_p50": 40.77,
+      "samples_total": 74,
+      "grade_dist": {
+        "2": 5,
+        "": 10,
+        "1": 14,
+        "4": 4,
+        "5": 3,
+        "normal": 1
+      }
+    },
+    "high_risk": {
+      "n": 15,
+      "consistent": 9,
+      "consistency": 0.6,
+      "both_parsed_n": 12,
+      "consistency_both_parsed": 0.75,
+      "unparsed_samples": 4,
+      "latency_p50": 47.52,
+      "samples_total": 30,
+      "grade_dist": {
+        "5": 6,
+        "": 2,
+        "4": 7
+      }
+    }
+  },
+  "by_tier_production_only": {
+    "regular": {
+      "n": 37,
+      "consistent": 10,
+      "consistency": 0.2703,
+      "both_parsed_n": 27,
+      "consistency_both_parsed": 0.3704,
+      "unparsed_samples": 18,
+      "latency_p50": 40.77,
+      "samples_total": 74,
+      "grade_dist": {
+        "2": 5,
+        "": 10,
+        "1": 14,
+        "4": 4,
+        "5": 3,
+        "normal": 1
+      }
+    },
+    "high_risk": {
+      "n": 3,
+      "consistent": 2,
+      "consistency": 0.6667,
+      "both_parsed_n": 2,
+      "consistency_both_parsed": 1.0,
+      "unparsed_samples": 1,
+      "latency_p50": 48.98,
+      "samples_total": 6,
+      "grade_dist": {
+        "5": 3
+      }
+    }
+  },
+  "by_organ": {
+    "cardiac": {
+      "n": 2,
+      "consistent": 1,
+      "consistency": 0.5,
+      "both_parsed_n": 1,
+      "consistency_both_parsed": 1.0,
+      "unparsed_samples": 2,
+      "latency_p50": 32.06,
+      "samples_total": 4,
+      "grade_dist": {
+        "normal": 1,
+        "": 1
+      }
+    },
+    "thyroid": {
+      "n": 50,
+      "consistent": 18,
+      "consistency": 0.36,
+      "both_parsed_n": 38,
+      "consistency_both_parsed": 0.4737,
+      "unparsed_samples": 20,
+      "latency_p50": 46.24,
+      "samples_total": 100,
+      "grade_dist": {
+        "2": 5,
+        "": 11,
+        "1": 14,
+        "5": 9,
+        "4": 11
+      }
+    }
+  },
+  "rows": [
+    {
+      "request_id": "req_20261025_0987cfa0",
+      "organ": "thyroid",
+      "tier": "regular",
+      "synthetic": false,
+      "clinical_text": "甲状腺超声检查，请结合影像给出 TI-RADS 分级。",
+      "repeat_in_prod": 102,
+      "n_chunks": 8,
+      "grades": [
+        "2",
+        "2"
+      ],
+      "confidences": [
+        1.0,
+        1.0
+      ],
+      "latencies_s": [
+        33.26,
+        28.17
+      ],
+      "agree": true,
+      "mode": "2",
+      "unparsed": 0,
+      "contents": [
+        "甲状腺 · TR2 — 未提供影像特征（成分/回声/形态/边缘/钙化）及病灶具体大小，无法匹配 ACRI TI-RADS 2017 分级标准",
+        "甲状腺 · TR2 — 影像特征（成分/回声/形态/边缘/钙化）及病灶大小未提供，无法按 ACR TI-RADS 2017 标准计算总分"
+      ]
+    },
+    {
+      "request_id": "req_20261102_dee28c68",
+      "organ": "thyroid",
+      "tier": "regular",
+      "synthetic": false,
+      "clinical_text": "自造演练数据：右叶低回声结节，边界清，形态规则，未见明显钙化。",
+      "repeat_in_prod": 63,
+      "n_chunks": 4,
+      "grades": [
+        "2",
+        "1"
+      ],
+      "confidences": [
+        0.8712,
+        0.63
+      ],
+      "latencies_s": [
+        40.03,
+        36.98
+      ],
+      "agree": false,
+      "mode": "2",
+      "unparsed": 0,
+      "contents": [
+        "甲状腺 · TR2 — 低回声(2) + 边界清晰(0) + 形态规则(0) + 无钙化(0) = 2 分 → TR2（≤2 分为 TR2）",
+        "甲状腺 · TR1"
+      ]
+    },
+    {
+      "request_id": "req_20261025_648fb277",
+      "organ": "thyroid",
+      "tier": "regular",
+      "synthetic": false,
+      "clinical_text": "甲状腺结节复查。",
+      "repeat_in_prod": 40,
+      "n_chunks": 3,
+      "grades": [
+        "",
+        "2"
+      ],
+      "confidences": [
+        0.0,
+        0.8508
+      ],
+      "latencies_s": [
+        59.67,
+        38.26
+      ],
+      "agree": false,
+      "mode": "",
+      "unparsed": 1,
+      "contents": [
+        "本例未能解析出 TI-RADS 分级（AI 输出未给出可判定的分级码），已转人工判读：请结合图像与病史自行分级。",
+        "甲状腺 · TR2 — 未提供关键影像特征（成分/回声/形态/边缘/钙化）及病灶具体尺寸，无法按 ACR TI-RADS 2017 标准评分"
+      ]
+    },
+    {
+      "request_id": "req_20261103_2653b74a",
+      "organ": "thyroid",
+      "tier": "regular",
+      "synthetic": false,
+      "clinical_text": "右叶低回声结节，边界清，形态规则，未见明显钙化，大小约 8x6mm。",
+      "repeat_in_prod": 40,
+      "n_chunks": 3,
+      "grades": [
+        "1",
+        "2"
+      ],
+      "confidences": [
+        0.51,
+        0.9256
+      ],
+      "latencies_s": [
+        40.77,
+        30.05
+      ],
+      "agree": false,
+      "mode": "1",
+      "unparsed": 0,
+      "contents": [
+        "甲状腺 · TR1",
+        "甲状腺 · TR2 — 回声(2) + 形态(0) + 边缘(0) + 钙化(0) = **2 分 → TR2**（良性）"
+      ]
+    },
+    {
+      "request_id": "req_20261103_bf45726a",
+      "organ": "thyroid",
+      "tier": "high_risk",
+      "synthetic": false,
+      "clinical_text": "左叶混合回声结节，边界欠清，形态不规则，内见点状强回声，大小约 12x9mm。",
+      "repeat_in_prod": 28,
+      "n_chunks": 5,
+      "grades": [
+        "5",
+        ""
+      ],
+      "confidences": [
+        1.0,
+        0.0
+      ],
+      "latencies_s": [
+        38.37,
+        93.71
+      ],
+      "agree": false,
+      "mode": "5",
+      "unparsed": 1,
+      "contents": [
+        "甲状腺 · TR5 — 混合回声(1) + 高回声(1) + 不规则形态(2) + 欠清边缘(2) + 粗大钙化(1) = 7 分 → TR5（≥7 分）",
+        "本例未能解析出 TI-RADS 分级（AI 输出未给出可判定的分级码），已转人工判读：请结合图像与病史自行分级。"
+      ]
+    },
+    {
+      "request_id": "req_20260930_d44d3f1c",
+      "organ": "thyroid",
+      "tier": "regular",
+      "synthetic": false,
+      "clinical_text": "冒烟用自造文本：低回声结节，边界清，未见明显钙化。",
+      "repeat_in_prod": 21,
+      "n_chunks": 9,
+      "grades": [
+        "1",
+        "3"
+      ],
+      "confidences": [
+        0.75,
+        0.9756
+      ],
+      "latencies_s": [
+        38.16,
+        31.73
+      ],
+      "agree": false,
+      "mode": "1",
+      "unparsed": 0,
+      "contents": [
+        "甲状腺 · TR1",
+        "甲状腺 · TR3 — 低回声(1) + 边界清晰(0) + 无钙化(0) = 1 分 → TR2（≤2 分为 TR2）。需补充成分/形态特征"
+      ]
+    },
+    {
+      "request_id": "req_20260930_36c18e71",
+      "organ": "thyroid",
+      "tier": "regular",
+      "synthetic": false,
+      "clinical_text": "No discrete thyroid abnormality is identified on this ultrasound examination.",
+      "repeat_in_prod": 19,
+      "n_chunks": 2,
+      "grades": [
+        "1",
+        "2"
+      ],
+      "confidences": [
+        0.508,
+        0.6836
+      ],
+      "latencies_s": [
+        31.29,
+        29.06
+      ],
+      "agree": false,
+      "mode": "1",
+      "unparsed": 0,
+      "contents": [
+        "甲状腺 · TR1 — 现有知识未涉及此点，建议线下咨询医生",
+        "甲状腺 · TR2 — 未提及成分、回声、形态、边缘或钙化特征，无法评分"
+      ]
+    },
+    {
+      "request_id": "req_20261025_ac13dc5d",
+      "organ": "thyroid",
+      "tier": "regular",
+      "synthetic": false,
+      "clinical_text": "甲状腺右叶低回声结节，边界清。",
+      "repeat_in_prod": 13,
+      "n_chunks": 3,
+      "grades": [
+        "1",
+        "1"
+      ],
+      "confidences": [
+        0.51,
+        0.51
+      ],
+      "latencies_s": [
+        45.82,
+        48.2
+      ],
+      "agree": true,
+      "mode": "1",
+      "unparsed": 0,
+      "contents": [
+        "甲状腺 · TR1",
+        "甲状腺 · TR1"
+      ]
+    },
+    {
+      "request_id": "req_20260930_6e4ee495",
+      "organ": "thyroid",
+      "tier": "regular",
+      "synthetic": false,
+      "clinical_text": "A thyroid mass/nodule is observed, appearing irregular in shape and hypoechoic, with internal calcifications and inhomogeneous vascularity on Doppler evaluation.",
+      "repeat_in_prod": 9,
+      "n_chunks": 3,
+      "grades": [
+        "4",
+        "5"
+      ],
+      "confidences": [
+        0.51,
+        0.8024
+      ],
+      "latencies_s": [
+        48.58,
+        47.76
+      ],
+      "agree": false,
+      "mode": "4",
+      "unparsed": 0,
+      "contents": [
+        "甲状腺 · TR4",
+        "甲状腺 · TR5 — 实性(3) + 低回声(2) + 分叶状边缘(2) + 微钙化(3) = 10 分 → TR5（≥7 分）"
+      ]
+    },
+    {
+      "request_id": "req_20261003_6b45f36f",
+      "organ": "thyroid",
+      "tier": "regular",
+      "synthetic": false,
+      "clinical_text": "自造测试文本：肝内胆管轻度扩张，最宽约 0.6cm，胆总管上段内径约 0.9cm。",
+      "repeat_in_prod": 8,
+      "n_chunks": 15,
+      "grades": [
+        "",
+        ""
+      ],
+      "confidences": [
+        0.0,
+        0.0
+      ],
+      "latencies_s": [
+        0.53,
+        0.53
+      ],
+      "agree": false,
+      "mode": "",
+      "unparsed": 2,
+      "contents": [
+        "甲状腺：判读服务暂不可用（InferenceError），已转人工判读：请结合图像与病史自行判断。",
+        "甲状腺：判读服务暂不可用（InferenceError），已转人工判读：请结合图像与病史自行判断。"
+      ]
+    },
+    {
+      "request_id": "req_20261022_1808897d",
+      "organ": "thyroid",
+      "tier": "regular",
+      "synthetic": false,
+      "clinical_text": "甲状腺右叶低回声结节，边界清，形态规则，无钙化，需要穿刺吗？",
+      "repeat_in_prod": 6,
+      "n_chunks": 3,
+      "grades": [
+        "",
+        ""
+      ],
+      "confidences": [
+        0.0,
+        0.0
+      ],
+      "latencies_s": [
+        95.03,
+        94.23
+      ],
+      "agree": false,
+      "mode": "",
+      "unparsed": 2,
+      "contents": [
+        "本例未能解析出 TI-RADS 分级（AI 输出未给出可判定的分级码），已转人工判读：请结合图像与病史自行分级。",
+        "本例未能解析出 TI-RADS 分级（AI 输出未给出可判定的分级码），已转人工判读：请结合图像与病史自行分级。"
+      ]
+    },
+    {
+      "request_id": "req_20261107_1982869d",
+      "organ": "thyroid",
+      "tier": "regular",
+      "synthetic": false,
+      "clinical_text": "甲状腺右叶结节伴钙化",
+      "repeat_in_prod": 6,
+      "n_chunks": 3,
+      "grades": [
+        "",
+        ""
+      ],
+      "confidences": [
+        0.0,
+        0.0
+      ],
+      "latencies_s": [
+        94.06,
+        94.75
+      ],
+      "agree": false,
+      "mode": "",
+      "unparsed": 2,
+      "contents": [
+        "本例未能解析出 TI-RADS 分级（AI 输出未给出可判定的分级码），已转人工判读：请结合图像与病史自行分级。",
+        "本例未能解析出 TI-RADS 分级（AI 输出未给出可判定的分级码），已转人工判读：请结合图像与病史自行分级。"
+      ]
+    },
+    {
+      "request_id": "req_20261107_22e72981",
+      "organ": "thyroid",
+      "tier": "regular",
+      "synthetic": false,
+      "clinical_text": "双侧甲状腺弥漫性病变，回声不均",
+      "repeat_in_prod": 6,
+      "n_chunks": 2,
+      "grades": [
+        "5",
+        "1"
+      ],
+      "confidences": [
+        0.7436,
+        0.84
+      ],
+      "latencies_s": [
+        46.24,
+        46.61
+      ],
+      "agree": false,
+      "mode": "5",
+      "unparsed": 0,
+      "contents": [
+        "甲状腺 · TR5 — 未提及成分（无法判定）、回声具体类型（\"不均\"非评分项）、形态/边缘/钙化（均未描述），无法按 ACR TI-RADS 2017 完整评分",
+        "甲状腺 · TR1 — 未提供结节具体特征（成分/回声类型/形态/边缘/钙化），无法按 ACR TI-RADS 标准评分"
+      ]
+    },
+    {
+      "request_id": "req_20261107_8d7aeee1",
+      "organ": "thyroid",
+      "tier": "regular",
+      "synthetic": false,
+      "clinical_text": "峡部实性低回声结节，纵横比>1",
+      "repeat_in_prod": 6,
+      "n_chunks": 2,
+      "grades": [
+        "4",
+        "5"
+      ],
+      "confidences": [
+        0.39,
+        0.7352
+      ],
+      "latencies_s": [
+        46.93,
+        37.54
+      ],
+      "agree": false,
+      "mode": "4",
+      "unparsed": 0,
+      "contents": [
+        "甲状腺 · TR4",
+        "甲状腺 · TR5 — 实性(3) + 低回声(2) + 纵横比>1(3) = 8 分 → TR5（≥7 分）"
+      ]
+    },
+    {
+      "request_id": "req_20261107_963fef81",
+      "organ": "thyroid",
+      "tier": "regular",
+      "synthetic": false,
+      "clinical_text": "右叶等回声结节，内部回声均匀",
+      "repeat_in_prod": 6,
+      "n_chunks": 3,
+      "grades": [
+        "",
+        ""
+      ],
+      "confidences": [
+        0.0,
+        0.0
+      ],
+      "latencies_s": [
+        95.37,
+        100.57
+      ],
+      "agree": false,
+      "mode": "",
+      "unparsed": 2,
+      "contents": [
+        "本例未能解析出 TI-RADS 分级（AI 输出未给出可判定的分级码），已转人工判读：请结合图像与病史自行分级。",
+        "本例未能解析出 TI-RADS 分级（AI 输出未给出可判定的分级码），已转人工判读：请结合图像与病史自行分级。"
+      ]
+    },
+    {
+      "request_id": "req_20261107_9f7215b5",
+      "organ": "thyroid",
+      "tier": "regular",
+      "synthetic": false,
+      "clinical_text": "右叶低回声结节，边界清",
+      "repeat_in_prod": 6,
+      "n_chunks": 3,
+      "grades": [
+        "",
+        "4"
+      ],
+      "confidences": [
+        0.0,
+        0.7392
+      ],
+      "latencies_s": [
+        81.73,
+        47.97
+      ],
+      "agree": false,
+      "mode": "",
+      "unparsed": 1,
+      "contents": [
+        "本例未能解析出 TI-RADS 分级（AI 输出未给出可判定的分级码），已转人工判读：请结合图像与病史自行分级。",
+        "甲状腺 · TR4 — 成分(3) + 回声(2) + 形态(0) + 边缘(0) + 钙化(0) = 5 分 → TR4（4-6 分）"
+      ]
+    },
+    {
+      "request_id": "req_20261107_b8b2bb13",
+      "organ": "thyroid",
+      "tier": "regular",
+      "synthetic": false,
+      "clinical_text": "左叶混合回声结节，边界欠清",
+      "repeat_in_prod": 6,
+      "n_chunks": 3,
+      "grades": [
+        "2",
+        "1"
+      ],
+      "confidences": [
+        0.6696,
+        0.51
+      ],
+      "latencies_s": [
+        47.22,
+        48.45
+      ],
+      "agree": false,
+      "mode": "2",
+      "unparsed": 0,
+      "contents": [
+        "甲状腺 · TR2 — 混合回声(1) + 边界欠清(1) = 2 分 → TR2（良性）",
+        "甲状腺 · TR1"
+      ]
+    },
+    {
+      "request_id": "req_20261107_d6533389",
+      "organ": "thyroid",
+      "tier": "regular",
+      "synthetic": false,
+      "clinical_text": "甲状腺结节复查",
+      "repeat_in_prod": 6,
+      "n_chunks": 3,
+      "grades": [
+        "2",
+        "2"
+      ],
+      "confidences": [
+        0.91,
+        0.7476
+      ],
+      "latencies_s": [
+        39.46,
+        25.89
+      ],
+      "agree": true,
+      "mode": "2",
+      "unparsed": 0,
+      "contents": [
+        "甲状腺 · TR2 — 未提供结节具体影像特征（成分/回声/形态/边缘/钙化）、病灶大小及临床信息，无法按 ACR TI-RADS 2017 标准评分",
+        "甲状腺 · TR2 — 未提供结节具体影像特征（成分/回声/形态/边缘/钙化）及临床信息，无法按 ACR TI-RADS 2017 标准评分"
+      ]
+    },
+    {
+      "request_id": "req_20261107_e5567351",
+      "organ": "thyroid",
+      "tier": "regular",
+      "synthetic": false,
+      "clinical_text": "右叶囊性结节，边界清",
+      "repeat_in_prod": 6,
+      "n_chunks": 3,
+      "grades": [
+        "1",
+        "1"
+      ],
+      "confidences": [
+        0.58,
+        0.9464
+      ],
+      "latencies_s": [
+        52.22,
+        40.54
+      ],
+      "agree": true,
+      "mode": "1",
+      "unparsed": 0,
+      "contents": [
+        "甲状腺 · TR1",
+        "甲状腺 · TR1 — 囊性(0) + 无回声(0) + 宽>高(0) + 边界清晰(0) + 无钙化(0) = 0 分 → TR1（良性）"
+      ]
+    },
+    {
+      "request_id": "req_20260930_c42a7d2b",
+      "organ": "thyroid",
+      "tier": "regular",
+      "synthetic": false,
+      "clinical_text": "Ultrasound of the thyroid gland reveals diffuse hypervascularity, presenting as the 'inferno sign' on color flow imaging.",
+      "repeat_in_prod": 5,
+      "n_chunks": 6,
+      "grades": [
+        "1",
+        "2"
+      ],
+      "confidences": [
+        1.0,
+        1.0
+      ],
+      "latencies_s": [
+        39.86,
+        39.16
+      ],
+      "agree": false,
+      "mode": "1",
+      "unparsed": 0,
+      "contents": [
+        "甲状腺 · TR1 — 现有知识未涉及「弥漫性血流丰富」或「火陷征」的 TI-RADS 评分依据",
+        "甲状腺 · TR2 — 现有知识未涉及「弥漫性血流丰富」或「火陷征」的 TI-RADS 评分依据"
+      ]
+    },
+    {
+      "request_id": "req_20261022_a30fdb59",
+      "organ": "thyroid",
+      "tier": "regular",
+      "synthetic": false,
+      "clinical_text": "甲状腺结节复查，无明显不适。",
+      "repeat_in_prod": 5,
+      "n_chunks": 8,
+      "grades": [
+        "2",
+        "1"
+      ],
+      "confidences": [
+        0.9972,
+        0.9904
+      ],
+      "latencies_s": [
+        40.2,
+        30.49
+      ],
+      "agree": false,
+      "mode": "2",
+      "unparsed": 0,
+      "contents": [
+        "甲状腺 · TR2 — 现有信息未涉及结节具体特征（成分/回声/形态/边缘/钙化），无法按 ACR TI-RADS 2017 标准评分",
+        "甲状腺 · TR1 — 未提供影像特征（成分/回声/形态/边缘/钙化）、病灶大小、年龄、性别等关键信息，无法应用 TI-RADS 评分标准"
+      ]
+    },
+    {
+      "request_id": "req_20261103_2f6f5748",
+      "organ": "thyroid",
+      "tier": "regular",
+      "synthetic": false,
+      "clinical_text": "右叶囊性结节，边界清，形态规则，后方回声增强，大小约 6x5mm。",
+      "repeat_in_prod": 5,
+      "n_chunks": 3,
+      "grades": [
+        "1",
+        "1"
+      ],
+      "confidences": [
+        0.8208,
+        0.8008
+      ],
+      "latencies_s": [
+        35.96,
+        35.76
+      ],
+      "agree": true,
+      "mode": "1",
+      "unparsed": 0,
+      "contents": [
+        "甲状腺 · TR1 — 囊性(0) + 高回声(1) → 但根据原文「后方回声增强」未直接对应评分标准，修正为回声 0 | 形态 0 | 边缘 0 | 钙化 0 = **0 分 → TR1**（良性）",
+        "甲状腺 · TR1 — 囊性(0) + 高回声(1) + 宽>高(0) + 边界光滑(0) + 无钙化(0) = 1 分 → TR1（注：0 分为 TR1）"
+      ]
+    },
+    {
+      "request_id": "req_20260930_12a57320",
+      "organ": "thyroid",
+      "tier": "regular",
+      "synthetic": false,
+      "clinical_text": "甲状腺右叶低回声结节，边界清晰。",
+      "repeat_in_prod": 4,
+      "n_chunks": 3,
+      "grades": [
+        "1",
+        "2"
+      ],
+      "confidences": [
+        0.51,
+        0.6272
+      ],
+      "latencies_s": [
+        48.05,
+        48.17
+      ],
+      "agree": false,
+      "mode": "1",
+      "unparsed": 0,
+      "contents": [
+        "甲状腺 · TR1",
+        "甲状腺 · TR2 — 回声低(2) + 边缘光滑(0) = 2 分 → TR2（良性）"
+      ]
+    },
+    {
+      "request_id": "req_20260930_2d59fd42",
+      "organ": "thyroid",
+      "tier": "regular",
+      "synthetic": false,
+      "clinical_text": "The thyroid gland is absent on sonographic evaluation, a finding indicative of aplasia and associated with congenital hypothyroidism.",
+      "repeat_in_prod": 4,
+      "n_chunks": 5,
+      "grades": [
+        "1",
+        "2"
+      ],
+      "confidences": [
+        1.0,
+        1.0
+      ],
+      "latencies_s": [
+        39.39,
+        40.75
+      ],
+      "agree": false,
+      "mode": "1",
+      "unparsed": 0,
+      "contents": [
+        "甲状腺 · TR1 — 甲状腺未显示于超声，TI-RADS 仅适用于可识别结节。现有知识未涉及甲状腺缺失的分级依据。",
+        "甲状腺 · TR2 — 甲状腺未显示于超声检查，TI-RADS 分级需基于可评估结节的特征（成分/回声/形态/边缘/钙化），现有信息不足以进行分级"
+      ]
+    },
+    {
+      "request_id": "req_20260930_3343d23f",
+      "organ": "thyroid",
+      "tier": "regular",
+      "synthetic": false,
+      "clinical_text": "Sonographic evaluation of the thyroid gland reveals a hypoechoic mass.",
+      "repeat_in_prod": 4,
+      "n_chunks": 5,
+      "grades": [
+        "1",
+        "1"
+      ],
+      "confidences": [
+        0.75,
+        0.75
+      ],
+      "latencies_s": [
+        50.41,
+        47.4
+      ],
+      "agree": true,
+      "mode": "1",
+      "unparsed": 0,
+      "contents": [
+        "甲状腺 · TR1",
+        "甲状腺 · TR1"
+      ]
+    },
+    {
+      "request_id": "req_20261107_3326acf6",
+      "organ": "thyroid",
+      "tier": "regular",
+      "synthetic": false,
+      "clinical_text": "右叶结节，纵横比<1",
+      "repeat_in_prod": 4,
+      "n_chunks": 3,
+      "grades": [
+        "1",
+        "1"
+      ],
+      "confidences": [
+        0.9176,
+        0.7416
+      ],
+      "latencies_s": [
+        41.05,
+        25.29
+      ],
+      "agree": true,
+      "mode": "1",
+      "unparsed": 0,
+      "contents": [
+        "甲状腺 · TR1 — 实性(0) + 高回声(0) + 宽>高(0) + 光滑边缘(0) + 无钙化(0) = 0 分 → TR1（良性）",
+        "甲状腺 · TR1 — 未提及恶性特征（依据证据[1]/[2]/[3]）"
+      ]
+    },
+    {
+      "request_id": "req_20261107_a5cbac59",
+      "organ": "thyroid",
+      "tier": "regular",
+      "synthetic": false,
+      "clinical_text": "左叶低回声结节，边界清",
+      "repeat_in_prod": 4,
+      "n_chunks": 3,
+      "grades": [
+        "",
+        ""
+      ],
+      "confidences": [
+        0.0,
+        0.0
+      ],
+      "latencies_s": [
+        97.6,
+        100.85
+      ],
+      "agree": false,
+      "mode": "",
+      "unparsed": 2,
+      "contents": [
+        "本例未能解析出 TI-RADS 分级（AI 输出未给出可判定的分级码），已转人工判读：请结合图像与病史自行分级。",
+        "本例未能解析出 TI-RADS 分级（AI 输出未给出可判定的分级码），已转人工判读：请结合图像与病史自行分级。"
+      ]
+    },
+    {
+      "request_id": "req_20261103_8502097d",
+      "organ": "thyroid",
+      "tier": "high_risk",
+      "synthetic": false,
+      "clinical_text": "峡部实性低回声结节，纵横比>1，内见微钙化，大小约 10x8mm。",
+      "repeat_in_prod": 3,
+      "n_chunks": 3,
+      "grades": [
+        "5",
+        "5"
+      ],
+      "confidences": [
+        0.9024,
+        0.8112
+      ],
+      "latencies_s": [
+        41.93,
+        46.67
+      ],
+      "agree": true,
+      "mode": "5",
+      "unparsed": 0,
+      "contents": [
+        "甲状腺 · TR5 — 实性(3) + 低回声(2) + 纵横比>1(3) + 微钙化(3) = 11 分 → TR5（≥7 分）",
+        "甲状腺 · TR5 — 实性(3) + 低回声(2) + 纵横比>1(3) + 微钙化(3) = 11 分 → TR5（≥7 分）"
+      ]
+    },
+    {
+      "request_id": "req_20261025_13d5c8b3",
+      "organ": "thyroid",
+      "tier": "regular",
+      "synthetic": false,
+      "clinical_text": "甲状腺右叶低回声结节，边界清，形态规则。",
+      "repeat_in_prod": 3,
+      "n_chunks": 3,
+      "grades": [
+        "1",
+        "4"
+      ],
+      "confidences": [
+        0.51,
+        0.96
+      ],
+      "latencies_s": [
+        51.39,
+        44.75
+      ],
+      "agree": false,
+      "mode": "1",
+      "unparsed": 0,
+      "contents": [
+        "甲状腺 · TR1",
+        "甲状腺 · TR4 — 低回声(2) + 边界清晰(0) + 形态规则(0) = 2 分 → TR2（注：TR2 为 2 分，需结合其他特征）"
+      ]
+    },
+    {
+      "request_id": "req_20261025_33055211",
+      "organ": "thyroid",
+      "tier": "regular",
+      "synthetic": false,
+      "clinical_text": "甲状腺右叶低回声结节。",
+      "repeat_in_prod": 3,
+      "n_chunks": 8,
+      "grades": [
+        "4",
+        "4"
+      ],
+      "confidences": [
+        1.0,
+        1.0
+      ],
+      "latencies_s": [
+        47.58,
+        44.52
+      ],
+      "agree": true,
+      "mode": "4",
+      "unparsed": 0,
+      "contents": [
+        "甲状腺 · TR4 — 成分(3) + 回声(2) + 形态(0) + 边缘(0) + 钙化(0) = 5 分 → TR4（4-6 分）",
+        "甲状腺 · TR4 — 成分(3) + 回声(2) + 形态(0) + 边缘(0) + 钙化(0) = 5 分 → TR4（4-6 分）"
+      ]
+    },
+    {
+      "request_id": "req_20261025_a130f56d",
+      "organ": "thyroid",
+      "tier": "regular",
+      "synthetic": false,
+      "clinical_text": "甲状腺右叶结节，请评估。",
+      "repeat_in_prod": 3,
+      "n_chunks": 3,
+      "grades": [
+        "1",
+        "5"
+      ],
+      "confidences": [
+        0.81,
+        0.7292
+      ],
+      "latencies_s": [
+        48.01,
+        39.33
+      ],
+      "agree": false,
+      "mode": "1",
+      "unparsed": 0,
+      "contents": [
+        "甲状腺 · TR1 — 未提供成分、回声、形态、边缘、钙化等关键 TI-RADS 特征",
+        "甲状腺 · TR5 — 影像特征（成分/回声/形态/边缘/钙化）未在用户输入或证据中完整提供，无法按 ACR TI-RADS 2017 标准评分"
+      ]
+    },
+    {
+      "request_id": "req_20261001_38286439",
+      "organ": "cardiac",
+      "tier": "regular",
+      "synthetic": false,
+      "clinical_text": "Sonographic assessment of the thorax shows the heart and mediastinum to be normal in appearance.",
+      "repeat_in_prod": 2,
+      "n_chunks": 4,
+      "grades": [
+        "normal",
+        "normal"
+      ],
+      "confidences": [
+        0.7968,
+        0.7448
+      ],
+      "latencies_s": [
+        36.8,
+        32.06
+      ],
+      "agree": true,
+      "mode": "normal",
+      "unparsed": 0,
+      "contents": [
+        "心脏 · 左室射血分数（LVEF）未测值 · 严重程度：正常 — <Answer>``` LVEF: 无法判断 分级: 无法判断 置信度: 0.0 理由: 未提供左室舒张末径（LVIDd）、短轴缩短率（FS）或直接EF数值等关键参数 证据: 鉴别诊断: 1. 正常心脏结构 | — | 支持: 外观正常 | 排除: 2. 无相关异常 | — | 支持: 未提及功能指标 | 排除: 3. 需补充检查 | — | 支持: 信息不全 | 排除: 患者解释: 解释: 当前描述未包含评估左心室收缩功能的关键指标，建议完善超声报告细节后重新评估 安抚: 下一步: 需补充左室尺寸、室壁运动等参数 科研参数: ``` 此点现有知识未涉及左室具体参数，建议线下咨询医生完善超声报告细节。根据溯源硬约束第2条，用户未提供LVIDd/FS/EF等核心指标，且知识库top4条均不涉及正常心脏外观时的LVEF评估逻辑，故必须触发证据不足路径。</Answer>",
+        "心脏 · 左室射血分数（LVEF）未测值 · 严重程度：正常 — <Answer>``` LVEF: 无法计算 分级: 无法判断 置信度: 0.0 理由: 未提供左室舒张末径（LVIDd）、短轴缩短率（FS）或EF数值，无法按ASE 2015标准评估 证据: 鉴别诊断: 患者解释: 科研参数: ``` 需要人工复核 理由溯源： 1. 现有信息未提及LVIDd、IVS/LVPW、FS或EF数值，违反ASE 2015评估所需参数要求（知识库[5]未覆盖非结构化描述性报告的量化评估路径） 2. 知识库top4条均未涉及\"心脏外观正常时的LVEF评估方法\"，无法推导计算依据（特别注意[1]-[4]均属心律失常/结构性病变场景，与当前\"正常结构+功能评估\"场景无关） 此点现有知识未涉及，建议线下咨询医生</Answer>"
+      ]
+    },
+    {
+      "request_id": "req_20261003_8a24eb32",
+      "organ": "thyroid",
+      "tier": "regular",
+      "synthetic": false,
+      "clinical_text": "自造测试文本：左室壁运动幅度普遍减低，LVEF 约 42%，二尖瓣轻度反流。",
+      "repeat_in_prod": 2,
+      "n_chunks": 10,
+      "grades": [
+        "",
+        ""
+      ],
+      "confidences": [
+        0.0,
+        0.0
+      ],
+      "latencies_s": [
+        0.54,
+        0.53
+      ],
+      "agree": false,
+      "mode": "",
+      "unparsed": 2,
+      "contents": [
+        "甲状腺：判读服务暂不可用（InferenceError），已转人工判读：请结合图像与病史自行判断。",
+        "甲状腺：判读服务暂不可用（InferenceError），已转人工判读：请结合图像与病史自行判断。"
+      ]
+    },
+    {
+      "request_id": "req_20261003_9cbf2332",
+      "organ": "thyroid",
+      "tier": "regular",
+      "synthetic": false,
+      "clinical_text": "自造测试文本：甲状腺右叶低回声结节，大小约 0.8x0.6cm，边界清，形态规则。",
+      "repeat_in_prod": 2,
+      "n_chunks": 10,
+      "grades": [
+        "",
+        ""
+      ],
+      "confidences": [
+        0.0,
+        0.0
+      ],
+      "latencies_s": [
+        100.03,
+        101.38
+      ],
+      "agree": false,
+      "mode": "",
+      "unparsed": 2,
+      "contents": [
+        "本例未能解析出 TI-RADS 分级（AI 输出未给出可判定的分级码），已转人工判读：请结合图像与病史自行分级。",
+        "本例未能解析出 TI-RADS 分级（AI 输出未给出可判定的分级码），已转人工判读：请结合图像与病史自行分级。"
+      ]
+    },
+    {
+      "request_id": "req_20261012_a400ad6f",
+      "organ": "cardiac",
+      "tier": "regular",
+      "synthetic": false,
+      "clinical_text": "混合器官样本（cardiac）",
+      "repeat_in_prod": 2,
+      "n_chunks": 14,
+      "grades": [
+        "",
+        ""
+      ],
+      "confidences": [
+        0.0,
+        0.0
+      ],
+      "latencies_s": [
+        0.54,
+        0.53
+      ],
+      "agree": false,
+      "mode": "",
+      "unparsed": 2,
+      "contents": [
+        "心脏：判读服务暂不可用（InferenceError），已转人工判读：请结合图像与病史自行判断。",
+        "心脏：判读服务暂不可用（InferenceError），已转人工判读：请结合图像与病史自行判断。"
+      ]
+    },
+    {
+      "request_id": "req_20261025_6204e966",
+      "organ": "thyroid",
+      "tier": "regular",
+      "synthetic": false,
+      "clinical_text": "甲状腺右叶结节，边界清，形态规则。",
+      "repeat_in_prod": 2,
+      "n_chunks": 3,
+      "grades": [
+        "4",
+        "1"
+      ],
+      "confidences": [
+        0.928,
+        0.96
+      ],
+      "latencies_s": [
+        48.94,
+        40.61
+      ],
+      "agree": false,
+      "mode": "4",
+      "unparsed": 0,
+      "contents": [
+        "甲状腺 · TR4 — 成分(3) + 回声(1) + 形态(0) + 边缘(0) + 钙化(0) = 4 分 → TR4（4-6 分为 TR4）",
+        "甲状腺 · TR1 — 边界清晰(0) + 形态规则(0) | 未提及成分(0) + 回声(0) + 钙化(0)"
+      ]
+    },
+    {
+      "request_id": "req_20261025_626b1a63",
+      "organ": "thyroid",
+      "tier": "regular",
+      "synthetic": false,
+      "clinical_text": "甲状腺结节。",
+      "repeat_in_prod": 2,
+      "n_chunks": 10,
+      "grades": [
+        "5",
+        "4"
+      ],
+      "confidences": [
+        0.99,
+        0.9308
+      ],
+      "latencies_s": [
+        31.0,
+        31.55
+      ],
+      "agree": false,
+      "mode": "5",
+      "unparsed": 0,
+      "contents": [
+        "甲状腺 · TR5 — 未提供影像特征（成分/回声/形态/边缘/钙化）、病灶大小、临床信息等关键数据，无法按 ACR TI-RADS 2017 标准评分",
+        "甲状腺 · TR4 — 现有信息未提供结节具体特征（成分/回声/形态/边缘/钙化）及大小，无法应用 TI-RADS 评分标准"
+      ]
+    },
+    {
+      "request_id": "req_20261025_a9e1e6d6",
+      "organ": "thyroid",
+      "tier": "regular",
+      "synthetic": false,
+      "clinical_text": "甲状腺结节。建议细针穿刺活检。",
+      "repeat_in_prod": 2,
+      "n_chunks": 3,
+      "grades": [
+        "5",
+        "2"
+      ],
+      "confidences": [
+        0.6804,
+        0.774
+      ],
+      "latencies_s": [
+        29.85,
+        35.66
+      ],
+      "agree": false,
+      "mode": "5",
+      "unparsed": 0,
+      "contents": [
+        "甲状腺 · TR5 — 未提供影像特征（成分/回声/形态/边缘/钙化）及病灶大小，无法按 ACR TI-RADS 2017 标准评分",
+        "甲状腺 · TR2 — 未提供影像特征（成分/回声/形态/边缘/钙化）及病灶大小，无法按 ACR TI-RADS 2017 标准评分"
+      ]
+    },
+    {
+      "request_id": "req_20261103_4538e0e3",
+      "organ": "thyroid",
+      "tier": "regular",
+      "synthetic": false,
+      "clinical_text": "右叶低回声结节，边界清。",
+      "repeat_in_prod": 2,
+      "n_chunks": 10,
+      "grades": [
+        "1",
+        "1"
+      ],
+      "confidences": [
+        0.75,
+        0.75
+      ],
+      "latencies_s": [
+        52.14,
+        50.53
+      ],
+      "agree": true,
+      "mode": "1",
+      "unparsed": 0,
+      "contents": [
+        "甲状腺 · TR1",
+        "甲状腺 · TR1"
+      ]
+    },
+    {
+      "request_id": "req_20260930_3301c766",
+      "organ": "thyroid",
+      "tier": "high_risk",
+      "synthetic": false,
+      "clinical_text": "甲状腺右叶可见低回声结节，大小约 2.1x1.6cm，边界欠清晰，形态欠规则，内可见多发点状强回声（考虑微钙化），纵横比大于 1，CDFI：结节周边及内部可见 血流信号。左侧叶未见明显占位。双侧颈部未见明显肿大淋巴结。甲状腺右叶可见低回声结节，大小约 2.1x1.6cm，边界欠清晰，形态欠规则，内可见多发点状强回声（考虑微钙化），纵横比大于 1，CDFI：结节周边及内部可见 血流信号。左侧叶未见明显占位。双侧颈部未见明显肿大淋巴结。甲状腺右叶可见低回声结节，大小约 2.1x1.6cm，边界欠清晰，形态欠规则，内可见多发点状强回声（考虑微钙化），纵横比大于 1，CDFI：结节周边及内部可见 血流信号。左侧叶未见明显占位。双侧颈部未见明显肿大淋巴结。甲状腺右叶可见低回声结节，大小约 2.1x1.6cm，边界欠清晰，形态欠规则，内可见多发点状强回声（考虑微钙化），纵横比大于 1，CDFI：结节周边及内部可见 血流信号。左侧叶未见明显占位。双侧颈部未见明显肿大淋巴结。",
+      "repeat_in_prod": 1,
+      "n_chunks": 3,
+      "grades": [
+        "5",
+        "5"
+      ],
+      "confidences": [
+        0.8928,
+        0.526
+      ],
+      "latencies_s": [
+        48.98,
+        49.84
+      ],
+      "agree": true,
+      "mode": "5",
+      "unparsed": 0,
+      "contents": [
+        "甲状腺 · TR5 — 成分(3) + 回声(2) + 形态(3) + 边缘(2) + 钙化(3) = 13 分 → TR5（≥7 分）",
+        "甲状腺 · TR5"
+      ]
+    },
+    {
+      "request_id": "synthetic-hr-00",
+      "organ": "thyroid",
+      "tier": "high_risk",
+      "synthetic": true,
+      "clinical_text": "甲状腺右叶实性低回声结节，纵横比>1，边缘不规则，内见微钙化，大小约 11x9mm。",
+      "repeat_in_prod": 1,
+      "n_chunks": 3,
+      "grades": [
+        "5",
+        "5"
+      ],
+      "confidences": [
+        0.8032,
+        0.9368
+      ],
+      "latencies_s": [
+        50.98,
+        37.84
+      ],
+      "agree": true,
+      "mode": "5",
+      "unparsed": 0,
+      "contents": [
+        "甲状腺 · TR5 — 成分(3) + 回声(2) + 形态(3) + 边缘(2) + 钙化(3) = 13 分 → TR5（≥7 分）",
+        "甲状腺 · TR5 — 实性(3) + 低回声(2) + 形态(3) + 边缘不规则(2) + 微钙化(3) = 13 分 → TR5（≥7 分）"
+      ]
+    },
+    {
+      "request_id": "synthetic-hr-01",
+      "organ": "thyroid",
+      "tier": "high_risk",
+      "synthetic": true,
+      "clinical_text": "甲状腺左叶极低回声结节，边界不清，形态不规则，伴点状强回声，约 13x10mm。",
+      "repeat_in_prod": 1,
+      "n_chunks": 3,
+      "grades": [
+        "",
+        ""
+      ],
+      "confidences": [
+        0.0,
+        0.0
+      ],
+      "latencies_s": [
+        94.18,
+        93.14
+      ],
+      "agree": false,
+      "mode": "",
+      "unparsed": 2,
+      "contents": [
+        "本例未能解析出 TI-RADS 分级（AI 输出未给出可判定的分级码），已转人工判读：请结合图像与病史自行分级。",
+        "本例未能解析出 TI-RADS 分级（AI 输出未给出可判定的分级码），已转人工判读：请结合图像与病史自行分级。"
+      ]
+    },
+    {
+      "request_id": "synthetic-hr-02",
+      "organ": "thyroid",
+      "tier": "high_risk",
+      "synthetic": true,
+      "clinical_text": "甲状腺右叶低回声结节，边缘分叶状，纵横比>1，粗大钙化，大小约 18x12mm。",
+      "repeat_in_prod": 1,
+      "n_chunks": 3,
+      "grades": [
+        "4",
+        "4"
+      ],
+      "confidences": [
+        0.51,
+        0.51
+      ],
+      "latencies_s": [
+        48.87,
+        45.52
+      ],
+      "agree": true,
+      "mode": "4",
+      "unparsed": 0,
+      "contents": [
+        "甲状腺 · TR4",
+        "甲状腺 · TR4"
+      ]
+    },
+    {
+      "request_id": "synthetic-hr-03",
+      "organ": "thyroid",
+      "tier": "high_risk",
+      "synthetic": true,
+      "clinical_text": "甲状腺左叶实性结节，低回声，边界不清，内见微钙化，伴颈部淋巴结肿大。",
+      "repeat_in_prod": 1,
+      "n_chunks": 3,
+      "grades": [
+        "4",
+        "4"
+      ],
+      "confidences": [
+        0.51,
+        0.51
+      ],
+      "latencies_s": [
+        47.95,
+        46.68
+      ],
+      "agree": true,
+      "mode": "4",
+      "unparsed": 0,
+      "contents": [
+        "甲状腺 · TR4",
+        "甲状腺 · TR4"
+      ]
+    },
+    {
+      "request_id": "synthetic-hr-04",
+      "organ": "thyroid",
+      "tier": "high_risk",
+      "synthetic": true,
+      "clinical_text": "甲状腺右叶极低回声结节，形态不规则，边缘模糊，纵横比>1，约 9x12mm。",
+      "repeat_in_prod": 1,
+      "n_chunks": 3,
+      "grades": [
+        "4",
+        "5"
+      ],
+      "confidences": [
+        0.51,
+        0.928
+      ],
+      "latencies_s": [
+        47.96,
+        43.8
+      ],
+      "agree": false,
+      "mode": "4",
+      "unparsed": 0,
+      "contents": [
+        "甲状腺 · TR4",
+        "甲状腺 · TR5 — 极低回声(3) + 高>宽(3) + 边缘不规则(2) = 8 分 → TR5（≥7 分）"
+      ]
+    },
+    {
+      "request_id": "synthetic-hr-05",
+      "organ": "thyroid",
+      "tier": "high_risk",
+      "synthetic": true,
+      "clinical_text": "甲状腺左叶实性低回声结节，边缘不规则，微钙化，甲状腺外侵犯可能。",
+      "repeat_in_prod": 1,
+      "n_chunks": 3,
+      "grades": [
+        "4",
+        "4"
+      ],
+      "confidences": [
+        0.51,
+        0.51
+      ],
+      "latencies_s": [
+        48.85,
+        47.45
+      ],
+      "agree": true,
+      "mode": "4",
+      "unparsed": 0,
+      "contents": [
+        "甲状腺 · TR4",
+        "甲状腺 · TR4"
+      ]
+    },
+    {
+      "request_id": "synthetic-hr-06",
+      "organ": "thyroid",
+      "tier": "high_risk",
+      "synthetic": true,
+      "clinical_text": "甲状腺右叶低回声结节，纵横比>1，边缘不规则，内部点状强回声，约 10x14mm。",
+      "repeat_in_prod": 1,
+      "n_chunks": 3,
+      "grades": [
+        "4",
+        "5"
+      ],
+      "confidences": [
+        0.51,
+        0.916
+      ],
+      "latencies_s": [
+        47.52,
+        39.62
+      ],
+      "agree": false,
+      "mode": "4",
+      "unparsed": 0,
+      "contents": [
+        "甲状腺 · TR4",
+        "甲状腺 · TR5 — 实性(3) + 低回声(2) + 高>宽(3) + 不规则边缘(2) + 粗大钙化(1) = 8 分 → TR5（≥7 分）"
+      ]
+    },
+    {
+      "request_id": "synthetic-hr-07",
+      "organ": "thyroid",
+      "tier": "high_risk",
+      "synthetic": true,
+      "clinical_text": "甲状腺左叶低回声实性结节，边界不清，形态不规则，粗大钙化。",
+      "repeat_in_prod": 1,
+      "n_chunks": 3,
+      "grades": [
+        "4",
+        "4"
+      ],
+      "confidences": [
+        0.51,
+        0.51
+      ],
+      "latencies_s": [
+        47.8,
+        46.04
+      ],
+      "agree": true,
+      "mode": "4",
+      "unparsed": 0,
+      "contents": [
+        "甲状腺 · TR4",
+        "甲状腺 · TR4"
+      ]
+    },
+    {
+      "request_id": "synthetic-hr-08",
+      "organ": "thyroid",
+      "tier": "high_risk",
+      "synthetic": true,
+      "clinical_text": "甲状腺右叶结节，极低回声，边缘不规则，纵横比>1，伴微钙化。",
+      "repeat_in_prod": 1,
+      "n_chunks": 3,
+      "grades": [
+        "5",
+        "5"
+      ],
+      "confidences": [
+        0.96,
+        0.8616
+      ],
+      "latencies_s": [
+        38.25,
+        42.26
+      ],
+      "agree": true,
+      "mode": "5",
+      "unparsed": 0,
+      "contents": [
+        "甲状腺 · TR5 — 成分(0) + 回声(3) + 形态(3) + 边缘(2) + 钙化(3) = 11 分 → TR5（≥7 分）",
+        "甲状腺 · TR5 — 成分(0) + 极低回声(3) + 高>宽(3) + 不规则边缘(2) + 微钙化(3) = 11 分 → TR5（≥7 分）"
+      ]
+    },
+    {
+      "request_id": "synthetic-hr-09",
+      "organ": "thyroid",
+      "tier": "high_risk",
+      "synthetic": true,
+      "clinical_text": "甲状腺左叶低回声结节，边界欠清，形态不规则，内见点状强回声。",
+      "repeat_in_prod": 1,
+      "n_chunks": 3,
+      "grades": [
+        "",
+        "5"
+      ],
+      "confidences": [
+        0.0,
+        0.856
+      ],
+      "latencies_s": [
+        92.53,
+        41.57
+      ],
+      "agree": false,
+      "mode": "",
+      "unparsed": 1,
+      "contents": [
+        "本例未能解析出 TI-RADS 分级（AI 输出未给出可判定的分级码），已转人工判读：请结合图像与病史自行分级。",
+        "甲状腺 · TR5 — 成分(3) + 回声(2) + 形态(3) + 边缘(2) + 钙化(1) = 11 分 → TR5（≥7 分）"
+      ]
+    },
+    {
+      "request_id": "synthetic-hr-10",
+      "organ": "thyroid",
+      "tier": "high_risk",
+      "synthetic": true,
+      "clinical_text": "甲状腺右叶实性结节，低回声，边缘模糊，纵横比>1，微钙化，约 12x15mm。",
+      "repeat_in_prod": 1,
+      "n_chunks": 3,
+      "grades": [
+        "5",
+        "4"
+      ],
+      "confidences": [
+        0.9136,
+        0.51
+      ],
+      "latencies_s": [
+        41.06,
+        48.33
+      ],
+      "agree": false,
+      "mode": "5",
+      "unparsed": 0,
+      "contents": [
+        "甲状腺 · TR5 — 成分(3) + 回声(2) + 形态(3) + 边缘(1) + 钙化(3) = 12 分 → TR5（≥7 分）",
+        "甲状腺 · TR4"
+      ]
+    },
+    {
+      "request_id": "synthetic-hr-11",
+      "organ": "thyroid",
+      "tier": "high_risk",
+      "synthetic": true,
+      "clinical_text": "甲状腺左叶实性低回声结节，边缘不规则，内见微钙化，血流丰富。",
+      "repeat_in_prod": 1,
+      "n_chunks": 3,
+      "grades": [
+        "4",
+        "4"
+      ],
+      "confidences": [
+        0.51,
+        0.51
+      ],
+      "latencies_s": [
+        47.65,
+        46.08
+      ],
+      "agree": true,
+      "mode": "4",
+      "unparsed": 0,
+      "contents": [
+        "甲状腺 · TR4",
+        "甲状腺 · TR4"
+      ]
+    }
+  ],
+  "model_info": {
+    "name": null,
+    "version": null,
+    "quantization": ""
+  }
+}

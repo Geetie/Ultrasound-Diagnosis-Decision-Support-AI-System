@@ -230,6 +230,33 @@ class VLLMEngine(BaseHttpInferenceEngine):
             text = text.split("<think>")[0]
         text = text.lstrip()
 
+        # ------------------------------------------------------------------
+        # 2026-11-08：**剥完变空**要显式暴露，不能当成功返回。
+        #
+        # 现象（p107b 实测）：II-Medical-8B 的 chat template 不读 enable_thinking，
+        # token 全花在 <think> 上 → finish_reason=length → 引擎剥除后 text == ""。
+        # 而 32.50% 的生产输入产生了"只有分级码、无正文"的退化结论。
+        #
+        # 原实现把这个情况当正常响应返回（空串 + finish_reason=length），
+        # 上层拿不到"这次生成其实没产出正文"的信号，于是落库成退化结论。
+        #
+        # 现在：明确打日志 + 把 finish_reason 标成 "length_empty"，
+        # 让上层 output_guard 能据此拒收（而不是静默落库）。
+        if not text and finish_reason == "length":
+            self._log.warning(
+                "inference_empty_after_think_strip",
+                request_id=request.request_id,
+                completion_tokens=usage_data.get("completion_tokens", 0)
+                if (usage_data := data.get("usage", {}))
+                else 0,
+                hint=(
+                    "token 全消耗在 <think> 内，剥除后无正文。"
+                    "该模型 chat template 不读 enable_thinking；"
+                    "处理方式：提高 max_tokens 或换非思考模型变体。"
+                ),
+            )
+            finish_reason = "length_empty"
+
         usage_data = data.get("usage", {})
         usage = TokenUsage(
             prompt_tokens=usage_data.get("prompt_tokens", 0),

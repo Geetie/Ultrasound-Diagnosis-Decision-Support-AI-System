@@ -1,0 +1,7613 @@
+{
+  "generated_at": "2026-11-08 23:31:36",
+  "eval_set": "/mnt/ee16/home/student03/uai/data/eval/gen_quality_assertive_20261108.jsonl",
+  "load": {
+    "rows": 73,
+    "resolved": 73,
+    "no_context": 0
+  },
+  "n_samples": 73,
+  "n_distinct_inputs": 25,
+  "hallucination": {
+    "caliber": {
+      "definition": "结论中出现**具体事实**（百分数/分级-分值映射/阈值/剂量），且三条来源腿都检索不到",
+      "excluded": "影像所见测量值（来自输入）、系统派生字段（总分/置信度）、纯定性与建议",
+      "detector": "正则抽硬事实 → 归一化子串检索（三条腿：记录当时的 prompt 上下文 / kb_v1.4.0 该器官全库 / 生产 prompt 模板）→ 候选 → 人工复核",
+      "sample_level": "一条样本只要含 ≥1 条未支持硬事实即计为候选"
+    },
+    "n_samples": 73,
+    "n_samples_with_claims": 65,
+    "n_samples_with_unsupported": 15,
+    "candidate_rate": 0.2308,
+    "n_claims_total": 93,
+    "n_claims_unsupported": 16,
+    "claim_rate": 0.172,
+    "per_sample": [
+      {
+        "request_id": "req_20260930_36c18e71",
+        "organ": "thyroid",
+        "n_claims": 0,
+        "n_unsupported": 0,
+        "claims": []
+      },
+      {
+        "request_id": "req_20260930_2f3d7072",
+        "organ": "cardiac",
+        "n_claims": 3,
+        "n_unsupported": 0,
+        "claims": [
+          {
+            "kind": "pct",
+            "raw": "60%",
+            "context": "[cardiac] LVEF=60%, severity=normal — LVEF",
+            "supported": true,
+            "check": "retrieval"
+          },
+          {
+            "kind": "pct",
+            "raw": "38%",
+            "context": "度: 0.92 理由: LVIDd 正常，FS 38%，二尖瓣轻度反流，室间隔增厚但 EF 60%（≥",
+            "supported": true,
+            "check": "retrieval"
+          },
+          {
+            "kind": "pct",
+            "raw": "55%",
+            "context": "二尖瓣轻度反流，室间隔增厚但 EF 60%（≥ 55%）正常 证据: chunk_001, chunk",
+            "supported": true,
+            "check": "retrieval"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261001_4e0a3c54",
+        "organ": "cardiac",
+        "n_claims": 1,
+        "n_unsupported": 0,
+        "claims": [
+          {
+            "kind": "pct",
+            "raw": "60%",
+            "context": "[cardiac] LVEF=60%, severity=normal — LVEF",
+            "supported": true,
+            "check": "retrieval"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261004_2607d423",
+        "organ": "thyroid",
+        "n_claims": 1,
+        "n_unsupported": 0,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "2 分 → TR2",
+            "context": " 形态规则 (0) + 无钙化 (0) = **2 分 → TR2** 证据: chunk_1, chunk_4 ",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261021_4adb2ccc",
+        "organ": "thyroid",
+        "n_claims": 0,
+        "n_unsupported": 0,
+        "claims": []
+      },
+      {
+        "request_id": "req_20261021_d79323fe",
+        "organ": "cardiac",
+        "n_claims": 1,
+        "n_unsupported": 0,
+        "claims": [
+          {
+            "kind": "pct",
+            "raw": "45%",
+            "context": "心脏 · 左室射血分数（LVEF）45% · 严重程度：轻度降低 — LVEF: 45%",
+            "supported": true,
+            "check": "retrieval"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261021_75ec34bb",
+        "organ": "thyroid",
+        "n_claims": 0,
+        "n_unsupported": 0,
+        "claims": []
+      },
+      {
+        "request_id": "req_20261021_03e0de81",
+        "organ": "thyroid",
+        "n_claims": 1,
+        "n_unsupported": 0,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "2 分 → TR2",
+            "context": "、边界清楚的良性结节(2) + 无钙化(0) = 2 分 → TR2 证据: [1], [2] 患者： 解释: 你的",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261022_2609a174",
+        "organ": "thyroid",
+        "n_claims": 1,
+        "n_unsupported": 0,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "2 分 → TR2",
+            "context": "性或实性为主、形态规则、边界清楚的良性结节得分为 2 分 → TR2 证据: [2], [3] 鉴别诊断: 1. 结",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261022_f07d2a59",
+        "organ": "thyroid",
+        "n_claims": 1,
+        "n_unsupported": 0,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "2 分 → TR2",
+            "context": "性或实性为主、形态规则、边界清楚的良性结节得分为 2 分 → TR2 证据: [2], [3] 患者： 安抚: 目前",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261022_1808897d",
+        "organ": "thyroid",
+        "n_claims": 1,
+        "n_unsupported": 0,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "2 分 → TR2",
+            "context": "性或实性为主、形态规则、边界清楚的良性结节得分为 2 分 → TR2 证据: [2], [3] 鉴别诊断: 1. 甲",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261025_3789733b",
+        "organ": "thyroid",
+        "n_claims": 1,
+        "n_unsupported": 0,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "2 分 → TR2",
+            "context": " 理由: 边界清晰(1) + 形态规则(0) = 2 分 → TR2 证据: [1], [2], [3], [4],",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261025_6204e966",
+        "organ": "thyroid",
+        "n_claims": 1,
+        "n_unsupported": 0,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "2 分 → TR2",
+            "context": " 理由: 边界清晰(1) + 形态规则(0) = 2 分 → TR2 证据: [1], [2], [3], [4],",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261025_3867c1d9",
+        "organ": "thyroid",
+        "n_claims": 1,
+        "n_unsupported": 0,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "2 分 → TR2",
+            "context": "1) + 边界清晰(0) + 形态规则(0) = 2 分 → TR2 证据: [2] 鉴别诊断: 1. 结节性甲状腺",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261025_ef282e85",
+        "organ": "thyroid",
+        "n_claims": 1,
+        "n_unsupported": 0,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "2 分 → TR2",
+            "context": "1) + 边界清晰(0) + 形态规则(0) = 2 分 → TR2 证据: [1], [2], [3], [4],",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261025_13d5c8b3",
+        "organ": "thyroid",
+        "n_claims": 1,
+        "n_unsupported": 0,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "2 分 → TR2",
+            "context": "1) + 边界清晰(0) + 形态规则(0) = 2 分 → TR2 证据: [2] 鉴别诊断: 1. 结节性甲状腺",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261025_c64402b5",
+        "organ": "thyroid",
+        "n_claims": 2,
+        "n_unsupported": 1,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "1 分 → TR2",
+            "context": "95 理由: 低回声(1) + 边界清(0) = 1 分 → TR2（注：2分为TR2） 证据: [1], [2],",
+            "supported": false,
+            "check": "prompt_bin_rule"
+          },
+          {
+            "kind": "score_map",
+            "raw": "2分为TR2",
+            "context": " + 边界清(0) = 1 分 → TR2（注：2分为TR2） 证据: [1], [2], [3], [4]",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261025_9a9c73ff",
+        "organ": "thyroid",
+        "n_claims": 2,
+        "n_unsupported": 1,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "1 分 → TR2",
+            "context": "95 理由: 低回声(1) + 边界清(0) = 1 分 → TR2（注：2分为TR2） 证据: [1], [2],",
+            "supported": false,
+            "check": "prompt_bin_rule"
+          },
+          {
+            "kind": "score_map",
+            "raw": "2分为TR2",
+            "context": " + 边界清(0) = 1 分 → TR2（注：2分为TR2） 证据: [1], [2], [3], [4]",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261025_ddaa8c69",
+        "organ": "thyroid",
+        "n_claims": 2,
+        "n_unsupported": 1,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "1 分 → TR2",
+            "context": "85 理由: 低回声(1) + 边界清(0) = 1 分 → TR2（注：2分为TR2） 证据: [1], [2],",
+            "supported": false,
+            "check": "prompt_bin_rule"
+          },
+          {
+            "kind": "score_map",
+            "raw": "2分为TR2",
+            "context": " + 边界清(0) = 1 分 → TR2（注：2分为TR2） 证据: [1], [2], [3], [4]",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261025_ac13dc5d",
+        "organ": "thyroid",
+        "n_claims": 2,
+        "n_unsupported": 1,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "1 分 → TR2",
+            "context": "95 理由: 低回声(1) + 边界清(0) = 1 分 → TR2（注：2分为TR2） 证据: [1], [2],",
+            "supported": false,
+            "check": "prompt_bin_rule"
+          },
+          {
+            "kind": "score_map",
+            "raw": "2分为TR2",
+            "context": " + 边界清(0) = 1 分 → TR2（注：2分为TR2） 证据: [1], [2], [3], [4]",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261025_9df9aea4",
+        "organ": "thyroid",
+        "n_claims": 1,
+        "n_unsupported": 1,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "4 分 → TR3",
+            "context": "(0) + 光滑边缘(0) + 无钙化(0) = 4 分 → TR3",
+            "supported": false,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261025_dd44c656",
+        "organ": "thyroid",
+        "n_claims": 1,
+        "n_unsupported": 0,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "2 分 → TR2",
+            "context": ") + 边界光滑 (0) + 无钙化 (0) = 2 分 → TR2",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261025_5761679c",
+        "organ": "thyroid",
+        "n_claims": 1,
+        "n_unsupported": 0,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "2 分 → TR2",
+            "context": ") + 边界光滑 (0) + 无钙化 (0) = 2 分 → TR2",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261025_78bb9401",
+        "organ": "thyroid",
+        "n_claims": 1,
+        "n_unsupported": 0,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "2 分 → TR2",
+            "context": ") + 边缘光滑 (0) + 无钙化 (0) = 2 分 → TR2",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261025_7f9e98db",
+        "organ": "thyroid",
+        "n_claims": 1,
+        "n_unsupported": 1,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "4 分 → TR2",
+            "context": "清楚的良性结节(3) + 无钙化(1) = **4 分 → TR2**",
+            "supported": false,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261025_dc27b857",
+        "organ": "thyroid",
+        "n_claims": 2,
+        "n_unsupported": 0,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "10 分 → TR5",
+            "context": "2) + 分叶状边缘(2) + 微钙化(3) = 10 分 → TR5（注：4-6 分为 TR4，≥7 为 TR5）",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          },
+          {
+            "kind": "score_map",
+            "raw": "4-6 分为 TR4",
+            "context": "+ 微钙化(3) = 10 分 → TR5（注：4-6 分为 TR4，≥7 为 TR5）",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261103_31f8225b",
+        "organ": "thyroid",
+        "n_claims": 2,
+        "n_unsupported": 1,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "6 分 → TR4",
+            "context": "2 + 形态 0 + 边缘 0 + 钙化 0 = 6 分 → TR4** - **证据: [1]** - **鉴别诊",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          },
+          {
+            "kind": "score_map",
+            "raw": "8 分 → TR2",
+            "context": "2 + 形态 1 + 边缘 0 + 钙化 0 = 8 分 → TR2",
+            "supported": false,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261103_bab2f932",
+        "organ": "thyroid",
+        "n_claims": 0,
+        "n_unsupported": 0,
+        "claims": []
+      },
+      {
+        "request_id": "req_20261103_a05f4ed5",
+        "organ": "thyroid",
+        "n_claims": 2,
+        "n_unsupported": 1,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "2 分 → TR2",
+            "context": " + 形态规则(0) + 无钙化(0) = **2 分 → TR2**  甲状腺 · TR2 — 低回声(2) +",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          },
+          {
+            "kind": "score_map",
+            "raw": "0-2 分为 TR2",
+            "context": "钙化(0) = **2 分 → TR2**（注：0-2 分为 TR2）",
+            "supported": false,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261103_45e5e576",
+        "organ": "thyroid",
+        "n_claims": 3,
+        "n_unsupported": 0,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "8 分 → TR5",
+            "context": " + 形态不规则(3) + 点状强回声(1) = 8 分 → TR5（注：4-6 分为 TR4，≥7 为 TR5） ",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          },
+          {
+            "kind": "score_map",
+            "raw": "4-6 分为 TR4",
+            "context": " 点状强回声(1) = 8 分 → TR5（注：4-6 分为 TR4，≥7 为 TR5）  甲状腺 · TR4 — ",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          },
+          {
+            "kind": "score_map",
+            "raw": "7 分 → TR5",
+            "context": " + 形态不规则(3) + 点状强回声(1) = 7 分 → TR5（注：4-6 分为 TR4，≥7 为 TR5）",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261103_d743a70e",
+        "organ": "thyroid",
+        "n_claims": 2,
+        "n_unsupported": 1,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "2 分 → TR2",
+            "context": " + 形态规则(0) + 无钙化(0) = **2 分 → TR2**（注：0-2 分为 TR2）",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          },
+          {
+            "kind": "score_map",
+            "raw": "0-2 分为 TR2",
+            "context": "钙化(0) = **2 分 → TR2**（注：0-2 分为 TR2）",
+            "supported": false,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261103_6ff1a3d9",
+        "organ": "thyroid",
+        "n_claims": 2,
+        "n_unsupported": 0,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "8 分 → TR5",
+            "context": " + 形态不规则(3) + 点状强回声(1) = 8 分 → TR5（注：4-6 分为 TR4，≥7 为 TR5）",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          },
+          {
+            "kind": "score_map",
+            "raw": "4-6 分为 TR4",
+            "context": " 点状强回声(1) = 8 分 → TR5（注：4-6 分为 TR4，≥7 为 TR5）",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261103_5bf03912",
+        "organ": "thyroid",
+        "n_claims": 2,
+        "n_unsupported": 0,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "2 分 → TR2",
+            "context": "2) + 边界清晰(0) + 形态规则(0) = 2 分 → TR2（≤2 分为 TR2）",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          },
+          {
+            "kind": "score_map",
+            "raw": "2 分为 TR2",
+            "context": " + 形态规则(0) = 2 分 → TR2（≤2 分为 TR2）",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261103_b32e35b4",
+        "organ": "thyroid",
+        "n_claims": 2,
+        "n_unsupported": 0,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "5 分 → TR4",
+            "context": ") + 不规则形态(2) + 欠清边缘(1) = 5 分 → TR4（注：4-6 分为 TR4）",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          },
+          {
+            "kind": "score_map",
+            "raw": "4-6 分为 TR4",
+            "context": "+ 欠清边缘(1) = 5 分 → TR4（注：4-6 分为 TR4）",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261103_e2c12ef7",
+        "organ": "thyroid",
+        "n_claims": 1,
+        "n_unsupported": 0,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "2 分 → TR2",
+            "context": "(0) + 形态规则(0) + 无钙化(0) = 2 分 → TR2（不怀疑恶性）",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261103_d4507411",
+        "organ": "thyroid",
+        "n_claims": 2,
+        "n_unsupported": 0,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "6 分 → TR4",
+            "context": ") + 不规则形态(2) + 欠清边缘(1) = 6 分 → TR4（注：4-6 分为 TR4）",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          },
+          {
+            "kind": "score_map",
+            "raw": "4-6 分为 TR4",
+            "context": "+ 欠清边缘(1) = 6 分 → TR4（注：4-6 分为 TR4）",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261103_d9ca2b94",
+        "organ": "thyroid",
+        "n_claims": 1,
+        "n_unsupported": 0,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "2 分 → TR2",
+            "context": " 回声(2) + 边缘(0) + 形态(0) = 2 分 → TR2（不怀疑恶性）（注：TR2 为 2 分）",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261103_97b21a97",
+        "organ": "thyroid",
+        "n_claims": 2,
+        "n_unsupported": 0,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "7 分 → TR5",
+            "context": ") + 不规则形态(3) + 欠清边缘(1) = 7 分 → TR5（≥7 分为 TR5）。注：形态\"不规则\"直接对",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          },
+          {
+            "kind": "score_map",
+            "raw": "≥7 分为 TR5",
+            "context": ") + 欠清边缘(1) = 7 分 → TR5（≥7 分为 TR5）。注：形态\"不规则\"直接对应 3 分",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261103_53284cf8",
+        "organ": "thyroid",
+        "n_claims": 1,
+        "n_unsupported": 0,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "2 分 → TR2",
+            "context": " 边缘(0) + 形态(0) + 钙化(0) = 2 分 → TR2（不怀疑恶性）",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261103_83072f69",
+        "organ": "thyroid",
+        "n_claims": 1,
+        "n_unsupported": 0,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "6 分 → TR4",
+            "context": ") + 不规则形态(3) + 欠清边缘(1) = 6 分 → TR4（4-6 分）",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261103_61db7e2e",
+        "organ": "thyroid",
+        "n_claims": 1,
+        "n_unsupported": 0,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "6 分 → TR4",
+            "context": ") + 不规则形态(3) + 欠清边缘(1) = 6 分 → TR4（4-6 分）（注：成分/回声/形态/边缘均引用",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261103_08e08f0c",
+        "organ": "thyroid",
+        "n_claims": 2,
+        "n_unsupported": 0,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "2 分 → TR2",
+            "context": "(0) + 形态规则(0) + 无钙化(0) = 2 分 → TR2（≤2 分为 TR2）",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          },
+          {
+            "kind": "score_map",
+            "raw": "2 分为 TR2",
+            "context": ") + 无钙化(0) = 2 分 → TR2（≤2 分为 TR2）",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261103_5dc652c1",
+        "organ": "thyroid",
+        "n_claims": 2,
+        "n_unsupported": 1,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "2 分 → TR4",
+            "context": "2) + 形态规则(0) + 边界清晰(0) = 2 分 → TR4（注：4-6 分为 TR4）【根据提供的知识库，",
+            "supported": false,
+            "check": "prompt_bin_rule"
+          },
+          {
+            "kind": "score_map",
+            "raw": "4-6 分为 TR4",
+            "context": "+ 边界清晰(0) = 2 分 → TR4（注：4-6 分为 TR4）【根据提供的知识库，边界清晰的结节\"绝大多数是",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261103_9a45c945",
+        "organ": "thyroid",
+        "n_claims": 1,
+        "n_unsupported": 0,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "8 分 → TR5",
+            "context": "+ 欠清边缘(1) + 点状强回声钙化(1) = 8 分 → TR5（≥7 分）",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261103_b164ab62",
+        "organ": "thyroid",
+        "n_claims": 2,
+        "n_unsupported": 0,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "4 分 → TR4",
+            "context": "(0) + 边界清晰(0) + 无钙化(0) = 4 分 → TR4（4-6 分为 TR4）",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          },
+          {
+            "kind": "score_map",
+            "raw": "4-6 分为 TR4",
+            "context": "0) + 无钙化(0) = 4 分 → TR4（4-6 分为 TR4）",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261103_cb23ce64",
+        "organ": "thyroid",
+        "n_claims": 2,
+        "n_unsupported": 0,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "5 分 → TR4",
+            "context": " 形态(0) + 边缘(0) + 钙化(0) = 5 分 → TR4（4-6 分为 TR4）",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          },
+          {
+            "kind": "score_map",
+            "raw": "4-6 分为 TR4",
+            "context": "(0) + 钙化(0) = 5 分 → TR4（4-6 分为 TR4）",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261103_65c78baf",
+        "organ": "thyroid",
+        "n_claims": 1,
+        "n_unsupported": 0,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "6 分 → TR4",
+            "context": ") + 分叶状边缘(2) + 粗大钙化(1) = 6 分 → TR4（边界修正：原描述\"边界欠清\"对应2分，但ACR",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261103_5abd52a6",
+        "organ": "thyroid",
+        "n_claims": 1,
+        "n_unsupported": 0,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "2 分 → TR2",
+            "context": "(0) + 边界清晰(0) + 无钙化(0) = 2 分 → TR2（良性）",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261103_2b91a698",
+        "organ": "thyroid",
+        "n_claims": 1,
+        "n_unsupported": 0,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "7 分 → TR5",
+            "context": ") + 模糊边缘(1) + 点状强回声(1) = 7 分 → TR5（≥7 分）",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261103_1a6ce0f6",
+        "organ": "thyroid",
+        "n_claims": 1,
+        "n_unsupported": 1,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "1 分 → TR2",
+            "context": "(0) + 边界清晰(0) + 无钙化(0) = 1 分 → TR2（良性）",
+            "supported": false,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261103_c615ec4e",
+        "organ": "thyroid",
+        "n_claims": 1,
+        "n_unsupported": 0,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "0 分 → TR1",
+            "context": "(0) + 边界清晰(0) + 无钙化(0) = 0 分 → TR1（良性）",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261103_6d3b8c2d",
+        "organ": "thyroid",
+        "n_claims": 1,
+        "n_unsupported": 0,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "8 分 → TR5",
+            "context": ") + 边界欠清(2) + 点状强回声(1) = 8 分 → TR5（≥7 分）",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261103_4da49f4c",
+        "organ": "thyroid",
+        "n_claims": 1,
+        "n_unsupported": 0,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "5 分 → TR4",
+            "context": "TR4 — 低回声(2) + 实性成分(3) = 5 分 → TR4（4-6 分）[根据现有特征推算]（注：其余特征",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261103_2f6f5748",
+        "organ": "thyroid",
+        "n_claims": 1,
+        "n_unsupported": 0,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "0 分 → TR1",
+            "context": "(0) + 边缘清晰(0) + 无钙化(0) = 0 分 → TR1（完全良性）",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261103_8502097d",
+        "organ": "thyroid",
+        "n_claims": 1,
+        "n_unsupported": 0,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "11 分 → TR5",
+            "context": "2) + 纵横比>1(3) + 微钙化(3) = 11 分 → TR5（≥7 分）",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261103_5b6c2a39",
+        "organ": "thyroid",
+        "n_claims": 2,
+        "n_unsupported": 1,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "1 分 → TR2",
+            "context": "TR2 — 等回声(1) + 边界清晰(0) = 1 分 → TR2（≤2 分为 TR2）。成分未明确（需医生镜下确",
+            "supported": false,
+            "check": "prompt_bin_rule"
+          },
+          {
+            "kind": "score_map",
+            "raw": "2 分为 TR2",
+            "context": " + 边界清晰(0) = 1 分 → TR2（≤2 分为 TR2）。成分未明确（需医生镜下确认），无形态/钙化特",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261103_6c639e43",
+        "organ": "thyroid",
+        "n_claims": 2,
+        "n_unsupported": 1,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "3 分 → TR4",
+            "context": "回声(3) + 成分未明确(需医生镜下确认) = 3 分 → TR4（注：4-6 分为 TR4）",
+            "supported": false,
+            "check": "prompt_bin_rule"
+          },
+          {
+            "kind": "score_map",
+            "raw": "4-6 分为 TR4",
+            "context": "(需医生镜下确认) = 3 分 → TR4（注：4-6 分为 TR4）",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261103_3e63c25b",
+        "organ": "thyroid",
+        "n_claims": 1,
+        "n_unsupported": 0,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "0 分 → TR1",
+            "context": "态(0) + 边界清(0) + 无钙化(0) = 0 分 → TR1（良性）",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261103_f4bd3c2b",
+        "organ": "thyroid",
+        "n_claims": 2,
+        "n_unsupported": 0,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "8 分 → TR5",
+            "context": "3) + 低回声(2) + 纵横比>1(3) = 8 分 → TR5（≥7 分为 TR5）",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          },
+          {
+            "kind": "score_map",
+            "raw": "≥7 分为 TR5",
+            "context": " + 纵横比>1(3) = 8 分 → TR5（≥7 分为 TR5）",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261103_74e3e6fb",
+        "organ": "thyroid",
+        "n_claims": 0,
+        "n_unsupported": 0,
+        "claims": []
+      },
+      {
+        "request_id": "req_20261103_072f6f98",
+        "organ": "thyroid",
+        "n_claims": 2,
+        "n_unsupported": 1,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "3 分 → TR4",
+            "context": " + 形态未描述(0) + 钙化未描述(0) = 3 分 → TR4（注：4-6 分为 TR4）",
+            "supported": false,
+            "check": "prompt_bin_rule"
+          },
+          {
+            "kind": "score_map",
+            "raw": "4-6 分为 TR4",
+            "context": " 钙化未描述(0) = 3 分 → TR4（注：4-6 分为 TR4）",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261103_10dbb035",
+        "organ": "thyroid",
+        "n_claims": 0,
+        "n_unsupported": 0,
+        "claims": []
+      },
+      {
+        "request_id": "req_20261103_b86bb771",
+        "organ": "thyroid",
+        "n_claims": 0,
+        "n_unsupported": 0,
+        "claims": []
+      },
+      {
+        "request_id": "req_20261107_4d9cbfba",
+        "organ": "thyroid",
+        "n_claims": 1,
+        "n_unsupported": 0,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "0 分 → TR1",
+            "context": "(0) + 边界清晰(0) + 无钙化(0) = 0 分 → TR1（完全良性特征）",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261107_0f89fab1",
+        "organ": "thyroid",
+        "n_claims": 2,
+        "n_unsupported": 0,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "10 分 → TR5",
+            "context": "3) + 低回声(2) + 边缘不规则(2) = 10 分 → TR5（≥7 分）（注：4-6 分为 TR4）",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          },
+          {
+            "kind": "score_map",
+            "raw": "4-6 分为 TR4",
+            "context": "2) = 10 分 → TR5（≥7 分）（注：4-6 分为 TR4）",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261107_2e39fb76",
+        "organ": "thyroid",
+        "n_claims": 3,
+        "n_unsupported": 2,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "2 分 → TR2",
+            "context": "TR2 — 低回声(2) + 边界清晰(0) = 2 分 → TR2（不怀疑恶性）（注：0-2分为TR2，3-4分为",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          },
+          {
+            "kind": "score_map",
+            "raw": "0-2分为TR2",
+            "context": "0) = 2 分 → TR2（不怀疑恶性）（注：0-2分为TR2，3-4分为TR3）",
+            "supported": false,
+            "check": "prompt_bin_rule"
+          },
+          {
+            "kind": "score_map",
+            "raw": "3-4分为TR3",
+            "context": "→ TR2（不怀疑恶性）（注：0-2分为TR2，3-4分为TR3）",
+            "supported": false,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261107_4255be0b",
+        "organ": "thyroid",
+        "n_claims": 1,
+        "n_unsupported": 0,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "10 分 → TR5",
+            "context": "2) + 边缘不规则(2) + 微钙化(3) = 10 分 → TR5（≥7 分）需 FNA（证据: [2], [5]",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261107_41302c64",
+        "organ": "thyroid",
+        "n_claims": 0,
+        "n_unsupported": 0,
+        "claims": []
+      },
+      {
+        "request_id": "req_20261107_80dc9e4e",
+        "organ": "thyroid",
+        "n_claims": 1,
+        "n_unsupported": 0,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "10 分 → TR5",
+            "context": "2) + 边缘不规则(2) + 微钙化(3) = 10 分 → TR5（≥7 分）需 FNA（证据: [2]，[5]）",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261107_7b5140f3",
+        "organ": "thyroid",
+        "n_claims": 1,
+        "n_unsupported": 0,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "2 分 → TR2",
+            "context": " TR2 — 低回声(2) + 边界清(0) = 2 分 → TR2（符合 ACRTI-RADS 2017 标准）",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261107_b048485a",
+        "organ": "thyroid",
+        "n_claims": 1,
+        "n_unsupported": 0,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "0 分 → TR1",
+            "context": " + 未提及边缘(0) + 未提及钙化(0) = 0 分 → TR1（良性）",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261107_9f7215b5",
+        "organ": "thyroid",
+        "n_claims": 1,
+        "n_unsupported": 0,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "2 分 → TR2",
+            "context": "TR2 — 低回声(2) + 边缘清晰(0) = 2 分 → TR2（不怀疑恶性）。但成分未明确（需医生镜下确认）、",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      },
+      {
+        "request_id": "req_20261107_1982869d",
+        "organ": "thyroid",
+        "n_claims": 1,
+        "n_unsupported": 0,
+        "claims": [
+          {
+            "kind": "score_map",
+            "raw": "10 分 → TR5",
+            "context": "2) + 边缘不规则(2) + 微钙化(3) = 10 分 → TR5（≥7 分）。注：符合「超过 4 种恶性征象，尤",
+            "supported": true,
+            "check": "prompt_bin_rule"
+          }
+        ]
+      }
+    ]
+  },
+  "faithfulness": {
+    "caliber": {
+      "definition": "知识断言（不含影像所见与建议）中，有知识块支持的占比",
+      "answer_mode": "derived_stripped",
+      "judge": "Qwen3-8B @ http://127.0.0.1:8006（RAGAS 官方 prompt，/no_think，中文断言）",
+      "bucket_rule": "image/advice/knowledge 三桶由 p44 classify_statement 判定（规则透明）；再按 rebucket_by_input 把\"只复述输入测量值\"的 knowledge 断言改判为 image（否则分母混入永远无据的断言）",
+      "zero_knowledge": "知识断言为 0 的样本记 None，不写 1.0"
+    },
+    "n_samples": 73,
+    "n_measured": 61,
+    "n_judge_error": 2,
+    "mean_faith_knowledge": 0.0514,
+    "median_faith_knowledge": 0.0,
+    "mean_faith_all": 0.138,
+    "bucket_totals": {
+      "knowledge": {
+        "n": 201,
+        "supported": 11
+      },
+      "image": {
+        "n": 596,
+        "supported": 91
+      },
+      "advice": {
+        "n": 32,
+        "supported": 10
+      }
+    },
+    "unsupported_knowledge_examples": [
+      {
+        "request_id": "req_20260930_36c18e71",
+        "statement": "此次超声检查未发现甲状腺存在明显的异常情况。"
+      },
+      {
+        "request_id": "req_20260930_36c18e71",
+        "statement": "此次检查结果符合TR1标准，评分为0分。"
+      },
+      {
+        "request_id": "req_20260930_36c18e71",
+        "statement": "此次检查中没有发现相关的证据。"
+      },
+      {
+        "request_id": "req_20260930_36c18e71",
+        "statement": "需要进行人工复核以确认结果。"
+      },
+      {
+        "request_id": "req_20260930_2f3d7072",
+        "statement": "左室射血分数为60%"
+      },
+      {
+        "request_id": "req_20260930_2f3d7072",
+        "statement": "左室射血分数大于等于55%属于正常范围"
+      },
+      {
+        "request_id": "req_20260930_2f3d7072",
+        "statement": "左室舒张末期内径正常"
+      },
+      {
+        "request_id": "req_20260930_2f3d7072",
+        "statement": "射血分数为38%"
+      },
+      {
+        "request_id": "req_20260930_2f3d7072",
+        "statement": "左室射血分数正常"
+      },
+      {
+        "request_id": "req_20260930_2f3d7072",
+        "statement": "高血压性心脏病被列为鉴别诊断之一"
+      },
+      {
+        "request_id": "req_20260930_2f3d7072",
+        "statement": "高血压性心脏病的排除依据是左室射血分数正常"
+      },
+      {
+        "request_id": "req_20260930_2f3d7072",
+        "statement": "扩张型心肌病被列为鉴别诊断之一"
+      },
+      {
+        "request_id": "req_20260930_2f3d7072",
+        "statement": "扩张型心肌病的支持依据是二尖瓣轻度反流"
+      },
+      {
+        "request_id": "req_20260930_2f3d7072",
+        "statement": "扩张型心肌病的排除依据是左室舒张末期内径正常"
+      },
+      {
+        "request_id": "req_20260930_2f3d7072",
+        "statement": "缺血性心肌病被列为鉴别诊断之一"
+      },
+      {
+        "request_id": "req_20261001_4e0a3c54",
+        "statement": "心脏及纵隔的超声检查显示外观正常。"
+      },
+      {
+        "request_id": "req_20261001_4e0a3c54",
+        "statement": "左心室射血分数为60%，表明左心室收缩功能正常。"
+      },
+      {
+        "request_id": "req_20261001_4e0a3c54",
+        "statement": "心脏及纵隔超声检查未发现异常，符合正常左心室收缩功能。"
+      },
+      {
+        "request_id": "req_20261001_4e0a3c54",
+        "statement": "鉴别诊断中无特定疾病被考虑。"
+      },
+      {
+        "request_id": "req_20261001_4e0a3c54",
+        "statement": "鉴别诊断中支持心脏及纵隔超声检查未见异常。"
+      }
+    ],
+    "n_rebucketed_total": 5,
+    "knowledge_tiers": {
+      "derived": {
+        "n": 101,
+        "supported": 0,
+        "faith": 0.0
+      },
+      "selfref": {
+        "n": 34,
+        "supported": 2,
+        "faith": 0.0588
+      },
+      "pure": {
+        "n": 66,
+        "supported": 9,
+        "faith": 0.1364
+      }
+    },
+    "caliber_b_with_prompt_template": {
+      "n": 201,
+      "supportedA": 11,
+      "supportedB": 11,
+      "faith_A": 0.0547,
+      "faith_B": 0.0547,
+      "note": "口径 A = 判官只对着**检索块**判（主口径）；口径 B = 断言在检索块或**生产 prompt 模板**（TI-RADS 评分表 / LVEF 分档表）中能找到出处也算支持。B 是确定性下界，不是判官替换。"
+    },
+    "per_sample": [
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 4,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "image": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          },
+          "advice": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          }
+        },
+        "faith_all": 0.0,
+        "faith_knowledge": 0.0,
+        "n_statements": 4,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "此次超声检查未发现甲状腺存在明显的异常情况。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "此次检查结果符合TR1标准，评分为0分。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "此次检查中没有发现相关的证据。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "需要进行人工复核以确认结果。",
+            "bucket": "knowledge",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20260930_36c18e71",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 12,
+            "supported": 1,
+            "faith": 0.0833
+          },
+          "image": {
+            "n": 2,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "advice": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          }
+        },
+        "faith_all": 0.0714,
+        "faith_knowledge": 0.0833,
+        "n_statements": 14,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "二尖瓣存在轻度反流",
+            "bucket": "knowledge",
+            "verdict": 1
+          },
+          {
+            "statement": "左室射血分数为60%",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "左室射血分数大于等于55%属于正常范围",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "左室舒张末期内径正常",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "射血分数为38%",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "室间隔出现增厚现象",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "左室射血分数正常",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "高血压性心脏病被列为鉴别诊断之一",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "高血压性心脏病的支持依据是室间隔增厚",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "高血压性心脏病的排除依据是左室射血分数正常",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "扩张型心肌病被列为鉴别诊断之一",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "扩张型心肌病的支持依据是二尖瓣轻度反流",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "扩张型心肌病的排除依据是左室舒张末期内径正常",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "缺血性心肌病被列为鉴别诊断之一",
+            "bucket": "knowledge",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20260930_2f3d7072",
+        "organ": "cardiac",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 6,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "image": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          },
+          "advice": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          }
+        },
+        "faith_all": 0.0,
+        "faith_knowledge": 0.0,
+        "n_statements": 6,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "心脏及纵隔的超声检查显示外观正常。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "左心室射血分数为60%，表明左心室收缩功能正常。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "心脏及纵隔超声检查未发现异常，符合正常左心室收缩功能。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "鉴别诊断中无特定疾病被考虑。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "鉴别诊断中支持心脏及纵隔超声检查未见异常。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "鉴别诊断中排除了其他临床症状或病史的存在。",
+            "bucket": "knowledge",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261001_4e0a3c54",
+        "organ": "cardiac",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 5,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "image": {
+            "n": 14,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "advice": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          }
+        },
+        "faith_all": 0.0,
+        "faith_knowledge": 0.0,
+        "n_statements": 19,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "右叶存在低回声结节。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节的边界是清晰的。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节的形态是规则的。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节没有明显的钙化。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "实性 / 低回声的分值为 3。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "边界光滑的分值为 0。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "形态规则的分值为 0。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "无钙化的分值为 0。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "总分值为 2 分。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "总分值对应的分类为 TR2。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "鉴别诊断的第一项是乳头状癌。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "乳头状癌的支持特征包括低回声和形态规则。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "乳头状癌的排除特征包括边界清晰。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "鉴别诊断的第二项是结节性甲状腺肿。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "结节性甲状腺肿的支持特征包括低回声和边界清晰。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "结节性甲状腺肿的排除特征包括无钙化。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "鉴别诊断的第三项是亚急性甲状腺炎。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "亚急性甲状腺炎的支持特征包括低回声。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "亚急性甲状腺炎的排除特征包括无疼痛症状。",
+            "bucket": "knowledge",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261004_2607d423",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 1,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "image": {
+            "n": 8,
+            "supported": 2,
+            "faith": 0.25
+          },
+          "advice": {
+            "n": 1,
+            "supported": 0,
+            "faith": 0.0
+          }
+        },
+        "faith_all": 0.2,
+        "faith_knowledge": 0.0,
+        "n_statements": 10,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "甲状腺右叶结节表现为低回声，边界清晰，形态规则，无钙化。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "囊性或实性为主、形态规则、边界清楚的结节属于良性结节，得分为2分。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "病灶低回声、边界清晰、形态规则、无钙化，符合TR2等级标准。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "证据来源包括文献[1]和文献[2]。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "鉴别诊断中乳头状癌的支持依据是低回声，排除依据是边界清晰和形态规则。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "结节性甲状腺肿的支持依据是囊性或实性为主、边界清楚，排除依据是无钙化。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "亚急性甲状腺炎的支持依据是低回声，排除依据是边界清晰和形态规则。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "患者的甲状腺右叶结节虽然表现为低回声，但边界清晰、形态规则，属于良性结节的可能性较大。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "建议定期复查超声，监测结节变化。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "如有任何不适，应及时就医",
+            "bucket": "advice",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261021_4adb2ccc",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 14,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "image": {
+            "n": 5,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "advice": {
+            "n": 4,
+            "supported": 0,
+            "faith": 0.0
+          }
+        },
+        "faith_all": 0.0,
+        "faith_knowledge": 0.0,
+        "n_statements": 23,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "左室射血分数为 45%。",
+            "bucket": "image",
+            "verdict": 0,
+            "rebucket": "input_restatement"
+          },
+          {
+            "statement": "EF 45%（45-54%）属于轻度降低的标准。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "证据来源于文献 [1] 和 [2]。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "鉴别诊断的第一项是高血压性心脏病。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "高血压性心脏病的评分是 0.75。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "高血压性心脏病的支持依据是二尖瓣中度反流。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "高血压性心脏病的排除依据是没有其他瓣膜病变。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "鉴别诊断的第二项是扩张型心肌病。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "扩张型心肌病的评分是 0.20。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "扩张型心肌病的支持依据是 EF 45%。",
+            "bucket": "image",
+            "verdict": 0,
+            "rebucket": "input_restatement"
+          },
+          {
+            "statement": "扩张型心肌病的排除依据是没有左室扩大。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "鉴别诊断的第三项是缺血性心肌病。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "缺血性心肌病的支持依据是没有。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "缺血性心肌病的排除依据是没有心肌梗死证据。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "患者的左心室射血分数为 45%。",
+            "bucket": "image",
+            "verdict": 0,
+            "rebucket": "input_restatement"
+          },
+          {
+            "statement": "左心室射血分数 45% 属于轻度降低。",
+            "bucket": "image",
+            "verdict": 0,
+            "rebucket": "input_restatement"
+          },
+          {
+            "statement": "左心室射血分数 45% 可能是由于高血压引起的心脏负担增加所致。",
+            "bucket": "image",
+            "verdict": 0,
+            "rebucket": "input_restatement"
+          },
+          {
+            "statement": "建议定期复查以监测心脏状况。",
+            "bucket": "advice",
+            "verdict": 0
+          },
+          {
+            "statement": "建议继续控制血压。",
+            "bucket": "advice",
+            "verdict": 0
+          },
+          {
+            "statement": "医生指导患者按时服药。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "医生指导患者保持健康的生活方式。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "下一步建议每半年复查一次超声心动图。",
+            "bucket": "advice",
+            "verdict": 0
+          },
+          {
+            "statement": "下一步建议监测心脏功能变化",
+            "bucket": "advice",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261021_d79323fe",
+        "organ": "cardiac",
+        "n_rebucketed": 5
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          },
+          "image": {
+            "n": 15,
+            "supported": 2,
+            "faith": 0.1333
+          },
+          "advice": {
+            "n": 2,
+            "supported": 0,
+            "faith": 0.0
+          }
+        },
+        "faith_all": 0.1176,
+        "faith_knowledge": null,
+        "n_statements": 17,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "甲状腺右叶存在一个低回声结节",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "该结节的边界是清晰的",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "该结节的形态是规则的",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节没有钙化现象",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节属于囊性或实性为主的情况",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节的形态规则且边界清楚，符合良性结节的特征",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节符合TR2标准",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节的低回声、边界清晰、形态规则、无钙化特征支持良性诊断",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节的形态规则特征排除了恶性可能",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节的囊性或实性为主、形态规则、边界清楚特征支持结节性甲状腺肿诊断",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节的无钙化特征排除了结节性甲状腺肿的可能",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节没有特定支持依据支持亚急性甲状腺炎诊断",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节没有特定排除依据排除亚急性甲状腺炎诊断",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节属于良性范畴",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "建议对甲状腺结节进行定期复查超声",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "一般情况下不需要立即进行穿刺活检",
+            "bucket": "advice",
+            "verdict": 0
+          },
+          {
+            "statement": "如果有任何疑问或变化应及时就医",
+            "bucket": "advice",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261021_75ec34bb",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          },
+          "image": {
+            "n": 13,
+            "supported": 3,
+            "faith": 0.2308
+          },
+          "advice": {
+            "n": 1,
+            "supported": 0,
+            "faith": 0.0
+          }
+        },
+        "faith_all": 0.2143,
+        "faith_knowledge": null,
+        "n_statements": 14,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "甲状腺右叶结节的回声为低回声。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "甲状腺右叶结节的边界是清晰的。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "甲状腺右叶结节的形态是规则的。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "甲状腺右叶结节没有钙化。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "甲状腺右叶结节的良性征象包括囊性或实性为主、形态规则、边界清楚。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "甲状腺右叶结节的恶性征象评分为0分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "甲状腺右叶结节的总评分为2分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "甲状腺右叶结节的总评分对应TR2分类。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "甲状腺右叶结节没有恶性征象。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "甲状腺右叶结节属于良性结节的可能性较大。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "建议定期复查超声以监测结节的变化。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "无需过度担心甲状腺右叶结节。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "建议定期随访甲状腺右叶结节。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "下一步建议在6-12个月内复查超声",
+            "bucket": "advice",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261021_03e0de81",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 5,
+            "supported": 2,
+            "faith": 0.4
+          },
+          "image": {
+            "n": 10,
+            "supported": 2,
+            "faith": 0.2
+          },
+          "advice": {
+            "n": 3,
+            "supported": 2,
+            "faith": 0.6667
+          }
+        },
+        "faith_all": 0.3333,
+        "faith_knowledge": 0.4,
+        "n_statements": 18,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "甲状腺右叶有一个低回声结节。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "该结节的边界清晰且形态规则。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节没有钙化。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "囊性或实性为主、形态规则、边界清楚的良性结节得分为2分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "TR2证据来自文献2和文献3。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "鉴别诊断包括结节性甲状腺肿。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "结节性甲状腺肿的支持依据是边界清楚、形态规则。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "结节性甲状腺肿的排除依据是无钙化。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "鉴别诊断包括亚急性甲状腺炎。",
+            "bucket": "knowledge",
+            "verdict": 1
+          },
+          {
+            "statement": "亚急性甲状腺炎的支持依据是低回声。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "亚急性甲状腺炎的排除依据是无疼痛。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "鉴别诊断包括桥本甲状腺炎。",
+            "bucket": "knowledge",
+            "verdict": 1
+          },
+          {
+            "statement": "桥本甲状腺炎的支持依据是低回声。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "桥本甲状腺炎的排除依据是无甲状腺功能异常。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "患者甲状腺右叶的结节属于良性特征。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "建议定期复查超声。",
+            "bucket": "advice",
+            "verdict": 1
+          },
+          {
+            "statement": "一般不需要立即穿刺。",
+            "bucket": "advice",
+            "verdict": 0
+          },
+          {
+            "statement": "医生建议进行定期复查",
+            "bucket": "advice",
+            "verdict": 1
+          }
+        ],
+        "request_id": "req_20261022_2609a174",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 1,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "image": {
+            "n": 7,
+            "supported": 3,
+            "faith": 0.4286
+          },
+          "advice": {
+            "n": 2,
+            "supported": 1,
+            "faith": 0.5
+          }
+        },
+        "faith_all": 0.4,
+        "faith_knowledge": 0.0,
+        "n_statements": 10,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "甲状腺右叶低回声结节的边界是清晰的。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "甲状腺右叶低回声结节的形态是规则的。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "甲状腺右叶低回声结节没有钙化。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "囊性或实性为主、形态规则、边界清楚的良性结节得分为 2 分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "TR2 证据来自文献 [2] 和 [3]。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "当前结节的边界是清晰的。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "当前结节的形态是规则的。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "目前不需要立即进行穿刺。",
+            "bucket": "advice",
+            "verdict": 1
+          },
+          {
+            "statement": "建议定期复查以观察结节的变化。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "下一步需要每 6-12 个月复查超声。",
+            "bucket": "advice",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261022_f07d2a59",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 1,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "image": {
+            "n": 12,
+            "supported": 1,
+            "faith": 0.0833
+          },
+          "advice": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          }
+        },
+        "faith_all": 0.0769,
+        "faith_knowledge": 0.0,
+        "n_statements": 13,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "甲状腺右叶存在一个低回声结节。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "该结节的边界清晰，形态规则。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节没有钙化现象。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "囊性或实性为主、形态规则、边界清楚的良性结节得分为2分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "TR2的证据来源于文献[2]和文献[3]。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "鉴别诊断中第一种可能是甲状腺结节。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "甲状腺结节的支持依据包括形态规则和边界清楚。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "甲状腺结节的排除依据包括无钙化和低回声。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "鉴别诊断中第二种可能是结节性甲状腺肿。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "结节性甲状腺肿的支持依据是低回声。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "结节性甲状腺肿的排除依据是边界清晰。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "患者需要定期复查超声以监测结节的变化。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "如果结节增大或其他可疑征象出现，应考虑进一步检查",
+            "bucket": "image",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261022_1808897d",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 5,
+            "supported": 2,
+            "faith": 0.4
+          },
+          "image": {
+            "n": 10,
+            "supported": 3,
+            "faith": 0.3
+          },
+          "advice": {
+            "n": 2,
+            "supported": 0,
+            "faith": 0.0
+          }
+        },
+        "faith_all": 0.2941,
+        "faith_knowledge": 0.4,
+        "n_statements": 17,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "甲状腺右叶结节的边界是清晰的。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "甲状腺右叶结节的形态是规则的。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "边界清晰的评分是1分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "形态规则的评分是0分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "总评分是2分。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "总评分对应TR2分类。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "证据来源于文献[1]、[2]、[3]、[4]、[5]。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "鉴别诊断中包括结节状甲状腺炎。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "结节状甲状腺炎的支持依据是边界清晰。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "结节状甲状腺炎的排除依据是形态规则。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "鉴别诊断中包括多发性甲状腺瘤。",
+            "bucket": "knowledge",
+            "verdict": 1
+          },
+          {
+            "statement": "多发性甲状腺瘤的支持依据是形态规则。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "多发性甲状腺瘤的排除依据是边界清晰。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "患者的甲状腺右叶结节属于良性表现。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "需要定期进行甲状腺超声检查。",
+            "bucket": "knowledge",
+            "verdict": 1
+          },
+          {
+            "statement": "建议保持良好的生活习惯。",
+            "bucket": "advice",
+            "verdict": 0
+          },
+          {
+            "statement": "建议定期复查",
+            "bucket": "advice",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261025_3789733b",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 3,
+            "supported": 1,
+            "faith": 0.3333
+          },
+          "image": {
+            "n": 10,
+            "supported": 3,
+            "faith": 0.3
+          },
+          "advice": {
+            "n": 3,
+            "supported": 0,
+            "faith": 0.0
+          }
+        },
+        "faith_all": 0.25,
+        "faith_knowledge": 0.3333,
+        "n_statements": 16,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "甲状腺右叶结节的边界是清晰的。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "甲状腺右叶结节的形态是规则的。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "边界清晰的评分是1分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "形态规则的评分是0分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "总评分是2分。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "总评分对应TR2分类。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "鉴别诊断中包括结节状甲状腺炎。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "结节状甲状腺炎的支持依据是边界清晰。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "结节状甲状腺炎的排除依据是形态规则。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "鉴别诊断中包括多发性甲状腺瘤。",
+            "bucket": "knowledge",
+            "verdict": 1
+          },
+          {
+            "statement": "多发性甲状腺瘤的支持依据是形态规则。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "多发性甲状腺瘤的排除依据是边界清晰。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "患者的甲状腺右叶结节属于良性表现。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "需要定期进行超声随访。",
+            "bucket": "advice",
+            "verdict": 0
+          },
+          {
+            "statement": "建议保持良好的生活习惯。",
+            "bucket": "advice",
+            "verdict": 0
+          },
+          {
+            "statement": "建议定期复查",
+            "bucket": "advice",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261025_6204e966",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 4,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "image": {
+            "n": 19,
+            "supported": 5,
+            "faith": 0.2632
+          },
+          "advice": {
+            "n": 1,
+            "supported": 0,
+            "faith": 0.0
+          }
+        },
+        "faith_all": 0.2083,
+        "faith_knowledge": 0.0,
+        "n_statements": 24,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "甲状腺右叶结节的回声表现为低回声。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "甲状腺右叶结节的边界是清晰的。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "甲状腺右叶结节的形态是规则的。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "低回声的特征被赋予1分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "边界清晰的特征被赋予0分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "形态规则的特征被赋予0分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "总分为2分。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "总分2分对应TR2分类。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "鉴别诊断中第一种可能性是结节性甲状腺肿。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "结节性甲状腺肿的可能性评分是0.70。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "结节性甲状腺肿的支持依据是边界清晰和形态规则。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "结节性甲状腺肿的排除依据是没有恶性特征。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "鉴别诊断中第二种可能性是甲状腺腺瘤。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "甲状腺腺瘤的可能性评分是0.30。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "甲状腺腺瘤的支持依据是低回声。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "甲状腺腺瘤的排除依据是没有明显钙化。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "患者的甲状腺右叶结节为低回声。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "患者的甲状腺右叶结节边界清晰。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "患者的甲状腺右叶结节形态规则。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "这些特征提示结节性质倾向于良性。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "患者无需过度担心，这类结节大多数情况下是良性的。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "仍需定期复查以监测结节的变化。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "建议每6个月进行一次超声复查。",
+            "bucket": "advice",
+            "verdict": 0
+          },
+          {
+            "statement": "如果出现任何不适或结节增大，应及时就医",
+            "bucket": "image",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261025_3867c1d9",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 8,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "image": {
+            "n": 23,
+            "supported": 2,
+            "faith": 0.087
+          },
+          "advice": {
+            "n": 1,
+            "supported": 0,
+            "faith": 0.0
+          }
+        },
+        "faith_all": 0.0625,
+        "faith_knowledge": 0.0,
+        "n_statements": 32,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "甲状腺右叶结节的回声表现为低回声。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "甲状腺右叶结节的边界是清晰的。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "甲状腺右叶结节的形态是规则的。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "低回声的特征被赋予1分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "边界清晰的特征被赋予0分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "形态规则的特征被赋予0分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "总分为2分。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "总分2分对应TR2分类。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "证据来源于文献[1]、[2]、[3]、[4]、[5]。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "鉴别诊断的第一种可能是结节性甲状腺肿。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "结节性甲状腺肿的评分是0.90。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "结节性甲状腺肿的支持特征包括边界清晰和形态规则。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "结节性甲状腺肿的排除特征包括无恶性特征。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "鉴别诊断的第二种可能是甲状腺腺瘤。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "甲状腺腺瘤的评分是0.60。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "甲状腺腺瘤的支持特征包括低回声。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "甲状腺腺瘤的排除特征包括无明显钙化。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "鉴别诊断的第三种可能是甲状腺滤泡腺瘤。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "甲状腺滤泡腺瘤的评分是0.40。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "甲状腺滤泡腺瘤的支持特征包括低回声。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "甲状腺滤泡腺瘤的排除特征包括无明显钙化。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "鉴别诊断的第四种可能是甲状腺囊肿。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "甲状腺囊肿的评分是0.20。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "甲状腺囊肿的支持特征包括低回声。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "甲状腺囊肿的排除特征包括边界清晰和形态规则。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "鉴别诊断的第五种可能是甲状腺炎。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "甲状腺炎的支持特征包括无明显钙化。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "甲状腺炎的排除特征包括边界清晰和形态规则。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "患者的甲状腺右叶结节具有低回声、边界清晰和形态规则的特征。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "这些特征提示结节可能是良性的。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "建议定期复查超声以监测结节的变化情况。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "如有任何疑问，请咨询医生",
+            "bucket": "advice",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261025_ef282e85",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 4,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "image": {
+            "n": 15,
+            "supported": 4,
+            "faith": 0.2667
+          },
+          "advice": {
+            "n": 2,
+            "supported": 1,
+            "faith": 0.5
+          }
+        },
+        "faith_all": 0.2381,
+        "faith_knowledge": 0.0,
+        "n_statements": 21,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "甲状腺右叶存在低回声结节。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节的边界是清晰的。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "该结节的形态是规则的。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "低回声特征得分为1分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "边界清晰特征得分为0分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "形态规则特征得分为0分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "总得分为2分。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "总得分对应TR2分类。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "鉴别诊断包括结节性甲状腺肿。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "结节性甲状腺肿的支持特征为边界清晰和形态规则。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "结节性甲状腺肿的排除特征为无恶性特征。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "鉴别诊断包括甲状腺腺瘤。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "甲状腺腺瘤的支持特征为低回声。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "甲状腺腺瘤的排除特征为边界清晰和形态规则。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "患者的甲状腺右叶结节具有低回声特征。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "患者的甲状腺右叶结节具有边界清晰特征。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "患者的甲状腺右叶结节具有形态规则特征。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "患者的甲状腺右叶结节具有良性特征。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "患者需要定期进行复查。",
+            "bucket": "advice",
+            "verdict": 1
+          },
+          {
+            "statement": "患者需要保持良好的生活习惯。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "患者需要遵医嘱进行进一步检查或随访",
+            "bucket": "advice",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261025_13d5c8b3",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 3,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "image": {
+            "n": 6,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "advice": {
+            "n": 3,
+            "supported": 2,
+            "faith": 0.6667
+          }
+        },
+        "faith_all": 0.1667,
+        "faith_knowledge": 0.0,
+        "n_statements": 12,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "甲状腺右叶结节的回声表现为低回声。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "甲状腺右叶结节的边界是清晰的。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "低回声的特征被赋予1分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "边界清晰的特征被赋予0分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "总分为1分。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "总分对应TR2分类（注：2分为TR2）。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "证据来源于文献[1]、[2]、[3]、[4]、[5]。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "患者的甲状腺右叶结节具有低回声且边界清晰的特征。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "低回声且边界清晰通常是良性病变的表现。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "建议患者定期进行复查。",
+            "bucket": "advice",
+            "verdict": 1
+          },
+          {
+            "statement": "建议患者保持良好的生活习惯。",
+            "bucket": "advice",
+            "verdict": 1
+          },
+          {
+            "statement": "建议在6到12个月后再次进行超声检查。",
+            "bucket": "advice",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261025_c64402b5",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 4,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "image": {
+            "n": 7,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "advice": {
+            "n": 3,
+            "supported": 2,
+            "faith": 0.6667
+          }
+        },
+        "faith_all": 0.1429,
+        "faith_knowledge": 0.0,
+        "n_statements": 14,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "甲状腺右叶结节的回声表现为低回声。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "甲状腺右叶结节的边界是清晰的。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "低回声的特征被赋予1分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "边界清晰的特征被赋予0分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "总分为1分。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "总分1分对应TR2分类。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "2分对应TR2分类。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "证据来源于文献[1]、[2]、[3]、[4]、[5]。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "患者甲状腺右叶结节的回声为低回声。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "患者甲状腺右叶结节的边界是清晰的。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "患者甲状腺右叶结节具有良性可能性较大。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "建议患者定期进行复查。",
+            "bucket": "advice",
+            "verdict": 1
+          },
+          {
+            "statement": "建议患者保持良好的生活习惯。",
+            "bucket": "advice",
+            "verdict": 1
+          },
+          {
+            "statement": "建议患者每6个月至1年进行一次超声复查",
+            "bucket": "advice",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261025_9a9c73ff",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 4,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "image": {
+            "n": 6,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "advice": {
+            "n": 2,
+            "supported": 1,
+            "faith": 0.5
+          }
+        },
+        "faith_all": 0.0833,
+        "faith_knowledge": 0.0,
+        "n_statements": 12,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "甲状腺右叶结节的回声表现为低回声。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "甲状腺右叶结节的边界是清晰的。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "低回声的特征被赋予1分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "边界清晰的特征被赋予0分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "总分为1分。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "总分对应TR2分类（注：2分为TR2）。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "证据来源于文献[1]、[2]、[3]、[4]、[5]。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "患者的甲状腺右叶结节具有低回声且边界清晰的特征。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "低回声且边界清晰通常是良性病变的表现。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "患者应保持乐观的心态。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "患者需要定期进行复查。",
+            "bucket": "advice",
+            "verdict": 1
+          },
+          {
+            "statement": "建议在6到12个月后再次进行超声检查。",
+            "bucket": "advice",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261025_ddaa8c69",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 4,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "image": {
+            "n": 6,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "advice": {
+            "n": 2,
+            "supported": 1,
+            "faith": 0.5
+          }
+        },
+        "faith_all": 0.0833,
+        "faith_knowledge": 0.0,
+        "n_statements": 12,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "甲状腺右叶结节的回声表现为低回声。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "甲状腺右叶结节的边界是清晰的。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "低回声的特征被赋予1分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "边界清晰的特征被赋予0分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "总分为1分。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "总分对应TR2分类（注：2分为TR2）。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "证据来源于文献[1]、[2]、[3]、[4]、[5]。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "患者的甲状腺右叶结节具有低回声且边界清晰的特征。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "低回声且边界清晰通常是良性病变的表现。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "患者应保持乐观的心态。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "患者需要定期进行复查。",
+            "bucket": "advice",
+            "verdict": 1
+          },
+          {
+            "statement": "建议在6到12个月后再次进行超声检查。",
+            "bucket": "advice",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261025_ac13dc5d",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "error": "HTTPError: HTTP Error 500: Internal Server Error",
+        "request_id": "req_20261025_9df9aea4",
+        "organ": "thyroid"
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 2,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "image": {
+            "n": 8,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "advice": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          }
+        },
+        "faith_all": 0.0,
+        "faith_knowledge": 0.0,
+        "n_statements": 10,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "右叶存在低回声结节。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节的边界是清晰的。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节的形态是规则的。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节没有明显的钙化现象。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "实性特征被赋予1分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "低回声特征被赋予1分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "边界光滑特征被赋予0分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "无钙化特征被赋予0分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "总分为2分。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "TR2是对应的分类结果。",
+            "bucket": "knowledge",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261025_dd44c656",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 1,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "image": {
+            "n": 8,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "advice": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          }
+        },
+        "faith_all": 0.0,
+        "faith_knowledge": 0.0,
+        "n_statements": 9,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "右叶存在一个低回声结节。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节的边界是清晰的。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节的形态是规则的。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节没有观察到明显的钙化现象。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "实性特征得分为3分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "低回声特征得分为2分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "边界光滑特征得分为0分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "无钙化特征得分为0分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "总得分为2分。",
+            "bucket": "knowledge",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261025_5761679c",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 2,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "image": {
+            "n": 8,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "advice": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          }
+        },
+        "faith_all": 0.0,
+        "faith_knowledge": 0.0,
+        "n_statements": 10,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "右叶存在一个低回声结节。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节的边界是清晰的。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节的形态是规则的。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节没有观察到明显的钙化现象。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "实性特征得分为3分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "低回声特征得分为2分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "边缘光滑特征得分为0分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "无钙化特征得分为0分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "总得分为2分。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "TR2是根据总得分确定的分类。",
+            "bucket": "knowledge",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261025_78bb9401",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          },
+          "image": {
+            "n": 7,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "advice": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          }
+        },
+        "faith_all": 0.0,
+        "faith_knowledge": null,
+        "n_statements": 7,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "该结节以囊实性为主",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节形态规则",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节边界清楚",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节未见明显钙化",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节的良性概率较高",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节的总评分为4分",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节对应的随访建议为TR2",
+            "bucket": "image",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261025_7f9e98db",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "error": "HTTPError: HTTP Error 500: Internal Server Error",
+        "request_id": "req_20261025_dc27b857",
+        "organ": "thyroid"
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 11,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "image": {
+            "n": 24,
+            "supported": 2,
+            "faith": 0.0833
+          },
+          "advice": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          }
+        },
+        "faith_all": 0.0571,
+        "faith_knowledge": 0.0,
+        "n_statements": 35,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "右叶囊性结节的边界是清晰的。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "右叶囊性结节的形态是规则的。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "右叶囊性结节的后方回声增强。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "右叶囊性结节的大小约为6毫米乘以5毫米。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "成分评分是3分。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "回声评分是2分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "形态评分是0分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "边缘评分是0分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "钙化评分是0分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "总评分为6分。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "TR4的证据来自[1]。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "鉴别诊断的第一项是乳头状癌，支持度为0.60。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "乳头状癌的支持因素包括微钙化、低回声和纵横比大于1。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "乳头状癌的排除因素包括边界清晰。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "鉴别诊断的第二项是结节性甲状腺肿，支持度为0.30。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "结节性甲状腺肿的支持因素包括混合回声和边界清晰。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "结节性甲状腺肿的排除因素包括微钙化。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "鉴别诊断的第三项是亚急性甲状腺炎，支持度为0。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "亚急性甲状腺炎的支持因素包括片状低回声。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "亚急性甲状腺炎的排除因素包括无痛性结节。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "患者解释为无。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "输出示例中的理由是成分3分加上回声2分，形态0分，边缘0分，钙化0分，总评分为6分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "输出示例中的证据来自[1]。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "输出示例中的鉴别诊断第一项是乳头状癌，支持度为0.60。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "输出示例中的乳头状癌支持因素包括微钙化、低回声和纵横比大于1。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "输出示例中的乳头状癌排除因素包括边界清晰。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "输出示例中的鉴别诊断第二项是结节性甲状腺肿，支持度为0.30。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "输出示例中的结节性甲状腺肿支持因素包括混合回声和边界清晰。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "输出示例中的结节性甲状腺肿排除因素包括微钙化。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "输出示例中的鉴别诊断第三项是亚急性甲状腺炎，支持度为0。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "输出示例中的亚急性甲状腺炎支持因素包括片状低回声。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "输出示例中的亚急性甲状腺炎排除因素包括无痛性结节。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "输出示例中的患者解释为无。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "输出示例中的理由是成分3分加上回声2分，形态1分，边缘0分，钙化0分，总评分为8分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "TR2的总评分为8分。",
+            "bucket": "knowledge",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261103_31f8225b",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 3,
+            "supported": 2,
+            "faith": 0.6667
+          },
+          "image": {
+            "n": 7,
+            "supported": 2,
+            "faith": 0.2857
+          },
+          "advice": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          }
+        },
+        "faith_all": 0.4,
+        "faith_knowledge": 0.6667,
+        "n_statements": 10,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "左叶存在混合回声结节。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "该结节的边界不够清晰。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节的形态不规则。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "结节内部可见点状强回声。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "结节的大小约为 12 毫米乘以 9 毫米。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "现有知识中没有涉及 TI-RADS 分级标准。",
+            "bucket": "knowledge",
+            "verdict": 1
+          },
+          {
+            "statement": "无法根据影像特征进行评分。",
+            "bucket": "knowledge",
+            "verdict": 1
+          },
+          {
+            "statement": "成分、回声、形态、边缘、钙化等方面均没有对应的证据。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "甲状腺 TR2 分级对应的证据块未涉及混合回声、边界欠清、形态不规则、点状强回声等具体特征。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "无法直接依据原文进行判断。",
+            "bucket": "knowledge",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261103_bab2f932",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 2,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "image": {
+            "n": 10,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "advice": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          }
+        },
+        "faith_all": 0.0,
+        "faith_knowledge": 0.0,
+        "n_statements": 12,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "右叶存在一个低回声结节。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节的边界清晰。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节的形态规则。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节未见明显钙化。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节的大小约为 8 毫米乘 6 毫米。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "低回声特征被赋予 2 分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "边界清晰特征被赋予 0 分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "形态规则特征被赋予 0 分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "无钙化特征被赋予 0 分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "总分为 2 分，对应 TR2 类型。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "TR2 类型的定义是低回声(2) + 边界清(0) + 形态规则(0) + 无钙化(0) = **2 分**。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "0-2 分的范围对应 TR2 类型。",
+            "bucket": "knowledge",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261103_a05f4ed5",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 5,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "image": {
+            "n": 11,
+            "supported": 1,
+            "faith": 0.0909
+          },
+          "advice": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          }
+        },
+        "faith_all": 0.0625,
+        "faith_knowledge": 0.0,
+        "n_statements": 16,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "左叶混合回声结节的回声特征为混合回声。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "左叶混合回声结节的边界特征为边界欠清。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "左叶混合回声结节的形态特征为形态不规则。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "左叶混合回声结节内部可见点状强回声。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "左叶混合回声结节的大小约为 12x9mm。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "混合回声的评分值为 2。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "边界欠清的评分值为 2。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "形态不规则的评分值为 3。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "点状强回声的评分值为 1。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "混合回声、边界欠清、形态不规则和点状强回声的总评分为 8 分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "总评分 8 分对应 TR5 分级。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "4-6 分对应 TR4 分级。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "≥7 分对应 TR5 分级。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "甲状腺 TR4 分级包含混合回声、边界欠清、形态不规则和点状强回声。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "甲状腺 TR4 分级的总评分为 7 分。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "甲状腺 TR4 分级的总评分对应 TR5 分级。",
+            "bucket": "knowledge",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261103_45e5e576",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 2,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "image": {
+            "n": 5,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "advice": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          }
+        },
+        "faith_all": 0.0,
+        "faith_knowledge": 0.0,
+        "n_statements": 7,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "右叶存在一个低回声结节。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节的边界清晰。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节的形态规则。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节未见明显钙化。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节点大小约为 8x6 毫米。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "总评分为 2 分，对应 TR2 分级。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "TR2 分级的评分范围为 0-2 分。",
+            "bucket": "knowledge",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261103_d743a70e",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 4,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "image": {
+            "n": 9,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "advice": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          }
+        },
+        "faith_all": 0.0,
+        "faith_knowledge": 0.0,
+        "n_statements": 13,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "左叶存在混合回声结节。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节的边界不够清晰。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节的形态不规则。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "结节内部可见点状强回声。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "结节的大小约为 12 毫米乘以 9 毫米。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "混合回声的评分是 2 分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "边界欠清的评分是 2 分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "形态不规则的评分是 3 分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "点状强回声的评分是 1 分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "总评分为 8 分。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "总评分 8 分对应 TR5 等级。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "总评分 4 到 6 分对应 TR4 等级。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "总评分大于等于 7 分对应 TR5 等级",
+            "bucket": "knowledge",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261103_6ff1a3d9",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 2,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "image": {
+            "n": 8,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "advice": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          }
+        },
+        "faith_all": 0.0,
+        "faith_knowledge": 0.0,
+        "n_statements": 10,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "右叶存在一个低回声结节。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节的边界是清晰的。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节的形态是规则的。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节未观察到明显的钙化现象。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节的大小约为 8 毫米乘以 6 毫米。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "低回声的评分是 2 分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "边界清晰的评分是 0 分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "形态规则的评分是 0 分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "总评分为 2 分。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "总评分 ≤ 2 分被归类为 TR2。",
+            "bucket": "knowledge",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261103_5bf03912",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 2,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "image": {
+            "n": 9,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "advice": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          }
+        },
+        "faith_all": 0.0,
+        "faith_knowledge": 0.0,
+        "n_statements": 11,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "左叶存在混合回声结节。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "结节内部可见点状强回声。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "结节的形态不规则。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "结节的边界不够清晰。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "结节的大小约为 12 毫米乘以 9 毫米。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "混合回声的评分是 1 分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "高回声的评分是 1 分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "不规则形态的评分是 2 分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "欠清边缘的评分是 1 分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "总评分为 5 分。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "总评分在 4 到 6 分之间属于 TR4 等级。",
+            "bucket": "knowledge",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261103_b32e35b4",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 1,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "image": {
+            "n": 9,
+            "supported": 3,
+            "faith": 0.3333
+          },
+          "advice": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          }
+        },
+        "faith_all": 0.3,
+        "faith_knowledge": 0.0,
+        "n_statements": 10,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "右叶存在一个低回声结节。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "该结节的边界是清晰的。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "该结节的形态是规则的。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "该结节没有明显的钙化现象。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节的大小约为8毫米乘以6毫米。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "低回声的评分是2分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "边界清晰的评分是0分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "形态规则的评分是0分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "无钙化的评分是0分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "总评分为2分。",
+            "bucket": "knowledge",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261103_e2c12ef7",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 2,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "image": {
+            "n": 9,
+            "supported": 2,
+            "faith": 0.2222
+          },
+          "advice": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          }
+        },
+        "faith_all": 0.1818,
+        "faith_knowledge": 0.0,
+        "n_statements": 11,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "左叶存在混合回声结节。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "结节的边界不够清晰。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "结节的形态不规则。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "结节内部可见点状强回声。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "结节的大小约为 12 毫米乘以 9 毫米。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "混合回声的评分是 2 分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "高回声的评分是 1 分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "不规则形态的评分是 2 分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "欠清边缘的评分是 1 分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "总评分为 6 分。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "总评分在 4 到 6 分之间属于 TR4 等级。",
+            "bucket": "knowledge",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261103_d4507411",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 3,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "image": {
+            "n": 8,
+            "supported": 3,
+            "faith": 0.375
+          },
+          "advice": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          }
+        },
+        "faith_all": 0.2727,
+        "faith_knowledge": 0.0,
+        "n_statements": 11,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "右叶存在一个低回声结节。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "该结节的边界清晰。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "该结节的形态规则。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "该结节未见明显的钙化现象。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节的大小约为 8 毫米乘以 6 毫米。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "回声评分为 2 分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "边缘评分为 0 分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "形态评分为 0 分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "总评分为 2 分。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "总评分对应 TR2（不怀疑恶性）。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "TR2 表示总评分为 2 分。",
+            "bucket": "knowledge",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261103_d9ca2b94",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 2,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "image": {
+            "n": 10,
+            "supported": 1,
+            "faith": 0.1
+          },
+          "advice": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          }
+        },
+        "faith_all": 0.0833,
+        "faith_knowledge": 0.0,
+        "n_statements": 12,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "左叶混合回声结节的回声类型为混合回声。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "左叶混合回声结节的边界不够清晰。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "左叶混合回声结节的形态不规则。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "左叶混合回声结节内部可见点状强回声。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "左叶混合回声结节的大小约为 12 毫米乘以 9 毫米。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "混合回声的评分是 2 分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "高回声的评分是 1 分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "不规则形态的评分是 3 分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "欠清边缘的评分是 1 分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "总评分为 7 分。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "总评分大于等于 7 分对应 TR5。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "形态不规则直接对应 3 分",
+            "bucket": "image",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261103_97b21a97",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          },
+          "image": {
+            "n": 9,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "advice": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          }
+        },
+        "faith_all": 0.0,
+        "faith_knowledge": null,
+        "n_statements": 9,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "右叶存在一个低回声结节。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节的边界清晰。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节的形态规则。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节未见明显的钙化现象。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节的大小约为8毫米乘以6毫米。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "回声评分为2分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "边缘评分为0分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "形态评分为0分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "钙化评分为0分。",
+            "bucket": "image",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261103_53284cf8",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 2,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "image": {
+            "n": 9,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "advice": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          }
+        },
+        "faith_all": 0.0,
+        "faith_knowledge": 0.0,
+        "n_statements": 11,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "左叶存在混合回声结节。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "结节的边界不够清晰。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "结节的形态不规则。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "结节内部可见点状强回声。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "结节的大小约为 12 毫米乘以 9 毫米。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "混合回声的评分是 1 分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "高回声的评分是 1 分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "不规则形态的评分是 3 分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "欠清边缘的评分是 1 分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "总评分为 6 分。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "总评分对应 TR4 等级（4-6 分）。",
+            "bucket": "knowledge",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261103_83072f69",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 2,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "image": {
+            "n": 8,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "advice": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          }
+        },
+        "faith_all": 0.0,
+        "faith_knowledge": 0.0,
+        "n_statements": 10,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "左叶存在混合回声结节。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "结节内部可见点状强回声。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "结节的形态不规则。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "结节的边界不够清晰。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "混合回声的评分是1分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "高回声的评分是1分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "不规则形态的评分是3分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "欠清边缘的评分是1分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "总评分为6分。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "总评分属于TR4等级（4-6分）。",
+            "bucket": "knowledge",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261103_61db7e2e",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 2,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "image": {
+            "n": 9,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "advice": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          }
+        },
+        "faith_all": 0.0,
+        "faith_knowledge": 0.0,
+        "n_statements": 11,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "右叶存在一个低回声结节。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节的边界是清晰的。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节的形态是规则的。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节没有明显的钙化现象。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节的大小约为 8 毫米乘以 6 毫米。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "低回声的评分是 2 分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "边界清晰的评分是 0 分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "形态规则的评分是 0 分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "无钙化的评分是 0 分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "总评分为 2 分。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "总评分 ≤ 2 分被归类为 TR2 类型。",
+            "bucket": "knowledge",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261103_08e08f0c",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 2,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "image": {
+            "n": 9,
+            "supported": 2,
+            "faith": 0.2222
+          },
+          "advice": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          }
+        },
+        "faith_all": 0.1818,
+        "faith_knowledge": 0.0,
+        "n_statements": 11,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "右叶存在一个低回声结节。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节的边界是清晰的。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "该结节的形态是规则的。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节没有观察到明显的钙化。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节的大小大约是 8 毫米乘以 6 毫米。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "低回声的评分是 2 分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "形态规则的评分是 0 分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "边界清晰的评分是 0 分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "总评分为 2 分。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "总评分属于 TR4 等级（4-6 分为 TR4）。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "边界清晰的结节绝大多数是良性炎症。",
+            "bucket": "image",
+            "verdict": 1
+          }
+        ],
+        "request_id": "req_20261103_5dc652c1",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 2,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "image": {
+            "n": 10,
+            "supported": 3,
+            "faith": 0.3
+          },
+          "advice": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          }
+        },
+        "faith_all": 0.25,
+        "faith_knowledge": 0.0,
+        "n_statements": 12,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "左叶存在混合回声结节。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "结节的边界不够清晰。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "结节的形态不规则。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "结节内部可见点状强回声。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "结节的大小约为 12 毫米乘以 9 毫米。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "混合回声的评分是 2 分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "中等回声的评分是 1 分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "不规则形态的评分是 3 分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "欠清边缘的评分是 1 分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "点状强回声钙化的评分是 1 分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "总评分为 8 分。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "TR5 的评分标准是大于等于 7 分。",
+            "bucket": "knowledge",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261103_9a45c945",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 2,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "image": {
+            "n": 9,
+            "supported": 2,
+            "faith": 0.2222
+          },
+          "advice": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          }
+        },
+        "faith_all": 0.1818,
+        "faith_knowledge": 0.0,
+        "n_statements": 11,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "右叶存在一个低回声的结节。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "该结节的边界是清晰的。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "该结节的形态是规则的。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节没有观察到明显的钙化。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节的大小约为 8 毫米乘以 6 毫米。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "低回声的评分是 2 分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "形态规则的评分是 0 分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "边界清晰的评分是 0 分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "无钙化的评分是 0 分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "总评分为 4 分。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "总评分 4 分属于 TR4 等级。",
+            "bucket": "knowledge",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261103_b164ab62",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 1,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "image": {
+            "n": 5,
+            "supported": 3,
+            "faith": 0.6
+          },
+          "advice": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          }
+        },
+        "faith_all": 0.5,
+        "faith_knowledge": 0.0,
+        "n_statements": 6,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "右叶存在一个低回声的结节。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "该结节的边界清晰。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "该结节的形态是规则的。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "该结节未观察到明显的钙化现象。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节的大小约为 8 毫米乘以 6 毫米。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "评分总和在 4 到 6 分之间的范围被定义为 TR4",
+            "bucket": "knowledge",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261103_cb23ce64",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 5,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "image": {
+            "n": 11,
+            "supported": 3,
+            "faith": 0.2727
+          },
+          "advice": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          }
+        },
+        "faith_all": 0.1875,
+        "faith_knowledge": 0.0,
+        "n_statements": 16,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "左叶存在混合回声结节。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "结节的边界不够清晰。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "结节的形态不规则。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "结节内部可见点状强回声。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "结节的大小约为12乘以9毫米。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "混合回声占1分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "低回声占2分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "分叶状边缘占2分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "粗大钙化占1分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "总分为6分。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "TR4分类。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "边界修正后，原描述的边界欠清对应2分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "ACR标准中分叶或不规则对应2分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "甲状腺外侵犯对应3分。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "证据显示视觉特征标记为恶性。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "t2a_malignancy_risk的值为0.7821",
+            "bucket": "knowledge",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261103_65c78baf",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 1,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "image": {
+            "n": 9,
+            "supported": 2,
+            "faith": 0.2222
+          },
+          "advice": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          }
+        },
+        "faith_all": 0.2,
+        "faith_knowledge": 0.0,
+        "n_statements": 10,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "右叶存在一个低回声的结节。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "该结节的边界是清晰的。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "该结节的形态是规则的。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节没有观察到明显的钙化。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节的大小约为8毫米乘以6毫米。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "低回声的评分是2分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "形态规则的评分是0分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "边界清晰的评分是0分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "无钙化的评分是0分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "总评分为2分。",
+            "bucket": "knowledge",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261103_5abd52a6",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 2,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "image": {
+            "n": 10,
+            "supported": 4,
+            "faith": 0.4
+          },
+          "advice": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          }
+        },
+        "faith_all": 0.3333,
+        "faith_knowledge": 0.0,
+        "n_statements": 12,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "左叶存在混合回声结节。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "结节的边界不够清晰。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "结节的形态不规则。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "结节内部可见点状强回声。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "结节的大小约为 12 毫米乘以 9 毫米。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "混合回声的评分是 1 分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "中等回声的评分是 1 分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "不规则形态的评分是 3 分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "模糊边缘的评分是 1 分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "点状强回声的评分是 1 分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "总评分为 7 分。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "总评分达到或超过 7 分，属于 TR5 类别。",
+            "bucket": "knowledge",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261103_2b91a698",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 2,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "image": {
+            "n": 10,
+            "supported": 2,
+            "faith": 0.2
+          },
+          "advice": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          }
+        },
+        "faith_all": 0.1667,
+        "faith_knowledge": 0.0,
+        "n_statements": 12,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "右叶存在囊性结节。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "该结节的边界清晰。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "该结节的形态规则。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节后方回声增强。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节的大小约为6毫米乘以5毫米。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "囊性特征被标记为0。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "高回声特征被标记为1。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "宽大于高的特征被标记为0。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "边界清晰的特征被标记为0。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "无钙化的特征被标记为0。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "各项特征的总分为1分。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "TR2型结节被判定为良性。",
+            "bucket": "image",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261103_1a6ce0f6",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          },
+          "image": {
+            "n": 10,
+            "supported": 2,
+            "faith": 0.2
+          },
+          "advice": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          }
+        },
+        "faith_all": 0.2,
+        "faith_knowledge": null,
+        "n_statements": 10,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "右叶存在囊性结节。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "该结节的边界清晰。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "该结节的形态规则。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节后方回声增强。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节的大小约为6毫米乘以5毫米。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "囊性结节未明确显示无回声。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "后方回声增强可能符合无回声的特征。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节的宽小于高。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节没有钙化迹象。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节的总评分是0分。",
+            "bucket": "image",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261103_c615ec4e",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 2,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "image": {
+            "n": 10,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "advice": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          }
+        },
+        "faith_all": 0.0,
+        "faith_knowledge": 0.0,
+        "n_statements": 12,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "左叶存在混合回声结节。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "结节的边界不够清晰。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "结节的形态不规则。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "结节内部可见点状强回声。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "结节的大小约为12乘以9毫米。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "混合回声占1分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "低回声占2分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "不规则形态占2分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "边界欠清占2分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "点状强回声占1分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "总分为8分。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "TR5的评分标准是大于等于7分。",
+            "bucket": "knowledge",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261103_6d3b8c2d",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 4,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "image": {
+            "n": 4,
+            "supported": 1,
+            "faith": 0.25
+          },
+          "advice": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          }
+        },
+        "faith_all": 0.125,
+        "faith_knowledge": 0.0,
+        "n_statements": 8,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "右叶存在低回声结节。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "结节的边界清晰。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "低回声的分值为2分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "实性成分的分值为3分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "总分值为5分。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "总分值落在TR4的范围内（4-6分）。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "总分值是根据现有特征进行推算得出的。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "其他未描述的特征按0分计算。",
+            "bucket": "knowledge",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261103_4da49f4c",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          },
+          "image": {
+            "n": 9,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "advice": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          }
+        },
+        "faith_all": 0.0,
+        "faith_knowledge": null,
+        "n_statements": 9,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "右叶存在囊性结节。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "囊性结节的边界清晰。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "囊性结节的形态规则。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "囊性结节后方回声增强。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "囊性结节的大小约为6毫米乘以5毫米。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "囊性结节的回声情况需要医生确认。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "囊性结节没有钙化。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "囊性结节的总评分是0分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "囊性结节被判定为TR1（完全良性）。",
+            "bucket": "image",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261103_2f6f5748",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 2,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "image": {
+            "n": 9,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "advice": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          }
+        },
+        "faith_all": 0.0,
+        "faith_knowledge": 0.0,
+        "n_statements": 11,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "峡部存在实性结节。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "结节的回声表现为低回声。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "结节的纵横比大于1。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "结节内部可见微钙化。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "结节的大小约为10毫米乘以8毫米。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "实性结节的评分是3分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "低回声的评分是2分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "纵横比大于1的评分是3分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "微钙化的评分是3分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "各项评分总和为11分。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "总分达到或超过7分时被归类为TR5。",
+            "bucket": "knowledge",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261103_8502097d",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 2,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "image": {
+            "n": 10,
+            "supported": 3,
+            "faith": 0.3
+          },
+          "advice": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          }
+        },
+        "faith_all": 0.25,
+        "faith_knowledge": 0.0,
+        "n_statements": 12,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "右叶存在等回声结节。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节的边界清晰。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "结节内部回声均匀。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "结节的大小约为 5 毫米乘以 4 毫米。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "等回声的分数为 1 分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "边界清晰的分数为 0 分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "总分为 1 分。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "总分小于等于 2 分属于 TR2 类型。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "结节的成分尚未明确。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "需要医生通过镜下检查来确认结节的成分。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "结节没有形态特征。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "结节没有钙化特征。",
+            "bucket": "image",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261103_5b6c2a39",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 2,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "image": {
+            "n": 4,
+            "supported": 2,
+            "faith": 0.5
+          },
+          "advice": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          }
+        },
+        "faith_all": 0.3333,
+        "faith_knowledge": 0.0,
+        "n_statements": 6,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "右叶存在一个低回声的结节。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节的边界清晰。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "低回声的评分是3分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "结节的成分尚未明确，需要医生在显微镜下确认。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "评分总和为3分。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "TR4的评分范围是4到6分。",
+            "bucket": "knowledge",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261103_6c639e43",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          },
+          "image": {
+            "n": 6,
+            "supported": 2,
+            "faith": 0.3333
+          },
+          "advice": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          }
+        },
+        "faith_all": 0.3333,
+        "faith_knowledge": null,
+        "n_statements": 6,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "右叶存在囊性结节",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "囊性结节的回声未被描述",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "囊性结节的形态未被描述",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "囊性结节的边界清晰",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "囊性结节没有钙化现象",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "囊性结节的总分为0分",
+            "bucket": "image",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261103_3e63c25b",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 2,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "image": {
+            "n": 6,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "advice": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          }
+        },
+        "faith_all": 0.0,
+        "faith_knowledge": 0.0,
+        "n_statements": 8,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "峡部存在实性结节。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节的回声表现为低回声。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节的纵横比大于1。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "实性结节的评分是3分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "低回声的评分是2分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "纵横比大于1的评分是3分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "总评分为8分。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "总评分≥7分时被归类为TR5。",
+            "bucket": "knowledge",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261103_f4bd3c2b",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 2,
+            "supported": 2,
+            "faith": 1.0
+          },
+          "image": {
+            "n": 4,
+            "supported": 1,
+            "faith": 0.25
+          },
+          "advice": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          }
+        },
+        "faith_all": 0.5,
+        "faith_knowledge": 1.0,
+        "n_statements": 6,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "成分未在证据中明确呈现",
+            "bucket": "knowledge",
+            "verdict": 1
+          },
+          {
+            "statement": "回声未在证据中明确呈现",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "形态未在证据中明确呈现",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "边缘未在证据中明确呈现",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "钙化特征未在证据中明确呈现",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "无法根据提供的证据匹配 ACRTI-RADS 2017 评分标准",
+            "bucket": "knowledge",
+            "verdict": 1
+          }
+        ],
+        "request_id": "req_20261103_74e3e6fb",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 4,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "image": {
+            "n": 9,
+            "supported": 4,
+            "faith": 0.4444
+          },
+          "advice": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          }
+        },
+        "faith_all": 0.3077,
+        "faith_knowledge": 0.0,
+        "n_statements": 13,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "右叶存在低回声结节。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节的边界清晰。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "结节的成分未明确。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "结节的形态未被描述。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "结节的钙化情况未被描述。",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "低回声结节的评分是3分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "边界清晰的评分是0分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "成分未明确的评分是0分。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "形态未描述的评分是0分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "钙化未描述的评分是0分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "总评分为3分。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "总评分3分对应TR4分类。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "总评分在4到6分之间属于TR4分类。",
+            "bucket": "knowledge",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261103_072f6f98",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 1,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "image": {
+            "n": 7,
+            "supported": 1,
+            "faith": 0.1429
+          },
+          "advice": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          }
+        },
+        "faith_all": 0.125,
+        "faith_knowledge": 0.0,
+        "n_statements": 8,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "左叶存在混合回声结节",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "该结节的边界不够清晰",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "混合回声被归为1分",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "不典型良性结节被归为1分，依据是边界不够清晰",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "总分为2分",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "需要医生通过镜下检查确认结节的成分或钙化情况",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "TR3被评定为边界模糊",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "TR3被评定为微分叶1分",
+            "bucket": "image",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261103_10dbb035",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 2,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "image": {
+            "n": 5,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "advice": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          }
+        },
+        "faith_all": 0.0,
+        "faith_knowledge": 0.0,
+        "n_statements": 7,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "双侧甲状腺弥漫性病变的成分无法获取",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "双侧甲状腺弥漫性病变的回声无法获取",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "双侧甲状腺弥漫性病变的形态无法获取",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "双侧甲状腺弥漫性病变的边缘无法获取",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "双侧甲状腺弥漫性病变的钙化无法获取",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "分割模型仅输出概率值",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "像素间距和面积单位不明确",
+            "bucket": "knowledge",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261103_b86bb771",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          },
+          "image": {
+            "n": 7,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "advice": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          }
+        },
+        "faith_all": 0.0,
+        "faith_knowledge": null,
+        "n_statements": 7,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "右叶囊性结节的囊性特征为0分",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "右叶囊性结节的无回声特征为0分",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "右叶囊性结节的宽大于高特征为0分",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "右叶囊性结节的边界清晰特征为0分",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "右叶囊性结节的无钙化特征为0分",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "右叶囊性结节的总分为0分",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "右叶囊性结节被判定为TR1（完全良性特征）",
+            "bucket": "image",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261107_4d9cbfba",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 4,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "image": {
+            "n": 4,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "advice": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          }
+        },
+        "faith_all": 0.0,
+        "faith_knowledge": 0.0,
+        "n_statements": 8,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "甲状腺右叶结节伴有钙化。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "钙化的评分是3分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "成分的评分是3分。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "低回声的评分是2分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "边缘不规则的评分是2分。",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "各项评分总和为10分。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "总分达到TR5的标准（≥7分）。",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "TR4的标准是总分在4到6分之间。",
+            "bucket": "knowledge",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261107_0f89fab1",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 5,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "image": {
+            "n": 4,
+            "supported": 1,
+            "faith": 0.25
+          },
+          "advice": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          }
+        },
+        "faith_all": 0.1111,
+        "faith_knowledge": 0.0,
+        "n_statements": 9,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "右叶存在低回声结节",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "结节的边界是清晰的",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "低回声的评分是2分",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "边界清晰的评分是0分",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "总评分为2分",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "总评分对应TR2类别",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "TR2类别表示不怀疑恶性",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "评分范围0-2分为TR2",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "评分范围3-4分为TR3",
+            "bucket": "knowledge",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261107_2e39fb76",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 2,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "image": {
+            "n": 5,
+            "supported": 1,
+            "faith": 0.2
+          },
+          "advice": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          }
+        },
+        "faith_all": 0.1429,
+        "faith_knowledge": 0.0,
+        "n_statements": 7,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "甲状腺右叶存在结节并且伴有钙化",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "结节的实性特征得分为3分",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "结节的低回声特征得分为2分",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "结节的边缘不规则特征得分为2分",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "结节的微钙化特征得分为3分",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "各项特征得分总和为10分",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "相关证据来源于文献[2]和文献[5]",
+            "bucket": "knowledge",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261107_4255be0b",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          },
+          "image": {
+            "n": 6,
+            "supported": 1,
+            "faith": 0.1667
+          },
+          "advice": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          }
+        },
+        "faith_all": 0.1667,
+        "faith_knowledge": null,
+        "n_statements": 6,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "右叶结节的纵横比小于1",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "未提及结节的成分",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "未提及结节的回声特征",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "未提及结节的边缘特征",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "未提及结节的钙化特征",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "现有知识中没有涉及形态（纵横比<1）的直接TI-RADS评分标准",
+            "bucket": "image",
+            "verdict": 1
+          }
+        ],
+        "request_id": "req_20261107_41302c64",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 4,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "image": {
+            "n": 6,
+            "supported": 1,
+            "faith": 0.1667
+          },
+          "advice": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          }
+        },
+        "faith_all": 0.1,
+        "faith_knowledge": 0.0,
+        "n_statements": 10,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "甲状腺右叶存在结节并且伴有钙化",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "结节的实性特征得分为3分",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "结节的低回声特征得分为2分",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "结节的边缘不规则特征得分为2分",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "结节的微钙化特征得分为3分",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "各项特征得分相加总分为10分",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "参考文献包括文献[2]和文献[5]",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "分割模型的最大置信度为98.45%",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "分割模型的平均置信度为17.86%",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "面积数据不可用（单位为平方毫米）",
+            "bucket": "image",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261107_80dc9e4e",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 3,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "image": {
+            "n": 4,
+            "supported": 2,
+            "faith": 0.5
+          },
+          "advice": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          }
+        },
+        "faith_all": 0.2857,
+        "faith_knowledge": 0.0,
+        "n_statements": 7,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "左叶存在低回声结节",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "结节的边界清晰",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "低回声的评分是2分",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "边界清晰的评分是0分",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "总评分为2分",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "总评分对应TR2分类",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "TR2分类符合ACRTI-RADS 2017标准",
+            "bucket": "knowledge",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261107_7b5140f3",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          },
+          "image": {
+            "n": 6,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "advice": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          }
+        },
+        "faith_all": 0.0,
+        "faith_knowledge": null,
+        "n_statements": 6,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "右叶结节的形态特征为0",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "未提及结节的成分特征",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "未提及结节的回声特征",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "未提及结节的边缘特征",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "未提及结节的钙化特征",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "结节的总评分为0分",
+            "bucket": "image",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261107_b048485a",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 4,
+            "supported": 1,
+            "faith": 0.25
+          },
+          "image": {
+            "n": 7,
+            "supported": 1,
+            "faith": 0.1429
+          },
+          "advice": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          }
+        },
+        "faith_all": 0.1818,
+        "faith_knowledge": 0.25,
+        "n_statements": 11,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "右叶存在低回声结节",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "结节的边界是清晰的",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "低回声的评分是2分",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "边缘清晰的评分是0分",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "总评分为2分",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "总评分对应TR2分类",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "TR2分类不怀疑恶性",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "结节的成分尚未明确",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "需要医生通过镜下检查确认成分",
+            "bucket": "knowledge",
+            "verdict": 1
+          },
+          {
+            "statement": "结节的形态特征未被描述",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "结节的钙化情况未被描述",
+            "bucket": "image",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261107_9f7215b5",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      },
+      {
+        "buckets": {
+          "knowledge": {
+            "n": 1,
+            "supported": 0,
+            "faith": 0.0
+          },
+          "image": {
+            "n": 8,
+            "supported": 3,
+            "faith": 0.375
+          },
+          "advice": {
+            "n": 0,
+            "supported": 0,
+            "faith": null
+          }
+        },
+        "faith_all": 0.3333,
+        "faith_knowledge": 0.0,
+        "n_statements": 9,
+        "answer_mode": "derived_stripped",
+        "mode_applied": true,
+        "detail": [
+          {
+            "statement": "甲状腺右叶结节具有实性特征",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "甲状腺右叶结节具有低回声特征",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "甲状腺右叶结节的边缘不规则",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "甲状腺右叶结节具有微钙化特征",
+            "bucket": "image",
+            "verdict": 1
+          },
+          {
+            "statement": "甲状腺右叶结节的总分是10分",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "甲状腺右叶结节的评分达到TR5标准",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "TR5标准是总分大于等于7分",
+            "bucket": "knowledge",
+            "verdict": 0
+          },
+          {
+            "statement": "甲状腺右叶结节符合超过4种恶性征象的标准",
+            "bucket": "image",
+            "verdict": 0
+          },
+          {
+            "statement": "甲状腺右叶结节的恶性征象中包含微钙化",
+            "bucket": "image",
+            "verdict": 0
+          }
+        ],
+        "request_id": "req_20261107_1982869d",
+        "organ": "thyroid",
+        "n_rebucketed": 0
+      }
+    ]
+  }
+}

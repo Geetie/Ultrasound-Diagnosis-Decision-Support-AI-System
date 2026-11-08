@@ -130,3 +130,74 @@ def has_real_evidence_id(text: str, evidence_ids: list[str]) -> bool:
     只做精确子串匹配：真实 ID 形如 `kb_v1.3.0:pdf_x_0001#0000`，被模型原样引用才算。
     """
     return any(ev and ev in (text or "") for ev in evidence_ids or [])
+
+
+#: 「只有分级码、没有正文」的形态（2026-11-08 加）。
+#:
+#: 生产实测：**32.50% 的输入**产出了这种退化结论，例如 `甲状腺 · TR1` / `TI-RADS 4a`。
+#: 根因是 II-Medical-8B 的 chat template 不读 `enable_thinking`，token 全花在 `<think>` 内，
+#: `finish_reason=length`，引擎剥除后正文为空，只剩分级码。
+#:
+#: 旧的 `output_guard` **不拦**这种形态（它既不空、也不是回显），于是静默落库，
+#: 让"分级一致率"等指标把"模型没写正文"当成"模型不稳定"来测。
+_DEGENERATE_GRADE_ONLY = re.compile(
+    r"^\s*(?:甲状腺|肝脏|心脏)?\s*[·:：\-]?\s*(?:TI-?RADS|LI-?RADS|TR|LR)?\s*"
+    r"(?:[1-6][abc]?|正常|无异常)\s*$",
+    re.IGNORECASE,
+)
+
+
+def detect_degenerate_grade_only(text: str, *, min_body_chars: int = 6) -> str | None:
+    """判断结论是否是「只有分级码、没有正文」的退化形态。纯函数。
+
+    为什么需要一个独立检测：
+    这种输出**既不空**（有 `TR1`）、**也不是回显**（没有占位 ID），
+    所以 `detect_prompt_echo()` 和"空文本"检查都放它过去，它静默落库，
+    让「分级一致率」把「模型没写正文」当成「模型不稳定」来度量。
+
+    判定逻辑（2026-11-08 修正）：
+    1. 整串**只由分级码与分隔符组成** → 退化（``_DEGENERATE_GRADE_ONLY`` 全匹配）
+    2. 否则，去掉分级码后剩余正文 < ``min_body_chars`` → 退化
+
+    **不能只靠第 2 条**：像 `TI-RADS 3，建议复查` 这样的短结论，
+    正则因尾部有内容而不匹配整串，但"去标点后长度 < 20"仍会误杀它
+    —— 而它有实质建议，不是退化。假阳性（误杀真结论）比漏报更糟。
+
+    Args:
+        text: 模型结论正文。
+        min_body_chars: 去分级码后剩余正文的字符下限。**默认 6**：
+            临床短建议（`建议复查`=4字、`建议穿刺`=4字、`随访`=2字）都很常见，
+            阈值定 20 会把它们全误杀。6 字足以区分「有建议」与「只有码」。
+
+    Returns:
+        命中返回原因码 ``"grade_only_no_body"``，否则 ``None``。
+
+    Examples:
+        >>> detect_degenerate_grade_only("甲状腺 · TR1")
+        'grade_only_no_body'
+        >>> detect_degenerate_grade_only("TI-RADS 4a 类，结节 8mm，建议 6 个月复查")
+        >>> detect_degenerate_grade_only("") is None
+        True
+    """
+    t = (text or "").strip()
+    if not t:
+        # 完全空是另一类缺陷（由 finish_reason=='length_empty' 报），不在这里重复判
+        return None
+
+    # 第 1 条：整串就是分级码（允许器官前缀与分隔符）
+    if _DEGENERATE_GRADE_ONLY.match(t):
+        return "grade_only_no_body"
+
+    # 第 2 条：有尾部内容，但去掉分级码后正文太短。
+    # 先剥掉开头的分级码片段，再看剩下的可读字符数。
+    head = re.match(
+        r"^\s*(?:甲状腺|肝脏|心脏)?\s*[·:：\-]?\s*"
+        r"(?:TI-?RADS|LI-?RADS|TR|LR)?\s*[1-6][abc]?\s*[类]?\s*[，,。.：:]?\s*",
+        t,
+        re.IGNORECASE,
+    )
+    rest = t[head.end():] if head else t
+    body = re.sub(r"[\s·:：\-=,，。;；]+", "", rest)
+    if len(body) < min_body_chars:
+        return "grade_only_no_body"
+    return None
