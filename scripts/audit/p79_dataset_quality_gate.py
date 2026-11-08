@@ -80,8 +80,14 @@ TEMPLATE_PREFIX_LEN = 18
 TEMPLATE_MIN_GROUP = 3
 
 
-def load_texts(path: pathlib.Path, field: str | None) -> list[str]:
-    """读数据集，抽出文本列表。支持 .jsonl / .json（list 或 {queries|samples|items}）。"""
+def load_texts(path: pathlib.Path, field: str | None) -> tuple[list[str], int]:
+    """读数据集，抽出文本列表。支持 .jsonl / .json（list 或 {queries|samples|items}）。
+
+    Returns:
+        ``(texts, bad_lines)``。``bad_lines`` 是解析失败的行数 —— **必须计入报告**，
+        不能静默丢弃：坏行会让"n_items"虚高、重复率虚低，质检结论就不可信了。
+    """
+    bad_lines = 0
     if path.suffix == ".jsonl":
         rows = []
         for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
@@ -89,8 +95,8 @@ def load_texts(path: pathlib.Path, field: str | None) -> list[str]:
             if line:
                 try:
                     rows.append(json.loads(line))
-                except json.JSONDecodeError:
-                    continue
+                except json.JSONDecodeError:  # silent-ok: 计入 bad_lines 并在报告上报，非静默丢弃
+                    bad_lines += 1
     else:
         data = json.loads(path.read_text(encoding="utf-8"))
         if isinstance(data, list):
@@ -112,8 +118,8 @@ def load_texts(path: pathlib.Path, field: str | None) -> list[str]:
         vals = [r.get(key) for r in rows if isinstance(r, dict)]
         texts = [v for v in vals if isinstance(v, str) and v.strip()]
         if texts:
-            return texts
-    return []
+            return texts, bad_lines
+    return [], bad_lines
 
 
 def check_duplicates(texts: list[str]) -> tuple[float, list[str]]:
@@ -155,12 +161,13 @@ def check_contradictions(texts: list[str]) -> list[dict]:
 
 def run_gate(path: pathlib.Path, field: str | None) -> dict:
     """跑完整闸门，返回报告 dict。"""
-    texts = load_texts(path, field)
+    texts, bad_lines = load_texts(path, field)
     if not texts:
         return {
             "dataset": str(path),
             "verdict": "ERROR",
             "error": "no_texts_extracted",
+            "bad_lines": bad_lines,
             "hint": "用 --field 指定文本字段名",
         }
 
@@ -207,6 +214,7 @@ def run_gate(path: pathlib.Path, field: str | None) -> dict:
     return {
         "dataset": str(path),
         "n_items": len(texts),
+        "bad_lines": bad_lines,
         "verdict": "PASS" if all_passed else "FAIL",
         "checks": checks,
         "note": "PASS 才允许进评测；FAIL 必须重建，不得以『先跑起来』为由放行",

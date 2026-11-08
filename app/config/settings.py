@@ -706,6 +706,16 @@ class Settings(BaseSettings):
     # 显式配置后整体替换内置表；文件非法则整份拒绝并回退内置（不让半份规则上线）。
     # 读者：app/knowledge/clinical_action_rules.py::load_rules（唯一入口）。
     clinical_actions_rules_path: str = ""
+    # A.168 / 量纲修正：rerank 分的阈值语义。
+    # 背景：`scripts/start_embedding_services.py::score()` 返回的是**原始 logits**
+    # （真机实测 -9.5951~+7.4339，无 sigmoid），而 `min_score_threshold=0.5`
+    # 是按"0~1 概率"定的。同一数字在两种量纲下含义不同：
+    #   logit（默认）     → 原样比较，行为与修复前完全一致（可复现）；
+    #   probability       → 按对数几率转换（0.5 → 0.0），保留 logit 在 0~0.5
+    #                       的弱相关边缘证据（临床最该保留的那一档）。
+    # 切到 probability 会改变 FULL 档最终入选集合 → 必须先按预注册判据跑 A/B。
+    # 读者：app/rag/service.py::_rerank_floor_for_semantics（唯一入口）。
+    rag_rerank_threshold_semantics: str = "logit"
     # A.115 / G19：周/月统计窗口的数据源（此前 record_weekly_stats 等三个列表
     # 只有测试写入 → `weekly_rate_exceeded` 熔断入口结构性不可达）。
     # feed_enabled=True 让数据真的流起来；enforce=False（默认）只观察不触发暂停

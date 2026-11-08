@@ -44,11 +44,50 @@ logger = structlog.get_logger("app.rag.service")
 def _comparison_score(sc: ScoredChunk) -> float:
     """取一条命中**用于阈值判定**的分数。
 
-    有 rerank 分就用 rerank 分（cross-encoder，0~1），否则用 ``score``
-    （RRF 融合分或 BM25 分）。这是 A.88 A1 之前就存在的取分口径，抽成函数
-    只是为了让"判据"与"参考最大值"用**同一把尺子**（两处各写一遍必然走散）。
+    有 rerank 分就用 rerank 分，否则用 ``score``（RRF 融合分或 BM25 分）。
+    这是 A.88 A1 之前就存在的取分口径，抽成函数只是为了让"判据"与
+    "参考最大值"用**同一把尺子**（两处各写一遍必然走散）。
+
+    ## 量纲修正（A.168，2026-11-08 真机实测）
+
+    原注释写"cross-encoder，0~1"——**这是错的**。
+    ``scripts/start_embedding_services.py::score()`` 直接返回
+    ``self.model(**batch).logits.view(-1)``，**无 sigmoid**；
+    真机实测（bge-reranker-base，5 条样本）取值范围 **-9.5951 ~ +7.4339**，
+    3/5 为负分。而 ``min_score_threshold`` 默认 0.5 按**绝对**判据卡在该区间上。
+
+    本函数**保持返回原始分**（不改现有行为），量纲翻译见
+    :func:`_rerank_floor_for_semantics`。
     """
     return sc.rerank_score if sc.rerank_score is not None else sc.score
+
+
+def _rerank_floor_for_semantics(threshold: float, semantics: str) -> float:
+    """把阈值从"概率语义"翻译到"logit 语义"（纯函数，A.168）。
+
+    为什么需要：阈值 0.5 是按「rerank 分是 0~1 概率」设计的，但生产实际是
+    原始 logits（实测 -9.60~+7.43）。同一个数字 0.5 在两种量纲下含义完全不同：
+    - 概率语义：要求 50% 相关性；
+    - logit 语义：要求对数几率 > 0.5，≈ 62.2% 相关性，**更严** → 会静默丢掉
+      logit 落在 0~0.5 的弱相关边缘证据（临床最该保留的那一档）。
+
+    Args:
+        threshold: 配置里的阈值。
+        semantics: ``"logit"``（原样返回，保持现有行为可复现）或
+            ``"probability"``（按对数几率转换）。
+
+    Returns:
+        实际用于比较的下限。``threshold <= 0`` 返回 ``-inf``（不设下限）。
+    """
+    import math
+
+    if threshold <= 0:
+        return float("-inf")
+    if semantics != "probability":
+        return float(threshold)
+    if threshold >= 1.0:
+        return float("inf")
+    return math.log(threshold / (1.0 - threshold))
 
 
 def _threshold_mode(n_absolute: int, n_relative: int) -> str:
@@ -430,6 +469,21 @@ class RAGServiceImpl(RAGService):
             n_absolute = 0
             n_relative = 0
             relative_floor = request.min_score_threshold * reference_max
+            # A.168：按真实量纲翻译绝对阈值（概率语义 → 对数几率）。
+            # 默认 semantics="logit"（原样返回，行为可复现）；
+            # 显式配 probability 才转换。见 _rerank_floor_for_semantics 的 docstring。
+            _semantics = "logit"
+            try:
+                from app.config.settings import settings as _rag_settings
+
+                _semantics = str(
+                    getattr(_rag_settings, "rag_rerank_threshold_semantics", "logit")
+                )
+            except Exception as exc:  # silent-ok: 配置读取失败 → 用默认 logit 并留痕
+                logger.debug("rerank_threshold_semantics_read_failed", error=str(exc)[:120])
+            _abs_floor = _rerank_floor_for_semantics(
+                request.min_score_threshold, _semantics
+            )
             for sc in result.chunks:
                 if sc.retrieval_source == RetrievalMethod.GRAPH:
                     kept.append(sc)
@@ -446,9 +500,9 @@ class RAGServiceImpl(RAGService):
                     continue
                 score = _comparison_score(sc)
                 if sc.rerank_score is not None:
-                    # 有 rerank 分：绝对阈值，语义与修复前完全一致。
+                    # 有 rerank 分：绝对阈值（`_abs_floor` 已按真实量纲翻译）。
                     n_absolute += 1
-                    passed = score >= request.min_score_threshold
+                    passed = score >= _abs_floor
                 else:
                     # 无 rerank 分（RRF / BM25）：相对阈值；max<=0 时整批保留。
                     n_relative += 1
