@@ -76,6 +76,15 @@ dicom_storage/
 # 仓库根没有 models/ 目录，锚定到根即保持原意、消除误伤。
 /models/
 data/*
+# 例外：**人工撰写**的评测数据集必须进仓库（2026-11-08 加）。
+# 理由：B2/B3 这类数据集是逐条手写的劳动成果，不是可再生的本地缓存。
+# 被 `data/*` 吞掉的后果：换机器/重装即永久丢失，且 CI 永远看不到它们。
+# 注意：这里只放**人工标注的小文件**（KB 级）；公开图像集（GB 级）仍在 data/ 下被忽略。
+!data/eval/
+!data/eval/v2/
+!data/eval/v2/*.jsonl
+!data/eval/v2/*.json
+!data/eval/v2/*.md
 # 例外：测试目录不能因为名字里带 data 就被忽略。
 # 实测踩到：`data/` 是无锚点模式，把 tests/unit/data 与 tests/integration/data 整目录
 # 忽略了，导致 3 个测试文件只存在于本机、**CI 从未运行过它们**；本地覆盖率因此虚高于 CI。

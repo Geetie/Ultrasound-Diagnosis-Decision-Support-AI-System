@@ -17,7 +17,6 @@ import argparse
 import concurrent.futures as cf
 import hashlib
 import json
-import shutil
 import sys
 import time
 import urllib.error
@@ -85,7 +84,7 @@ def fetch(url: str, attempts: int = 3) -> bytes | None:
             req = urllib.request.Request(url, headers={"User-Agent": "tn3k-dl/1.0"})
             with urllib.request.urlopen(req, timeout=120) as resp:
                 return resp.read()
-        except Exception as exc:  # noqa: BLE001 - 下载失败要重试并最终上报
+        except Exception as exc:
             if i == attempts - 1:
                 print(f"    FAIL {url}: {type(exc).__name__}: {exc}", flush=True)
                 return None
@@ -179,7 +178,7 @@ def main() -> int:
             try:
                 with Image.open(p) as im:
                     im.load()
-            except Exception:  # noqa: BLE001 - 验收要抓全部坏文件
+            except Exception:
                 bad += 1
         grand_bad += bad
         grand_total += len(files)

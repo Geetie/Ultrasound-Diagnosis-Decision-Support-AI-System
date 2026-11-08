@@ -1,0 +1,40 @@
+{
+  "dataset": "data/eval/v2/zh_retrieval_v1.jsonl",
+  "n_items": 120,
+  "bad_lines": 0,
+  "verdict": "PASS",
+  "checks": [
+    {
+      "name": "duplicate_rate",
+      "value": 0.0,
+      "threshold": 0.0,
+      "passed": true,
+      "samples": [],
+      "why": "同句重复会系统性抬高一致率类指标（consistency_test_cases 教训：156/780 重复）"
+    },
+    {
+      "name": "template_pollution_rate",
+      "value": 0.0,
+      "threshold": 0.1,
+      "passed": true,
+      "samples": [],
+      "why": "模板拼装会让模型答得更好看，但测不出真实能力（double_engine_eval_set 教训：86% 来自 3 个模板）"
+    },
+    {
+      "name": "imaging_term_coverage",
+      "value": 0.5167,
+      "threshold": 0.5,
+      "passed": true,
+      "why": "业务是超声影像辅助诊断，不含影像术语的 query 测不出本系统能力（kb_qa_golden_v1 教训：仅 11.8%）"
+    },
+    {
+      "name": "self_contradiction_count",
+      "value": 0,
+      "threshold": 0,
+      "passed": true,
+      "samples": [],
+      "why": "同一句既说清晰又说欠清晰，无法判读（consistency_test_cases BND 组教训）"
+    }
+  ],
+  "note": "PASS 才允许进评测；FAIL 必须重建，不得以『先跑起来』为由放行"
+}

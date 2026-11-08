@@ -123,3 +123,81 @@ def test_passed_only_means_structurally_clear():
     nonsense = "您这个结节是良性的。建议您半年后复查一次超声。"
     assert check_readability(nonsense).passed is True
     # 这说明本模块只管结构，不管医学正确性 —— 后者仍需医生
+
+
+# ---------------------------------------------------------------------------
+# A.170：用 B3 黄金集实测发现的六个缺陷（每条都是真机复现过才修的）
+# ---------------------------------------------------------------------------
+
+
+def test_scare_language_catches_real_scare_phrasing():
+    """缺陷 1：首版 7 个词只抓到 1/7。真实恐吓不说"致命"，说"就晚了""要有心理准备"。"""
+    for t in [
+        "这个结节要是不管，以后就晚了。",
+        "您要有心理准备。",
+        "再拖下去后果不堪设想。",
+        "这个就是癌。",
+    ]:
+        assert "scare_language" in check_readability(t).codes(), t
+
+
+def test_negated_next_step_is_detected():
+    """缺陷 2：『放心吧，不用复查』含"复查"但语义相反，首版判为"有下一步"。"""
+    r = check_readability("您这个结节看着是良性的，放心吧，不用复查。")
+    assert "no_next_step" in r.codes()
+
+
+def test_colloquial_followup_counts_as_next_step():
+    """缺陷 3：『明年再查一次』『一年查一次就行』是真实安排，首版不认。"""
+    for t in [
+        "您这次是正常的。建议您按单位体检安排，明年再查一次。",
+        "您这个结节是良性的，可以放心，一年查一次就行。",
+    ]:
+        assert "no_next_step" not in check_readability(t).codes(), t
+
+
+def test_bare_physical_exam_word_is_not_next_step():
+    """反例：『这次体检发现结节』里的体检是既往事件，不能算下一步。"""
+    r = check_readability("您这次体检发现甲状腺有个小结节。放心，大部分是良性的。")
+    assert "no_next_step" in r.codes()
+
+
+def test_jargon_explanation_does_not_globally_whitelist():
+    """缺陷 4（结构性）：全文出现一次"意思是"不该让**所有**术语都算解释过。"""
+    r = check_readability(
+        "您这个 TI-RADS 4b、边界欠清、纵横比>1、微钙化，这里说的意思是：请复查。"
+    )
+    assert "jargon_density" in r.codes()
+
+
+def test_greeting_before_conclusion_is_not_missing_main_message():
+    """缺陷 5：先打招呼再给结论是中文医患沟通常态，不该判"无主信息"。"""
+    r = check_readability("您好，这次检查发现您甲状腺有个小结节，多数是良性的。建议半年复查。")
+    assert "no_main_message" not in r.codes()
+
+
+def test_single_long_sentence_without_commas_still_detected():
+    """长句兜底：60 字零逗号仍判长句（这条保证修复没有把原判据打瘫）。"""
+    r = check_readability("您" + "结节" * 30 + "。")
+    assert "long_sentence" in r.codes()
+
+
+def test_golden_set_accuracy_does_not_regress():
+    """回归门：B3 黄金集（50 条人工标注）整体准确率不得低于 0.85。
+
+    baseline 0.640 → 修补后 0.880。这条钉住"不能改回去"。
+    黄金集在 data/eval/v2/（人工逐条撰写，非脚本生成）。
+    """
+    import json
+    import pathlib
+
+    p = pathlib.Path(__file__).resolve().parents[3] / "data" / "eval" / "v2" / "patient_explanation_golden_v1.jsonl"
+    if not p.exists():
+        pytest.skip("黄金集不在本机（CI 环境）")
+    rows = [json.loads(l) for l in p.read_text(encoding="utf-8").splitlines() if l.strip()]
+    correct = sum(
+        1 for r in rows
+        if (not check_readability(r["text"]).passed) == (r["label"] == "fail")
+    )
+    acc = correct / len(rows)
+    assert acc >= 0.85, f"黄金集准确率退步：{acc:.3f} < 0.85"
