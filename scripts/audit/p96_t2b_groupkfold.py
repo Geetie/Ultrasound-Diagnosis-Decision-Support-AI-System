@@ -143,6 +143,57 @@ def macro_f1(y, p, k):
     return float(np.mean(out))
 
 
+def prf_for_class(y, p, c):
+    """单类 P/R/F1（多分类下的 one-vs-rest）。"""
+    tp = int(((p == c) & (y == c)).sum())
+    fp = int(((p == c) & (y != c)).sum())
+    fn = int(((p != c) & (y == c)).sum())
+    pr = tp / (tp + fp) if (tp + fp) else 0.0
+    rc = tp / (tp + fn) if (tp + fn) else 0.0
+    return {
+        "precision": round(pr, 4), "recall": round(rc, 4),
+        "f1": round(2 * pr * rc / (pr + rc) if (pr + rc) else 0.0, 4),
+        "support": tp + fn,
+    }
+
+
+def stratify_by_view(pred, y, views, names):
+    """按**切面**分层（1.5 要求）。
+
+    两种口径都给，避免只看一种被误导：
+      * ``per_class_full``：全量 test 上每个切面类的 one-vs-rest P/R/F1
+      * ``per_view_subset``：只在「真实切面 = v」的子集内算准确率与子集宏 F1
+        （回答"这个切面到底认不认得"，子集内 accuracy 就是该类 recall）
+    """
+    y = np.asarray(y)
+    p = np.asarray(pred)
+    views = np.asarray(views)
+    per_class_full = {nm: prf_for_class(y, p, i) for i, nm in enumerate(names)}
+    per_view_subset = {}
+    for i, nm in enumerate(names):
+        m = views == nm
+        n = int(m.sum())
+        if n == 0:
+            per_view_subset[nm] = {"n": 0}
+            continue
+        ys, ps = y[m], p[m]
+        per_view_subset[nm] = {
+            "n": n,
+            "accuracy": round(float((ys == ps).mean()), 4),
+            "macro_f1": round(macro_f1(ys, ps, len(names)), 4),
+            "confusion_top": _top_confusion(ys, ps, names),
+        }
+    return {"per_class_full": per_class_full, "per_view_subset": per_view_subset}
+
+
+def _top_confusion(ys, ps, names, k=2):
+    """子集内最高频的错分去向（看模型把该切面认成什么）。"""
+    from collections import Counter
+
+    wrong = Counter(names[int(b)] for a, b in zip(ys, ps) if a != b)
+    return [{"predicted_as": w, "n": c} for w, c in wrong.most_common(k)]
+
+
 def video_cluster_ci(pred, y, vids, n_boot=500, seed=SEED):
     """按视频重采样的 cluster bootstrap CI。"""
     rng = random.Random(seed)
@@ -208,6 +259,7 @@ def main(argv=None) -> int:
     for lane in lanes:
         print(f"\n{'='*60}\n=== lane: {lane} ===\n{'='*60}", flush=True)
         folds = []
+        oof_p, oof_y, oof_v = [], [], []  # 预测 / 真值 / 真实切面
         t_lane = time.monotonic()
         for fi, (tr_idx, te_idx) in enumerate(gkf.split(rows, groups=groups)):
             tr = [rows[i] for i in tr_idx]
@@ -261,6 +313,7 @@ def main(argv=None) -> int:
             pred = clf.predict(Xte)
             acc = float((pred == yte).mean())
             vids = [r["video"] for r in te]
+            views = [r["caption"] for r in te]   # 切面（= 标签；T2b 就是切面分类）
             rec = {
                 "fold": fi,
                 "n_train": len(tr), "n_test": len(te),
@@ -271,13 +324,27 @@ def main(argv=None) -> int:
                 "wall_s": round(time.monotonic() - t0, 1),
             }
             folds.append(rec)
+            oof_p.extend(pred.tolist())
+            oof_y.extend(np.asarray(yte).tolist())
+            oof_v.extend(views)
             print(f"  fold{fi}: acc={acc:.4f} f1={rec['macro_f1']} "
                   f"({len(te)} 图/{len(te_v)} 视频) {rec['wall_s']}s", flush=True)
 
         accs = [f["acc"] for f in folds]
         f1s = [f["macro_f1"] for f in folds]
+        names = list(cap2idx.keys())
+        pooled_acc = float((np.asarray(oof_p) == np.asarray(oof_y)).mean())
         out["lanes"][lane] = {
             "folds": folds,
+            "oof_pooled": {
+                "n": len(oof_y),
+                "accuracy": round(pooled_acc, 4),
+                "macro_f1": round(macro_f1(np.asarray(oof_y), np.asarray(oof_p),
+                                           len(names)), 4),
+                "note": ("把 5 折的 out-of-fold 预测拼起来算一个池化口径。"
+                         "它与「5 折均值的均值」略有差别（各折 test 大小几乎相同，差别很小）。"),
+                "stratified_by_view": stratify_by_view(oof_p, oof_y, oof_v, names),
+            },
             "mean_acc": round(float(np.mean(accs)), 4),
             "std_acc": round(float(np.std(accs)), 4),
             "mean_macro_f1": round(float(np.mean(f1s)), 4),
@@ -291,11 +358,32 @@ def main(argv=None) -> int:
 
     rp = Path(args.report)
     rp.parent.mkdir(parents=True, exist_ok=True)
+    if rp.is_file():
+        try:
+            old = json.loads(rp.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            old = {}
+        # 只覆盖本次跑到的 lane，其它 lane 原样保留（避免"跑 finetune 冲掉 frozen"）
+        merged = old.get("lanes", {})
+        merged.update(out["lanes"])
+        out["lanes"] = merged
+        out["lanes_present"] = sorted(merged)
+        out["lanes_merged_from_existing"] = rp.name
     rp.write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
     print("\n" + json.dumps({k: v for k, v in out.items() if k != "lanes"},
                             ensure_ascii=False, indent=2))
     for lane, v in out["lanes"].items():
         print(f"{lane}: {v['mean_acc']} ± {v['std_acc']} (n={len(v['folds'])} folds)")
+    print("\n=== 分层（按切面，池化 OOF）===")
+    for lane, v in out["lanes"].items():
+        st = v.get("oof_pooled", {}).get("stratified_by_view", {})
+        if not st:
+            continue
+        print(f"[{lane}]")
+        for nm, m in st.get("per_view_subset", {}).items():
+            if m.get("n"):
+                print(f"  {nm:7s} n={m['n']:5d} acc={m['accuracy']:.4f} "
+                      f"subset_macroF1={m['macro_f1']:.4f}")
     return 0
 
 

@@ -1,0 +1,37 @@
+"""探针：核对仓库版 gold 的两条争议记录的 chunk 是否真的存在于 kb_v1.4.0。"""
+import asyncio, json, sys
+sys.path.insert(0, '/mnt/ee16/home/student03/uai/src')
+import asyncpg
+from app.config.settings import settings
+
+CAND = [
+    ("zh-ret-117", "pdf_liver_lirads_v2018_0002", 1),
+    ("zh-ret-117", "pdf_liver_lirads_v2018_0001", 0),
+    ("zh-ret-118", "pdf_cardiac_ase_chamber_quant_2015_0001", 0),
+]
+
+async def main():
+    dsn = settings.database_url.replace("postgresql+asyncpg://", "postgresql://", 1)
+    conn = await asyncpg.connect(dsn)
+    try:
+        for kb in ("kb_v1.4.0", "kb_v1.3.0"):
+            print(f"=== {kb} ===")
+            for qid, doc, ci in CAND:
+                cid = f"{kb}:{doc}#{ci:04d}"
+                row = await conn.fetchrow(
+                    "SELECT chunk_id, organ, source_doc_id, left(content,160) AS head "
+                    "FROM knowledge_chunks WHERE chunk_id=$1", cid)
+                if row:
+                    print(f"  OK {cid} [{row['organ']}] {row['head']!r}")
+                else:
+                    print(f"  MISSING {cid}")
+            # also: does any chunk of that doc exist?
+            for doc in ("pdf_liver_lirads_v2018_0002","pdf_liver_lirads_v2018_0001",
+                        "pdf_cardiac_ase_chamber_quant_2015_0001"):
+                n = await conn.fetchval(
+                    "SELECT count(*) FROM knowledge_chunks WHERE kb_version=$1 AND source_doc_id=$2", kb, doc)
+                print(f"    doc {doc}: {n} chunks")
+    finally:
+        await conn.close()
+
+asyncio.run(main())

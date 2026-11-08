@@ -112,6 +112,21 @@ class RetrievalRequest(BaseModel):
     """
     query: str
     organ: str | None = None
+    #: P0 修复（2026-11-08）：器官名**在请求构造时归一化到存储侧规范值**。
+    #:
+    #: 缺陷：`Organ.HEART = "heart"`，而知识库/Qdrant 里存的都是 `"cardiac"`。
+    #: 两条检索腿都做精确相等过滤 → 心脏请求 **dense 0 命中 + sparse 0 命中**，
+    #: 心脏方向的 RAG 事实上完全不工作（长期未暴露，因为评测一直跨器官混检）。
+    #:
+    #: 在这里归一化的理由：两路检索（dense 的 Qdrant filter、sparse 的 BM25
+    #: organ_filter）都读 `request.organ`，**改一处即两路都生效**，
+    #: 比在每个调用点各加一次（必然走散）可靠。
+    @field_validator("organ", mode="before")
+    @classmethod
+    def _normalize_organ_field(cls, v: object) -> object:
+        from app.rag.organ_alias import normalize_organ
+
+        return normalize_organ(v if isinstance(v, str) else None) if isinstance(v, str) else v
     image_data: bytes | None = None
     image_format: str = "dicom"
     top_k: int = 20
