@@ -506,6 +506,15 @@ class Settings(BaseSettings):
     graph_query_enabled: bool = False
     rag_rrf_k: int = 60
 
+    # RRF 两条腿的权重（2026-11-08 加）。
+    # **读取点**：`app/rag/retriever.py::_rrf_fuse` —— fused(d) = Σ w_leg / (k + rank)。
+    # 依据：B2 中文检索集（n=117，chunk 级）实测网格，纯 dense 基线 hit@10 0.8718，
+    #   w_dense:w_bm25 = 1:1 → 0.9316 / 1:2 → 0.9573 / 1:3 → 0.9487 / 2:1 → 0.9231。
+    #   1:2 的 hit@10 提升 +8.6pt（McNemar p=0.006 显著），是本轮唯一显著有效的检索改进。
+    # 取 1:2（hit@10 最高）。hit@1 在该点 +6.0pt 但 p=0.169 不显著（n=117 判不动）。
+    rag_rrf_w_dense: float = 1.0
+    rag_rrf_w_bm25: float = 2.0
+
     # 甲状腺结节分割（app/inference/nodule_segmentation.py）
     # 权重来自 scripts/tn3k_seg_unet.py 的官方划分训练（TN3K trainval 2879 张），
     # 官方 test(614 张) 全量评测 DSC 0.7961 / IoU 0.7004（reports/tn3k_seg_unet.json）。
