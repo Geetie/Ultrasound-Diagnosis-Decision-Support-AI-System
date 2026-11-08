@@ -91,9 +91,31 @@ def load_all(data_dir: Path) -> list[dict]:
                 rows.append({
                     "filepath": fp,
                     "video": vid,
+                    "subject": parse_subject(fp),
                     "caption": (r.get("view") or "").strip(),
                 })
     return rows
+
+
+def parse_subject(filepath: str) -> str | None:
+    """从文件名取**受试者**编号（比视频号粗一级）。
+
+    ⚠️ **这是 2026-11-08 发现的关键事实**：CACTUS 文件名形如
+    `1_D17_frame_79_v2` / `0_V4frame_4965`，**前缀数字是受试者，不是视频**。
+
+    实测：30k 图只来自 **10 个受试者**（0~9）、116 个视频。
+    也就是说「按视频分组」**不等于**「按患者分组」——
+    同一受试者的多个视频会被分到不同折。
+
+    实测后果：按视频 GroupKFold(5) 时，**5 折的测试集 100% 都来自
+    「训练时见过的受试者」**（28805/28805）。所以 p96 早期报的
+    0.9483 / 0.9185 都偏乐观，必须改用受试者级分组。
+    """
+    import re
+
+    stem = Path(filepath).stem
+    m = re.match(r"^(\d+)", stem)
+    return m.group(1) if m else None
 
 
 class _DS(Dataset):
@@ -220,6 +242,12 @@ def main(argv=None) -> int:
     ap.add_argument("--epochs", type=int, default=4)
     ap.add_argument("--lr", type=float, default=3e-5)
     ap.add_argument("--report", default="reports/p96_t2b_groupkfold.json")
+    ap.add_argument(
+        "--group-by", choices=["subject", "video"], default="subject",
+        help=("分组键。**默认 subject**（受试者级，正确口径）：CACTUS 只有 10 个受试者、"
+              "116 个视频，按视频分组时 100%% 的测试图来自训练见过的受试者 → 偏乐观。"
+              "video 仅用于复现历史数字。"),
+    )
     args = ap.parse_args(argv)
 
     from sklearn.model_selection import GroupKFold
@@ -240,7 +268,13 @@ def main(argv=None) -> int:
     model, preprocess_train, preprocess_val = open_clip.create_model_and_transforms(uri, device=device)
     base_sd = {k: v.detach().clone() for k, v in model.visual.state_dict().items()}
 
-    groups = np.array([r["video"] for r in rows])
+    gkey = "subject" if args.group_by == "subject" else "video"
+    groups = np.array([r[gkey] for r in rows])
+    n_groups = len(set(groups))
+    if args.n_splits > n_groups:
+        print(f"⚠️ n_splits={args.n_splits} > 组数 {n_groups}，自动降为 {n_groups}", flush=True)
+        args.n_splits = n_groups
+    print(f"分组键 = {gkey}，共 {n_groups} 个组", flush=True)
     gkf = GroupKFold(n_splits=args.n_splits)
 
     lanes = ["frozen", "finetune"] if args.lanes == "both" else [args.lanes]
@@ -251,6 +285,8 @@ def main(argv=None) -> int:
                 "references/biomedical.md:420 明确要求 k-fold 5-10）。"
                 "本脚本用 GroupKFold(5) 按**视频**分组做交叉验证。"),
         "n_splits": args.n_splits,
+        "group_by": gkey,
+        "n_groups": n_groups,
         "n_images": len(rows),
         "n_videos": len({r["video"] for r in rows}),
         "lanes": {},
@@ -264,9 +300,14 @@ def main(argv=None) -> int:
         for fi, (tr_idx, te_idx) in enumerate(gkf.split(rows, groups=groups)):
             tr = [rows[i] for i in tr_idx]
             te = [rows[i] for i in te_idx]
-            tr_v = {r["video"] for r in tr}
-            te_v = {r["video"] for r in te}
-            assert not (tr_v & te_v), f"fold{fi} 视频重叠！"
+            tr_v = {r[gkey] for r in tr}
+            te_v = {r[gkey] for r in te}
+            assert not (tr_v & te_v), f"fold{fi} {gkey} 重叠！"
+            # 受试者级泄漏硬校验：按视频分组时必须显式确认没有受试者跨折
+            if args.group_by == "video":
+                tr_s = {r["subject"] for r in tr}
+                te_s = {r["subject"] for r in te}
+                assert tr_s & te_s, "video 分组下受试者必然重叠（这是已知偏乐观口径）"
 
             t0 = time.monotonic()
             if lane == "frozen":

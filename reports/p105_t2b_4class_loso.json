@@ -1,0 +1,120 @@
+{
+  "probe": "p105_t2b_4class_loso",
+  "generated_at": "2026-11-08 22:27:33",
+  "why": "CACTUS 只有 10 个受试者、Random 类全来自受试者 0。按视频分组时测试集 100% 来自训练见过的受试者（偏乐观）。本脚本剔除 Random、改做受试者级 LeaveOneSubjectOut。",
+  "n_images": 23942,
+  "n_subjects": 10,
+  "classes": [
+    "A4C",
+    "PL",
+    "PSMV",
+    "SC"
+  ],
+  "excluded_classes": [
+    "Random"
+  ],
+  "lanes": {
+    "frozen": {
+      "folds": [
+        {
+          "left_out_subject": "0",
+          "n_train": 23941,
+          "n_test": 1,
+          "n_train_subjects": 9,
+          "acc": 1.0,
+          "macro_f1": 0.25,
+          "wall_s": 74.3
+        },
+        {
+          "left_out_subject": "1",
+          "n_train": 23446,
+          "n_test": 496,
+          "n_train_subjects": 9,
+          "acc": 1.0,
+          "macro_f1": 0.75,
+          "wall_s": 82.6
+        },
+        {
+          "left_out_subject": "2",
+          "n_train": 21600,
+          "n_test": 2342,
+          "n_train_subjects": 9,
+          "acc": 0.9453,
+          "macro_f1": 0.876,
+          "wall_s": 81.8
+        },
+        {
+          "left_out_subject": "3",
+          "n_train": 20317,
+          "n_test": 3625,
+          "n_train_subjects": 9,
+          "acc": 0.9763,
+          "macro_f1": 0.9499,
+          "wall_s": 77.4
+        },
+        {
+          "left_out_subject": "4",
+          "n_train": 19942,
+          "n_test": 4000,
+          "n_train_subjects": 9,
+          "acc": 0.9715,
+          "macro_f1": 0.9664,
+          "wall_s": 74.8
+        },
+        {
+          "left_out_subject": "5",
+          "n_train": 19731,
+          "n_test": 4211,
+          "n_train_subjects": 9,
+          "acc": 0.9991,
+          "macro_f1": 0.9992,
+          "wall_s": 75.3
+        },
+        {
+          "left_out_subject": "6",
+          "n_train": 20887,
+          "n_test": 3055,
+          "n_train_subjects": 9,
+          "acc": 0.9863,
+          "macro_f1": 0.9898,
+          "wall_s": 79.9
+        },
+        {
+          "left_out_subject": "7",
+          "n_train": 21167,
+          "n_test": 2775,
+          "n_train_subjects": 9,
+          "acc": 0.9993,
+          "macro_f1": 0.9991,
+          "wall_s": 81.9
+        },
+        {
+          "left_out_subject": "8",
+          "n_train": 21577,
+          "n_test": 2365,
+          "n_train_subjects": 9,
+          "acc": 0.9607,
+          "macro_f1": 0.9507,
+          "wall_s": 81.6
+        },
+        {
+          "left_out_subject": "9",
+          "n_train": 22870,
+          "n_test": 1072,
+          "n_train_subjects": 9,
+          "acc": 1.0,
+          "macro_f1": 0.75,
+          "wall_s": 81.8
+        }
+      ],
+      "mean_acc": 0.9839,
+      "std_acc": 0.0187,
+      "median_acc": 0.9927,
+      "min_acc": 0.9453,
+      "max_acc": 1.0,
+      "mean_macro_f1": 0.8481,
+      "std_macro_f1": 0.2187,
+      "wall_s": 791.4
+    }
+  }
+}
