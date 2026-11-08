@@ -393,12 +393,13 @@ class TestHybridRRF:
         # c2 was in BOTH legs → highest RRF
         assert ids[0] == "c2"
 
-        # Manually compute expected fused score for c2:
-        # Dense: rank 2 → 1/(60+2) ≈ 0.01613
-        # Sparse: rank 1 → 1/(60+1) ≈ 0.01639
-        # Total ≈ 0.03252
+        # Manually compute expected fused score for c2（2026-11-08 起两腿加权）：
+        #   Dense:  w_dense=1.0 × 1/(60+2) ≈ 0.01613
+        #   Sparse: w_bm25=2.0 × 1/(60+1) ≈ 0.03279
+        #   合计   ≈ 0.04892
+        # 权重依据：B2（n=117）实测 1:2 的 hit@10 0.9573 优于等权 0.9316（p=0.006 显著）。
         c2 = next(c for c in result.chunks if c.chunk.chunk_id == "c2")
-        expected = 1.0 / (60 + 2) + 1.0 / (60 + 1)
+        expected = 1.0 * 1.0 / (60 + 2) + 2.0 * 1.0 / (60 + 1)
         assert abs(c2.score - expected) < 1e-6
 
     async def test_rrf_dedup_same_chunk(self):

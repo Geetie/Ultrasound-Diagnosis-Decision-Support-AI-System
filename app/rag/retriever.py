@@ -950,6 +950,33 @@ class Retriever:
             )
         if dropped and drop_tally is not None:
             drop_tally.add(source=source, count=dropped)
+        # ---- 逻辑 chunk 去重（2026-11-08）--------------------------------
+        # 知识库多版本并存（v1.0.0~v1.5.0），同一个逻辑 chunk（去掉版本前缀后的
+        # chunk_id）会有多个版本副本。它们在向量空间里几乎同位置，**会同时挤进
+        # Top-k**：实测 B2 前 10 名里 56.5%（113/200）的位置被重复副本占据，
+        # 相当于真实可用的召回位只剩 4 个。
+        #
+        # 这里按「逻辑 chunk」去重，只保留得分最高的那个版本，把空出的位置让给
+        # 真正不同的内容。不删库、不改索引 —— 只是不再让同一份内容占多个名额。
+        if getattr(settings, "rag_dedup_logical_chunks", True) and hits:
+            _seen_logical: set[str] = set()
+            _deduped: list[_Hit] = []
+            for _h in hits:
+                _logical = _h.chunk_id.split(":", 1)[-1] if ":" in _h.chunk_id else _h.chunk_id
+                if _logical in _seen_logical:
+                    continue
+                _seen_logical.add(_logical)
+                _deduped.append(_h)
+            if len(_deduped) < len(hits):
+                logger.debug(
+                    "retrieval_logical_chunk_deduped",
+                    before=len(hits),
+                    after=len(_deduped),
+                    collapsed=len(hits) - len(_deduped),
+                    source=source.value,
+                )
+            hits = _deduped
+
         return image_hits + hits
 
     def _rrf_fuse(

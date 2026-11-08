@@ -512,6 +512,29 @@ class Settings(BaseSettings):
     #   w_dense:w_bm25 = 1:1 → 0.9316 / 1:2 → 0.9573 / 1:3 → 0.9487 / 2:1 → 0.9231。
     #   1:2 的 hit@10 提升 +8.6pt（McNemar p=0.006 显著），是本轮唯一显著有效的检索改进。
     # 取 1:2（hit@10 最高）。hit@1 在该点 +6.0pt 但 p=0.169 不显著（n=117 判不动）。
+    #: 检索时是否只取**最新 kb_version** 的 chunk（2026-11-08 加）。
+    #:
+    #: **读取点**：`app/rag/retriever.py::_dense_search` 与 `_sparse_search`。
+    #:
+    #: 为什么需要：知识库多版本并存（v1.0.0~v1.5.0），实测 **9568 行只对应 3771 个逻辑
+    #: chunk**，其中 420 个 chunk 有 8 个版本副本。跨版本混检时**同一份内容会在 Top-k
+    #: 里占多个位置** —— 实测 B2 前 10 名里 **56.5%（113/200）的位置被重复副本占据**，
+    #: 相当于真实可用的召回位只剩 4 个。
+    #:
+    #: 默认 False：保持与历史基线可比。要拿到真实召回能力应设 True。
+    #: 检索结果按「逻辑 chunk」去重（去掉 kb_version 前缀后同名者只留最高分那个）。
+    #:
+    #: **读取点**：`app/rag/retriever.py::_wrap_search_results`。
+    #:
+    #: 依据：知识库多版本并存，实测 **9568 行只对应 3771 个逻辑 chunk**，
+    #: 420 个 chunk 有 8 个版本副本。跨版本混检时同一份内容会在 Top-k 里占多个位置 ——
+    #: 实测 B2 前 10 名里 **56.5%（113/200）的位置被重复副本占据**，
+    #: 真实可用的召回位只剩 4 个。默认开启（纯收益，无副作用）。
+    rag_dedup_logical_chunks: bool = True
+    rag_latest_version_only: bool = False
+    #: 视为「最新」的 kb_version；为空则取 PG 里的 max(kb_version)。
+    rag_latest_kb_version: str = ""
+
     rag_rrf_w_dense: float = 1.0
     rag_rrf_w_bm25: float = 2.0
 
