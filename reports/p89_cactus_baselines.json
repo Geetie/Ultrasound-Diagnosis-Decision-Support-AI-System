@@ -1,0 +1,296 @@
+{
+  "probe": "p89_cactus_baselines",
+  "generated_at": "2026-11-08 15:59:26",
+  "scope": "no_leak_baselines_video_disjoint",
+  "scope_note": "与 p87 完全相同的视频不交集划分（seed=42），但**不训练任何视觉参数**：①冻结特征+LR ②zero-shot 文本对齐 ③多数类参照。用于判断 p87 的 20.99% 是「配方把特征训坏了」还是「任务本身在零泄漏协议下就难」。",
+  "split": {
+    "seed": 42,
+    "n_videos": 116,
+    "videos": {
+      "train": 80,
+      "val": 19,
+      "test": 17
+    },
+    "images": {
+      "train": 20207,
+      "val": 4087,
+      "test": 4511
+    },
+    "views": {
+      "train": {
+        "A4C": 5566,
+        "PL": 2944,
+        "PSMV": 4192,
+        "SC": 4441,
+        "Random": 3064
+      },
+      "val": {
+        "PL": 631,
+        "A4C": 909,
+        "SC": 936,
+        "PSMV": 894,
+        "Random": 717
+      },
+      "test": {
+        "A4C": 947,
+        "PSMV": 928,
+        "SC": 968,
+        "PL": 586,
+        "Random": 1082
+      }
+    },
+    "leakage_check": {
+      "video_overlap_train_test": 0,
+      "video_overlap_train_val": 0
+    }
+  },
+  "results": {
+    "frozen_linear_probe": {
+      "n_train": 20207,
+      "n_test": 4511,
+      "view_accuracy": 0.8628,
+      "view_accuracy_ci95": [
+        0.853,
+        0.8721
+      ],
+      "per_class": {
+        "A4C": {
+          "precision": 0.9088,
+          "recall": 0.9789,
+          "f1": 0.9426,
+          "support": 947
+        },
+        "PL": {
+          "precision": 0.8442,
+          "recall": 0.9983,
+          "f1": 0.9148,
+          "support": 586
+        },
+        "PSMV": {
+          "precision": 0.84,
+          "recall": 0.9784,
+          "f1": 0.9039,
+          "support": 928
+        },
+        "Random": {
+          "precision": 0.8536,
+          "recall": 0.5444,
+          "f1": 0.6648,
+          "support": 1082
+        },
+        "SC": {
+          "precision": 0.8598,
+          "recall": 0.9122,
+          "f1": 0.8852,
+          "support": 968
+        },
+        "macro_avg": {
+          "precision": 0.8613,
+          "recall": 0.8824,
+          "f1": 0.8623,
+          "support": 4511
+        },
+        "weighted_avg": {
+          "precision": 0.8625,
+          "recall": 0.8628,
+          "f1": 0.8521,
+          "support": 4511
+        }
+      },
+      "confusion": {
+        "A4C": {
+          "A4C": 927,
+          "PL": 0,
+          "PSMV": 6,
+          "Random": 13,
+          "SC": 1,
+          "Other": 0
+        },
+        "PL": {
+          "A4C": 0,
+          "PL": 585,
+          "PSMV": 0,
+          "Random": 1,
+          "SC": 0,
+          "Other": 0
+        },
+        "PSMV": {
+          "A4C": 0,
+          "PL": 1,
+          "PSMV": 908,
+          "Random": 19,
+          "SC": 0,
+          "Other": 0
+        },
+        "Random": {
+          "A4C": 93,
+          "PL": 107,
+          "PSMV": 150,
+          "Random": 589,
+          "SC": 143,
+          "Other": 0
+        },
+        "SC": {
+          "A4C": 0,
+          "PL": 0,
+          "PSMV": 17,
+          "Random": 68,
+          "SC": 883,
+          "Other": 0
+        }
+      },
+      "note": "BiomedCLIP 视觉塔**冻结**，仅在 train 视频特征上拟合 LR；test 视频完全不参与"
+    },
+    "zero_shot_text": {
+      "n_test": 4511,
+      "view_accuracy": 0.6881,
+      "view_accuracy_ci95": [
+        0.6739,
+        0.7018
+      ],
+      "per_class": {
+        "A4C": {
+          "precision": 0.917,
+          "recall": 0.9451,
+          "f1": 0.9308,
+          "support": 947
+        },
+        "PL": {
+          "precision": 0.6576,
+          "recall": 0.8294,
+          "f1": 0.7336,
+          "support": 586
+        },
+        "PSMV": {
+          "precision": 0.8228,
+          "recall": 0.6606,
+          "f1": 0.7328,
+          "support": 928
+        },
+        "Random": {
+          "precision": 0.3892,
+          "recall": 0.1867,
+          "f1": 0.2523,
+          "support": 1082
+        },
+        "SC": {
+          "precision": 0.5927,
+          "recall": 0.938,
+          "f1": 0.7264,
+          "support": 968
+        },
+        "macro_avg": {
+          "precision": 0.6759,
+          "recall": 0.712,
+          "f1": 0.6752,
+          "support": 4511
+        },
+        "weighted_avg": {
+          "precision": 0.6677,
+          "recall": 0.6881,
+          "f1": 0.6579,
+          "support": 4511
+        }
+      },
+      "confusion": {
+        "A4C": {
+          "A4C": 895,
+          "PL": 0,
+          "PSMV": 0,
+          "Random": 42,
+          "SC": 10,
+          "Other": 0
+        },
+        "PL": {
+          "A4C": 0,
+          "PL": 486,
+          "PSMV": 23,
+          "Random": 0,
+          "SC": 77,
+          "Other": 0
+        },
+        "PSMV": {
+          "A4C": 0,
+          "PL": 7,
+          "PSMV": 613,
+          "Random": 257,
+          "SC": 51,
+          "Other": 0
+        },
+        "Random": {
+          "A4C": 79,
+          "PL": 234,
+          "PSMV": 81,
+          "Random": 202,
+          "SC": 486,
+          "Other": 0
+        },
+        "SC": {
+          "A4C": 2,
+          "PL": 12,
+          "PSMV": 28,
+          "Random": 18,
+          "SC": 908,
+          "Other": 0
+        }
+      },
+      "prompts": {
+        "A4C": "an ultrasound image showing the apical four chamber view of the heart",
+        "PL": "an ultrasound image showing the parasternal long axis view of the heart",
+        "PSMV": "an ultrasound image showing the parasternal short axis view at the mitral valve level",
+        "Random": "an ultrasound image without a standard cardiac view",
+        "SC": "an ultrasound image showing the subcostal four chamber view of the heart"
+      },
+      "note": "不拟合任何分类器；图像-文本余弦 argmax。raw BiomedCLIP 的语义对齐能力"
+    },
+    "majority_class_reference": {
+      "majority_class_in_train": "A4C",
+      "view_accuracy": 0.2099,
+      "per_class_recall_of_majority_only": 0.2099,
+      "confusion": {
+        "A4C": {
+          "A4C": 947,
+          "PL": 0,
+          "PSMV": 0,
+          "Random": 0,
+          "SC": 0,
+          "Other": 0
+        },
+        "PL": {
+          "A4C": 586,
+          "PL": 0,
+          "PSMV": 0,
+          "Random": 0,
+          "SC": 0,
+          "Other": 0
+        },
+        "PSMV": {
+          "A4C": 928,
+          "PL": 0,
+          "PSMV": 0,
+          "Random": 0,
+          "SC": 0,
+          "Other": 0
+        },
+        "Random": {
+          "A4C": 1082,
+          "PL": 0,
+          "PSMV": 0,
+          "Random": 0,
+          "SC": 0,
+          "Other": 0
+        },
+        "SC": {
+          "A4C": 968,
+          "PL": 0,
+          "PSMV": 0,
+          "Random": 0,
+          "SC": 0,
+          "Other": 0
+        }
+      },
+      "note": "「什么都不学、永远猜 train 里最多的那一类」的分数；任何模型都必须显著超过它才有意义"
+    }
+  },
+  "wall_s": 429.4
+}

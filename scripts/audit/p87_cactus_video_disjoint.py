@@ -1,8 +1,8 @@
-"""正式评测 · CACTUS 切面分类（**视频不交集**协议）—— p81 的干净数字。
+"""正式评测 · CACTUS 切面分类（**视频不交集**协议）—— p86 的干净数字。
 
-为什么必须有这个脚本（p81 的 0.9786 不能当真）
+为什么必须有这个脚本（p86 的 0.9786 不能当真）
 --------------------------------------------
-p81 用 `~/uai/data/t2b_cactus/test.csv` 跑 8003 得到切面准确率 0.9786。但那个 test 集
+p86 用 `~/uai/data/t2b_cactus/test.csv` 跑 8003 得到切面准确率 0.9786。但那个 test 集
 是 `t2b_cactus_prep.py` **按图像**随机的（seed=42），而 CACTUS 的 29,963 张图只来自
 **117 段视频**（文件名形如 `1_D14_frame_765_v2.jpg`）。实测（本脚本 `--audit-only`）：
 
@@ -15,17 +15,17 @@ p81 用 `~/uai/data/t2b_cactus/test.csv` 跑 8003 得到切面准确率 0.9786�
 因此本脚本按 **视频**划分训练/测试（同一视频的帧绝不跨侧），从头复现同一配方
 （open_clip 官方管线、冻结文本塔、仅微调 visual、LR 切面探针），给出可辩护的数字。
 
-产物与 p81 的区别
+产物与 p86 的区别
 ----------------
-* p81 = 「部署中的 8003 在官方 test.csv 上的分数」= **受污染上界**；
-* p82 = 「同配方在一组**从未参与训练的视频**上的分数」= **泛化下界估计**。
+* p86 = 「部署中的 8003 在官方 test.csv 上的分数」= **受污染上界**；
+* p87 = 「同配方在一组**从未参与训练的视频**上的分数」= **泛化下界估计**。
 
 用法（服务器，GPU 空闲时；约 20~30 分钟）
 ----------------------------------------
-    cd ~/uai/src && ~/uai/venv/bin/python scripts/audit/p82_cactus_video_disjoint.py \
-        --report reports/p82_cactus_video_disjoint.json
+    cd ~/uai/src && ~/uai/venv/bin/python scripts/audit/p87_cactus_video_disjoint.py \
+        --report reports/p87_cactus_video_disjoint.json
     # 只跑污染审计（秒级，不训练）：
-    ~/uai/venv/bin/python scripts/audit/p82_cactus_video_disjoint.py --audit-only
+    ~/uai/venv/bin/python scripts/audit/p87_cactus_video_disjoint.py --audit-only
 """
 from __future__ import annotations
 
@@ -59,7 +59,7 @@ def load_csv(path: Path) -> list[dict]:
 
 # ------------------------------------------------------------------ 污染审计
 def contamination_audit(data_dir: Path) -> dict:
-    """量化「官方 test 集与 train 集有多近」——p81 数字不可信的实证。"""
+    """量化「官方 test 集与 train 集有多近」——p86 数字不可信的实证。"""
     tr = load_csv(data_dir / "train.csv")
     te = load_csv(data_dir / "test.csv")
     by_vid: dict[str, list[int]] = defaultdict(list)
@@ -115,7 +115,7 @@ def contamination_audit(data_dir: Path) -> dict:
         "frame_distance_tiers": dict(tiers),
         "verdict": (
             "官方 test 集与 train 集共享视频；且 %.1f%% 的测试图与训练帧相距 ≤5 帧。"
-            "部署的 visual tower 在 train 上微调过 → p81 的准确率是**受污染上界**，"
+            "部署的 visual tower 在 train 上微调过 → p86 的准确率是**受污染上界**，"
             "不得当作泛化能力。"
             % (100.0 * tiers.get("<=5 frames (near-identical)", 0) / max(1, n))
         ),
@@ -237,7 +237,7 @@ def main() -> int:
     ap.add_argument("--data-dir", default=str(Path.home() / "uai" / "data" / "t2b_cactus"))
     ap.add_argument("--model-dir", default=str(Path.home() / "uai" / "models" / "biomedclip-base-patch16-224"))
     ap.add_argument("--out-ckpt", default=str(Path.home() / "uai" / "models" / "t2b_videodisjoint" / "visual.pt"))
-    ap.add_argument("--report", default="reports/p82_cactus_video_disjoint.json")
+    ap.add_argument("--report", default="reports/p87_cactus_video_disjoint.json")
     ap.add_argument("--epochs", type=int, default=3)
     ap.add_argument("--batch-size", type=int, default=256)
     ap.add_argument("--lr", type=float, default=3e-6)
@@ -253,7 +253,7 @@ def main() -> int:
     if args.audit_only:
         out = Path(args.report).expanduser()
         out.parent.mkdir(parents=True, exist_ok=True)
-        out.write_text(json.dumps({"probe": "p82_cactus_video_disjoint",
+        out.write_text(json.dumps({"probe": "p87_cactus_video_disjoint",
                                    "mode": "audit_only", "contamination": audit},
                                   ensure_ascii=False, indent=2), encoding="utf-8")
         print(f"-> {out}")
@@ -330,7 +330,7 @@ def main() -> int:
 
     t0 = time.time()
     history = []
-    best = {"val_top1": -1.0}
+    best = {"val_top1_clean": -1.0}
     for epoch in range(args.epochs):
         model.train()
         tot, nb, te0 = 0.0, 0, time.perf_counter()
@@ -347,17 +347,19 @@ def main() -> int:
             nb += 1
         rec = {"epoch": epoch + 1, "loss": round(tot / max(1, nb), 4),
                "epoch_s": round(time.perf_counter() - te0, 1)}
+        # train 特征每轮只抽一次（探针在同一轮复用于 val/test）
+        tr_feats = extract(splits["train"], loaders["train"])
+        lr = LogisticRegression(max_iter=2000)
+        lr.fit(tr_feats, [r["view"] for r in splits["train"]])
         for s in ("val", "test"):
-            feats = extract(splits[s], loaders[s])
             ys = [r["view"] for r in splits[s]]
-            lr = LogisticRegression(max_iter=2000)
-            lr.fit(extract(splits["train"], loaders["train"]), [r["view"] for r in splits["train"]])
+            feats = extract(splits[s], loaders[s])
             rec[f"{s}_top1_clean"] = round(float(accuracy_score(ys, lr.predict(feats))), 4)
         history.append(rec)
         print(f"EPOCH {rec['epoch']}/{args.epochs} loss={rec['loss']} "
               f"val={rec['val_top1_clean']} test={rec['test_top1_clean']} "
               f"({rec['epoch_s']}s, total {time.time()-t0:.0f}s)", flush=True)
-        if rec["val_top1_clean"] >= best["val_top1"]:
+        if rec["val_top1_clean"] >= best["val_top1_clean"]:
             best = dict(rec)
             Path(args.out_ckpt).parent.mkdir(parents=True, exist_ok=True)
             torch.save({k: v.cpu() for k, v in model.visual.state_dict().items()}, args.out_ckpt)
@@ -374,7 +376,7 @@ def main() -> int:
     cm = confusion_matrix(y_true, y_pred)
     ci = bootstrap_acc(y_true, y_pred, args.bootstrap)
 
-    # 同时给：同一套权重/探针在**官方 test.csv** 上的分数（用于与 p81 对照，
+    # 同时给：同一套权重/探针在**官方 test.csv** 上的分数（用于与 p86 对照，
     # 说明「同一模型换个切分方式差多少」）
     official = load_csv(data_dir / "test.csv")
     off_rows = [r for r in official if Path(r["filepath"]).is_file()]
@@ -384,7 +386,7 @@ def main() -> int:
     off_acc = sum(1 for t, p in zip(off_true, off_pred, strict=True) if t == p) / max(1, len(off_true))
 
     report = {
-        "probe": "p82_cactus_video_disjoint",
+        "probe": "p87_cactus_video_disjoint",
         "generated_at": time.strftime("%Y-%m-%d %H:%M:%S"),
         "scope": "video_disjoint_retrain",
         "scope_note": (
@@ -413,7 +415,7 @@ def main() -> int:
         "metrics_official_test_csv_same_model": {
             "n_evaluated": len(off_rows),
             "view_accuracy": round(off_acc, 4),
-            "note": "同一套「视频不交集聚权重+探针」在官方 test.csv 上的分数；与 p81 "
+            "note": "同一套「视频不交集聚权重+探针」在官方 test.csv 上的分数；与 p86 "
                     "（部署模型）数值接近即说明差异主要来自**切分含泄漏**而非模型配方",
         },
         "history": history,

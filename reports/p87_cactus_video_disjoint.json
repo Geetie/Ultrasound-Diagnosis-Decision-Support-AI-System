@@ -1,0 +1,206 @@
+{
+  "probe": "p87_cactus_video_disjoint",
+  "generated_at": "2026-11-08 16:11:21",
+  "scope": "video_disjoint_retrain",
+  "scope_note": "按**视频**划分（117 段视频整段进单侧），同一配方从头重训 visual + LR 探针。这是本数据集上唯一可辩护的泛化数字：官方 test.csv 与 train 共享视频、93.8% 测试图与训练帧相距 ≤5 帧，不能当 held-out。",
+  "contamination_audit": {
+    "official_test_n": 4494,
+    "official_train_n": 20977,
+    "distinct_videos_train": 116,
+    "distinct_videos_test": 109,
+    "videos_in_all_csv": 116,
+    "test_images_from_train_videos": 4319,
+    "test_images_from_train_videos_pct": 0.9611,
+    "videos_in_test_not_in_train": 0,
+    "frame_distance_tiers": {
+      "<=5 frames (near-identical)": 4215,
+      "6-30 frames (near-duplicate)": 70,
+      "31-200 frames": 30,
+      ">200 frames": 4,
+      "unparsed_name": 175
+    },
+    "verdict": "官方 test 集与 train 集共享视频；且 93.8% 的测试图与训练帧相距 ≤5 帧。部署的 visual tower 在 train 上微调过 → p86 的准确率是**受污染上界**，不得当作泛化能力。"
+  },
+  "split": {
+    "seed": 42,
+    "n_videos": 116,
+    "videos": {
+      "train": 80,
+      "val": 19,
+      "test": 17
+    },
+    "images": {
+      "train": 20207,
+      "val": 4087,
+      "test": 4511
+    },
+    "views": {
+      "train": {
+        "A4C": 5566,
+        "PL": 2944,
+        "PSMV": 4192,
+        "SC": 4441,
+        "Random": 3064
+      },
+      "val": {
+        "PL": 631,
+        "A4C": 909,
+        "SC": 936,
+        "PSMV": 894,
+        "Random": 717
+      },
+      "test": {
+        "A4C": 947,
+        "PSMV": 928,
+        "SC": 968,
+        "PL": 586,
+        "Random": 1082
+      }
+    },
+    "leakage_check": {
+      "video_overlap_train_test": 0,
+      "video_overlap_train_val": 0
+    }
+  },
+  "recipe": {
+    "model": "biomedclip-base-patch16-224 (open_clip)",
+    "trainable": "visual tower only（文本塔冻结）",
+    "loss": "open_clip ClipLoss（切面 prompt 为锚）",
+    "epochs": 3,
+    "batch_size": 256,
+    "lr": 3e-06,
+    "probe": "LogisticRegression(max_iter=2000)，仅在 train 视频上拟合",
+    "note": "与 t2b_cactus_train.py 同配方，仅把划分方式换成视频不交集"
+  },
+  "metrics_video_disjoint": {
+    "n_evaluated": 4511,
+    "class_support": {
+      "A4C": 947,
+      "PSMV": 928,
+      "SC": 968,
+      "PL": 586,
+      "Random": 1082
+    },
+    "view_accuracy": 0.2099,
+    "view_accuracy_ci95": [
+      0.1982,
+      0.2221
+    ],
+    "per_class": {
+      "A4C": {
+        "precision": 0.2128,
+        "recall": 1.0,
+        "f1": 0.3509,
+        "support": 947
+      },
+      "PL": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 586
+      },
+      "PSMV": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 928
+      },
+      "Random": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 1082
+      },
+      "SC": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 968
+      },
+      "macro_avg": {
+        "precision": 0.0426,
+        "recall": 0.2,
+        "f1": 0.0702,
+        "support": 4511
+      },
+      "weighted_avg": {
+        "precision": 0.0447,
+        "recall": 0.2099,
+        "f1": 0.0737,
+        "support": 4511
+      }
+    },
+    "confusion": {
+      "A4C": {
+        "A4C": 947,
+        "PL": 0,
+        "PSMV": 0,
+        "Random": 0,
+        "SC": 0,
+        "Other": 0
+      },
+      "PL": {
+        "A4C": 584,
+        "PL": 0,
+        "PSMV": 0,
+        "Random": 0,
+        "SC": 2,
+        "Other": 0
+      },
+      "PSMV": {
+        "A4C": 926,
+        "PL": 0,
+        "PSMV": 0,
+        "Random": 0,
+        "SC": 2,
+        "Other": 0
+      },
+      "Random": {
+        "A4C": 1026,
+        "PL": 0,
+        "PSMV": 2,
+        "Random": 0,
+        "SC": 54,
+        "Other": 0
+      },
+      "SC": {
+        "A4C": 968,
+        "PL": 0,
+        "PSMV": 0,
+        "Random": 0,
+        "SC": 0,
+        "Other": 0
+      }
+    }
+  },
+  "metrics_official_test_csv_same_model": {
+    "n_evaluated": 4494,
+    "view_accuracy": 0.2483,
+    "note": "同一套「视频不交集聚权重+探针」在官方 test.csv 上的分数；与 p86 （部署模型）数值接近即说明差异主要来自**切分含泄漏**而非模型配方"
+  },
+  "history": [
+    {
+      "epoch": 1,
+      "loss": 4.2144,
+      "epoch_s": 57.5,
+      "val_top1_clean": 0.2229,
+      "test_top1_clean": 0.2188
+    },
+    {
+      "epoch": 2,
+      "loss": 4.0568,
+      "epoch_s": 59.4,
+      "val_top1_clean": 0.2459,
+      "test_top1_clean": 0.2097
+    },
+    {
+      "epoch": 3,
+      "loss": 4.0291,
+      "epoch_s": 58.4,
+      "val_top1_clean": 0.2251,
+      "test_top1_clean": 0.2153
+    }
+  ],
+  "checkpoint": "/mnt/ee16/home/student03/uai/models/t2b_videodisjoint/visual.pt",
+  "wall_s": 694.7
+}

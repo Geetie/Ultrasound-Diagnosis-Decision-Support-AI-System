@@ -1,6 +1,6 @@
 """正式评测 · AUL 公开集（肝超声 良/恶性/正常）—— p29 的固化成版。
 
-为什么另立 p80 而不是改 p29
+为什么另立 p85 而不是改 p29
 --------------------------
 p29 (`p29_t2a_aul_holdout.py`) 产出的 AUC 0.895 / 95%CI [0.8712, 0.9168] 是历史数字，
 必须**可复现**、且新旧数字能对齐。因此本脚本：
@@ -23,10 +23,10 @@ AUL 是**公开集**：无患者 ID、无法按患者分层、与训练用的 US
 
 用法（服务器，需 8003 就绪）
 --------------------------
-    PYTHONPATH=~/uai/src ~/uai/venv/bin/python scripts/audit/p80_aul_holdout_formal.py \
+    PYTHONPATH=~/uai/src ~/uai/venv/bin/python scripts/audit/p85_aul_holdout_formal.py \
         --aul-dir ~/uai/data/aul \
         --manifest tests/reports/t2a_aul_manifest.json \
-        --report reports/p80_aul_holdout_formal.json
+        --report reports/p85_aul_holdout_formal.json
 """
 from __future__ import annotations
 
@@ -246,7 +246,7 @@ def main() -> int:
     ap.add_argument("--aul-dir", default=str(Path.home() / "uai" / "data" / "aul"))
     ap.add_argument("--clip-url", default="http://127.0.0.1:8003")
     ap.add_argument("--manifest", default="tests/reports/t2a_aul_manifest.json")
-    ap.add_argument("--report", default="reports/p80_aul_holdout_formal.json")
+    ap.add_argument("--report", default="reports/p85_aul_holdout_formal.json")
     ap.add_argument("--batch", type=int, default=16)
     ap.add_argument("--bootstrap", type=int, default=2000)
     ap.add_argument("--limit", type=int, default=0, help=">0 时只跑前 N 张（冒烟；报告标 partial）")
@@ -308,7 +308,7 @@ def main() -> int:
 
     support = {c: sum(1 for y in labels if y == c) for c in CLASSES}
     report = {
-        "probe": "p80_aul_holdout_formal",
+        "probe": "p85_aul_holdout_formal",
         "supersedes": "p29_t2a_aul_holdout（同口径固化版；补每类 P/R/F1 与样本量）",
         "generated_at": time.strftime("%Y-%m-%d %H:%M:%S"),
         "scope": "public_dataset_holdout_lower_bound" + ("_partial" if args.limit else ""),

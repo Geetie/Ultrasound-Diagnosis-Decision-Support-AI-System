@@ -9,12 +9,12 @@ CACTUS（Cardiac Ultrasound Dataset，FRDR 发布版，CC BY 4.0 可商用）。
     train 20977 / val 4492 / test 4494   合计 29963（A4C 7422 / PL 4161 / PSMV 6014 /
     Random 6021 / SC 6345）
 
-⚠️ **这个 test 集不干净**（2026-11-08 实测，见 p82 的 contamination_audit）：
+⚠️ **这个 test 集不干净**（2026-11-08 实测，见 p87 的 contamination_audit）：
    29,963 张图只来自 **117 段视频**，而 prep 脚本是按**图像**随机切的 →
    官方 test 4494 张里 **96.1%** 所属视频在 train 出现过、**93.8%** 与 train 中同视频
    某帧帧号相差 ≤5 帧（同视频连续帧肉眼几乎无差别）；训练又恰在 train 上微调过 visual tower。
    因此本脚本产出的是「部署模型在官方 test.csv 上的分数」= **受污染上界**，
-   **不得**当作 held-out 泛化能力对外报数。可辩护的数字见 `p82_cactus_video_disjoint.py`。
+   **不得**当作 held-out 泛化能力对外报数。可辩护的数字见 `p87_cactus_video_disjoint.py`。
 
 ⚠️ 发布版 README 标称 6 类（含 PSAV），实收只有 5 类 —— 模型同样在 5 类上训练，
    因此**不把缺失的 PSAV 计为错误**，但必须在报告里写明（口径失真点之一）。
@@ -34,9 +34,9 @@ CACTUS 微调后的 visual tower + 逻辑回归切面探针 + 质量回归头。
 
 用法（服务器，需 8003 就绪）
 --------------------------
-    PYTHONPATH=~/uai/src ~/uai/venv/bin/python scripts/audit/p81_cactus_view_formal.py \
+    PYTHONPATH=~/uai/src ~/uai/venv/bin/python scripts/audit/p86_cactus_view_formal.py \
         --split-csv ~/uai/data/t2b_cactus/test.csv \
-        --report reports/p81_cactus_view_formal.json
+        --report reports/p86_cactus_view_formal.json
 """
 from __future__ import annotations
 
@@ -182,7 +182,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--split-csv", default=str(Path.home() / "uai" / "data" / "t2b_cactus" / "test.csv"))
     ap.add_argument("--clip-url", default="http://127.0.0.1:8003")
-    ap.add_argument("--report", default="reports/p81_cactus_view_formal.json")
+    ap.add_argument("--report", default="reports/p86_cactus_view_formal.json")
     ap.add_argument("--batch", type=int, default=16)
     ap.add_argument("--bootstrap", type=int, default=1000)
     ap.add_argument("--limit", type=int, default=0, help=">0 时随机抽 N 张（冒烟；报告标 partial）")
@@ -254,18 +254,18 @@ def main() -> int:
     support = dict(Counter(y_true))
 
     report = {
-        "probe": "p81_cactus_view_formal",
+        "probe": "p86_cactus_view_formal",
         "generated_at": time.strftime("%Y-%m-%d %H:%M:%S"),
         "scope": "contaminated_upper_bound" + ("_partial" if args.limit else ""),
         "scope_note": (
             "⚠️ 本数字是**受污染上界，不是泛化能力**。官方 test.csv 是按**图像**随机切的，"
             "而 29,963 张图只来自 117 段视频：实测 96.1% 的测试图所属视频在 train 中出现过，"
-            "93.8% 与 train 中同视频某帧的**帧号相差 ≤5 帧**（见 p82 的 contamination_audit）。"
+            "93.8% 与 train 中同视频某帧的**帧号相差 ≤5 帧**（见 p87 的 contamination_audit）。"
             "部署的 visual tower 恰在 train 上微调 → 等于拿「见过的视频里相邻的帧」当 held-out。"
-            "可辩护的数字见 p82（视频不交集重训）。另：发布版缺 PSAV 一类（README 虚标 6 类，"
+            "可辩护的数字见 p87（视频不交集重训）。另：发布版缺 PSAV 一类（README 虚标 6 类，"
             "实收 5 类），且 Random（非标准切面）是模型自己的一类而非拒识类别。"
         ),
-        "see_also": "p82_cactus_video_disjoint（视频不交集协议；本数据集唯一可辩护的泛化数字）",
+        "see_also": "p87_cactus_video_disjoint（视频不交集协议；本数据集唯一可辩护的泛化数字）",
         "dataset": {
             "name": "CACTUS (Cardiac Ultrasound Dataset, CC BY 4.0)",
             "organ": "心脏（5 类切面 + Random）",

@@ -29,7 +29,7 @@ CAMUS 标注 `labels_map: 1=心肌(MYO) / 2=左心室腔(LV) / 3=左心房(LA)`�
 用法（服务器，GPU 空闲）
 ----------------------
     cd ~/uai/src && PYTHONPATH=~/uai/src ~/uai/venv/bin/python \
-        scripts/audit/p83_camus_seg_formal.py --report reports/p83_camus_seg_formal.json
+        scripts/audit/p88_camus_seg_formal.py --report reports/p88_camus_seg_formal.json
 """
 from __future__ import annotations
 
@@ -211,7 +211,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--camus-dir", default=str(Path.home() / "uai" / "data" / "camus"))
     ap.add_argument("--ckpt", default=str(Path.home() / "uai" / "models" / "cardiac_seg" / "unet_camus.pt"))
-    ap.add_argument("--report", default="reports/p83_camus_seg_formal.json")
+    ap.add_argument("--report", default="reports/p88_camus_seg_formal.json")
     ap.add_argument("--baseline-json", default=str(Path.home() / "uai" / "reports" / "camus_seg_baseline.json"))
     ap.add_argument("--bootstrap", type=int, default=2000)
     ap.add_argument("--seed", type=int, default=42)
@@ -305,7 +305,7 @@ def main() -> int:
         }
 
     report = {
-        "probe": "p83_camus_seg_formal",
+        "probe": "p88_camus_seg_formal",
         "generated_at": time.strftime("%Y-%m-%d %H:%M:%S"),
         "scope": "patient_disjoint_holdout + ef_error_propagation",
         "scope_note": (
