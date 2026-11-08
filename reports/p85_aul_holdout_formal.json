@@ -1,0 +1,110 @@
+{
+  "probe": "p85_aul_holdout_formal",
+  "supersedes": "p29_t2a_aul_holdout（同口径固化版；补每类 P/R/F1 与样本量）",
+  "generated_at": "2026-11-08 21:13:46",
+  "scope": "public_dataset_holdout_lower_bound",
+  "scope_note": "AUL 为公开集（CC BY 4.0，无患者 ID、与训练数据是否重叠不可证）→ 本数字只作「公开集泛化下界」，**不得**当作注册申报的独立验证",
+  "dataset": {
+    "name": "AUL",
+    "license": "CC BY 4.0 (Zenodo 7272660)",
+    "organ": "肝脏（不是甲状腺）",
+    "dir": "/mnt/ee16/home/student03/uai/data/aul",
+    "n_evaluated": 735,
+    "n_listed": 735,
+    "n_failed": 0,
+    "failed": [],
+    "class_support": {
+      "Benign": 200,
+      "Malignant": 435,
+      "Normal": 100
+    },
+    "manifest": "清单校验通过：735 张，sha256 逐条一致（tests/reports/t2a_aul_manifest.json）"
+  },
+  "classifier": {
+    "endpoint": "http://127.0.0.1:8003/v1/classify",
+    "mechanism": "finetuned_visual_tower + logistic_probe（T2a v2）",
+    "threshold": 0.5
+  },
+  "metrics": {
+    "mal_vs_rest_auc": 0.895,
+    "auc_ci95": [
+      0.8712,
+      0.9168
+    ],
+    "accuracy_3class": 0.7429,
+    "accuracy_ci95": [
+      0.7116,
+      0.7728
+    ],
+    "macro_f1": 0.6628,
+    "macro_f1_ci95": [
+      0.6228,
+      0.7024
+    ],
+    "bootstrap_n": 2000,
+    "bootstrap_seed": 20261013,
+    "per_class": {
+      "Benign": {
+        "precision": 0.5616,
+        "recall": 0.41,
+        "f1": 0.474,
+        "support": 200
+      },
+      "Malignant": {
+        "precision": 0.7744,
+        "recall": 0.9471,
+        "f1": 0.8521,
+        "support": 435
+      },
+      "Normal": {
+        "precision": 0.9123,
+        "recall": 0.52,
+        "f1": 0.6624,
+        "support": 100
+      },
+      "macro_avg": {
+        "precision": 0.7494,
+        "recall": 0.6257,
+        "f1": 0.6628,
+        "support": 735
+      },
+      "weighted_avg": {
+        "precision": 0.7353,
+        "recall": 0.7428,
+        "f1": 0.7234,
+        "support": 735
+      }
+    },
+    "confusion": {
+      "Benign": {
+        "Benign": 82,
+        "Malignant": 114,
+        "Normal": 4,
+        "Unknown": 0
+      },
+      "Malignant": {
+        "Benign": 22,
+        "Malignant": 412,
+        "Normal": 1,
+        "Unknown": 0
+      },
+      "Normal": {
+        "Benign": 42,
+        "Malignant": 6,
+        "Normal": 52,
+        "Unknown": 0
+      }
+    },
+    "at_threshold_0.5": {
+      "sensitivity": 0.9011,
+      "specificity": 0.6933,
+      "ppv": 0.8099,
+      "npv": 0.8287,
+      "tp": 392,
+      "fp": 92,
+      "fn": 43,
+      "tn": 208
+    }
+  },
+  "wall_s": 7.1
+}

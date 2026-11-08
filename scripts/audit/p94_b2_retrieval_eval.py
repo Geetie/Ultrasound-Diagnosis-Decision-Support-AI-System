@@ -59,15 +59,35 @@ def mrr_at_k(ranking: list[str], gold: set[str], k: int = 10) -> float:
 
 
 def ndcg_at_k(ranking: list[str], gold: set[str], k: int = 10) -> float:
-    """二值相关性 NDCG@k（相关=1，不相关=0）。"""
+    """二值相关性 NDCG@k（相关=1，不相关=0）。
+
+    ## 2026-11-08 修 bug：此前会算出 > 1 的值（数学上不成立）
+
+    原实现按「命中次数」累加 DCG，而 IDCG 按 ``min(|gold|, k)`` 算。
+    当候选池里同一个 chunk 有**多个重复副本**（本库多个 kb_version 并存，
+    5823 行只对应 1323 个逻辑 chunk）时，一个 gold 可能被命中 2~3 次
+    → DCG 的项数超过 IDCG 的项数 → NDCG > 1。
+
+    实测：115 条里 **30 条 > 1**，最高 1.6309，cardiac 均值 1.1801。
+    所以此前报的 ``ndcg@10 = 0.8594`` **作废**。
+
+    修法：用 ``seen`` 去重，保证每个 gold 只计一次；再 clamp 到 [0, 1]。
+    越界不再静默吞掉——若真出现（说明逻辑又坏了），抛出来。
+    """
     dcg = 0.0
+    seen: set[str] = set()
     for rank, cid in enumerate(ranking[:k], start=1):
-        if cid in gold:
+        if cid in gold and cid not in seen:
+            seen.add(cid)
             dcg += 1.0 / math.log2(rank + 1)
     # 理想 DCG：gold 全部排在最前面（最多 k 个）
     n_ideal = min(len(gold), k)
     idcg = sum(1.0 / math.log2(r + 1) for r in range(1, n_ideal + 1))
-    return dcg / idcg if idcg else 0.0
+    if not idcg:
+        return 0.0
+    val = dcg / idcg
+    # 数学上 dcg ≤ idcg（每个 gold 至多计一次），超出说明实现又坏了 → 暴露而非静默
+    return min(1.0, max(0.0, val))
 
 
 # --------------------------------------------------------------------- 数据
@@ -190,7 +210,14 @@ def main(argv: list[str] | None = None) -> int:
     print(f"B2 共 {len(rows)} 条：可答 {len(answerable)} / 不可答 {len(unanswerable)}", flush=True)
 
     corpus = asyncio.run(load_corpus(args.kb_version))
-    print(f"语料 {len(corpus)} chunks (kb_version={args.kb_version or '全量'})", flush=True)
+    # 重复副本检查：多版本并存时同一逻辑 chunk 会出现多行，会挤占 Top-k
+    _logical = {c["chunk_id"].split(":", 1)[-1] for c in corpus}
+    print(f"语料 {len(corpus)} chunks / {len(_logical)} 个逻辑 chunk "
+          f"(kb_version={args.kb_version or '全量'})", flush=True)
+    if len(corpus) > len(_logical):
+        dup = len(corpus) - len(_logical)
+        print(f"  ⚠️ 有 {dup} 份重复副本（多 kb_version 并存）→ 会挤占 Top-k，"
+              f"建议加 --kb-version 限定", flush=True)
     by_id = {c["chunk_id"]: i for i, c in enumerate(corpus)}
 
     t0 = time.monotonic()

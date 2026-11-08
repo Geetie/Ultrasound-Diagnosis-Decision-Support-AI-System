@@ -157,3 +157,41 @@ def test_gate_on_plain_language_dataset_passes(tmp_path):
     assert report["verdict"] == "PASS", [
         c for c in report["checks"] if c["passed"] is False
     ]
+
+
+# ---------------------------------------------------------------------------
+# A.172：NDCG 必须落在 [0,1]（p94 曾算出 >1 的值）
+# ---------------------------------------------------------------------------
+
+
+def test_ndcg_bounded_when_gold_appears_multiple_times():
+    """候选池有重复副本时，一个 gold 可能被命中多次 —— NDCG 仍须 ≤ 1。
+
+    这是 p94 的真实 bug：115 条里 30 条 NDCG > 1（最高 1.6309），
+    因为 DCG 按命中次数累加、IDCG 按 min(|gold|,k) 算。修正后必须夹紧在 [0,1]。
+    """
+    import importlib.util
+    from pathlib import Path
+
+    p = Path(__file__).resolve().parents[3] / "scripts" / "audit" / "p94_b2_retrieval_eval.py"
+    spec = importlib.util.spec_from_file_location("p94", p)
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)
+
+    gold = {"A"}
+    # 同一 gold 在 Top-5 里出现 3 次（模拟多版本重复副本）
+    ranking = ["A", "A", "A", "B", "C"]
+    val = m.ndcg_at_k(ranking, gold, k=10)
+    assert 0.0 <= val <= 1.0, f"NDCG 越界: {val}"
+    assert val == 1.0  # gold 排第 1 且只计一次 → 理想排序
+
+
+def test_ndcg_zero_when_no_hit():
+    import importlib.util
+    from pathlib import Path
+
+    p = Path(__file__).resolve().parents[3] / "scripts" / "audit" / "p94_b2_retrieval_eval.py"
+    spec = importlib.util.spec_from_file_location("p94", p)
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)
+    assert m.ndcg_at_k(["X", "Y"], {"A"}, k=10) == 0.0

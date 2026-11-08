@@ -1,0 +1,495 @@
+{
+  "probe": "p97_tn3k_official_5fold",
+  "generated_at": "2026-11-08 21:08:27",
+  "why": "单次划分（test 614 张跑一次得 0.7960）在生物医学小数据上不可靠：ml-training-skill references/biomedical.md:420 明确要求 k-fold 5-10。本脚本用 TN3K 官方 tn3k-trainval-fold0~4.json 做 5 折交叉验证，报 DSC 均值 ± 标准差，替代单次点估计。",
+  "dataset": {
+    "name": "TN3K",
+    "root": "/mnt/ee16/home/student03/uai/data/tn3k_dataset",
+    "n_trainval_images": 2879,
+    "fold_files": [
+      "tn3k-trainval-fold0.json",
+      "tn3k-trainval-fold1.json",
+      "tn3k-trainval-fold2.json",
+      "tn3k-trainval-fold3.json",
+      "tn3k-trainval-fold4.json"
+    ],
+    "fold_index_semantics": "json 里的整数 = 按文件名数字升序排序后的位置（与官方 haifangong/TRFE-Net dataloaders/tn3k.py::make_dataset 一致）"
+  },
+  "protocol": {
+    "architecture": "MONAI UNet(spatial_dims=2, channels=(32,64,128,256,320), strides=(2,2,2,2), num_res_units=2, dropout=0.1)",
+    "epochs": 25,
+    "lr": 0.001,
+    "batch_size": 16,
+    "input_size": 256,
+    "optimizer": "AdamW(wd=0.01) + CosineAnnealingLR",
+    "loss": "Dice+BCE (mod.dice_bce)",
+    "augmentation": "flip h/v, rot90, scale 0.85-1.15, affine ±12°, brightness",
+    "early_stop": "无（与 tn3k_seg_unet.py 一致：固定 25 epoch，末轮评测）",
+    "note": "每折**从零训练**，绝不复用 unet_tn3k.pt —— 那份权重已在全部 2879 张 trainval 上训练过，用它评 trainval 的折 = 泄漏。"
+  },
+  "folds": [
+    {
+      "fold": 0,
+      "n_train": 2303,
+      "n_val": 576,
+      "leakage_check": {
+        "index_overlap_train_val": 0,
+        "path_overlap_train_val": 0,
+        "patient_id_available": false
+      },
+      "dice_mean": 0.7728,
+      "dice_std": 0.2046,
+      "iou_mean": 0.6666,
+      "dice_mean_strict": 0.7728,
+      "iou_mean_strict": 0.6666,
+      "dice_caliber_optimistic": "empty_both 记 1.0（原口径）",
+      "dice_caliber_strict": "剔除 empty_both（可辩护口径）",
+      "empty_mask_breakdown": {
+        "empty_both": 0,
+        "empty_pred": 0,
+        "empty_gt": 0,
+        "normal": 576
+      },
+      "n_evaluated": 576,
+      "by_lesion_size": {
+        "large(>=20%)": {
+          "n": 147,
+          "dice_mean": 0.8507,
+          "iou_mean": 0.7639,
+          "dice_std": 0.1544
+        },
+        "medium(5-20%)": {
+          "n": 236,
+          "dice_mean": 0.7798,
+          "iou_mean": 0.6738,
+          "dice_std": 0.1972
+        },
+        "small(1-5%)": {
+          "n": 169,
+          "dice_mean": 0.7311,
+          "iou_mean": 0.6139,
+          "dice_std": 0.2157
+        },
+        "tiny(<1%)": {
+          "n": 24,
+          "dice_mean": 0.5199,
+          "iou_mean": 0.3718,
+          "dice_std": 0.1873
+        }
+      },
+      "history": [
+        {
+          "epoch": 5,
+          "loss": 1.1358,
+          "val_dice": 0.5742,
+          "val_iou": 0.4451
+        },
+        {
+          "epoch": 10,
+          "loss": 0.7595,
+          "val_dice": 0.685,
+          "val_iou": 0.5621
+        },
+        {
+          "epoch": 15,
+          "loss": 0.5713,
+          "val_dice": 0.7337,
+          "val_iou": 0.6202
+        },
+        {
+          "epoch": 20,
+          "loss": 0.4851,
+          "val_dice": 0.7618,
+          "val_iou": 0.6536
+        },
+        {
+          "epoch": 25,
+          "loss": 0.4648,
+          "val_dice": 0.7728,
+          "val_iou": 0.6666
+        }
+      ],
+      "wall_s": 515.2
+    },
+    {
+      "fold": 1,
+      "n_train": 2303,
+      "n_val": 576,
+      "leakage_check": {
+        "index_overlap_train_val": 0,
+        "path_overlap_train_val": 0,
+        "patient_id_available": false
+      },
+      "dice_mean": 0.7772,
+      "dice_std": 0.1974,
+      "iou_mean": 0.6704,
+      "dice_mean_strict": 0.7772,
+      "iou_mean_strict": 0.6704,
+      "dice_caliber_optimistic": "empty_both 记 1.0（原口径）",
+      "dice_caliber_strict": "剔除 empty_both（可辩护口径）",
+      "empty_mask_breakdown": {
+        "empty_both": 0,
+        "empty_pred": 0,
+        "empty_gt": 0,
+        "normal": 576
+      },
+      "n_evaluated": 576,
+      "by_lesion_size": {
+        "large(>=20%)": {
+          "n": 151,
+          "dice_mean": 0.8582,
+          "iou_mean": 0.7708,
+          "dice_std": 0.1345
+        },
+        "medium(5-20%)": {
+          "n": 230,
+          "dice_mean": 0.783,
+          "iou_mean": 0.6729,
+          "dice_std": 0.1778
+        },
+        "small(1-5%)": {
+          "n": 173,
+          "dice_mean": 0.7502,
+          "iou_mean": 0.6327,
+          "dice_std": 0.1955
+        },
+        "tiny(<1%)": {
+          "n": 22,
+          "dice_mean": 0.3723,
+          "iou_mean": 0.2525,
+          "dice_std": 0.2242
+        }
+      },
+      "history": [
+        {
+          "epoch": 5,
+          "loss": 1.15,
+          "val_dice": 0.5897,
+          "val_iou": 0.4614
+        },
+        {
+          "epoch": 10,
+          "loss": 0.7576,
+          "val_dice": 0.6808,
+          "val_iou": 0.5556
+        },
+        {
+          "epoch": 15,
+          "loss": 0.5626,
+          "val_dice": 0.7452,
+          "val_iou": 0.6304
+        },
+        {
+          "epoch": 20,
+          "loss": 0.4836,
+          "val_dice": 0.7699,
+          "val_iou": 0.6618
+        },
+        {
+          "epoch": 25,
+          "loss": 0.4596,
+          "val_dice": 0.7772,
+          "val_iou": 0.6704
+        }
+      ],
+      "wall_s": 431.4
+    },
+    {
+      "fold": 2,
+      "n_train": 2303,
+      "n_val": 576,
+      "leakage_check": {
+        "index_overlap_train_val": 0,
+        "path_overlap_train_val": 0,
+        "patient_id_available": false
+      },
+      "dice_mean": 0.7694,
+      "dice_std": 0.2013,
+      "iou_mean": 0.6608,
+      "dice_mean_strict": 0.7694,
+      "iou_mean_strict": 0.6608,
+      "dice_caliber_optimistic": "empty_both 记 1.0（原口径）",
+      "dice_caliber_strict": "剔除 empty_both（可辩护口径）",
+      "empty_mask_breakdown": {
+        "empty_both": 0,
+        "empty_pred": 0,
+        "empty_gt": 0,
+        "normal": 576
+      },
+      "n_evaluated": 576,
+      "by_lesion_size": {
+        "large(>=20%)": {
+          "n": 158,
+          "dice_mean": 0.8436,
+          "iou_mean": 0.7489,
+          "dice_std": 0.1352
+        },
+        "medium(5-20%)": {
+          "n": 198,
+          "dice_mean": 0.7871,
+          "iou_mean": 0.6731,
+          "dice_std": 0.1556
+        },
+        "small(1-5%)": {
+          "n": 192,
+          "dice_mean": 0.7483,
+          "iou_mean": 0.6355,
+          "dice_std": 0.2164
+        },
+        "tiny(<1%)": {
+          "n": 28,
+          "dice_mean": 0.371,
+          "iou_mean": 0.2491,
+          "dice_std": 0.2091
+        }
+      },
+      "history": [
+        {
+          "epoch": 5,
+          "loss": 1.1481,
+          "val_dice": 0.5758,
+          "val_iou": 0.4445
+        },
+        {
+          "epoch": 10,
+          "loss": 0.7766,
+          "val_dice": 0.6222,
+          "val_iou": 0.4922
+        },
+        {
+          "epoch": 15,
+          "loss": 0.584,
+          "val_dice": 0.7401,
+          "val_iou": 0.6269
+        },
+        {
+          "epoch": 20,
+          "loss": 0.4938,
+          "val_dice": 0.7659,
+          "val_iou": 0.6565
+        },
+        {
+          "epoch": 25,
+          "loss": 0.4694,
+          "val_dice": 0.7694,
+          "val_iou": 0.6608
+        }
+      ],
+      "wall_s": 303.3
+    },
+    {
+      "fold": 3,
+      "n_train": 2303,
+      "n_val": 576,
+      "leakage_check": {
+        "index_overlap_train_val": 0,
+        "path_overlap_train_val": 0,
+        "patient_id_available": false
+      },
+      "dice_mean": 0.7753,
+      "dice_std": 0.1996,
+      "iou_mean": 0.6683,
+      "dice_mean_strict": 0.7753,
+      "iou_mean_strict": 0.6683,
+      "dice_caliber_optimistic": "empty_both 记 1.0（原口径）",
+      "dice_caliber_strict": "剔除 empty_both（可辩护口径）",
+      "empty_mask_breakdown": {
+        "empty_both": 0,
+        "empty_pred": 0,
+        "empty_gt": 0,
+        "normal": 576
+      },
+      "n_evaluated": 576,
+      "by_lesion_size": {
+        "large(>=20%)": {
+          "n": 158,
+          "dice_mean": 0.8614,
+          "iou_mean": 0.7735,
+          "dice_std": 0.1236
+        },
+        "medium(5-20%)": {
+          "n": 217,
+          "dice_mean": 0.7978,
+          "iou_mean": 0.6897,
+          "dice_std": 0.1633
+        },
+        "small(1-5%)": {
+          "n": 180,
+          "dice_mean": 0.71,
+          "iou_mean": 0.5888,
+          "dice_std": 0.2219
+        },
+        "tiny(<1%)": {
+          "n": 21,
+          "dice_mean": 0.4541,
+          "iou_mean": 0.3368,
+          "dice_std": 0.2828
+        }
+      },
+      "history": [
+        {
+          "epoch": 5,
+          "loss": 1.138,
+          "val_dice": 0.5338,
+          "val_iou": 0.411
+        },
+        {
+          "epoch": 10,
+          "loss": 0.756,
+          "val_dice": 0.6516,
+          "val_iou": 0.525
+        },
+        {
+          "epoch": 15,
+          "loss": 0.5654,
+          "val_dice": 0.7389,
+          "val_iou": 0.6244
+        },
+        {
+          "epoch": 20,
+          "loss": 0.4798,
+          "val_dice": 0.7712,
+          "val_iou": 0.6627
+        },
+        {
+          "epoch": 25,
+          "loss": 0.4569,
+          "val_dice": 0.7753,
+          "val_iou": 0.6683
+        }
+      ],
+      "wall_s": 297.8
+    },
+    {
+      "fold": 4,
+      "n_train": 2304,
+      "n_val": 575,
+      "leakage_check": {
+        "index_overlap_train_val": 0,
+        "path_overlap_train_val": 0,
+        "patient_id_available": false
+      },
+      "dice_mean": 0.7756,
+      "dice_std": 0.2,
+      "iou_mean": 0.6688,
+      "dice_mean_strict": 0.7756,
+      "iou_mean_strict": 0.6688,
+      "dice_caliber_optimistic": "empty_both 记 1.0（原口径）",
+      "dice_caliber_strict": "剔除 empty_both（可辩护口径）",
+      "empty_mask_breakdown": {
+        "empty_both": 0,
+        "empty_pred": 0,
+        "empty_gt": 0,
+        "normal": 575
+      },
+      "n_evaluated": 575,
+      "by_lesion_size": {
+        "large(>=20%)": {
+          "n": 150,
+          "dice_mean": 0.8495,
+          "iou_mean": 0.7613,
+          "dice_std": 0.1515
+        },
+        "medium(5-20%)": {
+          "n": 230,
+          "dice_mean": 0.7936,
+          "iou_mean": 0.6852,
+          "dice_std": 0.17
+        },
+        "small(1-5%)": {
+          "n": 169,
+          "dice_mean": 0.7248,
+          "iou_mean": 0.6085,
+          "dice_std": 0.2245
+        },
+        "tiny(<1%)": {
+          "n": 26,
+          "dice_mean": 0.5199,
+          "iou_mean": 0.382,
+          "dice_std": 0.2296
+        }
+      },
+      "history": [
+        {
+          "epoch": 5,
+          "loss": 1.1533,
+          "val_dice": 0.5653,
+          "val_iou": 0.4379
+        },
+        {
+          "epoch": 10,
+          "loss": 0.7641,
+          "val_dice": 0.6805,
+          "val_iou": 0.5543
+        },
+        {
+          "epoch": 15,
+          "loss": 0.5695,
+          "val_dice": 0.7435,
+          "val_iou": 0.6302
+        },
+        {
+          "epoch": 20,
+          "loss": 0.4913,
+          "val_dice": 0.7675,
+          "val_iou": 0.6596
+        },
+        {
+          "epoch": 25,
+          "loss": 0.4598,
+          "val_dice": 0.7756,
+          "val_iou": 0.6688
+        }
+      ],
+      "wall_s": 266.8
+    }
+  ],
+  "summary_5fold": {
+    "dice_mean_of_folds": {
+      "mean": 0.7741,
+      "std": 0.0027,
+      "min": 0.7694,
+      "max": 0.7772,
+      "n": 5,
+      "values": [
+        0.7728,
+        0.7772,
+        0.7694,
+        0.7753,
+        0.7756
+      ]
+    },
+    "dice_strict_mean_of_folds": {
+      "mean": 0.7741,
+      "std": 0.0027,
+      "min": 0.7694,
+      "max": 0.7772,
+      "n": 5,
+      "values": [
+        0.7728,
+        0.7772,
+        0.7694,
+        0.7753,
+        0.7756
+      ]
+    },
+    "iou_mean_of_folds": {
+      "mean": 0.667,
+      "std": 0.0033,
+      "min": 0.6608,
+      "max": 0.6704,
+      "n": 5,
+      "values": [
+        0.6666,
+        0.6704,
+        0.6608,
+        0.6683,
+        0.6688
+      ]
+    },
+    "headline": "DSC = 0.7741 ± 0.0027 (n=5 折, min 0.7694 / max 0.7772)"
+  },
+  "split_level_disclaimer": "⚠️ **图像级划分，不是患者级**：5 份官方折 = 按排序后文件名下标的 `% 5 == k` 轮转切分，数据集无患者 ID 字段。TN3K 官方描述为 3493 张图来自 2421 个患者（≈1.44 张/人），同一患者的多张图会跨 train/val → 本报告的 DSC **偏乐观**，不能当作注册申报级独立验证。",
+  "caliber_note": "对外引用 **dice_strict_mean_of_folds**（剔除 empty_both 后的均值再跨折平均）。dice_mean 是乐观口径（空对空记 1.0），仅供与历史 0.7960 对照。",
+  "wall_s": 1821.0
+}
