@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "project": "超声诊疗决策支持 AI 系统",
-  "updated_at": "2026-11-08T12:39:20+08:00",
+  "updated_at": "2026-11-08T14:27:24+08:00",
   "head_commit": "14a7f9f",
   "branch": "main",
   "status_legend": {
@@ -208,7 +208,137 @@
         "4. 所有新测试集落 data/eval/v2/ 并带 manifest（来源/许可/构造法/规模/已知局限）"
       ],
       "name": "评测数据集重建（当前主线）",
-      "description": "评测数据集重建（当前主线：无合格测试集，所有检索/生成类指标作废）"
+      "description": "评测数据集重建（当前主线：无合格测试集，所有检索/生成类指标作废）",
+      "dataset_ledger": "docs/合规/评测数据集/数据集台账.md",
+      "datasets": {
+        "public_ready": [
+          {
+            "id": "A1",
+            "name": "AUL",
+            "organ": "liver",
+            "license": "CC-BY 4.0",
+            "commercial_ok": true,
+            "have": "735 张（151MB）",
+            "status": "已在用",
+            "for_what": "测肝脏结节良恶性判断准不准——目前唯一能给出可辩护数字的数据集",
+            "measured": "T2a AUC 0.895（CI 0.871–0.917）"
+          },
+          {
+            "id": "A3",
+            "name": "CAMUS",
+            "organ": "cardiac",
+            "license": "CC BY-NC-SA 4.0",
+            "commercial_ok": false,
+            "have": "2000 影像（6.4GB）",
+            "status": "已下载",
+            "for_what": "测 LVEF 算得准不准、心腔轮廓画得准不准",
+            "measured": null
+          },
+          {
+            "id": "A4",
+            "name": "CACTUS",
+            "organ": "cardiac",
+            "license": "CC BY 4.0",
+            "commercial_ok": true,
+            "have": "29963 影像（7.8GB）",
+            "status": "已下载未评测",
+            "for_what": "测『这是哪个切面』认得准不准——切面错后面全错",
+            "measured": null
+          }
+        ],
+        "public_to_download": [
+          {
+            "id": "A2",
+            "name": "TN3K",
+            "organ": "thyroid",
+            "license": "CC BY-NC 3.0",
+            "n": "3493 张 / 2421 例",
+            "priority": "最高",
+            "for_what": "甲状腺是主线科室却连一张公开标注图都没有；这份补最大空白"
+          },
+          {
+            "id": "A5",
+            "name": "DDTI",
+            "organ": "thyroid",
+            "license": "Open Access",
+            "n": "290–480 例",
+            "for_what": "和第二份甲状腺数据交叉验证，防止只在一份上背答案"
+          },
+          {
+            "id": "A6",
+            "name": "TG3K",
+            "organ": "thyroid",
+            "license": "CC BY-NC 3.0",
+            "n": "3583 帧",
+            "priority": "低",
+            "for_what": "测同一病人多帧之间判断是否一致"
+          },
+          {
+            "id": "A7",
+            "name": "TNSCUI",
+            "organ": "thyroid",
+            "license": "CC BY-ND 4.0",
+            "n": "3644 张",
+            "for_what": "甲状腺分割第三数据源（ND：不可改作）"
+          },
+          {
+            "id": "A8",
+            "name": "EchoNet-Dynamic",
+            "organ": "cardiac",
+            "license": "Stanford 研究协议",
+            "n": "10030 例",
+            "for_what": "LVEF 回归误差的大规模验证（CAMUS 只 500 例）"
+          }
+        ],
+        "must_build": [
+          {
+            "id": "B1",
+            "name": "临床文本→分级金标准",
+            "n_target": "≥200 例",
+            "blocked_by": "医生标注",
+            "for_what": "判断系统给的分级对不对——这是全系统最重要的数字，现在完全算不出来",
+            "status": "零（final_diagnosis 非空 0/1056）",
+            "consequence_if_missing": "分级准确率/漏诊率/一致率全部算不出来"
+          },
+          {
+            "id": "B2",
+            "name": "中文检索评测集（chunk 级）",
+            "n_target": "≥100 query，≥50% 含影像术语",
+            "blocked_by": null,
+            "can_start_now": true,
+            "for_what": "判断医生输入一句话、系统找回来的资料对不对",
+            "status": "无（旧的已作废）",
+            "how": "从生产 1056 条判读里筛 314 条有结论的，人工挑 ≥100 条配段落级答案"
+          },
+          {
+            "id": "B3",
+            "name": "报告话术质量评审集",
+            "n_target": "≥100 份",
+            "blocked_by": "医生 5 分制打分",
+            "for_what": "判断给病人看的解释写得好不好（说人话/不吓人/说清下一步）",
+            "status": "零"
+          },
+          {
+            "id": "B4",
+            "name": "随访/病理结局",
+            "n_target": "≥300 例",
+            "blocked_by": "临床方（隐私+伦理）",
+            "for_what": "算漏诊率——系统说没事、后来查出是癌的比例",
+            "status": "零"
+          }
+        ]
+      },
+      "execution_order": [
+        "1. AUL 正式评测脚本（不用等）",
+        "2. CACTUS 切面准确率（不用等）",
+        "3. CAMUS LVEF 误差（不用等）",
+        "4. 下载 TN3K（不用等，只是下载）",
+        "5. 造 B2 中文检索集（不用等，只需人工筛）",
+        "6. B1 临床文本金标准（等医生）← 唯一硬卡点",
+        "7. B3 话术评审集（等医生）",
+        "8. B4 随访结局（等临床方）"
+      ],
+      "updated_note": "2026-11-08 按用户要求重写为数据集台账，每项写明'为什么需要'"
     },
     {
       "id": "retrieval-gate0",

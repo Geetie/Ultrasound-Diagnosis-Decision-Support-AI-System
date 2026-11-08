@@ -15,10 +15,11 @@
 1. `progress.md` —— **当前状态 / 当前目标 / 下一步**（「现在在哪」的唯一来源）。
 2. `feature_list.json` —— 功能与门控状态、依赖、证据（「做到哪了」的唯一来源）。
 3. `session-handoff.md` —— 上一会话的阻塞点、涉及文件、下会话第一动作。
-4. `docs-for-guiding generating docs/超声诊疗决策支持系统/00-项目总览与核心指标.md` —— **指标口径唯一来源**。
-5. `docs-for-guiding generating docs/超声诊疗决策支持系统/16-开发进展汇报-20260928.md` —— 进展与**证据台账**（附录 A，**编号只增**；读最新条 = 读文件末最后一条 `A.N`，不要相信这里的硬编码数字）。
-6. 任务落到**远程 GPU 服务器 / 真机** → 加载 SKILL `remote-gpu-server-devtest`（先读其 SKILL.md 的铁律）。
-7. 涉及改 `AGENTS.md` / `feature_list.json` / `progress.md` / `.codebuddy/skills/**` → 加载 SKILL `uai-harness-maintenance`。
+4. `docs/合规/评测数据集/数据集台账.md` —— **数据集唯一来源**（每份数据"用它干什么"+ 现状 + 卡点）。当前主线是"先把数据集搞定"，没这份台账等于不知道能测什么。
+5. `docs-for-guiding generating docs/超声诊疗决策支持系统/00-项目总览与核心指标.md` —— **指标口径唯一来源**。
+6. `docs-for-guiding generating docs/超声诊疗决策支持系统/16-开发进展汇报-20260928.md` —— 进展与**证据台账**（附录 A，**编号只增**；读最新条 = 读文件末最后一条 `A.N`，不要相信这里的硬编码数字）。
+7. 任务落到**远程 GPU 服务器 / 真机** → 加载 SKILL `remote-gpu-server-devtest`（先读其 SKILL.md 的铁律）。
+8. 涉及改 `AGENTS.md` / `feature_list.json` / `progress.md` / `.codebuddy/skills/**` → 加载 SKILL `uai-harness-maintenance`。
 
 ## Before writing code（动手前）
 
@@ -33,6 +34,7 @@
 |---|---|---|
 | 1 | **代码与测试**（`app/`、`tests/`、`pyproject.toml`、`.github/workflows/`） | 唯一事实源 |
 | 2 | `00-项目总览与核心指标.md` | 指标口径唯一来源，其它文档不得改口径 |
+| 2b | `docs/合规/评测数据集/数据集台账.md` | 数据集唯一来源；**指标引用哪个数据集必须能在此查到** |
 | 3 | `16-开发进展汇报-20260928.md` 附录 A | 进展、实测数字、证据链台账 |
 | 4 | `AGENTS.md` + `progress.md` + `feature_list.json` | 作业规范与当前状态（可覆盖、随会话更新） |
 | 5 | `docs-for-guiding generating docs/**`、`docs/**` | 解释与导读 |
@@ -79,6 +81,7 @@ make test-perf                # 性能用例必须串行：-m perf -n0
 | `progress.md` | 当前状态、当前目标、下一步、阻塞点 | 每轮收尾（End of Session）必须更新 |
 | `feature_list.json` | feature / 门控状态 + 依赖 + 证据 | 状态迁移时（`in_progress` → `done` / `blocked`）立即更新 |
 | `session-handoff.md` | Last Updated / Blockers / Files / Next Session | 会话结束或上下文将满时更新 |
+| `docs/合规/评测数据集/数据集台账.md` | **数据集唯一来源**（每份数据"用它干什么"+ 现状 + 卡点） | 数据集增删/状态变化时立即更新 |
 | `docs-for-guiding generating docs/超声诊疗决策支持系统/16-开发进展汇报-20260928.md` | 长期证据台账（附录 A 只追加） | 每轮实测/决策后追加一节 |
 
 ## Skills 索引（可复用流程）
@@ -120,6 +123,7 @@ make test-perf                # 性能用例必须串行：-m perf -n0
 | 15 | **禁止在 `~/.gitconfig` 里设静态 `http.proxy` / `https.proxy`**（git 只认单一地址、**无回退**，代理一挂所有 HTTPS 立等失败）；**要用代理走 `include.path=~/.gitconfig-proxy` 或 `http_proxy` 环境变量按需启用** | 2026-10-28：全局 `http.proxy=http://127.0.0.1:6696` 失效后，`git push` 报 `Failed to connect ... over proxy 127.0.0.1`，而 GitHub 实际走 SSH（`insteadOf` 规则）**根本不读 http.proxy**，是 LFS 的 HTTPS 请求触发的。实测：Clash 真实端口是 `mixed-port: 7890`（`randomMixedPort: false`）；不设代理时 GitHub SSH 与 gitee/pypi 直连均正常，仅 huggingface 不通。 |
 | 16 | **禁止 pptx 入库**（`.gitignore` 已固化 `*.pptx`；大文件交付物用网盘/本地，不进 git） | 2026-10-30：两份 ~140MB 答辩 PPT 被加进 commit → GitHub pre-receive 拒收（GH001 Large files），被迫重写未推送历史。同类风险：>50MB 的任何产物（模型/缓存/导出包）入库前先查体积。 |
 | 17 | **新增 `settings.py` 配置字段必须同时有读取点**：要么接上消费者（代码+测试），要么在字段注释写明"预期消费者与接线计划"；落地前先 `grep` 读写两向。配置项三连孤儿（`pipeline_dispatch_budget_s`/`pipeline_fusion_budget_s`/`rag_use_reranking`/`rag_use_redis_cache` —— 四个）证明"先加字段后接线"必然烂尾 | 2026-10-31（A.99）：`rag_use_redis_cache` 全仓 0 读取点（grep 实证），是第四个孤儿；运维以为关掉了实际什么都没发生，比没有更危险。 |
+| 18 | **禁止引用已作废的测试集出任何"达标"结论**：`kb_qa_golden_v1` / `kb_golden_v1` / `us365k_retrieval_golden_v1` / `clean_eval_set_20261020` / `double_engine_eval_set(_v3)` / `restored_non_echo_20261021` / `consistency_test_cases`；新数据集必须过 `scripts/audit/p79_dataset_quality_gate.py` 四道闸（重复率0/模板≤10%/影像术语≥50%/自相矛盾0） | 2026-11-08：14 个自造测试集全量核查，**无一能用**——`kb_qa_golden_v1` 含影像术语仅 11.8%，`consistency_test_cases` 156/780 重复且有"边界清晰…边界欠清晰"自相矛盾句。导致 7 项核心指标（hit@10 98.53% / 一致率 79.56% / faithfulness 0.935 等）**全部作废**，此前被当成成绩对外报过 |
 
 ## 数据质量事故归档（2026-10-20，详见 16 号 A.70.x）
 
