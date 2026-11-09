@@ -149,8 +149,6 @@ class TestCaliberChecks:
         这条防的是"退回硬编码清单"——那样新增实现会静默逃过对拍，
         正是本项目 p94 修了 p94b 漏修的同一种病。
         """
-        import shutil
-
         gate = _load_gate_module()
         before = {rel for _, rel, _, _ in gate.discover_ndcg_implementations()}
         probe = _ROOT / "scripts/audit/zz_probe_ndcg.py"
