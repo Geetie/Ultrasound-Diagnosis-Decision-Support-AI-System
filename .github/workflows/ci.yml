@@ -154,6 +154,14 @@ jobs:
       - name: B2 gold uniqueness tool guard (p117)
         run: |
           python -m pytest tests/unit/quality/test_p117_gold_uniqueness.py             -q --tb=short -p no:cacheprovider --noconftest
+      # p121（合成数据七道闸）/ p126（数据集版本化与覆盖矩阵）同理：
+      # 本体要么调 LLM 要么连 DB，CI 里跑不了。但它们的**判据与阈值必须被守护** ——
+      # 2026-11-09 实测：8B 模型在提示词明确写「禁止编造文献名」的情况下，
+      # 10 条里仍有 4 条编造（《C-TIRADS 2018》/《LI-RADS 2017》），
+      # 加闸后才抓到。若有人把闸放宽或删掉，数据集会静默退化。
+      - name: Synthetic data gate + dataset version guards (p121/p126)
+        run: |
+          python -m pytest tests/unit/quality/test_p121_synth_gate.py             tests/unit/quality/test_p126_dataset_version.py             -q --tb=short -p no:cacheprovider --noconftest
 
   perf-baseline:
     name: Performance baseline (serial)
