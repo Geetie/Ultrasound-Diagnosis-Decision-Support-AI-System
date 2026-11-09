@@ -992,6 +992,11 @@ try:
 except Exception as e:
     logger.warning("tracing_instrument_failed", error=str(e))
 
+# 知识库语料治理（2026-11-09）：把 source_set / source_conflict 的已有能力暴露成 HTTP。
+# 前端 KbManagementPage 需要它才能显示「本院启用哪几套 + 冲突在哪」；
+# 在此之前该页面全是 mock 数据。
+from app.api.v1.kb_management import router as kb_management_router  # noqa: E402
+
 app.include_router(health_router, prefix="/api/v1")
 app.include_router(auth_router, prefix="/api/v1/auth")
 app.include_router(diagnosis_router, prefix="/api/v1/diagnosis")
@@ -1001,6 +1006,10 @@ app.include_router(device_router, prefix="/api/v1/admin/device")
 app.include_router(feedback_router, prefix="/api/v1/feedback")
 # 评测集进度（只读；数据来自 scripts/langfuse/collect_eval_set.py 的报告文件）
 app.include_router(eval_set_router, prefix="/api/v1/eval-set")
+# 知识库语料治理：列出语料 / 检出口径分歧 / 读写本院启用配置。
+# 三个能力底层都已存在（source_set.py 28 个来源规则表、source_conflict.py 比对逻辑），
+# 本挂载只是把它们暴露成前端可用的 HTTP 端点。
+app.include_router(kb_management_router)
 app.include_router(imaging_router, prefix="/api/v1/imaging")
 app.include_router(annotations_router, prefix="/api/v1/images")
 # 结节分割（app/inference/nodule_segmentation.py；权重缺失时端点 503 + 原因）
