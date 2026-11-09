@@ -171,6 +171,17 @@ jobs:
       - name: Retrieval-caliber guards (p123/p128)
         run: |
           python -m pytest tests/unit/quality/test_p123_context_recall.py             tests/unit/quality/test_p128_b2_upgrade.py             -q --tb=short -p no:cacheprovider --noconftest
+      # p79 数据质量四道闸的 kind 分档必须被守护。
+      #
+      # 2026-11-09 新增 `mixed` 类型：L3 手工集按 persona 分层（resident/attending/
+      # clinician/qa 四类），其中 clinician 与 qa 问处置与体系时**本就不该含影像术语**。
+      # 该集覆盖率 40.3%，按 `retrieval` 的 50% 门槛会误判 FAIL。
+      #
+      # 若有人把 mixed 的门槛调到 0.2 以下，「纯患者问诊集」也会通过 —— 闸就失效了。
+      # 这条单测把三档门槛钉住：retrieval ≥0.50 / mixed ≥0.30 / plain_language ≤0.40。
+      - name: Dataset quality gate kind guards (p79)
+        run: |
+          python -m pytest tests/unit/quality/test_p79_dataset_quality_gate.py             -q --tb=short -p no:cacheprovider --noconftest
 
   perf-baseline:
     name: Performance baseline (serial)
