@@ -75,14 +75,34 @@ def mrr_at_k(ranking: list[str], gold: set[str], k: int = 10) -> float:
 
 
 def ndcg_at_k(ranking: list[str], gold: set[str], k: int = 10) -> float:
-    """二值相关性 NDCG@k（相关=1，不相关=0），与 p94 完全同口径。"""
+    """二值相关性 NDCG@k（相关=1，不相关=0）。
+
+    ## 2026-11-09 修 bug（与 p94 同样的错，此处漏修）
+
+    原实现按「命中次数」累加 DCG，而 IDCG 按 ``min(|gold|, k)`` 算。
+    当候选池里同一 chunk 有**多个版本副本**（本库多 kb_version 并存）时，
+    一个 gold 会被命中 2~3 次 → DCG 项数 > IDCG 项数 → **NDCG > 1**。
+
+    实测：同一 gold 出现 3 次 → 2.1309；出现 2 次排 rank2 → 1.1309（正确 0.5）。
+    随机 5000 例中 **2392 例越界**。
+
+    **危害**：本脚本是 ``reports/p94b_*.json`` 12 份已发布 A/B 报告的产出者。
+    那 12 份报告里越界是 0 条，**只是因为 kb 限定到 kb_v1.4.0 后没有重复副本
+    —— 是数据运气，不是代码正确**。一旦语料又变多版本并存，同样的 bug 立刻复现。
+
+    修法：``seen`` 去重 + clamp [0,1]。
+    """
     dcg = 0.0
+    seen: set[str] = set()
     for rank, cid in enumerate(ranking[:k], start=1):
-        if cid in gold:
+        if cid in gold and cid not in seen:
+            seen.add(cid)
             dcg += 1.0 / math.log2(rank + 1)
     n_ideal = min(len(gold), k)
     idcg = sum(1.0 / math.log2(r + 1) for r in range(1, n_ideal + 1))
-    return dcg / idcg if idcg else 0.0
+    if not idcg:
+        return 0.0
+    return min(1.0, max(0.0, dcg / idcg))
 
 
 # ------------------------------------------------------------------- HTTP

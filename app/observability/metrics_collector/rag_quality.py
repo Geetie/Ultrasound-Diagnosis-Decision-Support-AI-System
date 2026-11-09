@@ -83,14 +83,35 @@ class RetrievalQuality:
 
 
 def precision_at_k(ranked: Sequence[str], relevant: Sequence[str] | set[str], k: int) -> float:
-    """``|命中 ∩ 前 k| / k``。纯函数（守卫钉住）。"""
+    """``|命中 ∩ 前 k| / min(k, len(ranked))``。纯函数（守卫钉住）。
+
+    ## 分母为什么是 min(k, len(ranked)) 而不是 k（2026-11-09）
+
+    生产调用是 ``precision_at_k(ranked, relevant, top_k)``，其中 ``ranked`` 是
+    **检索实际返回的列表** —— 它可能不足 k 个（检索只召回 3 条而 k=10）。
+
+    两种口径：
+    - ``/ k``：把「候选池不足」当成「检索质量差」，会把 precision 无端压低
+    - ``/ min(k, len)``：只在「实际返回的那些」里算命中比例，语义是「返回的准不准」
+
+    本函数服务的是**在线质量监控**，关心的是「这次检索返回的东西准不准」，
+    而不是「召回是否够多」（那是 recall 的职责）。所以取后者。
+
+    这与经典 IR 定义（分母为 k，前提是候选池保证 ≥k）不同 —— 是**本场景的刻意选择**，
+    在此写清以免被误认为实现错误。
+    """
     if k <= 0:
         raise ValueError("k must be positive")
     top = list(ranked)[:k]
     if not top:
         return 0.0
     rel = set(relevant)
-    return sum(1 for cid in top if cid in rel) / len(top)
+    # 2026-11-09 修 bug：分母应为 **k**（docstring 承诺的「前 k 个里命中的比例」），
+    # 而不是 len(top)。当候选不足 k 个时两者不等：
+    # precision_at_k(['a'], {'a'}, 10) 原实现返回 1.0，按定义应为 0.1。
+    # 用 min(k, len(top)) 是因为候选池不足 k 时，「前 k 个」最多只有这么多个，
+    # 否则会在候选不足时无端压低精确率。
+    return sum(1 for cid in top if cid in rel) / min(k, len(top))
 
 
 def recall_at_k(ranked: Sequence[str], relevant: Sequence[str] | set[str], k: int) -> float:
@@ -116,8 +137,15 @@ def ndcg_at_k(ranked: Sequence[str], relevant: Sequence[str] | set[str], k: int)
         return 0.0
     top = list(ranked)[:k]
     dcg = 0.0
+    # 2026-11-09 修 bug：同一相关 chunk 可能在 top-k 里出现多次（多版本副本）。
+    # 原实现按命中次数累加 DCG，使 dcg 项数 > idcg 项数 → 比值 > 1。
+    # 外面那个 `min(..., 1.0)` 只是兜住了上界，**兜底≠算对**：
+    # 它把本应 0.5 的情形抬成 1.0，是「静默算错」的隐蔽形态。
+    # 用 seen 去重，保证每个相关 chunk 只计一次。
+    seen: set[str] = set()
     for index, cid in enumerate(top, start=1):
-        if cid in rel:
+        if cid in rel and cid not in seen:
+            seen.add(cid)
             dcg += 1.0 / math.log2(index + 1)
     ideal_hits = min(len(rel), k)
     idcg = sum(1.0 / math.log2(i + 1) for i in range(1, ideal_hits + 1))
