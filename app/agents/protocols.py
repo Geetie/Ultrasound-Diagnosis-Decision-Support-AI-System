@@ -141,6 +141,32 @@ class AgentResponse(BaseModel):
             ``"none"``（一致） / ``"minor"``（同一档内微小偏差） /
             ``"major"``（跨档偏差，如 TR3→TR4 — 不容忍 → 强制人工复核）。
             specialist 自身不写入（仅占位 ``None``），保留给 FUS 轨道。
+        grading_detail: 分级的**完整口径**（体系 + 原始码 + 主级）。
+
+            ## 为什么要这个字段（2026-11-09）
+
+            知识库现在**同时装着两套分级体系**，而它们的码在主级上会撞车：
+
+            | 体系 | 码 | 含义 |
+            |---|---|---|
+            | C-TIRADS 2021（中国，计数法） | ``4A`` | **低度**可疑恶性（2%~10%） |
+            | ACR TI-RADS 2017（美国，加权法） | ``TR4`` | **中度**可疑恶性 |
+
+            两者主级都是 "4"，于是 ``_to_tr_canonical("4a") → "TR4"`` 把
+            **低度可疑**和**中度可疑**合并成同一个码 —— 风险被系统性高估一档。
+
+            ``content`` 里模型会把两套体系都写清楚（含来源），但**前缀简写码**
+            只取主级，医生看到 ``甲状腺 · TR4`` 会以为中度可疑。
+
+            本字段让**展示层**能拿到正确的码，同时**不动下游契约**：
+            ``deviation_severity`` / 融合层 / 评测 / DB 仍按 ``TR1..TR5`` 主级消费。
+
+            形如::
+
+                {"system": "C-TIRADS 2021", "code": "4A", "major": 4,
+                 "authority": "中华医学会超声医学分会",
+                 "comparison": {"system": "ACR TI-RADS 2017",
+                                "code": "TR4", "major": 4}}
     """
     agent_name: str
     organ: Organ | None = None
@@ -157,6 +183,9 @@ class AgentResponse(BaseModel):
     used_evidence_ids: list[str] = Field(default_factory=list)
     # FUS 分级偏差判定（specialist 仅占位 None，由 FUS-01 融合层写入）
     deviation_severity: str | None = None
+    # 分级完整口径（体系 + 原始码 + 主级 + 对照体系）。展示层消费；
+    # 下游契约（融合/评测/DB）仍读 content 与各自的 TRx 主级，不依赖本字段。
+    grading_detail: dict[str, Any] | None = None
     # === 医生直接信息需求（M1~M12）结构化输出 ===
     # 全部可选且带默认值：既有构造点（生产 20 余处 + 测试 30 余处）均使用
     # 关键字参数，扩展不会破坏任何调用方；未实现的专科智能体保持默认空值，

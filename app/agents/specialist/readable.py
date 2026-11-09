@@ -76,9 +76,41 @@ def lvef_phrase(value: float | None) -> str:
     return f"左室射血分数（LVEF）{value:g}%"
 
 
-def graded_content(organ: Organ, grade: str, reason: str | None) -> str:
-    """甲状腺 / 肝脏的结论正文：``部位 · 分级 — 理由``（分级简写原样保留）。"""
-    head = f"{organ_cn(organ)} · {grade}"
+def graded_content(
+    organ: Organ,
+    grade: str,
+    reason: str | None,
+    *,
+    detail: dict | None = None,
+) -> str:
+    """甲状腺 / 肝脏的结论正文：``部位 · 分级 — 理由``（分级简写原样保留）。
+
+    ## ``detail``：用**体系原始码**替代主级简写（2026-11-09 加）
+
+    背景：知识库同时装 C-TIRADS 2021 与 ACR TI-RADS 2017，两者主级都是 "4"：
+
+    | 体系 | 码 | 含义 |
+    |---|---|---|
+    | C-TIRADS 2021 | ``4A`` | **低度**可疑恶性（2%~10%） |
+    | ACR TI-RADS 2017 | ``TR4`` | **中度**可疑恶性 |
+
+    `grade` 是下游契约的主级（``TR4``），但直接拼到标题上会让医生把
+    **低度可疑**读成**中度可疑**。传了 ``detail`` 时改用体系原始码，
+    并在码后标注体系名，避免歧义::
+
+        甲状腺 · 4A 类（C-TIRADS 2021） — …
+
+    ``detail`` 为 ``None`` 或解析不出体系时，**行为与旧版完全一致**
+    （拼 ``grade``），所以肝脏等其它器官零影响。
+    """
+    head_grade = grade
+    if detail:
+        code = detail.get("code")
+        system = detail.get("system")
+        # 只在"体系码与主级不同"时才替换 —— 相同则保持旧观感，避免无意义长串
+        if code and system and str(code).replace(" ", "") != str(grade):
+            head_grade = f"{code}（{system}）"
+    head = f"{organ_cn(organ)} · {head_grade}"
     return f"{head} — {reason}" if reason else head
 
 

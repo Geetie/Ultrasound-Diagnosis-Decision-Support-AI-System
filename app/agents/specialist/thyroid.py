@@ -268,19 +268,67 @@ class ThyroidSpecialistAgent(RAGSpecialistAgent):
         # 7) 选 top-3 证据 chunk
         evidence_ids = [c.chunk_id for c in chunks[:3]]
 
+        # 分级完整口径（含 C-TIRADS 原始码）。先算出来，正文与字段共用同一份，
+        # 避免"标题说 4A、字段说 TR4"这种不一致。
+        grading_detail = self._build_grading_detail(normalized, grade)
+
         return AgentResponse(
             agent_name="thyroid_specialist",
             organ=Organ.THYROID,
             # A.59 可读化：原先写 `[thyroid] TR3 — …`（英文器官代码进医生可见正文）
-            content=graded_content(Organ.THYROID, grade, reason),
+            # 2026-11-09：传 detail，让标题用 C-TIRADS 原始码（`4A 类`）而不是主级 `TR4`
+            content=graded_content(Organ.THYROID, grade, reason, detail=grading_detail),
             confidence=final_conf,
             evidence_chunk_ids=evidence_ids,
+            # 2026-11-09：分级完整口径。`grade` 是**主级 canonical**（TR1..TR5，下游契约），
+            # 但正文的主判读是 C-TIRADS 分类（如 4A）。两者主级都是 "4" 却语义不同
+            #（C-TIRADS 4A = 低度可疑 2%~10%；ACR TR4 = 中度可疑）→ 会把风险高估一档。
+            # 这里把**原始码**留给展示层，下游仍读 `grade`，契约为零变化。
+            grading_detail=grading_detail,
             reasoning_trace=[
                 "grading_system -> TI-RADS",
                 f"grade -> {grade}",
                 f"score_bonus -> {score_bonus}",
             ],
         )
+
+    @staticmethod
+    def _build_grading_detail(normalized: str, major_grade: str) -> dict[str, Any]:
+        """从模型输出里解析出**两套体系各自的码**，供展示层用。
+
+        只做解析与标注，不参与分级决策（下游仍用 `major_grade`）。
+
+        返回 ``{"system", "code", "major", "authority", "comparison"?}``；
+        解析不出体系码时返回 ``{"system": "TI-RADS", "code": major_grade, "major": ...}``
+        —— 保证调用方永远有可用值，不用处理 None。
+        """
+        detail: dict[str, Any] = {
+            "system": "TI-RADS",
+            "code": major_grade,
+            "major": major_grade,
+        }
+        try:
+            # C-TIRADS 分类：正文里写作 `4A类` / `4a 类` / `5类` / `3类`
+            ct = re.search(r"([1-6])\s*[AaBbCc]?\s*类", normalized or "")
+            if ct:
+                code = ct.group(0).replace(" ", "")
+                detail.update({
+                    "system": "C-TIRADS 2021",
+                    "code": code,
+                    "authority": "中华医学会超声医学分会",
+                })
+            # ACR 对照：正文里写作 `TR4` / `→ TR4`
+            acr = re.search(r"\bTR\s?([1-5])\b", normalized or "")
+            if acr and detail.get("system") == "C-TIRADS 2021":
+                detail["comparison"] = {
+                    "system": "ACR TI-RADS 2017",
+                    "code": f"TR{acr.group(1)}",
+                    "major": f"TR{acr.group(1)}",
+                    "authority": "American College of Radiology",
+                }
+        except Exception:  # silent-ok: 解析失败退回主级码，不影响主流程
+            logger.debug("thyroid_grading_detail_parse_failed", fallback=major_grade)
+        return detail
 
     @staticmethod
     def _extract_reason(normalized_text: str, grade: str) -> str:
