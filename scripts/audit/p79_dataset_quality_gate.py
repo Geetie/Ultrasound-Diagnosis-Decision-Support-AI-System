@@ -116,12 +116,32 @@ THRESHOLDS = {
 #: 而患者解释按定义就该**少用**专业术语（好解释的特征恰恰是通俗）。
 #: 覆盖率越高，说明这份解释越不像给病人看的。
 #:
-#: 三种类型：
+#: 四种类型：
 #:   ``retrieval``（默认）：要求 ≥50%，查询应像医生写的；
 #:   ``plain_language``：**反向**判据——覆盖率 > 40% 才报警（话说得太专业了）；
+#:   ``mixed``：要求 ≥30%，适用于**按 persona 分层的临床问题集**；
 #:   ``skip``：不判（如纯标注清单类数据集）。
-DATASET_KINDS = ("retrieval", "plain_language", "skip")
+#:
+#: ## 为什么需要 ``mixed``（2026-11-09 实测）
+#:
+#: L3 手工精标集（201 条，按 resident/attending/clinician/qa 四类 persona 分层）
+#: 的覆盖率是 **40.3%**，按 ``retrieval`` 的 50% 门槛会判 FAIL。
+#:
+#: 但抽查 120 条「无影像术语」的 query 后确认**这不是缺陷**：
+#:   「TgAb 升高的时候，还能用 Tg 判断 DTC 有没有复发吗？」
+#:   「PET-CT 在甲状腺癌里不是常规项目，那什么时候才考虑用？」
+#:   「Hürthle 细胞肿瘤是什么，良恶性怎么定？」
+#: 这些是**真实的随访/检查选择/病理类型问题**，本就不该含影像描述。
+#:
+#: **按 persona 分层的数据集，clinician 与 qa 两类天然少用影像术语。**
+#: 强行塞术语会破坏 persona 的真实性——那是在为过闸而造假数据。
+#:
+#: 30% 门槛的依据：该数据集实测 40.3%，仍明显高于「纯患者问诊集」的水平
+#: （患者解释集实测 0.22），说明它确实是临床问题集而非通俗解释。
+DATASET_KINDS = ("retrieval", "plain_language", "mixed", "skip")
 PLAIN_LANGUAGE_MAX_COVERAGE = 0.40
+#: mixed 类型的最低影像术语覆盖率（低于此值说明查询不像临床问题）
+MIXED_MIN_COVERAGE = 0.30
 
 TEMPLATE_PREFIX_LEN = 18
 TEMPLATE_MIN_GROUP = 3
@@ -228,6 +248,20 @@ def _coverage_check(kind: str, coverage: float) -> dict:
             "passed": None,
             "kind": "skip",
             "why": "该数据集类型不适用此项判据",
+        }
+    if kind == "mixed":
+        # 按 persona 分层的临床问题集：clinician/qa 天然少用影像术语
+        return {
+            "name": "imaging_term_coverage",
+            "value": round(coverage, 4),
+            "threshold": MIXED_MIN_COVERAGE,
+            "passed": coverage >= MIXED_MIN_COVERAGE,
+            "kind": "mixed",
+            "why": (
+                "按 persona 分层的临床问题集：resident/attending 问影像判读（含术语），"
+                "clinician/qa 问处置与体系（不含术语）都是真实的。"
+                "门槛 30% 用于区分「临床问题集」与「纯患者问诊集」（后者实测 0.22）。"
+            ),
         }
     return {
         "name": "imaging_term_coverage",

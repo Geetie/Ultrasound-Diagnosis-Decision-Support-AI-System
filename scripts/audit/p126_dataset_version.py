@@ -88,7 +88,7 @@ def compute_fingerprint(rows: list[dict]) -> str:
     return h.hexdigest()[:16]
 
 
-def coverage(rows: list[dict]) -> dict:
+def coverage(rows: list[dict], dims: tuple[str, ...] = DIMS) -> dict:
     """统计覆盖矩阵。返回 {cell_key: n}。
 
     兼容两种 metadata 布局：
@@ -100,7 +100,7 @@ def coverage(rows: list[dict]) -> dict:
     for r in rows:
         md = r.get("metadata") if isinstance(r.get("metadata"), dict) else r
         vals = []
-        for d in DIMS:
+        for d in dims:
             v = md.get(d)
             if v is None:
                 missing_dims[d] += 1
@@ -117,6 +117,15 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--write-manifest", action="store_true")
     ap.add_argument("--check-coverage", action="store_true")
     ap.add_argument("--min-per-cell", type=int, default=10)
+    ap.add_argument(
+        "--dims",
+        default=",".join(DIMS),
+        help=(
+            "覆盖矩阵用哪几个维度。默认 hop,specificity,persona,length（16×3=48 格）。"
+            "按 persona 分层的数据集建议用 hop,specificity,persona（16 格）——"
+            "length 只是 query 字数，不是临床差异，纳入它会把 200 条摊成 48 格而每格不足 10。"
+        ),
+    )
     args = ap.parse_args(argv)
 
     p = Path(args.dataset)
@@ -124,7 +133,8 @@ def main(argv: list[str] | None = None) -> int:
     print(f"数据集: {p}  条数 {len(rows)}")
 
     fp = compute_fingerprint(rows)
-    cov = coverage(rows)
+    dims = tuple(x.strip() for x in args.dims.split(",") if x.strip())
+    cov = coverage(rows, dims)
     cells = cov["cells"]
 
     print(f"\n=== 版本信息 ===")
@@ -138,7 +148,7 @@ def main(argv: list[str] | None = None) -> int:
     # 分布统计
     from collections import Counter as C
 
-    for d in DIMS:
+    for d in dims:
         vals = C()
         for r in rows:
             md = r.get("metadata") if isinstance(r.get("metadata"), dict) else r
@@ -159,7 +169,11 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.check_coverage:
         print(f"\n=== 覆盖矩阵（要求每格 ≥{args.min_per_cell}）===")
-        total_cells = 2 * 2 * 4 * 3   # hop × spec × persona × length
+        total_cells = 1
+        for d in dims:
+            vals_d = {str((r.get("metadata") if isinstance(r.get("metadata"), dict) else r).get(d, "?")) for r in rows}
+            total_cells *= max(len(vals_d), 1)
+        print(f"  维度: {dims}")
         print(f"  理论格子数: {total_cells}")
         print(f"  实际有样本: {len(cells)}")
         short = {k: v for k, v in cells.items() if v < args.min_per_cell}

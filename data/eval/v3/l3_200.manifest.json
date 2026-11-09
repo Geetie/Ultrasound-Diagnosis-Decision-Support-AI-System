@@ -1,0 +1,37 @@
+{
+  "dataset_version": "rag-eval-v3.0.0-l3",
+  "dataset_path": "data/eval/v3/l3_200.jsonl",
+  "fingerprint": "c5e4df2f8a9f7199",
+  "git_commit": "7cf8958",
+  "n": 201,
+  "dims": [
+    "hop",
+    "specificity",
+    "persona",
+    "length"
+  ],
+  "distribution": {
+    "hop": {
+      "single": 97,
+      "multi": 104
+    },
+    "specificity": {
+      "specific": 100,
+      "abstract": 101
+    },
+    "persona": {
+      "resident": 52,
+      "attending": 51,
+      "clinician": 47,
+      "qa": 51
+    },
+    "length": {
+      "short": 13,
+      "medium": 181,
+      "long": 7
+    }
+  },
+  "coverage_cells": 16,
+  "cells_below_min": 0,
+  "note": "指标必须带 dataset_version + fingerprint 一起报，否则无法追溯是哪个数据集版本算的"
+}
