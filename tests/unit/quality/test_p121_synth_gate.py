@@ -286,3 +286,70 @@ class TestBrokenSentenceAfterCleanup:
         }
         probs = mod.check_one(row, "kb", {"kb:x#0000"})
         assert any("残句" in p for p in probs), probs
+
+
+class TestLiradsDefinitionGate:
+    """闸15：LI-RADS 类别与语义必须对得上（2026-11-09 L3 后新增）。
+
+    ## 为什么必须有（闸14 只覆盖 C-TIRADS）
+
+    L3 人工审核抓到这条：
+    ```
+    「原文提到：…LR-3：明确恶性（高度确定恶性）」
+    ```
+    **LR-3 实际是「不确定」，LR-5 才是明确恶性。**
+
+    C-TIRADS 靠「分数↔分级」对照表能校验（闸14），
+    LI-RADS 没有分数，只能靠「类别↔定义」对照。
+    """
+
+    _KB = (
+        "LI-RADS 分类：LR-1 明确良性，LR-2 可能良性，LR-3 不确定，"
+        "LR-4 可能恶性，LR-5 明确恶性（HCC），LR-M 非HCC特异，LR-TIV 静脉瘤栓。"
+    )
+
+    def _row(self, answer: str) -> dict:
+        return {
+            "organ": "liver",
+            "query": "肝脏 LR 分类怎么判？",
+            "reference_answer": answer,
+            "gold": [{"chunk_id": "kb:x#0000"}],
+        }
+
+    def test_lr3_as_malignant_flagged(self, mod):
+        """LR-3 说成「明确恶性」必须抓 —— 这是 L3 实测的真错误。"""
+        probs = mod.check_one(
+            self._row("原文提到：LR-3：明确恶性（高度确定恶性），需要手术。"),
+            self._KB, {"kb:x#0000"},
+        )
+        assert any("LR-3" in p and "明确恶性" in p for p in probs), probs
+
+    def test_lr5_as_benign_flagged(self, mod):
+        """LR-5 说成「可能良性」必须抓。"""
+        probs = mod.check_one(
+            self._row("原文提到：LR-5：可能良性，建议随访观察。"), self._KB, {"kb:x#0000"}
+        )
+        assert any("LR-5" in p for p in probs), probs
+
+    def test_lr3_uncertain_passes(self, mod):
+        """LR-3 说成「不确定」是正确的，不许误报。"""
+        probs = mod.check_one(
+            self._row("原文提到：LR-3 属于不确定档，可能良性也可能恶性，需进一步评估。"),
+            self._KB, {"kb:x#0000"},
+        )
+        assert not any("LI-RADS 类别定义错误" in p for p in probs), probs
+
+    def test_lr5_malignant_passes(self, mod):
+        """LR-5 说成「明确恶性」是正确的。"""
+        probs = mod.check_one(
+            self._row("原文提到：LR-5 是明确恶性（HCC），建议多学科会诊。"),
+            self._KB, {"kb:x#0000"},
+        )
+        assert not any("LI-RADS 类别定义错误" in p for p in probs), probs
+
+    def test_lrm_not_hcc_specific(self, mod):
+        """LR-M 是「非 HCC 特异」，说成良性必须抓。"""
+        probs = mod.check_one(
+            self._row("原文提到：LR-M 属于良性，无需处理。"), self._KB, {"kb:x#0000"}
+        )
+        assert any("LR-M" in p for p in probs), probs
