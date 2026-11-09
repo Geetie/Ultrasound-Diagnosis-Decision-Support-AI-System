@@ -529,6 +529,23 @@ class Settings(BaseSettings):
     # specialist/base.py 的 DEFAULT_RAG_TOP_K=5，此字段零读者；接线会改变
     # 检索行为 5→20，须先经评测再定）。
     rag_rerank_output_top_k: int = 5
+    # === 精排条件化（2026-11-09 加，依据 B2 n=117 实测）===
+    #
+    # 精排不是"全局开或全局关"，而是**有前提条件**的。两个条件都来自实测：
+    #
+    # **条件 1：候选数要够。** 候选太少时交叉编码器没有区分度可做（全是同一段的
+    # 近似副本），重排只会引入噪声。低于这个数就跳过精排、保持 RRF 原始顺序。
+    #
+    # **条件 2：深度要有硬上限。** `Drowning in Documents`（arXiv 2411.11767）实测：
+    #   "reranking a small set of documents, e.g. **less than 100**, is an effective way
+    #    to improve recall... as we increase k further **beyond 100**, the rerankers'
+    #    Recall@10 **dramatically decreases**"
+    # 本项目在 3745 chunks 上远未触顶，实测 depth 20 与 40 **四项指标逐位相同**，
+    # 所以默认 20 就够（省一半延迟：376ms → 约 190ms/查询）。
+    #
+    # **读取点**：`app/rag/service.py::retrieve` 的 Stage 3。
+    rag_rerank_min_candidates: int = 10
+    rag_rerank_max_depth: int = 20
     rag_min_score_threshold: float = 0.5
     rag_bm25_min_top1_score: float = 0.3
     rag_bm25_min_results: int = 3
@@ -620,6 +637,20 @@ class Settings(BaseSettings):
     #: 视为「最新」的 kb_version；为空则取 PG 里的 max(kb_version)。
     rag_latest_kb_version: str = ""
 
+    #: RRF 两条腿权重（2026-11-08 加，2026-11-09 加限定语）。
+    #:
+    #: **读取点**：`app/rag/retriever.py::_rrf_fuse`。
+    #:
+    #: ⚠️ **这两个值的依据有前提条件，别不加限定语地引用**：
+    #: 1:2 的"+8.6pt hit@10 / p=0.006 显著"是 **在没有精排的链路上**测出来的。
+    #: 2026-11-09 的 2×2 实测（`reports/RAG阶段2_检索前沿研究_20261109.md` §3.2.3）：
+    #: 精排（bge-reranker-v2-m3）接管排序后，融合反而不如纯 dense ——
+    #:   hit@5  0.8376（融合）vs **0.9145**（纯 dense）  → -7.7pt
+    #:   hit@10 0.8889（融合）vs **0.9231**（纯 dense）  → -3.4pt
+    #:   hit@1 上两者打平（p=0.79，判不动）
+    #: 机制：BM25 给"词面重合但语义不对"的块加分，这些块被精排按语义重排后仍进不了前 5，
+    #: 却挤掉了语义正确但词面不重合的候选 —— 融合降低了候选池的"语义纯度"。
+    #: **所以精排上线时 w_bm25 应回到 1.0（或直接关 sparse 腿）；两者不能同时优化。**
     rag_rrf_w_dense: float = 1.0
     rag_rrf_w_bm25: float = 2.0
 
@@ -682,7 +713,23 @@ class Settings(BaseSettings):
     bge_reranker_host: str = 'localhost'
     bge_reranker_port: int = 8005
     bge_reranker_timeout_seconds: float = 5.0
-    bge_reranker_model: str = 'bge-reranker-base'
+    #: ⚠️ **不要改回 `bge-reranker-base`**（2026-11-09，B2 n=117 实测）。
+    #:
+    #: base 在 3 个召回基座 × 4 种深度上**全部为负**：
+    #:   融合基座 hit@1 -6.8pt、hit@5 -6.0pt、**NDCG -7.9pt 且 95%CI 全程为负**
+    #:   （[-0.1445, -0.0151]）→ 真负增益，不是噪声。
+    #: 换 v2-m3 后转正（纯 dense 基座）：
+    #:   hit@1 +12.0pt (McNemar p=0.0201) / hit@5 +11.1pt (p=0.0010) / hit@10 +5.1pt (p=0.0312)
+    #:
+    #: 根因是**模型**，不是查询、不是深度 —— 逐项验证过：
+    #:   * 不是"不懂术语"：base 对纯中文医学问句打 8.64，对无关文本打 -10.06（术语认识）；
+    #:   * 不是"查询形态"：只把句式规约成自然语言，base 从 -7.7pt 只救回 -5.1pt，**仍为负**；
+    #:   * 不是"深度"：10→20→40 单调变好，上一轮"深度越深越差"是 base 的问题被误读。
+    #:
+    #: 部署注意：v2-m3 权重 2.27 GB、fp16 约 4.5 GB 显存、376ms/查询（40 条候选）。
+    #: 服务需要用 `scripts/start_embedding_services.py --service reranker
+    #: --model-dir ~/uai/models/bge-reranker-v2-m3` 起，端口与 `bge_reranker_port` 一致。
+    bge_reranker_model: str = 'bge-reranker-v2-m3'
     bge_reranker_health_check_timeout_seconds: float = 3.0
 
     # Agnes LLM (T-GA-RAG-01 optional enhancement)

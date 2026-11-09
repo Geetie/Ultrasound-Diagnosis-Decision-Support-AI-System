@@ -361,7 +361,7 @@ class Retriever:
             existing.extend(hits)
             legs[method] = existing
 
-        fused = self._rrf_fuse(legs)
+        fused = self._rrf_fuse(legs, use_reranking=bool(request.use_reranking))
         top_k = max(1, request.top_k)
         # A.158：截断时保底保留影像块（与 service 层 image_exempt 同口径）——
         # 影像点带 session 过滤后通常只有 1 个，RRF 分数与文本块并列时被稳定
@@ -1111,21 +1111,51 @@ class Retriever:
         return image_hits + hits
 
     def _rrf_fuse(
-        self, legs: dict[RetrievalMethod, list[_Hit]]
+        self,
+        legs: dict[RetrievalMethod, list[_Hit]],
+        *,
+        use_reranking: bool = False,
     ) -> list[_Hit]:
-        """Reciprocal Rank Fusion: fused(d) = sum(1 / (k + rank_i(d))).
+        """Reciprocal Rank Fusion: fused(d) = sum(w_leg / (k + rank_i(d))).
 
         Preserves the original _Hit.chunk / _Hit.source from the first leg
         where the chunk appears; ranks the fused list by fused score.
+
+        ## 为什么 `use_reranking` 会改变权重（2026-11-09，B2 n=117 实测）
+
+        `rag_rrf_w_dense=1.0 / w_bm25=2.0` 的"+8.6pt hit@10，p=0.006 显著"
+        是**在没有精排的链路上**测出来的。精排接管排序后，同样的 1:2 反而更差：
+
+        ==================  =======  =======  =======
+        配置（都带 v2-m3@20）  hit@1    hit@5    hit@10
+        ==================  =======  =======  =======
+        纯 dense            0.6923   **0.9145**  **0.9231**
+        融合 1:2            0.7094   0.8376   0.8889
+        ==================  =======  =======  =======
+
+        hit@1 上两者打平（+1.7pt，McNemar p=0.79，判不动），
+        **hit@5 差 -7.7pt、hit@10 差 -3.4pt、NDCG 差 -4.4pt**。
+
+        机制：BM25 给"词面重合但语义不对"的块加分，这些块被交叉编码器按语义
+        重排后仍进不了前 5，却**挤掉了语义正确但词面不重合的候选** ——
+        融合降低了候选池的"语义纯度"。没有精排时这个代价被 hit@10 的词面兜底盖住了。
+
+        所以：**精排开启时退回等权**（`w=1.0:1.0`），把"什么算相关"的判断交给
+        交叉编码器；精排关闭时才用 `settings` 里的调优权重。
+        注意这不是"关掉 BM25"——稀疏腿仍在（等权参与融合），只是不再压过 dense。
         """
         k = self._rrf_k
-        # 各腿权重（2026-11-08）：默认 dense 1.0 / sparse 2.0。
-        # 依据 B2（n=117）实测：1:2 的 hit@10 = 0.9573，优于等权 0.9316 与纯 dense 0.8718
-        # （McNemar p=0.006 显著）。权重来自 settings，避免硬编码。
-        leg_weights = {
-            RetrievalMethod.DENSE: settings.rag_rrf_w_dense,
-            RetrievalMethod.SPARSE: settings.rag_rrf_w_bm25,
-        }
+        if use_reranking:
+            # 精排接管排序 → 两条腿等权（依据见 docstring）
+            leg_weights = {
+                RetrievalMethod.DENSE: 1.0,
+                RetrievalMethod.SPARSE: 1.0,
+            }
+        else:
+            leg_weights = {
+                RetrievalMethod.DENSE: settings.rag_rrf_w_dense,
+                RetrievalMethod.SPARSE: settings.rag_rrf_w_bm25,
+            }
         fused_scores: dict[str, float] = {}
         first_seen: dict[str, _Hit] = {}
         for source, hits in legs.items():

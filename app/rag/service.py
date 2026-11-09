@@ -62,6 +62,53 @@ def _comparison_score(sc: ScoredChunk) -> float:
     return sc.rerank_score if sc.rerank_score is not None else sc.score
 
 
+def rerank_gate(
+    n_candidates: int,
+    *,
+    use_reranking: bool,
+    min_candidates: int,
+    max_depth: int,
+) -> tuple[bool, str, int]:
+    """精排的**条件化闸门**（纯函数，2026-11-09）。返回 (是否精排, 跳过原因, 实际深度)。
+
+    抽成纯函数而不是写在 `retrieve()` 里，是为了让"跳过"这件事可单测 ——
+    否则只能靠读源码确认门槛存在（本项目已经栽过"开关装了但没接上"多次）。
+
+    ## 三个跳过原因（每个分支留自己的原因，不聚合成一个默认值）
+
+    - ``disabled``：请求侧关掉了精排（`RetrievalProfile.standard()` 的正常路径）
+    - ``no_results``：检索零命中，没有候选可排
+    - ``too_few_candidates``：候选数 < `min_candidates`。交叉编码器在全是
+      同一段近似副本的候选上没有区分度可做，重排只会引入噪声。
+
+    ## 深度上限
+
+    `max_depth > 0` 时把候选截到该深度。依据 arXiv 2411.11767（*Drowning in
+    Documents*）：重排 "less than 100" 条有效，">100" 时 Recall@10
+    "dramatically decreases"，且 "for many rerankers, performance at large k is
+    worse than that of the neural retrievers"。本项目 B2 实测 depth 20 与 40
+    四项指标逐位相同 → 默认 20 省一半延迟。
+
+    Args:
+        n_candidates: 检索返回的候选条数。
+        use_reranking: 请求是否要求精排。
+        min_candidates: 低于此数不精排（<=0 视为不设门槛）。
+        max_depth: 精排深度上限（<=0 视为不设上限）。
+
+    Returns:
+        ``(should_rerank, skip_reason, depth)``；``should_rerank`` 为 True 时
+        ``skip_reason`` 为空串。
+    """
+    if not use_reranking:
+        return False, "disabled", 0
+    if n_candidates <= 0:
+        return False, "no_results", 0
+    if min_candidates > 0 and n_candidates < min_candidates:
+        return False, "too_few_candidates", 0
+    depth = n_candidates if max_depth <= 0 else min(n_candidates, max_depth)
+    return True, "", depth
+
+
 def _rerank_floor_for_semantics(threshold: float, semantics: str) -> float:
     """把阈值从"概率语义"翻译到"logit 语义"（纯函数，A.168）。
 
@@ -291,9 +338,40 @@ class RAGServiceImpl(RAGService):
             ) from exc
 
         # Stage 3: reranking.
+        #
+        # ## 条件化（2026-11-09，B2 n=117 实测）
+        #
+        # 精排不是"全局开或全局关"。两个前提不满足时**跳过精排、保持 RRF 原始顺序**，
+        # 因为在不满足条件的输入上重排只会引入噪声：
+        #
+        # 1. **候选数要够**（`rag_rerank_min_candidates`，默认 10）。
+        #    候选太少时交叉编码器没有区分度可做（多是同一段的近似副本）。
+        # 2. **深度要有硬上限**（`rag_rerank_max_depth`，默认 20）。
+        #    arXiv 2411.11767 实测 "less than 100 ... effective"，">100 dramatically
+        #    decreases"；本项目在 3745 chunks 上实测 depth 20 与 40 **四项指标逐位相同**，
+        #    取 20 省一半延迟（376ms → 约 190ms/查询）。
+        #
+        # 跳过时 `rerank_used="none"` + `rerank_skipped_reason` 留痕，不静默。
         rerank_used = "none"
+        candidates: list = []
         if request.use_reranking and result.has_results:
             candidates = [sc.chunk for sc in result.chunks]
+        _should_rerank, rerank_skip_reason, _depth = rerank_gate(
+            len(candidates),
+            use_reranking=bool(request.use_reranking),
+            min_candidates=int(getattr(settings, "rag_rerank_min_candidates", 10) or 0),
+            max_depth=int(getattr(settings, "rag_rerank_max_depth", 20) or 0),
+        )
+        if _should_rerank:
+            candidates = candidates[:_depth]
+        if rerank_skip_reason:
+            logger.info(
+                "rerank_skipped",
+                reason=rerank_skip_reason,
+                n_candidates=len(candidates),
+                request_id=request.request_id,
+            )
+        if _should_rerank:
             try:
                 reranked = await self._reranker.rerank(
                     query=query_for_retrieval,
