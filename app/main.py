@@ -536,7 +536,13 @@ async def lifespan(app: FastAPI):
             # （2026-09-28：embedding/reranker 修好后仍剩 bm25=False）。
             # 启动期预热一次；知识库为空或构建失败都只告警，不阻断启动。
             try:
-                await shared_bm25_index.ensure_built()
+                # 2026-11-09 修：**此前不传 kb_version** → 启动预热读 PG 全表
+                # （实测 num_chunks=9990，含 9 个 kb_version 的副本），
+                # 与 dense 腿（单版本）语料不一致 → IDF 被旧副本稀释、rank 不可比。
+                # 传当前版本，与 Retriever 的过滤对齐。
+                await shared_bm25_index.ensure_built(
+                    getattr(settings, "rag_kb_version", None)
+                )
                 logger.info(
                     "bm25_index_warmed_up",
                     ready=await shared_bm25_index.health_check(),

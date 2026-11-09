@@ -563,6 +563,19 @@ class KnowledgeAgentImpl(KnowledgeAgent):
             query=query,
             organ=organ.value,
             top_k=retrieval_top_k,
+            # 2026-11-09 修 P0：**此前漏传 kb_version**。
+            #
+            # 本函数上方已经算出 `kb_version = self._current_kb_version()` 并用于
+            # 缓存键，但**没有传给 RetrievalRequest** → `request.kb_version` 恒为 None
+            # → `Retriever._dense_search` 走 `request.kb_version or settings.rag_collection`
+            # 的分支，Qdrant 过滤不含版本；BM25 侧同理读全表。
+            #
+            # 实测后果（真实端到端）：RAG_KB_VERSION 已切到 kb_v2.1.0，
+            # 但检索返回的 10 条 chunk 全是 kb_v1.2.0/v1.3.0/v1.4.0/v1.5.0，
+            # 一条 kb_v2.1.0 都没有；模型因此引用 `kb_v1.2.0:...`。
+            #
+            # 缓存键里已有 kb_version，所以缓存本身不串版本 —— 串的是**检索**。
+            kb_version=self._current_kb_version(),
             # A.159：request_id 必须透传 —— service 层用它查影像腿槽
             #（resolve_image_leg_slot(request_id)）来决定是否旁路缓存；
             # 缺失时带图请求会被当普通文本检索读缓存 → 别的 session 的

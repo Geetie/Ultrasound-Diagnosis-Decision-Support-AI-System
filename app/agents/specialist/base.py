@@ -954,6 +954,11 @@ class RAGSpecialistAgent(SpecialistAgent):
             "organ": organ,
             "top_k": self._rag_top_k,
         }
+        # 注：**不要在这里传 kb_version**。`KnowledgeAgent.query()` 的签名不含该参数，
+        # 它内部自己用 `self._current_kb_version()` 取版本并传给底层 RetrievalRequest
+        #（2026-11-09 修：此前它算出了 kb_version 但漏传给 RetrievalRequest，
+        # 见 app/agents/knowledge.py 里 `retrieval_request = RetrievalRequest(...)` 处的说明）。
+        # 早先版本在此处加 kwargs["kb_version"] 导致 165 个测试 TypeError。
         profile = getattr(context, "retrieval_profile", None)
         if profile and self._knowledge_accepts_profile:
             kwargs["profile"] = profile
