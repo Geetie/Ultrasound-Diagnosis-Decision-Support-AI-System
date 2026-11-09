@@ -247,23 +247,52 @@ def build_relationships(nodes: list[dict]) -> dict[str, list]:
         by_organ[n["organ"]].append(i)
 
     # ---- 关系 1：same_grade（同分级码）→ 用于「多跳对比」
+    #
+    # ## 2026-11-09 实测修正：关系池太小是产能瓶颈
+    #
+    # 原实现：每个 (grade, src_a, src_b) 三元组只取**前 3 个节点**组合
+    # → 234 条 cross_source_same_grade，但**大量是同一对节点在不同 chunk 上的重复**。
+    # 后果：合成时去重丢弃 53%，因为可用的不同节点对只有几十个。
+    #
+    # 修法：
+    # 1. 按 **(grade, organ, src_a, src_b)** 四元组分组，组内**取所有节点**（不大幅截断）
+    # 2. 每对用**节点 id 排序去重**，保证 (a,b) 与 (b,a) 不重复
+    # 3. 用 `seen_pairs` 全局去重，同一对节点只出现一次
+    seen_pairs: set[tuple[str, str]] = set()
+
+    def _add_pair(kind: str, ia: int, ib: int) -> None:
+        ida, idb = nodes[ia]["id"], nodes[ib]["id"]
+        if ida == idb:
+            return
+        key = (ida, idb) if ida < idb else (idb, ida)
+        if key in seen_pairs:
+            return
+        seen_pairs.add(key)
+        rels[kind].append([key[0], key[1]])
+
     for g, idxs in by_grade.items():
-        # 每对只在跨 source_set 时保留（cross_source 更值钱），
-        # 同 source 内保留少量（≤3）避免同质
-        by_src: dict[str, list[int]] = defaultdict(list)
+        # 按 (organ, source_set) 分桶 —— 同器官才有临床意义
+        buckets: dict[tuple[str, str], list[int]] = defaultdict(list)
         for i in idxs:
-            by_src[nodes[i]["source_set"]].append(i)
-        srcs = list(by_src)
-        for a in range(len(srcs)):
-            for b in range(a + 1, len(srcs)):
-                for i in by_src[srcs[a]][:3]:
-                    for j in by_src[srcs[b]][:3]:
-                        rels["cross_source_same_grade"].append([nodes[i]["id"], nodes[j]["id"]])
-        # 同 source 内少量
-        for s, ii in by_src.items():
-            for a in range(min(len(ii), 4)):
-                for b in range(a + 1, min(len(ii), 4)):
-                    rels["same_grade"].append([nodes[ii[a]]["id"], nodes[ii[b]]["id"]])
+            buckets[(nodes[i]["organ"], nodes[i]["source_set"])].append(i)
+        bkeys = list(buckets)
+        for x in range(len(bkeys)):
+            for y in range(x + 1, len(bkeys)):
+                oa, sa = bkeys[x]
+                ob, sb = bkeys[y]
+                if oa != ob or sa == sb:
+                    continue    # 跨器官 / 同来源 都不算 cross_source
+                ia_list = buckets[bkeys[x]]
+                ib_list = buckets[bkeys[y]]
+                # 组内取全部（上限放宽到 12，原先是 3）
+                for ia in ia_list[:12]:
+                    for ib in ib_list[:12]:
+                        _add_pair("cross_source_same_grade", ia, ib)
+        # 同 source 内（少量，避免同质）
+        for bkey, ii in buckets.items():
+            for a in range(min(len(ii), 6)):
+                for b in range(a + 1, min(len(ii), 6)):
+                    _add_pair("same_grade", ii[a], ii[b])
 
     # ---- 关系 2：shared_signs（≥2 个共同征象）→ 用于「征象组合」
     for organ, idxs in by_organ.items():
@@ -293,7 +322,7 @@ def build_relationships(nodes: list[dict]) -> dict[str, list]:
                             [nodes[idxs[a]]["id"], nodes[idxs[b]]["id"]]
                         )
 
-    return {k: v[:500] for k, v in rels.items()}   # 每类上限 500 防爆
+    return {k: v[:3000] for k, v in rels.items()}   # 每类上限 500 防爆
 
 
 async def main(argv: list[str] | None = None) -> int:
