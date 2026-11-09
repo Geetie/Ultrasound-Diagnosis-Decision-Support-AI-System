@@ -49,6 +49,23 @@ if str(_SRC) not in sys.path:
 #: 覆盖矩阵的维度（与 p119 的场景生成一致）
 DIMS = ("hop", "specificity", "persona", "length")
 
+#: **实际可用的分层维度**（2026-11-09 实测）
+#:
+#: ## 为什么要把 query_type 单列
+#:
+#: Ragas 的四维（persona × hop × specificity × length）里，`persona` 在 B2 上是空的 ——
+#: 实测 483 条 query 里只有 87 条有 persona 线索词，**400 条完全没有**。
+#: （「4A 类结节 13mm 要不要穿刺」这种问题，住院医师和主治医师都会问，
+#:   原数据没有记录是谁问的，**编一个就是伪造**。）
+#:
+#: 而 `query_type` 是 B2 **原数据真实标注**的 8 类：
+#:   technical_parameter 111 / grading_standard 89 / procedure_indication 72
+#:   boundary_case 51 / followup_strategy 49 / comparison 46 / special_case 43 / report_standard 26
+#: **每类都 ≥10 条**，是真正能支撑「按格子报指标」的维度。
+#:
+#: 结论：分层要用**真实存在的维度**，不是照抄框架里的维度名。
+AVAILABLE_DIMS = ("hop", "specificity", "query_type", "length")
+
 
 def _git_commit() -> str:
     try:
@@ -128,6 +145,17 @@ def main(argv: list[str] | None = None) -> int:
             vals[str(md.get(d, "?"))] += 1
         if len(vals) > 1 or "?" not in vals:
             print(f"  {d:12s}: {dict(vals.most_common())}")
+
+    # 额外报 query_type —— 这是本项目**真实可用**的分层维度
+    vals_qt = C()
+    for r in rows:
+        md = r.get("metadata") if isinstance(r.get("metadata"), dict) else r
+        vals_qt[str(md.get("query_type", "?"))] += 1
+    if vals_qt and "?" not in vals_qt:
+        print(f"\n  【真实可分层的维度】query_type:")
+        for k, v in vals_qt.most_common():
+            flag = "✅" if v >= args.min_per_cell else "❌"
+            print(f"    {flag} {k:22s}: {v}")
 
     if args.check_coverage:
         print(f"\n=== 覆盖矩阵（要求每格 ≥{args.min_per_cell}）===")

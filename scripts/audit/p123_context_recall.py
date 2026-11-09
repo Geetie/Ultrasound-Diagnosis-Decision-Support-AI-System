@@ -225,6 +225,32 @@ async def main(argv: list[str] | None = None) -> int:
         if s["n"] >= 2:
             print(f"  {k}: recall={s['mean']:.3f} (n={s['n']})")
 
+    # **按 query_type 分层** —— 本项目真实可用的维度（persona 在原数据里是空的）
+    print(f"\n=== 按 query_type（原数据真实标注的 8 类）===")
+    by_qt: dict[str, list[float]] = {}
+    for r in rows:
+        md = r.get("metadata") if isinstance(r.get("metadata"), dict) else r
+        qt = md.get("query_type") or "?"
+        if qt != "?" and r.get("reference_answer"):
+            pass
+    # 重新走一遍（需要与 recs 对齐，故用索引）
+    idx = 0
+    for r in rows:
+        if not ((r.get("reference_answer") or "").strip()):
+            continue
+        md = r.get("metadata") if isinstance(r.get("metadata"), dict) else r
+        organ2 = r.get("organ") or md.get("organ") or ""
+        if not (r.get("query") and organ2):
+            continue
+        if idx < len(recs):
+            by_qt.setdefault(str(md.get("query_type") or "?"), []).append(recs[idx])
+        idx += 1
+    for k in sorted(by_qt, key=lambda x: -len(by_qt[x])):
+        v = by_qt[k]
+        if len(v) >= 2:
+            mean = sum(v) / len(v)
+            print(f"  {k:22s}: recall={mean:.3f} (n={len(v)})")
+
     Path(args.report).write_text(
         json.dumps(
             {
