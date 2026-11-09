@@ -128,8 +128,58 @@ class ThyroidSpecialistAgent(RAGSpecialistAgent):
             score_bonus = 0.15
         else:
             guided = extract_guided_grading(normalized, "thyroid")
-            raw = guided or extract_grading_severest(normalized, "thyroid")
+            # ----------------------------------------------------------------
+            # 2026-11-09：**先取首行分级，再退回"全文取最严重"**。
+            #
+            # 为什么改：提示词现在要求「双体系并列」——
+            #   首行 = C-TIRADS 主判读（如 `分级: 4A类`）
+            #   理由里 = ACR 对照（如 `… → TR4`）
+            #
+            # 而 `extract_grading_severest` 扫**全文**取最严重 → 会把 ACR 的
+            # 对照值（TR4）当成主判读，于是界面显示「甲状腺 · TR4」而正文说
+            # 「4A 类」，医生看到两个不一致的结论。
+            #
+            # 实测：真实端到端输出 `分级: 4A类 … ACR 对照 → TR4`，
+            # 系统抽出的却是 TR4。
+            #
+            # 修法：**首行优先**（那是模型明确声明的主判读），
+            # 首行没有才退回全文取最严重（保留原有的保守兜底语义）。
+            # ----------------------------------------------------------------
+            # **首行内也要取最严重**（首行可能写 "TR3 或 TR4"）：
+            # `extract_grading` 只取第一个匹配 → 会得到 TR3，而约定是取 TR4。
+            # ----------------------------------------------------------------
+            # **必须在 `normalize_grading_text` 之前取首行**。
+            #
+            # 踩了两个坑（都靠实测才发现）：
+            # 1. `normalize_grading_text` 用 `_WHITESPACE_RE.sub(" ")` 把**所有换行
+            #    压成空格** → 在 `normalized` 上按 `\n` 切分只会得到一行，首行永远
+            #    等于全文，等于没做首行优先。所以要用**原始 `llm_text`** 切行。
+            # 2. 模型输出首行常是 Markdown 代码围栏 ```` ``` ````，
+            #    真正的 `分级: 4A类` 在下一行 → 必须跳过围栏行。
+            #
+            # 不这么做的话：抽到的是全文最严重值（ACR 对照的 TR4），
+            # 与正文主判读「4A 类」不一致，界面显示「甲状腺 · TR4」而正文说 4A。
+            # ----------------------------------------------------------------
+            _lines = [
+                ln.strip()
+                for ln in (llm_text or "").split("\n")
+                if ln.strip() and not ln.strip().startswith("```")
+            ]
+            first_line = normalize_grading_text(_lines[0]) if _lines else ""
+            raw_first = extract_grading_severest(first_line, "thyroid")
+            raw_all = extract_grading_severest(normalized, "thyroid")
+            raw = guided or raw_first or raw_all
             grade = _to_tr_canonical(raw)
+            # 诊断留痕（不含正文，只留首行前 60 字与两个抽取结果）：
+            # 分级不一致时能一次看出是"首行没抽到"还是"首行抽错了"。
+            logger.info(
+                "thyroid_grade_extraction",
+                first_line_preview=(first_line or "")[:60],
+                raw_from_first_line=raw_first,
+                raw_from_full_text=raw_all,
+                chosen=raw,
+                canonical=grade,
+            )
             if grade is not None:
                 # 结构化 / canonical 都属「明确的体系分级」，按完整形式给加成
                 score_bonus = 0.15
