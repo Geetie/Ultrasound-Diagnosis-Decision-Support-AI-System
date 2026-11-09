@@ -255,6 +255,79 @@ def check_one(row: dict, kb_text: str, existing_ids: set[str]) -> list[str]:
     if re.search(r"原文提到[：:]\s*和\s*原文提到", a or "") or (a or "").count("原文提到") >= 2:
         probs.append("答案里「原文提到：」重复（清理残留）")
 
+    # ---- 闸 13（2026-11-09 L3 后新增）：检查「清理后变残句」
+    #
+    # ## 为什么这道闸必须存在
+    #
+    # 我的 `_strip_fake_citations` 把《X》替换成「原文提到：」或直接删掉。
+    # 删完之后可能出现无主语的残句：
+    #   「统一使用《A》或《B》中的标准」→「统一使用中的标准进行分级」  ← 缺宾语
+    #   「《A》和《B》的分类标准」      →「的分类标准」                ← 缺主语
+    #   「如果医生按《A》的分级标准」    →「如果医生按的分级标准」      ← 缺宾语
+    #
+    # **这类残句不该靠再修正则去救**（越救越复杂），
+    # 而是**直接判不合格**，让模型重试一次。
+    # 因为「让 LLM 重写一个不含书名的自然句子」比「用正则修复语法」可靠得多。
+    _BROKEN = (
+        (re.compile(r"使用\s*(?:中|里)的"), "「使用中的」缺宾语"),
+        (re.compile(r"(?:和|与|或|、|及)\s*(?:的|中|里)"), "连接词后直接接助词"),
+        (re.compile(r"按\s*的"), "「按的」缺宾语"),
+        (re.compile(r"^(?:的|是和)"), "句首是助词"),
+        (re.compile(r"(?:，|。|；)\s*(?:的|是和)"), "标点后接助词"),
+        (re.compile(r"为\s*的"), "「为的」缺宾语"),
+        (re.compile(r"用\s*的"), "「用的」缺宾语"),
+    )
+    for pat, desc in _BROKEN:
+        for fld, txt in (("query", q), ("答案", a)):
+            if txt and pat.search(txt):
+                probs.append(f"{fld}里清理后出现残句（{desc}）")
+                break
+        else:
+            continue
+        break
+
+    # ---- 闸 14（2026-11-09 L3 后新增）：C-TIRADS 分级与积分必须对得上
+    #
+    # ## 为什么这道闸最重要
+    #
+    # L3 审核抓到 L2 编造的医学错误（8B 模型不知道规则）：
+    #   「1.5cm 边界清晰 → TR2 级，积分为 3 分」  ← TR2 是 1 分（无恶性征象）
+    #   「13 分结节」                              ← C-TIRADS 满分 5 分
+    #
+    # **这类错误靠提示词修不了**（模型知识不够），但**靠规则能查**：
+    # C-TIRADS 的分数与分级是一一对应的，写死了。
+    #
+    # | 分数 | 分级 |
+    # |---|---|
+    # | 无结节 | 1 类 |
+    # | -1 | 2 类（良性） |
+    # | 0 | 3 类（良性可能） |
+    # | 1 | 4A |
+    # | 2 | 4B |
+    # | 3~4 | 4C |
+    # | 5 | 5 类 |
+    #
+    # 所以：答案里若同时出现「N 分」与「X 类」，必须满足上表。
+    _SCORE_TO_GRADE = {(-1): "2", 0: "3", 1: "4a", 2: "4b", 3: "4c", 4: "4c", 5: "5"}
+
+    score_m = re.search(r"(\d+)\s*分", a or "")
+    if score_m:
+        score = int(score_m.group(1))
+        if score > 5:
+            probs.append(f"C-TIRADS 积分不可能为 {score}（满分 5 分）")
+        else:
+            # 找答案里出现的分级码
+            grade_m = re.findall(r"([1-6])\s*([A-Ca-c]?)\s*类|\bTR\s?([1-5])\b", a or "")
+            if grade_m:
+                g1, g2, gtr = grade_m[0]
+                got = (g1 + (g2 or "")).lower() if g1 else f"tr{gtr}"
+                want = _SCORE_TO_GRADE.get(score)
+                # 只在能明确比对时判（4A vs 4a 归一化）
+                if want and got and not got.startswith("tr") and got != want:
+                    probs.append(
+                        f"C-TIRADS 积分与分级不符：{score} 分应为 {want} 类，答案写 {got} 类"
+                    )
+
     # ---- 闸 5：gold 一致性
     gold = row.get("gold") or []
     if not gold:

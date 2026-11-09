@@ -174,8 +174,9 @@ def _build_prompt(sc: dict, nodes_content: list[str]) -> str:
 - 器官：{_ORGAN_CN.get(sc['organ'], sc['organ'])}
 - **本次只能用这套分级体系：{_ORGAN_SYSTEM_HINT.get(sc['organ'], '（按原文）')}**
   ⚠️ 原文里可能提到别的器官/别的体系（因为是不同文档被检索到一起），
-  **你必须只围绕上面指定的器官与体系出题**。如果原文主体讲的是别的器官，
-  就写 `answerable: false` 并在 query 里问「这份原文能否回答{_ORGAN_CN.get(sc['organ'], sc['organ'])}的问题」。
+  **你必须只围绕上面指定的器官与体系出题**。
+  **如果原文主体讲的是别的器官，就只输出 `{{"skip": true}}`（不要编造问题）。
+  绝对不要写「这份原文能否回答XX的问题」这类询问——那不是医生会问的问题。**
 
 ## 指南原文
 {ctx}
