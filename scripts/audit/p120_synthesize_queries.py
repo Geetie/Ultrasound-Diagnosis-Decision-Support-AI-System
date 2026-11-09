@@ -58,6 +58,50 @@ _ORGAN_SYSTEM_HINT = {
     "cardiac": "LVEF / EF / E/e' / GLS / ASE / BSE（不得出现 C-TIRADS、LI-RADS）",
 }
 
+#: 问法骨架池（2026-11-09 加）。
+#:
+#: ## 为什么需要（实测证据）
+#:
+#: G 臂：关系池扩到 1331 条（100% 唯一），但去重丢弃仍 47%。
+#: 检查发现**节点对不重复，query 却高度同构**：
+#:   「肝内结节 13mm 且紧邻被膜，要不要穿刺？」
+#:   「肝脏结节 13mm，紧邻被膜，要不要穿刺？」
+#:
+#: **根因**：prompt 固定了「persona + 意图 + 长度」三段，模型只能产出结构相同的问题。
+#:
+#: **修法**：给每格一组问法骨架，随机选一个塞进 prompt。
+#: 骨架本身**不含具体临床内容**（那是原文决定的），只定"话怎么说"。
+_ASK_SHAPES: dict[str, tuple[str, ...]] = {
+    "resident": (
+        "直接问规则：这个征象/数值按指南算什么？",
+        "带着困惑问：我不确定这个情况算哪一档，怎么判断？",
+        "拿不准要不要往上/往下调一档，问依据。",
+        "问「如果…是不是就属于…」这种假设式判定。",
+        "先复述自己看到的征象，再问积几分/归几类。",
+    ),
+    "attending": (
+        "问边界：指南在这条上有没有例外或有争议的地方？",
+        "拿两个相近档位对比，问差别在哪。",
+        "问「什么情况下这条不适用」。",
+        "问操作层面的取舍：同样结论下两种处理怎么选。",
+        "质疑式提问：这条规则会不会导致过度/不足诊断？",
+    ),
+    "clinician": (
+        "拿到报告先问这个分级意味着什么、严不严重。",
+        "问下一步该做什么（复查/转诊/手术/观察）。",
+        "问如果不管它会怎样，风险多大。",
+        "问需不需要再做什么检查来确认。",
+        "问对病人的实际影响（要不要住院、多久能好）。",
+    ),
+    "qa": (
+        "问本院该以哪一套为准。",
+        "问两套指南在这条上数值/分类不一致，怎么向临床解释。",
+        "问如果医生按另一套判读，质控该怎么处理。",
+        "问这条规则的出处与版本，便于归档。",
+        "问两套体系并存会不会导致同一病人两种结论。",
+    ),
+}
+
 _LEN_HINT = {
     "short": "15-25 字，像医生快速提问",
     "medium": "25-45 字，带一点上下文",
@@ -100,8 +144,18 @@ _SYSTEM = """你是超声医学领域的出题专家。给定指南原文和出�
 只输出 JSON：{"query": "...", "reference_answer": "...", "answerable": true}"""
 
 
+def _pick_shape(persona: str, seed_key: str) -> str:
+    """按 scene 稳定地选一个问法骨架（同一条场景每次结果一致，便于复现）。"""
+    import hashlib
+
+    shapes = _ASK_SHAPES.get(persona) or ("直接问这条规则的具体内容。",)
+    h = int(hashlib.sha256(seed_key.encode()).hexdigest()[:8], 16)
+    return shapes[h % len(shapes)]
+
+
 def _build_prompt(sc: dict, nodes_content: list[str]) -> str:
     ctx = "\n\n---\n\n".join(c[:1200] for c in nodes_content)
+    shape = _pick_shape(sc.get("persona", ""), sc.get("scenario_id", ""))
     return f"""{_SYSTEM}
 
 ## 出题要求
@@ -115,6 +169,8 @@ def _build_prompt(sc: dict, nodes_content: list[str]) -> str:
 - 问题类型：{'单跳（一个来源能答）' if sc['hop']=='single' else '多跳（要综合多个来源）'}
 - {'具体事实型（问明确的数值/规则）' if sc['specificity']=='specific' else '抽象理解型（问为什么/怎么取舍）'}
 - 长度：{_LEN_HINT[sc['length']]}
+- **这次请用这种问法**：{shape}
+  （不要和别的题目用同一种问法；问法要贴合上面对话里的这个具体角度）
 - 器官：{_ORGAN_CN.get(sc['organ'], sc['organ'])}
 - **本次只能用这套分级体系：{_ORGAN_SYSTEM_HINT.get(sc['organ'], '（按原文）')}**
   ⚠️ 原文里可能提到别的器官/别的体系（因为是不同文档被检索到一起），
