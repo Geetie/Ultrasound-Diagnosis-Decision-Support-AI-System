@@ -20,6 +20,21 @@
 |---|---|---|
 | 引文长度 | ≥15 字 | 太短的片段不具辨识度 |
 | 命中 chunk 数 | ≤5 个 | 超过说明这句在库里太泛 |
+| **引文 ∈ 标注的 chunk** | **必须为真** | **2026-11-09 新增，见下** |
+
+### 为什么必须检查「引文 ∈ 标注的 chunk」
+
+2026-11-09 实测：我新写的 47 条 B2 条目里，**74% 的 chunk_id 标错了**——
+用工具拿到 `(chunk_id, quote)` 后默认它们属于一起，**从未验证 quote 是否真在那个 chunk 里**。
+
+后果（三轮才查清）：
+1. 新条目 hit@1 只有 0.11（旧条目 0.56）
+2. 精排测出来「对 top-1 完全无效（+0.0pt）」，depth 加到 100 也锁定 0.4255
+3. 修完 chunk_id 后，精排立刻变成 **+12.8pt** —— 证明精排一直是好的
+
+**这个检查一行代码就能做，但没做，导致三轮排查走偏。**
+
+旧 120 条也查出 7.7% 标错（155 个 gold 里 12 个）—— 说明这不是新手才会犯的错。
 
 两类都不合格的，建议**重写该条**（或至少不要把它当作唯一 gold）。
 
@@ -61,6 +76,9 @@ async def check(dataset: Path, kb_version: str) -> tuple[list[dict], int]:
         )).fetchall()
     print(f"KB({kb_version}) chunk 数: {len(corpus)}；数据集 {len(rows)} 条\n")
 
+    # chunk_id → content 索引（做「引文 ∈ 标注 chunk」检查要用）
+    by_cid = {cid: (c or "") for cid, c in corpus}
+
     problems: list[dict] = []
     for e in rows:
         for gi, g in enumerate(e.get("gold") or []):
@@ -77,6 +95,16 @@ async def check(dataset: Path, kb_version: str) -> tuple[list[dict], int]:
                 reasons.append(f"命中 {n_hit} 个 chunk(>{MAX_CHUNKS_PER_QUOTE})")
             if n_hit == 0:
                 reasons.append("KB 里 0 命中（标错 chunk 或换行差异）")
+
+            # 2026-11-09 新增：**引文必须真的在标注的那个 chunk 里**。
+            # 这是数据标注的最低一致性要求 —— 不满足时 gold 指向了无关的块，
+            # 会让「hit@k」变成测量「标错的地方能否被检索到」，毫无意义。
+            cid = f"{kb_version}:{g.get('doc_id')}#{int(g.get('chunk_index', 0)):04d}"
+            target = by_cid.get(cid)
+            if target is None:
+                reasons.append(f"标注的 chunk 不存在: {cid}")
+            elif q not in target:
+                reasons.append("引文不在标注的 chunk 里（chunk_id 标错）")
 
             if reasons:
                 problems.append({

@@ -146,6 +146,14 @@ jobs:
         run: |
           pip install pytest
           python -m pytest tests/unit/quality/test_retrieval_metrics.py             tests/unit/quality/test_eval_statistics.py             -q --tb=short -p no:cacheprovider --noconftest
+      # p117 是「gold 标注一致性」工具，本体要连 DB 查 KB，CI 里跑不了。
+      # 但它的**存在理由**与阈值必须被守护 —— 2026-11-09 实测：
+      # 我写的 47 条 B2 条目里 74% 的 chunk_id 标错，导致 hit@1 只有 0.11，
+      # 且让精排「看起来完全无效」（实际修正后是 +12.8pt）。
+      # 这条单测确保：阈值不被悄悄放宽、工具文档里的事故记录不被删除。
+      - name: B2 gold uniqueness tool guard (p117)
+        run: |
+          python -m pytest tests/unit/quality/test_p117_gold_uniqueness.py             -q --tb=short -p no:cacheprovider --noconftest
 
   perf-baseline:
     name: Performance baseline (serial)
