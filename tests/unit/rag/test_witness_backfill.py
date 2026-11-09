@@ -25,10 +25,19 @@ pytestmark = pytest.mark.track_rag
 
 
 def _chunk(cid: str, source_set: str | None = None):
+    """构造一个检索结果壳。
+
+    **注意**：`_source_sets_of` 现在优先用权威规则表从 `source_doc_id` 推导
+    （因为真实链路里 `KnowledgeChunk.metadata` 常是 None）。所以这里的
+    `metadata["source_set"]` 只是给"显式标注优先"那条路径留的入口，
+    推导兜底靠 `source_doc_id`。
+    """
+
     class _C:
         def __init__(self):
             self.chunk_id = cid
-            self.metadata = {"source_set": source_set} if source_set else {}
+            self.source_doc_id = cid  # 让规则表能按前缀推导
+            self.metadata = {"source_set": source_set} if source_set else None
 
     class _H:
         def __init__(self):
@@ -58,13 +67,33 @@ def test_single_source_triggers_backfill():
     assert reason == "single_source_recalled"
 
 
-def test_multi_source_no_backfill():
-    """已经召回了多个来源 → 交给 source_conflict 判分歧，不需要补。"""
+def test_multi_source_with_grading_no_backfill():
+    """多来源 **且含分级体系** → 交给 source_conflict 判分歧，不需要补。"""
     need, reason = needs_backfill(
         [_chunk("a", "ctirads_2021"), _chunk("b", "norm_2018")]
     )
     assert need is False
-    assert reason == "multi_source_already_present"
+    assert reason == "multi_source_with_grading_present"
+
+
+def test_multi_source_without_grading_triggers_backfill():
+    """多来源但**一套分级体系都没有** → 必须补捞。
+
+    ## 这个用例来自真实端到端事故（2026-11-09）
+
+    真实查询召回了 `norm_2018` + `thyroid_guideline_2022` 两个来源，
+    旧判据因此判「多来源已覆盖、无需补捞」；但这两个来源**都不含 C-TIRADS
+    的分档表**，模型拿不到计数法，只能说
+    「现有知识未涉及足够的影像特征，无法进行 TI-RADS 分级」。
+
+    修法：判据从"来源个数"改成"**是否覆盖分级体系**"。
+    """
+    need, reason = needs_backfill(
+        [_chunk("dialogue_肿瘤科_0001", "dialogue"),
+         _chunk("pdf_cardiac_cardiac_echo_measurement_2016_0010", "echo_measure_2016")]
+    )
+    assert need is True
+    assert reason == "multi_source_but_no_grading_system"
 
 
 def test_single_source_enabled_no_backfill():
@@ -154,9 +183,10 @@ async def test_backfill_skips_when_not_needed():
         called["n"] += 1
         return []
 
+    # 用**含分级体系**的两套语料 → 这才是真的"不需要补捞"
     res = await backfill_witness(
         query="q",
-        chunks=[_chunk("a", "x"), _chunk("b", "y")],
+        chunks=[_chunk("a", "ctirads_2021"), _chunk("b", "norm_2018")],
         retrieve_fn=_retrieve,
     )
     assert not res.applied

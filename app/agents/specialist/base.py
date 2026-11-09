@@ -1150,8 +1150,11 @@ class RAGSpecialistAgent(SpecialistAgent):
                 # 复用本类的检索路径，保证与主检索同一套过滤/归一化
                 return await self._retrieve_chunks_for_backfill(context, organ, q, k)
 
+            # AgentContext 的字段是 `user_query`（不是 clinical_text / query_text）。
+            # 2026-11-09：这里写错字段名导致补捞**全程 AttributeError 静默失效**，
+            # trace 里只显示 `error:AttributeError`，查了三轮才定位。
             result = await backfill_witness(
-                query=context.clinical_text or context.query_text or "",
+                query=getattr(context, "user_query", "") or "",
                 chunks=chunks,
                 retrieve_fn=_retrieve,
                 enabled_source_sets=enabled or None,
@@ -1161,12 +1164,19 @@ class RAGSpecialistAgent(SpecialistAgent):
                 return chunks
             return [*chunks, *result.chunks]
         except Exception as exc:  # silent-ok: 补捞是增强，失败退回原块
+            # 只记 type 名不够 —— 真实端到端里 trace 显示 `error:AttributeError`
+            # 但不知道发生在哪一行。这里带上完整堆栈（截断到 800 字），
+            # 让"补捞为什么没生效"能一次查清，不用再回来加日志。
+            import traceback as _tb
+
+            detail = _tb.format_exc()[-800:]
             logger.warning(
                 "witness_backfill_skipped",
                 organ=organ.value,
                 error=str(exc),
+                traceback=detail,
             )
-            trace.append(f"witness_backfill -> error:{type(exc).__name__}")
+            trace.append(f"witness_backfill -> error:{type(exc).__name__}: {exc}")
             return chunks
 
     async def _retrieve_chunks_for_backfill(

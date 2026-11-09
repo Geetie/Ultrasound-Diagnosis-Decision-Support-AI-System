@@ -45,6 +45,22 @@ logger = structlog.get_logger("app.rag.witness_backfill")
 #: 补捞上限：一次最多补几块。超过这个数 prompt 收益递减、token 成本线性上升。
 DEFAULT_MAX_BACKFILL = 3
 
+#: **含分级体系定义**的语料集。
+#:
+#: 为什么单列这一组：甲状腺判读的输出是「TRx / x 类」，而这个码必须来自
+#: 某套明确的分级体系。若召回的证据里一套体系都没有，模型只能拒答
+#: （实测："现有知识未涉及足够的影像特征，无法进行 TI-RADS 分级"）。
+#:
+#: 所以"有没有分级体系"比"有几个来源"更能决定要不要补捞。
+_GRADING_SOURCE_SETS: frozenset[str] = frozenset({
+    "ctirads_2021",                     # 中国 C-TIRADS 2021（计数法）
+    "thyroid_guideline_2022",           # 中国甲状腺癌指南 2022
+    "norm_2018",                        # 甲状腺癌诊疗规范 2018
+    "derived_thyroid_grading_compare",  # 本项目整理的两套体系对照
+    "ata_2015",                         # ATA 结节与 DTC
+    "lirads_v2018", "ceus_lirads_2017", "ceus_lirads_2027",  # 肝脏分级体系
+})
+
 
 @dataclass
 class BackfillResult:
@@ -60,13 +76,38 @@ class BackfillResult:
 
 
 def _source_sets_of(chunks: list[Any]) -> set[str]:
-    """从已检索块里收集 source_set。"""
+    """从已检索块里收集 source_set。
+
+    ## 2026-11-09 修：不能只读 `chunk.metadata["source_set"]`
+
+    真实端到端里这个函数**永远返回空集**，导致补捞判定失效
+    （trace: `witness_backfill -> error:AttributeError`，
+    修好后又是 `_source_sets_of = set()`）。
+
+    两个原因：
+    1. 检索返回的是 `KnowledgeChunk`，它的 `metadata` 字段常常是 `None`
+       （`source_set` 在 **PG 的 metadata 列**里，不一定会被带进对象）；
+    2. 权威判定逻辑在 `app.knowledge.source_set.source_set_of()` 里
+       —— 它按优先级读 `metadata["source_set"]` → `source_doc_id` 前缀 → `unknown`。
+
+    所以这里改成：**优先用权威规则表从 `source_doc_id` 推导**，
+    只在推导失败时才退回读 metadata。
+    """
+    from app.knowledge.source_set import source_set_of
+
     out: set[str] = set()
     for c in chunks:
         chunk = getattr(c, "chunk", c)
-        meta = getattr(chunk, "metadata", None) or {}
-        ss = meta.get("source_set") if isinstance(meta, dict) else None
-        if ss:
+        meta = getattr(chunk, "metadata", None)
+        doc_id = getattr(chunk, "source_doc_id", None)
+        try:
+            ss = source_set_of(
+                source_doc_id=doc_id,
+                metadata=meta if isinstance(meta, dict) else None,
+            )
+        except Exception:  # silent-ok: 推导失败不影响主流程
+            ss = None
+        if ss and ss != "unknown":
             out.add(str(ss))
     return out
 
@@ -89,9 +130,24 @@ def needs_backfill(
         # 没有 source_set 元数据的语料，无法判断多来源 → 不补捞（也无从补）
         return False, "no_source_set_metadata"
 
-    if len(present) >= 2:
-        # 已覆盖多个来源 → 交给 source_conflict 去判有没有分歧，不需要补
-        return False, "multi_source_already_present"
+    # ------------------------------------------------------------------
+    # 2026-11-09 修：**不能只看"来源个数"**。
+    #
+    # 原判据：`len(present) >= 2` 就不补。但实测这个判据是错的：
+    # 真实端到端里召回了 `norm_2018` + `thyroid_guideline_2022` 两个来源，
+    # 于是判"多来源已覆盖、无需补捞"；可这两个来源**都不含 C-TIRADS 的分档表**，
+    # 模型拿不到 C-TIRADS 的计数法，只能说"知识未涉及足够的影像特征"。
+    #
+    # 正确判据：**是否覆盖了"分级体系"这一特定事实维度**。
+    # 分级体系是甲状腺判读的核心，缺了它，其他来源再多也无法做分级。
+    # ------------------------------------------------------------------
+    grading_sets = {ss for ss in present if ss in _GRADING_SOURCE_SETS}
+    if len(present) >= 2 and grading_sets:
+        # 多来源 **且** 已含至少一套分级体系 → 交给 source_conflict 判分歧
+        return False, "multi_source_with_grading_present"
+    if len(present) >= 2 and not grading_sets:
+        # 多来源但**一套分级体系都没有** → 必须补捞
+        return True, "multi_source_but_no_grading_system"
 
     if enabled_source_sets is not None and len(enabled_source_sets) < 2:
         # 医院只启用了一套 → 本来就不该并列
