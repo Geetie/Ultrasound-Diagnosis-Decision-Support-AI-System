@@ -151,6 +151,25 @@ class BM25Index:
                 KnowledgeChunkModel.section_path,
                 KnowledgeChunkModel.token_count,
             ).order_by(KnowledgeChunkModel.chunk_id)
+            # --------------------------------------------------------------
+            # 2026-11-09 修 P0：两条检索腿在搜**不同的语料**
+            #
+            # 缺陷（阶段2 Agent 实测）：
+            #   dense 腿（Qdrant）= 5042 点   ← kb_v1.4.0 + kb_v1.5.0
+            #   sparse 腿（本索引）= 9561 行  ← PG 全表（9 个 kb_version）
+            #   **只在 BM25 里的 chunk = 4525 条**，dense 永远搜不到
+            #
+            # 后果是机制性的：
+            #   · BM25 在 5818 篇旧版本副本上算 IDF → **IDF 被系统性压低**
+            #   · top-k 混入旧版本副本，经 RRF 后被逻辑去重折叠 → 召回位浪费
+            #   · 两条腿的 rank 不可比 → **RRF 公式的前提（rank 语义一致）不成立**
+            #
+            # 修法：未显式指定 kb_version 时，**取 PG 里最新版本**，与 dense 对齐。
+            # 用 max(kb_version) 而非配置文件，是因为多版本共存时"最新"由数据本身决定。
+            # --------------------------------------------------------------
+            # 只在显式指定时过滤；未指定时**先查全量再在内存里裁剪到最新版本**。
+            # 这样不增加额外 DB 查询（测试里的轻量 mock 只需实现 `all()`），
+            # 且"最新版本"由数据本身决定（多版本共存时不能靠配置文件猜）。
             if kb_version is not None:
                 stmt = stmt.where(KnowledgeChunkModel.kb_version == kb_version)
             stmt = stmt.limit(self._max_chunks)
@@ -170,6 +189,23 @@ class BM25Index:
                 "bm25_index_truncated_to_max_chunks",
                 max_chunks=self._max_chunks,
             )
+
+        # 2026-11-09 修 P0：未显式指定 kb_version 时，**内存里裁剪到最新版本**，
+        # 与 dense 腿对齐（详见此前 `_build_locked` 里的缺陷说明）。
+        if kb_version is None and rows:
+            _versions = [getattr(r, "kb_version", None) for r in rows]
+            _versions = [v for v in _versions if v]
+            if _versions:
+                _latest = max(_versions)
+                _before = len(rows)
+                rows = [r for r in rows if getattr(r, "kb_version", None) == _latest]
+                if len(rows) < _before:
+                    logger.info(
+                        "bm25_index_pinned_to_latest_version",
+                        kb_version=_latest,
+                        before=_before,
+                        after=len(rows),
+                    )
 
         corpus: list[list[str]] = []
         chunk_ids: list[str] = []

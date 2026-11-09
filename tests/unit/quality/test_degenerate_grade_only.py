@@ -71,13 +71,30 @@ def test_threshold_is_configurable():
     为什么默认是 6 而不是 20：临床短建议（`建议复查`=4字、`建议穿刺`=4字）很常见，
     阈值 20 会把它们全误杀。6 字足以区分「有建议」与「只有码」。
     """
-    # 整串只有分级码 → 命中
+    # 整串只有分级码 → 命中（阈值不影响这条：它压根没有 rest）
     assert detect_degenerate_grade_only("TI-RADS 3") == "grade_only_no_body"
-    # 带 4 字建议 → 不命中（默认 6 之下仍算有正文？不，4<6 会命中）
-    # 所以用 8 字建议验证
+    # 带 8 字建议 → 不命中
     assert detect_degenerate_grade_only("TI-RADS 3，建议半年后复查", min_body_chars=6) is None
-    # 阈值调高 → 同一句被判退化
-    assert detect_degenerate_grade_only("TI-RADS 3，建议复查", min_body_chars=20) == "grade_only_no_body"
+
+    # 阈值调高 → **纯描述性**的短正文会被判退化（这条才真正在测阈值）
+    #
+    # 2026-11-09 修正：原用例用的是 `TI-RADS 3，建议复查`。但同日落地了
+    # **定性/处置词豁免**（`建议|随访|复查|考虑|高度可疑…` 一律不算退化），
+    # 于是那句话在**任何**阈值下都不再命中 —— 用它验阈值已经失去意义。
+    # 换成没有定性词的纯描述正文，才是在测 `min_body_chars` 本身。
+    assert (
+        detect_degenerate_grade_only("TI-RADS 3，低回声边界清", min_body_chars=6) is None
+    )
+    assert (
+        detect_degenerate_grade_only("TI-RADS 3，低回声边界清", min_body_chars=20)
+        == "grade_only_no_body"
+    )
+
+    # 有处置词时**阈值再高也不判退化**（豁免优先于长度）—— 这条钉住豁免的优先级，
+    # 防止将来有人把 `_QUALITATIVE` 检查挪到 `min_body_chars` 判断之后。
+    assert (
+        detect_degenerate_grade_only("TI-RADS 3，建议复查", min_body_chars=20) is None
+    )
 
 
 def test_trailing_content_prevents_flagging():

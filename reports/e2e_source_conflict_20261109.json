@@ -1,0 +1,563 @@
+{
+ "bypass_deep_retrieval": {
+  "why": "绕过 app/rag/service.py 的 rag_rerank_output_top_k=5 截断，展示并列块的实际形态",
+  "bm25_top_k": 60,
+  "n_chunks": 60,
+  "conflict": {
+   "detected": true,
+   "comparable": true,
+   "multi_source": true,
+   "source_sets": [
+    "norm_2018",
+    "thyroid_guideline_2022",
+    "dialogue",
+    "ctirads_2021"
+   ],
+   "facts_extracted": 21,
+   "conflicts": [
+    {
+     "fact_key": "malignant_risk:3",
+     "title": "恶性风险：3 类",
+     "values": [
+      {
+       "source_set": "norm_2018",
+       "label": "甲状腺癌诊疗规范 2018",
+       "organization": "国家卫生健康委员会",
+       "literal": "3 可能良性 不典型的良性结节 <5%",
+       "chunk_id": "kb_v1.4.0:norm2018_s01#0004"
+      },
+      {
+       "source_set": "ctirads_2021",
+       "label": "C-TIRADS 2021",
+       "organization": "中华医学会超声医学分会",
+       "literal": "3 类(恶性可能 <2%",
+       "chunk_id": "kb_v1.4.0:pdf_thyroid_ctirads_2021_0012#0000"
+      }
+     ]
+    },
+    {
+     "fact_key": "malignant_risk:5",
+     "title": "恶性风险：5 类",
+     "values": [
+      {
+       "source_set": "norm_2018",
+       "label": "甲状腺癌诊疗规范 2018",
+       "organization": "国家卫生健康委员会",
+       "literal": "5 恶性 超过 4 种恶性征象， 尤其是有微钙化和 微分叶者 85%~100%",
+       "chunk_id": "kb_v1.4.0:norm2018_s01#0004"
+      },
+      {
+       "source_set": "ctirads_2021",
+       "label": "C-TIRADS 2021",
+       "organization": "中华医学会超声医学分会",
+       "literal": "5 类(恶性可能 >90%",
+       "chunk_id": "kb_v1.4.0:pdf_thyroid_ctirads_2021_0012#0001"
+      }
+     ]
+    },
+    {
+     "fact_key": "malignant_risk:4a",
+     "title": "恶性风险：4A 类",
+     "values": [
+      {
+       "source_set": "norm_2018",
+       "label": "甲状腺癌诊疗规范 2018",
+       "organization": "国家卫生健康委员会",
+       "literal": "4a 具有 1 种恶性征象 5%~10%",
+       "chunk_id": "kb_v1.4.0:norm2018_s01#0004"
+      },
+      {
+       "source_set": "thyroid_guideline_2022",
+       "label": "甲状腺癌诊疗指南 2022",
+       "organization": "国家卫生健康委员会",
+       "literal": "4a 具有1 种恶性征象 5%～ 10%",
+       "chunk_id": "kb_v1.4.0:pdf_thyroid_thyroid_cancer_guideline_2022_0003#0001"
+      },
+      {
+       "source_set": "ctirads_2021",
+       "label": "C-TIRADS 2021",
+       "organization": "中华医学会超声医学分会",
+       "literal": "4A 类(恶性可能 2%~10%",
+       "chunk_id": "kb_v1.4.0:pdf_thyroid_ctirads_2021_0012#0000"
+      }
+     ]
+    },
+    {
+     "fact_key": "malignant_risk:4c",
+     "title": "恶性风险：4C 类",
+     "values": [
+      {
+       "source_set": "norm_2018",
+       "label": "甲状腺癌诊疗规范 2018",
+       "organization": "国家卫生健康委员会",
+       "literal": "4c 具有 3～4 种恶性征象 50%~85%",
+       "chunk_id": "kb_v1.4.0:norm2018_s01#0004"
+      },
+      {
+       "source_set": "thyroid_guideline_2022",
+       "label": "甲状腺癌诊疗指南 2022",
+       "organization": "国家卫生健康委员会",
+       "literal": "4c 具有3～4 种恶性征象 50%～ 85%",
+       "chunk_id": "kb_v1.4.0:pdf_thyroid_thyroid_cancer_guideline_2022_0003#0001"
+      },
+      {
+       "source_set": "ctirads_2021",
+       "label": "C-TIRADS 2021",
+       "organization": "中华医学会超声医学分会",
+       "literal": "4C 类(恶性可能 50%~90%",
+       "chunk_id": "kb_v1.4.0:pdf_thyroid_ctirads_2021_0012#0001"
+      }
+     ]
+    }
+   ],
+   "errors": [
+    "intra_source_inconsistency:fna_threshold:ctirads_2021"
+   ]
+  },
+  "conflict_block": "# 语料口径分歧（同一问题，多套权威给出不同数值）\n\n本次证据来自 4 套语料，对 4 项事实给出不同口径。\n**不要替医生合并成一个数**：必须在结论里并列呈现全部来源并注明出处；不确定时写「两份权威不一致，请结合本院常规」。\n\n## 分歧 1：恶性风险：3 类\n- 依据《甲状腺癌诊疗规范 2018》(国家卫生健康委员会)：3 可能良性 不典型的良性结节 <5%\n  原文：「…0 2 良性 囊性或实性为主， 形态规则、边界清楚 的良性结节 0 3 可能良性 不典型的良性结节 <5% 4 可疑恶性 恶性征 象：实 质性 、 低回声 或极低回 声、微小钙…」\n- 依据《C-TIRADS 2021》(中华医学会超声医学分会)：3 类(恶性可能 <2%\n  原文：「…迫气管导致气管明显塌陷和变 形时,原则上不建议热消融治疗。 (3)TIRADS3 类(恶性可能 <2% ) 无需 FNA。 如果结节过大导致压迫症状或出现美容问题时,在活检证实为良…」\n\n## 分歧 2：恶性风险：5 类\n- 依据《甲状腺癌诊疗规范 2018》(国家卫生健康委员会)：5 恶性 超过 4 种恶性征象， 尤其是有微钙化和 微分叶者 85%~100%\n  原文：「…4c 具有 3～4 种恶性征象 50%~85% 5 恶性 超过 4 种恶性征象， 尤其是有微钙化和 微分叶者 85%~100% 6 恶性 经病理证实的恶性病变 无 2.超声引导…」\n- 依据《C-TIRADS 2021》(中华医学会超声医学分会)：5 类(恶性可能 >90%\n  原文：「…(恶性可能 50%~90% ) 处理建议同4B 类结节。 (7)TIRADS5 类(恶性可能 >90% ) 处理建议同4B 类结节。 如果颈部出现典型甲状腺癌转移性淋巴结, 在技…」\n\n## 分歧 3：恶性风险：4A 类\n- 依据《甲状腺癌诊疗规范 2018》(国家卫生健康委员会)：4a 具有 1 种恶性征象 5%~10%\n  原文：「…或极低回 声、微小钙化、边界模糊/微分叶、纵横 比>1 5%~85% 4a 具有 1 种恶性征象 5%~10% 4b 具有 2 种恶性征象 10~50% 4c 具有 3～4 种恶性…」\n- 依据《甲状腺癌诊疗指南 2022》(国家卫生健康委员会)：4a 具有1 种恶性征象 5%～ 10%\n  原文：「|4a||具有1 种恶性征象|5%～ 10%| |4b||具有2 种恶性征象|10～ 50%| |4c||具有3…」\n- 依据《C-TIRADS 2021》(中华医学会超声医学分会)：4A 类(恶性可能 2%~10%\n  原文：「…时,在活检证实为良性的前提下,参考2类结节的处理原则。 (4)TIRADS4A 类(恶性可能 2%~10% ) ① 如果结节 > 15 mm , 建议超声引导下 FNA[16,17…」\n\n## 分歧 4：恶性风险：4C 类\n- 依据《甲状腺癌诊疗规范 2018》(国家卫生健康委员会)：4c 具有 3～4 种恶性征象 50%~85%\n  原文：「…恶性征象 5%~10% 4b 具有 2 种恶性征象 10~50% 4c 具有 3～4 种恶性征象 50%~85% 5 恶性 超过 4 种恶性征象， 尤其是有微钙化和 微分叶者 8…」\n- 依据《甲状腺癌诊疗指南 2022》(国家卫生健康委员会)：4c 具有3～4 种恶性征象 50%～ 85%\n  原文：「…%～ 10%| |4b||具有2 种恶性征象|10～ 50%| |4c||具有3～4 种恶性征象|50%～ 85%| |5|恶性|超过4 种恶性征象， 尤其是有微 钙化和微分叶者|…」\n- 依据《C-TIRADS 2021》(中华医学会超声医学分会)：4C 类(恶性可能 50%~90%\n  原文：「…神经,在充分知情同意的情况下,可以选择积极监控策略。 (6)TIRADS4C 类(恶性可能 50%~90% ) 处理建议同4B 类结节。 (7)TIRADS5 类(恶性可能 >9…」\n\n两份权威给出不同数值。请结合本院常规选择，并在结论中写明依据的是哪一份。",
+  "prompt_chars": 44803,
+  "generation_error": "",
+  "answer": "\n\n<Answer>```\n分级: TR4\n总分: 3\n置信度: 0.85\n理由：根据《C-TIRADS 2021》（中华医学会超声医学分会），4A 类结节恶性可能 2%~10% 时，若结节 >15 mm 建议超声引导下 FNA。本例结节 12mm，未达阈值，但结合《甲状腺癌诊疗规范 2018》（国家卫生健康委员会），4a 类具有 1 种恶性征象（5%~10%），仍需综合评估。边界清晰、无微钙化提示良性可能大，但需结合临床经验。\n证据: [6]、[12]、[38]\n鉴别诊断:\n1. 甲状腺腺瘤 | 0.65 | 支持: 边界清晰、无微钙化 | 排除: 无血流信号\n2. 结节性甲状腺肿 | 0.30 | 支持: 多发性结节 | 排除: 无微钙化\n3. 甲状腺囊肿 | 0.05 | 支持: 囊性成分 | 排除: 无实性成分\n\n患者解释:\n解释: 目前结节特征偏向良性，但存在潜在恶性可能，建议定期随访。\n安抚: 无需过度焦虑，密切观察即可。\n下一步: 3-6 个月复查超声，监测结节变化。\n```</Answer>",
+  "control_same_evidence_no_block": {
+   "why": "同样 60 块证据、同一模型、同一温度，唯一差别是没有并列块",
+   "prompt_chars": 43087,
+   "generation_error": "",
+   "answer": "\n\n<Answer>分级: TR3\n总分: 3\n置信度: 0.92\n理由: 根据ACR TI-RADS 2017标准，结节大小12mm属于≤1cm（注：12mm=1.2cm，超过1cm），但具有以下不典型恶性特征：边界清晰（0分）、无微钙化（0分）。总分0分，对应TR1（良性）。但依据《C-TIRADS 2021》，边界清晰的结节即使＞10mm可评估为C-TIRADS2类。需注意单位换算问题。\n证据: [59], [58]\n鉴别诊断:\n1. 结节性甲状腺肿 | 0.65 | 支持: 边界清晰、无微钙化 | 排除: \n2. 甲状腺囊肿 | 0.30 | 支持:  | 排除: \n3. 甲状腺炎 | — | 支持:  | 排除: \n\n患者解释:\n患者您好，根据目前检查结果，结节呈现良性特征。建议每6-12个月复查超声，注意观察结节变化。保持情绪稳定，避免过度焦虑。</Answer>"
+  }
+ },
+ "kb_version": "kb_v1.4.0",
+ "collection": "ultrasound_knowledge_chunks",
+ "llm": "II-Medical-8B",
+ "cases": [
+  {
+   "generation_error": "",
+   "case": "all_enabled",
+   "question": "甲状腺结节 4a 类，大小 12mm，边界清晰，无微钙化。需要做细针穿刺吗？",
+   "requested_source_sets": null,
+   "render_conflict_enabled": true,
+   "retrieval": {
+    "n_chunks": 5,
+    "retrieval_method": "bm25_fallback",
+    "triggered_bm25_fallback": true,
+    "latency_ms": 163.2,
+    "dropped_missing_row": 0,
+    "source_sets_hit": [
+     "ctirads_2021",
+     "norm_2018",
+     "thyroid_guideline_2022"
+    ],
+    "chunks": [
+     {
+      "chunk_id": "kb_v1.4.0:pdf_thyroid_thyroid_cancer_norm_2018_0007#0000",
+      "source_doc_id": "pdf_thyroid_thyroid_cancer_norm_2018_0007",
+      "source_set": "norm_2018",
+      "score": 0.0,
+      "head": "超声检查操作简便、无创而廉价， 高分辨率超声可检出甲状腺内直径＞2 mm 的微小结节， 清晰地显示其边界、形态及内部结构等信息， 是甲状腺最常用且首选的影像学检查方法， 推荐所有临床触诊或机会性筛查等方式发现甲状腺结节的"
+     },
+     {
+      "chunk_id": "kb_v1.4.0:pdf_thyroid_thyroid_cancer_guideline_2022_0003#0000",
+      "source_doc_id": "pdf_thyroid_thyroid_cancer_guideline_2022_0003",
+      "source_set": "thyroid_guideline_2022",
+      "score": 0.0,
+      "head": "（4）用于诊断的相关分子检测：经细针抽吸（fine-needle aspiration， FNA）仍不能确定良恶性的甲状腺结节， 可对穿刺标本进行分子标记物检测， 如BRAF突变、RAS突变、RET/PTC重排等， 有助"
+     },
+     {
+      "chunk_id": "kb_v1.4.0:pdf_thyroid_ctirads_2021_0011#0001",
+      "source_doc_id": "pdf_thyroid_ctirads_2021_0011",
+      "source_set": "ctirads_2021",
+      "score": 0.0,
+      "head": "直径一般不超过15 mm<sup>,典型者在</sup> 10 mm<sup>以下,这</sup> 些所谓的 “白骑士 (whiteknight<sup>)”结节是典型良</sup> 性结节,可评估为 C-TIRADS2"
+     },
+     {
+      "chunk_id": "kb_v1.4.0:norm2018_s01#0004",
+      "source_doc_id": "norm2018_s01",
+      "source_set": "norm_2018",
+      "score": 0.0,
+      "head": "此外还包括淋巴结呈圆形、边界不规则或模糊、内部回声不均、 淋巴门消失或皮髓质分界不清等。 对甲状腺结节及淋巴结的鉴别能力与超声医师的临床经验相关。 甲状腺影像报告和数据系统（ TI-RADS）对甲状腺结节恶性程度进 行评"
+     },
+     {
+      "chunk_id": "kb_v1.4.0:pdf_thyroid_ctirads_2021_0010#0001",
+      "source_doc_id": "pdf_thyroid_ctirads_2021_0010",
+      "source_set": "ctirads_2021",
+      "score": 0.0,
+      "head": "诊断: 结节性甲状腺肿;D:CTIRADS4A<sup>:实性结节(</sup> 1<sup>),水平位(</sup> 0<sup>),边缘光整(</sup> 0<sup>),低回声(</sup> 0<sup>),未见点"
+     }
+    ]
+   },
+   "conflict": {
+    "detected": false,
+    "comparable": true,
+    "multi_source": true,
+    "source_sets": [
+     "norm_2018",
+     "thyroid_guideline_2022",
+     "ctirads_2021"
+    ],
+    "facts_extracted": 9,
+    "conflicts": [],
+    "errors": []
+   },
+   "conflict_block": "",
+   "prompt_chars": 8699,
+   "prompt_has_conflict_block": false,
+   "answer": "\n\n<Answer>分级: TR2\n总分: 1\n置信度: 0.92\n理由: 实性(3) + 低回声(0) + 水平位(0) + 边缘光整(0) + 未见点状强回声(0) = 1 分 → TR2（依据《C-TIRADS 2021》）\n证据: [3]\n鉴别诊断:\n1. 玻璃样变甲状腺腺瘤 | 0.90 | 支持: 实性结节、水平位、边缘光整 | 排除: 无微钙化\n2. 结节性甲状腺肿 | 0.08 | 支持: 多发实性结节 | 排除: 单发结节\n3. 甲状腺囊肿 | 0.02 | 支持: 边界清晰 | 排除: 实性成分\n\n患者解释:\n解释: 当前超声特征符合良性结节表现\n安抚: 无需过度担心\n下一步: 建议定期复查（6-12个月）\n\n科研参数: 无</Answer>"
+  },
+  {
+   "generation_error": "",
+   "case": "only_ctirads",
+   "question": "甲状腺结节 4a 类，大小 12mm，边界清晰，无微钙化。需要做细针穿刺吗？",
+   "requested_source_sets": [
+    "ctirads_2021"
+   ],
+   "render_conflict_enabled": true,
+   "retrieval": {
+    "n_chunks": 5,
+    "retrieval_method": "bm25_fallback",
+    "triggered_bm25_fallback": true,
+    "latency_ms": 88.3,
+    "dropped_missing_row": 0,
+    "source_sets_hit": [
+     "ctirads_2021"
+    ],
+    "chunks": [
+     {
+      "chunk_id": "kb_v1.4.0:pdf_thyroid_ctirads_2021_0011#0001",
+      "source_doc_id": "pdf_thyroid_ctirads_2021_0011",
+      "source_set": "ctirads_2021",
+      "score": 0.0,
+      "head": "直径一般不超过15 mm<sup>,典型者在</sup> 10 mm<sup>以下,这</sup> 些所谓的 “白骑士 (whiteknight<sup>)”结节是典型良</sup> 性结节,可评估为 C-TIRADS2"
+     },
+     {
+      "chunk_id": "kb_v1.4.0:pdf_thyroid_ctirads_2021_0010#0001",
+      "source_doc_id": "pdf_thyroid_ctirads_2021_0010",
+      "source_set": "ctirads_2021",
+      "score": 0.0,
+      "head": "诊断: 结节性甲状腺肿;D:CTIRADS4A<sup>:实性结节(</sup> 1<sup>),水平位(</sup> 0<sup>),边缘光整(</sup> 0<sup>),低回声(</sup> 0<sup>),未见点"
+     },
+     {
+      "chunk_id": "kb_v1.4.0:pdf_thyroid_ctirads_2021_0007#0002",
+      "source_doc_id": "pdf_thyroid_ctirads_2021_0007",
+      "source_set": "ctirads_2021",
+      "score": 0.0,
+      "head": "④<sup>粗钙化(</sup> macrocalcifications<sup>):大于</sup> 1 mm<sup>的</sup> 强回声,通常伴有声影; ⑤<sup>周边钙化(</sup> peripheralc"
+     },
+     {
+      "chunk_id": "kb_v1.4.0:pdf_thyroid_ctirads_2021_0011#0000",
+      "source_doc_id": "pdf_thyroid_ctirads_2021_0011",
+      "source_set": "ctirads_2021",
+      "score": 0.0,
+      "head": "点状强回声可分为微钙化、彗星尾伪像和意义不明确三种类型。 当结节内出现点状强回声时,按照可疑特征优先的原则优先记录微钙化。 例如,当结节内同时出现上述三种类型点状强回声时, 只记录微钙化,并在计数法时加1分。 彗星尾伪像"
+     },
+     {
+      "chunk_id": "kb_v1.4.0:pdf_thyroid_ctirads_2021_0011#0002",
+      "source_doc_id": "pdf_thyroid_ctirads_2021_0011",
+      "source_set": "ctirads_2021",
+      "score": 0.0,
+      "head": "内伴碎屑回声,C-TIRADS2<sup>,诊断:结节性甲状腺肿;</sup> B<sup>:海绵状结节,</sup> C- TIRADS2<sup>,诊断:结节性甲状腺肿;</sup> C<sup>:桥本甲状腺炎背景下"
+     }
+    ]
+   },
+   "conflict": {
+    "detected": false,
+    "comparable": false,
+    "multi_source": false,
+    "source_sets": [
+     "ctirads_2021"
+    ],
+    "facts_extracted": 0,
+    "conflicts": [],
+    "errors": []
+   },
+   "conflict_block": "",
+   "prompt_chars": 7877,
+   "prompt_has_conflict_block": false,
+   "answer": "\n\n```\n分级: TR2\n总分: 2\n置信度: 0.95\n理由: 根据《C-TIRADS 2021》[4]，粗钙化导致内部特征无法评估时，至少可评估为C-TIRADS4A类。但本例中结节边界清晰、无微钙化，且大小12mm未达4A类降级阈值。实际评分显示粗钙化(1分) + 其余特征均为0分，总分1分 → TR2（依据《C-TIRADS 2021》[4]）\n证据: [4]\n鉴别诊断:\n1. 玻璃样变甲状腺腺瘤 | 0.65 | 支持: 边界清晰、无微钙化 | 排除: 无血流信号\n2. 结节性甲状腺肿 | 0.25 | 支持: 粗钙化、边界清晰 | 排除: 无囊性成分\n3. 甲状腺囊肿 | 0.10 | 支持: 大小稳定 | 排除: 囊性成分缺失\n\n患者解释:\n解释: 当前超声特征不支持恶性，建议短期随访\n安抚: 多数结节为良性，无需过度治疗\n下一步: 6个月复查超声观察变化\n```\n\n注：严格遵循了：\n1. 评分仅计算明确提到的特征（粗钙化1分）\n2. 证据来源标注（[4]）\n3. 禁止编造未提及特征（未提及成分/回声/形态）\n4. 未提及弹性成像等其他技术参数\n5. 鉴别诊断可能性总和为1.0"
+  },
+  {
+   "generation_error": "",
+   "case": "only_norm2018",
+   "question": "甲状腺结节 4a 类，大小 12mm，边界清晰，无微钙化。需要做细针穿刺吗？",
+   "requested_source_sets": [
+    "norm_2018"
+   ],
+   "render_conflict_enabled": true,
+   "retrieval": {
+    "n_chunks": 5,
+    "retrieval_method": "bm25_fallback",
+    "triggered_bm25_fallback": true,
+    "latency_ms": 91.2,
+    "dropped_missing_row": 0,
+    "source_sets_hit": [
+     "norm_2018"
+    ],
+    "chunks": [
+     {
+      "chunk_id": "kb_v1.4.0:pdf_thyroid_thyroid_cancer_norm_2018_0007#0000",
+      "source_doc_id": "pdf_thyroid_thyroid_cancer_norm_2018_0007",
+      "source_set": "norm_2018",
+      "score": 0.0,
+      "head": "超声检查操作简便、无创而廉价， 高分辨率超声可检出甲状腺内直径＞2 mm 的微小结节， 清晰地显示其边界、形态及内部结构等信息， 是甲状腺最常用且首选的影像学检查方法， 推荐所有临床触诊或机会性筛查等方式发现甲状腺结节的"
+     },
+     {
+      "chunk_id": "kb_v1.4.0:norm2018_s01#0004",
+      "source_doc_id": "norm2018_s01",
+      "source_set": "norm_2018",
+      "score": 0.0,
+      "head": "此外还包括淋巴结呈圆形、边界不规则或模糊、内部回声不均、 淋巴门消失或皮髓质分界不清等。 对甲状腺结节及淋巴结的鉴别能力与超声医师的临床经验相关。 甲状腺影像报告和数据系统（ TI-RADS）对甲状腺结节恶性程度进 行评"
+     },
+     {
+      "chunk_id": "kb_v1.4.0:norm2018_s01#0003",
+      "source_doc_id": "norm2018_s01",
+      "source_set": "norm_2018",
+      "score": 0.0,
+      "head": "甲状腺素（ recombinant human thyrotropin ， rhTSH）的方法， 使血 清TSH水平升高至>30mU/L， 之后再行Tg检测， 即TSH刺激后的Tg 测定。 停用L-T4和使用rhTSH后"
+     },
+     {
+      "chunk_id": "kb_v1.4.0:norm2018_s01#0005",
+      "source_doc_id": "norm2018_s01",
+      "source_set": "norm_2018",
+      "score": 0.0,
+      "head": "降钙素水平异常升高。 （2）US-FNAB 的排除指征：经甲状腺核素显像证实为有自主 摄取功能的热结节； 超声检查提示为纯囊性的结节。 （3）甲状腺结节 US-FNAB 的禁忌证：具有出血倾向， 出、凝 血时间显著延长，"
+     },
+     {
+      "chunk_id": "kb_v1.4.0:pdf_thyroid_thyroid_cancer_norm_2018_0009#0000",
+      "source_doc_id": "pdf_thyroid_thyroid_cancer_norm_2018_0009",
+      "source_set": "norm_2018",
+      "score": 0.0,
+      "head": "对于未行手术治疗的患者超声随访中应注意原结节体积是否增大或出现前述恶性征象。 结节体积增大指结节体积增大 50%以上或至少有 2 条径线增加超过 20%（且超过 2mm）， 此时有 FNAB 的适应证； 对于囊实性结节，"
+     }
+    ]
+   },
+   "conflict": {
+    "detected": false,
+    "comparable": false,
+    "multi_source": false,
+    "source_sets": [
+     "norm_2018"
+    ],
+    "facts_extracted": 9,
+    "conflicts": [],
+    "errors": []
+   },
+   "conflict_block": "",
+   "prompt_chars": 8526,
+   "prompt_has_conflict_block": false,
+   "answer": "\n\n<Answer>分级: TR2\n总分: 0\n置信度: 0.98\n理由: 根据《甲状腺癌诊疗规范 2018》[2]，4a 类具有1种恶性征象，但本例无微钙化、边界清晰，未达到可疑恶性标准\n证据: [2]\n鉴别诊断:\n1. 玻璃样变甲状腺腺瘤 | 0.90 | 支持: 边界清晰、无微钙化 | 排除: 无血流信号\n2. 结节性甲状腺肿 | 0.09 | 支持: 多发结节 | 排除: 单发结节\n3. 甲状腺腺瘤 | 0.01 | 支持: 边界清晰 | 排除: 无血流信号\n\n患者解释:\n解释: 结节特征显示良性可能性大\n安抚: 目前无需过度治疗\n下一步: 建议3-6个月复查超声\n\n科研参数: 无</Answer>"
+  },
+  {
+   "generation_error": "",
+   "case": "all_enabled_no_render",
+   "question": "甲状腺结节 4a 类，大小 12mm，边界清晰，无微钙化。需要做细针穿刺吗？",
+   "requested_source_sets": null,
+   "render_conflict_enabled": false,
+   "retrieval": {
+    "n_chunks": 5,
+    "retrieval_method": "bm25_fallback",
+    "triggered_bm25_fallback": true,
+    "latency_ms": 95.3,
+    "dropped_missing_row": 0,
+    "source_sets_hit": [
+     "ctirads_2021",
+     "norm_2018",
+     "thyroid_guideline_2022"
+    ],
+    "chunks": [
+     {
+      "chunk_id": "kb_v1.4.0:pdf_thyroid_thyroid_cancer_norm_2018_0007#0000",
+      "source_doc_id": "pdf_thyroid_thyroid_cancer_norm_2018_0007",
+      "source_set": "norm_2018",
+      "score": 0.0,
+      "head": "超声检查操作简便、无创而廉价， 高分辨率超声可检出甲状腺内直径＞2 mm 的微小结节， 清晰地显示其边界、形态及内部结构等信息， 是甲状腺最常用且首选的影像学检查方法， 推荐所有临床触诊或机会性筛查等方式发现甲状腺结节的"
+     },
+     {
+      "chunk_id": "kb_v1.4.0:pdf_thyroid_thyroid_cancer_guideline_2022_0003#0000",
+      "source_doc_id": "pdf_thyroid_thyroid_cancer_guideline_2022_0003",
+      "source_set": "thyroid_guideline_2022",
+      "score": 0.0,
+      "head": "（4）用于诊断的相关分子检测：经细针抽吸（fine-needle aspiration， FNA）仍不能确定良恶性的甲状腺结节， 可对穿刺标本进行分子标记物检测， 如BRAF突变、RAS突变、RET/PTC重排等， 有助"
+     },
+     {
+      "chunk_id": "kb_v1.4.0:pdf_thyroid_ctirads_2021_0011#0001",
+      "source_doc_id": "pdf_thyroid_ctirads_2021_0011",
+      "source_set": "ctirads_2021",
+      "score": 0.0,
+      "head": "直径一般不超过15 mm<sup>,典型者在</sup> 10 mm<sup>以下,这</sup> 些所谓的 “白骑士 (whiteknight<sup>)”结节是典型良</sup> 性结节,可评估为 C-TIRADS2"
+     },
+     {
+      "chunk_id": "kb_v1.4.0:norm2018_s01#0004",
+      "source_doc_id": "norm2018_s01",
+      "source_set": "norm_2018",
+      "score": 0.0,
+      "head": "此外还包括淋巴结呈圆形、边界不规则或模糊、内部回声不均、 淋巴门消失或皮髓质分界不清等。 对甲状腺结节及淋巴结的鉴别能力与超声医师的临床经验相关。 甲状腺影像报告和数据系统（ TI-RADS）对甲状腺结节恶性程度进 行评"
+     },
+     {
+      "chunk_id": "kb_v1.4.0:pdf_thyroid_ctirads_2021_0010#0001",
+      "source_doc_id": "pdf_thyroid_ctirads_2021_0010",
+      "source_set": "ctirads_2021",
+      "score": 0.0,
+      "head": "诊断: 结节性甲状腺肿;D:CTIRADS4A<sup>:实性结节(</sup> 1<sup>),水平位(</sup> 0<sup>),边缘光整(</sup> 0<sup>),低回声(</sup> 0<sup>),未见点"
+     }
+    ]
+   },
+   "conflict": {
+    "detected": false,
+    "comparable": true,
+    "multi_source": true,
+    "source_sets": [
+     "norm_2018",
+     "thyroid_guideline_2022",
+     "ctirads_2021"
+    ],
+    "facts_extracted": 9,
+    "conflicts": [],
+    "errors": []
+   },
+   "conflict_block": "",
+   "prompt_chars": 8699,
+   "prompt_has_conflict_block": false,
+   "answer": "\n\n<Answer>分级: TR2\n总分: 1\n置信度: 0.92\n理由: 实性(3) + 低回声(0) + 水平位(0) + 边缘光整(0) + 未见点状强回声(0) = 1 分 → TR2（依据《C-TIRADS 2021》）\n证据: [3]\n鉴别诊断:\n1. 结节性甲状腺肿 | 0.85 | 支持: 多发实性结节、边界光整 | 排除: 微钙化\n2. 滤泡性腺瘤 | 0.15 | 支持: 单发实性结节 | 排除: 边界不清\n\n患者解释:\n解释: 当前超声特征符合良性结节表现\n安抚: 无需过度担心\n下一步: 建议定期复查（6-12个月）\n\n科研参数: 无</Answer>"
+  },
+  {
+   "generation_error": "",
+   "case": "single_source_question",
+   "question": "C-TIRADS 计数法里，哪些超声特征算可疑恶性征象？",
+   "requested_source_sets": null,
+   "render_conflict_enabled": true,
+   "retrieval": {
+    "n_chunks": 5,
+    "retrieval_method": "bm25_fallback",
+    "triggered_bm25_fallback": true,
+    "latency_ms": 73.5,
+    "dropped_missing_row": 0,
+    "source_sets_hit": [
+     "ctirads_2021"
+    ],
+    "chunks": [
+     {
+      "chunk_id": "kb_v1.4.0:pdf_thyroid_ctirads_2021_0009#0000",
+      "source_doc_id": "pdf_thyroid_ctirads_2021_0009",
+      "source_set": "ctirads_2021",
+      "score": 0.0,
+      "head": "三、甲状腺结节的超声分类系统和处理建议本分类系统建立在中国人甲状腺结节超声数据基础上,力求简便易行, 能够在临床实践中便捷使用。 处理建议充分考虑到了甲状腺癌对患者的实际危害和中国国情。 (一)C-TIRADS的建立过程"
+     },
+     {
+      "chunk_id": "kb_v1.4.0:pdf_thyroid_ctirads_2021_0010#0000",
+      "source_doc_id": "pdf_thyroid_ctirads_2021_0010",
+      "source_set": "ctirads_2021",
+      "score": 0.0,
+      "head": "|结节|分值|恶性率<br>%|C-TIRADS<sup>分类</sup>| |---|---|---|---| |无结节|无分值<sup>*</sup>|0|1 <sup>无结节</sup>| |有结节|-1|0|2 "
+     },
+     {
+      "chunk_id": "kb_v1.4.0:pdf_thyroid_ctirads_2021_0007#0000",
+      "source_doc_id": "pdf_thyroid_ctirads_2021_0007",
+      "source_set": "ctirads_2021",
+      "score": 0.0,
+      "head": "②<sup>无声晕(</sup> absenthalo<sup>)。 </sup> 意义:关于厚声晕和薄声晕的具体厚度阈值,目前尚没有统一标准, 有文献采用 2 mm<sup>作为阈</sup> 值 [99-101],也"
+     },
+     {
+      "chunk_id": "kb_v1.4.0:pdf_thyroid_ctirads_2021_0017#0000",
+      "source_doc_id": "pdf_thyroid_ctirads_2021_0017",
+      "source_set": "ctirads_2021",
+      "score": 0.0,
+      "head": "- 23  Yoon JH Lee HS Kim EK et al Malignancy Risk Stratification of Thyroid Nodules Comparison between the Thy"
+     },
+     {
+      "chunk_id": "kb_v1.4.0:pdf_thyroid_ctirads_2021_0011#0002",
+      "source_doc_id": "pdf_thyroid_ctirads_2021_0011",
+      "source_set": "ctirads_2021",
+      "score": 0.0,
+      "head": "内伴碎屑回声,C-TIRADS2<sup>,诊断:结节性甲状腺肿;</sup> B<sup>:海绵状结节,</sup> C- TIRADS2<sup>,诊断:结节性甲状腺肿;</sup> C<sup>:桥本甲状腺炎背景下"
+     }
+    ]
+   },
+   "conflict": {
+    "detected": false,
+    "comparable": false,
+    "multi_source": false,
+    "source_sets": [
+     "ctirads_2021"
+    ],
+    "facts_extracted": 0,
+    "conflicts": [],
+    "errors": []
+   },
+   "conflict_block": "",
+   "prompt_chars": 8362,
+   "prompt_has_conflict_block": false,
+   "answer": "\n\n<Answer>分级: TR3\n总分: 3\n置信度: 0.92\n理由: 实性成分(3) + 微钙化(2) + 极低回声(4) + 边缘模糊(2) + 无彗星尾(0) = 9 分 → TR5（≥7 分为 TR5）\n证据: [1], [3]\n鉴别诊断:\n1. 乳头状癌 | 0.75 | 支持: 微钙化、极低回声、纵横比>1 | 排除: 边界清晰\n2. 滤泡性腺瘤 | 0.25 | 支持: 无血流信号 | 排除: 微钙化\n\n**患者解释:**\n患者解释:\n解释: 根据超声特征分析，结节呈现可疑恶性征象，建议进一步检查确认。\n安抚: 大多数甲状腺结节都是良性的，我们会尽快安排检查明确诊断。\n下一步: 建议细针穿刺活检（FNA）以明确结节性质。</Answer>"
+  },
+  {
+   "generation_error": "",
+   "case": "all_enabled_top60",
+   "question": "甲状腺结节 4a 类，大小 12mm，边界清晰，无微钙化。需要做细针穿刺吗？",
+   "requested_source_sets": null,
+   "render_conflict_enabled": true,
+   "retrieval": {
+    "n_chunks": 5,
+    "retrieval_method": "bm25_fallback",
+    "triggered_bm25_fallback": true,
+    "latency_ms": 112.1,
+    "dropped_missing_row": 0,
+    "source_sets_hit": [
+     "ctirads_2021",
+     "norm_2018",
+     "thyroid_guideline_2022"
+    ],
+    "chunks": [
+     {
+      "chunk_id": "kb_v1.4.0:pdf_thyroid_thyroid_cancer_norm_2018_0007#0000",
+      "source_doc_id": "pdf_thyroid_thyroid_cancer_norm_2018_0007",
+      "source_set": "norm_2018",
+      "score": 0.0,
+      "head": "超声检查操作简便、无创而廉价， 高分辨率超声可检出甲状腺内直径＞2 mm 的微小结节， 清晰地显示其边界、形态及内部结构等信息， 是甲状腺最常用且首选的影像学检查方法， 推荐所有临床触诊或机会性筛查等方式发现甲状腺结节的"
+     },
+     {
+      "chunk_id": "kb_v1.4.0:pdf_thyroid_thyroid_cancer_guideline_2022_0003#0000",
+      "source_doc_id": "pdf_thyroid_thyroid_cancer_guideline_2022_0003",
+      "source_set": "thyroid_guideline_2022",
+      "score": 0.0,
+      "head": "（4）用于诊断的相关分子检测：经细针抽吸（fine-needle aspiration， FNA）仍不能确定良恶性的甲状腺结节， 可对穿刺标本进行分子标记物检测， 如BRAF突变、RAS突变、RET/PTC重排等， 有助"
+     },
+     {
+      "chunk_id": "kb_v1.4.0:pdf_thyroid_ctirads_2021_0011#0001",
+      "source_doc_id": "pdf_thyroid_ctirads_2021_0011",
+      "source_set": "ctirads_2021",
+      "score": 0.0,
+      "head": "直径一般不超过15 mm<sup>,典型者在</sup> 10 mm<sup>以下,这</sup> 些所谓的 “白骑士 (whiteknight<sup>)”结节是典型良</sup> 性结节,可评估为 C-TIRADS2"
+     },
+     {
+      "chunk_id": "kb_v1.4.0:norm2018_s01#0004",
+      "source_doc_id": "norm2018_s01",
+      "source_set": "norm_2018",
+      "score": 0.0,
+      "head": "此外还包括淋巴结呈圆形、边界不规则或模糊、内部回声不均、 淋巴门消失或皮髓质分界不清等。 对甲状腺结节及淋巴结的鉴别能力与超声医师的临床经验相关。 甲状腺影像报告和数据系统（ TI-RADS）对甲状腺结节恶性程度进 行评"
+     },
+     {
+      "chunk_id": "kb_v1.4.0:pdf_thyroid_ctirads_2021_0010#0001",
+      "source_doc_id": "pdf_thyroid_ctirads_2021_0010",
+      "source_set": "ctirads_2021",
+      "score": 0.0,
+      "head": "诊断: 结节性甲状腺肿;D:CTIRADS4A<sup>:实性结节(</sup> 1<sup>),水平位(</sup> 0<sup>),边缘光整(</sup> 0<sup>),低回声(</sup> 0<sup>),未见点"
+     }
+    ]
+   },
+   "conflict": {
+    "detected": false,
+    "comparable": true,
+    "multi_source": true,
+    "source_sets": [
+     "norm_2018",
+     "thyroid_guideline_2022",
+     "ctirads_2021"
+    ],
+    "facts_extracted": 9,
+    "conflicts": [],
+    "errors": []
+   },
+   "conflict_block": "",
+   "prompt_chars": 8699,
+   "prompt_has_conflict_block": false,
+   "answer": "\n\n<Answer>分级: TR2\n总分: 1\n置信度: 0.92\n理由: 实性(3) + 低回声(0) + 水平位(0) + 边缘光整(0) + 无点状强回声(0) = 3 分 → TR2（依据《C-TIRADS 2021》）\n证据: [4], [5]\n鉴别诊断:\n1. 玻璃样变甲状腺腺瘤 | 0.95 | 支持: 实性结节、水平位、边界清晰 | 排除: 无微钙化\n2. 结节性甲状腺肿 | 0.05 | 支持: 多发性结节 | 排除: 单发结节\n\n患者解释:\n解释: 当前超声特征符合良性结节表现\n安抚: 无需过度担心\n下一步: 建议定期复查（6-12个月）\n\n科研参数: 无</Answer>"
+  }
+ ]
+}

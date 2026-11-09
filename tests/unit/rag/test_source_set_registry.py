@@ -135,7 +135,7 @@ class TestDeriveFromChunk:
         """脏 metadata 不许打断检索（失败安全，与 authority.source_kind_of 同口径）。"""
 
         class Exploding(dict):
-            def get(self, *a, **k):  # noqa: D401 - 测试替身
+            def get(self, *a, **k):
                 raise RuntimeError("dirty metadata")
 
         # 显式传入一个会在 .get 上炸的 dict 子类
@@ -219,3 +219,48 @@ class TestUnknownConfigDetection:
         assert set(bad) == {"!!!", "ctirads_20211"}
         # 关键：函数**返回**而不抛 —— 调用方（启动期 lifespan）据返回值告警。
         assert isinstance(bad, list)
+
+
+class TestCrossConventionBridge:
+    """与 `app/knowledge/metadata_infer.py` 的命名互通（2026-11-09）。
+
+    ## 为什么这组用例必须存在
+
+    同日另有一路实现在**建库时**把 `metadata["source_set"]` 写进 chunk，
+    用的是**不带年份后缀**的标识（`ase_diastolic_2025` / `ata_dtc_2015` …）。
+    两套并存会产生最坏的一类不一致：**医院配的集名与库里存的值对不上**，
+    白名单把本院语料自己挡掉，医生看到"知识库没有相关内容" ——
+    而这既没有报错，也没有日志。
+    """
+
+    @pytest.mark.parametrize(
+        ("other_scheme", "canonical"),
+        [
+            ("ase_diastolic_2025", "ase_2025"),
+            ("bse_diastolic_2024", "bse_2024"),
+            ("ata_dtc_2015", "ata_2015"),
+            ("thyroid_ca_2022", "thyroid_guideline_2022"),
+            ("ase_tte_2019", "ase_comptte_2019"),
+            ("acr_ceus_lirads_2027", "ceus_lirads_2027"),
+            ("acr_ceus_lirads_2017", "ceus_lirads_2017"),
+            ("liver_ca_2024", "liver_guideline_2024"),
+            ("cardiac_ref_2016", "echo_measure_2016"),
+            ("cardiac_tte_2024", "tte_2024"),
+        ],
+    )
+    def test_other_scheme_normalizes_to_canonical(self, other_scheme, canonical):
+        assert normalize_source_set(other_scheme) == canonical
+
+    def test_config_written_in_either_scheme_matches_stored_chunk(self):
+        """无论医院配哪一套写法、库里存哪一套，`included_by_enabled` 都必须判 True。"""
+        for stored, configured in (
+            ("ase_diastolic_2025", "ase_2025"),   # 库存另一套，配置用本套
+            ("ase_2025", "ase_diastolic_2025"),   # 库存本套，配置用另一套
+        ):
+            assert included_by_enabled(stored, [configured]) is True, (
+                f"库存 {stored} / 配置 {configured} 判成了不启用 —— 会把本院语料自己挡掉"
+            )
+
+    def test_other_scheme_ids_are_known_not_typos(self):
+        """另一套标识不许被启动期告警当成拼写错误报出来。"""
+        assert unknown_source_sets(["ase_diastolic_2025", "ata_dtc_2015"]) == []

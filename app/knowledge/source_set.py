@@ -112,6 +112,7 @@ SOURCE_SET_RULES: tuple[tuple[str, str], ...] = (
     ("ase_strain_2025", "ase_strain_2025"),
     ("ase_stress_echo_2020_cn", "ase_stress_echo_2020"),
     ("jaha_very_severe_as_2019", "jaha_as_2019"),
+    ("ksth_rfa_2017", "ksth_rfa_2017"),
     # ---- 非指南语料（单独成集：它们不该跟指南并列） ----
     ("dialogue_", "dialogue"),
 )
@@ -151,6 +152,7 @@ SOURCE_SET_LABELS: dict[str, tuple[str, str]] = {
     "ase_strain_2025": ("ASE 心肌应变指南 2025", "美国超声心动图学会（ASE）"),
     "ase_stress_echo_2020": ("ASE 负荷超声心动图 2020", "美国超声心动图学会（ASE）"),
     "jaha_as_2019": ("JAHA 极重度主动脉瓣狭窄 2019", "美国心脏协会期刊（JAHA）"),
+    "ksth_rfa_2017": ("韩国甲状腺放射学会射频消融指南 2017", "韩国甲状腺放射学会（KSThR）"),
     "dialogue": ("临床对话语料", "本项目整理"),
     SOURCE_SET_UNKNOWN: ("未标注来源", "未标注"),
 }
@@ -197,6 +199,35 @@ _ALIASES: dict[str, str] = {
     "ceus_lirads_2027": "ceus_lirads_2027",
     "lirads": "lirads_v2018",
     "lirads_v2018": "lirads_v2018",
+    # ---- 与 `app/knowledge/metadata_infer.py` 的**命名互通**（2026-11-09）----
+    #
+    # 同日另有一路实现（metadata_infer + md_chunker，已提交）在**建库时**把
+    # `metadata["source_set"]` 写进 chunk，它用的是**不带年份后缀**的一套标识
+    # （`ase_diastolic_2025` / `bse_diastolic_2024` / `ata_dtc_2015` /
+    # `thyroid_ca_2022` / `acr_ceus_lirads_2027` …）。
+    #
+    # 两套并存会产生**最坏的一类不一致**：医院配置写 ``ase_2025``（本模块口径），
+    # 而 chunk 的 metadata 里是 ``ase_diastolic_2025``（另一路口径），
+    # 归一化后对不上 → 白名单把本院语料自己挡掉 → 医生看到"知识库没有内容"。
+    #
+    # 这里把另一套标识**逐条映射到本模块的规范标识**：
+    # `source_set_of()` 先读 metadata（可能拿到另一套），再经这里归一 → 收敛。
+    # 反过来（配另一套标识）也成立，因为配置侧同样过 normalize。
+    "ase_diastolic_2025": "ase_2025",
+    "bse_diastolic_2024": "bse_2024",
+    "ata_dtc_2015": "ata_2015",
+    "thyroid_ca_2022": "thyroid_guideline_2022",
+    "ase_tte_2019": "ase_comptte_2019",
+    "ase_stress_2020": "ase_stress_echo_2020",
+    "acr_ceus_lirads_2017": "ceus_lirads_2017",
+    "acr_ceus_lirads_2027": "ceus_lirads_2027",
+    "acr_ceus_tra_2024": "ceus_tra_2024",
+    "acr_lirads_us_2024": "lirads_us_2024",
+    "liver_ca_2024": "liver_guideline_2024",
+    "cardiac_ref_2016": "echo_measure_2016",
+    "cardiac_tte_2024": "tte_2024",
+    "cardiac_valve_2021": "valve_2021",
+    "ksth_rfa_2017": "ksth_rfa_2017",
 }
 
 

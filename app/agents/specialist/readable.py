@@ -142,23 +142,6 @@ def specialist_unavailable_text(organ: Organ | str) -> str:
     return f"{organ_cn(organ)}：专科判读不可用，{_HANDOFF_ADVICE}"
 
 
-def degenerate_grade_only_text(organ: Organ | str) -> str:
-    """模型只给了分级码、没写任何依据 → 可读降级（2026-11-09 接线）。
-
-    为什么必须拦：这种输出**不空、不回声**，所以既有的空文本检查与
-    ``detect_prompt_echo`` 都放它过去，它会原样落库成为"结论"。
-    生产实测（全库 797 条有正文的记录）**20 条**是这种形态
-    （`甲状腺 · TR1`，长度 9 字），医生看到的等于一个没解释的分级码。
-
-    为什么单独一条文案而不是复用语料不足那条：原因是**模型没写正文**，
-    不是**证据不足** —— 两件事混在一起，排障会往检索方向白跑。
-    """
-    return (
-        f"{organ_cn(organ)}：本次判读只给出了分级、没有给出依据正文，"
-        f"已拦截并转人工复核，{_HANDOFF_ADVICE}"
-    )
-
-
 def self_made_grading_rule_text(organ: Organ | str) -> str:
     """模型自造了分档规则（`0-2 分为 TR2` 这类来源里没有的映射）→ 可读降级。
 
@@ -186,7 +169,6 @@ __all__ = [
     "SEVERITY_CN",
     "cardiac_content",
     "cardiac_lvef_unparseable_text",
-    "degenerate_grade_only_text",
     "evidence_insufficient_text",
     "graded_content",
     "llm_unavailable_text",

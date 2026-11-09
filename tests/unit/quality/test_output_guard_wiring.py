@@ -160,26 +160,51 @@ def _run_invoke(llm_text: str, finish_reason: str = "stop") -> AgentResponse:
     return asyncio.run(agent.invoke(ctx))
 
 
-class TestDegenerateGradeOnlyRejected:
-    """`甲状腺 · TR1` 这类"只有分级码"必须被拦在生产链路里。"""
+class TestDegenerateGradeOnlyFlagged:
+    """`甲状腺 · TR1` 这类"只有分级码"必须在生产链路里**被标注 + 转人工**。
 
-    def test_grade_only_is_rejected(self):
+    ## 为什么是"标注"而不是"整条拒收"（2026-11-09 第一版教训）
+
+    第一版把这类也按回显守卫那样整条拒收（正文换成降级文案、confidence=0）。
+    结果是 **35 个既有用例变红**：`分级: LR-3` 这种"只有分级、没写理由"的输出
+    在既有契约里是**正常输入**（prompt 要求"首行就是分级行"），整条拒收等于把
+    "模型很简洁"判成"模型没产出"。
+
+    医学语义上也不对：分级本身是模型的真实判读结果，抹掉它会让医生以为
+    "系统没判出来"（事实是模型没说理由）—— 与 A.111 的纪律一致：
+    **检测到问题 ≠ 丢掉结论**，正确处置是"如实标注 + 转人工复核"。
+    """
+
+    def test_grade_only_is_flagged_and_keeps_grade(self):
         resp = _run_invoke("甲状腺 · TR1")
         assert resp.needs_review is True, "退化结论没有转人工"
-        assert resp.confidence == 0.0
-        assert any("grade_only_no_body_rejected" in t for t in resp.reasoning_trace), (
+        assert any("grade_only_no_body_flagged" in t for t in resp.reasoning_trace), (
             f"trace 里没有退化原因码：{resp.reasoning_trace}"
         )
+        # 分级必须还在（医生要看得到系统判到了什么）
+        assert "TR1" in resp.content, f"分级被抹掉了：{resp.content!r}"
+        # 但必须明确写清"没有依据"，不能让它看起来像一条完整结论
+        assert "未给出分级依据" in resp.content, f"缺依据说明缺失：{resp.content!r}"
 
-    def test_rejection_text_is_readable_and_does_not_leak_raw(self):
+    def test_grade_only_does_not_drop_confidence_to_zero(self):
+        """**不许**把置信度清零 —— 分级是真实判读，清零会让下游当"没产出"处理。"""
         resp = _run_invoke("甲状腺 · TR1")
-        assert "没有给出依据正文" in resp.content, f"降级文案不对：{resp.content!r}"
-        assert "TR1" not in resp.content, "降级文案把不可信的分级码泄露给医生了"
+        assert resp.confidence > 0.0, f"退化结论的置信度被清零了：{resp.confidence}"
 
-    def test_normal_short_conclusion_passes(self):
-        """有实质建议的短结论**不得**被误杀（假阳性比漏报更糟）。"""
+    def test_normal_short_conclusion_is_not_flagged(self):
+        """有实质建议的短结论**不得**被误标（假阳性比漏报更糟）。"""
         resp = _run_invoke("甲状腺 · TR3 — 低回声 1 分，建议 6 个月复查。")
-        assert not any("grade_only_no_body" in t for t in (resp.reasoning_trace or []))
+        assert not any("grade_only_no_body" in t for t in (resp.reasoning_trace or [])), (
+            f"正常短结论被误标：{resp.reasoning_trace}"
+        )
+        assert "未给出分级依据" not in resp.content
+
+    def test_degraded_text_is_not_double_annotated(self):
+        """已经是降级文案（自带"已转人工"）时**不许**再追加一句免责声明。"""
+        resp = _run_invoke("分级: 无法判断")
+        assert resp.content.count("转人工") <= 1, (
+            f"降级文案被重复追加说明：{resp.content!r}"
+        )
 
 
 class TestSelfMadeRuleRejected:

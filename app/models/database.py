@@ -419,6 +419,12 @@ class KnowledgeChunkModel(Base):
     source_doc_id = Column(String(128), nullable=False, index=True)
     section_path = Column(Text, nullable=False, default='')
     token_count = Column(Integer, nullable=False, default=0)
+    # 父子块（迁移 0007 建了这两列，但 **ORM 一直没映射** ——
+    # 2026-11-09 建 kb_v2.0.0 时 `stmt.excluded.chunk_type` 直接抛
+    # AttributeError: chunk_type，整库灌数中断。这是"有列无模型"的典型：
+    # 迁移跑了、库里看得见，但 ORM 不认识它，写入点一碰就炸。
+    parent_chunk_id = Column(String(128), nullable=True, index=True)
+    chunk_type = Column(String(16), nullable=False, server_default='child')
     created_at = Column(TIMESTAMP(timezone=True), nullable=False, default=func.current_timestamp())
     updated_at = Column(TIMESTAMP(timezone=True), nullable=False, default=func.current_timestamp(), onupdate=func.current_timestamp())
     # 二期 §6 衰减（迁移 0012）：时间衰减看 last_referenced_at，反馈衰减看 dispute_count，

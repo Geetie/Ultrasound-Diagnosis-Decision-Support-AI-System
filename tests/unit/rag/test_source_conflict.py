@@ -24,8 +24,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from app.knowledge.protocols import KnowledgeChunk
 from app.rag.source_conflict import (
     FACT_TITLES,

@@ -259,13 +259,15 @@ class QdrantVectorIndex(VectorIndexClient):
                 keys=list(payload.keys()),
             )
         except Exception as exc:
+            # B904：显式 from exc —— 否则「set_payload 失败」会被误读成
+            # "raise 本身出了错"，排查时看不出真正原因是网络还是权限。
             raise VectorIndexError(
                 error_code=VectorIndexErrorCode.UPSERT_FAILED,
                 message=f"qdrant set_payload failed for {collection_name}",
                 detail=str(exc),
                 retryable=True,
                 retry_strategy="retry_after_5s",
-            )
+            ) from exc
 
     async def upsert(
         self,

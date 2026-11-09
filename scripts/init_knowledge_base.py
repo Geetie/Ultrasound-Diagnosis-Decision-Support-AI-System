@@ -65,7 +65,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--strategy",
         default="sentence_boundary",
-        choices=["fixed_window", "sentence_boundary", "semantic"],
+        choices=["fixed_window", "sentence_boundary", "semantic", "md_structure"],
         help="Chunking strategy (default: sentence_boundary)",
     )
     parser.add_argument(

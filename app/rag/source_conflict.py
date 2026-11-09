@@ -471,7 +471,10 @@ def _values_differ(a: tuple[Any, ...], b: tuple[Any, ...]) -> bool:
     if a[0] != b[0]:
         return True
     try:
-        return any(abs(float(x) - float(y)) > _VALUE_EPS for x, y in zip(a[1:], b[1:]))
+        return any(
+            abs(float(x) - float(y)) > _VALUE_EPS
+            for x, y in zip(a[1:], b[1:], strict=False)
+        )
     except (TypeError, ValueError):
         return True
 

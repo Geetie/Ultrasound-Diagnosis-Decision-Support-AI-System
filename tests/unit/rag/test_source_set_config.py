@@ -22,8 +22,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from app.config.settings import Settings
 from app.knowledge.protocols import KnowledgeChunk
 from app.rag.cache import RetrievalCache

@@ -57,7 +57,6 @@ import structlog
 from app.agents.protocols import Agent, AgentContext, AgentResponse
 from app.agents.protocols import KnowledgeAgent as KnowledgeAgentProtocol
 from app.agents.specialist.readable import (
-    degenerate_grade_only_text,
     evidence_insufficient_text,
     llm_unavailable_text,
     parse_failed_text,
@@ -193,6 +192,33 @@ def _source_conflict_block(
     if not report.detected:
         return "", report
     return render_source_conflict(report), report
+
+
+#: 退化结论的标注语（4d-② → 5d）。刻意写"本次未给出"而不是"系统无法判断"：
+#: 前者是**事实描述**（模型确实没写依据），后者会被读成系统能力不足。
+_BASIS_MISSING_NOTE = "（本次未给出分级依据，已转人工复核）"
+
+
+def _append_basis_missing_note(content: str, reason: str) -> str:
+    """给"只有分级码"的结论补一句缺依据说明。纯函数。
+
+    只在正文**确实是一句分级结论**时追加（已含降级说明的正文原样返回）——
+    降级正文自带处置语（"已转人工判读…"），再追加会变成两句互相重复的免责声明。
+
+    Examples:
+        >>> _append_basis_missing_note("甲状腺 · TR3", "grade_only_no_body")
+        '甲状腺 · TR3 （本次未给出分级依据，已转人工复核）'
+        >>> _append_basis_missing_note("甲状腺：本次未检索到…", "grade_only_no_body")
+        '甲状腺：本次未检索到…'
+    """
+    text = (content or "").strip()
+    if not text:
+        return content
+    if "已转人工" in text or "转人工复核" in text or "转人工判读" in text:
+        return content
+    if not reason:
+        return content
+    return f"{text} {_BASIS_MISSING_NOTE}"
 
 
 def _retrieval_confidence(chunks: list[KnowledgeChunk]) -> float | None:
@@ -612,10 +638,24 @@ class RAGSpecialistAgent(SpecialistAgent):
         # —— 那是把"守规矩"当"造假"，比漏报更糟。所以这里把**本次 prompt 模板 + 检索块**
         # 作为来源传进去，由 `detect_self_made_grading_rule` 做语义比对。
         #
-        # ## 为什么不在这里给"分级码"打补丁
+        # ## 处置：**标注不确定性 + 转人工**，不是整条拒收（2026-11-09 修正）
         #
-        # 拦掉后走**可读降级 + 转人工**（与 4b 同一处置），不猜分级、不改写正文 ——
-        # 猜一个分级写进医生可见结论，比空着更危险。
+        # 第一版实现把这两类也按 4b 的"整条拒收"处理（正文换成一句降级文案、
+        # confidence=0）。真机/单测立刻照出问题：`分级: LR-3` 这种**只有分级、
+        # 没有额外正文**的输出在 35 个既有用例里是**正常输入**（模型按 prompt 的
+        # "首行就是分级行"要求输出，只是没写理由），整条拒收等于把
+        # "模型很简洁" 判成 "模型没产出"，`resp.confidence > 0.0` 直接变 0。
+        #
+        # 更关键的是医学语义：A.111（分级下界）已经确立过同类纪律 ——
+        # **"检测到问题"不等于"要丢掉结论"**，正确处置是"如实标注 + 转人工复核"，
+        # 因为医生需要看到系统判到了什么，才能判断该不该采信。
+        #
+        # 现在的处置分两类：
+        #   * **退化结论（只有分级码）**：分级本身可解析 → **保留分级**，在正文里
+        #     明确写"未给出依据"，置 `needs_review`。医生看到的是
+        #     「甲状腺 · TR3 — 本次未给出分级依据」而不是一个光秃秃的码。
+        #   * **自造分档规则**：规则句本身不可信 → 仍按 4b 拒收（不猜、不改写），
+        #     因为改写规则句需要医学判断（见报告 §6.3）。
         degenerate_reason = detect_degenerate_grade_only(llm_text)
         self_rule_reason = None
         if not degenerate_reason:
@@ -624,25 +664,21 @@ class RAGSpecialistAgent(SpecialistAgent):
                 llm_text, source_text=source_text
             )
 
-        for reason_code, text_builder, log_event in (
-            (degenerate_reason, degenerate_grade_only_text, "specialist_degenerate_grade_only_rejected"),
-            (self_rule_reason, self_made_grading_rule_text, "specialist_self_made_rule_rejected"),
-        ):
-            if not reason_code:
-                continue
+        # 4d-① 自造分档规则 → 拒收（规则句不可信，且改写它需要医学判断）
+        if self_rule_reason:
             logger.warning(
-                log_event,
+                "specialist_self_made_rule_rejected",
                 organ=organ.value,
                 request_id=context.request_id,
-                reason=reason_code,
+                reason=self_rule_reason,
                 text_len=len(llm_text),
                 finish_reason=llm_response.finish_reason or "",
             )
-            trace.append(f"{reason_code}_rejected")
+            trace.append(f"{self_rule_reason}_rejected")
             response = AgentResponse(
                 agent_name=self._agent_name(),
                 organ=organ,
-                content=text_builder(organ),
+                content=self_made_grading_rule_text(organ),
                 confidence=0.0,
                 evidence_chunk_ids=[c.chunk_id for c in chunks],
                 reasoning_trace=trace,
@@ -651,6 +687,23 @@ class RAGSpecialistAgent(SpecialistAgent):
             )
             self._post_process(context, response)
             return response
+
+        # 4d-② 退化结论 → **保留分级、标注缺依据、转人工**（不丢结论）
+        #
+        # 为什么不在这一步 return：分级本身是可解析的、也是模型的真实判读结果；
+        # 把它从医生眼前抹掉，等于让"模型没说理由"看起来像"模型没判出来"。
+        # 这里只打 trace 标记，由下方正常解析链路把分级解析出来，
+        # 解析后再把"未给出依据"接进正文（见 5d）。
+        if degenerate_reason:
+            logger.warning(
+                "specialist_degenerate_grade_only_flagged",
+                organ=organ.value,
+                request_id=context.request_id,
+                reason=degenerate_reason,
+                text_len=len(llm_text),
+                finish_reason=llm_response.finish_reason or "",
+            )
+            trace.append(f"{degenerate_reason}_flagged")
 
         # 5) 器官级解析
         try:
@@ -724,6 +777,20 @@ class RAGSpecialistAgent(SpecialistAgent):
                     request_id=context.request_id,
                     retry_finish_reason=retry_finish or "unknown",
                 )
+
+        # 5d) 退化结论的**可见标注**（4d-② 打标 → 这里落到正文）
+        #
+        # 分组决策：**保留分级**（模型的真实判读），只补一句"本次未给出分级依据"，
+        # 并置 needs_review。理由见 4d 的注释与报告 §1.5：
+        # 医疗输出的纪律是「能标注的不要丢弃」——把分级抹掉，医生看到的是
+        # "系统没判出来"（事实是模型没说理由），排障方向与临床决策都会被带偏。
+        if degenerate_reason:
+            # 降级正文（解析失败/检索为空等）里已自带处置说明 → 不重复追加；
+            # 只有"解析出了分级、但模型没写依据"这一类才需要补这句。
+            updated = _append_basis_missing_note(response.content, degenerate_reason)
+            if updated != response.content:
+                response.content = updated
+                response.needs_review = True
 
         # 5c) 语义层：**反向索要**守卫（A.58；20 号语义层研究产出 2 第 3 条）
         self._apply_solicitation_guard(response, llm_text, context)

@@ -52,8 +52,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from app.config.settings import settings  # noqa: E402
-from app.knowledge.source_set import (  # noqa: E402
+from app.config.settings import settings
+from app.knowledge.source_set import (
     SOURCE_SET_UNKNOWN,
     source_set_of,
 )
@@ -71,13 +71,24 @@ async def _backfill_pg(kb_version: str | None, apply: bool, table: str) -> dict:
 
     conn = await asyncpg.connect(_dsn())
     try:
+        # 两张表的列名**不一样**（实测）：
+        #   knowledge_chunks                → chunk_id / source_doc_id / metadata
+        #   vector_index_knowledge_chunks   → id / metadata（source_doc_id 在 metadata 里）
+        # 首版对两张表用同一句 SELECT，于是 vector 表必然报
+        # `column "chunk_id" does not exist` 并被当成"表不存在"跳过 ——
+        # 结果 dense 腿的 payload 永远不会被回填，而日志看起来只是"跳过"。
         where, params = "", []
-        if kb_version:
-            params.append(kb_version)
-            where = "WHERE kb_version = $1" if table == "knowledge_chunks" else "WHERE metadata->>'kb_version' = $1"
-        rows = await conn.fetch(
-            f"SELECT chunk_id, source_doc_id, metadata FROM {table} {where}", *params
-        )
+        if table == "knowledge_chunks":
+            select_cols = "chunk_id, source_doc_id, metadata"
+            if kb_version:
+                params.append(kb_version)
+                where = "WHERE kb_version = $1"
+        else:
+            select_cols = "id AS chunk_id, NULL::text AS source_doc_id, metadata"
+            if kb_version:
+                params.append(kb_version)
+                where = "WHERE metadata->>'kb_version' = $1"
+        rows = await conn.fetch(f"SELECT {select_cols} FROM {table} {where}", *params)
         stats: dict[str, int] = {}
         by_prefix: dict[str, int] = {}
         updates: list[tuple[str, str]] = []
