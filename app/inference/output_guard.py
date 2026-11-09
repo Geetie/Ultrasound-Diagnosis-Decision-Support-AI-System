@@ -222,9 +222,17 @@ def detect_degenerate_grade_only(text: str, *, min_body_chars: int = 6) -> str |
 #:
 #: 真幻觉仍在：`0-2 分为 TR2` 把 0 分并进 TR2，与 prompt 的 `TR1（0 分）` 直接冲突
 #: —— 这正是 4.2 里那 3 条"编造规则"的形态。
+#: **必须带分级前缀或「类」后缀**才算一条"分档规则"。
+#:
+#: 为什么（2026-11-09 真机假阳性）：评分算式 `钙化 1 分 + 低回声 2 分 + 形状不规则 2 分
+#: = 5 分 → TR3` 里，`2 分 = 5` 会被当成"2 分对应 TR5" —— 因为裸数字也被接受为分级。
+#: 结果是一条**正常算分**的结论被判成"编造规则"。真编造（`0-2 分为 TR2`）和
+#: 既有判据里的其它形态（`3-4分对应TR4a` / `1分是4A类`）都带前缀或「类」，
+#: 所以收紧成"前缀或类二者必居其一"既堵住假阳性、又不影响真阳性。
 _RULE_ARROW = re.compile(
     r"(\d+)\s*(?:[~\-–至到]\s*(\d+))?\s*分\s*[，,]?\s*(?:为|对应|=|是|归|进|划)\s*"
-    r"(?:(TR|LR|TI-?RADS|LI-?RADS)\s*)?([1-6])([abcABC])?\s*[类]?",
+    r"(?:(TR|LR|TI-?RADS|LI-?RADS)\s*([1-6])([abcABC])?\s*类?"
+    r"|([1-6])([abcABC])?\s*类)",
     re.IGNORECASE,
 )
 
@@ -262,7 +270,11 @@ def extract_grading_rules(text: str) -> list[GradingRule]:
     for m in _RULE_ARROW.finditer(text or ""):
         lo = float(m.group(1))
         hi = float(m.group(2)) if m.group(2) else lo
-        out.append((lo, hi, _canonical_grade(m.group(3), m.group(4), m.group(5))))
+        if m.group(3):  # 带前缀：`0-2 分为 TR2`
+            rule = _canonical_grade(m.group(3), m.group(4), m.group(5))
+        else:  # 仅「类」后缀：`1分是4A类`
+            rule = _canonical_grade(None, m.group(6), m.group(7))
+        out.append((lo, hi, rule))
     return out
 
 

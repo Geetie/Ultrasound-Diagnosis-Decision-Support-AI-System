@@ -110,6 +110,22 @@ class VLLMEngine(BaseHttpInferenceEngine):
         """
         return "/v1/chat/completions"
 
+    def _should_escalate_max_tokens(self, result: InferenceResponse) -> bool:
+        """``finish_reason == "length_empty"`` → 加倍预算重试一次。
+
+        为什么只对这种失败翻倍（2026-11-09 真机依据）：
+        ``length_empty`` 的含义是"token 全被思考吃掉、剥完没正文" —— 是**预算不够**，
+        不是模型没能力。P.208 实测（8 条真实输入，旧配置）：预算 ×2 救回 **3/8**，
+        ×4 救回 **5/8**（而且 ×4 的延迟到 3~10 分钟，不可接受）。
+
+        所以取 **×2 一次**：救回一部分，且最坏延迟有界（判读档 180s 内）。
+        翻倍后仍为空 → 交给上层守卫按 ``length_empty`` 降级转人工，不无限加预算。
+
+        注意：**预填生效后这类失败应趋近于 0**（P.205 实测 0/8）。本兜底是给
+        "模型偶发无视预填"和"其它思考型变体"留的安全网，不是主要手段。
+        """
+        return result.finish_reason == "length_empty"
+
     def _build_messages(self, request: InferenceRequest) -> list[dict[str, str]]:
         """构建消息列表。
 
@@ -203,9 +219,13 @@ class VLLMEngine(BaseHttpInferenceEngine):
             payload["chat_template_kwargs"] = {"enable_thinking": True}
 
         prefill_enabled = request.extra.get("thinking_prefill", True)
-        if not enable_thinking and prefill_enabled:
+        last_is_assistant = bool(messages) and messages[-1].get("role") == "assistant"
+        if not enable_thinking and prefill_enabled and not last_is_assistant:
             # 模板生效时（官方 Qwen3）这里会与模板的预填重复一次空思考块 —— 无害
             #（模型看到的仍是"已结束思考"），但更干净的做法是调用方按模型置 False。
+            #
+            # 调用方已经以 assistant 消息结尾（多轮/自行预填）时**不再追加**：
+            # 那会改写它本来的续写语义（`continue_final_message` 只续最后一条）。
             payload["messages"] = [*messages, {"role": "assistant", "content": NO_THINK_PREFILL}]
             payload["continue_final_message"] = True
             # vLLM 明确拒绝 continue_final_message 与 add_generation_prompt 同时为真

@@ -208,6 +208,65 @@ class QdrantVectorIndex(VectorIndexClient):
                 retry_strategy="retry_after_5s",
             )
 
+    async def set_payload(
+        self,
+        collection: str,
+        ids: list[str],
+        payload: dict[str, Any],
+    ) -> None:
+        """给已存在的点**合并** payload 键（2026-11-09 加）。
+
+        ## 为什么需要它
+
+        ``source_set`` 是 2026-11-09 新增的语料集维度。它本来可以从
+        ``payload.source_doc_id`` 现算，但**向量库的 filter 只能拿 payload 里的
+        实际字段做条件**（``{"key": "source_set", "match": {...}}``），
+        算不出来的字段无法参与过滤。
+
+        没有这个方法时，"医院只启用 C-TIRADS"在 **dense 腿**上会命中 0 条
+        （实测：payload 里没有 ``source_set`` → Qdrant 返回 0），
+        而 BM25 腿正常 —— 系统看起来"能用"，只是 dense 全空，
+        比报错更难排查。
+
+        Args:
+            collection: 集合名（逻辑名，内部经 ``_collection_name`` 映射）。
+            ids: **原始 chunk_id** 列表（不是 uuid5 点 id —— 与 ``upsert`` 的
+                ``record.id`` 同口径，方法内部自己换算）。
+            payload: 要合并的键值（Qdrant ``set_payload`` 是 merge 语义，
+                不会删掉未列出的键）。
+
+        Raises:
+            VectorIndexError: 底层失败。
+        """
+        if not ids or not payload:
+            return
+        import uuid as _uuid
+
+        client = self._ensure_client()
+        collection_name = self._collection_name(collection)
+        try:
+            point_ids = [str(_uuid.uuid5(_uuid.NAMESPACE_URL, i)) for i in ids]
+            await client.set_payload(
+                collection_name=collection_name,
+                payload=dict(payload),
+                points=point_ids,
+                wait=True,
+            )
+            logger.info(
+                "qdrant_set_payload_completed",
+                collection=collection_name,
+                count=len(point_ids),
+                keys=list(payload.keys()),
+            )
+        except Exception as exc:
+            raise VectorIndexError(
+                error_code=VectorIndexErrorCode.UPSERT_FAILED,
+                message=f"qdrant set_payload failed for {collection_name}",
+                detail=str(exc),
+                retryable=True,
+                retry_strategy="retry_after_5s",
+            )
+
     async def upsert(
         self,
         collection: str,

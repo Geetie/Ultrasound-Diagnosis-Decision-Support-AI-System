@@ -764,8 +764,13 @@ class TestVLLMEngine:
         await vllm_engine.generate(request)
 
         body = json.loads(captured_request.content.decode())
-        assert len(body["messages"]) == 2
+        # 2026-11-09：关思考的客户端预填会在最后追加一条 assistant 消息
+        #（`<think>\n\n</think>\n\n`），因此这里断言的是"调用方给的两条消息在前、
+        # 且顺序不变"，不再写死总条数 == 2（那会把预填当成回归）。
+        assert len(body["messages"]) >= 2
         assert body["messages"][0]["role"] == "system"
+        assert body["messages"][1]["role"] == "user"
+        assert body["messages"][1]["content"] == "Evaluate this nodule"
 
     @pytest.mark.asyncio
     async def test_generate_server_error(self, vllm_engine):
