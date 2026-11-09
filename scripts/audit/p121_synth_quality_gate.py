@@ -160,6 +160,33 @@ def check_one(row: dict, kb_text: str, existing_ids: set[str]) -> list[str]:
     if invented:
         probs.append(f"答案含原文没有的数值: {invented[:3]}")
 
+    # ---- 闸 8（2026-11-09 新增）：query 必须含具体锚点
+    #
+    # 实测漏网：「边界情况：指南在这条上有没有例外或有争议的地方？」
+    # 「什么情况下这条不适用」「报告这个分级意味着什么、严不严重？」
+    # —— **没说是哪个分级、哪条规则**。医生不会这样问，因为它不含任何可检索的信息。
+    #
+    # 这类 query 的根因：模型把「问法骨架」直接当成了问题，没填入原文内容。
+    _ANCHOR_RE = (
+        re.compile(r"(?:C-?TIRADS|TI-?RADS|LI-?RADS|LR-?[1-5M]|TR\s?[1-5]|[1-6]\s*[A-C]?\s*类)", re.I),
+        re.compile(r"\d+(?:\.\d+)?\s*(?:mm|cm|%|个月|周|岁)", re.I),
+        re.compile(r"甲状腺|肝|心脏|左室|右室|二尖瓣|三尖瓣|主动脉瓣|被膜|结节|门静脉|室间隔|瓣环"),
+    )
+    if q and not any(p.search(q) for p in _ANCHOR_RE):
+        probs.append("query 无具体锚点（没说是哪个分级/数值/部位，医生不会这样问）")
+
+    # ---- 闸 9（2026-11-09 新增）：书名号清理留下的残句
+    #
+    # 实测漏网：「如果医生按原文提到：的分级标准，质控该如何处理？」
+    # —— 我的 _strip_fake_citations 把「按《LI-RADS 2017》」清成了「按原文提到：」，
+    # 后面直接接「的分级标准」，句子碎了。
+    #
+    # 判据：`原文提到：` 后面紧跟「的/是/中」这类需要名词的助词，或直接接标点。
+    if re.search(r"原文提到[：:]\s*(?:的|是|中|里|[，。；、])", q or ""):
+        probs.append("书名号清理后语句破碎（「原文提到：的分级标准」）")
+    if re.search(r"原文提到[：:]\s*(?:的|是|中|里|[，。；、])", a or ""):
+        probs.append("答案书名号清理后语句破碎")
+
     # ---- 闸 5：gold 一致性
     gold = row.get("gold") or []
     if not gold:
@@ -186,7 +213,20 @@ async def main(argv: list[str] | None = None) -> int:
         for l in Path(args.dataset).read_text(encoding="utf-8").splitlines()
         if l.strip()
     ]
-    rows = [r for r in rows if "error" not in r]
+    # **只检已过闸的条目**（2026-11-09 实测修正）
+    #
+    # 原来只滤 `error`，但 p122 的输出里有 `rejected: true` 的条目 ——
+    # 它们本来就没有 query/answer（结构不同：只有 scenario_id + reason），
+    # 拿它们进闸会报「query 为空 / 答案过短 / gold 为空」，
+    # 把真实的闸通过率稀释了（实测 44 条里 17 条是被拒条目，
+    # 导致"34.1% 不合规"这个数字毫无意义）。
+    #
+    # 要检「已过闸的条目质量」，就该只看 `gate_passed: true` 的。
+    _before = len(rows)
+    rows = [r for r in rows if "error" not in r and not r.get("rejected")]
+    _skipped = _before - len(rows)
+    if _skipped:
+        print(f"（跳过 {_skipped} 条被拒/出错条目，只检已过闸的）")
 
     kb_text = await load_kb_texts(args.kb_version)
     print(f"数据集 {len(rows)} 条；KB 全文 {len(kb_text)} 字")
