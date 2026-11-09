@@ -87,6 +87,12 @@ SOURCE_SET_RULES: tuple[tuple[str, str], ...] = (
     ("ctirads_2021", "ctirads_2021"),
     ("pdf_thyroid_thyroid_cancer_norm_2018", "norm_2018"),
     ("norm2018", "norm_2018"),
+    # 2026-11-09：手工建的**派生文档**（不是原始指南，而是从多份指南交叉生成的）。
+    # 它们的 source_set 必须标注清楚，否则冲突检测会把它当成"第三套独立语料"，
+    # 在并列渲染里显示成「依据《未标注来源》」——那会让医生以为有个未知权威。
+    ("thyroid_grading_two_system_conflict", "derived_thyroid_grading_compare"),
+    ("ctirads_2021_counting_table", "ctirads_2021"),
+    ("ctirads_2021_counting_method", "ctirads_2021"),
     ("pdf_thyroid_thyroid_cancer_guideline_2022", "thyroid_guideline_2022"),
     ("ata_nodule_dtc_2015", "ata_2015"),
     ("ata_pediatric_2015", "ata_pediatric_2015"),
@@ -129,6 +135,8 @@ SOURCE_SET_UNKNOWN = "unknown"
 SOURCE_SET_LABELS: dict[str, tuple[str, str]] = {
     "ctirads_2021": ("C-TIRADS 2021", "中华医学会超声医学分会"),
     "norm_2018": ("甲状腺癌诊疗规范 2018", "国家卫生健康委员会"),
+    "derived_thyroid_grading_compare": (
+        "甲状腺分级两套体系对照（本项目派生）", "本项目整理，非原始指南"),
     "thyroid_guideline_2022": ("甲状腺癌诊疗指南 2022", "国家卫生健康委员会"),
     "ata_2015": ("ATA 甲状腺结节与分化型甲状腺癌指南 2015", "美国甲状腺协会（ATA）"),
     "ata_pediatric_2015": ("ATA 儿童甲状腺结节指南 2015", "美国甲状腺协会（ATA）"),
