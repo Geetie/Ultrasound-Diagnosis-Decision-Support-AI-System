@@ -162,6 +162,15 @@ jobs:
       - name: Synthetic data gate + dataset version guards (p121/p126)
         run: |
           python -m pytest tests/unit/quality/test_p121_synth_gate.py             tests/unit/quality/test_p126_dataset_version.py             -q --tb=short -p no:cacheprovider --noconftest
+      # p123（context_recall / context_precision）与 p128（B2→Ragas 口径升级）同理：
+      # 本体要连 DB 检索，CI 里跑不了；但**口径与推导逻辑必须被守护**。
+      #
+      # p123 的关键：hit@10=0.7872 但 context_recall=0.3763 —— 只测 hit@k 会以为检索还行。
+      #   首轮实现把中文二元组当关键单元，在英文原文上导致 recall 严重低估（0.1194 vs 0.4414）。
+      # p128 的关键：**persona 必须标 unassigned 不许伪造**，否则"按 persona 切片"变成假分析。
+      - name: Retrieval-caliber guards (p123/p128)
+        run: |
+          python -m pytest tests/unit/quality/test_p123_context_recall.py             tests/unit/quality/test_p128_b2_upgrade.py             -q --tb=short -p no:cacheprovider --noconftest
 
   perf-baseline:
     name: Performance baseline (serial)

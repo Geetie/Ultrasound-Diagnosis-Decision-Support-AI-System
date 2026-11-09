@@ -1,0 +1,33 @@
+{
+  "dataset_version": "rag-eval-v2.0.0",
+  "dataset_path": "data/eval/v3/zh_retrieval_v3.jsonl",
+  "fingerprint": "9795109b9e7c760e",
+  "git_commit": "98a7e06",
+  "n": 487,
+  "dims": [
+    "hop",
+    "specificity",
+    "persona",
+    "length"
+  ],
+  "distribution": {
+    "hop": {
+      "multi": 56,
+      "single": 431
+    },
+    "specificity": {
+      "specific": 89,
+      "abstract": 398
+    },
+    "persona": {
+      "unassigned": 487
+    },
+    "length": {
+      "medium": 271,
+      "short": 216
+    }
+  },
+  "coverage_cells": 8,
+  "cells_below_min": 3,
+  "note": "指标必须带 dataset_version + fingerprint 一起报，否则无法追溯是哪个数据集版本算的"
+}

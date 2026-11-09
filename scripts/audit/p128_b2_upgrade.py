@@ -143,21 +143,165 @@ def infer_metadata(row: dict) -> dict:
     }
 
 
+async def _load_chunks(all_ids: list[str]) -> dict[str, str]:
+    """一次性批量查 chunk 正文。
+
+    ## 2026-11-09 实测：**不能逐条 asyncio.run**
+
+    原来在 for 循环里对每条调 `asyncio.run(_extend_from_chunk(...))`，
+    每次 asyncio.run 都新建事件循环再关闭 —— 第二次调用时连接池里的
+    旧连接触发 `RuntimeError: Event loop is closed`。
+
+    **正确做法：开一次循环、一次批量查、在内存里补齐。**
+    """
+    from sqlalchemy import text
+
+    from app.config.database import AsyncSessionLocal
+
+    out: dict[str, str] = {}
+    ids = sorted(set(all_ids))
+    if not ids:
+        return out
+    async with AsyncSessionLocal() as s:
+        rows = (
+            await s.execute(
+                text("SELECT chunk_id, content FROM knowledge_chunks WHERE chunk_id = ANY(:ids)"),
+                {"ids": ids},
+            )
+        ).fetchall()
+    for cid, c in rows:
+        out[cid] = c or ""
+    return out
+
+
+def _extend_one(quote: str, body: str, max_extra: int = 300) -> str:
+    """在已取到的 chunk 正文里，把 quote 扩展到上下文。纯函数。"""
+    q = _clean_quote(quote)
+    b = _clean_quote(body)
+    if not b:
+        return q
+    norm_body = re.sub(r"\s+", "", b)
+    norm_q = re.sub(r"\s+", "", q)
+    pos = norm_body.find(norm_q)
+    if pos < 0:
+        return q
+    ratio = len(b) / max(len(norm_body), 1)
+    approx = int(pos * ratio)
+    start = max(0, approx - max_extra // 3)
+    end = min(len(b), approx + len(q) + max_extra)
+    seg = b[start:end].strip()
+    return seg if len(seg) > len(q) else q
+
+
+async def _extend_from_chunk(gold: list[dict], kb_version: str, max_extra: int = 300) -> list[str]:
+    """对过短的 evidence_quote，从**同一个 chunk** 里补上下文。
+
+    ## 为什么这样做（而不是硬凑字数）
+
+    实测过短的 155 条，根因是 evidence_quote 只摘录了 chunk 的一小段：
+    ```
+    quote: 「调节机械指数 (MI) 至 03 以下」          ← 25 字
+    但同一个 chunk 后面还有：「…造影剂微泡才不会破裂。具体做法是降低输出功率…」
+    ```
+
+    **人工摘录时只标了「直接回答问题的那一句」，但完整答案需要它的上下文。**
+
+    做法：取该 chunk 的正文，找出 quote 的位置，向两侧扩展到 max_extra 字，
+    **保证扩展后的内容仍然逐字来自原文**（不是生成）。
+    """
+    if not gold:
+        return []
+
+    from sqlalchemy import text
+
+    from app.config.database import AsyncSessionLocal
+
+    ids = [
+        f"{kb_version}:{g.get('doc_id')}#{int(g.get('chunk_index', 0)):04d}"
+        for g in gold
+    ]
+    async with AsyncSessionLocal() as s:
+        rows = (
+            await s.execute(
+                text("SELECT chunk_id, content FROM knowledge_chunks WHERE chunk_id = ANY(:ids)"),
+                {"ids": ids},
+            )
+        ).fetchall()
+    content_by_id = {cid: (c or "") for cid, c in rows}
+
+    out: list[str] = []
+    for g in gold:
+        q = _clean_quote(g.get("evidence_quote") or "")
+        cid = f"{kb_version}:{g.get('doc_id')}#{int(g.get('chunk_index', 0)):04d}"
+        body = _clean_quote(content_by_id.get(cid, ""))
+        if not body:
+            out.append(q)
+            continue
+        # 在正文里定位 quote（去空白后比对以容忍排版差异）
+        norm_body = re.sub(r"\s+", "", body)
+        norm_q = re.sub(r"\s+", "", q)
+        pos = norm_body.find(norm_q)
+        if pos < 0:
+            # 找不到就原样返回（不瞎扩）
+            out.append(q)
+            continue
+        # 用「去空白后的位置」映射回原 body 的位置近似
+        ratio = len(body) / max(len(norm_body), 1)
+        approx = int(pos * ratio)
+        start = max(0, approx - max_extra // 3)
+        end = min(len(body), approx + len(q) + max_extra)
+        seg = body[start:end].strip()
+        out.append(seg if len(seg) > len(q) else q)
+    return out
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="B2 → Ragas 口径升级（p128）")
     ap.add_argument("--in", dest="inp", default="data/eval/v2/zh_retrieval_v2_candidate.jsonl")
     ap.add_argument("--out", default="data/eval/v3/zh_retrieval_v3.jsonl")
+    ap.add_argument("--kb-version", default="kb_v2.1.0")
     args = ap.parse_args(argv)
 
     src = Path(args.inp)
     rows = [json.loads(l) for l in src.read_text(encoding="utf-8").splitlines() if l.strip()]
     print(f"读入 {len(rows)} 条")
 
+    import asyncio
+
+    # 预加载全部 gold 的 chunk 正文（一次查询，避免事件循环反复创建）
+    all_ids = []
+    for r in rows:
+        for g in r.get("gold") or []:
+            all_ids.append(
+                f"{args.kb_version}:{g.get('doc_id')}#{int(g.get('chunk_index', 0)):04d}"
+            )
+    chunk_map = asyncio.run(_load_chunks(all_ids))
+    print(f"预加载 chunk 正文: {len(chunk_map)}/{len(set(all_ids))}")
+
     out_rows = []
     n_ans = 0
+    n_extended = 0
     probs_hist: dict[str, int] = {}
-    for r in rows:
+    for i, r in enumerate(rows, 1):
         ans, probs = build_reference_answer(r.get("gold") or [])
+
+        # 过短的答案 → 用预加载的 chunk 正文补上下文（不是凑字数，是补完整语义）
+        if ans and len(ans) < 40:
+            extended = []
+            for g in r.get("gold") or []:
+                cid = f"{args.kb_version}:{g.get('doc_id')}#{int(g.get('chunk_index', 0)):04d}"
+                extended.append(
+                    _extend_one(g.get("evidence_quote") or "", chunk_map.get(cid, ""))
+                )
+            if any(extended):
+                parts = [f"原文提到：{x.rstrip('。.；;')}" for x in extended]
+                new_ans = "。".join(parts) + "。"
+                if len(new_ans) > len(ans):
+                    ans = new_ans
+                    n_extended += 1
+                    probs = [p for p in probs if "过短" not in p]
+        if i % 50 == 0:
+            print(f"  处理 {i}/{len(rows)}（已扩展 {n_extended} 条）", flush=True)
         meta = infer_metadata(r)
         if ans:
             n_ans += 1
@@ -194,6 +338,7 @@ def main(argv: list[str] | None = None) -> int:
 
     print(f"\n=== 结果 ===")
     print(f"  有 reference_answer: {n_ans}/{len(out_rows)}")
+    print(f"  从 chunk 补齐上下文: {n_extended} 条")
     if probs_hist:
         print(f"  问题分布: {probs_hist}")
 
