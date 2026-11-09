@@ -116,6 +116,47 @@ _FEWSHOT = """
 """
 
 
+#: 书名号引用模式
+_CITE_RE = re.compile(r"[依根]?据?\s*《[^》]{2,40}》\s*(?:原文|指南)?\s*[：:，,]?\s*")
+
+
+def _strip_fake_citations(text: str) -> tuple[str, int]:
+    """删除答案里的《书名》引用，换成中性表述。
+
+    ## 为什么必须程序处理（2026-11-09 三臂实测）
+
+    | 臂 | 提示词策略 | 被拒条目里编造文献名的比例 |
+    |---|---|---|
+    | 基线 | 否定指令「禁止编造」 | 4/9 |
+    | B | 改成「用『原文提到：……』代替」 | 7/8 |
+    | C | 加器官体系白名单 | 7/8 |
+
+    **提示词层面三种写法都压不住 8B 模型。** 所以改成程序清理：
+
+    ```
+    「依据《C-TIRADS 2018》原文：4A 类阈值是 >15mm」
+    → 「原文提到：4A 类阈值是 >15mm」
+    ```
+
+    保住事实内容，去掉不可审计的伪引用。
+
+    Returns:
+        ``(清理后的文本, 删掉的引用数)``
+    """
+    n = 0
+
+    def _repl(m: re.Match[str]) -> str:
+        nonlocal n
+        n += 1
+        return "原文提到："
+
+    out = _CITE_RE.sub(_repl, text or "")
+    # 清理可能残留的重复冒号与多余标点
+    out = re.sub(r"原文提到：\s*原文提到：", "原文提到：", out)
+    out = re.sub(r"\s{2,}", " ", out).strip()
+    return out, n
+
+
 def _build_prompt(sc: dict, nodes_content: list[str], problems: list[str] | None = None) -> str:
     """构建合成提示词。
 
@@ -177,6 +218,28 @@ async def synth_with_gate(
             problems = ["JSON 解析失败"]
             continue
 
+        # ----------------------------------------------------------------
+        # 后处理 1：删除编造的文献名引用（2026-11-09 实测必需）
+        #
+        # 8B 模型无法稳定遵守「不要写文献名」——实测三臂（否定指令/替代写法/自检清单）
+        # 之后，被拒条目里仍有 7/8 是编造文献名（《LI-RADS 2017》《C-TIRADS 2018》）。
+        #
+        # **与其继续加提示词，不如程序清理**：
+        #   「依据《C-TIRADS 2018》原文：4A 类阈值是 >15mm」
+        #   → 「原文提到：4A 类阈值是 >15mm」
+        #
+        # 这样既保住了答案的事实内容，又去掉了不可审计的伪引用。
+        # 清理后仍过不了闸的（如答案因此变空）才算真失败。
+        # ----------------------------------------------------------------
+        answer_text = str(obj.get("reference_answer") or "").strip()
+        query_text = str(obj.get("query") or "").strip()
+        # **query 也要清**（2026-11-09 实测漏了这步）：
+        # 过闸的 12 条里仍有「这个 13 分结节按 C-TIRADS 2018 和 TI-RADS 2015 分别归哪一类？」
+        # —— 我只清了答案，query 里的伪引用没清。
+        answer_text, n_cite = _strip_fake_citations(answer_text)
+        query_text, n_cite_q = _strip_fake_citations(query_text)
+        n_cite += n_cite_q
+
         row = {
             "scenario_id": sc["scenario_id"],
             "organ": sc["organ"],
@@ -185,8 +248,9 @@ async def synth_with_gate(
             "specificity": sc["specificity"],
             "length": sc["length"],
             "relationship": sc["relationship"],
-            "query": str(obj.get("query") or "").strip(),
-            "reference_answer": str(obj.get("reference_answer") or "").strip(),
+            "query": query_text,
+            "reference_answer": answer_text,
+            "citations_stripped": n_cite,
             "answerable": bool(obj.get("answerable", True)),
             "gold": [{"chunk_id": nid} for nid in sc["nodes"]],
             "source": "synthetic",
@@ -221,8 +285,44 @@ async def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--max-tokens", type=int, default=700)
     args = ap.parse_args(argv)
 
-    scs = [json.loads(l) for l in Path(args.scenarios).read_text(encoding="utf-8").splitlines() if l.strip()]
-    scs = scs[args.offset : args.offset + args.limit]
+    all_scs = [json.loads(l) for l in Path(args.scenarios).read_text(encoding="utf-8").splitlines() if l.strip()]
+
+    # ----------------------------------------------------------------
+    # **按格子分层抽样**（2026-11-09 实测必需）
+    #
+    # 原来直接 `all_scs[offset:offset+limit]` —— 而 p119 输出的顺序是
+    # 「先所有 (single,specific) 的 4 persona × 3 length」，
+    # 所以 limit=20 时**20 条全来自同一个象限**（resident/single/specific）。
+    # 后果：指标看起来在涨，但覆盖的只是矩阵的一角。
+    #
+    # 修法：按 (hop, specificity, persona, length) 分组后轮流取，
+    # 保证 limit 条覆盖尽可能多的格子。
+    # ----------------------------------------------------------------
+    from collections import defaultdict as _dd
+
+    cells: dict[tuple, list] = _dd(list)
+    for sc in all_scs:
+        key = (sc["hop"], sc["specificity"], sc["persona"], sc["length"])
+        cells[key].append(sc)
+
+    order = sorted(cells)
+    picked: list = []
+    round_i = 0
+    while len(picked) < args.limit:
+        added = False
+        for key in order:
+            if len(picked) >= args.limit:
+                break
+            if round_i < len(cells[key]):
+                picked.append(cells[key][round_i])
+                added = True
+        if not added:
+            break
+        round_i += 1
+
+    scs = picked[args.offset : args.offset + args.limit]
+    print(f"分层抽样：{len(all_scs)} 个场景 → 取 {len(scs)} 条，"
+          f"覆盖 {len({(s['hop'],s['specificity'],s['persona'],s['length']) for s in scs})} 个格子")
     print(f"待合成 {len(scs)} 个场景（最多 {MAX_RETRY + 1} 次尝试/条）")
 
     from app.config.database import AsyncSessionLocal

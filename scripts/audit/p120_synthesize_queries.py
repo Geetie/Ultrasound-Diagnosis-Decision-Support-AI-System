@@ -40,6 +40,24 @@ if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
 #: 长度 → token 预算提示
+#: 器官中文名（给模型看，英文它容易忽略）
+_ORGAN_CN = {"thyroid": "甲状腺", "liver": "肝脏", "cardiac": "心脏"}
+
+#: 器官 → 允许的分级体系。
+#:
+#: ## 为什么必须显式写在 prompt 里（2026-11-09 实测）
+#:
+#: 原来 prompt 只写「器官：liver」，结果模型生成了
+#: 「4A 类结节 13mm 紧邻被膜，要不要穿刺？」—— 这是甲状腺问题，被标成 liver。
+#:
+#: **根因**：原文里出现了「4A」这个甲状腺的码，模型跟着原文走，忽略了英文器官标签。
+#: 修法：prompt 里给**中文器官名 + 明确的白名单**，并允许它拒答。
+_ORGAN_SYSTEM_HINT = {
+    "thyroid": "C-TIRADS / TI-RADS / TR1-TR5（不得出现 LI-RADS、LR-x）",
+    "liver": "LI-RADS / LR-1~LR-5 / LR-M / CEUS / OPTN（不得出现 C-TIRADS、TRx）",
+    "cardiac": "LVEF / EF / E/e' / GLS / ASE / BSE（不得出现 C-TIRADS、LI-RADS）",
+}
+
 _LEN_HINT = {
     "short": "15-25 字，像医生快速提问",
     "medium": "25-45 字，带一点上下文",
@@ -97,7 +115,11 @@ def _build_prompt(sc: dict, nodes_content: list[str]) -> str:
 - 问题类型：{'单跳（一个来源能答）' if sc['hop']=='single' else '多跳（要综合多个来源）'}
 - {'具体事实型（问明确的数值/规则）' if sc['specificity']=='specific' else '抽象理解型（问为什么/怎么取舍）'}
 - 长度：{_LEN_HINT[sc['length']]}
-- 器官：{sc['organ']}
+- 器官：{_ORGAN_CN.get(sc['organ'], sc['organ'])}
+- **本次只能用这套分级体系：{_ORGAN_SYSTEM_HINT.get(sc['organ'], '（按原文）')}**
+  ⚠️ 原文里可能提到别的器官/别的体系（因为是不同文档被检索到一起），
+  **你必须只围绕上面指定的器官与体系出题**。如果原文主体讲的是别的器官，
+  就写 `answerable: false` 并在 query 里问「这份原文能否回答{_ORGAN_CN.get(sc['organ'], sc['organ'])}的问题」。
 
 ## 指南原文
 {ctx}

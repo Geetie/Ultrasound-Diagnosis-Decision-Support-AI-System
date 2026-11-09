@@ -92,6 +92,67 @@ _ANATOMY = (
 )
 
 
+#: 「临床决策含量」判据 —— 决定这个节点能不能出题。
+#:
+#: ## 为什么需要（2026-11-09 实测）
+#:
+#: 合成 20 条只有 50% 过闸。看被拒的具体内容，发现规律：
+#: 有些节点的原文**只含技术参数、不含临床决策**，例如
+#:   - 「MI：１．０～１．２」（机器输出功率参数，技师才关心）
+#:   - 「扫描角度应尽可能平行于多普勒声束」（操作规范）
+#: 从这类原文出题，模型只能生成「MI 范围是多少」这种医生不会问的问题。
+#:
+#: **根因不在提示词，在选错了源节点。**
+#:
+#: ## 判据
+#:
+#: 正向（提升决策含量）：
+#:   - 含阈值（>15mm / <2%）→ 可出「要不要做」类问题
+#:   - 含分级码（4A / LR-5）→ 可出「归哪类」类问题
+#:   - 含处置词（穿刺/消融/随访/手术）→ 可出「怎么办」类问题
+#:
+#: 负向（降低决策含量）：
+#:   - 含大量纯设备参数词（MI / 扫描角度 / 帧频 / 增益 / 深度）
+#:   - 且不含上述正向词
+_CLINICAL_ACTION = (
+    "穿刺", "活检", "FNA", "消融", "手术", "随访", "复查", "监测",
+    "推荐", "建议", "指征", "禁忌", "适应证", "处理", "治疗",
+)
+
+#: 纯设备/操作参数词（医生查房不会问这些）
+_DEVICE_PARAM = (
+    "扫描角度", "帧频", "增益", "深度", "聚焦", "探头频率", "机械指数",
+    "声输出功率", "ＭＩ", "MI：", "多普勒声束", "增益补偿", "动态范围",
+)
+
+
+def clinical_decision_score(props: dict, content: str) -> tuple[int, list[str]]:
+    """给节点的「临床决策含量」打分。返回 (分数, 理由列表)。
+
+    分数 ≥1 才适合出题；≤0 的节点应从图谱剔除。
+    """
+    score = 0
+    why: list[str] = []
+
+    if props["thresholds"]:
+        score += 2
+        why.append(f"含阈值×{len(props['thresholds'])}")
+    if props["grades"]:
+        score += 2
+        why.append(f"含分级码×{len(props['grades'])}")
+    hits = [w for w in _CLINICAL_ACTION if w in content]
+    if hits:
+        score += 1
+        why.append(f"含处置词×{len(hits)}")
+
+    dev = [w for w in _DEVICE_PARAM if w in content]
+    if dev and not (props["thresholds"] or props["grades"] or hits):
+        score -= 3
+        why.append(f"纯设备参数×{len(dev)}且无决策词")
+
+    return score, why
+
+
 def extract_properties(content: str) -> dict:
     """从 chunk 正文抽属性。纯函数。"""
     text = content or ""
@@ -144,12 +205,22 @@ async def load_nodes(kb_version: str) -> list[dict]:
         props = extract_properties(content or "")
         if not (props["grades"] or props["thresholds"] or props["signs"]):
             continue    # 无属性的节点对场景生成没用
+
+        # 2026-11-09 加：临床决策含量筛选。
+        # 实测——只含设备参数（MI 范围/扫描角度）的节点出题后必然被质量门拒，
+        # 因为从这类原文只能生成"技术手册查询"，不是医生会问的临床问题。
+        score, why = clinical_decision_score(props, content or "")
+        if score <= 0:
+            continue
+
         nodes.append(
             {
                 "id": cid,
                 "organ": organ,
                 "source_set": source_set_of(source_doc_id=doc_id, metadata=meta),
                 "content_len": len(content or ""),
+                "decision_score": score,
+                "decision_why": why,
                 **props,
             }
         )
@@ -239,6 +310,12 @@ async def main(argv: list[str] | None = None) -> int:
     print(f"  含分级码的节点: {sum(v for k, v in cnt_g.items() if k > 0)}")
     print(f"  含阈值的节点:   {sum(1 for n in nodes if n['thresholds'])}")
     print(f"  含征象的节点:   {sum(1 for n in nodes if n['signs'])}")
+
+    print(f"\n=== 临床决策含量 ===")
+    from collections import Counter as _C
+    sc_dist = _C(n["decision_score"] for n in nodes)
+    for sc in sorted(sc_dist):
+        print(f"  分数 {sc:2d}: {sc_dist[sc]:4d} 个节点")
 
     rels = build_relationships(nodes)
     print(f"\n=== 关系 ===")

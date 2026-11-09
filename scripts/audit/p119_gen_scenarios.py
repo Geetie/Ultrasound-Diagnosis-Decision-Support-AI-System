@@ -127,6 +127,7 @@ def generate(kg: dict, per_cell: int, seed: int = 42) -> list[dict]:
 
     scenarios: list[dict] = []
     sid = 0
+    used_pairs: set[tuple[str, str]] = set()   # 已用过的节点对，防多跳 repeating
 
     for hop, spec in QUADRANTS:
         for persona in PERSONAS:
@@ -145,13 +146,26 @@ def generate(kg: dict, per_cell: int, seed: int = 42) -> list[dict]:
                         rel_kind = "single"
                     else:
                         # 多跳优先用跨语料关系（本项目核心）
+                        #
+                        # ## 2026-11-09 实测修正：**同一节点对不许重复使用**
+                        #
+                        # 原来每次 `rnd.choice(plist)` 独立随机 → 小关系池反复被抽中。
+                        # 实测后果：20 条多跳场景里出现 3 条一模一样的
+                        # 「这个 5 分结节按两套指南分别归哪一类？该听谁的？」
+                        # （因为 cross_source_same_grade 反复选到同一对节点）
+                        #
+                        # 修法：用 `used_pairs` 记录已用过的 (a,b)，优先取未用过的；
+                        # 池子耗尽时才允许复用。
                         kind = rnd.choice(
                             [k for k in pairs if k.startswith("cross_source")] or list(pairs)
                         )
                         plist = pairs.get(kind) or []
                         if not plist:
                             continue
-                        a, b = rnd.choice(plist)
+                        fresh = [pr for pr in plist if pr not in used_pairs]
+                        pool = fresh if fresh else plist
+                        a, b = rnd.choice(pool)
+                        used_pairs.add((a, b))
                         na, nb = id2node[a], id2node[b]
                         if na["organ"] != nb["organ"]:
                             continue    # 跨器官的多跳不合临床逻辑

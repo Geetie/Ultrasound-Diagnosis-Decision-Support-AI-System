@@ -113,6 +113,53 @@ def check_one(row: dict, kb_text: str, existing_ids: set[str]) -> list[str]:
             probs.append(f"{organ} 问题出现「{bad}」（跨体系混用）")
             break
 
+    # ---- 闸 6（2026-11-09 新增）：query 里的体系码必须与器官匹配
+    #
+    # 实测漏网案例：
+    #   [liver] 「报告写 TR4，我作为外科医生该不该安排手术？」← TR4 是甲状腺的码
+    #   [liver] 「肝脏 13mm 4A 类结节紧邻被膜，要不要穿刺？」← 4A 是甲状腺的码
+    #
+    # 原闸 2 只查 `_FORBIDDEN` 里的**体系名**（C-TIRADS / LI-RADS），
+    # 没查**裸码**（TR4 / 4A / LR-5）。而模型恰恰爱写裸码。
+    _BARE_CODE_OWNER = {
+        "thyroid": ("TR1", "TR2", "TR3", "TR4", "TR5", "4A", "4B", "4C"),
+        "liver": ("LR-1", "LR-2", "LR-3", "LR-4", "LR-5", "LR-M", "LR-TIV"),
+        "cardiac": (),
+    }
+    q_upper = (q or "").upper()
+    for other_organ, codes in _BARE_CODE_OWNER.items():
+        if other_organ == organ:
+            continue
+        for code in codes:
+            # 只匹配「独立出现的码」，避免 4A 命中 LABEL 之类
+            if re.search(rf"(?<![A-Z0-9]){re.escape(code)}(?![0-9A-Za-z])", q_upper):
+                probs.append(
+                    f"{organ} 问题的 query 里出现「{code}」（属于 {other_organ} 的码）"
+                )
+                break
+        else:
+            continue
+        break
+
+    # ---- 闸 7（2026-11-09 新增）：答案里不许有「原文没有的具体数值」
+    #
+    # 实测漏网案例：「C-TIRADS 3 类…一般2~3个月复检一次彩超」
+    # —— 原文说的是「随访间隔 6~24 个月」，2~3 个月是编的。
+    #
+    # 判据：答案里出现的**带单位数值**，若在原文（KB 全文）里找不到，
+    # 且不是常见的通用值（如 1mm 这类），就报警。
+    # 这是启发式：可能误伤"合理换算"（如 1cm 写成 10mm），所以只作 WARN 级。
+    _num_re = re.compile(r"\d+(?:\.\d+)?\s*(?:mm|cm|%|个月|周|岁)")
+    invented: list[str] = []
+    for m in _num_re.finditer(a):
+        tok = m.group(0).replace(" ", "")
+        # 允许等效写法：1cm ≈ 10mm
+        variants = {tok, tok.replace("cm", "mm"), tok.replace("mm", "cm")}
+        if not any(v in kb_text for v in variants):
+            invented.append(tok)
+    if invented:
+        probs.append(f"答案含原文没有的数值: {invented[:3]}")
+
     # ---- 闸 5：gold 一致性
     gold = row.get("gold") or []
     if not gold:
