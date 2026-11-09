@@ -187,6 +187,74 @@ def check_one(row: dict, kb_text: str, existing_ids: set[str]) -> list[str]:
     if re.search(r"原文提到[：:]\s*(?:的|是|中|里|[，。；、])", a or ""):
         probs.append("答案书名号清理后语句破碎")
 
+    # ---- 闸 10（2026-11-09 L3 审核后新增）：query 与 answer 的参数必须对齐
+    #
+    # L3 人工审核 6 条里 5 条不合格，最典型的两类：
+    #   l3-001: query「报告这个分级意味着什么」没提 LR-3，答案却自己说「分级为 LR-3」
+    #           → 答案在回答一个 query 里没有的问题
+    #   l3-006: query「大小 1.2cm，直径小于 1.0cm」自相矛盾，答案只答了 <1.0cm
+    #
+    # 判据：query 里出现的数值/分级码，必须在答案里出现**同值的**（反之亦然不要强求，
+    # 因为答案可能需要引用 query 未提的其他数据）。
+    _NUM_TOK = re.compile(r"\d+(?:\.\d+)?\s*(?:mm|cm|%|个月|周|岁)", re.I)
+    _GRADE_TOK = re.compile(r"(?:C-?TIRADS|TI-?RADS|LI-?RADS|CEUS)?\s*(?:LR-?[1-5M]|TR\s?[1-5]|[1-6]\s*[A-C]?\s*类)", re.I)
+
+    def _norm_tok(t: str) -> str:
+        return t.replace(" ", "").lower()
+
+    q_nums = {_norm_tok(m.group(0)) for m in _NUM_TOK.finditer(q or "")}
+    a_nums = {_norm_tok(m.group(0)) for m in _NUM_TOK.finditer(a or "")}
+    # 允许等效换算：1.2cm == 12mm
+    def _to_mm(tok: str) -> float | None:
+        m = re.match(r"(\d+(?:\.\d+)?)(mm|cm)", tok)
+        if not m:
+            return None
+        v = float(m.group(1))
+        return v * 10 if m.group(2) == "cm" else v
+
+    a_mm = {_to_mm(t) for t in a_nums} - {None}
+    missing = []
+    for t in q_nums:
+        if t in a_nums:
+            continue
+        v = _to_mm(t)
+        if v is not None and any(x is not None and abs(x - v) < 0.01 for x in a_mm):
+            continue
+        missing.append(t)
+    if missing:
+        probs.append(f"query 提到的数值 {missing[:3]} 未出现在答案里（答非所问）")
+
+    # ---- 闸 11（2026-11-09 L3 审核后新增）：跨体系码不许互换
+    #
+    # L3 实测 l3-005：答案写「4A 类…根据 TR4 级」，把 C-TIRADS 的 4A 说成 ACR 的 TR4。
+    # **这两者差一档**（4A 低度可疑 2-10% / TR4 中度可疑），是项目中已记录的口径陷阱。
+    #
+    # 判据：同一答案里若同时出现 C-TIRADS 系（4A/4B/4C）与 ACR 系（TR1-TR5），
+    # 且它们是**在同一句里对同一次判读**，就是混用。
+    _HAS_CT = re.search(r"[1-6]\s*[A-C]\s*类|C-?TIRADS", a or "", re.I)
+    _HAS_TR = re.search(r"\bTR\s?[1-5]\b", a or "", re.I)
+    if _HAS_CT and _HAS_TR:
+        # 只有当两套码出现在相邻 40 字以内才算"同一次判读混用"
+        text_a = a or ""
+        for mCt in re.finditer(r"[1-6]\s*[A-C]\s*类|C-?TIRADS", text_a, re.I):
+            for mTr in re.finditer(r"\bTR\s?[1-5]\b", text_a, re.I):
+                if abs(mCt.start() - mTr.start()) <= 40:
+                    probs.append("同一句里混用 C-TIRADS 的 4A/4B/4C 与 ACR 的 TRx（差一档）")
+                    break
+            else:
+                continue
+            break
+
+    # ---- 闸 12（2026-11-09 L3 审核后新增）：答案不许夹外文原文 + 清理残留
+    #
+    # L3 实测 l3-002：答案里夹着 "Pediatric FTC is a rare malignancy."
+    # L3 实测 l3-006：答案出现「原文提到：和原文提到：」（我的清理重复）
+    _EN_SPAN = re.search(r"[A-Za-z][A-Za-z\s,.'\-]{25,}", a or "")
+    if _EN_SPAN:
+        probs.append(f"答案里夹了整段外文原文: {_EN_SPAN.group(0)[:40]!r}")
+    if re.search(r"原文提到[：:]\s*和\s*原文提到", a or "") or (a or "").count("原文提到") >= 2:
+        probs.append("答案里「原文提到：」重复（清理残留）")
+
     # ---- 闸 5：gold 一致性
     gold = row.get("gold") or []
     if not gold:
