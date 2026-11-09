@@ -173,12 +173,35 @@ class RetrievalProfile:
         另一段 gold 挤到 top-1 之后。另外 `app/rag/reranker.py` 重排后用原始 logits
         覆盖 `score`（实测量纲 -4.16 ~ 7.43，不是 [0,1] 概率），下游按概率理解会错。
 
-        **要重开的前提**：换医学领域精排模型（如 CMedRAG 类），并在 B2 上重测为正增益。
-        不要在没有新证据的情况下把 `use_reranking` 改回 True。
+        **2026-11-09 更新：负增益的根因是模型，不是"精排不行"**
+
+        阶段2 Agent 用生产 Retriever 在 B2（n=117）上实测：
+
+        | 精排模型 | hit@1 | Δ | McNemar p |
+        |---|---|---|---|
+        | `bge-reranker-base`（原） | 0.5470 | -6.8pt | 0.20 |
+        | **`bge-reranker-v2-m3`** | **0.6923** | **+12.0pt** | **0.0201 ★** |
+
+        配套：hit@5 +11.1pt (p=0.0010)、hit@10 +5.1pt (p=0.0312)、NDCG +10.1pt。
+        **换模型后转正且五项显著。**
+
+        归因（逐项证伪了"术语/污染/深度"三种解释）：
+        - base 对纯中文医学问句打 8.64、无关 −10.06 → **术语是认识的**
+        - 只规约查询句式：base 从 −7.7pt 仅救回 −5.1pt（**仍为负**）
+        - 深度 10→20→40 单调变好 → 上一轮"越深越差"是 base 的问题被误读
+
+        **所以 `use_reranking=False` 是针对 base 模型的循证决策。**
+        换成 v2-m3 后应重新评估是否开启（`settings.bge_reranker_model` 已切到 v2-m3）。
+
+        ⚠️ **注意**：v2-m3 的 +12pt 是**本项目实测**，不是官方背书 ——
+        其 model card 全文无 `medical`，C-MTEB 上 Cmedqa 为 **−3.80**（正负号都有）。
+
+        **另**：精排开启后融合权重需退回等权（实测 hit@5 差 7.7pt），
+        见 `_rrf_fuse` 里的说明。
         """
         return cls(
             use_query_enhancement=True,
-            # 实测负增益，见上方 docstring 的三组数字；关闭是循证决策
+            # 实测负增益（针对 bge-reranker-base）；换 v2-m3 后需重新评估
             use_reranking=False,
             use_bm25_fallback=True,
             use_llm_enhancement=True,

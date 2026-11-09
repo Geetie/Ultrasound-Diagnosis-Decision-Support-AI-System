@@ -5,6 +5,38 @@
 
 ## Last Updated
 
+2026-11-09（**RAG 阶段 4 生成层（A.173）**：思考模式**根治**——根因是 II-Medical-8B 的
+chat template 没有 `enable_thinking` 分支（离线渲染实证 True/False/不传逐字节相同），
+改用**客户端预填 assistant 轮**后 `<think>` 8/8→0/8、生产路径延迟 p50 19.04→4.40s；
+两个守卫接通；超时分档；并发现生产 `.env` 的 30s 覆盖了代码的 180s（A.171 的修复**从未生效**）。完整报告 `reports/RAG阶段4_生成层前沿研究_20261109.md`）
+
+### A.173 增量（最新，2026-11-09）：思考模式根治 + 守卫接通 + 超时分档
+
+**下一位接手的第一件事**：确认生产 `.env` 的值真的生效（本轮最大的运维坑）。
+
+| 项 | 之前 | 之后 |
+|---|---|---|
+| `<think>` 出现在输出 | 8/8 | **0/8** |
+| 剥空正文为空 | 5/8 | **0/8** |
+| 生产路径 `finish_reason=length` | 3/12 | **0/12** |
+| 生产路径退化结论 | 1/12 | **0/12** |
+| 生产路径延迟 p50 / max | 19.04 / 61.89 s | **4.40 / 6.66 s** |
+| 自造规则守卫假阳性 | 39/797（4.89%） | **5/797（0.63%）** |
+| 生产超时 | `.env`=30s（89.42% 调用超时） | **180s** |
+| 单测 | — | **166 passed / 0 failed** |
+
+**关键文件**：`app/inference/vllm.py`（`NO_THINK_PREFILL` + 预填）、
+`app/agents/specialist/base.py`（4d 守卫接线 + `_grading_rule_source` + 分档超时）、
+`app/inference/output_guard.py`（语义判据）、`app/inference/protocols.py`（`timeout_seconds`）、
+`app/config/settings.py`（三档超时）、`tests/unit/quality/test_output_guard_wiring.py`（新增 20 例）。
+
+**Blocker / 未做**：判读档 180s 需 n≥100 重标定；"只删编造句保留结论"的温和方案未实现；
+服务端 `--chat-template` 路径未跑通（vLLM 要 `--trust-request-chat-template`）。
+
+---
+
+## Last Updated（上一轮）
+
 2026-11-09（**RAG 阶段 5 评估体系（A.172）**：评估实现本身可信化 + 五阶段分层评估 + CI 门禁。
 **本轮最重要的是"评估本身对不对"，不是数字**。生成段未跑。完整报告
 `reports/RAG阶段5_评估体系前沿研究_20261109.md`）

@@ -197,6 +197,24 @@ def detect_degenerate_grade_only(text: str, *, min_body_chars: int = 6) -> str |
         re.IGNORECASE,
     )
     rest = t[head.end():] if head else t
+
+    # **2026-11-09 修正：带定性判断词的不算退化。**
+    # 原实现只看剩余字符数，把 `甲状腺：TI-RADS 5 高度可疑` 也判成"只有分级码" ——
+    # 但它含"高度可疑"这个**实质医学判断**，不是退化结论。
+    # 这类"分级 + 定性词"的短结论在临床上很常见（如 `4a 类 低度可疑`），
+    # 误杀它们会让真结论被拒收，比漏报更糟。
+    _QUALITATIVE = re.compile(
+        # 分级定性词
+        r"高度可疑|中度可疑|低度可疑|可疑恶性|良性可能|良性|恶性|不怀疑|怀疑|"
+        # 临床判断词
+        r"倾向|考虑|符合|未见异常|无异常|正常|"
+        # 处置词
+        r"建议|随访|复查|穿刺|活检|手术|消融|监测|观察",
+        re.IGNORECASE,
+    )
+    if _QUALITATIVE.search(rest):
+        return None
+
     body = re.sub(r"[\s·:：\-=,，。;；]+", "", rest)
     if len(body) < min_body_chars:
         return "grade_only_no_body"
