@@ -203,3 +203,86 @@ class TestBrokenSentenceGate:
         }
         probs = mod.check_one(row, "kb", {"kb:x#0000"})
         assert not any("语句破碎" in p for p in probs), probs
+
+
+class TestScoreGradeGate:
+    """闸14：C-TIRADS 分级与积分必须对得上（2026-11-09 L3 后新增）。
+
+    ## 为什么这道闸存在
+
+    L3 人工审核 20 条抓到 4 条医学错误，全部是 8B 模型「不知道规则」造成的：
+
+    | 生成的错误 | 真相 |
+    |---|---|
+    | 1.5cm 边界清晰 → TR2 级，积分 3 分 | TR2 是 1 分；且 TRx 是 ACR 体系 |
+    | 「13 分结节」 | C-TIRADS 满分 5 分 |
+    | LR-3 → 「明确恶性」 | LR-5 才是明确恶性 |
+
+    **这类错误靠提示词修不了**（模型知识不够），但**靠规则能查** ——
+    C-TIRADS 的分数与分级一一对应，是写死的。
+
+    ## 实测踩过的坑
+
+    第一版实现里 `got.startswith("tr")` 就直接跳过比对，
+    结果「1.5cm → TR2 + 3 分」这个**真实错误没被抓到**。
+    修法：拆成两步 —— A) 分数 + TRx 同现 = 体系混用；B) 分数 + 类码必须匹配对照表。
+    """
+
+    _KB = "C-TIRADS 计数法：分值 1 为 4A，2 为 4B，3~4 为 4C，5 为 5 类。"
+
+    def _row(self, answer: str, query: str = "甲状腺结节实性，积几分归几类？") -> dict:
+        return {
+            "organ": "thyroid",
+            "query": query,
+            "reference_answer": answer,
+            "gold": [{"chunk_id": "kb:x#0000"}],
+        }
+
+    def test_score_over_five_flagged(self, mod):
+        """「13 分」不可能 —— 满分 5 分。"""
+        probs = mod.check_one(self._row("原文提到：13 分的结节属于 5 类，建议穿刺。"), self._KB, {"kb:x#0000"})
+        assert any("不可能为 13" in p for p in probs), probs
+
+    def test_tr_with_score_flagged(self, mod):
+        """分数 + TRx 同现 = 体系混用（第一版漏掉的就是这个）。"""
+        probs = mod.check_one(
+            self._row("原文提到：1.5cm 边界清晰的结节属于 TR2 级，积分为 3 分。"),
+            self._KB, {"kb:x#0000"},
+        )
+        assert any("TR" in p and "分" in p for p in probs), probs
+
+    def test_score_grade_mismatch_flagged(self, mod):
+        """2 分应为 4B，写成 4A 必须抓。"""
+        probs = mod.check_one(self._row("原文提到：共 2 分，归为 4A 类。"), self._KB, {"kb:x#0000"})
+        assert any("积分与分级不符" in p for p in probs), probs
+
+    def test_correct_mapping_passes(self, mod):
+        """1 分 → 4A 是正确映射，不许误报。"""
+        probs = mod.check_one(self._row("原文提到：实性 +1 分，共 1 分，归为 4A 类。"), self._KB, {"kb:x#0000"})
+        assert not any("积分" in p or "TR" in p for p in probs), probs
+
+    def test_four_c_score_mapping(self, mod):
+        """3 分与 4 分都属 4C（区间映射）。"""
+        for score in (3, 4):
+            probs = mod.check_one(
+                self._row(f"原文提到：共 {score} 分，归为 4C 类。"), self._KB, {"kb:x#0000"}
+            )
+            assert not any("积分与分级不符" in p for p in probs), (score, probs)
+
+
+class TestBrokenSentenceAfterCleanup:
+    """闸13：书名号清理后的残句（我的 _strip_fake_citations 副作用）。
+
+    实测：「统一使用《A》或《B》中的标准」→「统一使用中的标准进行分级」（缺宾语）
+    这类残句不靠正则救语法，直接判不合格让模型重试。
+    """
+
+    def test_missing_object_flagged(self, mod):
+        row = {
+            "organ": "liver",
+            "query": "肝脏 LR-5 结节如何处理？",
+            "reference_answer": "原文提到：统一使用中的标准进行分级，LR-5 需多学科会诊。" * 2,
+            "gold": [{"chunk_id": "kb:x#0000"}],
+        }
+        probs = mod.check_one(row, "kb", {"kb:x#0000"})
+        assert any("残句" in p for p in probs), probs

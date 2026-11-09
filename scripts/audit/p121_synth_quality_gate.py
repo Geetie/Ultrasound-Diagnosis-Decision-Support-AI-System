@@ -252,7 +252,19 @@ def check_one(row: dict, kb_text: str, existing_ids: set[str]) -> list[str]:
     _EN_SPAN = re.search(r"[A-Za-z][A-Za-z\s,.'\-]{25,}", a or "")
     if _EN_SPAN:
         probs.append(f"答案里夹了整段外文原文: {_EN_SPAN.group(0)[:40]!r}")
-    if re.search(r"原文提到[：:]\s*和\s*原文提到", a or "") or (a or "").count("原文提到") >= 2:
+    # ## 2026-11-09 实测修正：`count("原文提到") >= 2` 是错判据
+    #
+    # 原写法把「答案里出现两次『原文提到：』」判成清理残留 ——
+    # 但**正常答案引用两处不同事实时本来就会写两次**：
+    #   「原文提到 EF≤35% 是分层点…原文提到该类患者需随访…」
+    # 实测：这条把一条正确答案判成不合格（TestQueryShape::test_good_question_passes 变红）。
+    #
+    # 真正的「清理残留」只有两种形态：
+    #   1. 紧邻重复：「原文提到：原文提到：」
+    #   2. 用连接词连着的重复：「原文提到：和原文提到：」「原文提到：或原文提到：」
+    # 这两种都在 _strip_fake_citations 里折叠过，若还剩下就是真的没清干净。
+    _DUP_RE = re.compile(r"原文提到[：:]\s*(?:(?:和|与|或|、|及|以及|跟|同)\s*)?原文提到[：:]")
+    if _DUP_RE.search(a or ""):
         probs.append("答案里「原文提到：」重复（清理残留）")
 
     # ---- 闸 13（2026-11-09 L3 后新增）：检查「清理后变残句」
@@ -310,23 +322,39 @@ def check_one(row: dict, kb_text: str, existing_ids: set[str]) -> list[str]:
     # 所以：答案里若同时出现「N 分」与「X 类」，必须满足上表。
     _SCORE_TO_GRADE = {(-1): "2", 0: "3", 1: "4a", 2: "4b", 3: "4c", 4: "4c", 5: "5"}
 
+    # ## 2026-11-09 实测修正：原实现有漏洞
+    #
+    # 原写法在拿到 `TR2` 这类码时，因为 `got.startswith("tr")` 就跳过比对 ——
+    # 结果「1.5cm 边界清晰 → TR2 级，积分为 3 分」这个**真实错误没被抓到**
+    # （实测：只有「13 分」被抓，「TR2+3分」漏了）。
+    #
+    # 修法：分两步判
+    #   步骤 A：ACR 的 TRx 与 C-TIRADS 的分数**根本不属于同一体系**，
+    #           同一句里同时出现「N 分」和「TRx」就是体系混用（闸 11 已管，这里再加一层）
+    #   步骤 B：C-TIRADS 的「N 分」与「X 类」必须符合对照表
     score_m = re.search(r"(\d+)\s*分", a or "")
     if score_m:
         score = int(score_m.group(1))
         if score > 5:
             probs.append(f"C-TIRADS 积分不可能为 {score}（满分 5 分）")
-        else:
-            # 找答案里出现的分级码
-            grade_m = re.findall(r"([1-6])\s*([A-Ca-c]?)\s*类|\bTR\s?([1-5])\b", a or "")
-            if grade_m:
-                g1, g2, gtr = grade_m[0]
-                got = (g1 + (g2 or "")).lower() if g1 else f"tr{gtr}"
-                want = _SCORE_TO_GRADE.get(score)
-                # 只在能明确比对时判（4A vs 4a 归一化）
-                if want and got and not got.startswith("tr") and got != want:
-                    probs.append(
-                        f"C-TIRADS 积分与分级不符：{score} 分应为 {want} 类，答案写 {got} 类"
-                    )
+
+        # 步骤 A：分数 + TRx 同现 = 体系混用
+        tr_m = re.search(r"\bTR\s?([1-5])\b", a or "", re.I)
+        if tr_m:
+            probs.append(
+                f"答案里「{score} 分」与 ACR 的「TR{tr_m.group(1)}」同时出现——"
+                "TRx 是 ACR 体系，不接受 C-TIRADS 的分数"
+            )
+
+        # 步骤 B：分数 + C-TIRADS 类码 必须匹配对照表
+        cm = re.search(r"([1-6])\s*([A-Ca-c]?)\s*类", a or "")
+        if cm:
+            got = (cm.group(1) + (cm.group(2) or "")).lower()
+            want = _SCORE_TO_GRADE.get(score)
+            if want and got != want:
+                probs.append(
+                    f"C-TIRADS 积分与分级不符：{score} 分应为 {want} 类，答案写 {got} 类"
+                )
 
     # ---- 闸 5：gold 一致性
     gold = row.get("gold") or []
