@@ -168,7 +168,11 @@ async def main(argv: list[str] | None = None) -> int:
         for l in Path(args.dataset).read_text(encoding="utf-8").splitlines()
         if l.strip()
     ]
-    rows = [r for r in rows if r.get("gate_passed") or r.get("reference_answer")]
+    # 兼容两种数据集布局：
+    # - 合成集：有 gate_passed 字段
+    # - B2 升级集（v3）：没有 gate_passed，但有 reference_answer
+    # 判据统一为「有 reference_answer 且非空」—— 没有答案就测不了 recall。
+    rows = [r for r in rows if (r.get("reference_answer") or "").strip()]
     if args.limit:
         rows = rows[: args.limit]
     print(f"评测 {len(rows)} 条，top_k={args.top_k}")
@@ -178,7 +182,9 @@ async def main(argv: list[str] | None = None) -> int:
     for i, r in enumerate(rows, 1):
         q = r.get("query") or ""
         ref = r.get("reference_answer") or ""
-        organ = r.get("organ") or ""
+        # organ 可能在校顶层（合成集）或 metadata 里（B2 升级集 v3）
+        md = r.get("metadata") if isinstance(r.get("metadata"), dict) else {}
+        organ = r.get("organ") or md.get("organ") or ""
         if not (q and ref and organ):
             continue
         ctxs = await retrieve_contexts(q, organ, args.kb_version, args.top_k)
@@ -186,7 +192,13 @@ async def main(argv: list[str] | None = None) -> int:
         cp = compute_context_precision(ctxs, ref)
         recs.append(rc)
         precs.append(cp)
-        key = (r.get("hop"), r.get("specificity"), r.get("persona"), r.get("length"))
+        md2 = r.get("metadata") if isinstance(r.get("metadata"), dict) else r
+        key = (
+            r.get("hop") or md2.get("hop"),
+            r.get("specificity") or md2.get("specificity"),
+            r.get("persona") or md2.get("persona"),
+            r.get("length") or md2.get("length"),
+        )
         per_cell.setdefault(key, []).append(rc)
         if i % 20 == 0:
             print(f"  进度 {i}/{len(rows)}", flush=True)

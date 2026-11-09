@@ -398,6 +398,102 @@ def check_one(row: dict, kb_text: str, existing_ids: set[str]) -> list[str]:
                     )
                     break
 
+    # ---- 闸 16（2026-11-09 抽取式后新增）：摘录必须回答 query
+    #
+    # ## 为什么需要（实测漏网）
+    #
+    # 加了抽取式约束后，医学错误消失了，但出现新问题：**答非所问**。
+    #
+    #   实测案例 1：
+    #     Q: 两套指南对甲状腺癌局部侵犯的描述有何不同？
+    #     A: 「PTC 易早期发生区域淋巴转移…」← 讲的是淋巴转移，不是局部侵犯
+    #
+    #   实测案例 2：
+    #     Q: 这个 5 分结节按两套指南分别归哪一类？该听谁的？
+    #     A: 「诊疗规范指出 4a 类具有 1 种恶性征象；C-TIRADS 指出 4a 类具有 1 种恶性征象」
+    #        ← 两个来源给了**同一个定义**，等于没回答"分别归哪类"
+    #
+    # **摘录真实性（闸 B）与相关性是两件事**：抄得再准，抄错了段落也是废的。
+    #
+    # ## 判据
+    #
+    # query 的「内容要素」（数值/分级码/关键术语）必须出现在答案里。
+    # 只查要素**是否被回答**，不查答案是否还讲了别的（摘录常带上下文，这是合理的）。
+    _Q_ELEM = (
+        re.compile(r"\d+(?:\.\d+)?\s*(?:mm|cm|%|个月|周|岁|分)", re.I),
+        re.compile(r"(?:C-?TIRADS|TI-?RADS|LI-?RADS|CEUS|LR-?[1-5M]|TR\s?[1-5]|[1-6]\s*[A-Ca-c]?\s*类)", re.I),
+    )
+    q_elems: list[str] = []
+    for pat in _Q_ELEM:
+        q_elems.extend(m.group(0) for m in pat.finditer(q or ""))
+    # 关键的临床动作词（问了"要不要穿刺"就要看到穿刺相关的内容）
+    _ACTION_WORDS = ("穿刺", "活检", "FNA", "手术", "消融", "随访", "复查", "处理", "治疗")
+    q_actions = [w for w in _ACTION_WORDS if w in (q or "")]
+    a_norm = re.sub(r"\s+", "", a or "").lower()
+
+    if q_elems:
+        miss = [
+            e for e in dict.fromkeys(q_elems)
+            if re.sub(r"\s+", "", e).lower() not in a_norm
+        ]
+        if miss:
+            probs.append(f"答案没覆盖 query 的要素 {miss[:3]}（答非所问）")
+    if q_actions:
+        if not any(w in (a or "") for w in q_actions):
+            probs.append(f"query 问「{'/'.join(q_actions)}」，答案没提任何处置（答非所问）")
+
+    # 修 1（2026-11-09 实测补）：query 无数字/无动作词时，用**中文主题词**判相关性。
+    #
+    # 实测漏网：「两套指南对甲状腺癌**局部侵犯**的描述有何不同？」
+    #   query 里既无数字也无动作词 → 前面两条判据都不触发。
+    #   而答案讲的是「PTC 易早期发生区域**淋巴转移**」—— 主题完全跑偏。
+    #
+    # 判据：从 query 抽 ≥2 字的临床主题词（去停用词与疑问词），
+    # 要求答案命中 ≥1 个主题词。
+    _STOP_ZH = set(
+        "的是了在和与或及等这那你我他她它之其中为以所被把从到对按该不没有可就还要会能"
+        "什么怎么如何哪些多少是否请问有无区别差异不同情况时候"
+    )
+    # 从 query 抽 2-3 字滑窗作为主题词候选
+    q_terms: list[str] = []
+    for run in re.findall(r"[\u4e00-\u9fff]{2,}", q or ""):
+        for n in (2, 3):
+            for i in range(len(run) - n + 1):
+                w = run[i : i + n]
+                if not (set(w) & _STOP_ZH):
+                    q_terms.append(w)
+    q_terms = [t for t in dict.fromkeys(q_terms) if len(t) >= 2]
+    if q_terms and not q_elems and not q_actions:
+        hit_terms = [t for t in q_terms if t in (a or "")]
+        if not hit_terms:
+            probs.append(
+                f"答案与 query 主题不符（query 主题词 {q_terms[:3]} 一个都没出现在答案里）"
+            )
+
+    # ---- 闸 17（2026-11-09 新增）：答案不许整句重复
+    #
+    # 实测漏网：
+    #   「专家委员会经过认真讨论，认为有必要建立符合中国国情的C-TIRADS。
+    #     基于以上现状，专家委员会经过认真讨论，认为有必要建立符合中国国情的C-TIRADS。」
+    # 修 2（2026-11-09 实测补）：两句只差**前缀**（「原文提到：X」与「基于以上现状，X」）也算重复。
+    #
+    # 实测漏网：
+    #   「原文提到：专家委员会…建立 C-TIRADS。
+    #     基于以上现状，专家委员会…建立 C-TIRADS。」  ← 只差前缀，正文一模一样
+    #
+    # 判据：剥掉「原文提到：」「基于…，」这类前缀后再比对。
+    _sents_a = [x.strip() for x in re.split(r"[。；;]", a or "") if len(x.strip()) >= 12]
+
+    def _strip_prefix(x: str) -> str:
+        x = re.sub(r"^(?:原文提到|指南指出|根据原文)[：:]\s*", "", x)
+        x = re.sub(r"^(?:基于|根据|由此|因此)[^，,。]{0,15}[，,]", "", x)
+        return x.strip()
+
+    _cores = [_strip_prefix(x) for x in _sents_a]
+    _cores = [c for c in _cores if len(c) >= 10]
+    if len(_cores) != len(set(_cores)):
+        probs.append("答案里有整句重复（去掉前缀后正文相同）")
+
     # ---- 闸 5：gold 一致性
     gold = row.get("gold") or []
     if not gold:

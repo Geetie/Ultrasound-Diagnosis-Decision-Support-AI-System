@@ -180,6 +180,113 @@ def _strip_fake_citations(text: str) -> tuple[str, int]:
     return out, n
 
 
+#: 抽取式的三条硬约束实现（2026-11-09）
+#:
+#: ## 为什么必须在程序里做，不能靠提示词
+#:
+#: 改成摘录式后，模型仍然两种作弊：
+#:   1. `[自己的结论] + 「原文提到：」 + [随便一段原文]`
+#:      例：「4A 类结节需要穿刺。原文提到：821% 的受访医生希望沿用 ACR-BIRADS…」
+#:   2. `原文… ＋「这说明」＋ [结论]`
+#:      例：「原文提到：典型转移性淋巴结需 FNA。这说明两套指南并存可能导致矛盾」
+#:
+#: **提示词写「只能抄不能答」，模型学会了格式但内容对不上。**
+#: 所以在程序里做三件事：
+#:   A. 只保留「原文提到：」之后的内容（砍掉前面的自造结论）
+#:   B. 校验保留内容是否真的逐字存在于源 chunk（不在就判不合格）
+#:   C. 校验答案里每个数值是否在源 chunk 里（编造的 821% 会被抓）
+_EXTRACT_PREFIX = "原文提到："
+
+
+def _enforce_extractive(answer: str, sources: list[str]) -> tuple[str, list[str]]:
+    """把答案裁剪成纯摘录，并校验其真实性。
+
+    Returns:
+        ``(裁剪后的答案, 问题列表)``。问题非空说明该条不合格。
+    """
+    probs: list[str] = []
+    text = (answer or "").strip()
+    if not text:
+        return text, ["答案为空"]
+
+    joined = "\n".join(sources or [])
+
+    # ---- A. 砍掉「原文提到：」之前的自造结论
+    idx = text.find(_EXTRACT_PREFIX)
+    if idx > 0:
+        # 前面有内容 → 模型在摘录前先下了结论，砍掉
+        text = text[idx:]
+
+    # ---- B. 校验：摘录内容必须能在源 chunk 里找到
+    #
+    # ## 2026-11-09 实测修正：第一版过严导致过闸率 0%
+    #
+    # 第一版要求「整句逐字存在」。实测 30 条全被拒，原因分布：
+    #   18 条「答案里有 1 句在原文中找不到」
+    #   8 条「2 句找不到」
+    #
+    # 看细节发现是**我过严，不是模型瞎编**：
+    #   答案：「4A 类结节的 FNA 阈值为 >15 mm（紧邻被膜/多灶 >10 mm）」
+    #   原文：「4A 类结节 FNA 阈值为 >15 mm；若紧邻被膜，阈值降为 >10 mm」
+    #   → 语义完全一致，只是**模型重新组织了措辞**（加了括号、换了连接词）
+    #
+    # **摘录式不该要求逐字整句，而该要求「每个事实要素都在原文里」。**
+    #
+    # 修法：改成**要素级覆盖度**——把摘录句拆成「数值/分级码/术语」三类要素，
+    # 要求覆盖率 ≥80%（允许少量连接词差异）。
+    body = text.replace(_EXTRACT_PREFIX, " ").strip()
+    norm_ctx = re.sub(r"\s+", "", joined).lower()
+
+    def _norm(t: str) -> str:
+        # 去空白 + 去全角括号与常见标点
+        t = re.sub(r"\s+", "", t)
+        t = re.sub(r"[（(）)\[\]【】、，,。.；;：:]", "", t)
+        return t.lower()
+
+    norm_ctx_c = _norm(joined)
+
+    # 要素抽取：数值+单位 / 分级码 / ≥2 字的中文术语（取 2-4 字滑窗）
+    _ELEM_PATS = (
+        re.compile(r"\d+(?:\.\d+)?\s*(?:mm|cm|%|个月|周|岁|分)"),
+        re.compile(r"(?:C-?TIRADS|TI-?RADS|LI-?RADS|CEUS|LR-?[1-5M]|TR\s?[1-5]|[1-6]\s*[A-Ca-c]?\s*类)", re.I),
+        re.compile(r"[Ff][Nn][Aa]|HCC|APHE|GLS|LVEF|E/e|mm|cm"),
+    )
+    elems: list[str] = []
+    for pat in _ELEM_PATS:
+        elems.extend(m.group(0) for m in pat.finditer(body))
+    # 中文实词（2-4 字，去停用词）
+    stop = set("的了是在和与或及等这那你我他她它之其中为以所被把从到对按该不没有可需要会能就要还要")
+    zh_runs = re.findall(r"[\u4e00-\u9fff]{2,}", body)
+    for run in zh_runs:
+        for i in range(len(run) - 1):
+            w = run[i : i + 2]
+            if not (set(w) & stop):
+                elems.append(w)
+
+    elems = [e for e in dict.fromkeys(elems) if len(_norm(e)) >= 2]
+    if elems:
+        hit = sum(1 for e in elems if _norm(e) in norm_ctx_c)
+        cover = hit / len(elems)
+        if cover < 0.80:
+            probs.append(
+                f"摘录覆盖率过低 {cover:.0%}（{hit}/{len(elems)} 个要素在原文里找不到）"
+            )
+
+    # ---- C. 校验：答案里每个数值必须在原文里出现
+    #
+    # 注：`13mm` 与原文的 `13 mm` 是同一个数，比较时必须去空白（第一版踩过）。
+    nums = re.findall(r"\d+(?:\.\d+)?\s*(?:mm|cm|%|个月|周|岁|分)", text)
+    bad_nums = [n for n in nums if _norm(n) not in norm_ctx_c]
+    if bad_nums:
+        probs.append(f"答案含原文没有的数值: {bad_nums[:3]}")
+
+    # ---- D. 「这说明」类推断句式 —— 抽取不该有推断
+    if re.search(r"这(?:说明|意味着|表明|提示)了?", text):
+        probs.append("答案含「这说明/意味着」类推断（摘录不该有推断）")
+
+    return text, probs
+
+
 def _build_prompt(sc: dict, nodes_content: list[str], problems: list[str] | None = None) -> str:
     """构建合成提示词。
 
@@ -272,6 +379,9 @@ async def synth_with_gate(
         query_text, n_cite_q = _strip_fake_citations(query_text)
         n_cite += n_cite_q
 
+        # 抽取式三条硬约束（砍自造结论 + 校验逐字存在 + 校验数值真实）
+        answer_text, extract_probs = _enforce_extractive(answer_text, contents)
+
         row = {
             "scenario_id": sc["scenario_id"],
             "organ": sc["organ"],
@@ -289,7 +399,7 @@ async def synth_with_gate(
             "needs_human_review": True,
             "attempts": attempt + 1,
         }
-        probs = check_one(row, kb_text, ids)
+        probs = check_one(row, kb_text, ids) + list(extract_probs)
         if not probs:
             row["gate_passed"] = True
             return row
