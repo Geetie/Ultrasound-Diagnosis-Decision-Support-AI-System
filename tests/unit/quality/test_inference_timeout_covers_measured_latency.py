@@ -29,8 +29,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from app.config.settings import settings
 
 #: p107b 实测的生成延迟（秒）。改这些数必须同时更新依据。

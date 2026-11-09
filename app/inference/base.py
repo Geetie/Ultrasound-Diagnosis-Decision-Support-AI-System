@@ -470,19 +470,19 @@ class BaseHttpInferenceEngine(BaseHttpClient, InferenceEngine, ABC):
             except httpx.TimeoutException as exc:
                 last_error = self._handle_timeout(exc, request, start_time, attempt)
                 if last_error is not None:
-                    raise last_error
+                    raise last_error from exc
                 self._update_circuit_breaker_state(False)
                 await self._wait_retry(attempt)
             except httpx.ConnectError as exc:
                 last_error = self._handle_connect_error(exc, request, attempt)
                 if last_error is not None:
-                    raise last_error
+                    raise last_error from exc
                 self._update_circuit_breaker_state(False)
                 await self._wait_retry(attempt)
             except (httpx.HTTPError, ValueError, KeyError) as exc:
                 last_error = self._handle_unexpected_error(exc, request, attempt)
                 if last_error is not None:
-                    raise last_error
+                    raise last_error from exc
                 self._update_circuit_breaker_state(False)
                 await self._wait_retry(attempt)
         else:

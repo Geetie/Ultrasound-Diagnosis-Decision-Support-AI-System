@@ -588,6 +588,19 @@ class Settings(BaseSettings):
     # 写了不存在的集名**不会**让服务起不来（那是过度反应），但启动期会在日志里
     # 报 `rag_enabled_source_sets_unknown`（见 `unknown_source_sets()`）。
     rag_enabled_source_sets: list[str] = Field(default_factory=list)
+
+    # 冲突见证块补捞（2026-11-09 加，解决"并列块不触发"的能力缺口）。
+    #
+    # **读取点**：`app/agents/specialist/base.py::_maybe_backfill_witness`。
+    #
+    # 缺口：阶段3 的并列渲染做出来了，但对照条目在 BM25 里排**第 32 位**，
+    # 而 `DEFAULT_RAG_TOP_K = 5` + `rag_rerank_output_top_k = 5`
+    # → 两套语料的对照条目**永远进不了 top-5** → 并列块空 → 能力不生效。
+    #
+    # 本开关启用后：正常取 top-5 后，若只命中单一 source_set，
+    # 定向补捞另一套语料的对照块（**不改排名、不提高 top_k**），
+    # 只喂给并列渲染。失败静默退回原块。
+    rag_witness_backfill_enabled: bool = True
     # 是否把跨语料口径分歧**并列写进 prompt**（默认开）。
     #
     # 关掉它 = 只做检索期过滤、不做"多来源并存时并列呈现"。有些院区先只上

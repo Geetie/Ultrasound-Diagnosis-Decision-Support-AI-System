@@ -496,6 +496,16 @@ class RAGSpecialistAgent(SpecialistAgent):
         if temperature is not None:
             trace.append(f"sample_temperature -> {temperature}")
 
+        # 2.5) 冲突见证块补捞（2026-11-09 加）
+        #
+        # 解决的缺口：并列渲染做出来了，但对照条目排在 BM25 第 32 位，
+        # 而 DEFAULT_RAG_TOP_K=5 → 永远进不了 top-5 → 并列块空 → 能力不生效。
+        #
+        # 这里**不改排名、不提高 top_k**，只定向补捞"另一套语料的对照块"，
+        # 补到的块单独喂给并列渲染，不参与 top-k 结果。
+        # 补捞失败绝不阻断主流程（模块内已 try/except 兜底）。
+        chunks = await self._maybe_backfill_witness(context, organ, chunks, trace)
+
         # 3) 拼装 prompt
         prompt = self._build_prompt(context, chunks, trace)
 
@@ -1107,6 +1117,78 @@ class RAGSpecialistAgent(SpecialistAgent):
             payload["recorded_chunks"] = len(recorded_ids)
             payload["recorded_ids"] = recorded_ids
         logger.info("evidence_chain", **payload)
+
+    async def _maybe_backfill_witness(
+        self,
+        context: Any,
+        organ: Organ,
+        chunks: list[KnowledgeChunk],
+        trace: list[str],
+    ) -> list[KnowledgeChunk]:
+        """补捞另一套语料的对照块；失败时**原样返回**（不改主流程）。
+
+        只在以下条件全部满足时才补：
+        - 已召回块里只有一个 source_set（多来源已在，无需补）
+        - 该器官启用的语料 ≥2 套（医院只开一套时本就不该并列）
+
+        补到的块**追加在尾部**，不参与排名；`source_conflict` 会读全部块算分歧。
+        """
+        try:
+            from app.rag.witness_backfill import backfill_witness
+
+            enabled = list(getattr(settings, "rag_enabled_source_sets", []) or [])
+            if not getattr(settings, "rag_witness_backfill_enabled", True):
+                trace.append("witness_backfill -> disabled")
+                return chunks
+
+            async def _retrieve(q: str, k: int) -> list[Any]:
+                # 复用本类的检索路径，保证与主检索同一套过滤/归一化
+                return await self._retrieve_chunks_for_backfill(context, organ, q, k)
+
+            result = await backfill_witness(
+                query=context.clinical_text or context.query_text or "",
+                chunks=chunks,
+                retrieve_fn=_retrieve,
+                enabled_source_sets=enabled or None,
+            )
+            trace.append(f"witness_backfill -> {result.reason} (n={len(result.chunks)})")
+            if not result.applied:
+                return chunks
+            return [*chunks, *result.chunks]
+        except Exception as exc:  # silent-ok: 补捞是增强，失败退回原块
+            logger.warning(
+                "witness_backfill_skipped",
+                organ=organ.value,
+                error=str(exc),
+            )
+            trace.append(f"witness_backfill -> error:{type(exc).__name__}")
+            return chunks
+
+    async def _retrieve_chunks_for_backfill(
+        self,
+        context: Any,
+        organ: Organ,
+        query: str,
+        top_k: int,
+    ) -> list[Any]:
+        """为补捞用的轻量检索：走同一个 RAG service，但用补捞 query。"""
+        rag = getattr(self, "_rag", None) or getattr(self, "rag_service", None)
+        if rag is None:
+            return []
+        try:
+            from app.rag.protocols import RetrievalRequest
+
+            req = RetrievalRequest(
+                query=query,
+                organ=organ.value,
+                top_k=top_k,
+                use_reranking=False,  # 补捞只要召回，不精排（省延迟）
+            )
+            res = await rag.retrieve(req)
+            return list(getattr(res, "chunks", None) or [])
+        except Exception as exc:  # silent-ok: 补捞检索失败 → 空
+            logger.debug("witness_backfill_retrieve_failed", error=str(exc))
+            return []
 
     def _grading_rule_source(self, prompt: str, chunks: list[KnowledgeChunk]) -> str:
         """拼出「本次判读的规则来源」——供 :func:`detect_self_made_grading_rule` 语义比对。
