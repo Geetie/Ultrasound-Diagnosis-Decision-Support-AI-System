@@ -126,3 +126,80 @@ class TestQueryShape:
         }
         probs = mod.check_one(row, kb, {"kb:x#0000"})
         assert probs == [], probs
+
+
+class TestAnchorGate:
+    """闸8：query 必须含具体锚点（2026-11-09 新增）。
+
+    实测漏网：「什么情况下这条不适用」「报告这个分级意味着什么、严不严重？」
+    —— 没说是哪个分级/哪条规则，医生不会这样问。
+    根因：模型把「问法骨架」直接当问题，没填原文内容。
+    """
+
+    def test_vague_query_flagged(self, mod):
+        row = {
+            "organ": "liver",
+            "query": "什么情况下这条不适用",
+            "reference_answer": "原文提到某些情况下需要结合临床判断，不能仅凭影像。" * 2,
+            "gold": [{"chunk_id": "kb:x#0000"}],
+        }
+        probs = mod.check_one(row, "kb", {"kb:x#0000"})
+        assert any("无具体锚点" in p for p in probs), probs
+
+    def test_query_with_grade_passes(self, mod):
+        row = {
+            "organ": "thyroid",
+            "query": "4A 类结节 13mm 要不要穿刺？",
+            "reference_answer": "原文提到 4A 类 FNA 阈值是 >15mm，紧邻被膜降到 >10mm。" * 2,
+            "gold": [{"chunk_id": "kb:x#0000"}],
+        }
+        probs = mod.check_one(row, "kb", {"kb:x#0000"})
+        assert not any("无具体锚点" in p for p in probs), probs
+
+    def test_query_with_anatomy_passes(self, mod):
+        row = {
+            "organ": "cardiac",
+            "query": "二尖瓣中度反流需要手术吗？",
+            "reference_answer": "原文提到中度反流需结合症状与左室功能评估手术指征。" * 2,
+            "gold": [{"chunk_id": "kb:x#0000"}],
+        }
+        probs = mod.check_one(row, "kb", {"kb:x#0000"})
+        assert not any("无具体锚点" in p for p in probs), probs
+
+
+class TestBrokenSentenceGate:
+    """闸9：书名号清理留下的残句（2026-11-09 新增，是我自己引入的 bug）。
+
+    `_strip_fake_citations` 把「按《LI-RADS 2017》」清成「按原文提到：」，
+    后面直接接「的分级标准」，句子碎了。
+    """
+
+    def test_broken_sentence_in_query(self, mod):
+        row = {
+            "organ": "liver",
+            "query": "如果医生按原文提到：的分级标准，质控该如何处理？",
+            "reference_answer": "原文提到要统一用一套体系，避免同一病人两种结论。" * 2,
+            "gold": [{"chunk_id": "kb:x#0000"}],
+        }
+        probs = mod.check_one(row, "kb", {"kb:x#0000"})
+        assert any("语句破碎" in p for p in probs), probs
+
+    def test_broken_sentence_in_answer(self, mod):
+        row = {
+            "organ": "liver",
+            "query": "肝脏 LR-5 结节怎么处理？",
+            "reference_answer": "原文提到：的分级标准显示 LR-5 属于明确恶性，需要进一步处理。" * 2,
+            "gold": [{"chunk_id": "kb:x#0000"}],
+        }
+        probs = mod.check_one(row, "kb", {"kb:x#0000"})
+        assert any("语句破碎" in p for p in probs), probs
+
+    def test_normal_sentence_passes(self, mod):
+        row = {
+            "organ": "liver",
+            "query": "肝脏 LR-5 结节怎么处理？",
+            "reference_answer": "原文提到 LR-5 属于明确恶性档，建议多学科会诊并考虑手术或消融。" * 2,
+            "gold": [{"chunk_id": "kb:x#0000"}],
+        }
+        probs = mod.check_one(row, "kb", {"kb:x#0000"})
+        assert not any("语句破碎" in p for p in probs), probs
