@@ -21,6 +21,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+from typing import Any
 
 import structlog
 
@@ -216,6 +217,33 @@ async def apply_decay(session, now: datetime | None = None) -> int:
     updated = int(affected) if affected is not None else 0
     logger.info("knowledge_decay_applied", updated=updated)
     return updated
+
+
+async def load_chunks_by_ids(chunk_ids: Sequence[str]) -> dict[str, Any]:
+    """按 chunk_id 批量取 chunk 行（父子块回填用）。返回 ``{chunk_id: KnowledgeChunk}``。
+
+    单独开只读会话（与 ``record_retrieval_references`` 同理由）：检索侧可能已在
+    事务里，挂靠上去会污染调用方事务语义。
+
+    失败时向上抛——**由调用方决定降级**（``Retriever._expand_parent_chunks``
+    会记日志并原样返回未回填的 chunk）。这里不吞异常，避免"回填静默失效"。
+    """
+    if not chunk_ids:
+        return {}
+    from sqlalchemy import select
+
+    from app.config.database import AsyncSessionLocal
+    from app.models.database import KnowledgeChunkModel
+
+    stmt = select(KnowledgeChunkModel).where(
+        KnowledgeChunkModel.chunk_id.in_(list(chunk_ids))
+    )
+    async with AsyncSessionLocal() as session:
+        rows = (await session.execute(stmt)).scalars().all()
+
+    from app.knowledge.hybrid_indexer import _row_to_chunk
+
+    return {r.chunk_id: _row_to_chunk(r) for r in rows}
 
 
 async def record_retrieval_references(chunk_ids: Sequence[str]) -> int:

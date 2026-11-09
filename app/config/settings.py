@@ -207,6 +207,30 @@ class Settings(BaseSettings):
     # 注意：`inference_max_retries=3`，最坏情况 3×180=540 s，故
     #   `pipeline_dispatch_budget_s` 需同步评估（见其注释）。
     inference_timeout_seconds: float = 180.0
+    # ---- 分任务超时（2026-11-09）----
+    #
+    # 一个 180s 打天下是错的，方向都是错的：
+    #   * **判读**（专科 invoke：1024 token 富文本）实测 p50 6.1s / p90 6.4s / max 10.1s
+    #     （关思考生效后，P.205 真机 8 条）；旧配置（关不掉思考）p50 19.7s / max 101.4s。
+    #     180s 是给**旧的最坏情况**留的余量。
+    #   * **摘要/判官**（≤256 token）实测 p50 0.66s / max 1.58s（P.212 真机）。
+    #     给它 180s 等于：上游一挂，一个摘要要挂 180s 才失败，而它挡在主链路上。
+    #
+    # 依据（"超时按 p99 设还是 p50 的倍数"）：见
+    # `reports/RAG阶段4_生成层前沿研究_20261109.md` §3 —— 结论是
+    # **按 p99 设、并保证超时 ≥ 实测 max**（本项目样本量小，p99 由 max 代理），
+    # 且**不同任务分档**，因为两者的分布不同量级。
+    #
+    # 分档口径：
+    #   - 判读（read）   ：`inference_timeout_seconds`（180s，保留旧值 = 不动最坏边界）
+    #   - 摘要/判官（fast）：`inference_timeout_fast_seconds`（60s，≈ 实测 max 1.58s 的 38 倍，
+    #     仍远小于判读档；取 60 是因为判官在 Self-RAG 里最多重试 3 次，
+    #     60×3 = 180 恰好不超过判读档的一次超时）
+    #   - 结构化重试（retry）：`inference_timeout_structured_seconds`（45s）——
+    #     约束解码下输出只有 `{"grading": "TR4"}` 十几 token，实测 p50 0.4s；
+    #     给它 180s 会把"重试也没救回"拖成 3 分钟。
+    inference_timeout_fast_seconds: float = 60.0
+    inference_timeout_structured_seconds: float = 45.0
     inference_health_check_timeout_seconds: float = 5.0
     inference_connect_timeout_seconds: float = 10.0
 
@@ -510,11 +534,49 @@ class Settings(BaseSettings):
     rag_bm25_min_results: int = 3
     rag_bm25_max_chunks: int = 10000
     rag_query_embedding_cache_ttl_seconds: int = 3600
+    # 父子块回填（kb_v2.0.0 起）：检索命中 child 块后，用 parent_chunk_id
+    # 回填父块内容再喂 LLM（Small-to-Big / ParentDocumentRetriever 做法）。
+    # **读取点**：app/rag/retriever.py::_expand_parent_chunks（唯一消费者）。
+    # 关闭时行为与改造前完全一致（只返回命中的 child 块原文）。
+    rag_use_parent_expansion: bool = True
+    # 单次检索最多回填几个父块（父块较长，限数防止 prompt 爆长）。
+    rag_parent_expansion_max: int = 3
     # 01-4（A.99）：`rag_use_redis_cache` 孤儿开关已删 —— 全仓 0 读取点
     # （grep 实证），开它什么都不会发生；继 pipeline_dispatch/fusion_budget、
     # rag_use_reranking 之后的第四个孤儿配置（硬规则 #17 由此而来）。
     rag_p99_warning_threshold_ms: float = 80.0
     rag_p99_critical_threshold_ms: float = 100.0
+
+    # === 多套权威语料并存的「医院级启用集」（2026-11-09 加）===
+    #
+    # 现实：知识库里同时装着 C-TIRADS 2021（中华医学会超声分会）与甲状腺癌诊疗
+    # 规范 2018（国家卫健委）两套权威语料，**在 4A 类 FNA 阈值上一个是 >15 mm、
+    # 一个是 >1cm**（实测 kb_v1.5.0：`pdf_thyroid_ctirads_2021_0012` 与
+    # `norm2018_s01` 两块原文都命中）。医院 A 可能只认前者、医院 B 只认后者。
+    #
+    # 本字段让**部署侧**决定本次查询只用哪些语料集：
+    #   * 空列表（默认）= **全开**，行为与改动前逐条一致（零行为漂移）；
+    #   * 非空 = 白名单，只检索这些 source_set 的 chunk。
+    #
+    # **读取点（三个，缺一条就会变成第五个孤儿配置，硬规则 #17）**：
+    #   1. `app/rag/retriever.py::_dense_search` → 塞进 Qdrant/PGVector filter；
+    #   2. `app/rag/retriever.py::_sparse_search` → 塞进 BM25 的 source_set 过滤；
+    #   3. `app/rag/service.py::retrieve` → 无请求级覆盖时用它填
+    #      `RetrievalRequest.source_sets`（请求级优先，便于单测与院区分级）。
+    # 单测 `tests/unit/rag/test_source_set_config.py::test_field_has_consumers`
+    # 用源码 grep 钉住上面三处都存在（同 `test_rrf_weights.py` 的做法）。
+    #
+    # 取值写法见 `app/knowledge/source_set.py`：`ctirads_2021` / `norm_2018` /
+    # `ase_2025` / `ceus_lirads_2027` …；中文机构名与 `C-TIRADS` 等别名也认。
+    # 写了不存在的集名**不会**让服务起不来（那是过度反应），但启动期会在日志里
+    # 报 `rag_enabled_source_sets_unknown`（见 `unknown_source_sets()`）。
+    rag_enabled_source_sets: list[str] = Field(default_factory=list)
+    # 是否把跨语料口径分歧**并列写进 prompt**（默认开）。
+    #
+    # 关掉它 = 只做检索期过滤、不做"多来源并存时并列呈现"。有些院区先只上
+    # "过滤"这一半（行为更保守），确认无碍后再开并列。
+    # **读取点**：`app/agents/specialist/base.py::_build_prompt`（唯一渲染点）。
+    rag_source_conflict_render: bool = True
 
     # Knowledge Graph 图谱查询开关（app/knowledge/graph_query.py）。
     # 图谱查询开关（P2-KB-08）：查询实现（PGVector 递归 CTE）已落地，

@@ -155,7 +155,11 @@ SOURCE_SET_LABELS: dict[str, tuple[str, str]] = {
     SOURCE_SET_UNKNOWN: ("未标注来源", "未标注"),
 }
 
-#: 别名 → 规范标识（键一律小写）。查询侧与配置侧都用这张表归一。
+#: 别名 → 规范标识（键一律小写，且已按 :func:`_norm_key` 形状归一）。
+#:
+#: ⚠️ 别名表必须放**完整名称**（含年份），因为 ``_norm_key`` 只做形状归一
+#: （小写/压空白），不做"去掉年份"这种语义猜测 —— 去掉年份会让
+#: ``甲状腺癌诊疗规范 2018`` 与将来的 ``… 2025`` 撞成同一个键。
 _ALIASES: dict[str, str] = {
     # C-TIRADS
     "c-tirads": "ctirads_2021",
@@ -164,28 +168,35 @@ _ALIASES: dict[str, str] = {
     "ctirads2021": "ctirads_2021",
     "c-tirads 2021": "ctirads_2021",
     "c-tirads2021": "ctirads_2021",
+    "ctirads_2021": "ctirads_2021",
     "中华医学会超声医学分会": "ctirads_2021",
     "中华医学会超声分会": "ctirads_2021",
     # 诊疗规范
     "norm2018": "norm_2018",
+    "norm_2018": "norm_2018",
     "norm 2018": "norm_2018",
     "甲状腺癌诊疗规范": "norm_2018",
-    "甲状腺癌诊疗规范2018": "norm_2018",
+    "甲状腺癌诊疗规范 2018": "norm_2018",
     "国家卫健委": "norm_2018",
     "国家卫生健康委员会": "norm_2018",
     # 其他
     "ata": "ata_2015",
     "ata2015": "ata_2015",
     "ata 2015": "ata_2015",
+    "ata_2015": "ata_2015",
     "ase": "ase_2025",
     "ase2025": "ase_2025",
     "ase 2025": "ase_2025",
+    "ase_2025": "ase_2025",
     "bse": "bse_2024",
     "bse2024": "bse_2024",
     "bse 2024": "bse_2024",
+    "bse_2024": "bse_2024",
     "ceus_lirads": "ceus_lirads_2027",
     "ceus-lirads": "ceus_lirads_2027",
+    "ceus_lirads_2027": "ceus_lirads_2027",
     "lirads": "lirads_v2018",
+    "lirads_v2018": "lirads_v2018",
 }
 
 

@@ -152,6 +152,11 @@ class InferenceRequest(BaseModel):
         stop: 停止词列表（可选，非空列表）
         request_id: 请求唯一标识（可选）
         session_id: 会话标识（可选）
+        timeout_seconds: **本次**推理的读超时（可选，正数；``None`` = 引擎默认档）。
+            2026-11-09 加：判读（1024 token 富文本）与摘要/判官（≤256 token）
+            的延迟分布差两个数量级，用同一个 180s 打天下要么让短任务白等，
+            要么让长任务被误杀 —— 见 `app/config/settings.py` 的
+            ``inference_timeout_*_seconds`` 分档依据。
         extra: 额外参数字典（可选）
     """
     prompt: str
@@ -161,7 +166,16 @@ class InferenceRequest(BaseModel):
     stop: list[str] | None = None
     request_id: str | None = None
     session_id: str | None = None
+    timeout_seconds: float | None = None
     extra: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("timeout_seconds")
+    @classmethod
+    def timeout_must_be_positive(cls, v: float | None) -> float | None:
+        """超时必须为正数（None = 用引擎默认档，不是"不限时"）。"""
+        if v is not None and v <= 0:
+            raise ValueError("timeout_seconds must be positive if set")
+        return v
 
     @field_validator("prompt")
     @classmethod

@@ -21,7 +21,7 @@ import asyncio
 import re
 import time
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import structlog
 from rank_bm25 import BM25Okapi
@@ -30,6 +30,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config.settings import settings
 from app.knowledge.protocols import KnowledgeChunk
+from app.knowledge.source_set import included_by_enabled, source_set_of
 from app.models.database import KnowledgeChunkModel
 from app.rag.protocols import (
     RetrievalMethod,
@@ -82,6 +83,14 @@ class _BuiltIndex:
     organs: list[str]                # index position -> organ
     kb_version: str | None
     built_at: float
+    #: 索引位置 → source_set（2026-11-09 加）。
+    #:
+    #: 为什么在**建索引时**算好而不是查询时现算：一条请求要过几千个文档位置，
+    #: 每次 ``source_set_of()`` 都要走一遍规则表 + 异常兜底；建索引时算一次
+    #: （``_build_locked`` 里）就把这块成本挪到冷启动，热路径只剩字符串比较。
+    #: 代价是**新增规则要重建索引才生效** —— 建索引本来就在启动期/切库时发生，
+    #: 可接受；``scripts/kb_backfill_source_set.py`` 会打印重建提示。
+    source_sets: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -166,6 +175,7 @@ class BM25Index:
         chunk_ids: list[str] = []
         chunks: list[KnowledgeChunk] = []
         organs: list[str] = []
+        source_sets: list[str] = []
         for row in rows:
             tokenized = tokenize(row.content or "")
             if not tokenized:
@@ -176,18 +186,20 @@ class BM25Index:
             organs.append(row.organ)
             meta = dict(row.meta) if row.meta else {}
             embedding = list(row.embedding) if row.embedding is not None else None
-            chunks.append(
-                KnowledgeChunk(
-                    chunk_id=row.chunk_id,
-                    kb_version=row.kb_version,
-                    organ=row.organ,
-                    content=row.content,
-                    metadata=meta,
-                    embedding=embedding,
-                    source_doc_id=row.source_doc_id,
-                    section_path=row.section_path or "",
-                    token_count=row.token_count or 0,
-                )
+            chunk = KnowledgeChunk(
+                chunk_id=row.chunk_id,
+                kb_version=row.kb_version,
+                organ=row.organ,
+                content=row.content,
+                metadata=meta,
+                embedding=embedding,
+                source_doc_id=row.source_doc_id,
+                section_path=row.section_path or "",
+                token_count=row.token_count or 0,
+            )
+            chunks.append(chunk)
+            source_sets.append(
+                source_set_of(source_doc_id=row.source_doc_id, metadata=meta)
             )
 
         bm25 = BM25Okapi(corpus) if corpus else None
@@ -198,11 +210,17 @@ class BM25Index:
             organs=organs,
             kb_version=kb_version,
             built_at=time.monotonic(),
+            source_sets=source_sets,
         )
+        # 语料集分布入日志：运维答"这台机器上到底装了哪几套语料"靠这条。
+        distribution: dict[str, int] = {}
+        for ss in source_sets:
+            distribution[ss] = distribution.get(ss, 0) + 1
         logger.info(
             "bm25_index_built",
             num_chunks=len(chunks),
             kb_version=kb_version,
+            source_set_distribution=distribution,
         )
 
     def search(
@@ -210,8 +228,18 @@ class BM25Index:
         query: str,
         top_k: int = 20,
         organ_filter: str | None = None,
+        source_sets: list[str] | None = None,
     ) -> list[BM25Hit]:
         """Run a BM25 search against the (already built) index.
+
+        Args:
+            query: 查询串。
+            top_k: 返回条数上限。
+            organ_filter: 器官过滤（精确相等，与改动前一致）。
+            source_sets: 语料集白名单（2026-11-09 加）。
+                ``None`` / ``[]`` = 不过滤；非空 = 只保留命中的集。
+                **来源认不出的 chunk（``unknown``）永远放行** —— 口径见
+                ``app.knowledge.source_set.included_by_enabled``。
 
         Returns an empty list if the index has not been built yet (caller
         should call ensure_built() first).
@@ -227,11 +255,20 @@ class BM25Index:
             return []
         scores = self._built.bm25.get_scores(tokenized_query)
 
-        # Collect (score, position) pairs and filter by organ.
+        # Collect (score, position) pairs and filter by organ / source_set.
+        #
+        # 白名单为空时**完全不碰** source_sets 数组（一个分支都不多走），
+        # 保证"不配置"和"改动前"在热路径上逐条等价。
+        enabled = [s for s in (source_sets or []) if s]
         scored: list[tuple[float, int]] = []
         for idx, score in enumerate(scores):
             if organ_filter is not None and self._built.organs[idx] != organ_filter:
                 continue
+            if enabled:
+                idx_sets = self._built.source_sets
+                current = idx_sets[idx] if idx < len(idx_sets) else ""
+                if not included_by_enabled(current, enabled):
+                    continue
             # BM25Okapi can produce negative scores; clamp to 0 for cleanliness.
             scored.append((max(0.0, float(score)), idx))
 
@@ -309,14 +346,22 @@ class BM25Fallback:
         query: str,
         top_k: int,
         organ: str | None,
+        source_sets: list[str] | None = None,
     ) -> list[ScoredChunk]:
         """Run BM25 search and wrap hits as ScoredChunks.
+
+        Args:
+            source_sets: 语料集白名单（2026-11-09 加）。**必须与主检索腿用同一份**
+                —— 否则"主腿只查 C-TIRADS、兜底腿却捞回诊疗规范"，
+                医院配的权威语料限制会在最需要它的兜底路径上失效。
 
         Returns an empty list if the index has not been built yet.
         """
         if not self._index.is_built:
             return []
-        hits = self._index.search(query, top_k=top_k, organ_filter=organ)
+        hits = self._index.search(
+            query, top_k=top_k, organ_filter=organ, source_sets=source_sets
+        )
         return [
             ScoredChunk(
                 chunk=h.chunk,

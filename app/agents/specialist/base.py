@@ -57,21 +57,28 @@ import structlog
 from app.agents.protocols import Agent, AgentContext, AgentResponse
 from app.agents.protocols import KnowledgeAgent as KnowledgeAgentProtocol
 from app.agents.specialist.readable import (
+    degenerate_grade_only_text,
     evidence_insufficient_text,
     llm_unavailable_text,
     parse_failed_text,
     prompt_echo_text,
+    self_made_grading_rule_text,
 )
 from app.agents.specialist.solicitation import (
     HANDOFF_TEXT,
     detect_solicitation,
     is_system_handoff_text,
 )
+from app.config.settings import settings
 from app.inference.grading_schema import grading_gbnf, grading_json_schema
 from app.inference.output_guard import (
     clean_patient_token_leak,
+    cited_source_labels,
+    detect_degenerate_grade_only,
     detect_patient_token_leak,
     detect_prompt_echo,
+    detect_self_made_grading_rule,
+    detect_single_source_conclusion,
 )
 from app.inference.protocols import InferenceEngine, InferenceRequest, InferenceResponse
 from app.knowledge.clinical_actions import actions_for
@@ -86,6 +93,11 @@ from app.knowledge.measurement_extract import (
 )
 from app.knowledge.patient_explanation import parse_patient_explanation
 from app.knowledge.protocols import KnowledgeChunk
+from app.knowledge.source_set import label_of, source_set_of
+from app.rag.source_conflict import detect_conflicts
+from app.rag.source_conflict import render as render_source_conflict
+from app.rag.source_conflict import summary_of as summary_of_source_conflict
+from app.rag.source_conflict import trace_lines as trace_lines_from
 from app.knowledge.research_metrics import build_research_metrics
 from app.knowledge.risk_rules import (
     compute_malignancy_risk,
@@ -138,6 +150,49 @@ EMPTY_RAG_RESULT_CONFIDENCE = 0.0
 # ----------------------------------------------------------------------
 # 抽象基类（极薄 — 仅约束 organ 属性）
 # ----------------------------------------------------------------------
+
+
+def _source_conflict_block(
+    chunks: list[KnowledgeChunk], trace: list[str]
+) -> tuple[str, Any]:
+    """检测跨语料口径分歧，返回 ``(可插入 prompt 的并列块, 报告)``。
+
+    Returns:
+        ``("", None)`` —— 开关关闭或检测异常，调用方**不得**改动 prompt；
+        ``("", report)`` —— 检测过但没有分歧（``report.detected is False``），
+        prompt 逐字不变，但报告要带出去（"检测过、没问题"必须可见）；
+        ``(text, report)`` —— 有分歧，text 非空。
+
+    ## 为什么是模块级函数
+
+    ``_build_prompt`` 有既有测试替身（``test_b2_crag_evidence_delivery._PromptHost``）
+    只提供 ``_prompt_template`` + ``_log_evidence_chain``。在 ``_build_prompt``
+    里调 ``self.`` 的新方法会打掉那个契约 —— 已有测试不该为新功能让路。
+
+    ## 为什么异常也要返回 None
+
+    并列块是**增强**，不是主链路。检测炸了就退回"没有并列块"，
+    医生看到的仍是原文证据块（结论依旧可溯源），而不是整条判读失败。
+    但失败必须留 trace —— 否则"没检测"和"检测过没问题"在日志里长得一样。
+    """
+    if not getattr(settings, "rag_source_conflict_render", True):
+        return "", None
+    try:
+        report = detect_conflicts(chunks)
+    except Exception as exc:  # silent-ok: 渲染失败不能打断生成
+        logger.warning(
+            "source_conflict_render_failed",
+            error=str(exc)[:200],
+            error_type=type(exc).__name__,
+        )
+        trace.append(f"source_conflict_render_failed: {type(exc).__name__}")
+        return "", None
+    # 无论有没有分歧，摘要都进 trace —— 否则"检测过了、没问题"和
+    # "根本没检测"在日志里完全一样（A.58 零静默）。
+    trace.extend(trace_lines_from(report))
+    if not report.detected:
+        return "", report
+    return render_source_conflict(report), report
 
 
 def _retrieval_confidence(chunks: list[KnowledgeChunk]) -> float | None:
@@ -268,6 +323,13 @@ class RAGSpecialistAgent(SpecialistAgent):
                 f"prompt template is empty for {self.__class__.__name__}; "
                 "either pass a non-empty prompt_template or ensure the .md file exists"
             )
+
+        #: 最近一次 ``_build_prompt`` 的跨语料口径分歧报告（2026-11-09）。
+        #:
+        #: 在 ``__init__`` 里显式初始化（而不是靠 ``getattr(..., None)`` 兜底）：
+        #: 它会被 ``invoke`` 读取并写进 ``AgentResponse.source_conflict``，
+        #: 一个未初始化的属性会让"实例复用时串味"变成难以复现的 bug。
+        self._last_source_conflict = None
 
     # ------------------------------------------------------------------
     # 抽象方法（子类必须实现）
@@ -505,7 +567,6 @@ class RAGSpecialistAgent(SpecialistAgent):
             return response
 
         # 4c) 语料脱敏标记清洗（A.91 接线）：**清洗而非拒收**
-        #
         # A.77 的结论写死在代码里：`PATIENT_001` 这类串是**脱敏流程用的占位符**，
         # 模型/模板会在"患者解释"段把它带出来。这类结论**有分级、有鉴别诊断**，
         # 整条拒收会丢真结论（A.77 曾因此误删 415 条）。
@@ -531,6 +592,65 @@ class RAGSpecialistAgent(SpecialistAgent):
             )
             trace.append(f"patient_token_leak_cleaned: {leak_hits}")
             llm_text = cleaned
+
+        # 4d) 退化结论 / 自造分档规则（2026-11-09 **接线**；检测函数早已存在但无调用方）
+        #
+        # ## 为什么要在这里拦（不是"解析失败"能覆盖的）
+        #
+        # `甲状腺 · TR1` 这种输出：**不空**（有分级码）、**不是回显**（没有占位 ID）
+        # → 既有的空文本检查与 4b 都放它过去 → 它原样落库成为"结论"。
+        # 生产实测（全库 797 条有正文的记录，第 4 组口径）：
+        #   * 20 条（2.51%）是"只有分级码无正文"；
+        #   * 39 条（4.89%）带"分数区间→分级"的映射，其中与来源矛盾的 **5 条**是真编造
+        #     （`0-2 分为 TR2` vs prompt 的 `TR1（0 分）`），其余是复述 prompt 自带的表。
+        #
+        # ## 为什么只拦"与来源矛盾"，不拦"出现过映射"
+        #
+        # 生产 prompt（`app/agents/prompts/thyroid.md`）**本来就有**分档表
+        # （`TR2（2 分）` / `TR4（4-6 分）` / `TR5（≥ 7 分）`）。按"出现过就拦"的旧判据，
+        # 模型忠实复述 prompt 也会被判成编造（P.214 实测 40/45 条映射与 prompt 完全一致）
+        # —— 那是把"守规矩"当"造假"，比漏报更糟。所以这里把**本次 prompt 模板 + 检索块**
+        # 作为来源传进去，由 `detect_self_made_grading_rule` 做语义比对。
+        #
+        # ## 为什么不在这里给"分级码"打补丁
+        #
+        # 拦掉后走**可读降级 + 转人工**（与 4b 同一处置），不猜分级、不改写正文 ——
+        # 猜一个分级写进医生可见结论，比空着更危险。
+        degenerate_reason = detect_degenerate_grade_only(llm_text)
+        self_rule_reason = None
+        if not degenerate_reason:
+            source_text = self._grading_rule_source(prompt, chunks)
+            self_rule_reason = detect_self_made_grading_rule(
+                llm_text, source_text=source_text
+            )
+
+        for reason_code, text_builder, log_event in (
+            (degenerate_reason, degenerate_grade_only_text, "specialist_degenerate_grade_only_rejected"),
+            (self_rule_reason, self_made_grading_rule_text, "specialist_self_made_rule_rejected"),
+        ):
+            if not reason_code:
+                continue
+            logger.warning(
+                log_event,
+                organ=organ.value,
+                request_id=context.request_id,
+                reason=reason_code,
+                text_len=len(llm_text),
+                finish_reason=llm_response.finish_reason or "",
+            )
+            trace.append(f"{reason_code}_rejected")
+            response = AgentResponse(
+                agent_name=self._agent_name(),
+                organ=organ,
+                content=text_builder(organ),
+                confidence=0.0,
+                evidence_chunk_ids=[c.chunk_id for c in chunks],
+                reasoning_trace=trace,
+                latency_ms=(time.monotonic() - start) * 1000.0,
+                needs_review=True,
+            )
+            self._post_process(context, response)
+            return response
 
         # 5) 器官级解析
         try:
@@ -622,6 +742,58 @@ class RAGSpecialistAgent(SpecialistAgent):
         response.latency_ms = (time.monotonic() - start) * 1000.0
         # A.142 / N4：把检索置信度挂到响应上（主路径之外的早退分支不设 → None = 未测）
         response.retrieval_confidence = _retrieval_confidence(chunks)
+
+        # 2026-11-09：把**跨语料口径分歧**带出 specialist（→ findings → 医生端）。
+        #
+        # 为什么必须在响应里而不只在 prompt 里：prompt 里的并列块只影响模型怎么写；
+        # 医生端要能独立判断"这条结论是不是建立在两套口径打架之上"。
+        # 只把并列塞进 prompt、不结构化暴露，等于让"系统已替你权衡"这个假象留在界面上。
+        #
+        # 有分歧时**同时**追加一条复核提示（不设 needs_review 会覆盖器官级判定，
+        # 所以只在原本 False 时置位，并把理由写清楚 —— 不抢专科自己的判断）。
+        conflict_report = getattr(self, "_last_source_conflict", None)
+        if conflict_report is not None:
+            response.source_conflict = summary_of_source_conflict(conflict_report)
+            if conflict_report.detected:
+                # (b) 层：结论**只引一套**而证据里有分歧 → 标记（不拒收）。
+                #
+                # 判据两个都必须成立：①本次确有分歧（conflict_fact_keys 非空）；
+                # ②证据里真实存在 ≥2 套来源标签（从 chunks 现算，不写死）。
+                # 只满足一个就判会误杀"单一来源时的正常引用"——
+                # A.77 的教训正是"用单一标记定罪"。
+                available = [
+                    label_of(
+                        source_set_of(
+                            source_doc_id=c.source_doc_id, metadata=c.metadata
+                        )
+                    )[0]
+                    for c in chunks
+                ]
+                reason = detect_single_source_conclusion(
+                    response.content,
+                    available_labels=sorted(set(available)),
+                    conflict_fact_keys=[c.fact_key for c in conflict_report.conflicts],
+                )
+                if reason:
+                    response.reasoning_trace = [
+                        *(response.reasoning_trace or []),
+                        f"source_conclusion_unlabeled: {reason}",
+                    ]
+                    logger.warning(
+                        "specialist_source_conclusion_unlabeled",
+                        organ=organ.value,
+                        request_id=context.request_id,
+                        reason=reason,
+                        available_labels=sorted(set(available)),
+                        cited=cited_source_labels(response.content),
+                        hint="多套语料口径不一致，但结论未并列标注来源 → 标记复核，不拒收",
+                    )
+                if not response.needs_review:
+                    response.needs_review = True
+                    response.reasoning_trace = [
+                        *(response.reasoning_trace or []),
+                        "needs_review: source_conflict（多套权威语料口径不一致，需医生选择）",
+                    ]
 
         # 6) 公共后处理（D1 阈值检查 + D2 used_evidence_ids 写入）
         self._post_process(context, response)
@@ -778,6 +950,13 @@ class RAGSpecialistAgent(SpecialistAgent):
             temperature=temperature,
             request_id=context.request_id,
             session_id=context.session_id,
+            # 2026-11-09 分任务超时：判读（富文本）与结构化重试（十几 token 的 JSON）
+            # 延迟差两个数量级，用同一个 180s 会把"重试也没救回"拖成 3 分钟。
+            timeout_seconds=(
+                settings.inference_timeout_structured_seconds
+                if structured
+                else settings.inference_timeout_seconds
+            ),
             extra=self._structured_output_extra() if structured else {},
         )
         return await self._inference.generate(request)
@@ -862,6 +1041,30 @@ class RAGSpecialistAgent(SpecialistAgent):
             payload["recorded_ids"] = recorded_ids
         logger.info("evidence_chain", **payload)
 
+    def _grading_rule_source(self, prompt: str, chunks: list[KnowledgeChunk]) -> str:
+        """拼出「本次判读的规则来源」——供 :func:`detect_self_made_grading_rule` 语义比对。
+
+        来源 = **本次实际下发的 prompt 模板** + **本次检索到的知识块正文**。
+
+        为什么用 prompt 而不是磁盘上的 `prompts/*.md`：prompt 才是模型真正读到的东西
+        （子类可覆盖 `_build_prompt`、可注入自定义模板、还有 CRAG 补充依据段）。
+        拿磁盘文件比对会出现"模型复述了实际下发的表，却判它编造"的假阳性。
+
+        为什么异常要返回空串：返回空串 = 调用方进入**严格模式**（宁可报不可漏），
+        与本函数不存在时行为一致；绝不因为拼来源失败就静默放过一条可疑结论。
+        """
+        try:
+            chunk_text = "\n".join(getattr(c, "content", "") or "" for c in chunks)
+            return f"{prompt}\n{chunk_text}"
+        except Exception as exc:  # silent-ok: 拼来源失败 → 严格模式（更保守，不是放行）
+            logger.warning(
+                "grading_rule_source_build_failed",
+                organ=self.get_organ().value,
+                error=str(exc)[:160],
+                error_type=type(exc).__name__,
+            )
+            return ""
+
     def _build_prompt(
         self,
         context: AgentContext,
@@ -894,8 +1097,39 @@ class RAGSpecialistAgent(SpecialistAgent):
         parts.append(f"# 检索到的知识（top {len(chunks)}）")
         for idx, chunk in enumerate(chunks, start=1):
             source = chunk.source_doc_id or chunk.chunk_id
-            parts.append(f"[{idx}] {chunk.content} (source: {source})")
+            # 2026-11-09：每条证据**标明它来自哪套语料**。
+            #
+            # 为什么必须逐条标：模型在长 prompt 里只能看见"这是第 3 块"，
+            # 分不清第 3 块是 C-TIRADS 还是诊疗规范 —— 于是它会把两套的口径
+            # 混成一句话（"4A 类风险 2%~10%，>10mm 建议穿刺"这种缝合结论）。
+            # 标了来源之后，"依据《X》"才有东西可指。
+            ss = source_set_of(source_doc_id=chunk.source_doc_id, metadata=chunk.metadata)
+            ss_name, ss_org = label_of(ss)
+            parts.append(
+                f"[{idx}]（来源：《{ss_name}》/{ss_org}；chunk_id={chunk.chunk_id}）"
+                f" {chunk.content}"
+            )
         parts.append("")
+        # 2026-11-09：跨语料口径分歧的**并列块**。
+        #
+        # 位置刻意放在证据之后、用户查询之前：模型读到"这几块证据彼此矛盾，
+        # 必须并列"时，手上还握着上面那几段原文可核对；放到最末尾（像 CRAG 段
+        # 那样）会让它先看到问题再回头找证据，实测更容易直接抄结论。
+        #
+        # 没有分歧时返回空串 → prompt **逐字不变**（不吃 token、
+        # 不分散注意力）。这一点由单测钉住。
+        #
+        # 用**模块级函数**而不是 self 方法：``_build_prompt`` 的既有测试替身
+        # （``test_b2_crag_evidence_delivery._PromptHost``）只提供
+        # ``_prompt_template`` + ``_log_evidence_chain`` 两个成员，
+        # 在这里调 self 方法会把那个契约打掉 —— 那是别人的测试，不该为我的
+        # 新功能改。
+        conflict_text, conflict_report = _source_conflict_block(chunks, trace)
+        if conflict_report is not None:
+            self._last_source_conflict = conflict_report
+        if conflict_text:
+            parts.append(conflict_text)
+            parts.append("")
         parts.append("# 用户查询")
         parts.append(context.user_query)
         if context.imaging_metadata:
@@ -915,6 +1149,7 @@ class RAGSpecialistAgent(SpecialistAgent):
                     f"[CRAG:{_crag_c.get('chunk_id', '')}] {_crag_c.get('content', '')}"
                 )
         return "\n".join(parts)
+
 
     # ------------------------------------------------------------------
     # 内部：置信度启发式（RAG 0.6 + LLM 0.4）

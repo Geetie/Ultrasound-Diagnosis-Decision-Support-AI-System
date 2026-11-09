@@ -36,6 +36,7 @@ from dataclasses import dataclass
 import structlog
 
 from app.agents.protocols import AgentResponse
+from app.config.settings import settings
 from app.inference.protocols import InferenceEngine, InferenceRequest
 
 logger = structlog.get_logger("app.fusion.self_rag")
@@ -246,6 +247,11 @@ class SelfRAGEvaluator:
                     prompt=prompt,
                     max_tokens=self._max_tokens,
                     request_id=f"self_rag_{response.agent_name}_attempt{attempt}",
+                    # 2026-11-09 分任务超时：Self-RAG 判官只输出一小段评分 JSON
+                    #（≤256 token，P.212 实测 p50 0.66s / max 1.58s）。
+                    # 它挡在**主链路**上，用判读档的 180s 等于让上游故障把整条
+                    # 判读多挂 3 分钟（本类最多重试 3 次）。
+                    timeout_seconds=settings.inference_timeout_fast_seconds,
                 )
                 llm_response = await self._inference.generate(request)
                 text = llm_response.text or ""

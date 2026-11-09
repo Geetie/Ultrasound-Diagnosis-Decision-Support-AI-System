@@ -203,25 +203,121 @@ def detect_degenerate_grade_only(text: str, *, min_body_chars: int = 6) -> str |
     return None
 
 
-#: 「自造分档规则」的形态（2026-11-08 加）。
+#: 「分数区间 → 分级」映射的两种书写形态（2026-11-08 加，2026-11-09 改判据）。
 #:
 #: 生产实测：模型会输出
 #:   `（注：0-2 分为 TR2）`
 #:   `（注：0-2分为TR2，3-4分为TR3）`
-#: 而 `kb_v1.4.0` 甲状腺 601 块与 `thyroid.md` 对 `"0-2 分"` **各 0 命中**
-#: —— > 这是模型自己编的分档规则，不是知识库内容。
 #:
-#: 15 条候选**全部来自 2026-10-25~11-07 的新判读**（旧模型期 0 条）→ 现网仍在犯。
-_SELF_MADE_GRADING_RULE = re.compile(
-    r"(?:注|备注)?\s*[:：]?\s*"
-    r"\d+(?:\s*[~\-–至到]\s*\d+)?\s*分\s*[，,]?\s*(?:为|对应|=|是|归|进|划)\s*"
-    r"(?:TR|LR|TI-?RADS|LI-?RADS)?\s*[1-6][abcABC]?\s*[类]?",
+#: **2026-11-09 改判据（本轮实测推翻旧口径）**：旧实现只要正文出现这个模式就判"自造"，
+#: 但**生产 prompt 里本来就有这张表**（`app/agents/prompts/thyroid.md` 的
+#: 「TI-RADS 5 等级标准」段：`TR1（0 分）` / `TR2（2 分）` / `TR4（4-6 分）` / `TR5（≥ 7 分）`）。
+#: 于是模型把 prompt 自带的规则复述一遍也会被判成"编造" —— 全库 797 条有正文的结论里
+#: 命中 39 条，逐条核对后 **40/45 条映射其实与 prompt 表格完全一致**（P.214 实测）。
+#:
+#: 现在的判据是**语义比对**而不是"字符串是否存在"：
+#:   * 正文里 `分数区间 → 分级` 与来源（prompt + 检索块）中的映射**一致** → 支撑，放行；
+#:   * 同分级但**区间不同**（如 `0-2 分为 TR2`，而来源是 `TR1（0 分）`+`TR2（2 分）`）→ 矛盾，命中；
+#:   * 来源里**根本没有**这个分级 → 无支撑，命中。
+#:
+#: 真幻觉仍在：`0-2 分为 TR2` 把 0 分并进 TR2，与 prompt 的 `TR1（0 分）` 直接冲突
+#: —— 这正是 4.2 里那 3 条"编造规则"的形态。
+_RULE_ARROW = re.compile(
+    r"(\d+)\s*(?:[~\-–至到]\s*(\d+))?\s*分\s*[，,]?\s*(?:为|对应|=|是|归|进|划)\s*"
+    r"(?:(TR|LR|TI-?RADS|LI-?RADS)\s*)?([1-6])([abcABC])?\s*[类]?",
     re.IGNORECASE,
 )
 
+#: 来源侧（prompt 模板）的表格形态：`**TR2（2 分）**` / `**TR4（4-6 分）**` / `**TR5（≥ 7 分）**`
+_RULE_TABLE = re.compile(
+    r"(TR|LR|TI-?RADS|LI-?RADS)\s*([1-6])([abcABC])?\s*[（(]\s*(≥|>=|>|≤|<=)?\s*"
+    r"(\d+)\s*(?:[~\-–至到]\s*(\d+))?\s*分\s*[）)]",
+    re.IGNORECASE,
+)
+
+#: `(下限, 上限, 分级)`；上限用 ``math.inf`` 表示"及以上"
+GradingRule = tuple[float, float, str]
+
+
+def _canonical_grade(prefix: str | None, number: str, suffix: str | None) -> str:
+    """归一成 ``TR4a`` / ``LR5`` 这种比较键（``TI-RADS 4a`` 与 ``TR4a`` 视为同一档）。"""
+    p = (prefix or "TR").upper().replace("-", "")
+    if p == "TIRADS":
+        p = "TR"
+    elif p == "LIRADS":
+        p = "LR"
+    return f"{p}{number}{(suffix or '').lower()}"
+
+
+def extract_grading_rules(text: str) -> list[GradingRule]:
+    """从**模型输出**里抽出 `分数区间 → 分级` 映射。纯函数。
+
+    Examples:
+        >>> extract_grading_rules("（注：0-2 分为 TR2）")
+        [(0.0, 2.0, 'TR2')]
+        >>> extract_grading_rules("= 4 分 → TR4（4-6 分为 TR4）")
+        [(4.0, 6.0, 'TR4')]
+    """
+    out: list[GradingRule] = []
+    for m in _RULE_ARROW.finditer(text or ""):
+        lo = float(m.group(1))
+        hi = float(m.group(2)) if m.group(2) else lo
+        out.append((lo, hi, _canonical_grade(m.group(3), m.group(4), m.group(5))))
+    return out
+
+
+def extract_grading_rules_from_source(text: str) -> list[GradingRule]:
+    """从**来源**（prompt 模板 / 知识块）里抽出 `分级 → 分数区间` 表格映射。纯函数。
+
+    与 :func:`extract_grading_rules` 的区别：来源侧是表格形态（`TR2（2 分）`），
+    模型侧是箭头形态（`2 分为 TR2`）。两者都归一成 `(下限, 上限, 分级)` 才能比对。
+
+    Examples:
+        >>> extract_grading_rules_from_source("- **TR2（2 分）**：不怀疑恶性")
+        [(2.0, 2.0, 'TR2')]
+        >>> extract_grading_rules_from_source("- **TR5（≥ 7 分）**：高度可疑")
+        [(7.0, inf, 'TR5')]
+    """
+    out: list[GradingRule] = []
+    for m in _RULE_TABLE.finditer(text or ""):
+        op = m.group(4)
+        a = float(m.group(5))
+        b = m.group(6)
+        grade = _canonical_grade(m.group(1), m.group(2), m.group(3))
+        if b:
+            out.append((a, float(b), grade))
+        elif op in ("≥", ">=", ">"):
+            out.append((a, float("inf"), grade))
+        elif op in ("≤", "<=", "<"):
+            out.append((0.0, a, grade))
+        else:
+            out.append((a, a, grade))
+    return out
+
+
+def _rule_support(rule: GradingRule, source_rules: list[GradingRule]) -> str:
+    """单条映射与来源的关系：``supported`` / ``contradicted`` / ``unsupported``。"""
+    lo, hi, grade = rule
+    same_grade = [r for r in source_rules if r[2] == grade]
+    if not same_grade:
+        return "unsupported"
+    for s_lo, s_hi, _ in same_grade:
+        if (lo, hi) == (s_lo, s_hi):
+            return "supported"
+        # 来源是单点（`TR2（2 分）`）而模型给了区间（`2-2 分`）—— 等价
+        if s_lo == s_hi and lo == hi == s_lo:
+            return "supported"
+        # 区间被来源覆盖（`TR5（≥7 分）` 覆盖 `7-10 分为 TR5`）
+        if s_lo <= lo and hi <= s_hi:
+            return "supported"
+    return "contradicted"
+
 
 def detect_self_made_grading_rule(
-    text: str, *, kb_has_rule: bool = False
+    text: str,
+    *,
+    kb_has_rule: bool = False,
+    source_text: str = "",
 ) -> str | None:
     """判断结论里是否出现「模型自造的分档规则」。纯函数。
 
@@ -230,15 +326,24 @@ def detect_self_made_grading_rule(
     模型输出 `（注：0-2 分为 TR2）` 时：
     - 它**不是空**（`detect_degenerate_grade_only` 不管）
     - 它**不是回显**（`detect_prompt_echo` 不管，没有占位 ID）
-    - 但它**给出了一个具体的数值分档规则**，而这个规则在知识库里**不存在**
+    - 但它**给出了一个具体的数值分档规则**，而来源里没有这条
 
     这种「编造规则」比编造事实更危险 —— 事实可以核对，**规则会被当成方法论复用**。
 
+    ## 判据是"与来源矛盾/无支撑"，不是"字符串是否出现过"
+
+    2026-11-09 修正（P.214 实测）：旧实现只做模式匹配，而生产 prompt 里**本来就有**
+    分档表 → 模型复述 prompt 也会被判成编造（全库 39 条命中，40/45 条映射其实与 prompt
+    一致）。现在必须比对**语义**：同分级但区间不同（`0-2 分为 TR2` vs prompt 的
+    `TR1（0 分）`+`TR2（2 分）`）= 矛盾，才算自造。
+
     Args:
         text: 模型结论正文。
-        kb_has_rule: 知识库 / 检索 chunk 里**是否确实有**对应分档规则。
-            为 ``True`` 时不判（模型引用的是真规则）。
+        kb_has_rule: 调用方已确认来源里**确有**对应规则 → 直接放行（快速通道）。
             **调用方必须真的去查**，不能默认传 True。
+        source_text: 本次实际喂给模型的来源（prompt 模板 + 检索块正文）。
+            给了就按语义比对；**空字符串**表示调用方拿不到来源 → 退化为
+            "只要出现映射就命中的严格模式"（宁可报，不可漏 —— 但调用方应尽量传）。
 
     Returns:
         命中返回 ``"self_made_grading_rule"``，否则 ``None``。
@@ -247,11 +352,112 @@ def detect_self_made_grading_rule(
         >>> detect_self_made_grading_rule("结节2分，归TR3类")
         'self_made_grading_rule'
         >>> detect_self_made_grading_rule("结节2分，归TR3类", kb_has_rule=True)
-        >>> detect_self_made_grading_rule("TI-RADS 4a 类，建议复查")
+        >>> detect_self_made_grading_rule("（注：0-2 分为 TR2）",
+        ...     source_text="- **TR1（0 分）**：良性\\n- **TR2（2 分）**：随访")
+        'self_made_grading_rule'
+        >>> detect_self_made_grading_rule("（注：4-6 分为 TR4）",
+        ...     source_text="- **TR4（4-6 分）**：中度可疑")
     """
     t = text or ""
     if not t or kb_has_rule:
         return None
-    if _SELF_MADE_GRADING_RULE.search(t):
+    rules = extract_grading_rules(t)
+    if not rules:
+        return None
+    if not source_text:
+        # 拿不到来源 → 严格模式：出现映射即命中（旧行为，保证不静默放过）
         return "self_made_grading_rule"
+    source_rules = extract_grading_rules_from_source(source_text)
+    for rule in rules:
+        if _rule_support(rule, source_rules) != "supported":
+            return "self_made_grading_rule"
     return None
+
+
+# ----------------------------------------------------------------------
+# 2026-11-09：多套权威语料并存时，结论是否**只引了一套**
+# ----------------------------------------------------------------------
+
+#: 结论里"点名依据"的写法：``依据《X》`` / ``根据 X`` / ``参照《X》`` / ``按 X 标准``。
+#:
+#: 只认**书名号与显式引导词**两种，不做模糊匹配 —— 模糊匹配会把
+#: "根据结节大小"这种普通句子当成引用，从而误判"已标注来源"。
+_CITATION_PATTERNS = (
+    re.compile(r"依据\s*《([^》]{1,40})》"),
+    re.compile(r"参照\s*《([^》]{1,40})》"),
+    re.compile(r"按\s*《([^》]{1,40})》"),
+    re.compile(r"根据\s*《([^》]{1,40})》"),
+    re.compile(r"依据\s*(?:中华医学会[^，。；\n]{0,20}|国家卫健委|国家卫生健康委员会)"),
+    re.compile(r"根据\s*(?:中华医学会[^，。；\n]{0,20}|国家卫健委|国家卫生健康委员会)"),
+)
+
+
+def cited_source_labels(text: str) -> list[str]:
+    """抽出结论里**点名引用**的来源标签（纯函数）。
+
+    返回的是原文里出现的名字（如 ``C-TIRADS 2021`` / ``甲状腺癌诊疗规范 2018``），
+    不做归一 —— 归一交给调用方（``app/knowledge/source_set.py``），
+    因为归一规则会随语料增加而变，判据模块不该跟着改。
+    """
+    t = text or ""
+    if not t:
+        return []
+    out: list[str] = []
+    for pattern in _CITATION_PATTERNS:
+        for m in pattern.finditer(t):
+            label = (m.group(1) if m.groups() else m.group(0) or "").strip()
+            if label and label not in out:
+                out.append(label)
+    return out
+
+
+def detect_single_source_conclusion(
+    text: str,
+    *,
+    available_labels: list[str] | None = None,
+    conflict_fact_keys: list[str] | None = None,
+) -> str | None:
+    """判断结论是否**只引用了一套语料**，而证据里明明有多套。纯函数。
+
+    ## 为什么这是一个独立的**诊断**（而不是拒收理由）
+
+    多套权威语料并存、且口径确有分歧时（``conflict_fact_keys`` 非空），
+    模型如果只写"依据《C-TIRADS 2021》，>15 mm 建议 FNA"，医生会以为
+    **这是唯一口径**。但系统知道还有一套诊疗规范给的是 >1cm。
+
+    这种输出的问题不是"错"，而是**不完整且有误导性** —— 它藏掉了一个
+    医生有权知道的分歧。处置是**标记 + 提示**，不是拒收：
+    A.77 的教训是"用单一标记定罪"误删过 415 条真结论，这里不重犯。
+
+    Args:
+        text: 模型结论正文。
+        available_labels: 本次证据里**真实存在**的语料来源标签
+            （调用方从 ``chunks`` 现算，不许写死）。为空或只有 1 个 → 不判
+            （单来源时"只引一套"是正确行为）。
+        conflict_fact_keys: 本次检测到的**确有分歧**的事实键
+            （``source_conflict.ConflictReport.conflicts[].fact_key``）。
+            为空 → 不判（没有分歧时"只引一套"完全正当）。
+
+    Returns:
+        命中返回 ``"single_source_on_conflict"``，否则 ``None``。
+
+    Examples:
+        >>> detect_single_source_conclusion(
+        ...     "依据《C-TIRADS 2021》，4A 类 >15 mm 建议 FNA",
+        ...     available_labels=["C-TIRADS 2021", "甲状腺癌诊疗规范 2018"],
+        ...     conflict_fact_keys=["fna_threshold"],
+        ... )
+        'single_source_on_conflict'
+    """
+    t = text or ""
+    if not t:
+        return None
+    labels = [s for s in (available_labels or []) if s]
+    # 少于两套来源 / 没有实际分歧 → "只引一套"是正当的，不判。
+    if len(labels) < 2 or not (conflict_fact_keys or []):
+        return None
+    cited = cited_source_labels(t)
+    if len(cited) >= 2:
+        return None
+    # 命中数 0 也要报：既没并列、又没有任何点名来源，问题比只引一套更严重。
+    return "single_source_on_conflict"

@@ -259,6 +259,14 @@ class RetrievalCache:
             # A.88：阈值的**解释**随分数所处量纲变化（absolute / relative），
             # 仅靠上面的数值无法区分新旧语义 → 语义版本一并入键。
             "min_score_filter_semantics": MIN_SCORE_FILTER_SEMANTICS,
+            # 2026-11-09：语料集白名单必须入键。
+            #
+            # 反例（不加会真的发生）：医院 A 配 `["ctirads_2021"]` 查过
+            # "4a 类 12mm 要不要穿刺"，结果进缓存；同一台机器上会诊医生用
+            # `["norm_2018"]` 查同一句 → 缓存键相同 → **拿到 C-TIRADS 的结果**。
+            # 医生看到的是另一套语料的结论，而界面上没有任何异常。
+            # 排序后入键：`["a","b"]` 与 `["b","a"]` 语义等价，不该产生两份缓存。
+            "source_sets": sorted(request.source_sets or []),
             "image_format": request.image_format,
             # extra 用排序键序列化，保证键稳定（dict 顺序不影响语义）
             "extra": json.dumps(request.extra or {}, sort_keys=True, ensure_ascii=False),

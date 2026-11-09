@@ -19,6 +19,7 @@ Design principles (consistent with app/inference/protocols.py and app/embedding/
 """
 from __future__ import annotations
 
+import re
 from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Any
@@ -140,9 +141,46 @@ class RetrievalRequest(BaseModel):
     use_llm_enhancement: bool = False
     min_score_threshold: float = 0.5
     kb_version: str | None = None
+    #: 本次检索只取哪些**语料集**（``ctirads_2021`` / ``norm_2018`` / ``ase_2025`` …）。
+    #:
+    #: 语义（三档，缺一都会出临床事故，`included_by_enabled` 里有完整理由）：
+    #:   * ``None`` / ``[]`` → **不过滤**（全开）。默认值就是全开，保证既有调用点
+    #:     （20+ 处构造 + 30+ 处测试替身）行为逐条不变；
+    #:   * 非空 → 白名单，只有命中集算启用；
+    #:   * 来源**认不出来**的 chunk（``source_set == "unknown"``）**永远放行**
+    #:     —— 白名单只能收窄已知来源，不能静默删掉未知来源。
+    #:
+    #: 三处消费：dense 腿的向量库 filter、sparse 腿的 BM25 过滤、缓存键。
+    #: 请求级为空时由 ``app/rag/service.py`` 用 ``settings.rag_enabled_source_sets``
+    #: 兜底（院区级默认）。
+    source_sets: list[str] | None = None
     request_id: str | None = None
     session_id: str | None = None
     extra: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("source_sets", mode="before")
+    @classmethod
+    def _normalize_source_sets_field(cls, v: object) -> object:
+        """在**请求构造处**归一化 source_set 写法（纯函数，见 `organ_alias` 的先例）。
+
+        为什么放在这里：dense 腿、sparse 腿、缓存键三处都读
+        ``request.source_sets``，改一处即三处生效；若在每个调用点各归一一次，
+        必然有一处漏掉（``organ`` 的 P0 缺陷就是这么来的）。
+
+        接受的脏写法：``"ctirads_2021,norm_2018"``（逗号分隔）/ ``"C-TIRADS"``
+        （别名）/ ``["C-TIRADS 2021", "诊疗规范"]``（混合）。都无法识别时
+        **原样保留**（小写化），让拼写错误可见而不是静默变 ``unknown``。
+        """
+        from app.knowledge.source_set import normalize_source_sets
+
+        if v is None:
+            return None
+        if isinstance(v, str):
+            parts = [p for p in re.split(r"[,;\s]+", v) if p.strip()]
+            return normalize_source_sets(parts)
+        if isinstance(v, (list, tuple, set)):
+            return normalize_source_sets([str(x) for x in v])
+        return v
 
     @field_validator("query")
     @classmethod

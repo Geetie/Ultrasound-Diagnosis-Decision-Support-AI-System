@@ -460,7 +460,7 @@ class BaseHttpInferenceEngine(BaseHttpClient, InferenceEngine, ABC):
         for attempt in range(self._max_retries + 1):
             try:
                 result = await self._execute_single_request(payload, request, start_time, attempt)
-                return result
+                break
             except InferenceError as exc:
                 last_error = exc
                 if not exc.retryable or attempt >= self._max_retries:
@@ -485,16 +485,90 @@ class BaseHttpInferenceEngine(BaseHttpClient, InferenceEngine, ABC):
                     raise last_error
                 self._update_circuit_breaker_state(False)
                 await self._wait_retry(attempt)
+        else:
+            result = None
 
-        if last_error:
-            raise last_error
+        if result is None:
+            if last_error:
+                raise last_error
+            raise InferenceError(
+                error_code=InferenceErrorCode.GENERATION_FAILED,
+                message="max retries exceeded",
+                detail=f"Failed after {self._max_retries + 1} attempts",
+                retryable=False,
+            )
 
-        raise InferenceError(
-            error_code=InferenceErrorCode.GENERATION_FAILED,
-            message="max retries exceeded",
-            detail=f"Failed after {self._max_retries + 1} attempts",
-            retryable=False,
+        return await self._maybe_escalate_budget(result, payload, request)
+
+    def _should_escalate_max_tokens(self, result: InferenceResponse) -> bool:
+        """「预算不够」而非「模型不行」时返回 True（默认 False，子类按引擎语义覆盖）。
+
+        背景（2026-11-09）：II-Medical-8B 在旧配置下把 1024 个 token 全花在
+        ``<think>`` 里，剥除后正文为空（``finish_reason="length_empty"``）。
+        这类失败**不是模型没能力**，是**预算被思考吃掉** —— 加倍预算重试一次
+        能救回一部分（P.208 真机实测：×2 救回 3/8，×4 救回 5/8）。
+
+        只允许「一次、有界」：翻倍后仍为空就是真的不行，走降级（转人工），
+        不许无限加预算（那会把单次判读拖成几分钟）。
+        """
+        return False
+
+    async def _maybe_escalate_budget(
+        self,
+        result: InferenceResponse,
+        payload: dict,
+        request: InferenceRequest,
+    ) -> InferenceResponse:
+        """剥除后为空 → **加倍 max_tokens 重试一次**（有界）。"""
+        if not self._should_escalate_max_tokens(result):
+            return result
+
+        original = payload.get("max_tokens")
+        if not isinstance(original, int) or original <= 0:
+            return result
+        escalated_payload = {**payload, "max_tokens": original * 2}
+        self._log.warning(
+            "inference_empty_body_escalating_tokens",
+            engine=self._logger_name,
+            request_id=request.request_id,
+            from_max_tokens=original,
+            to_max_tokens=original * 2,
+            finish_reason=result.finish_reason,
         )
+        try:
+            escalated = await self._execute_single_request(
+                escalated_payload, request, time.monotonic(), 0
+            )
+        except Exception as exc:
+            # 加倍后失败（含超时）→ 保留首次结果，由上层按降级处理。
+            # 这里**不重抛**：首次调用其实"成功返回了"，只是正文空；
+            # 抛错会把「输出为空」误报成「服务不可用」，排障方向就错了。
+            self._log.warning(
+                "inference_budget_escalation_failed",
+                engine=self._logger_name,
+                request_id=request.request_id,
+                error=str(exc)[:160],
+                error_type=type(exc).__name__,
+            )
+            return result
+        if not (escalated.text or "").strip():
+            self._log.warning(
+                "inference_budget_escalation_still_empty",
+                engine=self._logger_name,
+                request_id=request.request_id,
+                max_tokens=original * 2,
+                finish_reason=escalated.finish_reason,
+            )
+            return escalated  # 仍为空：交给上层守卫按 length_empty 处理
+        self._log.info(
+            "inference_budget_escalation_recovered",
+            engine=self._logger_name,
+            request_id=request.request_id,
+            max_tokens=original * 2,
+            text_len=len(escalated.text),
+            completion_tokens=escalated.usage.completion_tokens,
+        )
+        return escalated
 
     def _check_circuit_breaker(self, request: InferenceRequest) -> None:
         if self._is_circuit_breaker_open():
@@ -520,6 +594,23 @@ class BaseHttpInferenceEngine(BaseHttpClient, InferenceEngine, ABC):
                 retry_strategy="retry_after_30s",
             )
 
+    def _request_timeout(self, request: InferenceRequest) -> httpx.Timeout | None:
+        """本次请求的超时档：有 request 级覆盖就返回它，否则 ``None``（用客户端默认）。
+
+        httpx 的 ``timeout=`` 参数是**按请求覆盖**客户端默认值 —— 这正是分任务超时
+        需要的语义：客户端保持一张连接池，每次调用各自带自己的读超时。
+        连接/写/池超时仍用客户端的（10s 量级），只有 **read** 随任务变。
+        """
+        override = request.timeout_seconds
+        if override is None:
+            return None
+        return httpx.Timeout(
+            connect=self._connect_timeout_seconds,
+            read=override,
+            write=self._connect_timeout_seconds,
+            pool=self._connect_timeout_seconds,
+        )
+
     async def _execute_stream_request(
         self,
         payload: dict,
@@ -535,8 +626,9 @@ class BaseHttpInferenceEngine(BaseHttpClient, InferenceEngine, ABC):
         usage: dict[str, Any] | None = None
         last_flush = time.monotonic()
 
+        timeout_override = self._request_timeout(request)
         async with client.stream(
-            "POST", self._generate_endpoint, json=stream_payload
+            "POST", self._generate_endpoint, json=stream_payload, timeout=timeout_override
         ) as response:
             if response.status_code != 200:
                 await response.aread()
@@ -612,7 +704,9 @@ class BaseHttpInferenceEngine(BaseHttpClient, InferenceEngine, ABC):
                     request_id=request.request_id,
                     error=str(exc)[:120],
                 )
-        response = await client.post(self._generate_endpoint, json=payload)
+        response = await client.post(
+            self._generate_endpoint, json=payload, timeout=self._request_timeout(request)
+        )
         latency_ms = (time.monotonic() - start_time) * 1000
 
         if response.status_code != 200:

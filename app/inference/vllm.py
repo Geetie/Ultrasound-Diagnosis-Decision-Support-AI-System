@@ -27,6 +27,12 @@ from app.inference.protocols import (
     TokenUsage,
 )
 
+#: 关闭思考的 assistant 预填串（与官方 Qwen3 chat template 在
+#: ``enable_thinking=false`` 时渲染出的内容**逐字相同**）。
+#:
+#: ``vllm.py`` 与测试共用这一份事实源；改它等于改"关思考"的语义。
+NO_THINK_PREFILL = "<think>\n\n</think>\n\n"
+
 
 class VLLMEngine(BaseHttpInferenceEngine):
     """vLLM推理引擎适配器。
@@ -152,16 +158,61 @@ class VLLMEngine(BaseHttpInferenceEngine):
         if request.stop:
             payload["stop"] = request.stop
 
-        # A.152：Qwen3 系思考模型默认输出 <think>…</think>（真机实测污染结构化输出与
-        # 正文，token 也大量消耗在思考上 → finish_reason=length）。SKILL 结论：
-        # 思考判官不提升反略降。默认关闭思考；需要思考的调用方显式传
-        # request.extra["enable_thinking"]=True 覆盖。
+        # ------------------------------------------------------------------
+        # 思考模式（2026-11-09 根治，替换 2026-11-08 的 `chat_template_kwargs` 方案）
+        #
+        # ## 旧方案为什么无效（不是"没试对参数"，是**模型模板里没有这个变量**）
+        #
+        # `chat_template_kwargs={"enable_thinking": False}` 要生效，前提是模型自带的
+        # chat template 里有 ``enable_thinking`` 分支。官方 Qwen3-8B 有：
+        #
+        #     {%- if add_generation_prompt %}
+        #         {{- '<|im_start|>assistant\n' }}
+        #         {%- if enable_thinking is defined and enable_thinking is false %}
+        #             {{- '<think>\n\n</think>\n\n' }}
+        #         {%- endif %}
+        #     {%- endif %}
+        #
+        # —— 它把**空的思考块预填**进 assistant 轮，模型从预填之后续写，
+        # 第一个 token 必然是正文。
+        #
+        # 而 II-Medical-8B（Qwen3 架构，`config.json: Qwen3ForCausalLM`）的
+        # `tokenizer_config.json` 里装的是一份 **295 字节的 Qwen2 风格模板**，
+        # 全文没有任何 ``enable_thinking`` 分支（P.201 离线渲染实证：传 True/False/
+        # 不传，渲染结果**逐字节相同**）。所以那个 kwarg 传进去没有任何变量读它，
+        # vLLM 也不会报错 —— 静默无效。这就是"绕了几次没解决"的真正原因。
+        #
+        # ## 新方案：客户端预填 assistant 轮（``continue_final_message``）
+        #
+        # 不依赖模型模板、不改服务端启动参数，效果与官方模板的 ``enable_thinking=false``
+        # 等价 —— 把 ``<think>\n\n</think>\n\n`` 作为最后一条 assistant 消息的**已有内容**
+        # 下发，vLLM 以 ``continue_final_message=True`` 让它从这段之后继续生成。
+        # P.205 真机 8 条输入实测：``<think>`` 出现 0/8、正文为空 0/8、
+        # finish_reason 全部 ``stop``（旧方案：``<think>`` 8/8、空正文 5/8、length 8/8）。
+        #
+        # ## 兼容性
+        #
+        # 调用方明确要思考（``extra["enable_thinking"]=True``）时仍然只传模板 kwarg
+        #（对官方模板有效）；字段 ``extra["thinking_prefill"]=False`` 可关闭预填
+        #（给"模板本来就支持 enable_thinking"的部署用，避免重复预填）。
+        # llama.cpp 引擎不读这些键，行为不变。
+        enable_thinking = bool(request.extra.get("enable_thinking", False))
         if "enable_thinking" not in request.extra:
             payload["chat_template_kwargs"] = {"enable_thinking": False}
+        elif enable_thinking:
+            payload["chat_template_kwargs"] = {"enable_thinking": True}
 
-        # A.155：部分 Qwen3 微调变体（实测 II-Medical-8B）的 chat template 不读
-        # enable_thinking，<think> 仍会出现在输出里 → 引擎侧兜底剥除
-        # （对用户不可见；原始含思考的文本不落库）。
+        prefill_enabled = request.extra.get("thinking_prefill", True)
+        if not enable_thinking and prefill_enabled:
+            # 模板生效时（官方 Qwen3）这里会与模板的预填重复一次空思考块 —— 无害
+            #（模型看到的仍是"已结束思考"），但更干净的做法是调用方按模型置 False。
+            payload["messages"] = [*messages, {"role": "assistant", "content": NO_THINK_PREFILL}]
+            payload["continue_final_message"] = True
+            # vLLM 明确拒绝 continue_final_message 与 add_generation_prompt 同时为真
+            payload["add_generation_prompt"] = False
+
+        # A.155：仍保留引擎侧剥除（模型偶发无视预填、自己再开一次 <think> 时兜底；
+        # 预填本身不进模型输入，所以剥除不会误删正文）。
         payload["_strip_think"] = True
 
         model_name = request.extra.get("model") or self._default_model

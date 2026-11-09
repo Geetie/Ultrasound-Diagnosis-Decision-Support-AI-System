@@ -180,6 +180,16 @@ class AgentResponse(BaseModel):
     #: 检索器没给分 → None（"未测"而不是"0 分"）。
     #: 目前**只用于观测与 trace**，不参与路由（升档口径需真机延迟数据后再定）。
     retrieval_confidence: float | None = None
+    #: 2026-11-09：本次结论所依据的**跨语料口径分歧**摘要
+    #: （`app/rag/source_conflict.py::summary_of` 的产物）。
+    #:
+    #: ``None`` = 没检测（开关关或未走 specialist 路径）；
+    #: ``{"detected": False, "comparable": True, ...}`` = 检测过、数值一致；
+    #: ``{"detected": True, "conflicts": [...]}`` = **存在分歧，正文已并列呈现**。
+    #:
+    #: 前端据此打"存在口径分歧"徽标 —— 医生必须能看见"这条结论站在两套语料之上"，
+    #: 而不是读到一个仿佛已经权衡过的单一数字。
+    source_conflict: dict[str, Any] | None = None
     #: A.153 / G21：双采样的**原始多份**响应（dispatcher 聚合后透出给融合层，
     #: 供 ConflictDetector 对多份做批内一致性判定）。None = 单次采样。
     contrastive_samples_raw: list["AgentResponse"] | None = None

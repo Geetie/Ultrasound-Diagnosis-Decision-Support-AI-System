@@ -72,6 +72,21 @@ class IndexBuildError(Exception):
         super().__init__(f"[{error_code.value}] {message}")
 
 
+class ChunkType(str, Enum):
+    """Chunk 在父子结构中的角色。
+
+    - PARENT：小节级上下文单元（喂 LLM），不参与向量检索。
+    - CHILD：检索单元（小、精），``parent_chunk_id`` 指回父块。
+
+    DB 侧 ``knowledge_chunks.chunk_type`` 列由迁移 0007 建立，
+    但**代码里长期没有任何读写点**（2026-11-09 核实：全仓 0 处赋值，
+    只有 tests/integration/data/test_kb_build_e2e.py 引用且该测试默认
+    RUN_KB_INTEGRATION 未开启）。本枚举是把这条"有列无实现"接上的入口。
+    """
+    PARENT = "parent"
+    CHILD = "child"
+
+
 class KnowledgeChunk(BaseModel):
     """A single chunked piece of knowledge base content with embedding.
 
@@ -107,6 +122,11 @@ class KnowledgeChunk(BaseModel):
     score: float | None = None
     #: 交叉编码器重排分（None = 未精排）。与 `score` 量纲不同，不要混用比较。
     rerank_score: float | None = None
+    #: 父子块：'parent'（小节级上下文，喂 LLM）/ 'child'（检索单元）。
+    #: 迁移 0007 早就建了这两列，但代码里此前没有任何写入点（见 ChunkType）。
+    chunk_type: str = "child"
+    #: 指向父块的 chunk_id；None = 无父块（扁平块或父块自身）。
+    parent_chunk_id: str | None = None
 
     @field_validator("chunk_id")
     @classmethod

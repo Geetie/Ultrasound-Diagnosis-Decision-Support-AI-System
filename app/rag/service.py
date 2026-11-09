@@ -205,6 +205,17 @@ class RAGServiceImpl(RAGService):
     async def retrieve(self, request: RetrievalRequest) -> RetrievalResult:
         start = time.monotonic()
 
+        # 院区级默认语料集（2026-11-09）：请求没指定时用
+        # ``settings.rag_enabled_source_sets`` 兜底。
+        #
+        # 为什么在这里而不是在每个调用点：调用点有 4 处（knowledge / crag /
+        # consistency / routing），逐个补必然漏一处（``organ`` 的 P0 就是这么来的）。
+        # 这里收口后，"医院级配置"对全部入口一致生效。
+        #
+        # 用 ``model_copy`` 而不是就地改写：调用方可能复用同一个 request 对象，
+        # 就地改写会让"本次生效的语料集"渗回调用方（隐式状态）。
+        request = self._resolve_source_sets(request)
+
         # A.88 T4-①（缓存正确性，**必须与影像腿接线一起做**）：
         # 影像腿的字节现在可能来自**请求作用域**（``app/rag/image_leg.py`` 的注入槽
         # / ContextVar），而 ``request.image_data`` 仍是 None。
@@ -392,6 +403,10 @@ class RAGServiceImpl(RAGService):
                 query=query_for_retrieval,
                 top_k=self._rerank_output_top_k,
                 organ=request.organ,
+                # 2026-11-09：兜底腿必须与主检索腿用**同一份** source_set 白名单。
+                # 否则医院配的"只用本院权威语料"会在降级路径上静默失效 ——
+                # 而兜底恰恰是最容易被触发（主腿 0 命中/低分）的路径。
+                source_sets=request.source_sets,
             )
             if fallback_chunks:
                 result.chunks = fallback_chunks
@@ -676,6 +691,39 @@ class RAGServiceImpl(RAGService):
             await self._cache.set(cache_key, result)
 
         return result
+
+    @staticmethod
+    def _resolve_source_sets(request: RetrievalRequest) -> RetrievalRequest:
+        """请求级 ``source_sets`` 为空时用**院区级** ``settings.rag_enabled_source_sets`` 兜底。
+
+        优先级（高 → 低）：
+        1. ``request.source_sets`` 非空 → **完全按请求来**（单测、院区分级、
+           特殊会诊都能显式覆盖）；
+        2. ``settings.rag_enabled_source_sets`` 非空 → 用它（部署侧的"本院权威语料"）；
+        3. 都为空 → 不过滤（全开，与改动前逐条一致）。
+
+        **不改写入参**：返回新对象（``model_copy``）。调用方复用同一个 request
+        时，"本次生效的语料集"不会渗回去 —— 那是隐式状态，下次请求会带着
+        上一次的过滤条件静默跑。
+        """
+        if request.source_sets:
+            return request
+        configured = list(getattr(settings, "rag_enabled_source_sets", None) or [])
+        if not configured:
+            return request
+        from app.knowledge.source_set import normalize_source_sets
+
+        normalized = normalize_source_sets(configured) or []
+        if not normalized:
+            return request
+        logger.info(
+            "rag_source_sets_from_settings",
+            request_id=request.request_id,
+            organ=request.organ,
+            source_sets=normalized,
+            hint="请求未指定语料集 → 使用 settings.rag_enabled_source_sets（院区级默认）",
+        )
+        return request.model_copy(update={"source_sets": normalized})
 
     def _finalize_cache_hit(
         self,

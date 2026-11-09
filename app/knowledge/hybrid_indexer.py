@@ -79,6 +79,10 @@ def _chunk_to_row(chunk: KnowledgeChunk) -> dict:
         "source_doc_id": chunk.source_doc_id,
         "section_path": chunk.section_path or "",
         "token_count": chunk.token_count,
+        # 迁移 0007 建的列，此前代码从没写过（见 protocols.ChunkType）。
+        # 容器里嵌的是 list，每次 upsert 拆开是 O(n)，故只在 upsert 层拆。
+        "chunk_type": getattr(chunk, "chunk_type", "child") or "child",
+        "parent_chunk_id": getattr(chunk, "parent_chunk_id", None),
     }
 
 
@@ -94,6 +98,8 @@ def _row_to_chunk(row: KnowledgeChunkModel) -> KnowledgeChunk:
         source_doc_id=row.source_doc_id,
         section_path=row.section_path or "",
         token_count=row.token_count or 0,
+        chunk_type=getattr(row, "chunk_type", "child") or "child",
+        parent_chunk_id=getattr(row, "parent_chunk_id", None),
     )
 
 
@@ -115,6 +121,8 @@ def build_upsert_statement(values: list[dict]):
             "source_doc_id": stmt.excluded.source_doc_id,
             "section_path": stmt.excluded.section_path,
             "token_count": stmt.excluded.token_count,
+            "chunk_type": stmt.excluded.chunk_type,
+            "parent_chunk_id": stmt.excluded.parent_chunk_id,
             "updated_at": stmt.excluded.updated_at,
         },
     )

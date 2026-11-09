@@ -133,6 +133,45 @@ def image_search_filters(organ: str | None, session_id: str | None) -> list[dict
     return [strict]
 
 
+def build_metadata_filter(request: RetrievalRequest) -> dict | None:
+    """dense 腿的向量库 filter（organ + source_set 白名单）。**纯函数**。
+
+    ## 为什么 source_sets 要在这里收口
+
+    ``source_sets`` 有两条检索腿都要用（``_dense_search`` 的向量库 filter、
+    ``_safe_sparse`` 的 BM25 过滤），而两边的过滤语法完全不同：
+    Qdrant 支持 ``{"key": [a, b]}`` 的 IN 语义，PGVector 后端把 list
+    ``json.dumps`` 后做**字符串相等**比较（``app/embedding/pgvector_client.py:240``）
+    → 传 list 在 PGVector 上恒不命中。
+
+    所以：**单个值传标量，多个值传 list**（Qdrant 用 MatchAny），
+    并在多值时记一条 warning 说明"PGVector 后端不支持多值 IN"。
+    这不是可选的优化，是"两个后端语义不同"的已知差异，必须留痕而不是静默。
+
+    Returns:
+        ``None`` 表示不过滤（与改动前 ``{"organ": ...} or None`` 逐条一致）。
+    """
+    flt: dict = {}
+    if request.organ:
+        flt["organ"] = request.organ
+    enabled = [s for s in (request.source_sets or []) if s]
+    if enabled:
+        if len(enabled) == 1:
+            flt["source_set"] = enabled[0]
+        else:
+            flt["source_set"] = list(enabled)
+            logger.warning(
+                "source_set_multi_value_filter",
+                source_sets=enabled,
+                hint=(
+                    "多值 source_set 过滤依赖向量库的 IN 语义（Qdrant MatchAny）。"
+                    "PGVector 后端把 list 当字符串相等比较 → 该后端下多值过滤恒 0 命中，"
+                    "需改用单值或扩展 pgvector_client 的 where 子句。"
+                ),
+            )
+    return flt or None
+
+
 class _Hit:
     """Internal lightweight hit type used during RRF fusion."""
 
@@ -355,6 +394,10 @@ class Retriever:
         # 图谱邻居扩展（settings.graph_query_enabled 门控，默认关闭）：
         # 只在 top-k 之后追加，不挤占 RRF 排名；失败降级为不扩展。
         chunks = await self._expand_graph_neighbors(chunks)
+        # 父子块回填（kb_v2.0.0 起）：命中 child → 用 parent_chunk_id 取父块正文
+        # 作为喂 LLM 的上下文。门控 rag_use_parent_expansion（默认开，但老库无
+        # parent 行时自动零效果——不会改变 kb_v1.x 的行为）。
+        chunks = await self._expand_parent_chunks(chunks)
         # 二期 §6：记录本次引用（best-effort，失败只记日志）。
         # 放在返回前而不是各条检索腿里：只看最终入选的 chunks——落选条目的
         # "被引用"并不是真的被用上，把它算进去会让衰减依据失真。
@@ -441,11 +484,96 @@ class Retriever:
             self._graph_adapter = False  # sentinel: do not retry this instance
         return self._graph_adapter or None
 
+    async def _expand_parent_chunks(
+        self, chunks: list[ScoredChunk]
+    ) -> list[ScoredChunk]:
+        """父子块回填（Small-to-Big）：用 ``parent_chunk_id`` 把命中块换成父块正文。
+
+        ## 依据
+
+        LangChain ``ParentDocumentRetriever`` / LlamaIndex ``AutoMergingRetriever``
+        的共同做法：**小块检索、大块喂 LLM**——检索单元要小而精确（向量不易过压缩），
+        上下文单元要大而完整（LLM 需要表头/前提）。
+
+        ## 与图谱扩展的区别
+
+        图谱扩展是 **append**（追加邻居，不改排名）；父块回填是 **replace**
+        （把 child 的 ``content`` 换成父块正文，保留 child 的分数与排名）。
+        换内容不换顺序，所以对 hit@k 口径**无影响**——这正是它安全的原因：
+        B2 这类 chunk 级召回指标不会因为回填而变动，收益体现在生成侧。
+
+        ## 失败与降级
+
+        - 开关关闭 / 老库（无 ``parent_chunk_id``）→ 原样返回，零副作用；
+        - 父块查不到 → 保留 child 原文并计数告警（不静默吞）；
+        - 任何异常 → 记日志原样返回（回填是增强，不能拖垮主链路）。
+        """
+        if not chunks or not bool(
+            getattr(settings, "rag_use_parent_expansion", False)
+        ):
+            return chunks
+        parent_ids = {
+            c.chunk.parent_chunk_id
+            for c in chunks
+            if getattr(c.chunk, "parent_chunk_id", None)
+        }
+        if not parent_ids:
+            return chunks
+        cap = int(getattr(settings, "rag_parent_expansion_max", 3) or 0)
+        if cap <= 0:
+            return chunks
+        try:
+            from app.knowledge.decay import load_chunks_by_ids
+
+            parents = await load_chunks_by_ids(sorted(parent_ids)[:cap])
+        except Exception as exc:
+            logger.warning(
+                "parent_expansion_failed",
+                error=str(exc),
+                error_type=type(exc).__name__,
+                requested=len(parent_ids),
+            )
+            return chunks
+        if not parents:
+            logger.warning(
+                "parent_expansion_no_rows",
+                requested=len(parent_ids),
+                hint="child 有 parent_chunk_id 但父块不在库里（索引与 PG 不一致 / 父块未入库）",
+            )
+            return chunks
+
+        replaced = 0
+        out: list[ScoredChunk] = []
+        for sc in chunks:
+            pid = getattr(sc.chunk, "parent_chunk_id", None)
+            parent = parents.get(pid) if pid else None
+            if parent is None:
+                out.append(sc)
+                continue
+            # replace 内容、保留分数与来源；chunk_type 标成 parent 便于下游识别
+            merged = sc.chunk.model_copy(update={
+                "content": parent.content,
+                "chunk_type": "parent",
+                "metadata": {
+                    **(sc.chunk.metadata or {}),
+                    "expanded_from_parent": parent.chunk_id,
+                    "child_content": sc.chunk.content,
+                },
+            })
+            out.append(sc.model_copy(update={"chunk": merged}))
+            replaced += 1
+        if replaced:
+            logger.info(
+                "parent_expansion_applied",
+                replaced=replaced,
+                total=len(chunks),
+            )
+        return out
+
     async def _expand_graph_neighbors(
         self, chunks: list[ScoredChunk]
     ) -> list[ScoredChunk]:
         """图谱扩展：以融合 top-k 的前 N 个 chunk 为种子追加 depth-1 邻居。
-
         - 门控：settings.graph_query_enabled 为 False 时直接原样返回；
         - 语义：邻居是检索增强补充，append 在 top-k 之后，不改排名；
         - 失败：adapter 内部已降级为空列表，这里再兜一层异常不影响主链路。
@@ -586,7 +714,10 @@ class Retriever:
             return []
         try:
             hits = self._bm25.search(
-                query, top_k=request.top_k, organ_filter=request.organ
+                query,
+                top_k=request.top_k,
+                organ_filter=request.organ,
+                source_sets=request.source_sets,
             )
         except Exception as exc:
             logger.warning(
@@ -817,7 +948,7 @@ class Retriever:
             return []
         query_vector = self._embedding_to_list(text_resp.embeddings[0])
         collection = request.kb_version or settings.rag_collection
-        flt = {"organ": request.organ} if request.organ else None
+        flt = build_metadata_filter(request)
         results = await self._vector_client.search(
             collection=collection,
             query_vector=query_vector,

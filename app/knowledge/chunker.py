@@ -71,6 +71,8 @@ class ChunkerStrategy(str, Enum):
     FIXED_WINDOW = "fixed_window"
     SENTENCE_BOUNDARY = "sentence_boundary"
     SEMANTIC = "semantic"
+    #: 结构感知 + 表格保护 + 父子块（kb_v2.0.0 起）。见 md_chunker.py。
+    MD_STRUCTURE = "md_structure"
 
 
 class Chunker(Protocol):
@@ -415,4 +417,13 @@ def create_chunker(
             else {}
         )
         return SemanticChunker(**kwargs)
+    if strategy == ChunkerStrategy.MD_STRUCTURE:
+        from app.knowledge.md_chunker import MarkdownStructureChunker
+
+        mkw: dict = {}
+        if max_tokens is not None:
+            mkw["child_max_tokens"] = max_tokens
+        if min_tokens is not None:
+            mkw["child_min_tokens"] = min_tokens
+        return MarkdownStructureChunker(**mkw)
     raise ValueError(f"Unhandled strategy: {strategy}")
