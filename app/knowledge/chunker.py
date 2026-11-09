@@ -108,12 +108,34 @@ _SEMANTIC_TITLE_RE = re.compile(
 def _split_sentences(text: str) -> list[str]:
     """Split text into sentences on common CJK + Latin punctuation.
 
-    Empty fragments are dropped. Whitespace is preserved within a sentence.
+    ## 2026-11-09 修 bug：此前用 ``strip()`` 把每片段的**换行首尾都剥掉**
+
+    实测后果：``sentence_boundary``（生产默认策略）产出的 chunk
+    **换行数 = 0**，而源文档有 21 个。整块被压成一整行：
+
+    ```
+    源 json:   '|||||男性|||||\n|---|---|---|\n|参数|总数<br>n=678|...'
+    chunk:     '|||||男性||||| |---|---|---| |参数|总数<br>n=678|...'   ← 换行变空格
+    ```
+
+    → 表格行边界消失、句末完整率只有 0.3272、任何按行解析的逻辑失效。
+
+    修法：只剥**行内多余空白**，**保留换行符**（``\n`` 视为句子边界的一部分）。
     """
     if not text:
         return []
     parts = _SENTENCE_SPLIT_RE.split(text)
-    return [p.strip() for p in parts if p and p.strip()]
+    out: list[str] = []
+    for p in parts:
+        if not p:
+            continue
+        # 保留换行（表格/列表的行结构），只压缩行内连续空格与行首尾空白
+        kept = "\n".join(
+            line.strip() for line in p.split("\n") if line.strip()
+        )
+        if kept:
+            out.append(kept)
+    return out
 
 
 def _to_chunk(
@@ -227,7 +249,10 @@ class SentenceBoundaryChunker:
         def _flush_buffer(idx_hint: int) -> KnowledgeChunk | None:
             if not buffer:
                 return None
-            content = " ".join(buffer).strip()
+            # 2026-11-09：用**换行**连接而不是空格 —— 保留行结构。
+            # 句子之间本就该换行（Markdown/表格都依赖它）；
+            # 用空格连接会把表格拍平成一整行（见 _split_sentences 的说明）。
+            content = "\n".join(buffer).strip()
             buffer.clear()
             return _to_chunk(
                 source_doc_id=doc.source_doc_id,
