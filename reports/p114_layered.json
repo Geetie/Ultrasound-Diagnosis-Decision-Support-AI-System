@@ -1,0 +1,2411 @@
+{
+  "probe": "p114_rag_layered_eval",
+  "generated_at": "2026-11-09 11:38:24",
+  "dataset": "/mnt/ee16/home/student03/uai/src/data/eval/v2/zh_retrieval_v1.jsonl",
+  "corpus": {
+    "raw_chunks": 9571,
+    "deduped_chunks": 3774,
+    "dropped_duplicates": 5797,
+    "kept_versions": {
+      "kb_v1.5.0": 3745,
+      "kb_v1.0.2": 26,
+      "kb_v1.6.0": 3
+    }
+  },
+  "stages": {
+    "ingestion": {
+      "stage": "ingestion",
+      "n_source_docs": 2993,
+      "n_source_docs_by_organ": {
+        "cardiac": 1206,
+        "liver": 390,
+        "thyroid": 1397
+      },
+      "n_chunks": 3774,
+      "source_chars": 3120088,
+      "chunk_chars": 3145148,
+      "char_conservation": 1.008,
+      "char_conservation_flag": "OK",
+      "table_pipe_lines_source": 710,
+      "table_pipe_lines_chunk": 121,
+      "table_pipe_conservation": 0.1704,
+      "distinct_numbers_source": 4045,
+      "distinct_numbers_chunk": 4047,
+      "number_conservation": 0.9998,
+      "caliber": "**守恒性**指标，不是抽取正确率。本项目无原文金标准（源 PDF 不在服务器，只有已解析的 kb_src JSON），故无法测『抽对了没有』。",
+      "limitations": [
+        "char_conservation > 1.05 表示 chunk 有重叠或重复入库，需人工看",
+        "number_conservation 高不代表数字对：把 15 写成 51 也能『保留』",
+        "表格管道符只是表格的一种残留形态，无管道的表格（纯空格对齐）测不到"
+      ]
+    },
+    "chunking": {
+      "stage": "chunking",
+      "n_chunks": 3774,
+      "len_chars_p50": 973,
+      "len_chars_p95": 1376,
+      "len_chars_max": 1528,
+      "too_long_over_1500_rate": 0.0045,
+      "sentence_end_rate": 0.3272,
+      "anaphora_head_rate": 0.0026,
+      "self_sufficiency_proxy": 0.661,
+      "caliber": "**启发式代理指标**。self_sufficiency_proxy 由『指代开头率』与『句末完整率』合成，不是人工/判官判定的『能不能独立回答』。可用来做版本间对比（同一把尺子），不可当绝对正确率对外报。",
+      "limitations": [
+        "指代词表是有限的，同义指代（『上面说的』）测不到",
+        "句末标点缺失也可能是排版问题，不必然是分块错误",
+        "本指标不判『块里内容是否回答了某个问题』——那需要 query 对齐"
+      ]
+    },
+    "augmentation": {
+      "stage": "augmentation",
+      "available": true,
+      "n_chunks_checked": 3774,
+      "n_build_failed": 0,
+      "build_errors": {},
+      "n_source_sets": 27,
+      "source_set_distribution": {
+        "dialogue": 824,
+        "ata_2015": 770,
+        "ata_pediatric_2015": 238,
+        "bse_2024": 229,
+        "ase_right_heart_2025": 190,
+        "ase_hcm_2022": 170,
+        "ase_strain_2025": 169,
+        "ase_2025": 150,
+        "norm_2018": 120,
+        "ase_stress_echo_2020": 112,
+        "ase_comptte_2019": 106,
+        "ata_ablation_2023": 101
+      },
+      "n_conflict_facts": 3,
+      "conflict_pairs": {
+        "ctirads_2021|norm_2018|unknown": 2,
+        "ctirads_2021|norm_2018|thyroid_guideline_2022|unknown": 1
+      },
+      "caliber": "测的是『生产检测器在真实语料上检出多少条数值口径分歧』。**没有人工标注的『应检出』清单**，所以这是描述性统计，不是召回率。要报召回率必须先有人工标注分歧集。",
+      "limitations": [
+        "只覆盖 source_conflict 规则表里定义的数值事实（风险区间/阈值等）",
+        "倾向性分歧（『建议手术』vs『可观察』）不在检测范围",
+        "n_conflict_facts 小不代表没有分歧，可能只是规则没覆盖到"
+      ]
+    },
+    "retrieval": {
+      "stage": "retrieval",
+      "overall": {
+        "n_input": 117,
+        "n": 117,
+        "n_excluded": 0,
+        "skip_reasons": {},
+        "violations": 0,
+        "duplicates_removed": 0,
+        "hit@1": 0.5385,
+        "hit@5": 0.7692,
+        "hit@10": 0.8376,
+        "mrr@10": 0.6402,
+        "ndcg@10": 0.6656,
+        "precision@10": 0.0949,
+        "recall@10": 0.8077
+      },
+      "by_organ": {
+        "cardiac": {
+          "n_input": 35,
+          "n": 35,
+          "n_excluded": 0,
+          "skip_reasons": {},
+          "violations": 0,
+          "duplicates_removed": 0,
+          "hit@1": 0.6,
+          "hit@5": 0.8571,
+          "hit@10": 0.9143,
+          "mrr@10": 0.7074,
+          "ndcg@10": 0.758,
+          "precision@10": 0.0943,
+          "recall@10": 0.9143
+        },
+        "liver": {
+          "n_input": 36,
+          "n": 36,
+          "n_excluded": 0,
+          "skip_reasons": {},
+          "violations": 0,
+          "duplicates_removed": 0,
+          "hit@1": 0.6111,
+          "hit@5": 0.7778,
+          "hit@10": 0.8333,
+          "mrr@10": 0.6892,
+          "ndcg@10": 0.7122,
+          "precision@10": 0.0917,
+          "recall@10": 0.8333
+        },
+        "thyroid": {
+          "n_input": 46,
+          "n": 46,
+          "n_excluded": 0,
+          "skip_reasons": {},
+          "violations": 0,
+          "duplicates_removed": 0,
+          "hit@1": 0.4348,
+          "hit@5": 0.6957,
+          "hit@10": 0.7826,
+          "mrr@10": 0.5508,
+          "ndcg@10": 0.5587,
+          "precision@10": 0.0978,
+          "recall@10": 0.7065
+        }
+      },
+      "by_query_type": {
+        "boundary_case": {
+          "n_input": 18,
+          "n": 18,
+          "n_excluded": 0,
+          "skip_reasons": {},
+          "violations": 0,
+          "duplicates_removed": 0,
+          "hit@1": 0.6111,
+          "hit@5": 0.8889,
+          "hit@10": 0.9444,
+          "mrr@10": 0.7407,
+          "ndcg@10": 0.7691,
+          "precision@10": 0.1111,
+          "recall@10": 0.9167
+        },
+        "comparison": {
+          "n_input": 17,
+          "n": 17,
+          "n_excluded": 0,
+          "skip_reasons": {},
+          "violations": 0,
+          "duplicates_removed": 0,
+          "hit@1": 0.5294,
+          "hit@5": 0.7059,
+          "hit@10": 0.7647,
+          "mrr@10": 0.6152,
+          "ndcg@10": 0.6259,
+          "precision@10": 0.0824,
+          "recall@10": 0.7353
+        },
+        "followup_strategy": {
+          "n_input": 11,
+          "n": 11,
+          "n_excluded": 0,
+          "skip_reasons": {},
+          "violations": 0,
+          "duplicates_removed": 0,
+          "hit@1": 0.4545,
+          "hit@5": 0.7273,
+          "hit@10": 0.8182,
+          "mrr@10": 0.5766,
+          "ndcg@10": 0.6045,
+          "precision@10": 0.0909,
+          "recall@10": 0.7727
+        },
+        "grading_standard": {
+          "n_input": 26,
+          "n": 26,
+          "n_excluded": 0,
+          "skip_reasons": {},
+          "violations": 0,
+          "duplicates_removed": 0,
+          "hit@1": 0.5,
+          "hit@5": 0.7308,
+          "hit@10": 0.8077,
+          "mrr@10": 0.6113,
+          "ndcg@10": 0.6259,
+          "precision@10": 0.1,
+          "recall@10": 0.7692
+        },
+        "procedure_indication": {
+          "n_input": 11,
+          "n": 11,
+          "n_excluded": 0,
+          "skip_reasons": {},
+          "violations": 0,
+          "duplicates_removed": 0,
+          "hit@1": 0.5455,
+          "hit@5": 0.6364,
+          "hit@10": 0.8182,
+          "mrr@10": 0.6136,
+          "ndcg@10": 0.6491,
+          "precision@10": 0.0909,
+          "recall@10": 0.7727
+        },
+        "report_standard": {
+          "n_input": 9,
+          "n": 9,
+          "n_excluded": 0,
+          "skip_reasons": {},
+          "violations": 0,
+          "duplicates_removed": 0,
+          "hit@1": 0.3333,
+          "hit@5": 0.6667,
+          "hit@10": 0.7778,
+          "mrr@10": 0.4788,
+          "ndcg@10": 0.5516,
+          "precision@10": 0.0778,
+          "recall@10": 0.7778
+        },
+        "special_case": {
+          "n_input": 5,
+          "n": 5,
+          "n_excluded": 0,
+          "skip_reasons": {},
+          "violations": 0,
+          "duplicates_removed": 0,
+          "hit@1": 0.6,
+          "hit@5": 0.8,
+          "hit@10": 0.8,
+          "mrr@10": 0.64,
+          "ndcg@10": 0.6229,
+          "precision@10": 0.1,
+          "recall@10": 0.7
+        },
+        "technical_parameter": {
+          "n_input": 20,
+          "n": 20,
+          "n_excluded": 0,
+          "skip_reasons": {},
+          "violations": 0,
+          "duplicates_removed": 0,
+          "hit@1": 0.65,
+          "hit@5": 0.9,
+          "hit@10": 0.9,
+          "mrr@10": 0.7308,
+          "ndcg@10": 0.7623,
+          "precision@10": 0.095,
+          "recall@10": 0.9
+        }
+      },
+      "refusal_proxy": {
+        "n_unanswerable": 3,
+        "unanswerable_top1_mean": 0.685,
+        "answerable_top1_mean": 0.6859,
+        "answerable_top1_p50": 0.6896,
+        "overconfident_rate": 0.3333,
+        "caliber": "代理指标：不可答题的 Top-1 相似度若普遍高于可答题的中位数，说明检索器『很自信地回答了答不了的问题』。这不是拒答率 —— 真正拒答要看生成层，本脚本不测。"
+      },
+      "per_query": [
+        {
+          "query_id": "zh-ret-001",
+          "n_gold": 3,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 0.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 0.5,
+            "ndcg@10": 0.7122630665145961,
+            "precision@10": 0.3,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "thyroid",
+          "query_type": "grading_standard"
+        },
+        {
+          "query_id": "zh-ret-002",
+          "n_gold": 2,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 0.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 0.5,
+            "ndcg@10": 0.38685280723454163,
+            "precision@10": 0.1,
+            "recall@10": 0.5
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "thyroid",
+          "query_type": "comparison"
+        },
+        {
+          "query_id": "zh-ret-003",
+          "n_gold": 2,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 0.6131471927654584,
+            "precision@10": 0.1,
+            "recall@10": 0.5
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "thyroid",
+          "query_type": "boundary_case"
+        },
+        {
+          "query_id": "zh-ret-004",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 0.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 0.5,
+            "ndcg@10": 0.6309297535714575,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "thyroid",
+          "query_type": "procedure_indication"
+        },
+        {
+          "query_id": "zh-ret-005",
+          "n_gold": 2,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 0.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 0.2,
+            "ndcg@10": 0.4415801103577823,
+            "precision@10": 0.2,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "thyroid",
+          "query_type": "followup_strategy"
+        },
+        {
+          "query_id": "zh-ret-006",
+          "n_gold": 2,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 0.6131471927654584,
+            "precision@10": 0.1,
+            "recall@10": 0.5
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "thyroid",
+          "query_type": "grading_standard"
+        },
+        {
+          "query_id": "zh-ret-007",
+          "n_gold": 2,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 0.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 0.2,
+            "ndcg@10": 0.23719771276929622,
+            "precision@10": 0.1,
+            "recall@10": 0.5
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "thyroid",
+          "query_type": "special_case"
+        },
+        {
+          "query_id": "zh-ret-008",
+          "n_gold": 2,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 0.8772153153380493,
+            "precision@10": 0.2,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "thyroid",
+          "query_type": "special_case"
+        },
+        {
+          "query_id": "zh-ret-009",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 1.0,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "thyroid",
+          "query_type": "special_case"
+        },
+        {
+          "query_id": "zh-ret-010",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 0.0,
+            "hit@5": 0.0,
+            "hit@10": 0.0,
+            "mrr@10": 0.0,
+            "ndcg@10": 0.0,
+            "precision@10": 0.0,
+            "recall@10": 0.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "thyroid",
+          "query_type": "technical_parameter"
+        },
+        {
+          "query_id": "zh-ret-011",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 0.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 0.25,
+            "ndcg@10": 0.43067655807339306,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "thyroid",
+          "query_type": "technical_parameter"
+        },
+        {
+          "query_id": "zh-ret-012",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 0.0,
+            "hit@5": 0.0,
+            "hit@10": 0.0,
+            "mrr@10": 0.0,
+            "ndcg@10": 0.0,
+            "precision@10": 0.0,
+            "recall@10": 0.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "thyroid",
+          "query_type": "report_standard"
+        },
+        {
+          "query_id": "zh-ret-013",
+          "n_gold": 2,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 0.0,
+            "hit@5": 0.0,
+            "hit@10": 0.0,
+            "mrr@10": 0.0,
+            "ndcg@10": 0.0,
+            "precision@10": 0.0,
+            "recall@10": 0.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "thyroid",
+          "query_type": "comparison"
+        },
+        {
+          "query_id": "zh-ret-014",
+          "n_gold": 2,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 1.0,
+            "precision@10": 0.2,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "thyroid",
+          "query_type": "procedure_indication"
+        },
+        {
+          "query_id": "zh-ret-015",
+          "n_gold": 2,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 0.6131471927654584,
+            "precision@10": 0.1,
+            "recall@10": 0.5
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "thyroid",
+          "query_type": "followup_strategy"
+        },
+        {
+          "query_id": "zh-ret-016",
+          "n_gold": 2,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 0.0,
+            "hit@5": 0.0,
+            "hit@10": 0.0,
+            "mrr@10": 0.0,
+            "ndcg@10": 0.0,
+            "precision@10": 0.0,
+            "recall@10": 0.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "thyroid",
+          "query_type": "comparison"
+        },
+        {
+          "query_id": "zh-ret-017",
+          "n_gold": 2,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 0.9197207891481876,
+            "precision@10": 0.2,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "thyroid",
+          "query_type": "boundary_case"
+        },
+        {
+          "query_id": "zh-ret-018",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 1.0,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "thyroid",
+          "query_type": "grading_standard"
+        },
+        {
+          "query_id": "zh-ret-019",
+          "n_gold": 2,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 0.0,
+            "hit@5": 0.0,
+            "hit@10": 1.0,
+            "mrr@10": 0.125,
+            "ndcg@10": 0.19342640361727081,
+            "precision@10": 0.1,
+            "recall@10": 0.5
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "thyroid",
+          "query_type": "procedure_indication"
+        },
+        {
+          "query_id": "zh-ret-020",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 0.0,
+            "hit@5": 0.0,
+            "hit@10": 1.0,
+            "mrr@10": 0.14285714285714285,
+            "ndcg@10": 0.3333333333333333,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "thyroid",
+          "query_type": "followup_strategy"
+        },
+        {
+          "query_id": "zh-ret-021",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 0.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 0.5,
+            "ndcg@10": 0.6309297535714575,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "thyroid",
+          "query_type": "comparison"
+        },
+        {
+          "query_id": "zh-ret-022",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 1.0,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "thyroid",
+          "query_type": "boundary_case"
+        },
+        {
+          "query_id": "zh-ret-023",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 0.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 0.5,
+            "ndcg@10": 0.6309297535714575,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "thyroid",
+          "query_type": "followup_strategy"
+        },
+        {
+          "query_id": "zh-ret-024",
+          "n_gold": 2,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 0.0,
+            "hit@5": 0.0,
+            "hit@10": 0.0,
+            "mrr@10": 0.0,
+            "ndcg@10": 0.0,
+            "precision@10": 0.0,
+            "recall@10": 0.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "thyroid",
+          "query_type": "special_case"
+        },
+        {
+          "query_id": "zh-ret-025",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 0.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 0.5,
+            "ndcg@10": 0.6309297535714575,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "thyroid",
+          "query_type": "grading_standard"
+        },
+        {
+          "query_id": "zh-ret-026",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 1.0,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "thyroid",
+          "query_type": "technical_parameter"
+        },
+        {
+          "query_id": "zh-ret-027",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 1.0,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "thyroid",
+          "query_type": "grading_standard"
+        },
+        {
+          "query_id": "zh-ret-028",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 1.0,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "thyroid",
+          "query_type": "special_case"
+        },
+        {
+          "query_id": "zh-ret-029",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 1.0,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "thyroid",
+          "query_type": "report_standard"
+        },
+        {
+          "query_id": "zh-ret-030",
+          "n_gold": 2,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 0.0,
+            "hit@5": 0.0,
+            "hit@10": 0.0,
+            "mrr@10": 0.0,
+            "ndcg@10": 0.0,
+            "precision@10": 0.0,
+            "recall@10": 0.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "thyroid",
+          "query_type": "report_standard"
+        },
+        {
+          "query_id": "zh-ret-031",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 0.0,
+            "hit@5": 0.0,
+            "hit@10": 0.0,
+            "mrr@10": 0.0,
+            "ndcg@10": 0.0,
+            "precision@10": 0.0,
+            "recall@10": 0.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "thyroid",
+          "query_type": "procedure_indication"
+        },
+        {
+          "query_id": "zh-ret-032",
+          "n_gold": 2,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 0.0,
+            "hit@5": 0.0,
+            "hit@10": 0.0,
+            "mrr@10": 0.0,
+            "ndcg@10": 0.0,
+            "precision@10": 0.0,
+            "recall@10": 0.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "thyroid",
+          "query_type": "followup_strategy"
+        },
+        {
+          "query_id": "zh-ret-033",
+          "n_gold": 2,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 0.0,
+            "hit@5": 0.0,
+            "hit@10": 0.0,
+            "mrr@10": 0.0,
+            "ndcg@10": 0.0,
+            "precision@10": 0.0,
+            "recall@10": 0.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "thyroid",
+          "query_type": "comparison"
+        },
+        {
+          "query_id": "zh-ret-034",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 0.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 0.3333333333333333,
+            "ndcg@10": 0.5,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "thyroid",
+          "query_type": "boundary_case"
+        },
+        {
+          "query_id": "zh-ret-035",
+          "n_gold": 2,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 0.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 0.5,
+            "ndcg@10": 0.6934264036172708,
+            "precision@10": 0.2,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "thyroid",
+          "query_type": "boundary_case"
+        },
+        {
+          "query_id": "zh-ret-036",
+          "n_gold": 2,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 0.6131471927654584,
+            "precision@10": 0.1,
+            "recall@10": 0.5
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "thyroid",
+          "query_type": "grading_standard"
+        },
+        {
+          "query_id": "zh-ret-037",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 0.0,
+            "hit@5": 0.0,
+            "hit@10": 0.0,
+            "mrr@10": 0.0,
+            "ndcg@10": 0.0,
+            "precision@10": 0.0,
+            "recall@10": 0.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "thyroid",
+          "query_type": "followup_strategy"
+        },
+        {
+          "query_id": "zh-ret-038",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 0.0,
+            "hit@5": 0.0,
+            "hit@10": 1.0,
+            "mrr@10": 0.125,
+            "ndcg@10": 0.31546487678572877,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "thyroid",
+          "query_type": "procedure_indication"
+        },
+        {
+          "query_id": "zh-ret-039",
+          "n_gold": 2,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 0.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 0.3333333333333333,
+            "ndcg@10": 0.5706417189553201,
+            "precision@10": 0.2,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "thyroid",
+          "query_type": "grading_standard"
+        },
+        {
+          "query_id": "zh-ret-040",
+          "n_gold": 2,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 0.7977228895450266,
+            "precision@10": 0.2,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "thyroid",
+          "query_type": "technical_parameter"
+        },
+        {
+          "query_id": "zh-ret-041",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 1.0,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "thyroid",
+          "query_type": "boundary_case"
+        },
+        {
+          "query_id": "zh-ret-042",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 1.0,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "thyroid",
+          "query_type": "comparison"
+        },
+        {
+          "query_id": "zh-ret-043",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 1.0,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "thyroid",
+          "query_type": "boundary_case"
+        },
+        {
+          "query_id": "zh-ret-044",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 0.0,
+            "hit@5": 0.0,
+            "hit@10": 1.0,
+            "mrr@10": 0.125,
+            "ndcg@10": 0.31546487678572877,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "thyroid",
+          "query_type": "comparison"
+        },
+        {
+          "query_id": "zh-ret-045",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 1.0,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "thyroid",
+          "query_type": "technical_parameter"
+        },
+        {
+          "query_id": "zh-ret-046",
+          "n_gold": 2,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 0.7903864795495061,
+            "precision@10": 0.2,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "liver",
+          "query_type": "grading_standard"
+        },
+        {
+          "query_id": "zh-ret-047",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 1.0,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "liver",
+          "query_type": "grading_standard"
+        },
+        {
+          "query_id": "zh-ret-048",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 0.0,
+            "hit@5": 0.0,
+            "hit@10": 0.0,
+            "mrr@10": 0.0,
+            "ndcg@10": 0.0,
+            "precision@10": 0.0,
+            "recall@10": 0.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "liver",
+          "query_type": "grading_standard"
+        },
+        {
+          "query_id": "zh-ret-049",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 1.0,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "liver",
+          "query_type": "grading_standard"
+        },
+        {
+          "query_id": "zh-ret-050",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 1.0,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "liver",
+          "query_type": "comparison"
+        },
+        {
+          "query_id": "zh-ret-051",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 1.0,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "liver",
+          "query_type": "grading_standard"
+        },
+        {
+          "query_id": "zh-ret-052",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 0.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 0.5,
+            "ndcg@10": 0.6309297535714575,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "liver",
+          "query_type": "boundary_case"
+        },
+        {
+          "query_id": "zh-ret-053",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 1.0,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "liver",
+          "query_type": "grading_standard"
+        },
+        {
+          "query_id": "zh-ret-054",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 1.0,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "liver",
+          "query_type": "procedure_indication"
+        },
+        {
+          "query_id": "zh-ret-055",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 1.0,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "liver",
+          "query_type": "technical_parameter"
+        },
+        {
+          "query_id": "zh-ret-056",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 1.0,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "liver",
+          "query_type": "followup_strategy"
+        },
+        {
+          "query_id": "zh-ret-057",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 1.0,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "liver",
+          "query_type": "followup_strategy"
+        },
+        {
+          "query_id": "zh-ret-058",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 1.0,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "liver",
+          "query_type": "comparison"
+        },
+        {
+          "query_id": "zh-ret-059",
+          "n_gold": 2,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 0.8065735963827293,
+            "precision@10": 0.2,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "liver",
+          "query_type": "comparison"
+        },
+        {
+          "query_id": "zh-ret-060",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 0.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 0.3333333333333333,
+            "ndcg@10": 0.5,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "liver",
+          "query_type": "report_standard"
+        },
+        {
+          "query_id": "zh-ret-061",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 0.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 0.3333333333333333,
+            "ndcg@10": 0.5,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "liver",
+          "query_type": "boundary_case"
+        },
+        {
+          "query_id": "zh-ret-062",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 0.0,
+            "hit@5": 0.0,
+            "hit@10": 0.0,
+            "mrr@10": 0.0,
+            "ndcg@10": 0.0,
+            "precision@10": 0.0,
+            "recall@10": 0.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "liver",
+          "query_type": "grading_standard"
+        },
+        {
+          "query_id": "zh-ret-063",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 0.0,
+            "hit@5": 0.0,
+            "hit@10": 0.0,
+            "mrr@10": 0.0,
+            "ndcg@10": 0.0,
+            "precision@10": 0.0,
+            "recall@10": 0.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "liver",
+          "query_type": "grading_standard"
+        },
+        {
+          "query_id": "zh-ret-064",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 0.0,
+            "hit@5": 0.0,
+            "hit@10": 1.0,
+            "mrr@10": 0.16666666666666666,
+            "ndcg@10": 0.3562071871080222,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "liver",
+          "query_type": "boundary_case"
+        },
+        {
+          "query_id": "zh-ret-065",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 1.0,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "liver",
+          "query_type": "comparison"
+        },
+        {
+          "query_id": "zh-ret-066",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 1.0,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "liver",
+          "query_type": "procedure_indication"
+        },
+        {
+          "query_id": "zh-ret-067",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 1.0,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "liver",
+          "query_type": "boundary_case"
+        },
+        {
+          "query_id": "zh-ret-068",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 1.0,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "liver",
+          "query_type": "comparison"
+        },
+        {
+          "query_id": "zh-ret-069",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 0.0,
+            "hit@5": 0.0,
+            "hit@10": 0.0,
+            "mrr@10": 0.0,
+            "ndcg@10": 0.0,
+            "precision@10": 0.0,
+            "recall@10": 0.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "liver",
+          "query_type": "procedure_indication"
+        },
+        {
+          "query_id": "zh-ret-070",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 0.0,
+            "hit@5": 0.0,
+            "hit@10": 0.0,
+            "mrr@10": 0.0,
+            "ndcg@10": 0.0,
+            "precision@10": 0.0,
+            "recall@10": 0.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "liver",
+          "query_type": "boundary_case"
+        },
+        {
+          "query_id": "zh-ret-071",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 0.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 0.5,
+            "ndcg@10": 0.6309297535714575,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "liver",
+          "query_type": "report_standard"
+        },
+        {
+          "query_id": "zh-ret-072",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 0.0,
+            "hit@5": 0.0,
+            "hit@10": 1.0,
+            "mrr@10": 0.14285714285714285,
+            "ndcg@10": 0.3333333333333333,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "liver",
+          "query_type": "report_standard"
+        },
+        {
+          "query_id": "zh-ret-073",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 1.0,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "liver",
+          "query_type": "technical_parameter"
+        },
+        {
+          "query_id": "zh-ret-074",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 0.0,
+            "hit@5": 0.0,
+            "hit@10": 0.0,
+            "mrr@10": 0.0,
+            "ndcg@10": 0.0,
+            "precision@10": 0.0,
+            "recall@10": 0.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "liver",
+          "query_type": "grading_standard"
+        },
+        {
+          "query_id": "zh-ret-075",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 1.0,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "liver",
+          "query_type": "comparison"
+        },
+        {
+          "query_id": "zh-ret-076",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 1.0,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "liver",
+          "query_type": "technical_parameter"
+        },
+        {
+          "query_id": "zh-ret-077",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 1.0,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "liver",
+          "query_type": "comparison"
+        },
+        {
+          "query_id": "zh-ret-078",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 1.0,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "liver",
+          "query_type": "procedure_indication"
+        },
+        {
+          "query_id": "zh-ret-079",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 0.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 0.3333333333333333,
+            "ndcg@10": 0.5,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "liver",
+          "query_type": "report_standard"
+        },
+        {
+          "query_id": "zh-ret-080",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 1.0,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "liver",
+          "query_type": "report_standard"
+        },
+        {
+          "query_id": "zh-ret-081",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 1.0,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "cardiac",
+          "query_type": "grading_standard"
+        },
+        {
+          "query_id": "zh-ret-082",
+          "n_gold": 2,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 1.0,
+            "precision@10": 0.2,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "cardiac",
+          "query_type": "boundary_case"
+        },
+        {
+          "query_id": "zh-ret-083",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 0.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 0.3333333333333333,
+            "ndcg@10": 0.5,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "cardiac",
+          "query_type": "comparison"
+        },
+        {
+          "query_id": "zh-ret-084",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 0.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 0.5,
+            "ndcg@10": 0.6309297535714575,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "cardiac",
+          "query_type": "followup_strategy"
+        },
+        {
+          "query_id": "zh-ret-085",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 1.0,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "cardiac",
+          "query_type": "procedure_indication"
+        },
+        {
+          "query_id": "zh-ret-086",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 0.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 0.5,
+            "ndcg@10": 0.6309297535714575,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "cardiac",
+          "query_type": "grading_standard"
+        },
+        {
+          "query_id": "zh-ret-087",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 0.0,
+            "hit@5": 0.0,
+            "hit@10": 1.0,
+            "mrr@10": 0.16666666666666666,
+            "ndcg@10": 0.3562071871080222,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "cardiac",
+          "query_type": "grading_standard"
+        },
+        {
+          "query_id": "zh-ret-088",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 1.0,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "cardiac",
+          "query_type": "followup_strategy"
+        },
+        {
+          "query_id": "zh-ret-089",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 0.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 0.25,
+            "ndcg@10": 0.43067655807339306,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "cardiac",
+          "query_type": "grading_standard"
+        },
+        {
+          "query_id": "zh-ret-090",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 1.0,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "cardiac",
+          "query_type": "followup_strategy"
+        },
+        {
+          "query_id": "zh-ret-091",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 1.0,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "cardiac",
+          "query_type": "technical_parameter"
+        },
+        {
+          "query_id": "zh-ret-092",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 0.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 0.3333333333333333,
+            "ndcg@10": 0.5,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "cardiac",
+          "query_type": "technical_parameter"
+        },
+        {
+          "query_id": "zh-ret-093",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 1.0,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "cardiac",
+          "query_type": "technical_parameter"
+        },
+        {
+          "query_id": "zh-ret-094",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 1.0,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "cardiac",
+          "query_type": "procedure_indication"
+        },
+        {
+          "query_id": "zh-ret-095",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 1.0,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "cardiac",
+          "query_type": "boundary_case"
+        },
+        {
+          "query_id": "zh-ret-096",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 1.0,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "cardiac",
+          "query_type": "technical_parameter"
+        },
+        {
+          "query_id": "zh-ret-097",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 0.0,
+            "hit@5": 0.0,
+            "hit@10": 0.0,
+            "mrr@10": 0.0,
+            "ndcg@10": 0.0,
+            "precision@10": 0.0,
+            "recall@10": 0.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "cardiac",
+          "query_type": "grading_standard"
+        },
+        {
+          "query_id": "zh-ret-098",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 1.0,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "cardiac",
+          "query_type": "technical_parameter"
+        },
+        {
+          "query_id": "zh-ret-099",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 0.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 0.2,
+            "ndcg@10": 0.38685280723454163,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "cardiac",
+          "query_type": "technical_parameter"
+        },
+        {
+          "query_id": "zh-ret-100",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 0.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 0.5,
+            "ndcg@10": 0.6309297535714575,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "cardiac",
+          "query_type": "technical_parameter"
+        },
+        {
+          "query_id": "zh-ret-101",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 1.0,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "cardiac",
+          "query_type": "grading_standard"
+        },
+        {
+          "query_id": "zh-ret-102",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 1.0,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "cardiac",
+          "query_type": "boundary_case"
+        },
+        {
+          "query_id": "zh-ret-103",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 0.0,
+            "hit@5": 0.0,
+            "hit@10": 1.0,
+            "mrr@10": 0.14285714285714285,
+            "ndcg@10": 0.3333333333333333,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "cardiac",
+          "query_type": "grading_standard"
+        },
+        {
+          "query_id": "zh-ret-104",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 1.0,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "cardiac",
+          "query_type": "boundary_case"
+        },
+        {
+          "query_id": "zh-ret-105",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 0.0,
+            "hit@5": 0.0,
+            "hit@10": 0.0,
+            "mrr@10": 0.0,
+            "ndcg@10": 0.0,
+            "precision@10": 0.0,
+            "recall@10": 0.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "cardiac",
+          "query_type": "comparison"
+        },
+        {
+          "query_id": "zh-ret-106",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 1.0,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "cardiac",
+          "query_type": "boundary_case"
+        },
+        {
+          "query_id": "zh-ret-107",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 0.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 0.5,
+            "ndcg@10": 0.6309297535714575,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "cardiac",
+          "query_type": "boundary_case"
+        },
+        {
+          "query_id": "zh-ret-108",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 1.0,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "cardiac",
+          "query_type": "technical_parameter"
+        },
+        {
+          "query_id": "zh-ret-109",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 0.0,
+            "hit@5": 0.0,
+            "hit@10": 0.0,
+            "mrr@10": 0.0,
+            "ndcg@10": 0.0,
+            "precision@10": 0.0,
+            "recall@10": 0.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "cardiac",
+          "query_type": "technical_parameter"
+        },
+        {
+          "query_id": "zh-ret-110",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 0.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 0.3333333333333333,
+            "ndcg@10": 0.5,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "cardiac",
+          "query_type": "technical_parameter"
+        },
+        {
+          "query_id": "zh-ret-111",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 1.0,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "cardiac",
+          "query_type": "technical_parameter"
+        },
+        {
+          "query_id": "zh-ret-112",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 1.0,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "cardiac",
+          "query_type": "comparison"
+        },
+        {
+          "query_id": "zh-ret-113",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 1.0,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "cardiac",
+          "query_type": "report_standard"
+        },
+        {
+          "query_id": "zh-ret-114",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 1.0,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "cardiac",
+          "query_type": "technical_parameter"
+        },
+        {
+          "query_id": "zh-ret-116",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 1.0,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "thyroid",
+          "query_type": "grading_standard"
+        },
+        {
+          "query_id": "zh-ret-117",
+          "n_gold": 2,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 0.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 0.5,
+            "ndcg@10": 0.5912352048230277,
+            "precision@10": 0.2,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "liver",
+          "query_type": "grading_standard"
+        },
+        {
+          "query_id": "zh-ret-118",
+          "n_gold": 1,
+          "duplicates_removed": 0,
+          "metrics": {
+            "hit@1": 1.0,
+            "hit@5": 1.0,
+            "hit@10": 1.0,
+            "mrr@10": 1.0,
+            "ndcg@10": 1.0,
+            "precision@10": 0.1,
+            "recall@10": 1.0
+          },
+          "violations": [],
+          "skip_reason": "",
+          "organ": "cardiac",
+          "query_type": "grading_standard"
+        }
+      ],
+      "caliber": "chunk 级（必须命中含答案的那一段），不是 doc 级。"
+    },
+    "generation": {
+      "stage": "generation",
+      "executed": false,
+      "why": "生成质量需要生产链路 + 判官（8006），属真机评测，由 scripts/audit/p108_hallucination_faithfulness.py 负责。本脚本只报『要判得动需要多少 n』，防止再拿 n=21 报结论。",
+      "power_requirements": {
+        "delta_5pt_at_discordant_10pct": 333,
+        "delta_5pt_at_discordant_15pct": 487,
+        "delta_5pt_at_discordant_25pct": 787,
+        "note": "配对 McNemar，80% power，alpha=0.05，**精确解**（闭式解偏乐观 2~7%）。delta=5pt 是绝对差（如 faithfulness 从 0.60 提到 0.65）。"
+      }
+    }
+  },
+  "invariant_violations": [],
+  "invariants_clean": true,
+  "wall_s": 48.4
+}

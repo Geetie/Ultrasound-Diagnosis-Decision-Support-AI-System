@@ -1919,6 +1919,41 @@
       "result": "待修；修完重跑 4.4 一致率（当前 30.00% 被①③污染）",
       "dependencies": [],
       "evidence": "reports/第4组_生成质量_实测报告_20261108.md §七；16 号 A.171"
+    },
+    {
+      "id": "rag-eval-system-rebuild",
+      "name": "RAG 五阶段分层评估体系 + CI 门禁（评估实现可信化）",
+      "description": "在评估体系上做三件事：①把全仓 5 处 NDCG 实现收敛到单一标准实现并加跨实现对拍；②建立摄取/分块/检索/增强/生成五阶段分层评估；③建立 CI 门禁（口径一致性 + 报告可信度 + 回归拦截）。产出：app/evaluation/{retrieval_metrics,statistics}.py、scripts/audit/p114_rag_layered_eval.py、scripts/audit/p115_eval_gate.py、reports/RAG阶段5_评估体系前沿研究_20261109.md",
+      "status": "done",
+      "priority": "P0",
+      "why": "项目已因『评估本身有错』吃过两次大亏（7 项指标作废、NDCG>1）。本轮审查又发现 5 处 NDCG 实现中 2 处仍会产出 >1（含生产代码），且 p94 修完后 p94b 漏修——根因是『指标没有单一实现』。",
+      "scope": [
+        "app/evaluation/retrieval_metrics.py（全仓唯一 hit/MRR/NDCG/precision/recall 实现）",
+        "app/evaluation/statistics.py（精确 McNemar + 精确功效 + 配对 bootstrap）",
+        "scripts/audit/p114_rag_layered_eval.py（五阶段分层 + 不变量闸门）",
+        "scripts/audit/p115_eval_gate.py（CI 门禁：口径/可信度/回归）",
+        "data/eval/baselines/rag_eval_baseline.json（冻结基线）",
+        "tests/unit/quality/{test_retrieval_metrics,test_eval_statistics,test_eval_gate_selfcheck}.py（82 例）",
+        ".github/workflows/ci.yml 新增 rag-eval-gate job"
+      ],
+      "dependencies": [
+        "eval-dataset-rebuild"
+      ],
+      "evidence": "reports/RAG阶段5_评估体系前沿研究_20261109.md；reports/p114_layered.json（真机 2026-11-09）；真机：p114 不变量全绿（30.5s），p115 31/31 PASS，守卫 82 例全绿",
+      "result": "检索（B2 chunk 级 n=117，真机 kb_v1.5.0 去重后 3774 chunks）：hit@1 0.5385 / hit@5 0.7692 / hit@10 0.8376 / MRR 0.6402 / NDCG@10 0.6656；分层 thyroid 0.4348 明显低于 cardiac 0.6000。结构层：字符守恒 1.0080、表格管道符保留仅 0.1704、句末完整率 0.3272",
+      "next_actions": [
+        "B2 扩到 ≥487 条（当前 n=117 判不动 5pt，只能判 ≥10pt）",
+        "判官 κ 校准（人工 50~100 条）后方可把 faithfulness 纳入门禁",
+        "表格丢失（保留率 17%）需重解析 + 重建索引",
+        "生成段（⑤）需真机判官，本轮未跑"
+      ],
+      "invalidated_metrics": [
+        "B3 可读性 0.880（in-sample：黄金集与检查器修复同 commit，需独立集重测）"
+      ],
+      "still_valid_metrics": [
+        "B2 检索 hit@1/hit@5/hit@10/MRR/NDCG（chunk 级，n=117，不变量全绿）",
+        "结构层：字符守恒 / 数值保留 / 表格管道符 / 句末完整率 / 指代开头率（机械可判）"
+      ]
     }
   ]
 }

@@ -140,7 +140,7 @@ def ndcg_at_k(ranked: Sequence[str], relevant: Sequence[str] | set[str], k: int)
     # 2026-11-09 修 bug：同一相关 chunk 可能在 top-k 里出现多次（多版本副本）。
     # 原实现按命中次数累加 DCG，使 dcg 项数 > idcg 项数 → 比值 > 1。
     # 外面那个 `min(..., 1.0)` 只是兜住了上界，**兜底≠算对**：
-    # 它把本应 0.5 的情形抬成 1.0，是「静默算错」的隐蔽形态。
+    # 它把本应 0.6309 的情形抬成 1.0，是「静默算错」的隐蔽形态。
     # 用 seen 去重，保证每个相关 chunk 只计一次。
     seen: set[str] = set()
     for index, cid in enumerate(top, start=1):

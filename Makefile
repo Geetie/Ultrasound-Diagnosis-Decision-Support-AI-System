@@ -8,12 +8,14 @@ TRACKS_UNIT := tests/unit
 TRACKS_INT := tests/integration/int
 PYTEST_FLAGS := -q -p no:cacheprovider -n 8 --dist=loadfile --timeout=300
 
-.PHONY: help install lint lint-fix test test-unit test-int test-all test-perf cov bench bench-all frontend fe-test fe-lint fe-build fe-smoke edge compose-up eval-collect eval-judge eval-gate harness-check
+.PHONY: help install lint lint-fix test test-unit test-int test-all test-perf cov bench bench-all frontend fe-test fe-lint fe-build fe-smoke edge compose-up eval-collect eval-judge eval-gate harness-check rag-eval-gate rag-eval-layered
 
 help:
 	@echo "make install     - 安装后端依赖（含开发依赖）"
 	@echo "make lint        - ruff 全量检查（含历史债，仅参考）"
 	@echo "make harness-check - harness 结构自检（状态文件/附录编号/死链/pptx，A.106）"
+	@echo "make rag-eval-gate - RAG 评估门禁：口径一致性 + 报告可信度 + 回归（纯本地，零依赖，A.172）"
+	@echo "make rag-eval-layered - RAG 五阶段分层评估（🔬 真机：需 PG + 8004 嵌入）"
 	@echo "make test        - 后端单元 + INT 集成测试"
 	@echo "make cov         - 覆盖率（整体 80 / 核心 90 门禁）"
 	@echo "make frontend    - 前端 lint + 类型检查 + 测试 + 构建"
@@ -108,6 +110,19 @@ eval-judge:
 
 eval-gate:
 	$(PY) scripts/langfuse/eval_gate.py
+
+# RAG 评估门禁（p115）：判的是「评估实现与口径本身可不可信」，不是「分数够不够好」。
+# 三段检查：①口径一致性（仓库里每个 NDCG 实现必须给同一个数、不得越界）
+# ②报告可信度（n/分母/副本/越界 必须自证）③回归（相对冻结基线跌幅 ≤2pt）。
+# **纯本地、零第三方依赖、<1s**，所以能进 CI。给 --report 才跑②③。
+# 冻结新基线：$(PY) scripts/audit/p115_eval_gate.py --report <报告> --freeze
+rag-eval-gate:
+	$(PY) scripts/audit/p115_eval_gate.py
+
+# 五阶段分层评估（p114）：摄取/分块/检索/增强/生成。🔬 真机（需 PG 15432 + 8004 嵌入）。
+rag-eval-layered:
+	$(PY) scripts/audit/run_with_env.py scripts/audit/p114_rag_layered_eval.py \
+		--report reports/p114_layered.json
 
 # 开发机（无 TensorRT）启动边缘端：自动退回空导航后端，链路仍可跑通
 edge:
