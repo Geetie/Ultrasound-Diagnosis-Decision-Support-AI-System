@@ -114,3 +114,62 @@ class TestPrecision:
 
     def test_empty_contexts(self, mod):
         assert mod.compute_context_precision([], "任意答案。") == 0.0
+
+
+class TestTableRowCoverage:
+    """表格行必须能抽出关键单元（2026-11-10 修正的度量 bug）。
+
+    ## 这个 bug 的后果（真实数据）
+
+    修正前 `_key_units("原文提到：| | 1 | 2~10 | 4A 低度可疑恶性 |")` 返回 `[]`：
+      - `2~10` 是**区间无单位**，不匹配 `\\d+...mm|cm|%`
+      - `4A` 单独出现，不匹配完整分级码正则
+
+    空单元 → `_sentence_covered` 直接 False → recall 必然 0。
+
+    **实测后果**：53 条 `grading_standard`（占 26% 问题量）被系统性判 0，
+    导致 L3 集 recall 从真实的 0.8105 被压到 0.5386，
+    B2 集从 0.6568 压到 0.3763。
+
+    我当时把这个假数字当成「hit@k 看不到的真实短板」写进了报告 ——
+    **这是「看到数字低就归因系统、不先验证度量」的典型错误。**
+    """
+
+    _CTX = (
+        "| 结节 | 分值 | 恶性率% | C-TIRADS 分类 | |---|---|---|---| "
+        "| 无结节 | 无分值* | 0 | 1 无结节 | | 有结节 | -1 | 0 | 2 良性 | "
+        "| | 0 | <2 | 3 良性可能 | | | 1 | 2~10 | 4A 低度可疑恶性 |"
+    )
+
+    def test_range_without_unit_extracted(self, mod):
+        """`2~10` 这种区间无单位也必须成为关键单元。"""
+        units = mod._key_units("原文提到：| | 1 | 2~10 | 4A 低度可疑恶性 |")
+        assert "2~10" in units, units
+
+    def test_bare_grade_code_extracted(self, mod):
+        """独立的 `4A` 必须成为关键单元。"""
+        units = mod._key_units("原文提到：| | 1 | 2~10 | 4A 低度可疑恶性 |")
+        assert any(u.lower() == "4a" for u in units), units
+
+    def test_negative_number_extracted(self, mod):
+        units = mod._key_units("原文提到：| 有结节 | -1 | 0 | 2 良性 |")
+        assert "-1" in units, units
+
+    def test_table_row_covered(self, mod):
+        """表格行在上下文里出现时必须判为覆盖（修正前恒为 False）。"""
+        for ref in (
+            "原文提到：| | 1 | 2~10 | 4A 低度可疑恶性 |",
+            "原文提到：| | 2 | 10~50 | 4B 中度可疑恶性 |",
+            "原文提到：| 有结节 | -1 | 0 | 2 良性 |",
+        ):
+            sents = mod._sentences(ref)
+            assert sents, ref
+            assert mod._sentence_covered(sents[0], self._CTX), (ref, mod._key_units(sents[0]))
+
+    def test_unrelated_table_row_not_covered(self, mod):
+        """不相关的表格行不该被误判覆盖。"""
+        ref = "原文提到：| | 5 | >90 | 5 高度提示恶性 |"
+        sents = mod._sentences(ref)
+        assert sents
+        # 上下文里没有 5 分那行
+        assert mod._sentence_covered(sents[0], self._CTX) is False

@@ -94,6 +94,30 @@ def _key_units(sentence: str) -> list[str]:
     # 英文术语（跨语言强锚点）
     for m in re.finditer(r"[A-Za-z][A-Za-z\-]{2,}", sentence):
         units.append(m.group(0).lower())
+
+    # ----------------------------------------------------------------
+    # 2026-11-10 修正：**表格行会抽出空单元，导致 recall 必然为 0**
+    #
+    # 实测：`原文提到：| | 1 | 2~10 | 4A 低度可疑恶性 |` 的 `_key_units` 返回 `[]`
+    #   - `2~10` 是**区间无单位**，不匹配 `\d+...mm|cm|%`
+    #   - `4A` 单独出现，不匹配 `(?:C-?TIRADS|...)\s*(?:[1-6]\s*[A-C]?\s*类)`
+    #   → 无单元 → `_sentence_covered` 直接 return False → recall=0
+    #
+    # **后果**：53 条 `grading_standard`（占 26% 问题量）的 recall 被系统性压低，
+    # 报告里那个 0.245 是**度量 bug**，不是检索真的差。
+    #
+    # 修法：补上两类单元
+    #   1. **分数/区间的裸数字**（`2~10` / `50~90` / `-1`）
+    #   2. **独立的分级码**（`4A` / `4B` / `4C` / `TR4` / `LR-5`）
+    # ----------------------------------------------------------------
+    # 区间与裸数字（表格行里最有辨识度的部分）
+    for m in re.finditer(r"-?\d+(?:[~～-]\d+)?", sentence):
+        tok = m.group(0).replace(" ", "")
+        # 过滤掉纯序号（1 位数字且前后是 | 或空格）
+        units.append(tok)
+    # 独立分级码
+    for m in re.finditer(r"(?<![A-Za-z0-9])([1-6]\s*[A-Ca-c]|TR\s?[1-5]|LR-?[1-5M])(?![A-Za-z0-9])", sentence):
+        units.append(m.group(1).replace(" ", "").lower())
     return units
 
 
