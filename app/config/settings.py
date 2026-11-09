@@ -554,8 +554,13 @@ class Settings(BaseSettings):
     # 父子块回填（kb_v2.0.0 起）：检索命中 child 块后，用 parent_chunk_id
     # 回填父块内容再喂 LLM（Small-to-Big / ParentDocumentRetriever 做法）。
     # **读取点**：app/rag/retriever.py::_expand_parent_chunks（唯一消费者）。
-    # 关闭时行为与改造前完全一致（只返回命中的 child 块原文）。
-    rag_use_parent_expansion: bool = True
+    #
+    # ⚠️ **默认 False，且不是"忘了打开"**：kb_v2.0.0 的实测是**负增益**
+    # （B2 hit@10 0.8348 → 0.6455，−18.9pp，见
+    # reports/RAG阶段1_分块前沿研究_20261109.md §10.3），因此 v2 未切生产、
+    # 本开关也不默认开启。它的**生成侧收益从未被测量**（§10.4），
+    # 在补出"生成质量 A/B 为正"的证据之前，不得改默认为 True。
+    rag_use_parent_expansion: bool = False
     # 单次检索最多回填几个父块（父块较长，限数防止 prompt 爆长）。
     rag_parent_expansion_max: int = 3
     # 01-4（A.99）：`rag_use_redis_cache` 孤儿开关已删 —— 全仓 0 读取点

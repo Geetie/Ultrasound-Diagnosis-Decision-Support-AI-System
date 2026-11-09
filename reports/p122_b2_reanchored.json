@@ -1,0 +1,38 @@
+{
+  "kb_v1.4.0": {
+    "metrics": {
+      "n": 115,
+      "hit@1": 0.5652,
+      "hit@5": 0.7652,
+      "hit@10": 0.8348,
+      "mrr@10": 0.6518
+    },
+    "reanchor": {
+      "quote_global": 152,
+      "doc_fallback": 0,
+      "dropped": 0
+    },
+    "corpus": 1297
+  },
+  "kb_v2.0.0": {
+    "metrics": {
+      "n": 110,
+      "hit@1": 0.3182,
+      "hit@5": 0.5273,
+      "hit@10": 0.6455,
+      "mrr@10": 0.4109
+    },
+    "reanchor": {
+      "quote_global": 120,
+      "doc_fallback": 27,
+      "dropped": 5
+    },
+    "corpus": 5279
+  },
+  "delta": {
+    "hit@1": -0.247,
+    "hit@5": -0.2379,
+    "hit@10": -0.1893,
+    "mrr@10": -0.2409
+  }
+}

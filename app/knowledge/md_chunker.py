@@ -137,7 +137,7 @@ def _aligned_to_pipe(lines: list[str]) -> str:
     for r in rows[1:]:
         cells = [c for c in re.split(r"\s{2,}", r.strip()) if c]
         if len(cells) > ncol:
-            cells = cells[: ncol - 1] + [" ".join(cells[ncol - 1:])]
+            cells = [*cells[: ncol - 1], " ".join(cells[ncol - 1:])]
         cells = cells + [""] * (ncol - len(cells))
         out.append("| " + " | ".join(cells) + " |")
     return "\n".join(out)
@@ -315,9 +315,7 @@ def _split_sentences(text: str, min_chars: int = 12) -> list[str]:
     raw = [p.strip() for p in _SENT_SPLIT_RE.split(text) if p and p.strip()]
     out: list[str] = []
     for s in raw:
-        if out and len(s) < min_chars:
-            out[-1] = out[-1] + s
-        elif out and len(out[-1]) < min_chars:
+        if out and (len(s) < min_chars or len(out[-1]) < min_chars):
             out[-1] = out[-1] + s
         else:
             out.append(s)
@@ -351,7 +349,7 @@ def _pack_units(
             continue
         # 超长：按句子拆。overlap 只在相邻原子间额外带上一句。
         sents = _split_sentences(text)
-        n_ov = max(0, int(round(len(sents) * overlap_ratio)))
+        n_ov = max(0, round(len(sents) * overlap_ratio))
         cur: list[str] = []
         cur_tok = 0
         for s in sents:
